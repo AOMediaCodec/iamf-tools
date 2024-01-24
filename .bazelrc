@@ -1,0 +1,7 @@
+build --cxxopt=-std=c++20
+build --linkopt=-lm
+build --cxxopt=-Wno-sign-compare
+# Use the default C++ toolchain to build the tools used during the
+# build.
+build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
+build --enable_bzlmod=false

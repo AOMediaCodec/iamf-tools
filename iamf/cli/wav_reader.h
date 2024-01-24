@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2023, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+
+#ifndef CLI_WAV_READER_H_
+#define CLI_WAV_READER_H_
+
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+#include "src/dsp/read_wav_info.h"
+
+namespace iamf_tools {
+
+class WavReader {
+ public:
+  /*!\brief Constructor.
+   *
+   * \param wav_filename Filename of file to read.
+   * \param num_samples_per_frame Maximum number of samples per frame to read.
+   */
+  WavReader(const std::string& wav_filename, size_t num_samples_per_frame);
+
+  /*!\brief Destructor. */
+  ~WavReader();
+
+  int num_channels() const { return info_.num_channels; }
+
+  int sample_rate_hz() const { return info_.sample_rate_hz; }
+
+  int bit_depth() const { return info_.bit_depth; }
+
+  /*!\brief Read up to one frame worth of samples.
+   *
+   * Typically this function reads up to `(num_channels() *
+   * num_samples_per_frame_)` samples. It may read fewer samples when the end
+   * of the wav file is reached.
+   *
+   * \return Number of samples read.
+   */
+  size_t ReadFrame();
+
+  /*!\ Buffers stored a vector of interleaved samples.
+   *
+   * The samples are left-justified; the upper `bit_depth()` bits represent the
+   * sample, with the remaining lower bits set to 0.
+   */
+  std::vector<std::vector<int32_t>> buffers_;
+
+  const size_t num_samples_per_frame_;
+
+ private:
+  FILE* file_;
+  ReadWavInfo info_;
+};
+}  // namespace iamf_tools
+
+#endif  // CLI_WAV_READER_H_

@@ -1,0 +1,600 @@
+/*
+ * Copyright (c) 2023, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+#include "iamf/audio_element.h"
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <sstream>
+#include <tuple>
+#include <variant>
+#include <vector>
+
+#include "absl/container/btree_set.h"
+#include "absl/container/flat_hash_set.h"
+#include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "iamf/ia.h"
+#include "iamf/obu_base.h"
+#include "iamf/obu_header.h"
+#include "iamf/obu_util.h"
+#include "iamf/param_definitions.h"
+#include "iamf/write_bit_buffer.h"
+
+namespace iamf_tools {
+
+namespace {
+
+// Returns the number of elements in the demixing_matrix.
+size_t GetNumDemixingMatrixElements(const AmbisonicsProjectionConfig& config) {
+  const size_t c = static_cast<size_t>(config.output_channel_count);
+  const size_t n = static_cast<size_t>(config.substream_count);
+  const size_t m = static_cast<size_t>(config.coupled_substream_count);
+
+  return (n + m) * c;
+}
+
+void LogChannelBased(const ScalableChannelLayoutConfig& channel_config) {
+  LOG(INFO) << "  scalable_channel_layout_config:";
+  LOG(INFO) << "    num_layers= "
+            << static_cast<int>(channel_config.num_layers);
+  LOG(INFO) << "    reserved= " << static_cast<int>(channel_config.reserved);
+  for (int i = 0; i < channel_config.num_layers; ++i) {
+    LOG(INFO) << "    channel_audio_layer_configs[" << i << "]:";
+    const auto& channel_audio_layer_config =
+        channel_config.channel_audio_layer_configs[i];
+    LOG(INFO) << "      loudspeaker_layout= "
+              << static_cast<int>(
+                     channel_audio_layer_config.loudspeaker_layout);
+    LOG(INFO) << "      output_gain_is_present_flag= "
+              << static_cast<int>(
+                     channel_audio_layer_config.output_gain_is_present_flag);
+    LOG(INFO) << "      recon_gain_is_present_flag= "
+              << static_cast<int>(
+                     channel_audio_layer_config.recon_gain_is_present_flag);
+    LOG(INFO) << "      reserved= "
+              << static_cast<int>(channel_audio_layer_config.reserved_a);
+    LOG(INFO) << "      substream_count= "
+              << static_cast<int>(channel_audio_layer_config.substream_count);
+    LOG(INFO) << "      coupled_substream_count= "
+              << static_cast<int>(
+                     channel_audio_layer_config.coupled_substream_count);
+    if (channel_audio_layer_config.output_gain_is_present_flag == 1) {
+      LOG(INFO) << "      output_gain_flag= "
+                << static_cast<int>(
+                       channel_audio_layer_config.output_gain_flag);
+      LOG(INFO) << "      reserved= "
+                << static_cast<int>(channel_audio_layer_config.reserved_b);
+      LOG(INFO) << "      output_gain= "
+                << channel_audio_layer_config.output_gain;
+    }
+  }
+}
+
+void LogAmbisonicsMonoConfig(const AmbisonicsMonoConfig& mono_config) {
+  LOG(INFO) << "  ambisonics_mono_config:";
+  LOG(INFO) << "    output_channel_count:"
+            << static_cast<int>(mono_config.output_channel_count);
+  LOG(INFO) << "    substream_count:"
+            << static_cast<int>(mono_config.substream_count);
+  std::stringstream channel_mapping_stream;
+  for (int c = 0; c < mono_config.output_channel_count; c++) {
+    channel_mapping_stream << static_cast<int>(mono_config.channel_mapping[c])
+                           << ", ";
+  }
+  LOG(INFO) << "    channel_mapping: [ " << channel_mapping_stream.str() << "]";
+}
+
+void LogAmbisonicsProjectionConfig(
+    const AmbisonicsProjectionConfig& projection_config) {
+  LOG(INFO) << "  ambisonics_projection_config:";
+  LOG(INFO) << "    output_channel_count:"
+            << static_cast<int>(projection_config.output_channel_count);
+  LOG(INFO) << "    substream_count:"
+            << static_cast<int>(projection_config.substream_count);
+  LOG(INFO) << "    coupled_substream_count:"
+            << static_cast<int>(projection_config.coupled_substream_count);
+  std::stringstream demixing_matrix_stream;
+  for (int i = 0; i < (projection_config.substream_count +
+                       projection_config.coupled_substream_count) *
+                          projection_config.output_channel_count;
+       i++) {
+    demixing_matrix_stream << static_cast<int>(
+                                  projection_config.demixing_matrix[i])
+                           << ", ";
+  }
+  LOG(INFO) << "    demixing_matrix: [ " << demixing_matrix_stream.str() << "]";
+}
+
+void LogSceneBased(const AmbisonicsConfig& ambisonics_config) {
+  LOG(INFO) << "  ambisonics_config:";
+  LOG(INFO) << "    ambisonics_mode= "
+            << static_cast<DecodedUleb128>(ambisonics_config.ambisonics_mode);
+  if (ambisonics_config.ambisonics_mode ==
+      AmbisonicsConfig::kAmbisonicsModeMono) {
+    LogAmbisonicsMonoConfig(
+        std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config));
+  } else if (ambisonics_config.ambisonics_mode ==
+             AmbisonicsConfig::kAmbisonicsModeProjection) {
+    LogAmbisonicsProjectionConfig(std::get<AmbisonicsProjectionConfig>(
+        ambisonics_config.ambisonics_config));
+  }
+}
+
+// Returns `absl::OkStatus()` if all parameters have a unique
+// `param_definition_type` in the OBU. `absl::InvalidArgumentError()`
+// otherwise.
+absl::Status ValidateUniqueParamDefinitionType(
+    const std::vector<AudioElementParam>& audio_element_params) {
+  absl::btree_set<ParamDefinition::ParameterDefinitionType>
+      unique_param_definition_types;
+  for (int i = 0; i < audio_element_params.size(); ++i) {
+    const auto& param = audio_element_params[i];
+    const auto [iter, inserted] =
+        unique_param_definition_types.insert(param.param_definition_type);
+    if (!inserted) {
+      LOG(ERROR) << "Duplicated parameter definition type found at "
+                 << "`audio_element_params[" << i << "]`; type= " << *iter;
+      return absl::InvalidArgumentError("");
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
+  uint8_t next_valid_output_channel_count;
+  RETURN_IF_NOT_OK(AmbisonicsConfig ::GetNextValidOutputChannelCount(
+      channel_count, next_valid_output_channel_count));
+
+  if (next_valid_output_channel_count == channel_count) {
+    return absl::OkStatus();
+  }
+
+  return absl::InvalidArgumentError("");
+}
+
+// Writes an element of the `audio_element_params` array of a scalable channel
+// `AudioElementObu`.
+absl::Status ValidateAndWriteAudioElementParam(const AudioElementParam& param,
+                                               WriteBitBuffer& wb) {
+  // Write the main portion of the `AudioElementParam`.
+  RETURN_IF_NOT_OK(wb.WriteUleb128(
+      static_cast<DecodedUleb128>(param.param_definition_type)));
+
+  if (param.param_definition_type ==
+      ParamDefinition::kParameterDefinitionMixGain) {
+    LOG(ERROR) << "Mix Gain parameter type is explicitly forbidden for "
+               << "Audio Element OBUs.";
+    return absl::InvalidArgumentError("");
+  }
+  RETURN_IF_NOT_OK(param.param_definition->ValidateAndWrite(wb));
+
+  return absl::OkStatus();
+}
+
+// Writes the `ScalableChannelLayoutConfig` of an `AudioElementObu`.
+absl::Status ValidateAndWriteScalableChannelLayout(
+    const ScalableChannelLayoutConfig& layout,
+    const DecodedUleb128 num_substreams, WriteBitBuffer& wb) {
+  if (layout.num_layers == 0 || layout.num_layers > 6) {
+    LOG(ERROR) << "Number of layers in `ScalableChannelLayoutConfig` "
+               << "should be in [0, 6]; got " << layout.num_layers;
+    return absl::InvalidArgumentError("");
+  }
+
+  // Write the main portion of the `ScalableChannelLayoutConfig`.
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.num_layers, 3));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.reserved, 5));
+
+  // Loop to write the `channel_audio_layer_configs` array.
+  DecodedUleb128 cumulative_substream_count = 0;
+  for (int i = 0; i < layout.num_layers; i++) {
+    const ChannelAudioLayerConfig& layer_config =
+        layout.channel_audio_layer_configs[i];
+    if (layer_config.loudspeaker_layout ==
+            ChannelAudioLayerConfig::kLayoutBinaural &&
+        layout.num_layers != 1) {
+      LOG(ERROR) << "Binaural layout can only have one layer; got "
+                 << layout.num_layers;
+      return absl::InvalidArgumentError("");
+    }
+    cumulative_substream_count +=
+        static_cast<DecodedUleb128>(layer_config.substream_count);
+
+    RETURN_IF_NOT_OK(
+        wb.WriteUnsignedLiteral(layer_config.loudspeaker_layout, 4));
+    RETURN_IF_NOT_OK(
+        wb.WriteUnsignedLiteral(layer_config.output_gain_is_present_flag, 1));
+    RETURN_IF_NOT_OK(
+        wb.WriteUnsignedLiteral(layer_config.recon_gain_is_present_flag, 1));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.reserved_a, 2));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.substream_count, 8));
+    RETURN_IF_NOT_OK(
+        wb.WriteUnsignedLiteral(layer_config.coupled_substream_count, 8));
+
+    if (layer_config.output_gain_is_present_flag == 1) {
+      RETURN_IF_NOT_OK(
+          wb.WriteUnsignedLiteral(layer_config.output_gain_flag, 6));
+      RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.reserved_b, 2));
+      RETURN_IF_NOT_OK(wb.WriteSigned16(layer_config.output_gain));
+    }
+  }
+
+  if (cumulative_substream_count != num_substreams) {
+    LOG(INFO) << "Cumulative substream count from all layers is not eqaul to "
+              << "the `num_substreams` in the OBU.";
+    return absl::InvalidArgumentError("");
+  }
+
+  return absl::OkStatus();
+}
+
+// Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
+absl::Status ValidateAndWriteAmbisonicsMono(
+    const AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
+    WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams));
+
+  RETURN_IF_NOT_OK(
+      wb.WriteUnsignedLiteral(mono_config.output_channel_count, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(mono_config.substream_count, 8));
+
+  RETURN_IF_NOT_OK(wb.WriteUint8Vector(mono_config.channel_mapping));
+
+  return absl::OkStatus();
+}
+
+// Writes the `AmbisonicsProjectionConfig` of an ambisonics projection
+// `AudioElementObu`.
+absl::Status ValidateAndWriteAmbisonicsProjection(
+    const AmbisonicsProjectionConfig& projection_config,
+    DecodedUleb128 num_substreams, WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams));
+
+  // Write the main portion of the `AmbisonicsProjectionConfig`.
+  RETURN_IF_NOT_OK(
+      wb.WriteUnsignedLiteral(projection_config.output_channel_count, 8));
+  RETURN_IF_NOT_OK(
+      wb.WriteUnsignedLiteral(projection_config.substream_count, 8));
+  RETURN_IF_NOT_OK(
+      wb.WriteUnsignedLiteral(projection_config.coupled_substream_count, 8));
+
+  // Loop to write the `demixing_matrix`.
+  for (size_t i = 0; i < projection_config.demixing_matrix.size(); i++) {
+    RETURN_IF_NOT_OK(wb.WriteSigned16(projection_config.demixing_matrix[i]));
+  }
+
+  return absl::OkStatus();
+}
+
+// Writes the `AmbisonicsConfig` of an ambisonics `AudioElementObu`.
+absl::Status ValidateAndWriteAmbisonicsConfig(const AmbisonicsConfig& config,
+                                              DecodedUleb128 num_substreams,
+                                              WriteBitBuffer& wb) {
+  // Write the main portion of the `AmbisonicsConfig`.
+  RETURN_IF_NOT_OK(
+      wb.WriteUleb128(static_cast<DecodedUleb128>(config.ambisonics_mode)));
+
+  // Write the specific config based on `ambisonics_mode`.
+  switch (config.ambisonics_mode) {
+    using enum AmbisonicsConfig::AmbisonicsMode;
+    case kAmbisonicsModeMono:
+      return ValidateAndWriteAmbisonicsMono(
+          std::get<AmbisonicsMonoConfig>(config.ambisonics_config),
+          num_substreams, wb);
+    case kAmbisonicsModeProjection:
+      return ValidateAndWriteAmbisonicsProjection(
+          std::get<AmbisonicsProjectionConfig>(config.ambisonics_config),
+          num_substreams, wb);
+    default:
+      return absl::OkStatus();
+  }
+}
+
+}  // namespace
+
+absl::Status AmbisonicsMonoConfig::Validate(
+    DecodedUleb128 num_substreams_in_audio_element) const {
+  RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "channel_mapping", channel_mapping.size(),
+      static_cast<DecodedUleb128>(output_channel_count)));
+  if (substream_count > output_channel_count) {
+    LOG(ERROR) << "Expected substream_count=" << substream_count
+               << " to be less than or equal to `output_channel_count`="
+               << output_channel_count << ".";
+
+    return absl::InvalidArgumentError("");
+  }
+  if (num_substreams_in_audio_element != substream_count) {
+    LOG(ERROR) << "Expected substream_count=" << substream_count
+               << " to be equal to num_substreams_in_audio_element="
+               << num_substreams_in_audio_element << ".";
+    return absl::InvalidArgumentError("");
+  }
+
+  // Track the number of unique substream indices in the mapping.
+  absl::flat_hash_set<uint8_t> unique_substream_indices;
+  for (const auto& substream_index : channel_mapping) {
+    if (substream_index == kInactiveAmbisonicsChannelNumber) {
+      // OK. This implies the nth ambisonics channel number is dropped (i.e. the
+      // user wants mixed-order ambisonics).
+      continue;
+    }
+    if (substream_index >= substream_count) {
+      LOG(ERROR) << "Mapping out of bounds. When substream_count="
+                 << substream_count
+                 << " there is no substream_index=" << substream_index << ".";
+      return absl::InvalidArgumentError("");
+    }
+
+    unique_substream_indices.insert(substream_index);
+  }
+
+  if (unique_substream_indices.size() != substream_count) {
+    LOG(ERROR) << "A substream is in limbo; it has no associated ACN. "
+                  "substream_count="
+               << substream_count << ", unique_substream_indices.size()="
+               << unique_substream_indices.size() << ".";
+    return absl::InvalidArgumentError("");
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status AmbisonicsProjectionConfig::Validate(
+    DecodedUleb128 num_substreams_in_audio_element) const {
+  RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
+  if (coupled_substream_count > substream_count) {
+    LOG(ERROR) << "Expected coupled_substream_count=" << coupled_substream_count
+               << " to be less than or equal to substream_count="
+               << substream_count << ".";
+    return absl::InvalidArgumentError("");
+  }
+
+  if ((static_cast<int>(substream_count) +
+       static_cast<int>(coupled_substream_count)) > output_channel_count) {
+    LOG(ERROR) << "Expected coupled_substream_count=" << coupled_substream_count
+               << " + substream_count=" << substream_count
+               << " to be less than or equal to `output_channel_count`="
+               << output_channel_count << ".";
+
+    return absl::InvalidArgumentError("");
+  }
+  if (num_substreams_in_audio_element != substream_count) {
+    LOG(ERROR) << "Expected substream_count=" << substream_count
+               << " to be equal to num_substreams_in_audio_element="
+               << num_substreams_in_audio_element << ".";
+    return absl::InvalidArgumentError("");
+  }
+
+  const size_t expected_num_elements = GetNumDemixingMatrixElements(*this);
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "demixing_matrix", demixing_matrix.size(), expected_num_elements));
+
+  return absl::OkStatus();
+}
+
+absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
+    uint8_t requested_output_channel_count,
+    uint8_t& next_valid_output_channel_count) {
+  // Valid values are `(1+n)^2`, for integer `n` in the range [0, 14].
+  static constexpr auto kValidAmbisonicChannelCounts = []() -> auto {
+    std::array<uint8_t, 15> channel_count_i;
+    for (int i = 0; i < channel_count_i.size(); ++i) {
+      channel_count_i[i] = (i + 1) * (i + 1);
+    }
+    return channel_count_i;
+  }();
+
+  // Lookup the next higher or equal valid channel count.
+  auto valid_channel_count_iter = std::lower_bound(
+      kValidAmbisonicChannelCounts.begin(), kValidAmbisonicChannelCounts.end(),
+      requested_output_channel_count);
+  if (valid_channel_count_iter != kValidAmbisonicChannelCounts.end()) {
+    next_valid_output_channel_count = *valid_channel_count_iter;
+    return absl::OkStatus();
+  }
+
+  LOG(ERROR)
+      << "Output channel count is too large. requested_output_channel_count="
+      << requested_output_channel_count
+      << ". Max=" << kValidAmbisonicChannelCounts.back() << ".";
+  return absl::InvalidArgumentError("");
+}
+
+AudioElementObu::AudioElementObu(const ObuHeader& header,
+                                 DecodedUleb128 audio_element_id,
+                                 AudioElementType audio_element_type,
+                                 const uint8_t reserved,
+                                 DecodedUleb128 codec_config_id)
+    : ObuBase(header, kObuIaAudioElement),
+      audio_element_id_(audio_element_id),
+      audio_element_type_(audio_element_type),
+      reserved_(reserved),
+      codec_config_id_(codec_config_id),
+      num_substreams_(0),
+      num_parameters_(0) {}
+
+void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
+  num_substreams_ = num_substreams;
+  audio_substream_ids_.resize(static_cast<size_t>(num_substreams));
+}
+
+void AudioElementObu::InitializeParams(const DecodedUleb128 num_parameters) {
+  num_parameters_ = num_parameters;
+  audio_element_params_.resize(static_cast<size_t>(num_parameters));
+}
+
+// Initializes the scalable channel portion of an `AudioElementObu`.
+absl::Status AudioElementObu::InitializeScalableChannelLayout(
+    const uint32_t num_layers, const uint32_t reserved) {
+  // Validate the audio element type is correct.
+  if (audio_element_type_ != kAudioElementChannelBased) {
+    LOG(ERROR) << "`InitializeScalableChannelLayout()` can only be called "
+               << "when `audio_element_type_ == kAudioElementChannelBased`, "
+               << "but got " << audio_element_type_;
+    return absl::InvalidArgumentError("");
+  }
+
+  ScalableChannelLayoutConfig config;
+  RETURN_IF_NOT_OK(Uint32ToUint8(num_layers, config.num_layers));
+  RETURN_IF_NOT_OK(Uint32ToUint8(reserved, config.reserved));
+  config.channel_audio_layer_configs.resize(num_layers);
+  config_ = config;
+  return absl::OkStatus();
+}
+
+// Initializes the ambisonics mono portion of an `AudioElementObu`.
+absl::Status AudioElementObu::InitializeAmbisonicsMono(
+    const uint32_t output_channel_count, const uint32_t substream_count) {
+  // Validate the audio element type and ambisonics mode are correct.
+  if (audio_element_type_ != kAudioElementSceneBased) {
+    LOG(ERROR) << "`InitializeAmbisonicsMono()` can only be called "
+               << "when `audio_element_type_ == kAudioElementSceneBased`, "
+               << "but got " << audio_element_type_;
+    return absl::InvalidArgumentError("");
+  }
+
+  AmbisonicsConfig config;
+  config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono;
+
+  AmbisonicsMonoConfig mono_config;
+  RETURN_IF_NOT_OK(
+      Uint32ToUint8(output_channel_count, mono_config.output_channel_count));
+  RETURN_IF_NOT_OK(Uint32ToUint8(substream_count, mono_config.substream_count));
+  mono_config.channel_mapping.resize(output_channel_count);
+  config.ambisonics_config = mono_config;
+  config_ = config;
+
+  return absl::OkStatus();
+}
+
+// Initializes the ambisonics projection portion of an `AudioElementObu`.
+absl::Status AudioElementObu::InitializeAmbisonicsProjection(
+    const uint32_t output_channel_count, const uint32_t substream_count,
+    const uint32_t coupled_substream_count) {
+  // Validate the audio element type and ambisonics mode are correct.
+  if (audio_element_type_ != kAudioElementSceneBased) {
+    LOG(ERROR) << "`InitializeAmbisonicsProjection()` can only be called "
+               << "when `audio_element_type_ == kAudioElementSceneBased`, "
+               << "but got " << audio_element_type_;
+    return absl::InvalidArgumentError("");
+  }
+
+  AmbisonicsConfig config;
+  config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection;
+
+  AmbisonicsProjectionConfig projection_config;
+  RETURN_IF_NOT_OK(Uint32ToUint8(output_channel_count,
+                                 projection_config.output_channel_count));
+  RETURN_IF_NOT_OK(
+      Uint32ToUint8(substream_count, projection_config.substream_count));
+  RETURN_IF_NOT_OK(Uint32ToUint8(coupled_substream_count,
+                                 projection_config.coupled_substream_count));
+  const size_t num_elements = GetNumDemixingMatrixElements(projection_config);
+  projection_config.demixing_matrix.resize(num_elements);
+  config.ambisonics_config = projection_config;
+  config_ = config;
+
+  return absl::OkStatus();
+}
+
+void AudioElementObu::InitializeExtensionConfig(
+    const DecodedUleb128 audio_element_config_size) {
+  config_ =
+      ExtensionConfig{.audio_element_config_size = audio_element_config_size};
+}
+
+void AudioElementObu::PrintObu() const {
+  LOG(INFO) << "Audio Element OBU:";
+  LOG(INFO) << "  audio_element_id= " << audio_element_id_;
+  LOG(INFO) << "  audio_element_type= "
+            << static_cast<int>(audio_element_type_);
+  LOG(INFO) << "  reserved= " << static_cast<int>(reserved_);
+  LOG(INFO) << "  codec_config_id= " << codec_config_id_;
+  LOG(INFO) << "  num_substreams= " << num_substreams_;
+  for (int i = 0; i < num_substreams_; ++i) {
+    const auto& substream_id = audio_substream_ids_[i];
+    LOG(INFO) << "  audio_substream_ids[" << i << "]= " << substream_id;
+  }
+  LOG(INFO) << "  num_parameters= " << num_parameters_;
+  for (int i = 0; i < num_parameters_; ++i) {
+    LOG(INFO) << "  params[" << i << "]";
+    LOG(INFO) << "    param_definition_type= "
+              << static_cast<DecodedUleb128>(
+                     audio_element_params_[i].param_definition_type);
+    audio_element_params_[i].param_definition->Print();
+  }
+  if (audio_element_type_ == kAudioElementChannelBased) {
+    LogChannelBased(std::get<ScalableChannelLayoutConfig>(config_));
+  } else if (audio_element_type_ == kAudioElementSceneBased) {
+    LogSceneBased(std::get<AmbisonicsConfig>(config_));
+  }
+}
+
+absl::Status AudioElementObu::ValidateAndWritePayload(
+    WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(ValidateUniqueParamDefinitionType(audio_element_params_));
+
+  RETURN_IF_NOT_OK(wb.WriteUleb128(audio_element_id_));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(audio_element_type_, 3));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_, 5));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(codec_config_id_));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(num_substreams_));
+
+  // Loop to write the audio substream IDs portion of the obu.
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "audio_substream_ids", audio_substream_ids_.size(), num_substreams_));
+  for (const auto& audio_substream_id : audio_substream_ids_) {
+    RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id));
+  }
+
+  RETURN_IF_NOT_OK(wb.WriteUleb128(num_parameters_));
+
+  // Loop to write the parameter portion of the obu.
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "num_parameters", audio_element_params_.size(), num_parameters_));
+  for (const auto& audio_element_param : audio_element_params_) {
+    RETURN_IF_NOT_OK(
+        ValidateAndWriteAudioElementParam(audio_element_param, wb));
+  }
+
+  // Write the specific `audio_element_type`'s config.
+  switch (audio_element_type_) {
+    case kAudioElementChannelBased:
+      return ValidateAndWriteScalableChannelLayout(
+          std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, wb);
+    case kAudioElementSceneBased:
+      return ValidateAndWriteAmbisonicsConfig(
+          std::get<AmbisonicsConfig>(config_), num_substreams_, wb);
+    default: {
+      const auto& extension_config = std::get<ExtensionConfig>(config_);
+      RETURN_IF_NOT_OK(
+          wb.WriteUleb128(extension_config.audio_element_config_size));
+      RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+          "audio_element_config_bytes",
+          extension_config.audio_element_config_bytes.size(),
+          extension_config.audio_element_config_size));
+      RETURN_IF_NOT_OK(
+          wb.WriteUint8Vector(extension_config.audio_element_config_bytes));
+
+      return absl::OkStatus();
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+}  // namespace iamf_tools
