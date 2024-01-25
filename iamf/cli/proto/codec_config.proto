@@ -39,6 +39,7 @@ enum OpusApplicationFlag {
 message OpusEncoderMetadata {
   optional int32 target_bitrate_per_channel = 1;
   optional OpusApplicationFlag application = 2;
+  optional bool use_float_api = 3 [default = true];
 }
 
 message OpusDecoderConfig {

@@ -84,6 +84,17 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceeds) {
   FinalizeAndValidateOrderOnly(1);
 }
 
+TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceedsWithoutFloatApi) {
+  input_sample_size_ = 16;
+  opus_encoder_metadata_.set_use_float_api(false);
+  Init();
+
+  EncodeAudioFrame(std::vector<std::vector<int32_t>>(
+      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42 << 16)));
+
+  FinalizeAndValidateOrderOnly(1);
+}
+
 TEST_F(OpusEncoderTest, EncodeAndFinalizes24BitFrameSucceeds) {
   input_sample_size_ = 24;
   Init();

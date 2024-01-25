@@ -19,6 +19,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -33,6 +34,28 @@
 namespace iamf_tools {
 
 namespace {
+
+absl::StatusCode OpusErrorCodeToAbslStatusCode(int opus_error_code) {
+  switch (opus_error_code) {
+    case OPUS_OK:
+      return absl::StatusCode::kOk;
+    case OPUS_BAD_ARG:
+      return absl::StatusCode::kInvalidArgument;
+    case OPUS_BUFFER_TOO_SMALL:
+    case OPUS_INVALID_STATE:
+      return absl::StatusCode::kFailedPrecondition;
+    case OPUS_INTERNAL_ERROR:
+      return absl::StatusCode::kInternal;
+    case OPUS_INVALID_PACKET:
+      return absl::StatusCode::kDataLoss;
+    case OPUS_UNIMPLEMENTED:
+      return absl::StatusCode::kUnimplemented;
+    case OPUS_ALLOC_FAIL:
+      return absl::StatusCode::kResourceExhausted;
+    default:
+      return absl::StatusCode::kUnknown;
+  }
+}
 
 // Performs validation for values that this implementation assumes are
 // restricted because they are restricted in IAMF V1.
@@ -50,6 +73,56 @@ absl::Status ValidateDecoderConfig(
   }
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<int> EncodeFloat(
+    const std::vector<std::vector<int32_t>>& samples,
+    int num_samples_per_channel, int num_channels, ::OpusEncoder* encoder,
+    std::vector<uint8_t>& audio_frame) {
+  //  `opus_encode_float` usually recommends the input is normalized to the
+  //  range [-1, 1].
+  std::vector<float> encoder_input_pcm(num_samples_per_channel * num_channels,
+                                       0.0);
+  for (int t = 0; t < samples.size(); t++) {
+    for (int c = 0; c < num_channels; ++c) {
+      encoder_input_pcm[t * num_channels + c] =
+          Int32ToNormalizedFloat(samples[t][c]);
+    }
+  }
+
+  // TODO(b/311655037): Test that samples are passed to `opus_encode_float` in
+  //                    the correct order. Maybe also check they are in the
+  //                    correct [-1, +1] range. This may requiring mocking a
+  //                    simple version of `opus_encode_float`.
+  return opus_encode_float(encoder, encoder_input_pcm.data(),
+                           num_samples_per_channel, audio_frame.data(),
+                           static_cast<opus_int32>(audio_frame.size()));
+}
+
+absl::StatusOr<int> EncodeInt16(
+    const std::vector<std::vector<int32_t>>& samples,
+    int num_samples_per_channel, int num_channels, ::OpusEncoder* encoder,
+    std::vector<uint8_t>& audio_frame) {
+  // `libopus` requires the native system endianness as input.
+  const bool big_endian = IsNativeBigEndian();
+  // Convert input to the array that will be passed to `opus_encode`.
+  std::vector<opus_int16> encoder_input_pcm(
+      num_samples_per_channel * num_channels, 0);
+  int write_position = 0;
+  for (int t = 0; t < samples.size(); t++) {
+    for (int c = 0; c < samples[0].size(); ++c) {
+      // Convert all frames to 16-bit samples for input to Opus.
+      // Write the 16-bit samples directly into the pcm vector.
+      RETURN_IF_NOT_OK(
+          WritePcmSample(static_cast<uint32_t>(samples[t][c]), 16, big_endian,
+                         reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
+                         write_position));
+    }
+  }
+
+  return opus_encode(encoder, encoder_input_pcm.data(), num_samples_per_channel,
+                     audio_frame.data(),
+                     static_cast<opus_int32>(audio_frame.size()));
 }
 
 }  // namespace
@@ -76,11 +149,13 @@ absl::Status OpusDecoder::Initialize() {
   decoder_ = opus_decoder_create(static_cast<opus_int32>(output_sample_rate_),
                                  num_channels_, &opus_error_code);
 
-  if (opus_error_code != OPUS_OK) {
+  const auto status_code = OpusErrorCodeToAbslStatusCode(opus_error_code);
+  if (status_code != absl::StatusCode::kOk) {
     decoder_ = nullptr;
-    LOG(ERROR) << "Failed to initialize Opus decoder: opus_error_code="
-               << opus_error_code;
-    return absl::UnknownError("");
+    return absl::Status(
+        status_code,
+        absl::StrCat("Failed to initialize Opus decoder: opus_error_code= ",
+                     opus_error_code));
   }
 
   return absl::OkStatus();
@@ -112,9 +187,11 @@ absl::Status OpusDecoder::DecodeAudioFrame(
                        << " channels.";
 
   if (num_output_samples < 0) {
-    LOG(ERROR) << "Opus failed to decode num_output_samples="
-               << num_output_samples;
-    return absl::UnknownError("");
+    // When `num_output_samples` is negative, it is an Opus error code.
+    return absl::Status(
+        OpusErrorCodeToAbslStatusCode(num_output_samples),
+        absl::StrCat("Failed to initialize Opus decoder: num_output_samples= ",
+                     num_output_samples));
   }
 
   // Convert data to channels arranged in (time, channel) axes. There can only
@@ -177,10 +254,13 @@ absl::Status OpusEncoder::InitializeEncoder() {
   int opus_error_code;
   encoder_ = opus_encoder_create(input_sample_rate_, num_channels_, application,
                                  &opus_error_code);
-  if (opus_error_code != OPUS_OK) {
-    LOG(ERROR) << "Failed to create Opus encoder. opus_error_code="
-               << opus_error_code;
-    return absl::UnknownError("");
+
+  const auto status_code = OpusErrorCodeToAbslStatusCode(opus_error_code);
+  if (status_code != absl::StatusCode::kOk) {
+    return absl::Status(
+        status_code,
+        absl::StrCat("Failed to initialize Opus encoder: opus_error_code= ",
+                     opus_error_code));
   }
 
   // `OPUS_SET_BITRATE` treats this as the bit-rate for the entire substream.
@@ -201,37 +281,33 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
   const int num_samples_per_channel = static_cast<int>(num_samples_per_frame_);
 
-  //  `opus_encode_float` usually recommends the input is normalized to the
-  //  range [-1, 1].
-  std::vector<float> encoder_input_pcm(num_samples_per_channel * num_channels_,
-                                       0.0);
-  for (int t = 0; t < samples.size(); t++) {
-    for (int c = 0; c < num_channels_; ++c) {
-      encoder_input_pcm[t * num_channels_ + c] =
-          Int32ToNormalizedFloat(samples[t][c]);
-    }
-  }
-
   // Opus output could take up to 4 bytes per sample. Reserve an output vector
   // of the maximum possible size.
   auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
   audio_frame.resize(num_samples_per_channel * num_channels_ * 4, 0);
-  // TODO(b/311655037): Test that samples are passed to `opus_encode_float` in
-  //                    the correct order. Maybe also check they are in the
-  //                    correct [-1, +1] range. This may requiring mocking a
-  //                    simple version of `opus_encode_float`.
-  int encoded_length_bytes = opus_encode_float(
-      encoder_, encoder_input_pcm.data(), num_samples_per_channel,
-      audio_frame.data(), static_cast<opus_int32>(audio_frame.size()));
 
-  if (encoded_length_bytes < 0) {
-    LOG(ERROR) << "Opus failed to encode audio frame. encoded_length_bytes="
-               << encoded_length_bytes;
-    return absl::UnknownError("");
+  const auto encoded_length_bytes =
+      encoder_metadata_.use_float_api()
+          ? EncodeFloat(samples, num_samples_per_channel, num_channels_,
+                        encoder_, audio_frame)
+          : EncodeInt16(samples, num_samples_per_channel, num_channels_,
+                        encoder_, audio_frame);
+
+  if (!encoded_length_bytes.ok()) {
+    return encoded_length_bytes.status();
+  }
+
+  if (*encoded_length_bytes < 0) {
+    // When `encoded_length_bytes` is negative, it is an Opus error code.
+    return absl::Status(
+        OpusErrorCodeToAbslStatusCode(*encoded_length_bytes),
+        absl::StrCat(
+            "Failed to initialize Opus decoder: encoded_length_bytes= ",
+            *encoded_length_bytes));
   }
 
   // Shrink output vector to actual size.
-  audio_frame.resize(encoded_length_bytes);
+  audio_frame.resize(*encoded_length_bytes);
 
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));

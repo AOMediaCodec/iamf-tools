@@ -1,18 +1,19 @@
-# iamf_tools
+# iamf-tools
 
 ## What is IAMF?
 
 The [Immersive Audio Model and Formats](https://aomediacodec.github.io/iamf/)
 (IAMF) standard is defined by the Alliance for Open Media (AOM).
 
-## What is `iamf_tools`?
+## What is `iamf-tools`?
 
-`iamf_tools` implements tools to help users process and work with the IAMF
+`iamf-tools` implements tools to help users process and work with the IAMF
 format. These tools can be used as a complement to the `libiamf`
 [reference decoder](https://github.com/AOMediaCodec/libiamf/).
 
 
 ### Folder Structure
+* `<root>` - Project-level files like the license, README (this file), and BUILD files.
 * `iamf/` - Common data classes for the Open Bitstream Units (OBU)s and tools.
     * `cli/` - Files related to the command line interface (CLI) to generate and write an IA Sequence.
         * `proto/` - [Protocol buffers](https://protobuf.dev/) defining the data scheme for the input files under `iamf/cli/testdata/` or user-created ones.
@@ -29,7 +30,7 @@ example input files.
 
 #### Prerequisites for building the encoder
 
-`iamf_tools` is built using Bazel. See Bazel's
+`iamf-tools` is built using Bazel. See Bazel's
 [Getting started](https://bazel.build/start) page for installation instructions.
 
 #### Building the encoder on Linux
