@@ -48,6 +48,7 @@ codec_config_metadata {
       opus_encoder_metadata {
         target_bitrate_per_channel: 96000
         application: APPLICATION_AUDIO
+        use_float_api: false
       }
     }
   }

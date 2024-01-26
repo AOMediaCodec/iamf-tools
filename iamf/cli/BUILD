@@ -466,6 +466,7 @@ cc_library(
         "//iamf/cli/proto:codec_config_cc_proto",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
         "@libopus",
     ],
 )
