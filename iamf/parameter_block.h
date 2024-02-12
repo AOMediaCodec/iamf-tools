@@ -196,7 +196,7 @@ class ParameterBlockObu : public ObuBase {
                     PerIdParameterMetadata* metadata);
 
   /*!\brief Destructor. */
-  ~ParameterBlockObu() override {}
+  ~ParameterBlockObu() override = default;
 
   /*!\brief Interpolate the value of a `MixGainParameterData`.
    *

@@ -344,7 +344,7 @@ class MixPresentationObu : public ObuBase {
   MixPresentationObu(const MixPresentationObu& other) = default;
 
   /*!\brief Destructor. */
-  ~MixPresentationObu() override;
+  ~MixPresentationObu() override = default;
 
   friend bool operator==(const MixPresentationObu& lhs,
                          const MixPresentationObu& rhs) = default;

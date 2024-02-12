@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -25,6 +26,13 @@ namespace iamf_tools {
 /*!\brief Holds a buffer and tracks the next bit to be written to. */
 class WriteBitBuffer {
  public:
+  /*!\brief The maximum length of an IAMF string in bytes.
+   *
+   * The spec limits the length of a string to 128 bytes including the
+   * null terminator ('\0').
+   */
+  static constexpr int kIamfMaxStringSize = 128;
+
   /*!\brief Constructor.
    *
    * \param initial_capacity Initial capacity of the internal buffer in bytes.
@@ -88,7 +96,7 @@ class WriteBitBuffer {
    *     `absl::Status::kResourceExhausted` if there is not enough room in the
    *     write buffer. Other specific statuses on failure.
    */
-  absl::Status WriteString(const IamfString data);
+  absl::Status WriteString(const std::string& data);
 
   /*!\brief Writes a `std::vector<uint8_t>` to the write buffer.
    *

@@ -11,8 +11,10 @@
  */
 #include "iamf/cli/iamf_components.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,7 +33,8 @@ std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::MixPresentationObuMetadata>&
         mix_presentation_metadata,
-    const std::string& /*file_name_prefix*/) {
+    const std::string& /*file_name_prefix*/,
+    std::optional<uint8_t> /*output_wav_file_bit_depth_override*/) {
   return std::make_unique<DummyMixPresentationFinalizer>(
       mix_presentation_metadata);
 }

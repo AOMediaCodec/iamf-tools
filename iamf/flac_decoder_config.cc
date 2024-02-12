@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
+#include "iamf/obu_util.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -107,34 +108,29 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
   }
 
   // IAMF restricts some fields.
-  if (stream_info->minimum_block_size != num_samples_per_frame ||
-      stream_info->maximum_block_size != num_samples_per_frame) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "IAMF requires maximum_block_size= ", stream_info->maximum_block_size,
-        " and minimum_block_size= ", stream_info->minimum_block_size,
-        " to be equal to num_samples_per_frame= ", num_samples_per_frame,
-        " in the Codec Config OBU."));
-  }
-  if (stream_info->minimum_frame_size != 0 ||
-      stream_info->maximum_frame_size != 0) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid minimum_frame_size= ", stream_info->minimum_frame_size,
-        " or invalid maximum_frame_size= ", stream_info->maximum_frame_size));
-  }
+  RETURN_IF_NOT_OK(
+      ValidateEqual(static_cast<uint32_t>(stream_info->maximum_block_size),
+                    num_samples_per_frame, "maximum_block_size"));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(static_cast<uint32_t>(stream_info->minimum_block_size),
+                    num_samples_per_frame, "minimum_block_size"));
+  RETURN_IF_NOT_OK(ValidateEqual(stream_info->minimum_frame_size,
+                                 FlacMetaBlockStreamInfo::kMinimumFrameSize,
+                                 "minimum_frame_size"));
+  RETURN_IF_NOT_OK(ValidateEqual(stream_info->maximum_frame_size,
+                                 FlacMetaBlockStreamInfo::kMaximumFrameSize,
+                                 "maximum_frame_size"));
 
-  // FLAC represents the channels offset by 1. There must be 2 channels.
-  if (stream_info->number_of_channels != 1) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid number_of_channels= ", stream_info->number_of_channels));
-  }
+  RETURN_IF_NOT_OK(ValidateEqual(stream_info->number_of_channels,
+                                 FlacMetaBlockStreamInfo::kNumberOfChannels,
+                                 "number_of_channels"));
 
   RETURN_IF_NOT_OK(ValidateTotalSamplesInStream(stream_info->bits_per_sample));
 
-  for (const auto byte : stream_info->md5_signature) {
-    if (byte != 0) {
-      return absl::InvalidArgumentError(absl::StrCat("Invalid md5_signature."));
-    }
+  if (stream_info->md5_signature != FlacMetaBlockStreamInfo::kMd5Signature) {
+    return absl::InvalidArgumentError("Invalid md5_signature.");
   }
+
   return absl::OkStatus();
 }
 

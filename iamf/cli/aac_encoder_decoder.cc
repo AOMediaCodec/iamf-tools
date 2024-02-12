@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -53,6 +54,46 @@ const size_t kFdkAacBytesPerSample = sizeof(INT_PCM);
 const size_t kFdkAacBitDepth = kFdkAacBytesPerSample * 8;
 
 namespace {
+
+absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
+                                     const std::string& error_message) {
+  absl::StatusCode status_code;
+  switch (aac_error_code) {
+    case AACENC_OK:
+      return absl::OkStatus();
+    case AACENC_INVALID_HANDLE:
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
+    case AACENC_MEMORY_ERROR:
+      status_code = absl::StatusCode::kResourceExhausted;
+      break;
+    case AACENC_UNSUPPORTED_PARAMETER:
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
+    case AACENC_INVALID_CONFIG:
+      status_code = absl::StatusCode::kFailedPrecondition;
+      break;
+    case AACENC_INIT_ERROR:
+    case AACENC_INIT_AAC_ERROR:
+    case AACENC_INIT_SBR_ERROR:
+    case AACENC_INIT_TP_ERROR:
+    case AACENC_INIT_META_ERROR:
+    case AACENC_INIT_MPS_ERROR:
+      status_code = absl::StatusCode::kInternal;
+      break;
+    case AACENC_ENCODE_EOF:
+      status_code = absl::StatusCode::kOutOfRange;
+      break;
+    case AACENC_ENCODE_ERROR:
+    default:
+      status_code = absl::StatusCode::kUnknown;
+      break;
+  }
+
+  return absl::Status(
+      status_code,
+      absl::StrCat(error_message, " AACENC_ERROR= ", aac_error_code));
+}
 
 absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
                                  int num_channels,
@@ -95,69 +136,71 @@ absl::Status ConfigureAacEncoder(
     int num_channels, uint32_t num_samples_per_frame,
     uint32_t output_sample_rate, AACENCODER* const encoder) {
   // IAMF requires metadata is not embedded in the stream.
-  if (aacEncoder_SetParam(encoder, AACENC_METADATA_MODE, 0) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_METADATA_MODE, 0),
+      "Failed to configure encoder metadata mode."));
 
-  if (aacEncoder_SetParam(encoder, AACENC_TRANSMUX, kAacTranportType) !=
-      AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_TRANSMUX, kAacTranportType),
+      "Failed to configure encoder transport type."));
 
   // IAMF only supports AAC-LC.
-  if (aacEncoder_SetParam(encoder, AACENC_AOT, AOT_AAC_LC) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_AOT, AOT_AAC_LC),
+      "Failed to configure encoder audio object type."));
 
   // Configure values based on the associated Codec Config OBU.
-  if (aacEncoder_SetParam(encoder, AACENC_SAMPLERATE,
-                          static_cast<UINT>(output_sample_rate)) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_SAMPLERATE,
+                          static_cast<UINT>(output_sample_rate)),
+      "Failed to configure encoder sample rate."));
 
   CHANNEL_MODE aac_channel_mode;
   switch (num_channels) {
     case 1:
       aac_channel_mode = MODE_1;
+
       break;
     case 2:
       aac_channel_mode = MODE_2;
       break;
     default:
-      LOG(ERROR) << "IAMF requires AAC to be used with 1 or 2 channels. Got "
-                    "num_channels="
-                 << num_channels;
-      return absl::UnknownError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("IAMF requires AAC to be used with 1 or 2 channels. Got "
+                       "num_channels= ",
+                       num_channels));
   }
-
-  if (aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, aac_channel_mode) !=
-      AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_CHANNELMODE, aac_channel_mode),
+      absl::StrCat("Failed to configure encoder channel mode= ",
+                   aac_channel_mode)));
 
   // Set bitrate based on the equation recommended by the documentation.
-  if (aacEncoder_SetParam(encoder, AACENC_BITRATE,
-                          3 * num_channels * num_samples_per_frame *
-                              output_sample_rate / 2) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(
+          encoder, AACENC_BITRATE,
+          3 * num_channels * num_samples_per_frame * output_sample_rate / 2),
+      "Failed to configure encoder bitrate."));
 
   // Set some arguments configured by the user-provided `encoder_metadata_`.
-  if (aacEncoder_SetParam(encoder, AACENC_AFTERBURNER,
-                          encoder_metadata.enable_afterburner() ? 1 : 0) !=
-      AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_AFTERBURNER,
+                          encoder_metadata.enable_afterburner() ? 1 : 0),
+      absl::StrCat(
+          "Failed to configure encoder afterburner enable_afterburner= ",
+          encoder_metadata.enable_afterburner())));
 
-  if (aacEncoder_SetParam(encoder, AACENC_BITRATEMODE,
-                          encoder_metadata.bitrate_mode()) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_BITRATEMODE,
+                          encoder_metadata.bitrate_mode()),
+      absl::StrCat("Failed to configure encoder bitrate mode= ",
+                   encoder_metadata.bitrate_mode())));
 
-  if (aacEncoder_SetParam(encoder, AACENC_SIGNALING_MODE,
-                          encoder_metadata.signaling_mode()) != AACENC_OK) {
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncoder_SetParam(encoder, AACENC_SIGNALING_MODE,
+                          encoder_metadata.signaling_mode()),
+      absl::StrCat("Failed to configure encoder signaling mode= ",
+                   encoder_metadata.signaling_mode())));
 
   return absl::OkStatus();
 }
@@ -168,10 +211,8 @@ absl::Status ValidateEncoderInfo(int num_channels,
   // Validate the configuration is consistent with the associated Codec Config
   // OBU.
   AACENC_InfoStruct enc_info;
-  if (aacEncInfo(encoder, &enc_info) != AACENC_OK) {
-    LOG(ERROR) << "Failed to get encoder info.";
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(aacEncInfo(encoder, &enc_info),
+                                           "Failed to get encoder info."));
 
   if (enc_info.inputChannels != num_channels) {
     LOG(ERROR) << "Incorrect number of input channels: "
@@ -275,27 +316,19 @@ absl::Status AacEncoder::InitializeEncoder() {
   }
 
   // Open the encoder.
-  if (aacEncOpen(&encoder_, 0, num_channels_) != AACENC_OK) {
-    LOG(ERROR) << "Failed to initialize Aac encoder.";
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(
+      AacEncErrorToAbslStatus(aacEncOpen(&encoder_, 0, num_channels_),
+                              "Failed to initialize AAC encoder."));
 
   // Configure the encoder.
-  const auto status = ConfigureAacEncoder(encoder_metadata_, num_channels_,
-                                          num_samples_per_frame_,
-                                          output_sample_rate_, encoder_);
-  if (!status.ok()) {
-    return absl::Status(status.code(),
-                        absl::StrCat("Failed to configure AAC encoder. "
-                                     "`ConfigureAacEncoder` returned: ",
-                                     status.message()));
-  }
+  RETURN_IF_NOT_OK(ConfigureAacEncoder(encoder_metadata_, num_channels_,
+                                       num_samples_per_frame_,
+                                       output_sample_rate_, encoder_));
 
   // Call `aacEncEncode` with `nullptr` arguments to initialize the encoder.
-  if (aacEncEncode(encoder_, nullptr, nullptr, nullptr, nullptr) != AACENC_OK) {
-    LOG(ERROR) << "Failed on call to `aacEncEncode`.";
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncEncode(encoder_, nullptr, nullptr, nullptr, nullptr),
+      "Failed on call to `aacEncEncode`."));
 
   // Validate the configuration matches expected results.
   RETURN_IF_NOT_OK(
@@ -316,10 +349,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
   const int num_samples_per_channel = static_cast<int>(num_samples_per_frame_);
 
   AACENC_InfoStruct enc_info;
-  if (aacEncInfo(encoder_, &enc_info) != AACENC_OK) {
-    LOG(ERROR) << "Failed to get encoder info.";
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(aacEncInfo(encoder_, &enc_info),
+                                           "Failed to get encoder info."));
 
   // Convert input to the array that will be passed to `aacEncEncode`.
   if (input_bit_depth != kFdkAacBitDepth) {
@@ -381,15 +412,12 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // Encode the frame.
   AACENC_OutArgs out_args;
-  const auto aac_error_code =
-      aacEncEncode(encoder_, &inBufDesc, &outBufDesc, &in_args, &out_args);
-
   // This implementation expects `fdk_aac` to return an entire frame and no
   // error code.
-  if (aac_error_code != AACENC_OK) {
-    LOG(ERROR) << "Failed on call to `aacEncEncode`." << aac_error_code;
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
+      aacEncEncode(encoder_, &inBufDesc, &outBufDesc, &in_args, &out_args),
+      "Failed on call to `aacEncEncode`."));
+
   if (num_samples_per_channel * num_channels_ != out_args.numInSamples) {
     LOG(ERROR) << "Failed to encode an entire frame.";
     return absl::UnknownError("");
@@ -412,16 +440,14 @@ absl::Status AacEncoder::SetNumberOfSamplesToDelayAtStart() {
   }
 
   // Validate the configuration.
-  AACENC_InfoStruct encInfo;
-  if (aacEncInfo(encoder_, &encInfo) != AACENC_OK) {
-    LOG(ERROR) << "Failed to get encoder info.";
-    return absl::UnknownError("");
-  }
+  AACENC_InfoStruct enc_info;
+  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(aacEncInfo(encoder_, &enc_info),
+                                           "Failed to get encoder info."));
 
   // Set the number of samples the decoder must ignore. For AAC this appears
   // to be implementation specific. The implementation of AAC-LC in `fdk_aac`
   // seems to usually make this 2048 samples.
-  required_samples_to_delay_at_start_ = encInfo.nDelayCore;
+  required_samples_to_delay_at_start_ = enc_info.nDelayCore;
   return absl::OkStatus();
 }
 

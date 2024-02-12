@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/aac_decoder_config.h"
 #include "iamf/cli/aac_encoder_decoder.h"
@@ -46,35 +47,21 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
                               .decoder_config = aac_decoder_config_};
 
     CodecConfigObu codec_config(ObuHeader(), 0, temp);
-    EXPECT_EQ(codec_config.Initialize().code(), expected_init_status_code_);
+    ASSERT_TRUE(codec_config.Initialize().ok());
 
     encoder_ = std::make_unique<AacEncoder>(aac_encoder_metadata_, codec_config,
                                             num_channels_);
   }
 
   AacDecoderConfig aac_decoder_config_ = {
-      .decoder_config_descriptor_tag_ = 0x04,
-      .object_type_indication_ = 0x40,
-      .stream_type_ = 0x05,
-      .upstream_ = 0,
       .reserved_ = 0,
       .buffer_size_db_ = 0,
       .max_bitrate_ = 0,
       .average_bit_rate_ = 0,
       .decoder_specific_info_ =
-          {.decoder_specific_info_tag = 0x05,
-           .audio_specific_config =
-               {.audio_object_type_ = 2,
-                .sample_frequency_index_ =
-                    AudioSpecificConfig::kSampleFrequencyIndex64000,
-                .sampling_frequency_ = 0,
-                .channel_configuration_ = 2,
-                .ga_specific_config_ =
-                    {
-                        .frame_length_flag = 0,
-                        .depends_on_core_coder = 0,
-                        .extension_flag = 0,
-                    }}},
+          {.audio_specific_config =
+               {.sample_frequency_index_ =
+                    AudioSpecificConfig::kSampleFrequencyIndex64000}},
   };
   iamf_tools_cli_proto::AacEncoderMetadata aac_encoder_metadata_ = {};
 };  // namespace iamf_tools
@@ -90,6 +77,33 @@ TEST_F(AacEncoderTest, FramesAreInOrder) {
         num_samples_per_frame_, std::vector<int32_t>(num_channels_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
+}
+
+TEST_F(AacEncoderTest, InitSucceedsWithDefaultAacEncoderMetadata) {
+  aac_encoder_metadata_ = {};
+  Init();
+}
+
+TEST_F(AacEncoderTest, InitSucceedsWithAfterburnerEnabled) {
+  aac_encoder_metadata_.set_enable_afterburner(true);
+  Init();
+}
+
+TEST_F(AacEncoderTest, InitSucceedsWithAfterburnerDisabled) {
+  aac_encoder_metadata_.set_enable_afterburner(false);
+  Init();
+}
+
+TEST_F(AacEncoderTest, InitFailsWithInvalidBitrateMode) {
+  aac_encoder_metadata_.set_bitrate_mode(-1);
+  expected_init_status_code_ = absl::StatusCode::kFailedPrecondition;
+  Init();
+}
+
+TEST_F(AacEncoderTest, InitFailsWithInvalidSignalingMode) {
+  aac_encoder_metadata_.set_signaling_mode(-1);
+  expected_init_status_code_ = absl::StatusCode::kFailedPrecondition;
+  Init();
 }
 
 }  // namespace

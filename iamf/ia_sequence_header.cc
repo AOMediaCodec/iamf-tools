@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
+#include "iamf/obu_util.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -32,19 +33,6 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
   }
 }
 
-absl::Status ValidateIaCode(uint32_t ia_code) {
-  // TODO(b/269708630): A different validation logic is needed for decoding.
-  // IA Code must equal "iamf" encoded as 4 bytes. If it is any other value then
-  // the data may not actually be an IA Sequence, or it may mean the data is
-  // corrupt / misaligned.
-  if (ia_code != IASequenceHeaderObu::kIaCode) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unexpected ia_code=0x", absl::Hex(ia_code)));
-  }
-
-  return absl::OkStatus();
-}
-
 void IASequenceHeaderObu::PrintObu() const {
   LOG(INFO) << "IA Sequence Header OBU:";
   LOG(INFO) << "  ia_code= " << ia_code_;
@@ -55,13 +43,13 @@ void IASequenceHeaderObu::PrintObu() const {
 
 absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(ValidateIaCode(ia_code_));
+  // If the IA Code is any other value then the data may not actually be an IA
+  // Sequence, or it may mean the data is corrupt / misaligned.
+  RETURN_IF_NOT_OK(
+      ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(ia_code_, 32));
 
-  // The spec notes that `primary_profile` can be used to determine if the
-  // bitstream is backwards compatible with an IA Decoder.
   RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
-
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral(static_cast<uint32_t>(primary_profile_), 8));
   RETURN_IF_NOT_OK(

@@ -282,6 +282,16 @@ cc_test(
         "//iamf:write_bit_buffer",
         "//iamf/cli:leb_generator",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "read_bit_buffer_test",
+    srcs = ["read_bit_buffer_test.cc"],
+    deps = [
+        "//iamf:read_bit_buffer",
         "@com_google_googletest//:gtest_main",
     ],
 )

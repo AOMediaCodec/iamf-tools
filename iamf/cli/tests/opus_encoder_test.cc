@@ -52,12 +52,8 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
                                              codec_config, num_channels_);
   }
 
-  OpusDecoderConfig opus_decoder_config_ = {.version_ = 1,
-                                            .output_channel_count_ = 2,
-                                            .pre_skip_ = 312,
-                                            .input_sample_rate_ = 48000,
-                                            .output_gain_ = 0,
-                                            .mapping_family_ = 0};
+  OpusDecoderConfig opus_decoder_config_ = {
+      .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 48000};
   iamf_tools_cli_proto::OpusEncoderMetadata opus_encoder_metadata_ = {};
 };  // namespace iamf_tools
 

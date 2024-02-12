@@ -34,7 +34,6 @@ test_vector_metadata {
 }
 
 ia_sequence_header_metadata {
-  ia_code: 0x69616d66  # "iamf"
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
 }

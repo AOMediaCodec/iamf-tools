@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_AAC_DECODER_ENCODER_H_
-#define CLI_AAC_DECODER_ENCODER_H_
+#ifndef CLI_AAC_ENCODER_DECODER_H_
+#define CLI_AAC_ENCODER_DECODER_H_
 
 #include <cstdint>
 #include <memory>
@@ -120,4 +120,4 @@ class AacEncoder : public EncoderBase {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_AAC_DECODER_ENCODER_H_
+#endif  // CLI_AAC_ENCODER_DECODER_H_

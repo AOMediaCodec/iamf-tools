@@ -12,12 +12,13 @@
 #include "iamf/write_bit_buffer.h"
 
 #include <cstdint>
-#include <cstring>
 #include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/ia.h"
@@ -193,35 +194,51 @@ TEST_F(WriteBitBufferTest, Signed16MaxNegative) {
 }
 
 TEST_F(WriteBitBufferTest, StringOnlyNullCharacter) {
-  IamfString input = {'\0'};
-  EXPECT_TRUE(wb_->WriteString(input).ok());
+  const std::string kEmptyString = "\0";
+
+  EXPECT_TRUE(wb_->WriteString(kEmptyString).ok());
+
   ValidateWriteResults(*wb_, {'\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringBasic) {
-  IamfString input = {'A', 'B', 'C', '\0'};
-  EXPECT_TRUE(wb_->WriteString(input).ok());
+TEST_F(WriteBitBufferTest, StringAscii) {
+  const std::string kAsciiInput = "ABC\0";
+
+  EXPECT_TRUE(wb_->WriteString(kAsciiInput).ok());
+
   ValidateWriteResults(*wb_, {'A', 'B', 'C', '\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringMaxLength) {
-  IamfString full_length_string;
-  std::memset(&full_length_string, 'a', kIamfMaxStringSize);
-  full_length_string[kIamfMaxStringSize - 1] = '\0';
+TEST_F(WriteBitBufferTest, StringUtf8) {
+  const std::string kUtf8Input(
+      "\xc3\xb3"          // A 1-byte UTF-8 character.
+      "\xf0\x9d\x85\x9f"  // A 4-byte UTF-8 character.
+      "\0");
 
-  std::vector<uint8_t> expected_result(kIamfMaxStringSize, 'a');
+  EXPECT_TRUE(wb_->WriteString(kUtf8Input).ok());
+
+  ValidateWriteResults(*wb_,
+                       {0xc3, 0xb3,              // A 1-byte UTF-8 character.
+                        0xf0, 0x9d, 0x85, 0x9f,  // A 4-byte UTF-8 character.
+                        '\0'});
+}
+
+TEST_F(WriteBitBufferTest, StringMaxLength) {
+  // Make a string and expected output with 127 non-NULL characters, followed by
+  // a NULL character.
+  const std::string kMaxLengthString = absl::StrCat(
+      std::string(WriteBitBuffer::kIamfMaxStringSize - 1, 'a'), "\0");
+  std::vector<uint8_t> expected_result(WriteBitBuffer::kIamfMaxStringSize, 'a');
   expected_result.back() = '\0';
 
-  EXPECT_TRUE(wb_->WriteString(full_length_string).ok());
+  EXPECT_TRUE(wb_->WriteString(kMaxLengthString).ok());
   ValidateWriteResults(*wb_, expected_result);
 }
 
-TEST_F(WriteBitBufferTest, StringMissingNullTerminator) {
-  IamfString full_length_string;
-  std::memset(&full_length_string, 'a', kIamfMaxStringSize);
+TEST_F(WriteBitBufferTest, InvalidStringMissingNullTerminator) {
+  const std::string kMaxLengthString(WriteBitBuffer::kIamfMaxStringSize, 'a');
 
-  EXPECT_EQ(wb_->WriteString(full_length_string).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_FALSE(wb_->WriteString(kMaxLengthString).ok());
 }
 
 TEST_F(WriteBitBufferTest, Uint8ArrayLengthZero) {

@@ -101,9 +101,9 @@ absl::Status ArbitraryObuGenerator::Generate(
         insertion_hook = kInsertionHookAfterIaSequenceHeader;
         break;
       default:
-        LOG(ERROR) << "Unknown insertion hook: "
-                   << arbitrary_obu_metadata.insertion_hook();
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            absl::StrCat("Unknown insertion hook= ",
+                         arbitrary_obu_metadata.insertion_hook()));
     }
 
     std::vector<uint8_t> payload(arbitrary_obu_metadata.payload().size());

@@ -22,32 +22,26 @@
 namespace iamf_tools {
 namespace {
 
+// A 7-bit mask representing `channel_configuration`, and all three fields in
+// the GA specific config.
+constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
+    AudioSpecificConfig::kChannelConfiguration << 3 |               // 4 bits.
+    AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag << 2 |  // 1 bit.
+    AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder << 1 |  // 1 bit.
+    AudioSpecificConfig::GaSpecificConfig::kExtensionFlag << 0;        // 1 bit.
+
 class AacTest : public testing::Test {
  public:
   AacTest()
       : aac_decoder_config_({
-            .decoder_config_descriptor_tag_ = 0x04,
-            .object_type_indication_ = 0x40,
-            .stream_type_ = 0x05,
-            .upstream_ = 0,
             .reserved_ = 0,
             .buffer_size_db_ = 0,
             .max_bitrate_ = 0,
             .average_bit_rate_ = 0,
             .decoder_specific_info_ =
-                {.decoder_specific_info_tag = 0x05,
-                 .audio_specific_config =
-                     {.audio_object_type_ = 2,
-                      .sample_frequency_index_ = AudioSpecificConfig::
-                          AudioSpecificConfig::kSampleFrequencyIndex64000,
-                      .sampling_frequency_ = 0,
-                      .channel_configuration_ = 2,
-                      .ga_specific_config_ =
-                          {
-                              .frame_length_flag = 0,
-                              .depends_on_core_coder = 0,
-                              .extension_flag = 0,
-                          }}},
+                {.audio_specific_config =
+                     {.sample_frequency_index_ = AudioSpecificConfig::
+                          AudioSpecificConfig::kSampleFrequencyIndex64000}},
         }) {}
 
   ~AacTest() = default;
@@ -92,11 +86,12 @@ class AacTest : public testing::Test {
 TEST_F(AacTest, DefaultWriteDecoderConfig) {
   expected_decoder_config_payload_ = {
       // `decoder_config_descriptor_tag`
-      0x04,
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
       // `object_type_indication`.
-      0x40,
+      AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      0x05 << 2 | 0 << 1 | 0 << 0,
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -104,15 +99,15 @@ TEST_F(AacTest, DefaultWriteDecoderConfig) {
       // `average_bit_rate`.
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
-      0x05,
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-      2 << 3 | ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
-
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 | 2 << 3 |
-          0 << 2 | 0 << 1 | 0 << 0};
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
 }
 
@@ -123,8 +118,8 @@ TEST_F(AacTest, DefaultWriteAudioSpecificConfig) {
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 | 2 << 3 |
-          0 << 2 | 0 << 1 | 0 << 0};
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteAudioSpecificConfig();
 }
 
@@ -137,11 +132,12 @@ TEST_F(AacTest, ExplicitSampleRate) {
 
   expected_decoder_config_payload_ = {
       // `decoder_config_descriptor_tag`
-      0x04,
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
       // `object_type_indication`.
-      0x40,
+      AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      0x05 << 2 | 0 << 1 | 0 << 0,
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -149,9 +145,9 @@ TEST_F(AacTest, ExplicitSampleRate) {
       // `average_bit_rate`.
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
-      0x05,
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-      2 << 3 |
+      AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
       // lower bit of `sample_frequency_index`, upper 7 bits of
       // `sampling_rate`.
@@ -161,7 +157,7 @@ TEST_F(AacTest, ExplicitSampleRate) {
       ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
       // Upper bit of `sampling_rate`, `channel_configuration`,
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
-      ((48000 & 1)) | 2 << 3 | 0 << 2 | 0 << 1 | 0 << 0};
+      ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
 }
 
@@ -184,7 +180,7 @@ TEST_F(AacTest, ExplicitSampleRateAudioSpecificConfig) {
       ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
       // Upper bit of `sampling_rate`, `channel_configuration`,
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
-      ((48000 & 1)) | 2 << 3 | 0 << 2 | 0 << 1 | 0 << 0};
+      ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteAudioSpecificConfig();
 }
 
@@ -223,11 +219,12 @@ TEST_F(AacTest, MaxBufferSizeDb) {
 
   expected_decoder_config_payload_ = {
       // `decoder_config_descriptor_tag`
-      0x04,
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
       // `object_type_indication`.
-      0x40,
+      AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      0x05 << 2 | 0 << 1 | 0 << 0,
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
       // `buffer_size_db`.
       0xff, 0xff, 0xff,
       // `max_bitrate`.
@@ -235,14 +232,15 @@ TEST_F(AacTest, MaxBufferSizeDb) {
       // `average_bit_rate`.
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
-      0x05,
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-      2 << 3 | ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 | 2 << 3 |
-          0 << 2 | 0 << 1 | 0 << 0};
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
 }
 

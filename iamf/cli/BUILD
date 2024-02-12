@@ -279,6 +279,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -333,6 +334,7 @@ cc_library(
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -570,6 +572,24 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_audio_to_tactile//:dsp",
+    ],
+)
+
+cc_library(
+    name = "wav_sample_provider",
+    srcs = ["wav_sample_provider.cc"],
+    hdrs = ["wav_sample_provider.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":demixing_module",
+        ":wav_reader",
+        "//iamf:ia",
+        "//iamf/cli/proto:audio_frame_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <list>
 #include <optional>
 #include <string>
@@ -21,6 +22,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/arbitrary_obu.h"
 #include "iamf/cli/arbitrary_obu_generator.h"
 #include "iamf/cli/audio_element_generator.h"
@@ -178,9 +180,27 @@ absl::Status GenerateObus(
 
   // Finalize mix presentation. Requires rendering data for every submix to
   // accurately compute loudness.
+  std::optional<uint8_t> output_wav_file_bit_depth_override;
+  if (user_metadata.test_vector_metadata()
+          .has_output_wav_file_bit_depth_override()) {
+    if (user_metadata.test_vector_metadata()
+            .output_wav_file_bit_depth_override() >
+        std::numeric_limits<uint8_t>::max()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Bit-depth too large. "
+                       "output_wav_file_bit_depth_override= ",
+                       user_metadata.test_vector_metadata()
+                           .output_wav_file_bit_depth_override()));
+    }
+    output_wav_file_bit_depth_override =
+        static_cast<uint8_t>(user_metadata.test_vector_metadata()
+                                 .output_wav_file_bit_depth_override());
+  }
+
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
       user_metadata.mix_presentation_metadata(),
-      user_metadata.test_vector_metadata().file_name_prefix());
+      user_metadata.test_vector_metadata().file_name_prefix(),
+      output_wav_file_bit_depth_override);
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
       audio_elements, id_to_time_to_labeled_frame, parameter_blocks,
       mix_presentation_obus));

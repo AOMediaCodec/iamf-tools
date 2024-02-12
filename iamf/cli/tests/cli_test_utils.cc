@@ -59,18 +59,13 @@ void AddOpusCodecConfigWithId(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(ObuHeader(), codec_config_id,
-                     {.codec_id = CodecConfig::kCodecIdOpus,
-                      .num_samples_per_frame = 8,
-                      .audio_roll_distance = 0,
-                      .decoder_config = OpusDecoderConfig{
-                          .version_ = 1,
-                          .output_channel_count_ = 2,
-                          .pre_skip_ = 312,
-                          .input_sample_rate_ = 0,
-                          .output_gain_ = 0,
-                          .mapping_family_ = 0,
-                      }});
+  CodecConfigObu obu(
+      ObuHeader(), codec_config_id,
+      {.codec_id = CodecConfig::kCodecIdOpus,
+       .num_samples_per_frame = 8,
+       .audio_roll_distance = 0,
+       .decoder_config = OpusDecoderConfig{
+           .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
   ASSERT_TRUE(obu.Initialize().ok());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }

@@ -52,7 +52,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
             .constant_subblock_duration = 64,
         }) {}
 
-  ~ParameterBlockObuTestBase() {}
+  ~ParameterBlockObuTestBase() = default;
 
  protected:
   void Init() override {

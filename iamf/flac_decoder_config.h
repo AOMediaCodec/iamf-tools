@@ -23,6 +23,13 @@
 namespace iamf_tools {
 
 struct FlacMetaBlockStreamInfo {
+  // IAMF requires some fields to have fixed values.
+  static constexpr uint32_t kMinimumFrameSize = 0;
+  static constexpr uint32_t kMaximumFrameSize = 0;
+  // In IAMF the field is fixed to `1`, but ignored. The actual number of
+  // channels is determined on a per-substream basis based on the audio element.
+  static constexpr uint8_t kNumberOfChannels = 1;
+  static constexpr std::array<uint8_t, 16> kMd5Signature = {0};
   // Constants for restrictions from the FLAC documentation.
   static constexpr uint32_t kMinSampleRate = 1;
   static constexpr uint32_t kMaxSampleRate = 655350;
@@ -37,13 +44,13 @@ struct FlacMetaBlockStreamInfo {
 
   uint16_t minimum_block_size;
   uint16_t maximum_block_size;
-  uint32_t minimum_frame_size;       // 24 bits.
-  uint32_t maximum_frame_size;       // 24 bits.
-  uint32_t sample_rate;              // 20 bits.
-  uint8_t number_of_channels;        // 3 bits.
-  uint8_t bits_per_sample;           // 5 bits.
-  uint64_t total_samples_in_stream;  // 36 bits.
-  std::array<uint8_t, 16> md5_signature;
+  uint32_t minimum_frame_size = kMinimumFrameSize;  // 24 bits.
+  uint32_t maximum_frame_size = kMaximumFrameSize;  // 24 bits.
+  uint32_t sample_rate;                             // 20 bits.
+  uint8_t number_of_channels = kNumberOfChannels;   // 3 bits.
+  uint8_t bits_per_sample;                          // 5 bits.
+  uint64_t total_samples_in_stream;                 // 36 bits.
+  std::array<uint8_t, 16> md5_signature = kMd5Signature;
 };
 
 /*!\brief The header portion of a metadata block described in the FLAC spec. */

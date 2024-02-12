@@ -13,7 +13,9 @@
 #ifndef CLI_IAMF_COMPONENTS_H_
 #define CLI_IAMF_COMPONENTS_H_
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,13 +33,16 @@ namespace iamf_tools {
  *
  * \param mix_presentation_metadata Input mix presentation metadata.
  * \param file_name_prefix Prefix of output file name.
+ * \param output_wav_file_bit_depth_override Override for the bit-depth of
+ *     the rendered wav file.
  * \return Unique pointer to the created Mix Presentation finalizer.
  */
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
     const ::google::protobuf::RepeatedPtrField<
         iamf_tools_cli_proto::MixPresentationObuMetadata>&
         mix_presentation_metadata,
-    const std::string& file_name_prefix);
+    const std::string& file_name_prefix,
+    std::optional<uint8_t> output_wav_file_bit_depth_override);
 
 /*\!brief Creates instances of `ObuSequencerBase`.
  *

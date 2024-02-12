@@ -55,18 +55,11 @@ class FlacEncoderTest : public EncoderTestBase, public testing::Test {
       {{.header = {.last_metadata_block_flag = true,
                    .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
                    .metadata_data_block_length = 34},
-        .payload = FlacMetaBlockStreamInfo{
-            .minimum_block_size = 16,
-            .maximum_block_size = 16,
-            .minimum_frame_size = 0,
-            .maximum_frame_size = 0,
-            .sample_rate = 48000,
-            .number_of_channels = 0,
-            .bits_per_sample = 31,
-            .total_samples_in_stream = 16,
-            .md5_signature = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                              0x00}}}}};
+        .payload = FlacMetaBlockStreamInfo{.minimum_block_size = 16,
+                                           .maximum_block_size = 16,
+                                           .sample_rate = 48000,
+                                           .bits_per_sample = 31,
+                                           .total_samples_in_stream = 16}}}};
   iamf_tools_cli_proto::FlacEncoderMetadata flac_encoder_metadata_ = {};
 };  // namespace iamf_tools
 

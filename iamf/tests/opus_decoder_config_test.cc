@@ -24,14 +24,8 @@ namespace {
 
 class OpusTest : public testing::Test {
  public:
-  OpusTest()
-      : opus_decoder_config_({.version_ = 1,
-                              .output_channel_count_ = 2,
-                              .pre_skip_ = 0,
-                              .input_sample_rate_ = 0,
-                              .output_gain_ = 0,
-                              .mapping_family_ = 0}) {}
-  ~OpusTest() {}
+  OpusTest() : opus_decoder_config_({.version_ = 1, .pre_skip_ = 0}) {}
+  ~OpusTest() = default;
 
  protected:
   void TestWriteDecoderConfig() {
@@ -59,11 +53,21 @@ class OpusTest : public testing::Test {
   std::vector<uint8_t> expected_decoder_config_payload_;
 };
 
+TEST(OpusDecoderConfig, IamfFixedFieldsAreDefault) {
+  OpusDecoderConfig decoder_config;
+  // The IAMF spec REQUIRES fixed fields for all Opus Decoder Configs. Verify
+  // the default constructor configures these to the fixed values.
+  EXPECT_EQ(decoder_config.output_channel_count_,
+            OpusDecoderConfig::kOutputChannelCount);
+  EXPECT_EQ(decoder_config.output_gain_, OpusDecoderConfig::kOutputGain);
+  EXPECT_EQ(decoder_config.mapping_family_, OpusDecoderConfig::kMappingFamily);
+}
+
 TEST_F(OpusTest, WriteDefault) {
   expected_decoder_config_payload_ = {// `version`.
                                       1,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 0,
                                       // `input_sample_rate`.
@@ -71,21 +75,17 @@ TEST_F(OpusTest, WriteDefault) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
 TEST_F(OpusTest, VaryAllLegalFields) {
-  opus_decoder_config_ = {.version_ = 2,
-                          .output_channel_count_ = 2,
-                          .pre_skip_ = 3,
-                          .input_sample_rate_ = 4,
-                          .output_gain_ = 0,
-                          .mapping_family_ = 0};
+  opus_decoder_config_ = {
+      .version_ = 2, .pre_skip_ = 3, .input_sample_rate_ = 4};
   expected_decoder_config_payload_ = {// `version`.
                                       2,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 3,
                                       // `input_sample_rate`.
@@ -93,21 +93,17 @@ TEST_F(OpusTest, VaryAllLegalFields) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
 TEST_F(OpusTest, MaxAllLegalFields) {
-  opus_decoder_config_ = {.version_ = 15,
-                          .output_channel_count_ = 2,
-                          .pre_skip_ = 0xffff,
-                          .input_sample_rate_ = 0xffffffff,
-                          .output_gain_ = 0,
-                          .mapping_family_ = 0};
+  opus_decoder_config_ = {
+      .version_ = 15, .pre_skip_ = 0xffff, .input_sample_rate_ = 0xffffffff};
   expected_decoder_config_payload_ = {// `version`.
                                       15,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0xff, 0xff,
                                       // `input_sample_rate`.
@@ -115,7 +111,7 @@ TEST_F(OpusTest, MaxAllLegalFields) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -124,7 +120,7 @@ TEST_F(OpusTest, MinorVersion) {
   expected_decoder_config_payload_ = {// `version`.
                                       2,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 0,
                                       // `input_sample_rate`.
@@ -132,7 +128,7 @@ TEST_F(OpusTest, MinorVersion) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -177,7 +173,7 @@ TEST_F(OpusTest, WritePreSkip) {
   expected_decoder_config_payload_ = {// `version`.
                                       1,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 1,
                                       // `input_sample_rate`.
@@ -185,7 +181,7 @@ TEST_F(OpusTest, WritePreSkip) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -194,7 +190,7 @@ TEST_F(OpusTest, WritePreSkip312) {
   expected_decoder_config_payload_ = {// `version`.
                                       1,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0x01, 0x38,
                                       // `input_sample_rate`.
@@ -202,7 +198,7 @@ TEST_F(OpusTest, WritePreSkip312) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -211,7 +207,7 @@ TEST_F(OpusTest, WriteSampleRate48kHz) {
   expected_decoder_config_payload_ = {// `version`.
                                       1,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 0,
                                       // `input_sample_rate`.
@@ -219,7 +215,7 @@ TEST_F(OpusTest, WriteSampleRate48kHz) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -228,7 +224,7 @@ TEST_F(OpusTest, WriteSampleRate192kHz) {
   expected_decoder_config_payload_ = {// `version`.
                                       1,
                                       // `output_channel_count`.
-                                      2,
+                                      OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`.
                                       0, 0,
                                       // `input_sample_rate`.
@@ -236,7 +232,7 @@ TEST_F(OpusTest, WriteSampleRate192kHz) {
                                       // `output_gain`.
                                       0, 0,
                                       // `mapping_family`.
-                                      0};
+                                      OpusDecoderConfig::kMappingFamily};
   TestWriteDecoderConfig();
 }
 
@@ -281,12 +277,8 @@ class OpusDecoderConfigTestForAudioRollDistance
  protected:
   // A decoder config with reasonable default values. They are not relevant to
   // the test.
-  const OpusDecoderConfig opus_decoder_config_ = {.version_ = 1,
-                                                  .output_channel_count_ = 2,
-                                                  .pre_skip_ = 312,
-                                                  .input_sample_rate_ = 0,
-                                                  .output_gain_ = 0,
-                                                  .mapping_family_ = 0};
+  const OpusDecoderConfig opus_decoder_config_ = {
+      .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0};
 };
 
 TEST_P(OpusDecoderConfigTestForAudioRollDistance, TestOpusDecoderConfig) {

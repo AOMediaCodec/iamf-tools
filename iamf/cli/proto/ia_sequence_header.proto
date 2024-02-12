@@ -21,7 +21,7 @@ enum ProfileVerson {
 }
 
 message IASequenceHeaderObuMetadata {
-  optional uint32 ia_code = 1;
+  optional uint32 ia_code = 1 [default = 0x69616d66 /* "iamf" */];
   optional ProfileVerson primary_profile = 2;
   optional ProfileVerson additional_profile = 3;
   optional ObuHeaderMetadata obu_header = 4;

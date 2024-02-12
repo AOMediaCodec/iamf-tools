@@ -32,18 +32,12 @@ class FlacTest : public testing::Test {
             {{.header = {.last_metadata_block_flag = true,
                          .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
                          .metadata_data_block_length = 34},
-              .payload = FlacMetaBlockStreamInfo{
-                  .minimum_block_size = 16,
-                  .maximum_block_size = 16,
-                  .minimum_frame_size = 0,
-                  .maximum_frame_size = 0,
-                  .sample_rate = 48000,
-                  .number_of_channels = 1,
-                  .bits_per_sample = 15,
-                  .total_samples_in_stream = 0,
-                  .md5_signature = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                    0x00, 0x00}}}}) {
+              .payload =
+                  FlacMetaBlockStreamInfo{.minimum_block_size = 16,
+                                          .maximum_block_size = 16,
+                                          .sample_rate = 48000,
+                                          .bits_per_sample = 15,
+                                          .total_samples_in_stream = 0}}}) {
     first_stream_info_payload_ = &std::get<FlacMetaBlockStreamInfo>(
         flac_decoder_config_.metadata_blocks_[0].payload);
   }
@@ -99,7 +93,7 @@ TEST_F(FlacTest, WriteDefault) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -143,7 +137,7 @@ TEST_F(FlacTest, CanContainAdditionalBlocks) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -241,7 +235,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMin) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       3 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -273,7 +267,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1) | 1,
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1) | 1,
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -286,17 +280,12 @@ TEST_F(FlacTest, WriteBitsPerSampleMax) {
 
 TEST_F(FlacTest, WriteVaryMostLegalFields) {
   num_samples_per_frame_ = 64;
-  flac_decoder_config_.metadata_blocks_[0].payload = FlacMetaBlockStreamInfo{
-      .minimum_block_size = 64,
-      .maximum_block_size = 64,
-      .minimum_frame_size = 0,
-      .maximum_frame_size = 0,
-      .sample_rate = 48000,
-      .number_of_channels = 1,
-      .bits_per_sample = 7,
-      .total_samples_in_stream = 100,
-      .md5_signature = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  flac_decoder_config_.metadata_blocks_[0].payload =
+      FlacMetaBlockStreamInfo{.minimum_block_size = 64,
+                              .maximum_block_size = 64,
+                              .sample_rate = 48000,
+                              .bits_per_sample = 7,
+                              .total_samples_in_stream = 100};
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -315,7 +304,7 @@ TEST_F(FlacTest, WriteVaryMostLegalFields) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          1 << 1,
+          FlacMetaBlockStreamInfo::kNumberOfChannels << 1,
       7 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -347,7 +336,7 @@ TEST_F(FlacTest, WriteSampleRateMin) {
       0x00, 0x00,
       (0x1 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -379,7 +368,7 @@ TEST_F(FlacTest, WriteSampleRateMax) {
       0x9f, 0xff,
       (0x6 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -443,7 +432,7 @@ TEST_F(FlacTest, WriteMinimumMaximumBlockSizeMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -491,27 +480,32 @@ TEST_F(FlacTest, IllegalMinimumMaximumBlockSizeNotEqualToEachOther) {
   TestWriteDecoderConfig();
 }
 
-TEST_F(FlacTest, IllegalMinimumMaximumFrameSizeNotEqualToZero) {
-  first_stream_info_payload_->minimum_frame_size = 16;
-  first_stream_info_payload_->maximum_frame_size = 16;
+TEST_F(FlacTest, IllegalMinimumFrameSizeNotEqualToZero) {
+  const uint32_t kInvalidMinimumFrameSize = 16;
+  ASSERT_NE(kInvalidMinimumFrameSize,
+            FlacMetaBlockStreamInfo::kMinimumFrameSize);
+  first_stream_info_payload_->minimum_frame_size = kInvalidMinimumFrameSize;
+
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
 
-TEST_F(FlacTest, IllegalNumberOfChannelsTooLow) {
-  first_stream_info_payload_->number_of_channels = 0;
+TEST_F(FlacTest, IllegalMaximumFrameSizeNotEqualToZero) {
+  const uint32_t kInvalidMaximumFrameSize = 16;
+  ASSERT_NE(kInvalidMaximumFrameSize,
+            FlacMetaBlockStreamInfo::kMaximumFrameSize);
+  first_stream_info_payload_->maximum_frame_size = kInvalidMaximumFrameSize;
+
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
 
-TEST_F(FlacTest, IllegalNumberOfChannelsTooHigh) {
-  first_stream_info_payload_->number_of_channels = 2;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
+TEST_F(FlacTest, IllegalNumberOfChannelsNotEqualToOne) {
+  const uint8_t kInvalidNumberOfChannels = 2;
+  ASSERT_NE(kInvalidNumberOfChannels,
+            FlacMetaBlockStreamInfo::kNumberOfChannels);
+  first_stream_info_payload_->number_of_channels = kInvalidNumberOfChannels;
 
-TEST_F(FlacTest, IllegalNumberOfChannelsMax) {
-  first_stream_info_payload_->number_of_channels = 7;
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
@@ -537,7 +531,7 @@ TEST_F(FlacTest, WriteTotalSamplesInStreamMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (1 << 1),
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0xf,
@@ -549,7 +543,10 @@ TEST_F(FlacTest, WriteTotalSamplesInStreamMax) {
 }
 
 TEST_F(FlacTest, IllegalMd5SumNonZero) {
-  first_stream_info_payload_->md5_signature[0] = 0x01;
+  const uint8_t kInvalidMd5SumFirstByte = 0x01;
+  ASSERT_NE(FlacMetaBlockStreamInfo::kMd5Signature[0], kInvalidMd5SumFirstByte);
+  first_stream_info_payload_->md5_signature[0] = kInvalidMd5SumFirstByte;
+
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }

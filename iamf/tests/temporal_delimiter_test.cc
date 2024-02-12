@@ -32,7 +32,7 @@ class TemporalDelimiterTestBase : public ObuTestBase {
             /*expected_payload=*/{}),
         obu_() {}
 
-  ~TemporalDelimiterTestBase() override {}
+  ~TemporalDelimiterTestBase() override = default;
 
  protected:
   void Init() override {

@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/ia_sequence_header_generator.h"
 
+#include <cstdint>
 #include <optional>
 
 #include "absl/status/status.h"
@@ -54,6 +55,14 @@ class IaSequenceHeaderGeneratorTest : public testing::Test {
 };
 
 TEST_F(IaSequenceHeaderGeneratorTest, DefaultSimpleProfile) {
+  expected_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+                        ProfileVersion::kIamfSimpleProfile,
+                        ProfileVersion::kIamfSimpleProfile);
+  InitAndTestGenerate();
+}
+
+TEST_F(IaSequenceHeaderGeneratorTest, IaCodeMayBeOmitted) {
+  ia_sequence_header_metadata_.clear_ia_code();
   expected_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
                         ProfileVersion::kIamfSimpleProfile,
                         ProfileVersion::kIamfSimpleProfile);
@@ -108,9 +117,12 @@ TEST_F(IaSequenceHeaderGeneratorTest, BaseProfile) {
 TEST_F(IaSequenceHeaderGeneratorTest, ObeysInvalidIaCode) {
   // IAMF requires `ia_code == IASequenceHeaderObu::kIaCode`. But the generator
   // does not validate OBU requirements.
-  ia_sequence_header_metadata_.set_ia_code(0);
+  const uint32_t kInvalidIaCode = 0;
+  ASSERT_NE(kInvalidIaCode, IASequenceHeaderObu::kIaCode);
+  ia_sequence_header_metadata_.set_ia_code(kInvalidIaCode);
 
-  expected_obu_.emplace(ObuHeader(), 0, ProfileVersion::kIamfSimpleProfile,
+  expected_obu_.emplace(ObuHeader(), kInvalidIaCode,
+                        ProfileVersion::kIamfSimpleProfile,
                         ProfileVersion::kIamfSimpleProfile);
   InitAndTestGenerate();
 }

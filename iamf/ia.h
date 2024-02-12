@@ -22,24 +22,11 @@ enum class ProfileVersion : uint8_t {
   kIamfBaseProfile = 1,
 };
 
-/*!\brief The maximum length of an IAMF string in bytes.
- *
- * The spec limits the length of a string to 128 bytes including the
- * null terminator ('\0').
- */
-inline constexpr int kIamfMaxStringSize = 128;
-
 /*!\brief A decoded `leb128` in IAMF.  */
 typedef uint32_t DecodedUleb128;
 
 /*!\brief A decoded `sleb128` in IAMF.  */
 typedef int32_t DecodedSleb128;
-
-/*!\brief A `string` as defined by the IAMF spec.
- *
- * The IAMF spec requires this is null terminated and at most 128 bytes.
- */
-typedef char IamfString[kIamfMaxStringSize];
 
 // For propagating errors when calling a function. Beware that defining
 // `NO_CHECK_ERROR` is not thoroughly tested and may result in unexpected

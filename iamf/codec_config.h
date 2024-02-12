@@ -69,7 +69,7 @@ class CodecConfigObu : public ObuBase {
   CodecConfigObu(CodecConfigObu&& other) = default;
 
   /*!\brief Destructor. */
-  ~CodecConfigObu() override {}
+  ~CodecConfigObu() override = default;
 
   friend bool operator==(const CodecConfigObu& lhs,
                          const CodecConfigObu& rhs) = default;

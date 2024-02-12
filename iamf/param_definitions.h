@@ -164,7 +164,7 @@ class MixGainParamDefinition : public ParamDefinition {
 
   /*!\brief Default destructor.
    */
-  ~MixGainParamDefinition() override {}
+  ~MixGainParamDefinition() override = default;
 
   friend bool operator==(const MixGainParamDefinition& lhs,
                          const MixGainParamDefinition& rhs) {
@@ -208,7 +208,7 @@ class DemixingParamDefinition : public ParamDefinition {
 
   /*!\brief Default destructor.
    */
-  ~DemixingParamDefinition() override {}
+  ~DemixingParamDefinition() override = default;
 
   friend bool operator==(const DemixingParamDefinition& lhs,
                          const DemixingParamDefinition& rhs) {
@@ -258,7 +258,7 @@ class ReconGainParamDefinition : public ParamDefinition {
 
   /*!\brief Default destructor.
    */
-  ~ReconGainParamDefinition() override {}
+  ~ReconGainParamDefinition() override = default;
 
   friend bool operator==(const ReconGainParamDefinition& lhs,
                          const ReconGainParamDefinition& rhs) {
@@ -305,7 +305,7 @@ class ExtendedParamDefinition : public ParamDefinition {
 
   /*!\brief Default destructor.
    */
-  ~ExtendedParamDefinition() override {}
+  ~ExtendedParamDefinition() override = default;
 
   friend bool operator==(const ExtendedParamDefinition& lhs,
                          const ExtendedParamDefinition& rhs) {

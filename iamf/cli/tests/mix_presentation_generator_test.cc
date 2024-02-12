@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <list>
+#include <string>
 
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -104,6 +105,58 @@ TEST_F(MixPresentationGeneratorTest, SSConventionWithOneStereoAudioElement) {
   MixPresentationGenerator generator(mix_presentation_metadata_);
   EXPECT_TRUE(generator.Generate(generated_obus_).ok());
   EXPECT_EQ(generated_obus_, expected_obus_);
+}
+
+TEST_F(MixPresentationGeneratorTest, SupportsUtf8) {
+  const std::string kUtf8FourByteSequenceCode = "\xf0\x9d\x85\x9e\x00)";
+  mix_presentation_metadata_.at(0).set_count_label(1);
+  mix_presentation_metadata_.at(0)
+      .add_mix_presentation_annotations_array()
+      ->set_mix_presentation_friendly_label(kUtf8FourByteSequenceCode);
+
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+  ASSERT_TRUE(generator.Generate(generated_obus_).ok());
+  ASSERT_FALSE(generated_obus_.back().mix_presentation_annotations_.empty());
+
+  EXPECT_EQ(generated_obus_.back()
+                .mix_presentation_annotations_[0]
+                .mix_presentation_friendly_label,
+            kUtf8FourByteSequenceCode);
+}
+
+TEST_F(MixPresentationGeneratorTest, InvalidHeadphonesRenderingMode) {
+  mix_presentation_metadata_.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(
+          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_INVALID);
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_FALSE(generator.Generate(generated_obus_).ok());
+}
+
+TEST_F(MixPresentationGeneratorTest, InvalidInconsistentNumberOfLayouts) {
+  // There is one element in the `layouts` array.
+  ASSERT_EQ(mix_presentation_metadata_.at(0).sub_mixes(0).layouts().size(), 1);
+  // `num_layouts` is inconsistent with the number of layouts in the array.
+  const uint32_t kInconsistentNumLayouts = 2;
+  mix_presentation_metadata_.at(0).mutable_sub_mixes(0)->set_num_layouts(
+      kInconsistentNumLayouts);
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_FALSE(generator.Generate(generated_obus_).ok());
+}
+
+TEST_F(MixPresentationGeneratorTest, InvalidLayoutType) {
+  mix_presentation_metadata_.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_layouts(0)
+      ->mutable_loudness_layout()
+      ->set_layout_type(iamf_tools_cli_proto::LAYOUT_TYPE_INVALID);
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_FALSE(generator.Generate(generated_obus_).ok());
 }
 
 TEST_F(MixPresentationGeneratorTest, ReservedLayoutWithOneStereoAudioElement) {

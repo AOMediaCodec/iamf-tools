@@ -113,7 +113,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     sub_mixes_[0].output_mix_config.output_mix_gain = output_mix_gain;
   }
 
-  ~MixPresentationObuTest() override {}
+  ~MixPresentationObuTest() override = default;
 
  protected:
   void Init() override { InitMixPresentationObu(); }
@@ -239,31 +239,19 @@ TEST_F(MixPresentationObuTest, InvalidNumSubMixes) {
 }
 
 TEST_F(MixPresentationObuTest, InvalidNonUniqueAudioElementIds) {
-  // Update the OBU to have two audio elements with the same ID.
-  constexpr DecodedUleb128 kDuplicateAudioElementId = 11;
+  ASSERT_EQ(sub_mixes_.size(), 1);
+  ASSERT_EQ(sub_mixes_[0].audio_elements.size(), 1);
+  // Add an extra audio element to sub-mix.
   sub_mixes_[0].num_audio_elements = 2;
-  sub_mixes_[0].audio_elements = {
-      {
-          .audio_element_id = kDuplicateAudioElementId,
-          .mix_presentation_element_annotations = {{"Element 1"}},
-          .rendering_config =
-              {.headphones_rendering_mode =
-                   RenderingConfig::kHeadphonesRenderingModeStereo,
-               .reserved = 0,
-               .rendering_config_extension_size = 0,
-               .rendering_config_extension_bytes = {}},
-      },
-      {.audio_element_id = kDuplicateAudioElementId,
-       .mix_presentation_element_annotations =
-           {{"Invalid duplicate element 2"}},
-       .rendering_config = {.headphones_rendering_mode =
-                                RenderingConfig::kHeadphonesRenderingModeStereo,
-                            .reserved = 0,
-                            .rendering_config_extension_size = 0,
-                            .rendering_config_extension_bytes = {}}}};
+  sub_mixes_[0].audio_elements.push_back(sub_mixes_[0].audio_elements[0]);
   dynamic_sub_mix_args_[0].element_mix_gain_subblocks = {{}, {}};
 
+  // It is forbidden to have duplicate audio element IDs within a mix
+  // presentation OBU.
+  ASSERT_EQ(sub_mixes_[0].audio_elements[0].audio_element_id,
+            sub_mixes_[0].audio_elements[1].audio_element_id);
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+
   InitAndTestWrite();
 }
 
@@ -468,8 +456,11 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
 }
 
 TEST_F(MixPresentationObuTest, IllegalIamfStringOver128Bytes) {
+  // Create a string that has no null terminator in the first 128 bytes.
+  const std::string kIllegalIamfString(WriteBitBuffer::kIamfMaxStringSize, 'a');
   mix_presentation_annotations_[0].mix_presentation_friendly_label =
-      std::string(kIamfMaxStringSize + 1, 'a');
+      kIllegalIamfString;
+
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
 
   InitAndTestWrite();
@@ -787,12 +778,29 @@ TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedSoundSystem) {
           .ok());
 }
 
+TEST_F(MixPresentationObuTest, ErrorBeyondLayoutType) {
+  // `Layout::LayoutType` is 2-bit enum in IAMF. It is invalid for the value to
+  // be out of range.
+  const auto kBeyondLayoutType = static_cast<Layout::LayoutType>(4);
+  // Since a stereo layout must be present, add a new layout and configure
+  // `num_layouts` correctly.
+  ASSERT_FALSE(sub_mixes_.empty());
+  sub_mixes_[0].layouts.push_back(
+      MixPresentationLayout{Layout{.layout_type = kBeyondLayoutType}});
+  sub_mixes_[0].num_layouts = sub_mixes_[0].layouts.size();
+
+  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+
+  InitAndTestWrite();
+}
+
 TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
+  // `LoudspeakersSsConventionLayout::SoundSystem` is a 4-bit enum in the spec.
+  // It is invalid for the value to be out of this range.
+  const auto kBeyondSoundSystemReserved =
+      static_cast<LoudspeakersSsConventionLayout::SoundSystem>(16);
   std::get<LoudspeakersSsConventionLayout>(layout_.specific_layout)
-      .sound_system = static_cast<LoudspeakersSsConventionLayout::SoundSystem>(
-      static_cast<int>(
-          LoudspeakersSsConventionLayout::kSoundSystemEndReserved) +
-      1);
+      .sound_system = kBeyondSoundSystemReserved;
 
   int32_t unused_num_channels;
   EXPECT_FALSE(
