@@ -91,7 +91,7 @@ struct DemixingInfoParameterData {
 struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
   /*!\brief Overridden destructor.
    */
-  ~DefaultDemixingInfoParameterData() override {}
+  ~DefaultDemixingInfoParameterData() override = default;
 
   bool friend operator==(const DefaultDemixingInfoParameterData& a,
                          const DefaultDemixingInfoParameterData& b) = default;

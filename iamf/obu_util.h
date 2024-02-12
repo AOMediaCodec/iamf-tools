@@ -18,6 +18,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
 
 namespace iamf_tools {
@@ -182,6 +183,25 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
   }
   value = iter->second;
   return absl::OkStatus();
+}
+
+/*\!brief Returns an error if the arguments are not equal.
+ *
+ * \param left First value to compare.
+ * \param right Second value to compare.
+ * \param field_name Field name to insert into the error message.
+ * \return `absl::OkStatus()` if the arguments are equal
+ *     `absl::InvalidArgumentError()` otherwise.
+ */
+template <typename T>
+absl::Status ValidateEqual(const T& left, const T& right,
+                           const std::string& field_name) {
+  if (left == right) {
+    return absl::OkStatus();
+  }
+
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Invalid ", field_name, ". Expected ", left, " == ", right, "."));
 }
 
 }  // namespace iamf_tools

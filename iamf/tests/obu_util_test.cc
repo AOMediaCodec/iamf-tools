@@ -641,5 +641,17 @@ TEST(WritePcmSample, InvalidOver32Bits) {
             absl::StatusCode::kInvalidArgument);
 }
 
+TEST(ValidateEqual, OkIfArgsAreEqual) {
+  const auto kLeftArg = 123;
+  const auto kRightArg = 123;
+  EXPECT_TRUE(ValidateEqual(kLeftArg, kRightArg, "").ok());
+}
+
+TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
+  const auto kLeftArg = 123;
+  const auto kUnequalRightArg = 223;
+  EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, "").ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

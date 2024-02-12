@@ -37,7 +37,7 @@ class AudioFrameObuTest : public ObuTestBase, public testing::Test {
         audio_substream_id_(0),
         audio_frame_({42}) {}
 
-  ~AudioFrameObuTest() override {}
+  ~AudioFrameObuTest() override = default;
 
  protected:
   void Init() override {

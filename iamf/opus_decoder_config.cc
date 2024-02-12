@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
+#include "iamf/obu_util.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -44,19 +45,15 @@ absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
 
   // Various below fields are fixed. The real value is determined from the Audio
   // Element OBU.
-  if (decoder_config.output_channel_count_ != 2) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid output_channel_count= ",
-                     decoder_config.output_channel_count_));
-  }
-  if (decoder_config.output_gain_ != 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid output_gain= ", decoder_config.output_gain_));
-  }
-  if (decoder_config.mapping_family_ != 0) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid mapping_family= ", decoder_config.mapping_family_));
-  }
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 "output_channel_count"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
+                                 OpusDecoderConfig::kOutputGain,
+                                 "output_gain"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.mapping_family_,
+                                 OpusDecoderConfig::kMappingFamily,
+                                 "mapping_family"));
 
   return absl::OkStatus();
 }

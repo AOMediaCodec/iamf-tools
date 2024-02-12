@@ -15,6 +15,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/ia.h"
@@ -35,8 +36,8 @@ absl::Status CopyProfileVersion(
       obu_profile_version = ProfileVersion::kIamfBaseProfile;
       return absl::OkStatus();
     default:
-      LOG(ERROR) << "Unknown profile version: " << metadata_profile_version;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown profile version= ", metadata_profile_version));
   }
 }
 

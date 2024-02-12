@@ -1,5 +1,6 @@
 #include "iamf/cli/encoder_main_lib.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 
@@ -16,7 +17,6 @@ namespace {
 void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        ia_code: 0x69616d66  # "iamf"
         primary_profile: PROFILE_VERSION_SIMPLE
         additional_profile: PROFILE_VERSION_SIMPLE
       )pb",
@@ -35,6 +35,32 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnlySucceeds) {
   EXPECT_TRUE(TestMain(user_metadata, "", "",
                        std::filesystem::temp_directory_path().string())
                   .ok());
+}
+
+TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
+  // Initialize prerequisites.
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  AddIaSequenceHeader(user_metadata);
+  // Configure a reasonable bit-depth to output to.
+  user_metadata.mutable_test_vector_metadata()
+      ->set_output_wav_file_bit_depth_override(16);
+
+  EXPECT_TRUE(TestMain(user_metadata, "", "",
+                       std::filesystem::temp_directory_path().string())
+                  .ok());
+}
+
+TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
+  // Initialize prerequisites.
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  AddIaSequenceHeader(user_metadata);
+  const uint32_t kBitDepthTooHigh = 256;
+  user_metadata.mutable_test_vector_metadata()
+      ->set_output_wav_file_bit_depth_override(kBitDepthTooHigh);
+
+  EXPECT_FALSE(TestMain(user_metadata, "", "",
+                        std::filesystem::temp_directory_path().string())
+                   .ok());
 }
 
 TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {

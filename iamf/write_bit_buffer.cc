@@ -12,13 +12,16 @@
 #include "iamf/write_bit_buffer.h"
 
 #include <algorithm>
+#include <bit>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <string>
 #include <vector>
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/ia.h"
 
@@ -175,11 +178,14 @@ absl::Status WriteBitBuffer::WriteSigned16(int16_t data) {
 }
 
 // Writes a null terminated C-style string to the buffer - including the null.
-absl::Status WriteBitBuffer::WriteString(const IamfString data) {
-  // Write up to the first `IAMF_MAX_STRING_SIZE` characters. Exit after writing
+absl::Status WriteBitBuffer::WriteString(const std::string& data) {
+  // Write up to the first `kIamfMaxStringSize` characters. Exit after writing
   // the null terminator.
   for (int i = 0; i < kIamfMaxStringSize; i++) {
-    RETURN_IF_NOT_OK(WriteUnsignedLiteral(data[i], 8));
+    // Note that some systems have `char` as signed and others unsigned. Write
+    // the same raw byte value regardless.
+    const uint8_t byte = std::bit_cast<uint8_t>(data[i]);
+    RETURN_IF_NOT_OK(WriteUnsignedLiteral(byte, 8));
 
     // Exit successfully after last byte was written.
     if (data[i] == '\0') {
@@ -188,7 +194,8 @@ absl::Status WriteBitBuffer::WriteString(const IamfString data) {
   }
 
   // Failed to find the null terminator within `kIamfMaxStringSize` bytes.
-  return absl::InvalidArgumentError("");
+  return absl::InvalidArgumentError(
+      absl::StrCat("Failed to find the null terminator for data= ", data));
 }
 
 absl::Status WriteBitBuffer::WriteUleb128(const DecodedUleb128 data) {

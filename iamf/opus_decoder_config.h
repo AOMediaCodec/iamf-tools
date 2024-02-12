@@ -22,6 +22,10 @@ namespace iamf_tools {
 /*!\brief The `CodecConfig` `decoder_config` field for Opus.*/
 class OpusDecoderConfig {
  public:
+  static constexpr uint8_t kOutputChannelCount = 2;
+  static constexpr int16_t kOutputGain = 0;
+  static constexpr uint8_t kMappingFamily = 0;
+
   friend bool operator==(const OpusDecoderConfig& lhs,
                          const OpusDecoderConfig& rhs) = default;
 
@@ -71,11 +75,12 @@ class OpusDecoderConfig {
   void Print() const;
 
   uint8_t version_;
-  uint8_t output_channel_count_;  // Must be set to 2. This field is ignored.
+  // Must be set to 2. This field is ignored.
+  uint8_t output_channel_count_ = kOutputChannelCount;
   uint16_t pre_skip_;
   uint32_t input_sample_rate_;
-  int16_t output_gain_;     // Must be 0.
-  uint8_t mapping_family_;  // Must be 0.
+  int16_t output_gain_ = kOutputGain;
+  uint8_t mapping_family_ = kMappingFamily;
 };
 
 }  // namespace iamf_tools

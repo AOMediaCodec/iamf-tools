@@ -27,7 +27,6 @@ test_vector_metadata {
 }
 
 ia_sequence_header_metadata {
-  ia_code: 0x69616d66  # "iamf"
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
 }
@@ -48,13 +47,9 @@ codec_config_metadata {
         stream_info {
           minimum_block_size: 64
           maximum_block_size: 64
-          minimum_frame_size: 0
-          maximum_frame_size: 0
           sample_rate: 48000
-          number_of_channels: 1  # Flac interprets this as 2 channels.
           bits_per_sample: 15  # Flac interprets this as 16 bits.
           total_samples_in_stream: 24000
-          md5_signature: "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         }
       }
       flac_encoder_metadata {

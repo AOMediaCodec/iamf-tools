@@ -38,7 +38,7 @@ class ArbitraryObuTest : public ObuTestBase, public testing::Test {
         payload_({}),
         insertion_hook_(ArbitraryObu::kInsertionHookBeforeDescriptors) {}
 
-  ~ArbitraryObuTest() override {}
+  ~ArbitraryObuTest() override = default;
 
  protected:
   void Init() override {

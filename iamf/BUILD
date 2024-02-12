@@ -6,6 +6,7 @@ cc_library(
     hdrs = ["aac_decoder_config.h"],
     deps = [
         ":ia",
+        ":obu_util",
         ":write_bit_buffer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
@@ -103,6 +104,7 @@ cc_library(
     hdrs = ["flac_decoder_config.h"],
     deps = [
         ":ia",
+        ":obu_util",
         ":write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -123,6 +125,7 @@ cc_library(
         ":ia",
         ":obu_base",
         ":obu_header",
+        ":obu_util",
         ":write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -199,7 +202,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -209,6 +212,7 @@ cc_library(
     hdrs = ["opus_decoder_config.h"],
     deps = [
         ":ia",
+        ":obu_util",
         ":write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -268,6 +272,17 @@ cc_library(
         ":ia",
         "//iamf/cli:leb_generator",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "read_bit_buffer",
+    srcs = ["read_bit_buffer.cc"],
+    hdrs = ["read_bit_buffer.h"],
+    deps = [
+        "//iamf/cli:leb_generator",
         "@com_google_absl//absl/status",
     ],
 )

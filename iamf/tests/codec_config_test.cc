@@ -40,7 +40,7 @@ class CodecConfigTestBase : public ObuTestBase {
                        .audio_roll_distance = 0,
                        .decoder_config = decoder_config}) {}
 
-  ~CodecConfigTestBase() override {}
+  ~CodecConfigTestBase() override = default;
 
  protected:
   void Init() override {
@@ -372,13 +372,10 @@ TEST_F(CodecConfigLpcmTest, RedundantCopy) {
 class CodecConfigOpusTest : public CodecConfigTestBase, public testing::Test {
  public:
   CodecConfigOpusTest()
-      : CodecConfigTestBase(CodecConfig::kCodecIdOpus,
-                            OpusDecoderConfig{.version_ = 1,
-                                              .output_channel_count_ = 2,
-                                              .pre_skip_ = 0,
-                                              .input_sample_rate_ = 0,
-                                              .output_gain_ = 0,
-                                              .mapping_family_ = 0}) {
+      : CodecConfigTestBase(
+            CodecConfig::kCodecIdOpus,
+            OpusDecoderConfig{
+                .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 0}) {
     // Overwrite some default values to be more reasonable for Opus.
     codec_config_.num_samples_per_frame = 960;
     codec_config_.audio_roll_distance = -4;
@@ -413,7 +410,7 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
                        // `version`.
                        1,
                        // `output_channel_count`.
-                       2,
+                       OpusDecoderConfig::kOutputChannelCount,
                        // `pre_skip`
                        0xff, 0xff,
                        //
@@ -422,7 +419,7 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
                        // `output_gain`.
                        0, 0,
                        // `mapping_family`.
-                       0};
+                       OpusDecoderConfig::kMappingFamily};
 
   InitAndTestWrite();
 }
@@ -453,7 +450,7 @@ TEST_F(CodecConfigOpusTest, VarySeveralFields) {
                        // `version`.
                        15,
                        // `output_channel_count`.
-                       2,
+                       OpusDecoderConfig::kOutputChannelCount,
                        // `pre_skip`
                        0, 3,
                        //
@@ -462,7 +459,7 @@ TEST_F(CodecConfigOpusTest, VarySeveralFields) {
                        // `output_gain`.
                        0, 0,
                        // `mapping_family`.
-                       0};
+                       OpusDecoderConfig::kMappingFamily};
   InitAndTestWrite();
 }
 

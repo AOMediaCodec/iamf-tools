@@ -45,6 +45,9 @@ class AudioSpecificConfig {
     kSampleFrequencyIndexEscapeValue = 15
   };
 
+  static constexpr uint8_t kAudioObjectType = 2;
+  static constexpr uint8_t kChannelConfiguration = 2;
+
   friend bool operator==(const AudioSpecificConfig& lhs,
                          const AudioSpecificConfig& rhs) = default;
 
@@ -59,29 +62,38 @@ class AudioSpecificConfig {
    */
   void Print() const;
 
-  uint8_t audio_object_type_;                    // 5 bits.
-  SampleFrequencyIndex sample_frequency_index_;  // 4 bits.
+  uint8_t audio_object_type_ = kAudioObjectType;  // 5 bits.
+  SampleFrequencyIndex sample_frequency_index_;   // 4 bits.
   // if(sample_frequency_index == kSampleFrequencyIndexEscapeValue) {
   uint32_t sampling_frequency_ = 0;  // 24 bits.
   // }
-  uint8_t channel_configuration_;  // 4 bits.
+  uint8_t channel_configuration_ = kChannelConfiguration;  // 4 bits.
 
   // The ISO spec allows several different types of configs to follow depending
   // on `audio_object_type`. Valid IAMF streams always use the general audio
   // specific config because of the fixed `audio_object_type == 2`.
   struct GaSpecificConfig {
+    static constexpr bool kFrameLengthFlag = false;
+    static constexpr bool kDependsOnCoreCoder = false;
+    static constexpr bool kExtensionFlag = false;
+
     friend bool operator==(const GaSpecificConfig& lhs,
                            const GaSpecificConfig& rhs) = default;
 
-    bool frame_length_flag;
-    bool depends_on_core_coder;
-    bool extension_flag;
+    bool frame_length_flag = kFrameLengthFlag;
+    bool depends_on_core_coder = kDependsOnCoreCoder;
+    bool extension_flag = kExtensionFlag;
   } ga_specific_config_;
 };
 
 /*!\brief The `CodecConfig` `decoder_config` field for AAC. */
 class AacDecoderConfig {
  public:
+  static constexpr uint8_t kDecoderConfigDescriptorTag = 0x04;
+  static constexpr uint8_t kObjectTypeIndication = 0x40;
+  static constexpr uint8_t kStreamType = 0x05;
+  static constexpr bool kUpstream = false;
+
   friend bool operator==(const AacDecoderConfig& lhs,
                          const AacDecoderConfig& rhs) = default;
 
@@ -118,19 +130,21 @@ class AacDecoderConfig {
    */
   void Print() const;
 
-  uint8_t decoder_config_descriptor_tag_;
-  uint8_t object_type_indication_;
-  uint8_t stream_type_;  // 6 bits.
-  bool upstream_;
+  uint8_t decoder_config_descriptor_tag_ = kDecoderConfigDescriptorTag;
+  uint8_t object_type_indication_ = kObjectTypeIndication;
+  uint8_t stream_type_ = kStreamType;  // 6 bits.
+  bool upstream_ = kUpstream;
   bool reserved_;
   uint32_t buffer_size_db_;  // 24 bits.
   uint32_t max_bitrate_;
   uint32_t average_bit_rate_;
 
   struct DecoderSpecificInfo {
+    static constexpr uint8_t kDecoderSpecificInfoTag = 0x05;
+
     friend bool operator==(const DecoderSpecificInfo& lhs,
                            const DecoderSpecificInfo& rhs) = default;
-    uint8_t decoder_specific_info_tag;
+    uint8_t decoder_specific_info_tag = kDecoderSpecificInfoTag;
     AudioSpecificConfig audio_specific_config;
   } decoder_specific_info_;
   // ProfileLevelIndicationIndexDescriptor is an extension in the original

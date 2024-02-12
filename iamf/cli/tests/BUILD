@@ -47,6 +47,7 @@ cc_test(
         "//iamf:obu_header",
         "//iamf/cli:aac_encoder_decoder",
         "//iamf/cli/proto:codec_config_cc_proto",
+        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -166,6 +167,7 @@ cc_test(
         "//iamf:aac_decoder_config",
         "//iamf:codec_config",
         "//iamf:flac_decoder_config",
+        "//iamf:ia",
         "//iamf:lpcm_decoder_config",
         "//iamf:obu_header",
         "//iamf:opus_decoder_config",
@@ -175,6 +177,7 @@ cc_test(
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -470,6 +473,27 @@ cc_test(
     deps = [
         "//iamf/cli:wav_reader",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "wav_sample_provider_test",
+    srcs = ["wav_sample_provider_test.cc"],
+    data = [
+        "//iamf/cli/testdata:stereo_8_samples_48khz_s16le.wav",
+        "//iamf/cli/testdata:stereo_8_samples_48khz_s24le.wav",
+    ],
+    deps = [
+        ":cli_test_utils",
+        "//iamf:codec_config",
+        "//iamf:ia",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli:wav_sample_provider",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

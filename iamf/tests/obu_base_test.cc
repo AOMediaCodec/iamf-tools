@@ -25,7 +25,7 @@ namespace {
 class ImaginaryObuNonIntegerBytes : public ObuBase {
  public:
   ImaginaryObuNonIntegerBytes() : ObuBase(kObuIaReserved24) {}
-  ~ImaginaryObuNonIntegerBytes() override {}
+  ~ImaginaryObuNonIntegerBytes() override = default;
   void PrintObu() const override {}
 
  private:
@@ -49,7 +49,7 @@ class OneByteObu : public ObuBase {
   explicit OneByteObu(const ObuHeader& header)
       : ObuBase(header, kObuIaReserved24) {}
 
-  ~OneByteObu() override {}
+  ~OneByteObu() override = default;
   void PrintObu() const override {}
 
  private:

@@ -12,7 +12,9 @@
 
 #include "iamf/cli/iamf_components.h"
 
+#include <cstdint>
 #include <filesystem>
+#include <optional>
 
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -23,7 +25,9 @@ namespace iamf_tools {
 namespace {
 
 TEST(IamfComponentsTest, CreateMixPresentationFinalizerReturnsNonNull) {
-  EXPECT_NE(CreateMixPresentationFinalizer({}, /*file_name_prefix=*/""),
+  EXPECT_NE(CreateMixPresentationFinalizer(
+                {}, /*file_name_prefix=*/"",
+                /*output_wav_file_bit_depth_override=*/std::nullopt),
             nullptr);
 }
 
@@ -56,6 +60,13 @@ TEST(IamfComponentsTest, CanBeConfiguredWithFixedSizeLebGenerator) {
   for (auto& obu_sequencer : obu_sequencers) {
     EXPECT_NE(obu_sequencer, nullptr);
   }
+}
+
+TEST(IamfComponentsTest, CanBeConfiguredWithOutputWavFileBitDepthOverride) {
+  const uint8_t kOutputWavFileBitDepthOverride = 16;
+  EXPECT_NE(
+      CreateMixPresentationFinalizer({}, "", kOutputWavFileBitDepthOverride),
+      nullptr);
 }
 
 TEST(IamfComponentsTest, ReturnsEmptyListWhenLebGeneratorIsInvalid) {

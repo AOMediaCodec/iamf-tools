@@ -44,9 +44,7 @@ class IASequenceHeaderObu : public ObuBase {
   IASequenceHeaderObu(IASequenceHeaderObu&& other) = default;
 
   /*!\brief Destructor. */
-  ~IASequenceHeaderObu() override {
-    // There is no memory to clean up for an IA Sequence Header OBU.
-  }
+  ~IASequenceHeaderObu() override = default;
 
   friend bool operator==(const IASequenceHeaderObu& lhs,
                          const IASequenceHeaderObu& rhs) = default;

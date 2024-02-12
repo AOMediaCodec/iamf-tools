@@ -223,7 +223,7 @@ class AudioElementObu : public ObuBase {
   AudioElementObu(AudioElementObu&& other) = default;
 
   /*!\brief Destructor. */
-  ~AudioElementObu() override {}
+  ~AudioElementObu() override = default;
 
   friend bool operator==(const AudioElementObu& lhs,
                          const AudioElementObu& rhs) = default;

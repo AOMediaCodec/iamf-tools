@@ -12,7 +12,6 @@
 #include "iamf/mix_presentation.h"
 
 #include <cstdint>
-#include <cstring>
 #include <string>
 #include <vector>
 
@@ -29,18 +28,6 @@
 namespace iamf_tools {
 
 namespace {
-
-absl::Status WriteStringAsIamfString(const std::string& data,
-                                     WriteBitBuffer& wb) {
-  if (data.size() > kIamfMaxStringSize) {
-    return absl::InvalidArgumentError("");
-  }
-  IamfString output_string;
-  std::memset(&output_string, 0, kIamfMaxStringSize);
-  memcpy(&output_string, data.data(), data.size());
-  RETURN_IF_NOT_OK(wb.WriteString(output_string));
-  return absl::OkStatus();
-}
 
 absl::Status ValidateUniqueAudioElementIds(
     const std::vector<MixPresentationSubMix>& sub_mixes) {
@@ -85,8 +72,8 @@ absl::Status ValidateAndWriteSubMixAudioElement(
   RETURN_IF_NOT_OK(wb.WriteUleb128(element.audio_element_id));
   for (const auto& mix_presentation_element_annotation :
        element.mix_presentation_element_annotations) {
-    RETURN_IF_NOT_OK(WriteStringAsIamfString(
-        mix_presentation_element_annotation.audio_element_friendly_label, wb));
+    RETURN_IF_NOT_OK(wb.WriteString(
+        mix_presentation_element_annotation.audio_element_friendly_label));
   }
 
   // Write out `rendering_config`.
@@ -132,10 +119,6 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
                            layout.loudness_layout.specific_layout)
                            .Write(wb));
       break;
-    default:
-      // This should never happen because `layout_type` is a 2 bit enumeration
-      // and the switch statement has case statements for each of the 4 values.
-      return absl::UnknownError("");
   }
 
   // Write the `loudness` portion of a `MixPresentationLayout`.
@@ -205,8 +188,8 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
     RETURN_IF_NOT_OK(ValidateAndWriteLayout(layout, found_stereo_layout, wb));
   }
   if (!found_stereo_layout) {
-    LOG(ERROR) << "Every sub-mix must have a stereo layout.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Every sub-mix must have a stereo layout.");
   }
 
   return absl::OkStatus();
@@ -214,7 +197,8 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
 
 absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
   if (num_sub_mixes == 0) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Expected a non-zero number of sub-mixes.");
   }
   return absl::OkStatus();
 }
@@ -276,10 +260,8 @@ absl::Status MixPresentationObu::GetNumChannelsFromLayout(
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
     default:
-      LOG(ERROR) << "Unknown how many channels for reserved or out of bounds "
-                    "layout_type="
-                 << loudness_layout.layout_type;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown layout_type= ", loudness_layout.layout_type));
   }
 }
 
@@ -292,7 +274,7 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
       "language_labels", language_labels_.size(), count_label_));
   for (const auto& language_label : language_labels_) {
-    RETURN_IF_NOT_OK(WriteStringAsIamfString(language_label, wb));
+    RETURN_IF_NOT_OK(wb.WriteString(language_label));
   }
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual("mix presentation annotations",
@@ -300,8 +282,8 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
                                            count_label_));
   for (const auto& mix_presentation_annotation :
        mix_presentation_annotations_) {
-    RETURN_IF_NOT_OK(WriteStringAsIamfString(
-        mix_presentation_annotation.mix_presentation_friendly_label, wb));
+    RETURN_IF_NOT_OK(wb.WriteString(
+        mix_presentation_annotation.mix_presentation_friendly_label));
   }
 
   RETURN_IF_NOT_OK(wb.WriteUleb128(num_sub_mixes_));
@@ -317,8 +299,6 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
 
   return absl::OkStatus();
 }
-
-MixPresentationObu::~MixPresentationObu() {}
 
 void LoudspeakersSsConventionLayout::Print() const {
   LOG(INFO) << "        sound_system= " << sound_system;

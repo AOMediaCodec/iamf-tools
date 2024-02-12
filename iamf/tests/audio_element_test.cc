@@ -91,7 +91,7 @@ class AudioElementObuTestBase : public ObuTestBase {
                           std::move(param_definition)});
   }
 
-  ~AudioElementObuTestBase() {}
+  ~AudioElementObuTestBase() = default;
 
  protected:
   void Init() override {

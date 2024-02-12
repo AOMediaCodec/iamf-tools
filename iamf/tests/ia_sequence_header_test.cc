@@ -49,7 +49,7 @@ class IASequenceHeaderObuTestBase : public ObuTestBase {
             .additional_profile = ProfileVersion::kIamfSimpleProfile,
         }) {}
 
-  ~IASequenceHeaderObuTestBase() override {}
+  ~IASequenceHeaderObuTestBase() override = default;
 
  protected:
   void Init() override {

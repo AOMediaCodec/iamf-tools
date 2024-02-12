@@ -66,8 +66,7 @@ absl::Status CopyCodecId(
         input_codec_config.deprecated_codec_id());
     return absl::OkStatus();
   } else {
-    LOG(ERROR) << "Missing `codec_id` field.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Missing `codec_id` field.");
   }
 }
 
@@ -140,8 +139,7 @@ absl::Status GenerateLpcmDecoderConfig(
     const iamf_tools_cli_proto::CodecConfig& user_codec_config,
     LpcmDecoderConfig& obu_decoder_config) {
   if (!user_codec_config.has_decoder_config_lpcm()) {
-    LOG(ERROR) << "Missing LPCM decoder config";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Missing LPCM decoder config.");
   }
   const auto& lpcm_metadata = user_codec_config.decoder_config_lpcm();
   switch (lpcm_metadata.sample_format_flags()) {
@@ -154,7 +152,9 @@ absl::Status GenerateLpcmDecoderConfig(
       obu_decoder_config.sample_format_flags_ = kLpcmLittleEndian;
       break;
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown sample_format_flags= ",
+                       lpcm_metadata.sample_format_flags()));
   }
 
   obu_decoder_config.sample_rate_ = lpcm_metadata.sample_rate();
@@ -168,8 +168,7 @@ absl::Status GenerateOpusDecoderConfig(
     const iamf_tools_cli_proto::CodecConfig& user_codec_config,
     OpusDecoderConfig& obu_decoder_config) {
   if (!user_codec_config.has_decoder_config_opus()) {
-    LOG(ERROR) << "Missing Opus decoder config";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Missing Opus decoder config.");
   }
   const auto& opus_metadata = user_codec_config.decoder_config_opus();
 
@@ -195,7 +194,7 @@ absl::Status CopyStreamInfo(
   RETURN_IF_NOT_OK(Uint32ToUint16(user_stream_info.maximum_block_size(),
                                   obu_stream_info.maximum_block_size));
   obu_stream_info.minimum_frame_size = user_stream_info.minimum_frame_size();
-  obu_stream_info.maximum_frame_size = user_stream_info.maximum_frame_size(),
+  obu_stream_info.maximum_frame_size = user_stream_info.maximum_frame_size();
   obu_stream_info.sample_rate = user_stream_info.sample_rate();
 
   RETURN_IF_NOT_OK(Uint32ToUint8(user_stream_info.number_of_channels(),
@@ -204,10 +203,11 @@ absl::Status CopyStreamInfo(
                                  obu_stream_info.bits_per_sample));
   obu_stream_info.total_samples_in_stream =
       user_stream_info.total_samples_in_stream();
-  if (user_stream_info.md5_signature().size() != 16) {
-    LOG(ERROR) << "Expected a 16 byte MD5 signature. Actual size: "
-               << user_stream_info.md5_signature().size();
-    return absl::InvalidArgumentError("");
+  if (user_stream_info.md5_signature().size() !=
+      obu_stream_info.md5_signature.size()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected a 16 byte MD5 signature. Actual size: ",
+                     user_stream_info.md5_signature().size()));
   }
   std::transform(user_stream_info.md5_signature().begin(),
                  user_stream_info.md5_signature().end(),
@@ -220,8 +220,7 @@ absl::Status GenerateFlacDecoderConfig(
     const iamf_tools_cli_proto::CodecConfig& user_codec_config,
     FlacDecoderConfig& obu_decoder_config) {
   if (!user_codec_config.has_decoder_config_flac()) {
-    LOG(ERROR) << "Missing FLAC decoder config";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Missing FLAC decoder config.");
   }
 
   const auto& flac_metadata = user_codec_config.decoder_config_flac();
@@ -246,8 +245,7 @@ absl::Status GenerateFlacDecoderConfig(
         FlacMetaBlockHeader::kFlacStreamInfo) {
       // Stream info has semantic meaning for IAMF. Copy in all fields.
       if (!metadata_block.has_stream_info()) {
-        LOG(ERROR) << "Missing FLAC stream info";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError("Missing FLAC stream info.");
       }
 
       FlacMetaBlockStreamInfo obu_stream_info;
@@ -257,8 +255,7 @@ absl::Status GenerateFlacDecoderConfig(
     } else {
       // For most blocks just copy in the payload.
       if (!metadata_block.has_generic_block()) {
-        LOG(ERROR) << "Missing generic block";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError("Missing generic block.");
       }
 
       obu_metadata_block.payload = std::vector<uint8_t>(
@@ -281,8 +278,7 @@ absl::Status GenerateAacDecoderConfig(
     const iamf_tools_cli_proto::CodecConfig& user_codec_config,
     AacDecoderConfig& obu_decoder_config) {
   if (!user_codec_config.has_decoder_config_aac()) {
-    LOG(ERROR) << "Missing AAC decoder config";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Missing AAC decoder config.");
   }
   const auto& aac_metadata = user_codec_config.decoder_config_aac();
 
@@ -298,6 +294,10 @@ absl::Status GenerateAacDecoderConfig(
   obu_decoder_config.buffer_size_db_ = aac_metadata.buffer_size_db();
   obu_decoder_config.max_bitrate_ = aac_metadata.max_bitrate();
   obu_decoder_config.average_bit_rate_ = aac_metadata.average_bit_rate();
+
+  if (!aac_metadata.has_decoder_specific_info()) {
+    return absl::InvalidArgumentError("Missing AAC decoder specific info.");
+  }
   RETURN_IF_NOT_OK(Uint32ToUint8(
       aac_metadata.decoder_specific_info()
           .decoder_specific_info_descriptor_tag(),
@@ -380,8 +380,10 @@ absl::Status CodecConfigGenerator::Generate(
           GenerateAacDecoderConfig(input_codec_config, aac_decoder_config));
       obu_codec_config.decoder_config = aac_decoder_config;
     } else {
-      LOG(ERROR) << "Unsupported codec with codec_id=" << obu_codec_id;
-      return absl::InvalidArgumentError("");
+      // This should not be possible because `CopyCodecId` would have already
+      // detected the error.
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported codec with codec_id= ", obu_codec_id));
     }
 
     CodecConfigObu obu(

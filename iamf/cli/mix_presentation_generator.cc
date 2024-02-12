@@ -98,9 +98,9 @@ absl::Status FillRenderingConfig(
           kHeadphonesRenderingModeBinaural;
       break;
     default:
-      LOG(ERROR) << "Invalid headphones rendering mode: "
-                 << input_rendering_config.headphones_rendering_mode();
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown headphones_rendering_mode= ",
+                       input_rendering_config.headphones_rendering_mode()));
   }
 
   RETURN_IF_NOT_OK(Uint32ToUint8(input_rendering_config.reserved(),
@@ -182,10 +182,11 @@ absl::Status FillLayouts(
   sub_mix.num_layouts = input_sub_mix.num_layouts();
 
   if (input_sub_mix.layouts().size() != input_sub_mix.num_layouts()) {
-    LOG(ERROR) << "Expected " << input_sub_mix.num_layouts()
-               << " layouts in the Mix Presentation OBU user input. Found "
-               << input_sub_mix.layouts().size();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Inconsistent number of layouts in user input. "
+        "input_sub_mix.num_layouts()= ",
+        input_sub_mix.num_layouts(), " vs  input_sub_mix.layouts().size()= ",
+        input_sub_mix.layouts().size()));
   }
 
   // Reserve the layouts vector and copy in the layouts.
@@ -230,9 +231,8 @@ absl::Status FillLayouts(
         break;
       }
       default:
-        LOG(ERROR) << "Invalid layout type: "
-                   << input_loudness_layout.layout_type();
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Unknown layout_type= ", input_loudness_layout.layout_type()));
     }
 
     RETURN_IF_NOT_OK(MixPresentationGenerator::CopyInfoType(

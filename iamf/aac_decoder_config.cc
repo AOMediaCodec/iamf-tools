@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
+#include "iamf/obu_util.h"
 #include "iamf/write_bit_buffer.h"
 #include "libSYS/include/machine_type.h"
 
@@ -26,59 +27,42 @@ namespace iamf_tools {
 namespace {
 // Validates the `AacDecoderConfig`.
 absl::Status ValidatePayload(const AacDecoderConfig& decoder_config) {
-  if (decoder_config.decoder_config_descriptor_tag_ != 0x04) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid decoder_config_descriptor_tag= ",
-                     decoder_config.decoder_config_descriptor_tag_));
-  }
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.decoder_config_descriptor_tag_,
+                                 AacDecoderConfig::kDecoderConfigDescriptorTag,
+                                 "decoder_config_descriptor_tag"));
   // IAMF restricts several fields.
-  if (decoder_config.object_type_indication_ != 0x40) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid object_type_indication= ",
-                     decoder_config.object_type_indication_));
-  }
-  if (decoder_config.stream_type_ != 0x05) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid stream_type= ", decoder_config.stream_type_));
-  }
-  if (decoder_config.upstream_ != 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid upstream= ", decoder_config.upstream_));
-  }
-  if (decoder_config.decoder_specific_info_.decoder_specific_info_tag != 0x05) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid decoder_specific_info_tag= ",
-        decoder_config.decoder_specific_info_.decoder_specific_info_tag));
-  }
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.object_type_indication_,
+                                 AacDecoderConfig::kObjectTypeIndication,
+                                 "object_type_indication"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.stream_type_,
+                                 AacDecoderConfig::kStreamType, "stream_type"));
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.upstream_,
+                                 AacDecoderConfig::kUpstream, "upstream"));
+  RETURN_IF_NOT_OK(ValidateEqual(
+      decoder_config.decoder_specific_info_.decoder_specific_info_tag,
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      "decoder_specific_info_tag"));
 
   const AudioSpecificConfig& audio_specific_config =
       decoder_config.decoder_specific_info_.audio_specific_config;
 
-  if (audio_specific_config.audio_object_type_ != 2) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_object_type= ",
-                     audio_specific_config.audio_object_type_));
-  }
-  if (audio_specific_config.channel_configuration_ != 2) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid channel_configuration= ",
-                     audio_specific_config.channel_configuration_));
-  }
-  if (audio_specific_config.ga_specific_config_.frame_length_flag != 0) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid frame_length_flag= ",
-        audio_specific_config.ga_specific_config_.frame_length_flag));
-  }
-  if (audio_specific_config.ga_specific_config_.depends_on_core_coder != 0) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid depends_on_core_coder= ",
-        audio_specific_config.ga_specific_config_.depends_on_core_coder));
-  }
-  if (audio_specific_config.ga_specific_config_.extension_flag != 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid extension_flag= ",
-                     audio_specific_config.ga_specific_config_.extension_flag));
-  }
+  RETURN_IF_NOT_OK(ValidateEqual(audio_specific_config.audio_object_type_,
+                                 AudioSpecificConfig::kAudioObjectType,
+                                 "audio_object_type"));
+  RETURN_IF_NOT_OK(ValidateEqual(audio_specific_config.channel_configuration_,
+                                 AudioSpecificConfig::kChannelConfiguration,
+                                 "channel_configuration"));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(audio_specific_config.ga_specific_config_.frame_length_flag,
+                    AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag,
+                    "frame_length_flag"));
+  RETURN_IF_NOT_OK(ValidateEqual(
+      audio_specific_config.ga_specific_config_.depends_on_core_coder,
+      AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder,
+      "depends_on_core_coder"));
+  RETURN_IF_NOT_OK(ValidateEqual(
+      audio_specific_config.ga_specific_config_.extension_flag,
+      AudioSpecificConfig::GaSpecificConfig::kExtensionFlag, "extension_flag"));
   return absl::OkStatus();
 }
 

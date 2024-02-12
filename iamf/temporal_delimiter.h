@@ -30,9 +30,7 @@ class TemporalDelimiterObu : public ObuBase {
   TemporalDelimiterObu(TemporalDelimiterObu&& other) = default;
 
   /*!\brief Destructor. */
-  ~TemporalDelimiterObu() override {
-    // There is no memory to clean up for a Temporal Delimiter OBU.
-  }
+  ~TemporalDelimiterObu() override = default;
 
   /*\!brief Prints logging information about the OBU.*/
   void PrintObu() const override {
