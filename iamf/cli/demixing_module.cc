@@ -878,8 +878,9 @@ DemixingModule::DemixingModule(
 
 absl::Status DemixingModule::DownMixSamplesToSubstreams(
     DecodedUleb128 audio_element_id, const DownMixingParams& down_mixing_params,
-    size_t num_time_ticks, LabelSamplesMap& input_label_to_samples,
-    std::list<SubstreamData>* substream_data_list) const {
+    LabelSamplesMap& input_label_to_samples,
+    absl::flat_hash_map<uint32_t, SubstreamData>&
+        substream_id_to_substream_data) const {
   if (init_status_ != absl::OkStatus()) {
     LOG(ERROR) << "Cannot call `DownMixSamplesToSubstreams()` when "
                << "initialization failed.";
@@ -893,6 +894,8 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
   for (const auto& down_mixer : *down_mixers) {
     RETURN_IF_NOT_OK(down_mixer(down_mixing_params, &input_label_to_samples));
   }
+
+  const size_t num_time_ticks = input_label_to_samples.begin()->second.size();
 
   for (const auto& [substream_id, output_channel_labels] :
        audio_element_with_data.substream_id_to_labels) {
@@ -927,32 +930,28 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     }
 
     // Find the `SubstreamData` with this `substream_id`.
-    bool found = false;
-    for (auto& iter : *substream_data_list) {
-      if (iter.substream_id != substream_id) {
-        continue;
-      }
-
-      // Add all down mixed samples to both queues.
-      found = true;
-      for (const auto& channel_samples : substream_samples) {
-        iter.samples_obu.push_back(channel_samples);
-
-        // Apply output gains to the samples going to the encoder.
-        std::vector<int32_t> attenuated_channel_samples(channel_samples.size());
-        for (int i = 0; i < channel_samples.size(); ++i) {
-          RETURN_IF_NOT_OK(ClipDoubleToInt32(
-              static_cast<double>(channel_samples[i]) / output_gains_linear[i],
-              attenuated_channel_samples[i]));
-        }
-        iter.samples_encode.push_back(attenuated_channel_samples);
-      }
-      break;
-    }
-    if (!found) {
-      LOG(ERROR) << "Failed to find subtream " << substream_id
-                 << " in `substream_data_list`.";
+    auto substream_data_iter =
+        substream_id_to_substream_data.find(substream_id);
+    if (substream_data_iter == substream_id_to_substream_data.end()) {
+      LOG(ERROR) << "Failed to find subtream data for substream ID= "
+                 << substream_id;
       return absl::UnknownError("");
+    }
+    auto& substream_data = substream_data_iter->second;
+
+    // Add all down mixed samples to both queues.
+
+    for (const auto& channel_samples : substream_samples) {
+      substream_data.samples_obu.push_back(channel_samples);
+
+      // Apply output gains to the samples going to the encoder.
+      std::vector<int32_t> attenuated_channel_samples(channel_samples.size());
+      for (int i = 0; i < channel_samples.size(); ++i) {
+        RETURN_IF_NOT_OK(ClipDoubleToInt32(
+            static_cast<double>(channel_samples[i]) / output_gains_linear[i],
+            attenuated_channel_samples[i]));
+      }
+      substream_data.samples_encode.push_back(attenuated_channel_samples);
     }
   }
 
@@ -989,12 +988,16 @@ absl::Status DemixingModule::DemixAudioSamples(
     LOG(INFO) << "  Samples has " << time_to_labeled_frame.size() << " frames";
     LOG(INFO) << "  Decoded Samples has "
               << time_to_labeled_decoded_frame.size() << " frames";
-    for (const auto& [label, samples] :
-         time_to_labeled_frame.begin()->second.label_to_samples) {
-      const auto& decoded_samples =
-          time_to_labeled_decoded_frame.begin()->second.label_to_samples[label];
-      LOG(INFO) << "  Channel " << label << ":\tframe size= " << samples.size()
-                << "; decoded frame size= " << decoded_samples.size();
+    if (!time_to_labeled_frame.empty() &&
+        !time_to_labeled_decoded_frame.empty()) {
+      for (const auto& [label, samples] :
+           time_to_labeled_frame.begin()->second.label_to_samples) {
+        const auto& decoded_samples = time_to_labeled_decoded_frame.begin()
+                                          ->second.label_to_samples[label];
+        LOG(INFO) << "  Channel " << label
+                  << ":\tframe size= " << samples.size()
+                  << "; decoded frame size= " << decoded_samples.size();
+      }
     }
   }
 

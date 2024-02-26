@@ -292,6 +292,17 @@ cc_test(
     srcs = ["read_bit_buffer_test.cc"],
     deps = [
         "//iamf:read_bit_buffer",
+        "@com_google_absl//absl/status",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "bit_buffer_util_test",
+    srcs = ["bit_buffer_util_test.cc"],
+    deps = [
+        "//iamf:bit_buffer_util",
+        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -157,8 +157,8 @@ WavWriter::~WavWriter() {
     WriteWavHeader32Bit(file_, total_samples_written_, sample_rate_hz_,
                         num_channels_);
   } else {
-    LOG(WARNING) << "This implementation does not support writing 32 bit wav "
-                    "files.";
+    LOG(WARNING) << "This implementation does not support writing "
+                 << bit_depth_ << "-bit wav files.";
     return;
   }
   std::fclose(file_);

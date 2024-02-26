@@ -12,12 +12,10 @@
 #include "iamf/cli/audio_frame_generator.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <list>
 #include <string>
 #include <vector>
 
-// Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
 #include "gtest/gtest.h"
 #include "iamf/audio_frame.h"
@@ -104,17 +102,14 @@ void TestGenerateAudioFramesWithoutParameters(
   const std::list<ParameterBlockWithData>& parameter_blocks = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
+  const std::string output_wav_directory = "/dev/null";
 
+  DemixingModule demixing_module(user_metadata, audio_elements);
   GlobalTimingModule global_timing_module(user_metadata);
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
           .ok());
-
-  const auto input_wav_directory =
-      std::filesystem::current_path() / std::string("iamf/cli/testdata");
-  const std::string output_wav_directory = "/dev/null";
-
   ParametersManager parameters_manager(audio_elements, parameter_blocks);
   ASSERT_TRUE(parameters_manager.Initialize().ok());
 
@@ -122,13 +117,39 @@ void TestGenerateAudioFramesWithoutParameters(
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), audio_elements,
-      input_wav_directory, output_wav_directory,
-      /*file_name_prefix=*/"test", parameters_manager);
+      output_wav_directory,
+      /*file_name_prefix=*/"test", demixing_module, parameters_manager,
+      global_timing_module);
   std::list<AudioFrameWithData> audio_frames = {};
-  DemixingModule demixing_module(user_metadata, audio_elements);
-  EXPECT_TRUE(audio_frame_generator
-                  .Generate(demixing_module, global_timing_module, audio_frames)
-                  .ok());
+
+  // Initialize, iteratively add samples, generate frames, and finalize.
+  EXPECT_TRUE(audio_frame_generator.Initialize().ok());
+
+  // Add only one frame.
+  int frame_count = 0;
+  const std::vector<int32_t> frame_0_l2 = {1 << 16, 2 << 16, 3 << 16, 4 << 16,
+                                           5 << 16, 6 << 16, 7 << 16, 8 << 16};
+  const std::vector<int32_t> frame_0_r2 = {
+      65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
+      65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
+  while (!audio_frame_generator.Finished()) {
+    for (const auto& audio_frame_metadata :
+         user_metadata.audio_frame_metadata()) {
+      EXPECT_TRUE(audio_frame_generator
+                      .AddSamples(audio_frame_metadata.audio_element_id(), "L2",
+                                  frame_count == 0 ? frame_0_l2
+                                                   : std::vector<int32_t>())
+                      .ok());
+      EXPECT_TRUE(audio_frame_generator
+                      .AddSamples(audio_frame_metadata.audio_element_id(), "R2",
+                                  frame_count == 0 ? frame_0_r2
+                                                   : std::vector<int32_t>())
+                      .ok());
+    }
+    EXPECT_TRUE(audio_frame_generator.GenerateFrames().ok());
+    frame_count++;
+  }
+  EXPECT_TRUE(audio_frame_generator.Finalize(audio_frames).ok());
 
   // Validate the generated audio frames.
   ValidateAudioFrames(audio_frames, expected_audio_frames);
@@ -138,7 +159,7 @@ void ConfigureOneStereoSubstreamLittleEndian(
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        wav_filename: "stereo_8_samples_48khz_s16le.wav"
+        wav_filename: ""
         samples_to_trim_at_end: 0
         samples_to_trim_at_start: 0
         audio_element_id: 300
@@ -226,32 +247,6 @@ TEST(AudioFrameGenerator, AllowsOutputToHaveHigherBitDepthThanInput) {
             0, 0, 3, 0, 0, 0, 253, 255, 0, 0, 4, 0, 0, 0, 252, 255,
             0, 0, 5, 0, 0, 0, 251, 255, 0, 0, 6, 0, 0, 0, 250, 255,
             0, 0, 7, 0, 0, 0, 249, 255, 0, 0, 8, 0, 0, 0, 248, 255}),
-       .start_timestamp = 0,
-       .end_timestamp = 8,
-       .down_mixing_params = {.in_bitstream = false}});
-
-  TestGenerateAudioFramesWithoutParameters(user_metadata,
-                                           expected_audio_frames);
-}
-
-TEST(AudioFrameGenerator, ReorderChannelLabels) {
-  iamf_tools_cli_proto::UserMetadata user_metadata = {};
-  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
-
-  // Reconfigure `channel_labels` to treat the first channel as R2 and
-  // the second channel as L2.
-  user_metadata.mutable_audio_frame_metadata(0)
-      ->mutable_channel_labels()
-      ->SwapElements(0, 1);
-
-  // Note that the channel designated as "L2" precedes the "R2" channel in the
-  // bitstream.
-  std::list<AudioFrameWithData> expected_audio_frames = {};
-  expected_audio_frames.push_back(
-      {.obu = AudioFrameObu(
-           ObuHeader(), 0,
-           {255, 255, 1, 0, 254, 255, 2, 0, 253, 255, 3, 0, 252, 255, 4, 0,
-            251, 255, 5, 0, 250, 255, 6, 0, 249, 255, 7, 0, 248, 255, 8, 0}),
        .start_timestamp = 0,
        .end_timestamp = 8,
        .down_mixing_params = {.in_bitstream = false}});

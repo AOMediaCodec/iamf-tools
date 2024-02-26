@@ -20,8 +20,6 @@ exports_files([
     "sine_1000_48khz_512ms.wav",
     "sine_1000_16khz_512ms.wav",
     "sine_1000_16khz_512ms_s32le.wav",
-    "Mechanism_5s_dmix_1024.txt",
-    "Mechanism_5s_dmix_960.txt",
     "dialog_clip_stereo.wav",
 ] + glob(
     [

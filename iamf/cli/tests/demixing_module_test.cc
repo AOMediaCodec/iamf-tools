@@ -141,22 +141,22 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
                       int expected_number_of_down_mixers) {
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
-    EXPECT_TRUE(demixing_module_
-                    ->DownMixSamplesToSubstreams(
-                        audio_element_id_, down_mixing_params,
-                        /*num_time_ticks=*/
-                        input_label_to_samples_.begin()->second.size(),
-                        input_label_to_samples_, &substream_data_list_)
-                    .ok());
+    EXPECT_TRUE(
+        demixing_module_
+            ->DownMixSamplesToSubstreams(audio_element_id_, down_mixing_params,
+                                         input_label_to_samples_,
+                                         substream_id_to_substream_data_)
+            .ok());
 
-    for (auto& substream_data : substream_data_list_) {
+    for (const auto& [substream_id, substream_data] :
+         substream_id_to_substream_data_) {
       // Copy the output queue to a vector for comparison.
       std::vector<std::vector<int32_t>> output_samples;
       std::copy(substream_data.samples_obu.begin(),
                 substream_data.samples_obu.end(),
                 std::back_inserter(output_samples));
       EXPECT_EQ(output_samples,
-                substream_id_to_expected_samples_[substream_data.substream_id]);
+                substream_id_to_expected_samples_[substream_id]);
     }
   }
 
@@ -178,14 +178,15 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     const uint32_t substream_id = substream_id_to_labels_.size();
 
     substream_id_to_labels_[substream_id] = requested_output_labels;
-    substream_data_list_.push_back({.substream_id = substream_id});
+    substream_id_to_substream_data_[substream_id] = {.substream_id =
+                                                         substream_id};
 
     substream_id_to_expected_samples_[substream_id] = expected_output_smples;
   }
 
   LabelSamplesMap input_label_to_samples_;
 
-  std::list<SubstreamData> substream_data_list_;
+  absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data_;
 
   absl::flat_hash_map<uint32_t, std::vector<std::vector<int32_t>>>
       substream_id_to_expected_samples_;

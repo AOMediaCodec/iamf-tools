@@ -107,9 +107,6 @@ cc_test(
 cc_test(
     name = "audio_frame_generator_test",
     srcs = ["audio_frame_generator_test.cc"],
-    data = [
-        "//iamf/cli/testdata:stereo_8_samples_48khz_s16le.wav",
-    ],
     deps = [
         "//iamf:audio_frame",
         "//iamf:codec_config",

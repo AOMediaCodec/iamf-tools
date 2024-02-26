@@ -282,7 +282,16 @@ cc_library(
     srcs = ["read_bit_buffer.cc"],
     hdrs = ["read_bit_buffer.h"],
     deps = [
+        ":bit_buffer_util",
+        ":ia",
         "//iamf/cli:leb_generator",
         "@com_google_absl//absl/status",
     ],
+)
+
+cc_library(
+    name = "bit_buffer_util",
+    srcs = ["bit_buffer_util.cc"],
+    hdrs = ["bit_buffer_util.h"],
+    deps = ["@com_google_absl//absl/status"],
 )

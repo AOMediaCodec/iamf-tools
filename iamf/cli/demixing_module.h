@@ -13,7 +13,6 @@
 #ifndef CLI_DEMIXING_MODULE_H_
 #define CLI_DEMIXING_MODULE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <list>
@@ -105,18 +104,18 @@ class DemixingModule {
    * \param audio_element_id Audio Element ID of these substreams.
    * \param down_mixing_params Down mixing parameters to use. Ignored when
    *     there is no associated down-mixer.
-   * \param num_time_ticks Number of time ticks, i.e. the length of the samples
-   *     in the time dimension.
    * \param input_label_to_samples Samples in input channels organized by the
    *     channel labels.
-   * \param substream_data_list Output list of down-mixed substream data.
+   * \param substream_id_to_substream_data Mapping from substream IDs to
+   *     substream data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DownMixSamplesToSubstreams(
       DecodedUleb128 audio_element_id,
-      const DownMixingParams& down_mixing_params, size_t num_time_ticks,
+      const DownMixingParams& down_mixing_params,
       LabelSamplesMap& input_label_to_samples,
-      std::list<SubstreamData>* substream_data_list) const;
+      absl::flat_hash_map<uint32_t, SubstreamData>&
+          substream_id_to_substream_data) const;
 
   /*\!brief Demix audio samples.
    *

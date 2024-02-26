@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <limits>
 #include <list>
+#include <memory>
 #include <optional>
 #include <string>
 #include <system_error>
@@ -43,6 +44,7 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/wav_sample_provider.h"
 #include "iamf/codec_config.h"
 #include "iamf/ia.h"
 #include "iamf/ia_sequence_header.h"
@@ -144,15 +146,37 @@ absl::Status GenerateObus(
   RETURN_IF_NOT_OK(parameters_manager.Initialize());
 
   // Audio frames.
+  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
+  RETURN_IF_NOT_OK(
+      wav_sample_provider.Initialize(input_wav_directory, audio_elements));
+  DemixingModule demixing_module(user_metadata, audio_elements);
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), audio_elements,
-      input_wav_directory, output_wav_directory,
-      user_metadata.test_vector_metadata().file_name_prefix(),
-      parameters_manager);
-  DemixingModule demixing_module(user_metadata, audio_elements);
-  RETURN_IF_NOT_OK(audio_frame_generator.Generate(
-      demixing_module, global_timing_module, audio_frames));
+      output_wav_directory,
+      user_metadata.test_vector_metadata().file_name_prefix(), demixing_module,
+      parameters_manager, global_timing_module);
+
+  RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
+
+  while (!audio_frame_generator.Finished()) {
+    for (const auto& audio_frame_metadata :
+         user_metadata.audio_frame_metadata()) {
+      const auto audio_element_id = audio_frame_metadata.audio_element_id();
+      LabelSamplesMap labeled_samples;
+      RETURN_IF_NOT_OK(
+          wav_sample_provider.ReadFrames(audio_element_id, labeled_samples));
+
+      for (const auto& [channel_label, samples] : labeled_samples) {
+        RETURN_IF_NOT_OK(audio_frame_generator.AddSamples(
+            audio_element_id, channel_label, samples));
+      }
+    }
+
+    RETURN_IF_NOT_OK(audio_frame_generator.GenerateFrames());
+  }
+
+  RETURN_IF_NOT_OK(audio_frame_generator.Finalize(audio_frames));
 
   AudioFrameDecoder audio_frame_decoder(
       output_wav_directory,

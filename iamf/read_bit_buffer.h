@@ -36,34 +36,46 @@ class ReadBitBuffer {
   /*!\brief Destructor.*/
   ~ReadBitBuffer() = default;
 
-  /*!\brief Reads AND consumes the lower `num_bits` from buffer into `data`.
+  /*!\brief Reads upper `num_bits` from buffer into lower `num_bits` of `data`.
    *
-   * \param data Data from buffer will be written here.
-   * \param num_bits Number of lower bits of the data to read. Maximum value of
+   * \param num_bits Number of upper bits to read from buffer. Maximum value of
    *     64.
+   * \param data Data from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *     `num_bits > 64`. `absl::UnknownError()` if the `rb->bit_offset` is
    *     negative.
    */
-  absl::Status ReadUnsignedLiteral(uint64_t* data, int num_bits);
+  absl::Status ReadUnsignedLiteral(int num_bits, uint64_t* data);
+
+  /*!\brief Returns a `const` pointer to the underlying buffer.
+   *
+   * \return A `const` pointer to the underlying buffer.
+   */
+  const std::vector<uint8_t>& bit_buffer() const { return bit_buffer_; }
 
   /*!\brief Gets the offset in bits of the buffer.
    *
    * \return Offset in bits of the read buffer.
    */
-  int64_t bit_offset() const { return bit_buffer_offset_; }
+  int64_t buffer_bit_offset() const { return buffer_bit_offset_; }
 
   /*!\brief Checks whether the current data in the buffer is byte-aligned.
    *
    * \return `true` when the current data in the buffer is byte-aligned.
    */
-  bool IsByteAligned() const { return bit_buffer_offset_ % 8 == 0; }
+  bool IsByteAligned() const { return buffer_bit_offset_ % 8 == 0; }
+
+  /*!\brief Gets the offset in bits of the source.
+   *
+   * \return Offset in bits of the source.
+   */
+  int64_t source_bit_offset() const { return source_bit_offset_; }
 
   /*!\brief Loads data from source into the read buffer.
    *
    * Loads exactly enough bytes from `source_` into `bit_buffer_` such that
    * it contains at least `required_num_bits` bits. Load bits updates the
-   * `source_offset_` based on the number of bytes that were loaded into the
+   * `source_bit_offset` based on the number of bytes that were loaded into the
    * buffer.
    *
    * \return `absl::OkStatus()` on success.
@@ -71,7 +83,7 @@ class ReadBitBuffer {
   absl::Status LoadBits(int32_t required_num_bits);
 
   /*!\brief Empties the buffer.*/
-  absl::Status DiscardAllBits();
+  void DiscardAllBits();
 
   LebGenerator leb_generator_;
 
@@ -79,11 +91,11 @@ class ReadBitBuffer {
   // Read buffer.
   std::vector<uint8_t> bit_buffer_;
   // Specifies the next bit to consume in the `bit_buffer_`.
-  int64_t bit_buffer_offset_ = 0;
+  int64_t buffer_bit_offset_ = 0;
   // Pointer to the source data.
   std::vector<uint8_t>* source_;
-  // Specifies the next byte to consume from the source data `source_`.
-  int64_t source_offset_ = 0;
+  // Specifies the next bit to consume from the source data `source_`.
+  int64_t source_bit_offset_ = 0;
 };
 
 }  // namespace iamf_tools

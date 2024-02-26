@@ -182,9 +182,9 @@ absl::Status GenerateParameterDefinitions(
 }
 
 absl::Status LoudspeakerLayoutToChannels(
-    const ChannelAudioLayerConfig::LoudspeakerLayout loudpeaker_layout,
+    const ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
     ChannelNumbers* channels) {
-  switch (loudpeaker_layout) {
+  switch (loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::LoudspeakerLayout;
     case kLayoutMono:
       *channels = {1, 0, 0};
@@ -217,8 +217,8 @@ absl::Status LoudspeakerLayoutToChannels(
       *channels = {2, 0, 0};
       break;
     default:
-      LOG(ERROR) << "Invalid loudspeaker layout: " << loudpeaker_layout;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown loudspeaker_layout= ", loudspeaker_layout));
   }
   return absl::OkStatus();
 }
@@ -635,12 +635,10 @@ absl::Status CopyLoudspeakerLayout(
                      output_loudspeaker_layout)
              .ok()) {
       return absl::InvalidArgumentError(
-          absl::StrCat("Unknown loudspeaker layout=",
+          absl::StrCat("Unknown loudspeaker_layout= ",
                        input_layer_config.loudspeaker_layout()));
     }
     return absl::OkStatus();
-
-    return absl::UnknownError("");
   } else if (input_layer_config.has_deprecated_loudspeaker_layout()) {
     LOG(WARNING) << "Please upgrade the `deprecated_loudspeaker_layout` "
                     "field to the new "

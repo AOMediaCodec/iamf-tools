@@ -28,9 +28,6 @@
 namespace iamf_tools {
 
 namespace {
-/*\!brief IAMF spec requires a ULEB128 or an SLEB128 be encoded in <= 8 bytes.
- */
-inline constexpr int kMaxLeb128Size = 8;
 
 /*\!brief A general struct to represent an LEB128.
  *
