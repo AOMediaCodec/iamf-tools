@@ -5,9 +5,7 @@
 #include <string>
 #include <vector>
 
-// Placeholder for testing header.
 #include "absl/container/flat_hash_map.h"
-#include "absl/flags/flag.h"
 #include "gtest/gtest.h"
 #include "iamf/audio_frame.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -26,7 +24,7 @@ constexpr DecodedUleb128 kAudioElementId = 13;
 constexpr DecodedUleb128 kSubstreamId = 0;
 
 TEST(AudioFrameDecoderTest, NoAudioFrames) {
-  AudioFrameDecoder decoder(testing::TempDir(), "test");
+  AudioFrameDecoder decoder(::testing::TempDir(), "test");
 
   std::list<DecodedAudioFrame> decoded_audio_frames;
   EXPECT_TRUE(decoder.Decode({}, decoded_audio_frames).ok());
@@ -57,7 +55,7 @@ std::list<AudioFrameWithData> PrepareEncodedAudioFrames(
 }
 
 TEST(AudioFrameDecoderTest, DecodeLpcmFrame) {
-  AudioFrameDecoder decoder(testing::TempDir(), "test");
+  AudioFrameDecoder decoder(::testing::TempDir(), "test");
 
   // Encoded frames.
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;

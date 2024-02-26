@@ -6,15 +6,13 @@
 #include <utility>
 #include <vector>
 
-// Placeholder for testing header.
-#include "absl/flags/flag.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
 namespace {
 
 inline std::string GetTestWavPath() {
-  return (std::filesystem::path(testing::TempDir()) / "test.wav").string();
+  return (std::filesystem::path(::testing::TempDir()) / "test.wav").string();
 }
 
 constexpr int kNumChannels = 1;

@@ -99,7 +99,6 @@ cc_test(
         "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
         "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/flags:flag",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -499,7 +498,6 @@ cc_test(
     srcs = ["wav_writer_test.cc"],
     deps = [
         "//iamf/cli:wav_writer",
-        "@com_google_absl//absl/flags:flag",
         "@com_google_googletest//:gtest_main",
     ],
 )
