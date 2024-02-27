@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/ia.h"
 
 namespace iamf_tools {
 using absl::StatusCode::kInvalidArgument;
@@ -189,6 +190,108 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralRequestTooLarge) {
   uint64_t output_literal = 0;
   EXPECT_EQ(rb_->ReadUnsignedLiteral(65, &output_literal).code(),
             kInvalidArgument);
+}
+
+// ---- ReadULeb128 Tests -----
+
+// Successful Uleb128 reads.
+TEST_F(ReadBitBufferTest, ReadUleb128Read5Bytes) {
+  source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
+  // Expect to read 40 bits.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 40);
+}
+
+TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
+  source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  // Buffer has a one in the most significant position of each byte, which tells
+  // us to continue reading to the next byte. The 4th byte tells us to read the
+  // next byte, but there is no 5th byte in the buffer - however, there is in
+  // the source, so we load the 5th byte from source into the buffer, which is
+  // then output to the DecodedLeb128.
+  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
+  // Expect that the buffer_bit_offset was reset to 0 when LoadBits() was called
+  // a second time; it is then incremented by 8 as we read the 5th byte.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 8);
+}
+
+TEST_F(ReadBitBufferTest, ReadUleb128TwoBytes) {
+  source_data_ = {0x81, 0x03, 0x81, 0x83, 0x0f};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  // Expect the buffer to read only the first two bytes, since 0x03 does not
+  // have a one in the most significant spot of the byte.
+  EXPECT_EQ(output_leb, 0b00000110000001);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroes) {
+  source_data_ = {0x81, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  // Expect the buffer to read every byte.
+  EXPECT_EQ(output_leb, 0b1);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 64);
+}
+
+// Uleb128 read errors.
+TEST_F(ReadBitBufferTest, ReadUleb128Overflow) {
+  source_data_ = {0x80, 0x80, 0x80, 0x80, 0x10};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kInvalidArgument);
+  // Expect to buffer_bit_offset to be reset if there is an overflow error.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+TEST_F(ReadBitBufferTest, ReadUleb128TooManyBytes) {
+  source_data_ = {0x80, 0x83, 0x81, 0x83, 0x80, 0x80, 0x80, 0x80};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kInvalidArgument);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
+  source_data_ = {0x80, 0x80, 0x80, 0x80};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  // Buffer has a one in the most significant position of each byte, which tells
+  // us to continue reading to the next byte. The 4th byte tells us to read the
+  // next byte, but there is no 5th byte in neither the buffer nor the source.
+  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kResourceExhausted);
+  // Expect to buffer_bit_offset to be reset if there is a not enough data in
+  // the buffer.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
 }  // namespace

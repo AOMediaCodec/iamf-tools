@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/ia.h"
 
 namespace iamf_tools {
 
@@ -46,6 +47,19 @@ class ReadBitBuffer {
    *     negative.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint64_t* data);
+
+  /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
+   *
+   * \param uleb128 Decoded unsigned leb128 from buffer will be written here.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     the consumed data from the buffer does not fit into the 32 bits of
+   *     uleb128, or if the data in the buffer requires that we read more than
+   *     `kMaxLeb128Size` bytes. `absl::ResourceExhaustedError()` if the buffer
+   *     is exhausted before the uleb128 is fully read and source does not have
+   *     the requisite data to complete the uleb128. `absl::UnknownError()` if
+   *     the `rb->bit_offset` is negative.
+   */
+  absl::Status ReadULeb128(DecodedUleb128* uleb128);
 
   /*!\brief Returns a `const` pointer to the underlying buffer.
    *

@@ -291,6 +291,7 @@ cc_test(
     name = "read_bit_buffer_test",
     srcs = ["read_bit_buffer_test.cc"],
     deps = [
+        "//iamf:ia",
         "//iamf:read_bit_buffer",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",

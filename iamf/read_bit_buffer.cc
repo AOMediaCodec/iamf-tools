@@ -125,6 +125,48 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
   return absl::OkStatus();
 }
 
+/*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
+ *
+ *
+ * In accordance with the encoder implementation, this function will consume at
+ * most `kMaxLeb128Size` bytes of the read buffer.
+ *
+ * \param uleb128 Decoded unsigned leb128 from buffer will be written here.
+ * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+ *     the consumed value from the buffer does not fit into the 32 bits of
+ * uleb128, or if the buffer is exhausted before the uleb128 is fully read.
+ * `absl::UnknownError()` if the `rb->bit_offset` is negative.
+ */
+absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128* uleb128) {
+  int64_t original_buffer_bit_offset = buffer_bit_offset_;
+  uint64_t accumulated_value = 0;
+  uint64_t byte = 0;
+  bool terminal_block = false;
+  for (int i = 0; i < kMaxLeb128Size; ++i) {
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, &byte));
+    accumulated_value |= (byte & 0x7f) << (7 * i);
+    terminal_block = ((byte & 0x80) == 0);
+    if ((i == (kMaxLeb128Size - 1)) && !terminal_block) {
+      buffer_bit_offset_ = original_buffer_bit_offset;
+      return absl::InvalidArgumentError(
+          "Have read the max allowable bytes for a uleb128, but bitstream "
+          "says to keep reading.");
+    }
+    if (accumulated_value > UINT32_MAX) {
+      buffer_bit_offset_ = original_buffer_bit_offset;
+      return absl::InvalidArgumentError(
+          "Overflow - data does not fit into a DecodedUleb128, i.e. a "
+          "uint32_t");
+    }
+    if (terminal_block) {
+      break;
+    }
+  }
+  // Accumulated value is guaranteed to fit into a uint_32_t at this stage.
+  *uleb128 = static_cast<uint64_t>(accumulated_value);
+  return absl::OkStatus();
+}
+
 // Loads enough bits from source such that there are at least n =
 // `required_num_bits` in `bit_buffer_` after completion. Returns an error if
 // there are not enough bits in `source_` to fulfill this request. If `source_`
