@@ -88,7 +88,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedAllBits) {
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, output_literal).ok());
   EXPECT_EQ(output_literal, 0xabcdef);
   EXPECT_EQ(rb_->buffer_bit_offset(), 24);
 }
@@ -101,12 +101,12 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedMultipleReads) {
   EXPECT_EQ(rb_->bit_buffer().size(), 4);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, output_literal).ok());
   EXPECT_EQ(output_literal, 0xabcdef);
   EXPECT_EQ(rb_->buffer_bit_offset(), 24);
 
   // Second read to same output integer - will be overwritten.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output_literal).ok());
   EXPECT_EQ(output_literal, 0xff);
   EXPECT_EQ(rb_->buffer_bit_offset(), 32);
 }
@@ -121,7 +121,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedNotEnoughBitsInBuffer) {
   uint64_t output_literal = 0;
   // We request more bits than there are in the buffer. ReadUnsignedLiteral will
   // load more bits from source into the buffer & then return those bits.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(32, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(32, output_literal).ok());
   // Output value should be the same as if we had called loadbits(32) &
   // readunsignedliteral(32).
   EXPECT_EQ(output_literal, 0xabcdefff);
@@ -142,7 +142,7 @@ TEST_F(ReadBitBufferTest,
   // We request more bits than there are in the buffer. ReadUnsignedLiteral will
   // attempt to load more bits from source into the buffer, but that will fail,
   // since there aren't enough bits in the source either.
-  EXPECT_EQ(rb_->ReadUnsignedLiteral(32, &output_literal).code(),
+  EXPECT_EQ(rb_->ReadUnsignedLiteral(32, output_literal).code(),
             kResourceExhausted);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
@@ -155,11 +155,11 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralNotByteAlignedMultipleReads) {
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, output_literal).ok());
   EXPECT_EQ(output_literal, 0b110001);
   EXPECT_EQ(rb_->buffer_bit_offset(), 6);
 
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
   EXPECT_EQ(output_literal, 0b0110000010);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -172,13 +172,13 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralBufferBitOffsetNotByteAligned) {
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, output_literal).ok());
   EXPECT_EQ(output_literal, 0b11);
   EXPECT_EQ(rb_->buffer_bit_offset(), 2);
 
   // Checks that bitwise reading is used when the num_bits requested is
   // byte-aligned but the buffer_bit_offset is not byte-aligned.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, &output_literal).ok());
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output_literal).ok());
   EXPECT_EQ(output_literal, 0b00010110);
   EXPECT_EQ(rb_->buffer_bit_offset(), 10);
 }
@@ -188,7 +188,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralRequestTooLarge) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   uint64_t output_literal = 0;
-  EXPECT_EQ(rb_->ReadUnsignedLiteral(65, &output_literal).code(),
+  EXPECT_EQ(rb_->ReadUnsignedLiteral(65, output_literal).code(),
             kInvalidArgument);
 }
 
@@ -202,7 +202,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128Read5Bytes) {
   EXPECT_TRUE(rb_->LoadBits(40).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
   EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
   // Expect to read 40 bits.
   EXPECT_EQ(rb_->buffer_bit_offset(), 40);
@@ -220,7 +220,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
   // next byte, but there is no 5th byte in the buffer - however, there is in
   // the source, so we load the 5th byte from source into the buffer, which is
   // then output to the DecodedLeb128.
-  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
   EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
   // Expect that the buffer_bit_offset was reset to 0 when LoadBits() was called
   // a second time; it is then incremented by 8 as we read the 5th byte.
@@ -234,7 +234,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128TwoBytes) {
   EXPECT_TRUE(rb_->LoadBits(40).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
   // Expect the buffer to read only the first two bytes, since 0x03 does not
   // have a one in the most significant spot of the byte.
   EXPECT_EQ(output_leb, 0b00000110000001);
@@ -248,7 +248,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroes) {
   EXPECT_TRUE(rb_->LoadBits(64).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(&output_leb).ok());
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
   // Expect the buffer to read every byte.
   EXPECT_EQ(output_leb, 0b1);
   EXPECT_EQ(rb_->buffer_bit_offset(), 64);
@@ -262,7 +262,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128Overflow) {
   EXPECT_TRUE(rb_->LoadBits(40).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kInvalidArgument);
+  EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
   // Expect to buffer_bit_offset to be reset if there is an overflow error.
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
@@ -274,7 +274,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128TooManyBytes) {
   EXPECT_TRUE(rb_->LoadBits(64).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kInvalidArgument);
+  EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
@@ -288,7 +288,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
   // Buffer has a one in the most significant position of each byte, which tells
   // us to continue reading to the next byte. The 4th byte tells us to read the
   // next byte, but there is no 5th byte in neither the buffer nor the source.
-  EXPECT_EQ(rb_->ReadULeb128(&output_leb).code(), kResourceExhausted);
+  EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kResourceExhausted);
   // Expect to buffer_bit_offset to be reset if there is a not enough data in
   // the buffer.
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);

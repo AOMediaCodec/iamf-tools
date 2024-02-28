@@ -39,31 +39,32 @@ bool CanReadByteAligned(const int64_t& buffer_bit_offset,
   return buffer_bit_offset_is_aligned && num_bits_to_read_is_aligned;
 }
 
-// Reads one bit from data at position `offset`. Reads in order of most
+// Reads one bit from source_data at position `offset`. Reads in order of most
 // significant to least significant - that is, offset = 0 refers to the bit in
 // position 2^7, offset = 1 refers to the bit in position 2^6, etc. Caller
 // should ensure that offset/8 is < data.size().
-uint8_t GetUpperBit(const int64_t& offset, const std::vector<uint8_t>* data) {
+uint8_t GetUpperBit(const int64_t& offset,
+                    const std::vector<uint8_t>& source_data) {
   int64_t byteIndex = offset / 8;
   uint8_t bitIndex = 7 - (offset % 8);
-  return (data->at(byteIndex) >> bitIndex) & 0x01;
+  return (source_data.at(byteIndex) >> bitIndex) & 0x01;
 }
 
 // Read unsigned literal bit by bit. Data is read into the lower
-// `remaining_bits_to_read` of `data` from the upper `remaining_bits_to_read` of
-// bit_offer[buffer_bit_offset].
+// `remaining_bits_to_read` of `output` from the upper `remaining_bits_to_read`
+// of bit_offer[buffer_bit_offset].
 //
 // Ex: Input: bit_buffer = 10000111, buffer_bit_offset = 0,
-//        remaining_bits_to_read = 5, data = 0
-//     Output: data = {59 leading zeroes} + 10000, buffer_bit_offset = 5,
+//        remaining_bits_to_read = 5, output = 0
+//     Output: output = {59 leading zeroes} + 10000, buffer_bit_offset = 5,
 //        remaining_bits_to_read = 0.
 void ReadUnsignedLiteralBits(int64_t& buffer_bit_offset,
                              const std::vector<uint8_t>& bit_buffer,
-                             int& remaining_bits_to_read, uint64_t* data) {
+                             int& remaining_bits_to_read, uint64_t& output) {
   while (((buffer_bit_offset / 8) < bit_buffer.size()) &&
          remaining_bits_to_read > 0) {
-    uint8_t upper_bit = GetUpperBit(buffer_bit_offset, &bit_buffer);
-    *data |= (uint64_t)(upper_bit) << (remaining_bits_to_read - 1);
+    uint8_t upper_bit = GetUpperBit(buffer_bit_offset, bit_buffer);
+    output |= (uint64_t)(upper_bit) << (remaining_bits_to_read - 1);
     remaining_bits_to_read--;
     buffer_bit_offset++;
   }
@@ -72,11 +73,11 @@ void ReadUnsignedLiteralBits(int64_t& buffer_bit_offset,
 // Read unsigned literal byte by byte.
 void ReadUnsignedLiteralBytes(int64_t& buffer_bit_offset,
                               const std::vector<uint8_t>& bit_buffer,
-                              int& remaining_bits_to_read, uint64_t* data) {
+                              int& remaining_bits_to_read, uint64_t& output) {
   while (((buffer_bit_offset / 8) < bit_buffer.size()) &&
          remaining_bits_to_read > 0) {
-    *data = *data << 8;
-    *data |= (uint64_t)(bit_buffer.at(buffer_bit_offset / 8));
+    output = output << 8;
+    output |= (uint64_t)(bit_buffer.at(buffer_bit_offset / 8));
     remaining_bits_to_read -= 8;
     buffer_bit_offset += 8;
   }
@@ -94,21 +95,21 @@ ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source,
 // `bit_buffer_`. n must be <= 64. The read data is consumed, meaning
 // `buffer_bit_offset_` is incremented by n as a side effect of this fxn.
 absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
-                                                uint64_t* data) {
+                                                uint64_t& output) {
   if (num_bits > 64) {
     return absl::InvalidArgumentError("num_bits must be <= 64.");
   }
   if (buffer_bit_offset_ < 0) {
     return absl::UnknownError("buffer_bit_offset_ must be >= 0.");
   }
-  *data = 0;
+  output = 0;
   int remaining_bits_to_read = num_bits;
   if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
     ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
-                             remaining_bits_to_read, data);
+                             remaining_bits_to_read, output);
   } else {
     ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_,
-                            remaining_bits_to_read, data);
+                            remaining_bits_to_read, output);
   }
   if (remaining_bits_to_read != 0) {
     RETURN_IF_NOT_OK(LoadBits(remaining_bits_to_read));
@@ -116,10 +117,10 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
     // point.
     if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
       ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
-                               remaining_bits_to_read, data);
+                               remaining_bits_to_read, output);
     } else {
       ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_,
-                              remaining_bits_to_read, data);
+                              remaining_bits_to_read, output);
     }
   }
   return absl::OkStatus();
@@ -137,13 +138,13 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
  * uleb128, or if the buffer is exhausted before the uleb128 is fully read.
  * `absl::UnknownError()` if the `rb->bit_offset` is negative.
  */
-absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128* uleb128) {
+absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128) {
   int64_t original_buffer_bit_offset = buffer_bit_offset_;
   uint64_t accumulated_value = 0;
   uint64_t byte = 0;
   bool terminal_block = false;
   for (int i = 0; i < kMaxLeb128Size; ++i) {
-    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, &byte));
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
     accumulated_value |= (byte & 0x7f) << (7 * i);
     terminal_block = ((byte & 0x80) == 0);
     if ((i == (kMaxLeb128Size - 1)) && !terminal_block) {
@@ -163,7 +164,7 @@ absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128* uleb128) {
     }
   }
   // Accumulated value is guaranteed to fit into a uint_32_t at this stage.
-  *uleb128 = static_cast<uint64_t>(accumulated_value);
+  uleb128 = static_cast<uint64_t>(accumulated_value);
   return absl::OkStatus();
 }
 
@@ -180,7 +181,7 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
          (bit_buffer_.size() != bit_buffer_.capacity())) {
     if (remaining_bits_to_load < 8 || source_bit_offset_ % 8 != 0) {
       // Load bit by bit
-      uint8_t loaded_bit = GetUpperBit(source_bit_offset_, source_);
+      uint8_t loaded_bit = GetUpperBit(source_bit_offset_, *source_);
       RETURN_IF_NOT_OK(
           CanWriteBits(true, 1, bit_buffer_write_offset, bit_buffer_));
       RETURN_IF_NOT_OK(

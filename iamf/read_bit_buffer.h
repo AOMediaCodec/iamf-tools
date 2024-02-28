@@ -37,16 +37,16 @@ class ReadBitBuffer {
   /*!\brief Destructor.*/
   ~ReadBitBuffer() = default;
 
-  /*!\brief Reads upper `num_bits` from buffer into lower `num_bits` of `data`.
+  /*!\brief Reads upper `num_bits` from buffer to lower `num_bits` of `output`.
    *
    * \param num_bits Number of upper bits to read from buffer. Maximum value of
    *     64.
-   * \param data Data from buffer will be written here.
+   * \param output Data from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *     `num_bits > 64`. `absl::UnknownError()` if the `rb->bit_offset` is
    *     negative.
    */
-  absl::Status ReadUnsignedLiteral(int num_bits, uint64_t* data);
+  absl::Status ReadUnsignedLiteral(int num_bits, uint64_t& output);
 
   /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
    *
@@ -59,7 +59,7 @@ class ReadBitBuffer {
    *     the requisite data to complete the uleb128. `absl::UnknownError()` if
    *     the `rb->bit_offset` is negative.
    */
-  absl::Status ReadULeb128(DecodedUleb128* uleb128);
+  absl::Status ReadULeb128(DecodedUleb128& uleb128);
 
   /*!\brief Returns a `const` pointer to the underlying buffer.
    *
