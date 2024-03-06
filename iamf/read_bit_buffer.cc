@@ -180,6 +180,13 @@ absl::Status ReadBitBuffer::ReadUint8Vector(const int& num_bytes,
   return absl::OkStatus();
 }
 
+absl::Status ReadBitBuffer::ReadBoolean(bool& output) {
+  uint64_t bit;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteral(1, bit));
+  output = static_cast<bool>(bit);
+  return absl::OkStatus();
+}
+
 // Loads enough bits from source such that there are at least n =
 // `required_num_bits` in `bit_buffer_` after completion. Returns an error if
 // there are not enough bits in `source_` to fulfill this request. If `source_`

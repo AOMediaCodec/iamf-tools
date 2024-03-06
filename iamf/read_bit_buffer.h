@@ -74,6 +74,16 @@ class ReadBitBuffer {
    */
   absl::Status ReadUint8Vector(const int& count, std::vector<uint8_t>& output);
 
+  /*!\brief Reads a boolean from buffer into `output`.
+   *
+   * \param output Boolean bit from buffer will be written here.
+   * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
+   *     the buffer runs out of data and cannot get more from source before the
+   *     desired boolean is read. `absl::UnknownError()` if the `rb->bit_offset`
+   *     is negative.
+   */
+  absl::Status ReadBoolean(bool& output);
+
   /*!\brief Returns a `const` pointer to the underlying buffer.
    *
    * \return A `const` pointer to the underlying buffer.

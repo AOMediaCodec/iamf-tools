@@ -348,5 +348,66 @@ TEST_F(ReadBitBufferTest, ReadUint8VectorNotEnoughDataInBufferOrSource) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
+// --- ReadBoolean tests ---
+
+// Successful ReadBoolean reads
+TEST_F(ReadBitBufferTest, ReadBoolean8Bits) {
+  source_data_ = {0b10011001};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(8).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  bool output = false;
+  std::vector<bool> expected_output = {true, false, false, true,
+                                       true, false, false, true};
+  for (int i = 0; i < 8; ++i) {
+    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_EQ(output, expected_output[i]);
+  }
+  // Expect to read 8 bits.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 8);
+}
+
+TEST_F(ReadBitBufferTest, ReadBooleanMisalignedBuffer) {
+  source_data_ = {0b10000001, 0b01000000};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  uint64_t literal = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, literal).ok());
+  // Bit buffer offset is now misaligned, but ReadBoolean should still work.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 2);
+  bool output = false;
+  // Expected output starts reading at bit 2 instead of at 0.
+  std::vector<bool> expected_output = {false, false, false, false,
+                                       false, true,  false, true};
+  for (int i = 0; i < 8; ++i) {
+    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_EQ(output, expected_output[i]);
+  }
+  // Expect to read 8 bits + the 2 we initially read.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 10);
+}
+
+// ReadBoolean Error
+TEST_F(ReadBitBufferTest, ReadBooleanNotEnoughDataInBufferOrSource) {
+  source_data_ = {0b10011001};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(8).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  bool output = false;
+  std::vector<bool> expected_output = {true, false, false, true,
+                                       true, false, false, true};
+  for (int i = 0; i < 8; ++i) {
+    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_EQ(output, expected_output[i]);
+  }
+  EXPECT_EQ(rb_->ReadBoolean(output).code(), kResourceExhausted);
+  // Expect offset to be reset after failed read.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
 }  // namespace
 }  // namespace iamf_tools
