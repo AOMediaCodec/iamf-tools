@@ -41,9 +41,11 @@ class ReadBitBuffer {
    *
    * \param num_bits Number of upper bits to read from buffer. Maximum value of
    *     64.
-   * \param output Data from buffer will be written here.
+   * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     `num_bits > 64`. `absl::UnknownError()` if the `rb->bit_offset` is
+   *     `num_bits > 64`. `absl::ResourceExhaustedError()` if the buffer runs
+   *     out of data and cannot get more from source before the desired
+   *     `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset` is
    *     negative.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint64_t& output);
@@ -60,6 +62,17 @@ class ReadBitBuffer {
    *     the `rb->bit_offset` is negative.
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128);
+
+  /*!\brief Reads an uint8 vector from buffer into `output`.
+   *
+   * \param count Number of uint8s to read from the buffer.
+   * \param output uint8 vector from buffer is written here.
+   * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
+   *     the buffer runs out of data and cannot get more from source before the
+   *     desired `count` uint8s are read. `absl::UnknownError()` if the
+   *     `rb->bit_offset` is negative.
+   */
+  absl::Status ReadUint8Vector(const int& count, std::vector<uint8_t>& output);
 
   /*!\brief Returns a `const` pointer to the underlying buffer.
    *

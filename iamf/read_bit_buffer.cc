@@ -12,6 +12,7 @@
 
 #include "iamf/read_bit_buffer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -165,6 +166,17 @@ absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128) {
   }
   // Accumulated value is guaranteed to fit into a uint_32_t at this stage.
   uleb128 = static_cast<uint64_t>(accumulated_value);
+  return absl::OkStatus();
+}
+
+absl::Status ReadBitBuffer::ReadUint8Vector(const int& num_bytes,
+                                            std::vector<uint8_t>& output) {
+  output.reserve(num_bytes);
+  for (size_t i = 0; i < num_bytes; ++i) {
+    uint64_t byte;
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
+    output.push_back(static_cast<uint8_t>(byte));
+  }
   return absl::OkStatus();
 }
 

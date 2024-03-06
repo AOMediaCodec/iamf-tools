@@ -289,7 +289,61 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
   // us to continue reading to the next byte. The 4th byte tells us to read the
   // next byte, but there is no 5th byte in neither the buffer nor the source.
   EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kResourceExhausted);
-  // Expect to buffer_bit_offset to be reset if there is a not enough data in
+  // Expect to buffer_bit_offset to be reset if there is not enough data in
+  // the buffer.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+// --- ReadUint8Vector tests ---
+
+// Successful ReadUint8Vector reads
+TEST_F(ReadBitBufferTest, ReadUint8VectorRead5Bytes) {
+  source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  std::vector<uint8_t> output = {};
+  EXPECT_TRUE(rb_->ReadUint8Vector(5, output).ok());
+  for (int i = 0; i < output.size(); ++i) {
+    EXPECT_EQ(output[i], source_data_[i]);
+  }
+  // Expect to read 40 bits.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 40);
+}
+
+TEST_F(ReadBitBufferTest, ReadUint8VectorReadBytesMisalignedBuffer) {
+  source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  uint64_t literal = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, literal).ok());
+  // Bit buffer offset is now misaligned, but ReadUint8Vector should still work.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 2);
+  std::vector<uint8_t> output = {};
+  EXPECT_TRUE(rb_->ReadUint8Vector(4, output).ok());
+  // Expected output starts reading at bit 2 instead of at 0.
+  std::vector<uint8_t> expected_output = {0b00000110, 0b00001110, 0b00000110,
+                                          0b00001100};
+  for (int i = 0; i < output.size(); ++i) {
+    EXPECT_EQ(output[i], expected_output[i]);
+  }
+  // Expect to read 32 bits (5 bytes) + the 2 we initially read.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 34);
+}
+
+// ReadUint8Vector Errors
+TEST_F(ReadBitBufferTest, ReadUint8VectorNotEnoughDataInBufferOrSource) {
+  source_data_ = {0x80, 0x80, 0x80, 0x80};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  std::vector<uint8_t> output = {};
+  EXPECT_EQ(rb_->ReadUint8Vector(5, output).code(), kResourceExhausted);
+  // Expect to buffer_bit_offset to be reset if there is not enough data in
   // the buffer.
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
