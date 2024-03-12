@@ -38,39 +38,38 @@ namespace iamf_tools {
 
 namespace {
 
-// Copies the `ParameterDefinitionType` based on the input data. Uses the
-// deprecated field as a backup.
+// Copies the `ParameterDefinitionType` based on the input data.
 absl::Status CopyAudioElementParamDefinitionType(
     iamf_tools_cli_proto::AudioElementParam user_data_parameter,
     ParamDefinition::ParameterDefinitionType& output_param_definition_type) {
-  if (user_data_parameter.has_param_definition_type()) {
-    switch (user_data_parameter.param_definition_type()) {
-      using enum iamf_tools_cli_proto::ParamDefinitionType;
-      using enum ParamDefinition::ParameterDefinitionType;
-      case PARAM_DEFINITION_TYPE_DEMIXING:
-        output_param_definition_type = kParameterDefinitionDemixing;
-        return absl::OkStatus();
-      case PARAM_DEFINITION_TYPE_RECON_GAIN:
-        output_param_definition_type = kParameterDefinitionReconGain;
-        return absl::OkStatus();
-      default:
-        // TODO(b/289541186): Allow the extension types through here.
-        LOG(ERROR) << "Unknown or invalid param_definition_type="
-                   << static_cast<int>(
-                          user_data_parameter.param_definition_type());
-        return absl::InvalidArgumentError("");
-    }
-  } else if (user_data_parameter.has_deprecated_param_definition_type()) {
-    LOG(WARNING) << "Please upgrade the `deprecated_param_definition_type` "
-                    "field to the new "
-                    "`param_definition_type` field.";
-    output_param_definition_type =
-        static_cast<ParamDefinition::ParameterDefinitionType>(
-            user_data_parameter.deprecated_param_definition_type());
-    return absl::OkStatus();
-  } else {
-    LOG(ERROR) << "Missing `param_definition_type` field.";
-    return absl::InvalidArgumentError("");
+  if (user_data_parameter.has_deprecated_param_definition_type()) {
+    return absl::InvalidArgumentError(
+        "Please upgrade the `deprecated_param_definition_type` "
+        "field to the new `param_definition_type` field."
+        "\nSuggested upgrades:\n"
+        "- `deprecated_param_definition_type: 1` -> `param_definition_type: "
+        "PARAM_DEFINITION_TYPE_DEMIXING`\n"
+        "- `deprecated_param_definition_type: 2` -> `param_definition_type: "
+        "PARAM_DEFINITION_TYPE_RECON_GAIN`\n");
+  }
+  if (!user_data_parameter.has_param_definition_type()) {
+    return absl::InvalidArgumentError("Missing `param_definition_type` field.");
+  }
+
+  switch (user_data_parameter.param_definition_type()) {
+    using enum iamf_tools_cli_proto::ParamDefinitionType;
+    using enum ParamDefinition::ParameterDefinitionType;
+    case PARAM_DEFINITION_TYPE_DEMIXING:
+      output_param_definition_type = kParameterDefinitionDemixing;
+      return absl::OkStatus();
+    case PARAM_DEFINITION_TYPE_RECON_GAIN:
+      output_param_definition_type = kParameterDefinitionReconGain;
+      return absl::OkStatus();
+    default:
+      // TODO(b/289541186): Allow the extension types through here.
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown or invalid param_definition_type= ",
+                       user_data_parameter.param_definition_type()));
   }
 }
 

@@ -790,45 +790,31 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
             kExpectedAudioElementParam);
 }
 
-TEST_F(AudioElementGeneratorTest,
-       FallsBackToDeprecatedParamDefinitionTypeField) {
+TEST_F(AudioElementGeneratorTest, MissingParamDefinitionTypeIsNotSupported) {
+  AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);
+  audio_element_metadata_.at(0).set_num_parameters(1);
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        # `param_definition_type` is omitted.
+        # param_definition_type: PARAM_DEFINITION_TYPE_DEMIXING
+      )pb",
+      audio_element_metadata_.at(0).add_audio_element_params()));
+
+  AudioElementGenerator generator(audio_element_metadata_);
+  EXPECT_FALSE(generator.Generate(codec_config_obus_, output_obus_).ok());
+}
+
+TEST_F(AudioElementGeneratorTest, DeprecatedParamDefinitionTypeIsNotSupported) {
   AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);
   audio_element_metadata_.at(0).set_num_parameters(1);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         deprecated_param_definition_type: 1  # PARAMETER_DEFINITION_DEMIXING
-        demixing_param: {
-          param_definition {
-            parameter_id: 998
-            parameter_rate: 48000
-            param_definition_mode: 0
-            reserved: 10
-            duration: 8
-            num_subblocks: 1
-            constant_subblock_duration: 8
-          }
-          default_demixing_info_parameter_data: {
-            dmixp_mode: DMIXP_MODE_2
-            reserved: 11
-          }
-          default_w: 2
-          reserved: 12
-        }
       )pb",
       audio_element_metadata_.at(0).add_audio_element_params()));
 
-  // Generate and validate the parameter-related information matches expected
-  // results.
   AudioElementGenerator generator(audio_element_metadata_);
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
-
-  const auto& obu = output_obus_.at(kAudioElementId).obu;
-  EXPECT_EQ(obu.audio_element_params_.size(), 1);
-  ASSERT_FALSE(obu.audio_element_params_.empty());
-  EXPECT_EQ(output_obus_.at(kAudioElementId)
-                .obu.audio_element_params_.front()
-                .param_definition_type,
-            ParamDefinition::kParameterDefinitionDemixing);
+  EXPECT_FALSE(generator.Generate(codec_config_obus_, output_obus_).ok());
 }
 
 TEST_F(AudioElementGeneratorTest, GeneratesReconGainParameterDefinition) {
