@@ -71,6 +71,29 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAligned) {
   EXPECT_EQ(rb_->source_bit_offset(), 8);
 }
 
+TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
+  source_data_ = {0b10100001, 0b00110011};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(3).ok());
+  // Only read the first 3 bits (101) - the rest of the bits in the byte are
+  // zeroed out.
+  std::vector<uint8_t> expected = {0b10100000};
+  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_EQ(rb_->source_bit_offset(), 3);
+  // Load bits again. This will clear the buffer while still reading from the
+  // updated source offset.
+  EXPECT_TRUE(rb_->LoadBits(12).ok());
+  expected = {
+      0b00001001,
+      0b10010000};  // {00001} these bits are loaded from the 5 remaining bits
+                    // in the first byte - {0011001} comes from the first 7 bits
+                    // of the second byte of the source_data. The rest of the
+                    // second byte in the buffer is zeroed out.
+  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_EQ(rb_->source_bit_offset(), 15);
+}
+
 TEST_F(ReadBitBufferTest, LoadBitsNotEnoughSourceBits) {
   source_data_ = {0x09, 0x02, 0xab};
   rb_capacity_ = 1024;

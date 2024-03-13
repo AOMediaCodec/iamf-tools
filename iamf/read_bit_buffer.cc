@@ -223,14 +223,14 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
   int64_t bit_buffer_write_offset = 0;
   while (ShouldRead(source_bit_offset_, *source_, remaining_bits_to_load) &&
          (bit_buffer_.size() != bit_buffer_.capacity())) {
-    if (remaining_bits_to_load < 8 || source_bit_offset_ % 8 != 0) {
+    if (remaining_bits_to_load < 8 || source_bit_offset_ % 8 != 0 ||
+        bit_buffer_write_offset % 8 != 0) {
       // Load bit by bit
       uint8_t loaded_bit = GetUpperBit(source_bit_offset_, *source_);
       RETURN_IF_NOT_OK(
           CanWriteBits(true, 1, bit_buffer_write_offset, bit_buffer_));
       RETURN_IF_NOT_OK(
           WriteBit(loaded_bit, bit_buffer_write_offset, bit_buffer_));
-      bit_buffer_write_offset = bit_buffer_write_offset % 8;
       source_bit_offset_++;
       remaining_bits_to_load--;
     } else {
