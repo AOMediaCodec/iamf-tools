@@ -208,6 +208,21 @@ TEST_F(ReadBitBufferTest, ReadUleb128Read5Bytes) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 40);
 }
 
+TEST_F(ReadBitBufferTest, ReadUleb128Read5BytesAndStoreSize) {
+  source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  int8_t encoded_leb_size = 0;
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb, encoded_leb_size).ok());
+  EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
+  EXPECT_EQ(encoded_leb_size, 5);
+  // Expect to read 40 bits.
+  EXPECT_EQ(rb_->buffer_bit_offset(), 40);
+}
+
 TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
   source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
@@ -254,6 +269,21 @@ TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroes) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 64);
 }
 
+TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroesAndStoreSize) {
+  source_data_ = {0x81, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  DecodedUleb128 output_leb = 0;
+  int8_t encoded_leb_size = 0;
+  EXPECT_TRUE(rb_->ReadULeb128(output_leb, encoded_leb_size).ok());
+  // Expect the buffer to read every byte.
+  EXPECT_EQ(output_leb, 0b1);
+  EXPECT_EQ(encoded_leb_size, 8);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 64);
+}
+
 // Uleb128 read errors.
 TEST_F(ReadBitBufferTest, ReadUleb128Overflow) {
   source_data_ = {0x80, 0x80, 0x80, 0x80, 0x10};
@@ -263,8 +293,6 @@ TEST_F(ReadBitBufferTest, ReadUleb128Overflow) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
-  // Expect to buffer_bit_offset to be reset if there is an overflow error.
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
 TEST_F(ReadBitBufferTest, ReadUleb128TooManyBytes) {
@@ -275,7 +303,6 @@ TEST_F(ReadBitBufferTest, ReadUleb128TooManyBytes) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
 TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {

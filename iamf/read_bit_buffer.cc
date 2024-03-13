@@ -84,6 +84,24 @@ void ReadUnsignedLiteralBytes(int64_t& buffer_bit_offset,
   }
 }
 
+absl::Status AccumulateUleb128Byte(const uint64_t& byte, const int index,
+                                   bool& is_terminal_block,
+                                   uint64_t& accumulated_value) {
+  accumulated_value |= (byte & 0x7f) << (7 * index);
+  is_terminal_block = ((byte & 0x80) == 0);
+  if ((index == (kMaxLeb128Size - 1)) && !is_terminal_block) {
+    return absl::InvalidArgumentError(
+        "Have read the max allowable bytes for a uleb128, but bitstream "
+        "says to keep reading.");
+  }
+  if (accumulated_value > UINT32_MAX) {
+    return absl::InvalidArgumentError(
+        "Overflow - data does not fit into a DecodedUleb128, i.e. a "
+        "uint32_t");
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source,
@@ -140,26 +158,13 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
  * `absl::UnknownError()` if the `rb->bit_offset` is negative.
  */
 absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128) {
-  int64_t original_buffer_bit_offset = buffer_bit_offset_;
   uint64_t accumulated_value = 0;
   uint64_t byte = 0;
   bool terminal_block = false;
   for (int i = 0; i < kMaxLeb128Size; ++i) {
     RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
-    accumulated_value |= (byte & 0x7f) << (7 * i);
-    terminal_block = ((byte & 0x80) == 0);
-    if ((i == (kMaxLeb128Size - 1)) && !terminal_block) {
-      buffer_bit_offset_ = original_buffer_bit_offset;
-      return absl::InvalidArgumentError(
-          "Have read the max allowable bytes for a uleb128, but bitstream "
-          "says to keep reading.");
-    }
-    if (accumulated_value > UINT32_MAX) {
-      buffer_bit_offset_ = original_buffer_bit_offset;
-      return absl::InvalidArgumentError(
-          "Overflow - data does not fit into a DecodedUleb128, i.e. a "
-          "uint32_t");
-    }
+    RETURN_IF_NOT_OK(
+        AccumulateUleb128Byte(byte, i, terminal_block, accumulated_value));
     if (terminal_block) {
       break;
     }
@@ -169,10 +174,30 @@ absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128) {
   return absl::OkStatus();
 }
 
-absl::Status ReadBitBuffer::ReadUint8Vector(const int& num_bytes,
+absl::Status ReadBitBuffer::ReadULeb128(DecodedUleb128& uleb128,
+                                        int8_t& encoded_uleb128_size) {
+  uint64_t accumulated_value = 0;
+  uint64_t byte = 0;
+  bool terminal_block = false;
+  encoded_uleb128_size = 0;
+  for (int i = 0; i < kMaxLeb128Size; ++i) {
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
+    encoded_uleb128_size++;
+    RETURN_IF_NOT_OK(
+        AccumulateUleb128Byte(byte, i, terminal_block, accumulated_value));
+    if (terminal_block) {
+      break;
+    }
+  }
+  // Accumulated value is guaranteed to fit into a uint_32_t at this stage.
+  uleb128 = static_cast<uint64_t>(accumulated_value);
+  return absl::OkStatus();
+}
+
+absl::Status ReadBitBuffer::ReadUint8Vector(const int& count,
                                             std::vector<uint8_t>& output) {
-  output.reserve(num_bytes);
-  for (size_t i = 0; i < num_bytes; ++i) {
+  output.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
     uint64_t byte;
     RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
     output.push_back(static_cast<uint8_t>(byte));

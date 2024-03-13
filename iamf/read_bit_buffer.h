@@ -63,6 +63,25 @@ class ReadBitBuffer {
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128);
 
+  /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
+   *
+   * This version also records the number of bytes used to store the encoded
+   * uleb128 in the bitstream.
+   *
+   * \param uleb128 Decoded unsigned leb128 from buffer will be written here.
+   * \param encoded_uleb128_size Number of bytes used to store the encoded
+   *     uleb128 in the bitstream.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     the consumed data from the buffer does not fit into the 32 bits of
+   *     uleb128, or if the data in the buffer requires that we read more than
+   *     `kMaxLeb128Size` bytes. `absl::ResourceExhaustedError()` if the buffer
+   *     is exhausted before the uleb128 is fully read and source does not have
+   *     the requisite data to complete the uleb128. `absl::UnknownError()` if
+   *     the `rb->bit_offset` is negative.
+   */
+  absl::Status ReadULeb128(DecodedUleb128& uleb128,
+                           int8_t& encoded_uleb128_size);
+
   /*!\brief Reads an uint8 vector from buffer into `output`.
    *
    * \param count Number of uint8s to read from the buffer.
