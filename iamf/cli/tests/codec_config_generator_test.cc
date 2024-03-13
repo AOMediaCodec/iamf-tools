@@ -349,18 +349,13 @@ TEST_F(CodecConfigGeneratorTest, FailsForUnknownSampleFormatFlags) {
   EXPECT_FALSE(InitAndGenerate().ok());
 }
 
-TEST_F(CodecConfigGeneratorTest, FallsBackToDeprecatedCodecIdField) {
+TEST_F(CodecConfigGeneratorTest, DeprecatedCodecIdIsNotSupported) {
   InitMetadataForLpcm(codec_config_metadata_);
-  // `deprecated_codec_id` is used as a fallback when `codec_id` is missing.
   codec_config_metadata_.at(0).mutable_codec_config()->clear_codec_id();
   codec_config_metadata_.at(0).mutable_codec_config()->set_deprecated_codec_id(
       CodecConfig::kCodecIdLpcm);
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
-
-  EXPECT_EQ(output_obus->at(kCodecConfigId).codec_config_.codec_id,
-            CodecConfig::kCodecIdLpcm);
+  EXPECT_FALSE(InitAndGenerate().ok());
 }
 
 TEST_F(CodecConfigGeneratorTest, FailsForUnknownCodecId) {

@@ -35,39 +35,42 @@ namespace iamf_tools {
 
 namespace {
 
-// Copies the `CodecId` based on the input data. Uses the deprecated field as a
-// backup.
+// Copies the `CodecId` based on the input data.
 absl::Status CopyCodecId(
     const iamf_tools_cli_proto::CodecConfig& input_codec_config,
     CodecConfig::CodecId& output_codec_id) {
-  if (input_codec_config.has_codec_id()) {
-    using enum iamf_tools_cli_proto::CodecId;
-    using enum CodecConfig::CodecId;
-    static const auto* kInputCodecIdToOutputCodecId =
-        new absl::flat_hash_map<iamf_tools_cli_proto::CodecId,
-                                CodecConfig::CodecId>({
-            {CODEC_ID_OPUS, kCodecIdOpus},
-            {CODEC_ID_FLAC, kCodecIdFlac},
-            {CODEC_ID_AAC_LC, kCodecIdAacLc},
-            {CODEC_ID_LPCM, kCodecIdLpcm},
-        });
-
-    if (!LookupInMap(*kInputCodecIdToOutputCodecId,
-                     input_codec_config.codec_id(), output_codec_id)
-             .ok()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Unknown codec with codec_id= ", input_codec_config.codec_id()));
-    }
-    return absl::OkStatus();
-  } else if (input_codec_config.has_deprecated_codec_id()) {
-    LOG(WARNING) << "Please upgrade the `deprecated_codec_id` field to the new "
-                    "`codec_id` field.";
-    output_codec_id = static_cast<CodecConfig::CodecId>(
-        input_codec_config.deprecated_codec_id());
-    return absl::OkStatus();
-  } else {
+  if (input_codec_config.has_deprecated_codec_id()) {
+    return absl::InvalidArgumentError(
+        "Please upgrade the `deprecated_codec_id` field to the new `codec_id` "
+        "field.\n"
+        "Suggested upgrades:\n"
+        "- `deprecated_codec_id: 0x6d703461` -> `codec_id: CODEC_ID_AAC_LC`\n"
+        "- `deprecated_codec_id: 0x664c6143` -> `codec_id: CODEC_ID_FLAC`\n"
+        "- `deprecated_codec_id: 0x6970636d` -> `codec_id: CODEC_ID_LPCM`\n"
+        "- `deprecated_codec_id: 0x4f707573` -> `codec_id: CODEC_ID_OPUS`\n");
+  }
+  if (!input_codec_config.has_codec_id()) {
     return absl::InvalidArgumentError("Missing `codec_id` field.");
   }
+
+  using enum iamf_tools_cli_proto::CodecId;
+  using enum CodecConfig::CodecId;
+  static const auto* kInputCodecIdToOutputCodecId =
+      new absl::flat_hash_map<iamf_tools_cli_proto::CodecId,
+                              CodecConfig::CodecId>({
+          {CODEC_ID_OPUS, kCodecIdOpus},
+          {CODEC_ID_FLAC, kCodecIdFlac},
+          {CODEC_ID_AAC_LC, kCodecIdAacLc},
+          {CODEC_ID_LPCM, kCodecIdLpcm},
+      });
+
+  if (!LookupInMap(*kInputCodecIdToOutputCodecId, input_codec_config.codec_id(),
+                   output_codec_id)
+           .ok()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unknown codec with codec_id= ", input_codec_config.codec_id()));
+  }
+  return absl::OkStatus();
 }
 
 absl::Status CopyFlacBlockType(
