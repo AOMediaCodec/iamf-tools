@@ -61,9 +61,10 @@ uint8_t GetUpperBit(const int64_t& offset,
 //        remaining_bits_to_read = 0.
 void ReadUnsignedLiteralBits(int64_t& buffer_bit_offset,
                              const std::vector<uint8_t>& bit_buffer,
+                             const int64_t& buffer_size,
                              int& remaining_bits_to_read, uint64_t& output) {
   while (((buffer_bit_offset / 8) < bit_buffer.size()) &&
-         remaining_bits_to_read > 0) {
+         remaining_bits_to_read > 0 && (buffer_bit_offset < buffer_size)) {
     uint8_t upper_bit = GetUpperBit(buffer_bit_offset, bit_buffer);
     output |= (uint64_t)(upper_bit) << (remaining_bits_to_read - 1);
     remaining_bits_to_read--;
@@ -127,7 +128,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
     ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
                              remaining_bits_to_read, output);
   } else {
-    ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_,
+    ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
                             remaining_bits_to_read, output);
   }
   if (remaining_bits_to_read != 0) {
@@ -138,7 +139,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
       ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
                                remaining_bits_to_read, output);
     } else {
-      ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_,
+      ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
                               remaining_bits_to_read, output);
     }
   }
@@ -233,11 +234,13 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
           WriteBit(loaded_bit, bit_buffer_write_offset, bit_buffer_));
       source_bit_offset_++;
       remaining_bits_to_load--;
+      buffer_size_++;
     } else {
       // Load byte by byte
       bit_buffer_.push_back(source_->at(source_bit_offset_ / 8));
       source_bit_offset_ += 8;
       remaining_bits_to_load -= 8;
+      buffer_size_ += 8;
     }
   }
   if (remaining_bits_to_load != 0) {
@@ -250,6 +253,7 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
 
 void ReadBitBuffer::DiscardAllBits() {
   buffer_bit_offset_ = 0;
+  buffer_size_ = 0;
   bit_buffer_.clear();
 }
 

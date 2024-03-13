@@ -115,6 +115,12 @@ class ReadBitBuffer {
    */
   int64_t buffer_bit_offset() const { return buffer_bit_offset_; }
 
+  /*!\brief Gets the size in bits of the buffer.
+   *
+   * \return Size in bits of the read buffer.
+   */
+  int64_t buffer_size() const { return buffer_size_; }
+
   /*!\brief Checks whether the current data in the buffer is byte-aligned.
    *
    * \return `true` when the current data in the buffer is byte-aligned.
@@ -148,6 +154,8 @@ class ReadBitBuffer {
   std::vector<uint8_t> bit_buffer_;
   // Specifies the next bit to consume in the `bit_buffer_`.
   int64_t buffer_bit_offset_ = 0;
+  // Size of the valid data in the buffer in bits.
+  int64_t buffer_size_ = 0;
   // Pointer to the source data.
   std::vector<uint8_t>* source_;
   // Specifies the next bit to consume from the source data `source_`.

@@ -81,6 +81,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
   std::vector<uint8_t> expected = {0b10100000};
   EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 3);
+  EXPECT_EQ(rb_->buffer_size(), 3);
   // Load bits again. This will clear the buffer while still reading from the
   // updated source offset.
   EXPECT_TRUE(rb_->LoadBits(12).ok());
@@ -92,6 +93,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
                     // second byte in the buffer is zeroed out.
   EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 15);
+  EXPECT_EQ(rb_->buffer_size(), 12);
 }
 
 TEST_F(ReadBitBufferTest, LoadBitsNotEnoughSourceBits) {
@@ -185,6 +187,23 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralNotByteAlignedMultipleReads) {
   EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
   EXPECT_EQ(output_literal, 0b0110000010);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest,
+       ReadUnsignedLiteralNotByteAlignedMultipleReadsNoPriorLoad) {
+  source_data_ = {0b11000101, 0b10000011, 0b00000110};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint64_t output_literal = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, output_literal).ok());
+  EXPECT_EQ(output_literal, 0b110001);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 6);
+  EXPECT_EQ(rb_->buffer_size(), 6);
+
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
+  EXPECT_EQ(output_literal, 0b0110000011);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 10);
+  EXPECT_EQ(rb_->buffer_size(), 10);
 }
 
 TEST_F(ReadBitBufferTest, ReadUnsignedLiteralBufferBitOffsetNotByteAligned) {
