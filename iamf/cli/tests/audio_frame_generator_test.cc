@@ -161,19 +161,55 @@ void GenerateAudioFrameWithEightSamples(
   }
 }
 
-void ConfigureOneStereoSubstreamLittleEndian(
-    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+void AddStereoAudioElementAndAudioFrameMetadata(
+    iamf_tools_cli_proto::UserMetadata& user_metadata,
+    uint32_t audio_element_id, uint32_t audio_substream_id) {
+  auto* audio_frame_metadata = user_metadata.add_audio_frame_metadata();
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         wav_filename: ""
         samples_to_trim_at_end: 0
         samples_to_trim_at_start: 0
-        audio_element_id: 300
         channel_ids: [ 0, 1 ]
         channel_labels: [ "L2", "R2" ]
       )pb",
-      user_metadata.add_audio_frame_metadata()));
+      audio_frame_metadata));
+  audio_frame_metadata->set_audio_element_id(audio_element_id);
 
+  auto* audio_element_metadata = user_metadata.add_audio_element_metadata();
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        reserved: 0
+        codec_config_id: 200
+        num_substreams: 1
+        num_parameters: 0
+        scalable_channel_layout_config {
+          num_layers: 1
+          reserved: 0
+          channel_audio_layer_configs:
+          [ {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+            output_gain_is_present_flag: 0
+            recon_gain_is_present_flag: 0
+            reserved_a: 0
+            substream_count: 1
+            coupled_substream_count: 1
+          }]
+        }
+      )pb",
+      audio_element_metadata));
+  audio_element_metadata->set_audio_element_id(audio_element_id);
+  audio_element_metadata->mutable_audio_substream_ids()->Add(
+      audio_substream_id);
+}
+
+const uint32_t kFirstAudioElementId = 300;
+const uint32_t kSecondAudioElementId = 301;
+const uint32_t kFirstSubstreamId = 0;
+const uint32_t kSecondSubstreamId = 1;
+void ConfigureOneStereoSubstreamLittleEndian(
+    iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         codec_config_id: 200
@@ -190,30 +226,8 @@ void ConfigureOneStereoSubstreamLittleEndian(
       )pb",
       user_metadata.add_codec_config_metadata()));
 
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_id: 300
-        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
-        reserved: 0
-        codec_config_id: 200
-        num_substreams: 1
-        audio_substream_ids: [ 0 ]
-        num_parameters: 0
-        scalable_channel_layout_config {
-          num_layers: 1
-          reserved: 0
-          channel_audio_layer_configs:
-          [ {
-            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
-            output_gain_is_present_flag: 0
-            recon_gain_is_present_flag: 0
-            reserved_a: 0
-            substream_count: 1
-            coupled_substream_count: 1
-          }]
-        }
-      )pb",
-      user_metadata.add_audio_element_metadata()));
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
 }
 
 TEST(AudioFrameGenerator, OneStereoSubstreamOneFrame) {
@@ -291,6 +305,68 @@ TEST(AudioFrameGenerator, OneStereoSubstreamTwoFrames) {
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
   ValidateAudioFrames(audio_frames, expected_audio_frames);
+}
+
+TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  // Configure them with the same trimming information.
+  const uint32_t kCommonNumSamplesToTrimAtStart = 2;
+  const uint32_t kCommonNumSamplesToTrimAtEnd = 1;
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      kCommonNumSamplesToTrimAtStart);
+  user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_start(
+      kCommonNumSamplesToTrimAtStart);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(
+      kCommonNumSamplesToTrimAtEnd);
+  user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_end(
+      kCommonNumSamplesToTrimAtEnd);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  EXPECT_FALSE(audio_frames.empty());
+  for (const auto& audio_frame : audio_frames) {
+    EXPECT_EQ(audio_frame.obu.header_.num_samples_to_trim_at_start,
+              kCommonNumSamplesToTrimAtStart);
+    EXPECT_EQ(audio_frame.obu.header_.num_samples_to_trim_at_end,
+              kCommonNumSamplesToTrimAtEnd);
+  }
+}
+
+TEST(AudioFrameGenerator,
+     ErrorAudioElementsMustHaveSameTrimmingInformationAtEnd) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  // IAMF requires that all audio elements have the same number of samples
+  // trimmed at the end.
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(1);
+  user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_end(2);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames, true,
+                                     /*expected_finalize_is_ok=*/false);
+}
+
+TEST(AudioFrameGenerator,
+     ErrorAudioElementsMustHaveSameTrimmingInformationAtStart) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  // IAMF requires that all audio elements have the same number of samples
+  // trimmed at the start.
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      1);
+  user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_start(
+      2);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames, true,
+                                     /*expected_finalize_is_ok=*/false);
 }
 
 TEST(AudioFrameGenerator, NumSamplesToTrimAtEndWithPaddedFrames) {
