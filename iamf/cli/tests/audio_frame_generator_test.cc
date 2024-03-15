@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/audio_frame.h"
 #include "iamf/cli/audio_element_generator.h"
@@ -81,9 +82,11 @@ void ValidateAudioFrames(
   }
 }
 
-void TestGenerateAudioFramesWithoutParameters(
+void GenerateAudioFrameWithEightSamples(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const std::list<AudioFrameWithData>& expected_audio_frames) {
+    std::list<AudioFrameWithData>& output_audio_frames,
+    bool expected_generate_frames_is_ok = true,
+    bool expected_finalize_is_ok = true) {
   // Initialize pre-requisite OBUs and the global timing module. This is all
   // derived from the `user_metadata`.
   CodecConfigGenerator codec_config_generator(
@@ -120,7 +123,6 @@ void TestGenerateAudioFramesWithoutParameters(
       output_wav_directory,
       /*file_name_prefix=*/"test", demixing_module, parameters_manager,
       global_timing_module);
-  std::list<AudioFrameWithData> audio_frames = {};
 
   // Initialize, iteratively add samples, generate frames, and finalize.
   EXPECT_TRUE(audio_frame_generator.Initialize().ok());
@@ -132,7 +134,9 @@ void TestGenerateAudioFramesWithoutParameters(
   const std::vector<int32_t> frame_0_r2 = {
       65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
       65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
-  while (!audio_frame_generator.Finished()) {
+
+  absl::Status generate_frames_status = absl::OkStatus();
+  while (!audio_frame_generator.Finished() && generate_frames_status.ok()) {
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
       EXPECT_TRUE(audio_frame_generator
@@ -146,13 +150,15 @@ void TestGenerateAudioFramesWithoutParameters(
                                                    : std::vector<int32_t>())
                       .ok());
     }
-    EXPECT_TRUE(audio_frame_generator.GenerateFrames().ok());
+    generate_frames_status = audio_frame_generator.GenerateFrames();
     frame_count++;
   }
-  EXPECT_TRUE(audio_frame_generator.Finalize(audio_frames).ok());
+  EXPECT_EQ(generate_frames_status.ok(), expected_generate_frames_is_ok);
 
-  // Validate the generated audio frames.
-  ValidateAudioFrames(audio_frames, expected_audio_frames);
+  if (expected_generate_frames_is_ok) {
+    EXPECT_EQ(audio_frame_generator.Finalize(output_audio_frames).ok(),
+              expected_finalize_is_ok);
+  }
 }
 
 void ConfigureOneStereoSubstreamLittleEndian(
@@ -225,8 +231,9 @@ TEST(AudioFrameGenerator, OneStereoSubstreamOneFrame) {
        .end_timestamp = 8,
        .down_mixing_params = {.in_bitstream = false}});
 
-  TestGenerateAudioFramesWithoutParameters(user_metadata,
-                                           expected_audio_frames);
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  ValidateAudioFrames(audio_frames, expected_audio_frames);
 }
 
 TEST(AudioFrameGenerator, AllowsOutputToHaveHigherBitDepthThanInput) {
@@ -251,8 +258,9 @@ TEST(AudioFrameGenerator, AllowsOutputToHaveHigherBitDepthThanInput) {
        .end_timestamp = 8,
        .down_mixing_params = {.in_bitstream = false}});
 
-  TestGenerateAudioFramesWithoutParameters(user_metadata,
-                                           expected_audio_frames);
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  ValidateAudioFrames(audio_frames, expected_audio_frames);
 }
 
 TEST(AudioFrameGenerator, OneStereoSubstreamTwoFrames) {
@@ -280,11 +288,12 @@ TEST(AudioFrameGenerator, OneStereoSubstreamTwoFrames) {
        .end_timestamp = 8,
        .down_mixing_params = {.in_bitstream = false}});
 
-  TestGenerateAudioFramesWithoutParameters(user_metadata,
-                                           expected_audio_frames);
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  ValidateAudioFrames(audio_frames, expected_audio_frames);
 }
 
-TEST(AudioFrameGenerator, OneStereoSubstreamOnePaddedFrame) {
+TEST(AudioFrameGenerator, NumSamplesToTrimAtEndWithPaddedFrames) {
   iamf_tools_cli_proto::UserMetadata user_metadata = {};
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
 
@@ -308,13 +317,82 @@ TEST(AudioFrameGenerator, OneStereoSubstreamOnePaddedFrame) {
        .start_timestamp = 0,
        .end_timestamp = 10,
        .down_mixing_params = {.in_bitstream = false}});
-  TestGenerateAudioFramesWithoutParameters(user_metadata,
-                                           expected_audio_frames);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  // Validate the generated audio frames.
+  ValidateAudioFrames(audio_frames, expected_audio_frames);
+}
+
+TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(10);
+  // Normally two samples would be required.
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(1);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames,
+                                     /*expected_generate_frames_is_ok=*/false);
+}
+
+TEST(AudioFrameGenerator, UserMayRequestAdditionalSamplesToTrimAtEnd) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  const uint32_t kRequestedNumSamplesToTrimAtEnd = 1;
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(
+      kRequestedNumSamplesToTrimAtEnd);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  ASSERT_FALSE(audio_frames.empty());
+
+  EXPECT_EQ(audio_frames.front().obu.header_.num_samples_to_trim_at_end,
+            kRequestedNumSamplesToTrimAtEnd);
+}
+
+TEST(AudioFrameGenerator, InvalidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+
+  // Reconfigure `num_samples_per_frame` to result in two frames.
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(4);
+
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(4);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames, true,
+                                     /*expected_finalize_is_ok=*/false);
+}
+
+TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+
+  // Reconfigure `num_samples_per_frame` to result in two frames.
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(4);
+
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      4);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  ASSERT_FALSE(audio_frames.empty());
+
+  EXPECT_EQ(audio_frames.front().obu.header_.num_samples_to_trim_at_start, 4);
 }
 
 TEST(AudioFrameGenerator, NoAudioFrames) {
   const iamf_tools_cli_proto::UserMetadata& user_metadata = {};
-  TestGenerateAudioFramesWithoutParameters(user_metadata, {});
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+  EXPECT_TRUE(audio_frames.empty());
 }
 
 }  // namespace
