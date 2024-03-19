@@ -217,15 +217,27 @@ absl::Status ReadBitBuffer::ReadBoolean(bool& output) {
 // `required_num_bits` in `bit_buffer_` after completion. Returns an error if
 // there are not enough bits in `source_` to fulfill this request. If `source_`
 // contains enough data, this function will fill the read buffer completely.
-absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
+absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits,
+                                     const bool fill_to_capacity) {
   DiscardAllBits();
+  int num_bits_to_load = required_num_bits;
+  if (fill_to_capacity) {
+    int bit_capacity = bit_buffer_.capacity() * 8;
+    if (required_num_bits > bit_capacity) {
+      return absl::InvalidArgumentError(
+          "required_num_bits must be <= capacity.");
+    } else {
+      num_bits_to_load = bit_capacity;
+    }
+  }
+  int bits_loaded = 0;
   int original_source_offset = source_bit_offset_;
-  int remaining_bits_to_load = required_num_bits;
   int64_t bit_buffer_write_offset = 0;
-  while (ShouldRead(source_bit_offset_, *source_, remaining_bits_to_load) &&
+  while (ShouldRead(source_bit_offset_, *source_,
+                    (num_bits_to_load - bits_loaded)) &&
          (bit_buffer_.size() != bit_buffer_.capacity())) {
-    if (remaining_bits_to_load < 8 || source_bit_offset_ % 8 != 0 ||
-        bit_buffer_write_offset % 8 != 0) {
+    if ((num_bits_to_load - bits_loaded) % 8 != 0 ||
+        source_bit_offset_ % 8 != 0 || bit_buffer_write_offset % 8 != 0) {
       // Load bit by bit
       uint8_t loaded_bit = GetUpperBit(source_bit_offset_, *source_);
       RETURN_IF_NOT_OK(
@@ -233,17 +245,17 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
       RETURN_IF_NOT_OK(
           WriteBit(loaded_bit, bit_buffer_write_offset, bit_buffer_));
       source_bit_offset_++;
-      remaining_bits_to_load--;
       buffer_size_++;
+      bits_loaded++;
     } else {
       // Load byte by byte
       bit_buffer_.push_back(source_->at(source_bit_offset_ / 8));
       source_bit_offset_ += 8;
-      remaining_bits_to_load -= 8;
       buffer_size_ += 8;
+      bits_loaded += 8;
     }
   }
-  if (remaining_bits_to_load != 0) {
+  if (bits_loaded < required_num_bits) {
     source_bit_offset_ = original_source_offset;
     DiscardAllBits();
     return absl::ResourceExhaustedError("Not enough bits in source.");

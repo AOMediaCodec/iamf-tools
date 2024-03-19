@@ -135,14 +135,17 @@ class ReadBitBuffer {
 
   /*!\brief Loads data from source into the read buffer.
    *
-   * Loads exactly enough bytes from `source_` into `bit_buffer_` such that
-   * it contains at least `required_num_bits` bits. Load bits updates the
-   * `source_bit_offset` based on the number of bytes that were loaded into the
-   * buffer.
-   *
-   * \return `absl::OkStatus()` on success.
+   * \param required_num_bits Number of bits that must be loaded from `source_`
+   *      into `bit_buffer_`.
+   * \param fill_to_capacity If true, this function will try to fill the buffer
+   *      to its capacity, provided there is enough source data.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()`if
+   *      `required_num_bits` > bit_buffer_.capacity().
+   *      `absl::ResourceExhaustedError()` if we are unable to load
+   *      `required_num_bits` from source.
    */
-  absl::Status LoadBits(int32_t required_num_bits);
+  absl::Status LoadBits(int32_t required_num_bits,
+                        bool fill_to_capacity = true);
 
   /*!\brief Empties the buffer.*/
   void DiscardAllBits();

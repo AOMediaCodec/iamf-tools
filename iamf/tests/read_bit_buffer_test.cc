@@ -23,7 +23,7 @@
 namespace iamf_tools {
 using absl::StatusCode::kInvalidArgument;
 using absl::StatusCode::kResourceExhausted;
-using testing::UnorderedElementsAreArray;
+using testing::ElementsAreArray;
 namespace {
 
 class ReadBitBufferTest : public ::testing::Test {
@@ -48,26 +48,26 @@ TEST_F(ReadBitBufferTest, LoadBitsByteAligned) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   EXPECT_TRUE(rb_->LoadBits(24).ok());
-  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(source_data_));
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(source_data_));
 }
 
 TEST_F(ReadBitBufferTest, LoadBitsNotByteAligned) {
   source_data_ = {0b10100001};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3).ok());
+  EXPECT_TRUE(rb_->LoadBits(3, false).ok());
   // Only read the first 3 bits (101) - the rest of the bits in the byte are
   // zeroed out.
   std::vector<uint8_t> expected = {0b10100000};
-  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 3);
   // Load bits again. This will clear the buffer while still reading from the
   // updated source offset.
-  EXPECT_TRUE(rb_->LoadBits(5).ok());
+  EXPECT_TRUE(rb_->LoadBits(5, false).ok());
   expected = {
       0b00001000};  // {00001} these bits are loaded from the 5 remaining bits
                     // in the buffer - the rest of the bits are zeroed out.
-  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 8);
 }
 
@@ -75,25 +75,52 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
   source_data_ = {0b10100001, 0b00110011};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3).ok());
+  EXPECT_TRUE(rb_->LoadBits(3, false).ok());
   // Only read the first 3 bits (101) - the rest of the bits in the byte are
   // zeroed out.
   std::vector<uint8_t> expected = {0b10100000};
-  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 3);
   EXPECT_EQ(rb_->buffer_size(), 3);
   // Load bits again. This will clear the buffer while still reading from the
   // updated source offset.
-  EXPECT_TRUE(rb_->LoadBits(12).ok());
+  EXPECT_TRUE(rb_->LoadBits(12, false).ok());
   expected = {
       0b00001001,
       0b10010000};  // {00001} these bits are loaded from the 5 remaining bits
                     // in the first byte - {0011001} comes from the first 7 bits
                     // of the second byte of the source_data. The rest of the
                     // second byte in the buffer is zeroed out.
-  EXPECT_THAT(rb_->bit_buffer(), UnorderedElementsAreArray(expected));
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
   EXPECT_EQ(rb_->source_bit_offset(), 15);
   EXPECT_EQ(rb_->buffer_size(), 12);
+}
+
+TEST_F(ReadBitBufferTest, LoadBitsAsManyAsPossibleLimitedSource) {
+  source_data_ = {0b10100001, 0b00110011, 0b10001110};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(3, true).ok());
+  // Even though we only requested 3 bits, by default we will fill the buffer as
+  // much as possible.
+  std::vector<uint8_t> expected = {0b10100001, 0b00110011, 0b10001110};
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
+  EXPECT_EQ(rb_->source_bit_offset(), 24);
+  EXPECT_EQ(rb_->buffer_size(), 24);
+}
+
+TEST_F(ReadBitBufferTest, LoadBitsAsManyAsPossibleLimitedBufferCapacity) {
+  source_data_ = {0b10100001, 0b00110011, 0b10001110};
+  // Capacity is specified in bytes.
+  rb_capacity_ = 2;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(3, true).ok());
+  // Even though we only requested 3 bits, by default we will fill the buffer as
+  // much as possible.
+  std::vector<uint8_t> expected = {0b10100001, 0b00110011};
+  EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(expected));
+  EXPECT_EQ(rb_->source_bit_offset(), 16);
+  EXPECT_EQ(rb_->buffer_size(), 16);
 }
 
 TEST_F(ReadBitBufferTest, LoadBitsNotEnoughSourceBits) {
@@ -140,7 +167,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedNotEnoughBitsInBuffer) {
   source_data_ = {0xab, 0xcd, 0xef, 0xff};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24).ok());
+  EXPECT_TRUE(rb_->LoadBits(24, false).ok());
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
@@ -198,12 +225,15 @@ TEST_F(ReadBitBufferTest,
   EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, output_literal).ok());
   EXPECT_EQ(output_literal, 0b110001);
   EXPECT_EQ(rb_->buffer_bit_offset(), 6);
-  EXPECT_EQ(rb_->buffer_size(), 6);
+  // By default,` ReadUnsignedLiteral` will call `LoadBits` with
+  // `fill_to_capacity` set to true, meaning that we will load as much data as
+  // we can from the source into the buffer.
+  EXPECT_EQ(rb_->buffer_size(), 24);
 
   EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
   EXPECT_EQ(output_literal, 0b0110000011);
-  EXPECT_EQ(rb_->buffer_bit_offset(), 10);
-  EXPECT_EQ(rb_->buffer_size(), 10);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+  EXPECT_EQ(rb_->buffer_size(), 24);
 }
 
 TEST_F(ReadBitBufferTest, ReadUnsignedLiteralBufferBitOffsetNotByteAligned) {
@@ -269,7 +299,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
   source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_TRUE(rb_->LoadBits(32, false).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   // Buffer has a one in the most significant position of each byte, which tells
