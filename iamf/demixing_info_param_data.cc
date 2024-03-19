@@ -13,6 +13,7 @@
 
 #include <algorithm>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -26,8 +27,9 @@ absl::Status DemixingInfoParameterData::DMixPModeToDownMixingParams(
     const DMixPMode dmixp_mode, const int previous_w_idx,
     const WIdxUpdateRule w_idx_update_rule,
     DownMixingParams& down_mixing_params) {
-  static const auto* kDmixPModeToDownMixingParamValues =
-      new absl::flat_hash_map<DMixPMode, DownMixingParams>(
+  static const absl::NoDestructor<
+      absl::flat_hash_map<DMixPMode, DownMixingParams>>
+      kDmixPModeToDownMixingParamValues(
           {{kDMixPMode1, {1, 1, 0.707, 0.707, -1, 0}},
            {kDMixPMode2, {0.707, 0.707, 0.707, 0.707, -1, 0}},
            {kDMixPMode3, {1, 0.866, 0.866, 0.866, -1, 0}},
@@ -35,18 +37,18 @@ absl::Status DemixingInfoParameterData::DMixPModeToDownMixingParams(
            {kDMixPMode2_n, {0.707, 0.707, 0.707, 0.707, 1, 0}},
            {kDMixPMode3_n, {1, 0.866, 0.866, 0.866, 1, 0}}});
 
-  static const auto* kWIdxToWValues =
-      new absl::flat_hash_map<int, double>({{0, 0},
-                                            {1, 0.0179},
-                                            {2, 0.0391},
-                                            {3, 0.0658},
-                                            {4, 0.1038},
-                                            {5, 0.25},
-                                            {6, 0.3962},
-                                            {7, 0.4342},
-                                            {8, 0.4609},
-                                            {9, 0.4821},
-                                            {10, 0.5}});
+  static const absl::NoDestructor<absl::flat_hash_map<int, double>>
+      kWIdxToWValues({{0, 0},
+                      {1, 0.0179},
+                      {2, 0.0391},
+                      {3, 0.0658},
+                      {4, 0.1038},
+                      {5, 0.25},
+                      {6, 0.3962},
+                      {7, 0.4342},
+                      {8, 0.4609},
+                      {9, 0.4821},
+                      {10, 0.5}});
 
   const auto down_mixing_params_iter =
       kDmixPModeToDownMixingParamValues->find(dmixp_mode);

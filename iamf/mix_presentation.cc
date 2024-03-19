@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
@@ -232,17 +233,23 @@ absl::Status MixPresentationObu::GetNumChannelsFromLayout(
       return absl::OkStatus();
     case kLayoutTypeLoudspeakersSsConvention: {
       using enum LoudspeakersSsConventionLayout::SoundSystem;
-      static const auto* kSoundSystemToNumChannels =
-          new absl::flat_hash_map<LoudspeakersSsConventionLayout::SoundSystem,
-                                  int32_t>{
-              {kSoundSystemA_0_2_0, 2},   {kSoundSystemB_0_5_0, 6},
-              {kSoundSystemC_2_5_0, 8},   {kSoundSystemD_4_5_0, 10},
-              {kSoundSystemE_4_5_1, 11},  {kSoundSystemF_3_7_0, 12},
-              {kSoundSystemG_4_9_0, 14},  {kSoundSystemH_9_10_3, 24},
-              {kSoundSystemI_0_7_0, 8},   {kSoundSystemJ_4_7_0, 12},
-              {kSoundSystem10_2_7_0, 10}, {kSoundSystem11_2_3_0, 6},
+      static const absl::NoDestructor<absl::flat_hash_map<
+          LoudspeakersSsConventionLayout::SoundSystem, int32_t>>
+          kSoundSystemToNumChannels({
+              {kSoundSystemA_0_2_0, 2},
+              {kSoundSystemB_0_5_0, 6},
+              {kSoundSystemC_2_5_0, 8},
+              {kSoundSystemD_4_5_0, 10},
+              {kSoundSystemE_4_5_1, 11},
+              {kSoundSystemF_3_7_0, 12},
+              {kSoundSystemG_4_9_0, 14},
+              {kSoundSystemH_9_10_3, 24},
+              {kSoundSystemI_0_7_0, 8},
+              {kSoundSystemJ_4_7_0, 12},
+              {kSoundSystem10_2_7_0, 10},
+              {kSoundSystem11_2_3_0, 6},
               {kSoundSystem12_0_1_0, 1},
-          };
+          });
 
       const auto sound_system = std::get<LoudspeakersSsConventionLayout>(
                                     loudness_layout.specific_layout)

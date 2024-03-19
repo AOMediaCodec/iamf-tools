@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
@@ -612,9 +613,10 @@ absl::Status CopyLoudspeakerLayout(
   if (input_layer_config.has_loudspeaker_layout()) {
     using enum iamf_tools_cli_proto::LoudspeakerLayout;
     using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-    static const auto* kInputLoudspeakerLayoutToOutputLoudspeakerLayout =
-        new absl::flat_hash_map<iamf_tools_cli_proto::LoudspeakerLayout,
-                                ChannelAudioLayerConfig::LoudspeakerLayout>({
+    static const absl::NoDestructor<
+        absl::flat_hash_map<iamf_tools_cli_proto::LoudspeakerLayout,
+                            ChannelAudioLayerConfig::LoudspeakerLayout>>
+        kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
             {LOUDSPEAKER_LAYOUT_MONO, kLayoutMono},
             {LOUDSPEAKER_LAYOUT_STEREO, kLayoutStereo},
             {LOUDSPEAKER_LAYOUT_5_1_CH, kLayout5_1_ch},

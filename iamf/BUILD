@@ -8,6 +8,7 @@ cc_library(
         ":ia",
         ":obu_util",
         ":write_bit_buffer",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -91,6 +92,7 @@ cc_library(
     deps = [
         ":ia",
         ":write_bit_buffer",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -157,6 +159,7 @@ cc_library(
         ":obu_util",
         ":param_definitions",
         ":write_bit_buffer",
+        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",

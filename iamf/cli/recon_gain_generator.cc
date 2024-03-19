@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -46,14 +47,23 @@ absl::Status FindRelevantMixedSamples(
     const bool additional_logging, const std::string& label,
     const LabelSamplesMap& label_to_samples,
     const std::vector<int32_t>** relevant_mixed_samples) {
-  static const auto* kMixedLabels =
-      new absl::flat_hash_map<std::string, std::string>{
-          {"D_L7", "L5"},    {"D_R7", "R5"},     {"D_Lrs7", "Ls5"},
-          {"D_Rrs7", "Rs5"}, {"D_Ltb4", "Ltf2"}, {"D_Rtb4", "Rtf2"},
-          {"D_L5", "L3"},    {"D_R5", "R3"},     {"D_Ls5", "L3"},
-          {"D_Rs5", "R3"},   {"D_Ltf2", "Ltf3"}, {"D_Rtf2", "Rtf3"},
-          {"D_L3", "L2"},    {"D_R3", "R2"},     {"D_L2", "M"},
-          {"D_R2", "M"}};
+  static const absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
+      kMixedLabels({{"D_L7", "L5"},
+                    {"D_R7", "R5"},
+                    {"D_Lrs7", "Ls5"},
+                    {"D_Rrs7", "Rs5"},
+                    {"D_Ltb4", "Ltf2"},
+                    {"D_Rtb4", "Rtf2"},
+                    {"D_L5", "L3"},
+                    {"D_R5", "R3"},
+                    {"D_Ls5", "L3"},
+                    {"D_Rs5", "R3"},
+                    {"D_Ltf2", "Ltf3"},
+                    {"D_Rtf2", "Rtf3"},
+                    {"D_L3", "L2"},
+                    {"D_R3", "R2"},
+                    {"D_L2", "M"},
+                    {"D_R2", "M"}});
 
   std::string mixed_label;
 

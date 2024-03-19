@@ -13,6 +13,7 @@
 
 #include <cstdint>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -125,21 +126,22 @@ absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
 absl::Status AacDecoderConfig::GetOutputSampleRate(
     uint32_t& output_sample_rate) const {
   using enum AudioSpecificConfig::SampleFrequencyIndex;
-  static const auto* kSampleFrequencyIndexToSampleFrequency =
-      new absl::flat_hash_map<AudioSpecificConfig::SampleFrequencyIndex,
-                              uint32_t>{{kSampleFrequencyIndex96000, 96000},
-                                        {kSampleFrequencyIndex88200, 88200},
-                                        {kSampleFrequencyIndex64000, 64000},
-                                        {kSampleFrequencyIndex48000, 48000},
-                                        {kSampleFrequencyIndex44100, 44100},
-                                        {kSampleFrequencyIndex32000, 32000},
-                                        {kSampleFrequencyIndex23000, 23000},
-                                        {kSampleFrequencyIndex22050, 22050},
-                                        {kSampleFrequencyIndex16000, 16000},
-                                        {kSampleFrequencyIndex12000, 12000},
-                                        {kSampleFrequencyIndex11025, 11025},
-                                        {kSampleFrequencyIndex8000, 8000},
-                                        {kSampleFrequencyIndex7350, 7350}};
+  static const absl::NoDestructor<
+      absl::flat_hash_map<AudioSpecificConfig::SampleFrequencyIndex, uint32_t>>
+      kSampleFrequencyIndexToSampleFrequency(
+          {{kSampleFrequencyIndex96000, 96000},
+           {kSampleFrequencyIndex88200, 88200},
+           {kSampleFrequencyIndex64000, 64000},
+           {kSampleFrequencyIndex48000, 48000},
+           {kSampleFrequencyIndex44100, 44100},
+           {kSampleFrequencyIndex32000, 32000},
+           {kSampleFrequencyIndex23000, 23000},
+           {kSampleFrequencyIndex22050, 22050},
+           {kSampleFrequencyIndex16000, 16000},
+           {kSampleFrequencyIndex12000, 12000},
+           {kSampleFrequencyIndex11025, 11025},
+           {kSampleFrequencyIndex8000, 8000},
+           {kSampleFrequencyIndex7350, 7350}});
 
   const auto sample_frequency_index =
       decoder_specific_info_.audio_specific_config.sample_frequency_index_;

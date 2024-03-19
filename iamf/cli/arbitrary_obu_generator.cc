@@ -16,6 +16,7 @@
 #include <list>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -33,8 +34,9 @@ absl::Status CopyArbitraryObuType(
     const iamf_tools_cli_proto::ArbitraryObuType arbitrary_obu_type,
     ObuType& output_obu_type) {
   using enum iamf_tools_cli_proto::ArbitraryObuType;
-  static const auto* kArbitraryObuTypeToObuType =
-      new absl::flat_hash_map<iamf_tools_cli_proto::ArbitraryObuType, ObuType>({
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::ArbitraryObuType, ObuType>>
+      kArbitraryObuTypeToObuType({
           {OBU_IA_CODEC_CONFIG, kObuIaCodecConfig},
           {OBU_IA_AUDIO_ELEMENT, kObuIaAudioElement},
           {OBU_IA_MIX_PRESENTATION, kObuIaMixPresentation},

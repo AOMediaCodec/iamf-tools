@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -55,9 +56,9 @@ absl::Status CopyCodecId(
 
   using enum iamf_tools_cli_proto::CodecId;
   using enum CodecConfig::CodecId;
-  static const auto* kInputCodecIdToOutputCodecId =
-      new absl::flat_hash_map<iamf_tools_cli_proto::CodecId,
-                              CodecConfig::CodecId>({
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::CodecId, CodecConfig::CodecId>>
+      kInputCodecIdToOutputCodecId({
           {CODEC_ID_OPUS, kCodecIdOpus},
           {CODEC_ID_FLAC, kCodecIdFlac},
           {CODEC_ID_AAC_LC, kCodecIdAacLc},
@@ -78,9 +79,9 @@ absl::Status CopyFlacBlockType(
     FlacMetaBlockHeader::FlacBlockType& output_flac_block_type) {
   using enum iamf_tools_cli_proto::FlacBlockType;
   using enum FlacMetaBlockHeader::FlacBlockType;
-  static const auto* kInputFlacBlockTypeToOutputFlacBlockType =
-      new absl::flat_hash_map<iamf_tools_cli_proto::FlacBlockType,
-                              FlacMetaBlockHeader::FlacBlockType>(
+  static const absl::NoDestructor<absl::flat_hash_map<
+      iamf_tools_cli_proto::FlacBlockType, FlacMetaBlockHeader::FlacBlockType>>
+      kInputFlacBlockTypeToOutputFlacBlockType(
           {{FLAC_BLOCK_TYPE_STREAMINFO, kFlacStreamInfo},
            {FLAC_BLOCK_TYPE_PADDING, kFlacPadding},
            {FLAC_BLOCK_TYPE_APPLICATION, kFlacApplication},
@@ -104,9 +105,10 @@ absl::Status CopySampleFrequencyIndex(
     AudioSpecificConfig::SampleFrequencyIndex& output_sample_frequency_index) {
   using enum iamf_tools_cli_proto::SampleFrequencyIndex;
   using enum AudioSpecificConfig::SampleFrequencyIndex;
-  static const auto* kInputSampleFrequencyIndexToOutputSampleFrequencyIndex =
-      new absl::flat_hash_map<iamf_tools_cli_proto::SampleFrequencyIndex,
-                              AudioSpecificConfig::SampleFrequencyIndex>({
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::SampleFrequencyIndex,
+                          AudioSpecificConfig::SampleFrequencyIndex>>
+      kInputSampleFrequencyIndexToOutputSampleFrequencyIndex({
           {AAC_SAMPLE_FREQUENCY_INDEX_96000, kSampleFrequencyIndex96000},
           {AAC_SAMPLE_FREQUENCY_INDEX_88200, kSampleFrequencyIndex88200},
           {AAC_SAMPLE_FREQUENCY_INDEX_64000, kSampleFrequencyIndex64000},

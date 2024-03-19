@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -136,9 +137,10 @@ absl::Status CopySoundSystem(
     LoudspeakersSsConventionLayout::SoundSystem& output_sound_system) {
   using enum iamf_tools_cli_proto::SoundSystem;
   using enum LoudspeakersSsConventionLayout::SoundSystem;
-  static const auto* kInputSoundSystemToOutputSoundSystem =
-      new absl::flat_hash_map<iamf_tools_cli_proto::SoundSystem,
-                              LoudspeakersSsConventionLayout::SoundSystem>(
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::SoundSystem,
+                          LoudspeakersSsConventionLayout::SoundSystem>>
+      kInputSoundSystemToOutputSoundSystem(
           {{SOUND_SYSTEM_A_0_2_0, kSoundSystemA_0_2_0},
            {SOUND_SYSTEM_B_0_5_0, kSoundSystemB_0_5_0},
            {SOUND_SYSTEM_C_2_5_0, kSoundSystemC_2_5_0},
@@ -251,19 +253,19 @@ absl::Status MixPresentationGenerator::CopyInfoType(
     uint8_t& loudness_info_type) {
   using enum iamf_tools_cli_proto::LoudnessInfoTypeBitMask;
   using enum LoudnessInfo::InfoTypeBitmask;
-  static const auto*
-      kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask =
-          new absl::flat_hash_map<iamf_tools_cli_proto::LoudnessInfoTypeBitMask,
-                                  LoudnessInfo::InfoTypeBitmask>({
-              {LOUDNESS_INFO_TYPE_TRUE_PEAK, kTruePeak},
-              {LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS, kAnchoredLoudness},
-              {LOUDNESS_INFO_TYPE_RESERVED_4, kInfoTypeBitMask4},
-              {LOUDNESS_INFO_TYPE_RESERVED_8, kInfoTypeBitMask8},
-              {LOUDNESS_INFO_TYPE_RESERVED_16, kInfoTypeBitMask16},
-              {LOUDNESS_INFO_TYPE_RESERVED_32, kInfoTypeBitMask32},
-              {LOUDNESS_INFO_TYPE_RESERVED_64, kInfoTypeBitMask64},
-              {LOUDNESS_INFO_TYPE_RESERVED_128, kInfoTypeBitMask128},
-          });
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::LoudnessInfoTypeBitMask,
+                          LoudnessInfo::InfoTypeBitmask>>
+      kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask({
+          {LOUDNESS_INFO_TYPE_TRUE_PEAK, kTruePeak},
+          {LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS, kAnchoredLoudness},
+          {LOUDNESS_INFO_TYPE_RESERVED_4, kInfoTypeBitMask4},
+          {LOUDNESS_INFO_TYPE_RESERVED_8, kInfoTypeBitMask8},
+          {LOUDNESS_INFO_TYPE_RESERVED_16, kInfoTypeBitMask16},
+          {LOUDNESS_INFO_TYPE_RESERVED_32, kInfoTypeBitMask32},
+          {LOUDNESS_INFO_TYPE_RESERVED_64, kInfoTypeBitMask64},
+          {LOUDNESS_INFO_TYPE_RESERVED_128, kInfoTypeBitMask128},
+      });
 
   if (input_loudness_info.has_deprecated_info_type()) {
     LOG(WARNING) << "Please upgrade the `deprecated_info_type` "
