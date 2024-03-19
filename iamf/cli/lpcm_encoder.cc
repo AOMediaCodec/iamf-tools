@@ -18,6 +18,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/ia.h"
@@ -62,6 +63,7 @@ absl::Status LpcmEncoder::InitializeEncoder() {
 absl::Status LpcmEncoder::EncodeAudioFrame(
     int /*input_bit_depth*/, const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
+  RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
   // Since this implementation supports partial frames get the number of samples
   // per channel from the input.
@@ -81,6 +83,7 @@ absl::Status LpcmEncoder::EncodeAudioFrame(
       decoder_config_.sample_format_flags_ == LpcmDecoderConfig::kLpcmBigEndian,
       audio_frame.size(), audio_frame.data()));
 
+  absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 

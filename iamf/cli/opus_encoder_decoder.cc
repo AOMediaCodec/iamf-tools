@@ -20,6 +20,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -278,6 +279,7 @@ OpusEncoder::~OpusEncoder() { opus_encoder_destroy(encoder_); }
 absl::Status OpusEncoder::EncodeAudioFrame(
     int /*input_bit_depth*/, const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
+  RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
   const int num_samples_per_channel = static_cast<int>(num_samples_per_frame_);
 
@@ -309,6 +311,7 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   // Shrink output vector to actual size.
   audio_frame.resize(*encoded_length_bytes);
 
+  absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 

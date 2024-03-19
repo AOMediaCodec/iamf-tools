@@ -11,8 +11,6 @@
  */
 #include "iamf/cli/aac_encoder_decoder.h"
 
-#include <sys/types.h>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -22,8 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
-
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
 #ifdef IS_LITTLE_ENDIAN
 #undef IS_LITTLE_ENDIAN
@@ -31,6 +27,8 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/aac_decoder_config.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/decoder_base.h"
@@ -345,6 +343,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
   if (!encoder_) {
     LOG(ERROR) << "Expected `encoder_` to be initialized.";
   }
+  RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
   const int num_samples_per_channel = static_cast<int>(num_samples_per_frame_);
 
@@ -425,6 +424,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // Resize the buffer to the actual size and finalize it.
   audio_frame.resize(out_args.numOutBytes);
+  absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 

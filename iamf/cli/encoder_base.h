@@ -18,7 +18,9 @@
 #include <memory>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/codec_config.h"
 
@@ -28,10 +30,18 @@ class EncoderBase {
  public:
   /*\!brief Constructor.
    *
-   * After constructing `Initialize` MUST be called and return successfully
-   * before using most functionality of the encoder. Call `FinalizeAndFlush` to
-   * close the encoder and retrieve flushed frames. Frames are flushed in the
-   * order they were received by `EncodeAudioFrame`.
+   * After constructing `Initialize()` MUST be called and return successfully
+   * before using most functionality of the encoder.
+   *
+   * - Call `EncodeAudioFrame()` to encode an audio frame. The encoding may
+   *   happen asynchronously.
+   * - Call `FramesAvailable()` to see if there is any finished frame.
+   * - Call `Flush()` to retrieve finished frames, in the order they were
+   *   received by `EncodeAudioFrame()`.
+   * - Call `Finalize()` to close the encoder, telling it to finish encoding
+   *   any remaining frames, which can be retrieved one last time via `Flush()`.
+   *   After calling `Finalize()`, any subsequent call to `EncodeAudioFrame()`
+   *   will fail.
    *
    * \param supports_partial_frames `true` for encoders that support encoding
    *     frames shorter than `num_samples_per_frame_`. `false` otherwise.
@@ -71,17 +81,48 @@ class EncoderBase {
       int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
       std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) = 0;
 
-  /*!\brief Finalizes and flushes all audio frames to output argument.
+  /*!\brief Gets whether there are frames available.
    *
-   * This function MUST be called at most once to retrieve encoder audio frames.
+   * Available frames can be retrieved by `Flush()`.
+   *
+   * \return True if there is any finished audio frame.
+   */
+  bool FramesAvailable() const {
+    absl::MutexLock lock(&mutex_);
+    return !finalized_audio_frames_.empty();
+  }
+
+  /*!\brief Flush finished audio frames.
    *
    * \param audio_frames List to append finished frames to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  virtual absl::Status FinalizeAndFlush(
-      std::list<AudioFrameWithData>& audio_frames) {
+  absl::Status Flush(std::list<AudioFrameWithData>& audio_frames) {
+    absl::MutexLock lock(&mutex_);
     audio_frames.splice(audio_frames.end(), finalized_audio_frames_);
     return absl::OkStatus();
+  }
+
+  /*!\brief Finalizes the encoder, signaling it to finish any remaining frames.
+   *
+   * This function MUST be called at most once before flushing the last batch
+   * of encoded audio frames.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  virtual absl::Status Finalize() {
+    absl::MutexLock lock(&mutex_);
+    finished_ = true;
+    return absl::OkStatus();
+  }
+
+  /*!\brief Gets whether the encoder has been closed.
+   *
+   * \return True if the encoder has been closed.
+   */
+  bool Finished() const {
+    absl::MutexLock lock(&mutex_);
+    return finished_;
   }
 
   /*!\brief Gets the required number of samples to delay at the start.
@@ -116,6 +157,18 @@ class EncoderBase {
    */
   virtual absl::Status SetNumberOfSamplesToDelayAtStart() = 0;
 
+  /*!\brief Validates `Finalize()` has not yet been called.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status ValidateNotFinalized() {
+    if (Finished()) {
+      return absl::InvalidArgumentError(
+          "Encoding is disallowed after `Finalize()` has been called");
+    }
+    return absl::OkStatus();
+  }
+
   /*!\brief Validates `samples` has the correct number of ticks and channels.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -124,7 +177,15 @@ class EncoderBase {
       const std::vector<std::vector<int32_t>>& samples) const;
 
   uint32_t required_samples_to_delay_at_start_ = 0;
-  std::list<AudioFrameWithData> finalized_audio_frames_ = {};
+
+  // Mutex to guard simultaneous access to data members.
+  mutable absl::Mutex mutex_;
+
+  std::list<AudioFrameWithData> finalized_audio_frames_
+      ABSL_GUARDED_BY(mutex_) = {};
+
+  // Whether the encoding has been closed.
+  bool finished_ ABSL_GUARDED_BY(mutex_) = false;
 };
 
 }  // namespace iamf_tools

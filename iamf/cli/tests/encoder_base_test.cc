@@ -84,7 +84,8 @@ TEST(EncoderBaseTest, FinalizeAndFlushAppendAudioFrames) {
       .end_timestamp = kEndTimestamp,
       .audio_element_with_data = nullptr,
   });
-  EXPECT_TRUE(encoder.FinalizeAndFlush(audio_frames).ok());
+  EXPECT_TRUE(encoder.Finalize().ok());
+  EXPECT_TRUE(encoder.Flush(audio_frames).ok());
 
   // Expect the `audio_frames` is unaltered.
   ASSERT_EQ(audio_frames.size(), 1);

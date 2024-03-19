@@ -24,6 +24,8 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "iamf/arbitrary_obu.h"
 #include "iamf/cli/arbitrary_obu_generator.h"
 #include "iamf/cli/audio_element_generator.h"
@@ -55,6 +57,25 @@
 namespace iamf_tools {
 
 namespace {
+
+void PrintAudioFrames(const std::list<AudioFrameWithData>& audio_frames) {
+  // Print the first, last, and any audio frames with `trimming_status_flag`
+  // set.
+  int i = 0;
+  for (const auto& audio_frame_with_data : audio_frames) {
+    if (i == 0 || i == audio_frames.size() - 1 ||
+        audio_frame_with_data.obu.header_.obu_trimming_status_flag) {
+      LOG(INFO) << "Audio Frame OBU[" << i << "]";
+
+      audio_frame_with_data.obu.PrintObu();
+      LOG(INFO) << "    audio frame.start_timestamp= "
+                << audio_frame_with_data.start_timestamp;
+      LOG(INFO) << "    audio frame.end_timestamp= "
+                << audio_frame_with_data.end_timestamp;
+    }
+    i++;
+  }
+}
 
 absl::Status CreateOutputDirectory(const std::string& output_directory) {
   if (output_directory.empty() ||
@@ -159,7 +180,9 @@ absl::Status GenerateObus(
 
   RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
 
-  while (!audio_frame_generator.Finished()) {
+  // TODO(b/329375123): Make these two while loops run on two threads. The
+  //                    one below should be on Thread 1.
+  while (audio_frame_generator.TakingSamples()) {
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
       const auto audio_element_id = audio_frame_metadata.audio_element_id();
@@ -172,11 +195,21 @@ absl::Status GenerateObus(
             audio_element_id, channel_label, samples));
       }
     }
-
-    RETURN_IF_NOT_OK(audio_frame_generator.GenerateFrames());
   }
+  RETURN_IF_NOT_OK(audio_frame_generator.Finalize());
 
-  RETURN_IF_NOT_OK(audio_frame_generator.Finalize(audio_frames));
+  // TODO(b/329375123): This should be on Thread 2.
+  while (audio_frame_generator.GeneratingFrames()) {
+    std::list<AudioFrameWithData> temp_audio_frames;
+    RETURN_IF_NOT_OK(audio_frame_generator.OutputFrames(temp_audio_frames));
+
+    if (temp_audio_frames.empty()) {
+      absl::SleepFor(absl::Milliseconds(50));
+    } else {
+      audio_frames.splice(audio_frames.end(), temp_audio_frames);
+    }
+  }
+  PrintAudioFrames(audio_frames);
 
   AudioFrameDecoder audio_frame_decoder(
       output_wav_directory,

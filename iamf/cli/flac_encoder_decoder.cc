@@ -21,10 +21,8 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/time/clock.h"
-#include "absl/time/time.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/encoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/flac_decoder_config.h"
 #include "iamf/ia.h"
@@ -90,6 +88,8 @@ FLAC__StreamEncoderWriteStatus LibFlacWriteCallback(
 
   auto flac_encoder = static_cast<FlacEncoder*>(client_data);
 
+  absl::MutexLock lock(&flac_encoder->mutex_);
+
   auto flac_frame_iter =
       flac_encoder->frame_index_to_frame_.find(current_frame);
   if (flac_frame_iter == flac_encoder->frame_index_to_frame_.end()) {
@@ -106,13 +106,22 @@ FLAC__StreamEncoderWriteStatus LibFlacWriteCallback(
       buffer + bytes);
   flac_frame.num_samples += samples;
 
+  if (flac_frame.num_samples == flac_encoder->num_samples_per_frame_) {
+    // A frame has been completed; move to the finalized frames.
+    flac_encoder->finalized_audio_frames_.emplace_back(
+        std::move(*flac_frame_iter->second.audio_frame_with_data));
+
+    // The frame is fully processed and no longer needed.
+    flac_encoder->frame_index_to_frame_.erase(flac_frame_iter);
+  }
+
   return FLAC__STREAM_ENCODER_WRITE_STATUS_OK;
 }
 
 void LibFlacMetadataCallback(const FLAC__StreamEncoder* /*encoder*/,
                              const FLAC__StreamMetadata* metadata,
                              void* client_data) {
-  LOG_FIRST_N(INFO, 1) << "Begin `flac_metadata_callback`.";
+  LOG_FIRST_N(INFO, 1) << "Begin `LibFlacMetadataCallback`.";
 
   if (metadata->type == FLAC__METADATA_TYPE_STREAMINFO) {
     LOG(INFO) << "Received `STREAMINFO` metadata.";
@@ -121,93 +130,15 @@ void LibFlacMetadataCallback(const FLAC__StreamEncoder* /*encoder*/,
     // returned by `libflac`.
     auto flac_encoder = static_cast<FlacEncoder*>(client_data);
 
-    flac_encoder->streaminfo_finished_ = true;
+    absl::MutexLock lock(&flac_encoder->mutex_);
+    flac_encoder->finished_ = true;
   }
-}
-
-absl::Status FlacEncoder::InitializeEncoder() {
-  // Initialize the encoder.
-  encoder_ = FLAC__stream_encoder_new();
-  if (encoder_ == nullptr) {
-    LOG(ERROR) << "Failed to initialize Flac encoder.";
-    return absl::UnknownError("");
-  }
-
-  // Configure the FLAC encoder based on user input data.
-  RETURN_IF_NOT_OK(Configure(encoder_metadata_, decoder_config_, num_channels_,
-                             num_samples_per_frame_, output_sample_rate_,
-                             input_pcm_bit_depth_, encoder_));
-
-  // Initialize the FLAC encoder.
-  FLAC__StreamEncoderInitStatus init_status = FLAC__stream_encoder_init_stream(
-      encoder_, LibFlacWriteCallback, /*seek_callback=*/nullptr,
-      /*tell_callback=*/nullptr, LibFlacMetadataCallback,
-      static_cast<void*>(this));
-
-  if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
-    LOG(ERROR) << "Failed to initialize Flac stream: " << init_status;
-    return absl::UnknownError("");
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status FlacEncoder::FinalizeFrames() {
-  // Process the frames so they are finalized in chronological order.
-  unsigned int next_frame_index = 0;
-
-  // Process frames in chronological order. Sleep until frames are ready.
-  while (!frame_index_to_frame_.empty()) {
-    auto next_frame_to_finalize_iter =
-        frame_index_to_frame_.find(next_frame_index);
-    if (next_frame_to_finalize_iter == frame_index_to_frame_.end()) {
-      return absl::UnknownError("");
-    }
-
-    auto& next_frame_to_finalize_ = next_frame_to_finalize_iter->second;
-    if (next_frame_to_finalize_.num_samples != num_samples_per_frame_) {
-      // The next frame is not ready to be finalized.
-      // Sleep and try again.
-      absl::SleepFor(absl::Milliseconds(50));
-      continue;
-    }
-
-    // Finalize the audio frame.
-    finalized_audio_frames_.emplace_back(
-        std::move(*next_frame_to_finalize_.audio_frame_with_data));
-
-    // The frame is fully processed and no longer needed.
-    frame_index_to_frame_.erase(next_frame_to_finalize_iter);
-    next_frame_index++;
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status FlacEncoder::FinalizeAndFlush(
-    std::list<AudioFrameWithData>& audio_frames) {
-  // Signal to `libflac` the encoder is finished.
-  if (!FLAC__stream_encoder_finish(encoder_)) {
-    LOG(ERROR) << "Failed to finalize Flac encoder.";
-    return absl::UnknownError("");
-  }
-
-  while (!streaminfo_finished_) {
-    // Finalizing the encoder causes the `STREAMINFO` metadata to be generated.
-    // Wait until the `flac_metadata_callback` is called with that type of
-    // block.
-    absl::SleepFor(absl::Milliseconds(50));
-  }
-
-  // Flush all finished frames.
-  RETURN_IF_NOT_OK(FinalizeFrames());
-
-  return EncoderBase::FinalizeAndFlush(audio_frames);
 }
 
 FlacEncoder::~FlacEncoder() {
   FLAC__stream_encoder_delete(encoder_);
 
+  absl::MutexLock lock(&mutex_);
   if (!frame_index_to_frame_.empty()) {
     LOG(ERROR) << "Some frames were not fully processed. Maybe `Finalize()` "
                   "was not called.";
@@ -217,6 +148,7 @@ FlacEncoder::~FlacEncoder() {
 absl::Status FlacEncoder::EncodeAudioFrame(
     int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
+  RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
   const int num_samples_per_channel = static_cast<int>(num_samples_per_frame_);
 
@@ -263,9 +195,48 @@ absl::Status FlacEncoder::EncodeAudioFrame(
     return absl::UnknownError("");
   }
 
+  absl::MutexLock lock(&mutex_);
+
   // Transfer ownership of the partial audio frame so it can be finalized later.
   frame_index_to_frame_[next_frame_index_++].audio_frame_with_data =
       std::move(partial_audio_frame_with_data);
+  return absl::OkStatus();
+}
+
+absl::Status FlacEncoder::Finalize() {
+  // Signal to `libflac` the encoder is finished.
+  if (!FLAC__stream_encoder_finish(encoder_)) {
+    LOG(ERROR) << "Failed to finalize Flac encoder.";
+    return absl::UnknownError("");
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status FlacEncoder::InitializeEncoder() {
+  // Initialize the encoder.
+  encoder_ = FLAC__stream_encoder_new();
+  if (encoder_ == nullptr) {
+    LOG(ERROR) << "Failed to initialize Flac encoder.";
+    return absl::UnknownError("");
+  }
+
+  // Configure the FLAC encoder based on user input data.
+  RETURN_IF_NOT_OK(Configure(encoder_metadata_, decoder_config_, num_channels_,
+                             num_samples_per_frame_, output_sample_rate_,
+                             input_pcm_bit_depth_, encoder_));
+
+  // Initialize the FLAC encoder.
+  FLAC__StreamEncoderInitStatus init_status = FLAC__stream_encoder_init_stream(
+      encoder_, LibFlacWriteCallback, /*seek_callback=*/nullptr,
+      /*tell_callback=*/nullptr, LibFlacMetadataCallback,
+      static_cast<void*>(this));
+
+  if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
+    LOG(ERROR) << "Failed to initialize Flac stream: " << init_status;
+    return absl::UnknownError("");
+  }
+
   return absl::OkStatus();
 }
 

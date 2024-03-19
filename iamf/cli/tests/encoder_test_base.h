@@ -74,7 +74,8 @@ class EncoderTestBase {
   std::list<AudioFrameWithData> FinalizeAndValidateOrderOnly(
       int expected_num_frames) {
     std::list<AudioFrameWithData> output_audio_frames;
-    EXPECT_TRUE(encoder_->FinalizeAndFlush(output_audio_frames).ok());
+    EXPECT_TRUE(encoder_->Finalize().ok());
+    EXPECT_TRUE(encoder_->Flush(output_audio_frames).ok());
     EXPECT_EQ(output_audio_frames.size(), expected_num_frames);
 
     ValidateOrder(output_audio_frames);

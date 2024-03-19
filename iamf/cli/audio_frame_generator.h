@@ -19,8 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
@@ -36,12 +38,23 @@ namespace iamf_tools {
 
 /*\!brief Generator of audio frames.
  *
+ * The generation of audio frames can be done asynchronously, where
+ * samples are added on one thread and completed frames are consumed on another.
+ *
  * The use pattern of this class is:
- *   1. Initialize (`Initialize()`).
- *   2. Repeat until finished (by checking `Finished()`):
- *     2.1. Add samples for each audio element (`AddSamples()`).
- *     2.2. Generate frames for all audio elements (`GenerateFrames()`).
- *   3. Finalize (`Finalize()`).
+ *
+ *   - Initialize (`Initialize()`).
+ *
+ *   Thread 1:
+ *   - Repeat until no new sample to add (by checking `TakingSamples()`):
+ *     - Add samples for each audio element (`AddSamples()`).
+ *   - Finalize the sample-adding process (`Finalize()`).
+ *
+ *   Thread 2:
+ *   - Repeat until no frame to generate (by checking `GeneratingFrames()`):
+ *     - Output generated frames (`OutputFrames()`).
+ *     - If the output is empty, wait.
+ *     - Otherwise, add the output of this round to the final result.
  */
 class AudioFrameGenerator {
  public:
@@ -85,13 +98,34 @@ class AudioFrameGenerator {
     }
   }
 
+  /*\!brief Data structure to track the user requested trimming.
+   */
+  struct TrimmingState {
+    int64_t user_samples_left_to_trim_at_end;
+    int64_t user_samples_left_to_trim_at_start;
+    bool found_first_partial_frame_from_end;
+    bool found_first_partial_frame_from_start;
+  };
+
   /*\!brief Initializes encoders and relevant data structures.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize();
 
+  /*\!brief Returns whether the generator is still taking audio samples.
+   *
+   * \return True if the generator is still taking audio samples.
+   */
+  bool TakingSamples() const {
+    return !substream_id_to_substream_data_.empty();
+  }
+
   /*\!brief Adds samples for an Audio Element and a channel label.
+   *
+   * Calling this function with empty input `samples` will signal the
+   * underlying encoder that the a substream has ended. Eventually when all
+   * substreams are ended, `TakingSamples()` will return false.
    *
    * \param audio_element_id Audio Element ID that the added samples belong to.
    * \param label Channel label of the added samples.
@@ -102,27 +136,31 @@ class AudioFrameGenerator {
                           const std::string& label,
                           const std::vector<int32_t>& samples);
 
-  // TODO(b/306319126): Generate one audio frame at a time.
-  /*\!brief Generates a list of Audio Frame OBUs from the input metadata.
+  /*\!brief Finalizes the sample-adding process.
+   *
+   * This will signal all underlying encoders that there are no more samples
+   * to come.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status GenerateFrames();
+  absl::Status Finalize();
 
-  // TODO(b/306319126): Modify this to append only the last few frames to
-  //                    the output list.
-  /*\!brief Finalizes and outputs all audio frames.
+  /*\!brief Returns whether there still are audio frames being generated.
    *
-   * \param audio_frames Output list of OBUs.
+   * \return True until all underlying encoders have finished encoding, and
+   *         all audio frames have been generated.
+   */
+  bool GeneratingFrames() const {
+    absl::MutexLock lock(&mutex_);
+    return !substream_id_to_encoder_.empty();
+  }
+
+  /*\!brief Outputs a list of generated Audio Frame OBUs (and associated data).
+   *
+   * \param audio_frames Output list of audio frames.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Finalize(std::list<AudioFrameWithData>& audio_frames);
-
-  /*\!brief Whether the generation process is finished.
-   *
-   * \return True if there is nothing else to be generated.
-   */
-  bool Finished() const { return substream_id_to_substream_data_.empty(); }
+  absl::Status OutputFrames(std::list<AudioFrameWithData>& audio_frames);
 
  private:
   // Mapping from Audio Element ID to audio frame metadata.
@@ -143,20 +181,29 @@ class AudioFrameGenerator {
 
   // Mapping from audio substream IDs to encoders.
   absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
-      substream_id_to_encoder_;
+      substream_id_to_encoder_ ABSL_GUARDED_BY(mutex_);
 
   // Mapping from Audio Element ID to labeled samples.
   absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples_;
 
-  // Mapping from substream IDs to number of samples left to pad at the end.
-  absl::flat_hash_map<uint32_t, uint32_t> substream_id_to_samples_pad_end_;
+  // Mapping from substream IDs to number of samples that the user requested
+  // to trim at end.
+  absl::flat_hash_map<uint32_t, uint32_t>
+      substream_id_to_user_samples_trim_end_;
 
   // Mapping from substream IDs to substream data.
   absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data_;
 
+  // Mapping from substream IDs to trimming states.
+  absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state_
+      ABSL_GUARDED_BY(mutex_);
+
   const DemixingModule& demixing_module_;
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;
+
+  // Mutex to protect data accessed in different threads.
+  mutable absl::Mutex mutex_;
 };
 
 }  // namespace iamf_tools

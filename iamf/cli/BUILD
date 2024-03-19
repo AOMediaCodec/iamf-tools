@@ -28,6 +28,7 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@fdk_aac//:aac_decoder_lib",
         "@fdk_aac//:aac_encoder_lib",
         "@fdk_aac//:fdk_sys_lib",
@@ -132,12 +133,14 @@ cc_library(
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@com_google_protobuf//:protobuf",
     ],
 )
@@ -239,8 +242,10 @@ cc_library(
         ":audio_frame_with_data",
         "//iamf:codec_config",
         "//iamf:ia",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
@@ -280,6 +285,7 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -295,10 +301,11 @@ cc_library(
         "//iamf:ia",
         "//iamf:obu_util",
         "//iamf/cli/proto:codec_config_cc_proto",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/synchronization",
         "@flac//:src",
     ],
 )
@@ -382,6 +389,7 @@ cc_library(
         "//iamf:lpcm_decoder_config",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
@@ -469,6 +477,7 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
         "@libopus",
     ],
 )

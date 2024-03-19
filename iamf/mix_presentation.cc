@@ -365,7 +365,7 @@ void MixPresentationObu::PrintObu() const {
       LOG(INFO) << "    // layouts[" << j << "]:";
       LOG(INFO) << "      loudness_layout:";
       LOG(INFO) << "        layout_type= "
-                << layout.loudness_layout.layout_type;
+                << absl::StrCat(layout.loudness_layout.layout_type);
 
       // SpecificLayout.
       switch (layout.loudness_layout.layout_type) {

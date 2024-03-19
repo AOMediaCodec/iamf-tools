@@ -33,6 +33,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/synchronization/mutex.h"
 #include "iamf/audio_frame.h"
 #include "iamf/cli/aac_encoder_decoder.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -51,6 +52,7 @@
 #include "iamf/demixing_info_param_data.h"
 #include "iamf/ia.h"
 #include "iamf/write_bit_buffer.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
@@ -117,16 +119,19 @@ absl::Status GetEncodingDataAndInitializeEncoders(
   return absl::OkStatus();
 }
 
-absl::Status ValidateUserStartTrim(uint32_t user_samples_to_trim_at_start,
-                                   uint32_t& encoder_required_samples_to_pad) {
+// Validates that the user requested number of samples to trim at start is
+// enough to cover the delay that the encoder needs.
+absl::Status ValidateUserStartTrim(
+    uint32_t user_samples_to_trim_at_start,
+    uint32_t& encoder_required_samples_to_delay) {
   // Return an error. But obey the user when `-DNO_CHECK_ERROR` is set.
-  if (user_samples_to_trim_at_start < encoder_required_samples_to_pad) {
+  if (user_samples_to_trim_at_start < encoder_required_samples_to_delay) {
     // Only pad up to what the user requests.
     const auto message =
-        absl::StrCat("The encoder requires ", encoder_required_samples_to_pad,
+        absl::StrCat("The encoder requires ", encoder_required_samples_to_delay,
                      " samples trimmed at the start but only ",
                      user_samples_to_trim_at_start, " were requested");
-    encoder_required_samples_to_pad = user_samples_to_trim_at_start;
+    encoder_required_samples_to_delay = user_samples_to_trim_at_start;
     return absl::InvalidArgumentError(message);
   }
 
@@ -134,21 +139,20 @@ absl::Status ValidateUserStartTrim(uint32_t user_samples_to_trim_at_start,
 }
 
 absl::Status GetNumSamplesToPadAtEndAndValidate(
-    uint32_t required_samples_to_pad, uint32_t& num_user_samples_left_to_trim,
+    const uint32_t required_samples_to_pad_at_end,
+    const uint32_t user_samples_to_trim_at_end,
     uint32_t& num_samples_to_pad_at_end) {
   num_samples_to_pad_at_end =
-      std::min(required_samples_to_pad, num_user_samples_left_to_trim);
-  if (num_user_samples_left_to_trim < required_samples_to_pad) {
-    num_user_samples_left_to_trim = 0;
-    // Obey the user's request by setting `num_user_samples_left_to_trim`. But
+      std::min(required_samples_to_pad_at_end, user_samples_to_trim_at_end);
+  if (user_samples_to_trim_at_end < required_samples_to_pad_at_end) {
+    // Obey the user's request by setting `user_samples_to_trim_at_end`. But
     // throw an error.
     return absl::InvalidArgumentError(
-        absl::StrCat("User input requested ", num_user_samples_left_to_trim,
-                     " trimmed samples. But required ", required_samples_to_pad,
-                     " to pad a full frame"));
+        absl::StrCat("User input requested ", user_samples_to_trim_at_end,
+                     " trimmed samples. But ", required_samples_to_pad_at_end,
+                     " samples are required to pad a full frame"));
   }
 
-  num_user_samples_left_to_trim -= num_samples_to_pad_at_end;
   return absl::OkStatus();
 }
 
@@ -172,9 +176,10 @@ absl::Status InitializeSubstreamData(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
         substream_id_to_encoder,
-    const uint32_t num_samples_to_trim_at_start,
-    const uint32_t num_samples_to_trim_at_end,
-    absl::flat_hash_map<uint32_t, uint32_t>& substream_id_to_samples_pad_end,
+    const uint32_t user_samples_to_trim_at_start,
+    const uint32_t user_samples_to_trim_at_end,
+    absl::flat_hash_map<uint32_t, uint32_t>&
+        substream_id_to_user_samples_trim_end,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
   // Validate user start trim is correct; it depends on the encoder. Insert
@@ -191,15 +196,16 @@ absl::Status InitializeSubstreamData(
 
     uint32_t encoder_required_samples_to_delay =
         encoder_iter->second->GetNumberOfSamplesToDelayAtStart();
-    RETURN_IF_NOT_OK(ValidateUserStartTrim(num_samples_to_trim_at_start,
+    RETURN_IF_NOT_OK(ValidateUserStartTrim(user_samples_to_trim_at_start,
                                            encoder_required_samples_to_delay));
 
     // Track number of samples requested and prevent trimming samples the user
     // did not request. Although an error will be thrown later as it creates an
     // invalid IAMF stream.
-    // All substreams in the same `audio_frame_metadata` have the same user trim
+    // All substreams in the same Audio Element have the same user trim
     // applied.
-    substream_id_to_samples_pad_end[substream_id] = num_samples_to_trim_at_end;
+    substream_id_to_user_samples_trim_end[substream_id] =
+        user_samples_to_trim_at_end;
 
     // Initialize a `SubstreamData` with virtual samples for any delay
     // introduced by the encoder.
@@ -217,6 +223,33 @@ absl::Status InitializeSubstreamData(
   }
 
   return absl::OkStatus();
+}
+
+// An audio element may contain many channels, denoted by their labels;
+// this function returns whether all labels have their (same amount of)
+// samples ready.
+bool SamplesReadyForAudioElement(
+    const LabelSamplesMap& label_to_samples,
+    const ::google::protobuf::RepeatedPtrField<std::string>& channel_labels) {
+  size_t common_num_samples = 0;
+  for (const auto& label : channel_labels) {
+    const auto label_to_samples_iter = label_to_samples.find(label);
+    if (label_to_samples_iter == label_to_samples.end()) {
+      return false;
+    }
+
+    const auto num_samples = label_to_samples_iter->second.size();
+    if (common_num_samples == 0 && num_samples != 0) {
+      common_num_samples = num_samples;
+      continue;
+    }
+
+    if (num_samples != common_num_samples) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
@@ -252,9 +285,9 @@ absl::Status GetNextFrameSubstreamData(
     const DecodedUleb128 audio_element_id,
     const DemixingModule& demixing_module, const size_t num_samples_per_frame,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    LabelSamplesMap& label_to_samples,
-    absl::flat_hash_map<uint32_t, uint32_t>& substream_id_to_samples_pad_end,
-    ParametersManager& parameters_manager,
+    const absl::flat_hash_map<uint32_t, uint32_t>&
+        substream_id_to_user_samples_trim_end,
+    LabelSamplesMap& label_to_samples, ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data,
     DownMixingParams& down_mixing_params) {
@@ -275,18 +308,19 @@ absl::Status GetNextFrameSubstreamData(
     auto& substream_data = substream_id_to_substream_data.at(substream_id);
     const int num_channels = substream_data.samples_obu.front().size();
     if (substream_data.samples_obu.size() < num_samples_per_frame) {
-      uint32_t num_samples_to_trim_at_end;
+      uint32_t num_samples_to_pad_at_end;
       RETURN_IF_NOT_OK(GetNumSamplesToPadAtEndAndValidate(
           num_samples_per_frame - substream_data.samples_obu.size(),
-          substream_id_to_samples_pad_end[substream_data.substream_id],
-          num_samples_to_trim_at_end));
+          substream_id_to_user_samples_trim_end.at(substream_id),
+          num_samples_to_pad_at_end));
 
-      PadSamples(num_samples_to_trim_at_end, num_channels,
+      PadSamples(num_samples_to_pad_at_end, num_channels,
                  substream_data.samples_obu);
-      PadSamples(num_samples_to_trim_at_end, num_channels,
+      PadSamples(num_samples_to_pad_at_end, num_channels,
                  substream_data.samples_encode);
 
-      substream_data.num_samples_to_trim_at_end = num_samples_to_trim_at_end;
+      // Record the number of padded samples to be trimmed later.
+      substream_data.num_samples_to_trim_at_end = num_samples_to_pad_at_end;
     }
 
     if (no_sample_added &&
@@ -307,26 +341,28 @@ absl::Status GetNextFrameSubstreamData(
   return absl::OkStatus();
 }
 
-std::pair<uint32_t, uint32_t> UpdateNumSamplesToTrim(
-    const uint32_t num_samples_to_encode,
-    uint32_t& num_samples_left_to_trim_at_start,
-    uint32_t& num_samples_left_to_trim_at_end) {
-  const uint32_t num_samples_to_trim_at_end =
-      std::min(num_samples_to_encode, num_samples_left_to_trim_at_end);
-  num_samples_left_to_trim_at_end -= num_samples_to_trim_at_end;
-  const uint32_t num_samples_to_trim_at_start =
-      std::min(num_samples_to_encode, num_samples_left_to_trim_at_start);
-  num_samples_left_to_trim_at_start -= num_samples_to_trim_at_start;
+// Take as many samples as possible out of the total number of samples to trim,
+// up to the size of a full frame.
+std::pair<uint32_t, uint32_t> GetNumSamplesToTrimForFrame(
+    const uint32_t num_samples_in_frame, uint32_t& num_samples_to_trim_at_start,
+    uint32_t& num_samples_to_trim_at_end) {
+  const uint32_t frame_samples_to_trim_at_end =
+      std::min(num_samples_in_frame, num_samples_to_trim_at_end);
+  num_samples_to_trim_at_end -= frame_samples_to_trim_at_end;
+  const uint32_t frame_samples_to_trim_at_start =
+      std::min(num_samples_in_frame, num_samples_to_trim_at_start);
+  num_samples_to_trim_at_start -= frame_samples_to_trim_at_start;
 
-  return std::make_pair(num_samples_to_trim_at_start,
-                        num_samples_to_trim_at_end);
+  return std::make_pair(frame_samples_to_trim_at_start,
+                        frame_samples_to_trim_at_end);
 }
 
 absl::Status EncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
     const DemixingModule& demixing_module, LabelSamplesMap& label_to_samples,
-    absl::flat_hash_map<uint32_t, uint32_t>& substream_id_to_samples_pad_end,
+    const absl::flat_hash_map<uint32_t, uint32_t>&
+        substream_id_to_user_samples_trim_end,
     ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
         substream_id_to_encoder,
@@ -361,9 +397,9 @@ absl::Status EncodeFramesForAudioElement(
   DownMixingParams down_mixing_params;
   RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
       audio_element_id, demixing_module, num_samples_per_frame,
-      audio_element_with_data.substream_id_to_labels, label_to_samples,
-      substream_id_to_samples_pad_end, parameters_manager,
-      substream_id_to_substream_data, down_mixing_params));
+      audio_element_with_data.substream_id_to_labels,
+      substream_id_to_user_samples_trim_end, label_to_samples,
+      parameters_manager, substream_id_to_substream_data, down_mixing_params));
 
   std::optional<int32_t> encoded_timestamp;
   for (const auto& [substream_id, unused_labels] :
@@ -388,7 +424,7 @@ absl::Status EncodeFramesForAudioElement(
       // LPCM) can encode partial frames. For other encoders wait until there
       // is a whole frame of samples to encode.
 
-      // All frames corresponding to the same audio element should be skipped.
+      // All frames corresponding to the same Audio Element should be skipped.
       CHECK(!encoded_timestamp.has_value());
 
       LOG(INFO) << "Skipping partial frames; samples_obu.size()="
@@ -409,20 +445,19 @@ absl::Status EncodeFramesForAudioElement(
     MoveSamples(num_samples_to_encode, substream_data.samples_obu, samples_obu);
     MoveSamples(num_samples_to_encode, substream_data.samples_encode,
                 samples_encode);
-    const auto [num_samples_to_trim_at_start, num_samples_to_trim_at_end] =
-        UpdateNumSamplesToTrim(num_samples_to_encode,
-                               substream_data.num_samples_to_trim_at_start,
-                               substream_data.num_samples_to_trim_at_end);
+    const auto [frame_samples_to_trim_at_start, frame_samples_to_trim_at_end] =
+        GetNumSamplesToTrimForFrame(num_samples_to_encode,
+                                    substream_data.num_samples_to_trim_at_start,
+                                    substream_data.num_samples_to_trim_at_end);
 
     // Both timestamps cover trimmed and regular samples.
     int32_t start_timestamp;
     int32_t end_timestamp;
     RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
-        substream_data.substream_id, samples_obu.size(), start_timestamp,
-        end_timestamp));
+        substream_id, samples_obu.size(), start_timestamp, end_timestamp));
 
     if (encoded_timestamp.has_value()) {
-      // All frames corresponding to the same audio element should have
+      // All frames corresponding to the same Audio Element should have
       // the same start timestamp.
       CHECK_EQ(*encoded_timestamp, start_timestamp);
     }
@@ -432,13 +467,13 @@ absl::Status EncodeFramesForAudioElement(
             .obu = AudioFrameObu(
                 {
                     .obu_trimming_status_flag =
-                        (num_samples_to_trim_at_end != 0 ||
-                         num_samples_to_trim_at_start != 0),
-                    .num_samples_to_trim_at_end = num_samples_to_trim_at_end,
+                        (frame_samples_to_trim_at_end != 0 ||
+                         frame_samples_to_trim_at_start != 0),
+                    .num_samples_to_trim_at_end = frame_samples_to_trim_at_end,
                     .num_samples_to_trim_at_start =
-                        num_samples_to_trim_at_start,
+                        frame_samples_to_trim_at_start,
                 },
-                substream_data.substream_id, {}),
+                substream_id, {}),
             .start_timestamp = start_timestamp,
             .end_timestamp = end_timestamp,
             .raw_samples = samples_obu,
@@ -461,192 +496,124 @@ absl::Status EncodeFramesForAudioElement(
   return absl::OkStatus();
 }
 
-absl::Status ValidateUserTrimming(
-    const int64_t common_samples_to_trim_at_start,
-    const int64_t common_samples_to_trim_at_end,
-    const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata) {
+// Validates that all substreams share the same trimming information.
+absl::Status ValidateSubstreamsShareTrimming(
+    const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
+    int64_t& common_samples_to_trim_at_start,
+    int64_t& common_samples_to_trim_at_end) {
+  // Set to the first seen values if uninitialized.
+  if (common_samples_to_trim_at_start == -1) {
+    common_samples_to_trim_at_start =
+        static_cast<int64_t>(audio_frame_metadata.samples_to_trim_at_start());
+  }
+  if (common_samples_to_trim_at_end == -1) {
+    common_samples_to_trim_at_end =
+        static_cast<int64_t>(audio_frame_metadata.samples_to_trim_at_end());
+  }
+
   if (audio_frame_metadata.samples_to_trim_at_end() !=
           common_samples_to_trim_at_end ||
       audio_frame_metadata.samples_to_trim_at_start() !=
           common_samples_to_trim_at_start) {
     return absl::InvalidArgumentError(
-        "Expected all substreams to have the same trimming "
-        "information");
+        "Expected all substreams to have the same trimming information");
   }
 
   return absl::OkStatus();
 }
 
-/*\!brief Validates, tracks, and applies user trim to the input audio frame.
- *
- * The input arguments control whether this operates on fields that relate to
- * trimming from the start or from the end. Reference arguments must entirely
- * come from "end"-related fields or entirely from "start"-related fields.
- *
- * \param from_start `true` when log messages should refer to trimming from the
- *     start. `false` when log messages should refer to trimming from the end.
- * \param left_to_trim Reference to the number of samples left to trim for this
- *     substream
- * \param found_first_partial_frame Reference to the whether this substream
- *     has had at least one partial frame.
- * \param obu_samples_to_trim Reference to the `num_*_samples_to_trim` field in
- *     the OBU.
- * \param audio_frame Audio frame to process.
- * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
- *     user input does not request enough frames trimmed from the end to make
- *     the OBU frame aligned. Or `absl::InvalidArgumentError()` when trimmed
- *     frames are found that are not consecutive with the start or end of the
- *     substream.
- */
-absl::Status ApplyUserTrim(bool from_start, int64_t& left_to_trim,
-                           bool& found_first_partial_frame,
-                           uint32_t& obu_samples_to_trim,
-                           AudioFrameWithData& audio_frame) {
-  // Some samples may already be trimmed due to prior processing.
-  const uint32_t already_trimmed_samples = obu_samples_to_trim;
+// Applies additional user trimming to one audio frame.
+absl::Status ApplyUserTrimForFrame(const bool from_start,
+                                   int64_t& user_trim_left,
+                                   bool& found_first_partial_frame,
+                                   AudioFrameWithData& audio_frame) {
+  uint32_t& num_samples_to_trim_in_obu =
+      from_start ? audio_frame.obu.header_.num_samples_to_trim_at_start
+                 : audio_frame.obu.header_.num_samples_to_trim_at_end;
 
   // Number of samples in a full frame.
-  const uint32_t num_samples = audio_frame.raw_samples.size();
+  const uint32_t num_samples_in_frame = audio_frame.raw_samples.size();
 
-  // Trim as many samples as required. Up to the size of a full frame.
-  const uint32_t num_to_trim = std::min((int64_t)num_samples, left_to_trim);
+  // Trim as many samples as the user requested. Up to the size of a full frame.
+  const uint32_t frame_samples_to_trim =
+      std::min(static_cast<uint32_t>(num_samples_in_frame),
+               static_cast<uint32_t>(user_trim_left));
 
-  // Validate that user input is consistent with automatically processed
-  // trimming information.
-  if (already_trimmed_samples > num_to_trim) {
+  // Some samples may already be trimmed due to prior processing, validate
+  // that the user requested enough samples to accommodate them.
+  if (num_samples_to_trim_in_obu > frame_samples_to_trim) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "More samples were trimmed from ",
-        (from_start ? "the start" : "the end"),
-        " than expected. Expected at least ", already_trimmed_samples,
-        " samples to trim; got ", num_to_trim));
+        "More samples were trimmed from the ", (from_start ? "start" : "end"),
+        "than expected: (", num_samples_to_trim_in_obu, " vs ",
+        frame_samples_to_trim, ")"));
   }
 
-  // Validate that trimmed frames must be consecutive from the start/end of the
+  // Validate that trimmed frames must be consecutive from the end of the
   // substream.
-  if (num_to_trim > 0 && found_first_partial_frame) {
+  if (frame_samples_to_trim > 0 && found_first_partial_frame) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Found a padded frame, but a", (from_start ? "n earlier" : " latter"),
+        "Found a padded frame, but a", (from_start ? " latter" : "n earlier"),
         " frame had some samples in it"));
   }
 
-  if (num_to_trim != num_samples) {
+  // Apply the trim for this frame.
+  num_samples_to_trim_in_obu = frame_samples_to_trim;
+  user_trim_left -= frame_samples_to_trim;
+
+  // Ensure the `obu_trimming_status_flag` is accurate.
+  if (audio_frame.obu.header_.num_samples_to_trim_at_end != 0) {
+    audio_frame.obu.header_.obu_trimming_status_flag = 1;
+  }
+
+  if (frame_samples_to_trim == num_samples_in_frame) {
+    // Obey the user when `NO_CHECK_ERROR` is set. But the spec never allows
+    // fully trimmed frames from the end.
+    if (!from_start) {
+      return absl::InvalidArgumentError(
+          "The spec disallows trimming entire frames from the end");
+    }
+  } else {
     // Found the first partial frame. All subsequent frames cannot have padding.
     found_first_partial_frame = true;
   }
 
-  // Apply the trim.
-  obu_samples_to_trim = num_to_trim;
-  left_to_trim -= num_to_trim;
-
-  // Ensure the `obu_trimming_status_flag` is accurate.
-  if (audio_frame.obu.header_.num_samples_to_trim_at_end != 0 ||
-      audio_frame.obu.header_.num_samples_to_trim_at_start != 0) {
-    audio_frame.obu.header_.obu_trimming_status_flag = 1;
-  }
-
-  // Obey the user when `NO_CHECK_ERROR` is set. But the spec never allows fully
-  // trimmed frames from the end.
-  if (!from_start && !found_first_partial_frame) {
-    return absl::InvalidArgumentError(
-        "The spec disallows trimming entire frames from the end");
-  }
-
   return absl::OkStatus();
 }
 
-struct SubstreamState {
-  int64_t samples_left_to_trim_end;
-  int64_t samples_left_to_trim_start;
-  bool found_first_partial_frame_from_end;
-  bool found_first_partial_frame_from_start;
-};
-
-// Apply user trim to the input Audio Frames. User requested from the start will
-// used to set the `num_samples_to_trim_at_start` field of consecutive OBUs from
-// the start without modifying the underlying audio frame data. User requested
-// trim from the end must be at least the amount that was needed to cover the
+// Apply user requested from the end to the input Audio Frames. The requested
+// trim must be at least the amount that was needed to cover the
 // padding in the final audio frame. Then the rest will be applied to
 // consecutive OBUs from the end without modifying the underlying data.
+// TODO(b/329375123): In a truly iterative structure, this would not work
+//                    because we can not examine all the frames with all
+//                    timestamps at once. Redesign the validation to fix this.
 absl::Status ValidateAndApplyUserTrimming(
-    const absl::flat_hash_map<DecodedUleb128,
-                              iamf_tools_cli_proto::AudioFrameObuMetadata>&
-        audio_frame_metadata,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const uint32_t substream_id,  // For logging purposes only.
+    AudioFrameGenerator::TrimmingState& trimming_state,
     std::list<AudioFrameWithData>& audio_frames) {
-  // Track the state of each substream.
-  absl::flat_hash_map<uint32_t, SubstreamState> substream_id_to_substream_state;
-
-  // Simple and base profile require trimming information to be the same for all
-  // substreams.
-  if (audio_frame_metadata.empty()) {
-    // Fine. There are no frames to validate.
-    return absl::OkStatus();
-  }
-  const int64_t common_samples_to_trim_at_start = static_cast<int64_t>(
-      audio_frame_metadata.begin()->second.samples_to_trim_at_start());
-  const int64_t common_samples_to_trim_at_end = static_cast<int64_t>(
-      audio_frame_metadata.begin()->second.samples_to_trim_at_end());
-
-  for (const auto& [audio_element_id, metadata] : audio_frame_metadata) {
-    // Validate the assumption that trimming is the same for all substreams.
-    RETURN_IF_NOT_OK(ValidateUserTrimming(common_samples_to_trim_at_start,
-                                          common_samples_to_trim_at_end,
-                                          metadata));
-
-    // Populate the list with all substream ID.
-    const auto& audio_element_with_data = audio_elements.at(audio_element_id);
-    for (const auto& [substream_id, labels] :
-         audio_element_with_data.substream_id_to_labels) {
-      substream_id_to_substream_state[substream_id] = {
-          .samples_left_to_trim_end = common_samples_to_trim_at_end,
-          .samples_left_to_trim_start = common_samples_to_trim_at_start,
-          .found_first_partial_frame_from_end = false,
-          .found_first_partial_frame_from_start = false,
-      };
-    }
-  }
-
   // Trim all audio frames from the start.
   for (auto& audio_frame : audio_frames) {
-    const uint32_t substream_id = audio_frame.obu.GetSubstreamId();
-    const auto& substream_state_iter =
-        substream_id_to_substream_state.find(substream_id);
-    if (substream_state_iter == substream_id_to_substream_state.end()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unexpected substream_id= ", substream_id));
-    }
-    auto& substream_state = substream_state_iter->second;
-
-    RETURN_IF_NOT_OK(ApplyUserTrim(
-        /*from_start=*/true, substream_state.samples_left_to_trim_start,
-        substream_state.found_first_partial_frame_from_start,
-        audio_frame.obu.header_.num_samples_to_trim_at_start, audio_frame));
+    RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
+        /*from_start=*/true, trimming_state.user_samples_left_to_trim_at_start,
+        trimming_state.found_first_partial_frame_from_start, audio_frame));
   }
 
   // Trim all audio frames from the end.
-  for (std::list<AudioFrameWithData>::reverse_iterator audio_frame =
+  for (std::list<AudioFrameWithData>::reverse_iterator audio_frame_iter =
            audio_frames.rbegin();
-       audio_frame != audio_frames.rend(); ++audio_frame) {
-    auto& substream_state =
-        substream_id_to_substream_state.at(audio_frame->obu.GetSubstreamId());
-
-    RETURN_IF_NOT_OK(ApplyUserTrim(
-        /*from_start=*/false, substream_state.samples_left_to_trim_end,
-        substream_state.found_first_partial_frame_from_end,
-        audio_frame->obu.header_.num_samples_to_trim_at_end, *audio_frame));
+       audio_frame_iter != audio_frames.rend(); ++audio_frame_iter) {
+    RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
+        /*from_start=*/false, trimming_state.user_samples_left_to_trim_at_end,
+        trimming_state.found_first_partial_frame_from_end, *audio_frame_iter));
   }
 
-  // Check that all audio frames had at least as many samples as requested to be
-  // trimmed.
-  for (const auto& [substream_id, substream_state] :
-       substream_id_to_substream_state) {
-    if (substream_state.samples_left_to_trim_end != 0 ||
-        substream_state.samples_left_to_trim_start != 0) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Too few samples to trim the requested amount in audio "
-                       "substream [",
-                       substream_id, "]"));
-    }
+  // Check that all requested samples have been trimmed, i.e. the audio frames
+  // had enough samples.
+  if (trimming_state.user_samples_left_to_trim_at_end != 0 ||
+      trimming_state.user_samples_left_to_trim_at_start != 0) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Too few samples to trim the requested amount in audio substream [",
+        substream_id, "]"));
   }
 
   return absl::OkStatus();
@@ -712,6 +679,8 @@ absl::Status InitializeFileStreamMap(
   return absl::OkStatus();
 }
 
+// TODO(b/329415225): Move dumping of raw audio frames out of
+//                    `AudioFrameGenerator`.
 // Dumps the Audio Frames without trimming applied to a file per substream. For
 // LPCM streams the output is raw PCM. For Opus the output is the raw audio
 // frames. For FLAC the output is the "fLaC", followed by the `decoder_config`
@@ -795,29 +764,34 @@ absl::Status DumpRawAudioFrames(
 }  // namespace
 
 absl::Status AudioFrameGenerator::Initialize() {
+  int64_t common_samples_to_trim_at_start = -1;
+  int64_t common_samples_to_trim_at_end = -1;
   for (const auto& [audio_element_id, audio_frame_metadata] :
        audio_frame_metadata_) {
+    absl::MutexLock lock(&mutex_);
+
     // Find the Codec Config OBU for this mono or coupled stereo substream.
     const auto audio_elements_iter = audio_elements_.find(audio_element_id);
     if (audio_elements_iter == audio_elements_.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Audio Element with ID= ", audio_element_id, " not found"));
     }
-    const AudioElementWithData& audio_element_with_data =
-        audio_elements_iter->second;
 
     // Create an encoder for each substream.
+    const AudioElementWithData& audio_element_with_data =
+        audio_elements_iter->second;
     RETURN_IF_NOT_OK(GetEncodingDataAndInitializeEncoders(
         codec_config_metadata_, audio_element_with_data,
         substream_id_to_encoder_));
 
-    // Intermediate data for each substream.
-    RETURN_IF_NOT_OK(InitializeSubstreamData(
-        audio_element_with_data.substream_id_to_labels,
-        substream_id_to_encoder_,
-        audio_frame_metadata.samples_to_trim_at_start(),
-        audio_frame_metadata.samples_to_trim_at_end(),
-        substream_id_to_samples_pad_end_, substream_id_to_substream_data_));
+    // Intermediate data for all substreams belonging to an Audio Element.
+    RETURN_IF_NOT_OK(
+        InitializeSubstreamData(audio_element_with_data.substream_id_to_labels,
+                                substream_id_to_encoder_,
+                                audio_frame_metadata.samples_to_trim_at_start(),
+                                audio_frame_metadata.samples_to_trim_at_end(),
+                                substream_id_to_user_samples_trim_end_,
+                                substream_id_to_substream_data_));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
@@ -831,6 +805,22 @@ absl::Status AudioFrameGenerator::Initialize() {
           "Must include `DemixingParamDefinition` in the Audio Element if "
           "down-mixers are required to produce audio substreams");
     }
+
+    // Validate the assumption that trimming is the same for all substreams.
+    RETURN_IF_NOT_OK(ValidateSubstreamsShareTrimming(
+        audio_frame_metadata, common_samples_to_trim_at_start,
+        common_samples_to_trim_at_end));
+
+    // Populate the map of trimming states with all substream ID.
+    for (const auto& [substream_id, labels] :
+         audio_element_with_data.substream_id_to_labels) {
+      substream_id_to_trimming_state_[substream_id] = {
+          .user_samples_left_to_trim_at_end = common_samples_to_trim_at_end,
+          .user_samples_left_to_trim_at_start = common_samples_to_trim_at_start,
+          .found_first_partial_frame_from_end = false,
+          .found_first_partial_frame_from_start = false,
+      };
+    }
   }
 
   return absl::OkStatus();
@@ -839,30 +829,32 @@ absl::Status AudioFrameGenerator::Initialize() {
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, const std::string& label,
     const std::vector<int32_t>& samples) {
-  if (audio_frame_metadata_.find(audio_element_id) ==
-      audio_frame_metadata_.end()) {
+  const auto& audio_frame_metadata_iter =
+      audio_frame_metadata_.find(audio_element_id);
+  if (audio_frame_metadata_iter == audio_frame_metadata_.end()) {
     return absl::InvalidArgumentError(
         absl::StrCat("No audio frame metadata found for Audio Element ID= ",
                      audio_element_id));
   }
-  id_to_labeled_samples_[audio_element_id][label] = samples;
+  auto& labeled_samples = id_to_labeled_samples_[audio_element_id];
+  labeled_samples[label] = samples;
 
-  return absl::OkStatus();
-}
+  const auto audio_element_iter = audio_elements_.find(audio_element_id);
+  if (audio_element_iter == audio_elements_.end()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("No Audio Element found for ID= ", audio_element_id));
+  }
+  const auto& audio_element_with_data = audio_element_iter->second;
 
-absl::Status AudioFrameGenerator::GenerateFrames() {
-  for (auto& [audio_element_id, labeled_samples] : id_to_labeled_samples_) {
-    const auto audio_element_iter = audio_elements_.find(audio_element_id);
-    if (audio_element_iter == audio_elements_.end()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("No Audio Element found for ID= ", audio_element_id));
-    }
-
+  if (SamplesReadyForAudioElement(
+          labeled_samples,
+          audio_frame_metadata_iter->second.channel_labels())) {
+    absl::MutexLock lock(&mutex_);
     RETURN_IF_NOT_OK(EncodeFramesForAudioElement(
-        audio_element_id, audio_element_iter->second, demixing_module_,
-        labeled_samples, substream_id_to_samples_pad_end_, parameters_manager_,
-        substream_id_to_encoder_, substream_id_to_substream_data_,
-        global_timing_module_));
+        audio_element_id, audio_element_with_data, demixing_module_,
+        labeled_samples, substream_id_to_user_samples_trim_end_,
+        parameters_manager_, substream_id_to_encoder_,
+        substream_id_to_substream_data_, global_timing_module_));
 
     labeled_samples.clear();
   }
@@ -870,44 +862,40 @@ absl::Status AudioFrameGenerator::GenerateFrames() {
   return absl::OkStatus();
 }
 
-absl::Status AudioFrameGenerator::Finalize(
+absl::Status AudioFrameGenerator::OutputFrames(
     std::list<AudioFrameWithData>& audio_frames) {
-  for (auto& [unused_id, encoder] : substream_id_to_encoder_) {
-    // Finalize all encoders.
-    // TODO(b/306319126): When generating frames iteratively, need a way to
-    //                    flush the frames without finalizing the encoder.
-    RETURN_IF_NOT_OK(encoder->FinalizeAndFlush(audio_frames));
+  absl::MutexLock lock(&mutex_);
+
+  for (auto substream_id_to_encoder_iter = substream_id_to_encoder_.begin();
+       substream_id_to_encoder_iter != substream_id_to_encoder_.end();) {
+    std::list<AudioFrameWithData> new_audio_frames;
+
+    auto& [substream_id, encoder] = *substream_id_to_encoder_iter;
+    if (encoder->FramesAvailable()) {
+      RETURN_IF_NOT_OK(encoder->Flush(new_audio_frames));
+    }
+
+    RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(
+        substream_id, substream_id_to_trimming_state_.at(substream_id),
+        new_audio_frames));
+
+    // Remove finished encoder or advance the iterator.
+    if (encoder->Finished()) {
+      substream_id_to_encoder_.erase(substream_id_to_encoder_iter++);
+    } else {
+      ++substream_id_to_encoder_iter;
+    }
+    audio_frames.splice(audio_frames.end(), new_audio_frames);
   }
 
-  // Trim optional samples which make the input wav file shorter. This is done
-  // after the fact to support multiple frames being trimmed at the end without
-  // knowing the length of the stream beforehand.
+  return absl::OkStatus();
+}
 
-  // TODO(b/306319126): When generating frames iteratively, trimming at the
-  //                    start should happen for the first few frames, and
-  //                    only trimming at the end should happen here in
-  //                    `Finalize()`.
-  RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(audio_frame_metadata_,
-                                                audio_elements_, audio_frames));
-
-  RETURN_IF_NOT_OK(DumpRawAudioFrames(output_wav_directory_, file_name_prefix_,
-                                      audio_frames));
-
-  // Examine the first, last, and any audio frames with `trimming_status_flag`
-  // set.
-  int i = 0;
-  for (const auto& audio_frame_with_data : audio_frames) {
-    if (i == 0 || i == audio_frames.size() - 1 ||
-        audio_frame_with_data.obu.header_.obu_trimming_status_flag) {
-      LOG(INFO) << "Audio Frame OBU[" << i << "]";
-
-      audio_frame_with_data.obu.PrintObu();
-      LOG(INFO) << "    audio frame.start_timestamp= "
-                << audio_frame_with_data.start_timestamp;
-      LOG(INFO) << "    audio frame.end_timestamp= "
-                << audio_frame_with_data.end_timestamp;
-    }
-    i++;
+absl::Status AudioFrameGenerator::Finalize() {
+  absl::MutexLock lock(&mutex_);
+  for (auto& [unused_id, encoder] : substream_id_to_encoder_) {
+    // Signal all encoders that there are no more samples to come.
+    RETURN_IF_NOT_OK(encoder->Finalize());
   }
 
   return absl::OkStatus();
