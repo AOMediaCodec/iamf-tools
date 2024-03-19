@@ -605,58 +605,66 @@ absl::Status ValidateReconGainDefined(
   return absl::OkStatus();
 }
 
-// Copies the `LoudspeakerLayout` based on the input data. Uses the deprecated
-// field as a backup.
+// Copies the `LoudspeakerLayout` based on the input data.
 absl::Status CopyLoudspeakerLayout(
     const iamf_tools_cli_proto::ChannelAudioLayerConfig& input_layer_config,
     ChannelAudioLayerConfig::LoudspeakerLayout& output_loudspeaker_layout) {
-  if (input_layer_config.has_loudspeaker_layout()) {
-    using enum iamf_tools_cli_proto::LoudspeakerLayout;
-    using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-    static const absl::NoDestructor<
-        absl::flat_hash_map<iamf_tools_cli_proto::LoudspeakerLayout,
-                            ChannelAudioLayerConfig::LoudspeakerLayout>>
-        kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
-            {LOUDSPEAKER_LAYOUT_MONO, kLayoutMono},
-            {LOUDSPEAKER_LAYOUT_STEREO, kLayoutStereo},
-            {LOUDSPEAKER_LAYOUT_5_1_CH, kLayout5_1_ch},
-            {LOUDSPEAKER_LAYOUT_5_1_2_CH, kLayout5_1_2_ch},
-            {LOUDSPEAKER_LAYOUT_5_1_4_CH, kLayout5_1_4_ch},
-            {LOUDSPEAKER_LAYOUT_7_1_CH, kLayout7_1_ch},
-            {LOUDSPEAKER_LAYOUT_7_1_2_CH, kLayout7_1_2_ch},
-            {LOUDSPEAKER_LAYOUT_7_1_4_CH, kLayout7_1_4_ch},
-            {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
-            {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
-            {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReservedBegin},
-            {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutReservedEnd},
-        });
-
-    if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
-                     input_layer_config.loudspeaker_layout(),
-                     output_loudspeaker_layout)
-             .ok()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown loudspeaker_layout= ",
-                       input_layer_config.loudspeaker_layout()));
-    }
-    return absl::OkStatus();
-  } else if (input_layer_config.has_deprecated_loudspeaker_layout()) {
-    LOG(WARNING) << "Please upgrade the `deprecated_loudspeaker_layout` "
-                    "field to the new "
-                    "`loudspeaker_layout` field.";
-    if (input_layer_config.deprecated_loudspeaker_layout() < 0 ||
-        input_layer_config.deprecated_loudspeaker_layout() >=
-            ChannelAudioLayerConfig::kLayoutReservedBegin) {
-      return absl::InvalidArgumentError("");
-    }
-    output_loudspeaker_layout =
-        static_cast<ChannelAudioLayerConfig::LoudspeakerLayout>(
-            input_layer_config.deprecated_loudspeaker_layout());
-    return absl::OkStatus();
-  } else {
-    LOG(ERROR) << "Missing `loudspeaker_layout` field.";
-    return absl::InvalidArgumentError("");
+  if (input_layer_config.has_deprecated_loudspeaker_layout()) {
+    return absl::InvalidArgumentError(
+        "Please upgrade the `deprecated_loudspeaker_layout` field to the new "
+        "`loudspeaker_layout` field.\n"
+        "Suggested upgrades:\n"
+        "- `deprecated_loudspeaker_layout: 0` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_MONO`\n"
+        "- `deprecated_loudspeaker_layout: 1` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_STEREO`\n"
+        "- `deprecated_loudspeaker_layout: 2` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_5_1_CH`\n"
+        "- `deprecated_loudspeaker_layout: 3` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_5_1_2_CH`\n"
+        "- `deprecated_loudspeaker_layout: 4` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_5_1_4_CH`\n"
+        "- `deprecated_loudspeaker_layout: 5` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_7_1_CH`\n"
+        "- `deprecated_loudspeaker_layout: 6` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_7_1_2_CH`\n"
+        "- `deprecated_loudspeaker_layout: 7` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_7_1_4_CH`\n"
+        "- `deprecated_loudspeaker_layout: 8` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_3_1_2_CH`\n"
+        "- `deprecated_loudspeaker_layout: 9` -> `loudspeaker_layout: "
+        "LOUDSPEAKER_LAYOUT_BINAURAL`\n");
   }
+
+  using enum iamf_tools_cli_proto::LoudspeakerLayout;
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::LoudspeakerLayout,
+                          ChannelAudioLayerConfig::LoudspeakerLayout>>
+      kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
+          {LOUDSPEAKER_LAYOUT_MONO, kLayoutMono},
+          {LOUDSPEAKER_LAYOUT_STEREO, kLayoutStereo},
+          {LOUDSPEAKER_LAYOUT_5_1_CH, kLayout5_1_ch},
+          {LOUDSPEAKER_LAYOUT_5_1_2_CH, kLayout5_1_2_ch},
+          {LOUDSPEAKER_LAYOUT_5_1_4_CH, kLayout5_1_4_ch},
+          {LOUDSPEAKER_LAYOUT_7_1_CH, kLayout7_1_ch},
+          {LOUDSPEAKER_LAYOUT_7_1_2_CH, kLayout7_1_2_ch},
+          {LOUDSPEAKER_LAYOUT_7_1_4_CH, kLayout7_1_4_ch},
+          {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
+          {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
+          {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReservedBegin},
+          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutReservedEnd},
+      });
+
+  if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+                   input_layer_config.loudspeaker_layout(),
+                   output_loudspeaker_layout)
+           .ok()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown loudspeaker_layout= ",
+                     input_layer_config.loudspeaker_layout()));
+  }
+  return absl::OkStatus();
 }
 
 absl::Status FillScalableChannelLayoutConfig(

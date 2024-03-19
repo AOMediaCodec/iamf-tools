@@ -331,7 +331,7 @@ TEST_F(AudioElementGeneratorTest,
             kExpectedSubstreamIdToLabels);
 }
 
-TEST_F(AudioElementGeneratorTest, FallsBackToDeprecatedLoudspeakerLayoutField) {
+TEST_F(AudioElementGeneratorTest, DeprecatedLoudspeakerLayoutIsNotSupported) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         audio_element_id: 300
@@ -358,7 +358,37 @@ TEST_F(AudioElementGeneratorTest, FallsBackToDeprecatedLoudspeakerLayoutField) {
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_FALSE(generator.Generate(codec_config_obus_, output_obus_).ok());
+}
+
+TEST_F(AudioElementGeneratorTest, DefaultLoudspeakerLayoutIsNotSupported) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        reserved: 0
+        codec_config_id: 200
+        num_substreams: 1
+        audio_substream_ids: [ 99 ]
+        num_parameters: 0
+        scalable_channel_layout_config {
+          num_layers: 1
+          reserved: 0
+          channel_audio_layer_configs {
+            # loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+            output_gain_is_present_flag: 0
+            recon_gain_is_present_flag: 0
+            reserved_a: 0
+            substream_count: 1
+            coupled_substream_count: 1
+          }
+        }
+      )pb",
+      audio_element_metadata_.Add()));
+
+  AudioElementGenerator generator(audio_element_metadata_);
+
+  EXPECT_FALSE(generator.Generate(codec_config_obus_, output_obus_).ok());
 }
 
 TEST_F(AudioElementGeneratorTest,
