@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/ia.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -41,6 +42,21 @@ struct ObuHeader {
   absl::Status ValidateAndWrite(ObuType obu_type,
                                 int64_t payload_serialized_size,
                                 WriteBitBuffer& wb) const;
+
+  /*!\brief Validates and reads an `ObuHeader`.
+   *
+   * \param rb Buffer to read from.
+   * \param output_obu_type `output_obu_type` ObuType of the OBU. This is read
+   *      from `rb`.
+   * \param output_payload_serialized_size `output_payload_serialized_size` Size
+   *      of the payload of the OBU.
+   * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
+   *      the fields are invalid or set in a manner that is inconsistent with
+   *      the IAMF specification.
+   */
+  absl::Status ValidateAndRead(ReadBitBuffer& rb, ObuType& output_obu_type,
+                               int64_t& output_payload_serialized_size);
+
   /*!\brief Prints logging information about an `ObuHeader`.
    *
    * \param leb_generator `LebGenerator` to use when calculating `obu_size_`.

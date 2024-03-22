@@ -20,6 +20,7 @@
 #include "iamf/cli/leb_generator.h"
 #include "iamf/ia.h"
 #include "iamf/obu_util.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -160,6 +161,19 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
   return absl::OkStatus();
 }
 
+// Returns the size of the payload associated with the OBU, i.e. the number of
+// bytes that contain payload data. See
+// https://aomediacodec.github.io/iamf/#obu_size for more details.
+int64_t GetObuPayloadSize(const DecodedUleb128& obu_size,
+                          const uint8_t& num_samples_to_trim_at_end_size,
+                          const uint8_t& num_samples_to_trim_at_start_size,
+                          const uint8_t& extension_header_size_size,
+                          const uint8_t& extension_header_bytes_size) {
+  return obu_size -
+         (num_samples_to_trim_at_end_size + num_samples_to_trim_at_start_size +
+          extension_header_size_size + extension_header_bytes_size);
+}
+
 }  // namespace
 
 absl::Status ObuHeader::ValidateAndWrite(ObuType obu_type,
@@ -177,6 +191,49 @@ absl::Status ObuHeader::ValidateAndWrite(ObuType obu_type,
   RETURN_IF_NOT_OK(wb.WriteUleb128(obu_size));
 
   RETURN_IF_NOT_OK(WriteFieldsAfterObuSize(*this, wb));
+
+  return absl::OkStatus();
+}
+
+// Reads all the fields of the OBU Header as defined in the IAMF spec
+// (https://aomediacodec.github.io/iamf/#obu-header-syntax). Most of these
+// fields are stored directly in the ObuHeader struct; however, for reasons
+// relating to the existing encoder, `obu_type` and `obu_size` are not. We
+// instead use `output_obu_type` and `output_payload_serialized_size` as output
+// parameters. Note that `output_payload_serialized_size` is a derived value
+// from `obu_size`, as this is the value the caller is more interested in.
+absl::Status ObuHeader::ValidateAndRead(
+    ReadBitBuffer& rb, ObuType& output_obu_type,
+    int64_t& output_payload_serialized_size) {
+  uint64_t obu_type = 0;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(obu_redundant_copy));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(obu_trimming_status_flag));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(obu_extension_flag));
+  DecodedUleb128 obu_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(obu_size));
+  int8_t num_samples_to_trim_at_end_size = 0;
+  int8_t num_samples_to_trim_at_start_size = 0;
+  if (obu_trimming_status_flag) {
+    RETURN_IF_NOT_OK(rb.ReadULeb128(num_samples_to_trim_at_end,
+                                    num_samples_to_trim_at_end_size));
+    RETURN_IF_NOT_OK(rb.ReadULeb128(num_samples_to_trim_at_start,
+                                    num_samples_to_trim_at_start_size));
+  }
+  int8_t extension_header_size_size = 0;
+  if (obu_extension_flag) {
+    RETURN_IF_NOT_OK(
+        rb.ReadULeb128(extension_header_size, extension_header_size_size));
+    RETURN_IF_NOT_OK(
+        rb.ReadUint8Vector(extension_header_size, extension_header_bytes));
+  }
+  output_payload_serialized_size = GetObuPayloadSize(
+      obu_size, num_samples_to_trim_at_end_size,
+      num_samples_to_trim_at_start_size, extension_header_size_size,
+      extension_header_bytes.size());
+  output_obu_type = static_cast<ObuType>(obu_type);
+
+  RETURN_IF_NOT_OK(Validate(output_obu_type, *this));
 
   return absl::OkStatus();
 }

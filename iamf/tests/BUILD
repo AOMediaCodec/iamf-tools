@@ -194,6 +194,7 @@ cc_test(
         ":test_utils",
         "//iamf:ia",
         "//iamf:obu_header",
+        "//iamf:read_bit_buffer",
         "//iamf:write_bit_buffer",
         "//iamf/cli:leb_generator",
         "@com_google_absl//absl/status",

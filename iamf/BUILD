@@ -189,6 +189,7 @@ cc_library(
     deps = [
         ":ia",
         ":obu_util",
+        ":read_bit_buffer",
         ":write_bit_buffer",
         "//iamf/cli:leb_generator",
         "@com_google_absl//absl/log",
