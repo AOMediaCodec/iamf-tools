@@ -12,9 +12,7 @@
 #include "iamf/cli/parameters_manager.h"
 
 #include <cstdint>
-#include <list>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
@@ -30,14 +28,8 @@ namespace iamf_tools {
 
 ParametersManager::ParametersManager(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const std::list<ParameterBlockWithData>& parameter_blocks)
-    : audio_elements_(audio_elements) {
-  for (const auto& parameter_block : parameter_blocks) {
-    parameter_blocks_[parameter_block.obu->parameter_id_].insert(
-        {parameter_block.start_timestamp, &parameter_block});
-  }
-}
+        audio_elements)
+    : audio_elements_(audio_elements) {}
 
 absl::Status ParametersManager::Initialize() {
   // Collect all `DemixingParamDefinition`s in all Audio Elements. Validate
@@ -64,16 +56,16 @@ absl::Status ParametersManager::Initialize() {
     }
 
     if (demixing_param_definition != nullptr) {
-      // Insert an empty `btree_map` when a non-existent parameter ID is
-      // recorded in the param definition. Default values will be used in this
-      // case.
-      auto [btree_map_iter, inserted] = parameter_blocks_.insert(
-          {demixing_param_definition->parameter_id_, {}});
+      // Insert a `nullptr` for a parameter ID. If no parameter blocks have
+      // this parameter ID, then it will remain null and default values will
+      // be used.
+      parameter_blocks_.insert(
+          {demixing_param_definition->parameter_id_, nullptr});
       demixing_states_[audio_element_id] = {
           .param_definition = demixing_param_definition,
-          .parameter_blocks_iter = btree_map_iter->second.begin(),
           .previous_w_idx = 0,
           .next_timestamp = 0,
+          .update_rule = DemixingInfoParameterData::kFirstFrame,
       };
     }
   }
@@ -101,12 +93,10 @@ absl::Status ParametersManager::GetDownMixingParameters(
     return absl::OkStatus();
   }
   auto& demixing_state = demixing_states_iter->second;
-
   const auto* param_definition = demixing_state.param_definition;
-  auto& parameter_blocks_iter = demixing_state.parameter_blocks_iter;
-  const auto& parameter_blocks_for_id =
+  const auto* parameter_block =
       parameter_blocks_.at(param_definition->parameter_id_);
-  if (parameter_blocks_iter == parameter_blocks_for_id.end()) {
+  if (parameter_block == nullptr) {
     // Failed to find a parameter block that overlaps this frame. Use the
     // default value from the parameter definition. This is OK when there are no
     // parameter blocks covering this substream. If there is only partial
@@ -121,24 +111,30 @@ absl::Status ParametersManager::GetDownMixingParameters(
     return absl::OkStatus();
   }
 
-  const auto [start_timestamp, parameter_block] = *(parameter_blocks_iter);
-  CHECK_EQ(start_timestamp, demixing_state.next_timestamp);
+  if (parameter_block->start_timestamp != demixing_state.next_timestamp) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Mismatching timestamps for down-mixing parameters for audio element ",
+        "ID= ", audio_element_id, ": expecting", demixing_state.next_timestamp,
+        " but got ", parameter_block->start_timestamp));
+  }
 
   RETURN_IF_NOT_OK(DemixingInfoParameterData::DMixPModeToDownMixingParams(
       std::get<DemixingInfoParameterData>(
           parameter_block->obu->subblocks_[0].param_data)
           .dmixp_mode,
-      demixing_state.previous_w_idx,
-      (parameter_blocks_iter == parameter_blocks_for_id.begin()
-           ? DemixingInfoParameterData::kFirstFrame
-           : DemixingInfoParameterData::kNormal),
+      demixing_state.previous_w_idx, demixing_state.update_rule,
       down_mixing_params));
   demixing_state.w_idx = down_mixing_params.w_idx_used;
   return absl::OkStatus();
 }
 
-absl::Status ParametersManager::UpdateDownMixingParameters(
-    const DecodedUleb128 audio_element_id, const int32_t expected_timestamp) {
+void ParametersManager::AddDemixingParameterBlock(
+    const ParameterBlockWithData* parameter_block) {
+  parameter_blocks_[parameter_block->obu->parameter_id_] = parameter_block;
+}
+
+absl::Status ParametersManager::UpdateDemixingState(
+    DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
   const auto demixing_states_iter = demixing_states_.find(audio_element_id);
   if (demixing_states_iter == demixing_states_.end()) {
     // No demixing parameter definition found for the audio element ID, so
@@ -149,9 +145,13 @@ absl::Status ParametersManager::UpdateDownMixingParameters(
   // Validate the timestamps before updating.
   auto& demixing_state = demixing_states_iter->second;
 
-  const auto parameter_id = demixing_state.param_definition->parameter_id_;
-  if (demixing_state.parameter_blocks_iter ==
-      parameter_blocks_.at(parameter_id).end()) {
+  // Using `.at()` here is safe because if the demixing state exists for the
+  // `audio_element_id`, an entry in `parameter_blocks_` with the key
+  // `demixing_state.param_definition->parameter_id_` has already been
+  // created during `Initialize()`.
+  auto& parameter_block =
+      parameter_blocks_.at(demixing_state.param_definition->parameter_id_);
+  if (parameter_block == nullptr) {
     // No parameter block found for this ID. Do not validate the timestamp
     // or update anything else.
     return absl::OkStatus();
@@ -166,10 +166,17 @@ absl::Status ParametersManager::UpdateDownMixingParameters(
   // Update `previous_w_idx` for the next frame.
   demixing_state.previous_w_idx = demixing_state.w_idx;
 
-  // Update the iterator and the next timestamp for the next frame.
-  demixing_state.next_timestamp =
-      demixing_state.parameter_blocks_iter->second->end_timestamp;
-  demixing_state.parameter_blocks_iter++;
+  // Update the next timestamp for the next frame.
+  demixing_state.next_timestamp = parameter_block->end_timestamp;
+
+  // Update the `update_rule` of the first frame to be "normally updating".
+  if (demixing_state.update_rule == DemixingInfoParameterData::kFirstFrame) {
+    demixing_state.update_rule = DemixingInfoParameterData::kNormal;
+  }
+
+  // Clear out the parameter block, which should not be used before a new
+  // one is added via `AddDemixingParameterBlock()`.
+  parameter_block = nullptr;
 
   return absl::OkStatus();
 }

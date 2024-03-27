@@ -118,7 +118,6 @@ cc_test(
         "//iamf/cli:codec_config_generator",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
-        "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:parameters_manager",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",

@@ -14,9 +14,7 @@
 #define CLI_PARAMETERS_MANAGER_H_
 
 #include <cstdint>
-#include <list>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -27,11 +25,17 @@
 
 namespace iamf_tools {
 
-// TODO(b/306319126): Make this class operate iteratively; holding one set
-//                    of parameter blocks at a time. Maybe see if how the
-//                    Parameter Block Generator can generate one frame's worth
-//                    of parameters at a time.
-
+/*!\brief Manages parameters and supports easy query.
+ *
+ * The class operates iteratively; holding one set of parameter blocks
+ * corresponding to the same frame (with the same start/end timestamps).
+ *
+ * For each frame:
+ *   - Parameter blocks are added via `AddDemixingParameterBlock()`,
+ *   - Parameter values can be queried via `GetDownMixingParameters()`.
+ *   - Caller (usually the audio frame generator) is responsible to tell this
+ *     manager to advance to the next frame via `UpdateDemixingState()`.
+ */
 class ParametersManager {
  public:
   /*\!brief Constructor.
@@ -39,9 +43,9 @@ class ParametersManager {
    * \param audio_elements Input Audio Element OBUs with data.
    * \param parameter_blocks Input Parameter Block OBUs with data.
    */
-  ParametersManager(const absl::flat_hash_map<
-                        DecodedUleb128, AudioElementWithData>& audio_elements,
-                    const std::list<ParameterBlockWithData>& parameter_blocks);
+  ParametersManager(
+      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          audio_elements);
 
   /*\!brief Initializes some internal data.
    *
@@ -67,29 +71,29 @@ class ParametersManager {
   absl::Status GetDownMixingParameters(DecodedUleb128 audio_element_id,
                                        DownMixingParams& down_mixing_params);
 
-  /*\!brief Updates the down-mixing parameters for an audio element.
+  /*\!brief Adds a new demixing parameter block.
    *
-   * Also validates the timestamp is as expected before updating.
+   * \param parameter_block Pointer to the new demixing parameter block to add.
+   */
+  void AddDemixingParameterBlock(const ParameterBlockWithData* parameter_block);
+
+  /*\!brief Updates the state of demixing parameters for an audio element.
    *
-   * \param audio_element_id Audio Element ID whose corresponding parameters are
-   *     to be updated.
-   * \param expected_timestamp Expected timestamp parameters before updating.
+   * Also validates the timestamp is as expected.
+   *
+   * \param audio_element_id Audio Element ID whose corresponding demixing
+   *     state are to be updated.
+   * \param expected_timestamp Expected timestamp of the next set of
+   *     demixing parameter blocks.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status UpdateDownMixingParameters(DecodedUleb128 audio_element_id,
-                                          int32_t expected_timestamp);
+  absl::Status UpdateDemixingState(DecodedUleb128 audio_element_id,
+                                   int32_t expected_timestamp);
 
  private:
   // State used when generating demixing parameters for an audio element.
   struct DemixingState {
     const DemixingParamDefinition* param_definition;
-
-    // Iterator to the next parameter block with a start timestamp <=
-    // `next_timestamp`.
-    // TODO(b/315924757): Remove this once the class tracks one parameter block
-    //                    per audio element at a time.
-    absl::btree_map<uint32_t, const ParameterBlockWithData*>::const_iterator
-        parameter_blocks_iter;
 
     // `w_idx` for the frame just processed, i.e. `wIdx(k - 1)` in the Spec.
     int previous_w_idx;
@@ -99,19 +103,18 @@ class ParametersManager {
 
     // Timestamp for the next frame to be processed.
     int32_t next_timestamp;
+
+    // Update rule of the currently tracked demixing parameters, because the
+    // first frame needs some special treatment.
+    DemixingInfoParameterData::WIdxUpdateRule update_rule;
   };
 
   // Mapping from Audio Element ID to audio element data.
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
       audio_elements_;
 
-  // Mapping from Parameter ID to parameter blocks, sorted by their start
-  // timestamps.
-  // TODO(b/315924757): To support an iterative structure, only the parameter
-  //                    block corresponding to the current frame needs to be
-  //                    tracked.
-  absl::flat_hash_map<DecodedUleb128,
-                      absl::btree_map<uint32_t, const ParameterBlockWithData*>>
+  // Mapping from Parameter ID to parameter blocks.
+  absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
       parameter_blocks_;
 
   // Mapping from Audio Element ID to the demixing state.

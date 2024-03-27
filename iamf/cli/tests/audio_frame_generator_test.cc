@@ -26,7 +26,6 @@
 #include "iamf/cli/codec_config_generator.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
-#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -103,7 +102,6 @@ void GenerateAudioFrameWithEightSamples(
 
   // For simplicity this function does not use parameters. Pass in empty
   // containers.
-  const std::list<ParameterBlockWithData>& parameter_blocks = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
   const std::string output_wav_directory = "/dev/null";
@@ -114,7 +112,7 @@ void GenerateAudioFrameWithEightSamples(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
           .ok());
-  ParametersManager parameters_manager(audio_elements, parameter_blocks);
+  ParametersManager parameters_manager(audio_elements);
   ASSERT_TRUE(parameters_manager.Initialize().ok());
 
   // Generate the audio frames.

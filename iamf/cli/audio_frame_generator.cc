@@ -489,7 +489,7 @@ absl::Status EncodeFramesForAudioElement(
   if (encoded_timestamp.has_value()) {
     // An audio frame has been encoded, update the parameter manager to use
     // the next frame of parameters.
-    RETURN_IF_NOT_OK(parameters_manager.UpdateDownMixingParameters(
+    RETURN_IF_NOT_OK(parameters_manager.UpdateDemixingState(
         audio_element_id, *encoded_timestamp));
   }
 

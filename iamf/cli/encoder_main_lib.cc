@@ -58,6 +58,36 @@ namespace iamf_tools {
 
 namespace {
 
+// TODO(b/315924757): When parameter blocks are generated iteratively (one
+//                    timestamp at a time), this function can be removed or
+//                    greatly simplified.
+absl::Status AddAllDemixingParameterBlocksForCurrentTimestamp(
+    const std::list<ParameterBlockWithData>::const_iterator
+        demixing_parameter_block_end,
+    std::list<ParameterBlockWithData>::const_iterator&
+        demixing_parameter_block_iter,
+    ParametersManager& parameters_manager, int32_t& current_timestamp,
+    int32_t& next_timestamp) {
+  while (demixing_parameter_block_iter != demixing_parameter_block_end &&
+         demixing_parameter_block_iter->start_timestamp == current_timestamp) {
+    if (next_timestamp == current_timestamp) {
+      next_timestamp = demixing_parameter_block_iter->end_timestamp;
+    } else if (next_timestamp != demixing_parameter_block_iter->end_timestamp) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Inconsistent end timestamp: expecting ", next_timestamp, " but got ",
+          demixing_parameter_block_iter->end_timestamp));
+    }
+
+    parameters_manager.AddDemixingParameterBlock(
+        &(*demixing_parameter_block_iter));
+
+    ++demixing_parameter_block_iter;
+  }
+  current_timestamp = next_timestamp;
+
+  return absl::OkStatus();
+}
+
 void PrintAudioFrames(const std::list<AudioFrameWithData>& audio_frames) {
   // Print the first, last, and any audio frames with `trimming_status_flag`
   // set.
@@ -157,13 +187,15 @@ absl::Status GenerateObus(
 
   // Generate demixing parameter blocks first. They are required to generate the
   // audio frames.
+  std::list<ParameterBlockWithData> demixing_parameter_blocks;
   RETURN_IF_NOT_OK(parameter_block_generator.GenerateDemixing(
-      global_timing_module, parameter_blocks));
+      global_timing_module, demixing_parameter_blocks));
+  std::list<ParameterBlockWithData> mix_gain_parameter_blocks;
   RETURN_IF_NOT_OK(parameter_block_generator.GenerateMixGain(
-      global_timing_module, parameter_blocks));
+      global_timing_module, mix_gain_parameter_blocks));
 
   // Put generated parameter blocks in a manager that supports easier queries.
-  ParametersManager parameters_manager(audio_elements, parameter_blocks);
+  ParametersManager parameters_manager(audio_elements);
   RETURN_IF_NOT_OK(parameters_manager.Initialize());
 
   // Audio frames.
@@ -180,13 +212,25 @@ absl::Status GenerateObus(
 
   RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
 
+  // TODO(b/315924757): Currently getting all parameter blocks corresponding to
+  //                    a timestamp from `parameter_blocks` to simulate
+  //                    iterative generations.
+  auto demixing_parameter_block_iter = demixing_parameter_blocks.cbegin();
+  int32_t current_timestamp = 0;
+  int32_t next_timestamp = 0;
+
   // TODO(b/329375123): Make these two while loops run on two threads. The
   //                    one below should be on Thread 1.
   while (audio_frame_generator.TakingSamples()) {
+    RETURN_IF_NOT_OK(AddAllDemixingParameterBlocksForCurrentTimestamp(
+        demixing_parameter_blocks.cend(), demixing_parameter_block_iter,
+        parameters_manager, current_timestamp, next_timestamp));
+
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
       const auto audio_element_id = audio_frame_metadata.audio_element_id();
       LabelSamplesMap labeled_samples;
+
       RETURN_IF_NOT_OK(
           wav_sample_provider.ReadFrames(audio_element_id, labeled_samples));
 
@@ -227,9 +271,10 @@ absl::Status GenerateObus(
 
   // Generate the remaining parameter blocks. Recon gain blocks depends on
   // decoded audio frames.
+  std::list<ParameterBlockWithData> recon_gain_parameter_blocks;
   RETURN_IF_NOT_OK(parameter_block_generator.GenerateReconGain(
       id_to_time_to_labeled_frame, id_to_time_to_labeled_decoded_frame,
-      global_timing_module, parameter_blocks));
+      global_timing_module, recon_gain_parameter_blocks));
 
   ArbitraryObuGenerator arbitrary_obu_generator(
       user_metadata.arbitrary_obu_metadata());
@@ -259,8 +304,12 @@ absl::Status GenerateObus(
       user_metadata.test_vector_metadata().file_name_prefix(),
       output_wav_file_bit_depth_override);
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
-      audio_elements, id_to_time_to_labeled_frame, parameter_blocks,
+      audio_elements, id_to_time_to_labeled_frame, mix_gain_parameter_blocks,
       mix_presentation_obus));
+
+  parameter_blocks.splice(parameter_blocks.end(), demixing_parameter_blocks);
+  parameter_blocks.splice(parameter_blocks.end(), mix_gain_parameter_blocks);
+  parameter_blocks.splice(parameter_blocks.end(), recon_gain_parameter_blocks);
 
   return absl::OkStatus();
 }

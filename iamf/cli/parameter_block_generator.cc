@@ -734,6 +734,10 @@ absl::Status LogParameterBlockObus(
 
   for (const auto* parameter_block_with_data : to_log) {
     parameter_block_with_data->obu->PrintObu();
+    LOG(INFO) << "  // start_timestamp= "
+              << parameter_block_with_data->start_timestamp;
+    LOG(INFO) << "  // end_timestamp= "
+              << parameter_block_with_data->end_timestamp;
   }
 
   return absl::OkStatus();
