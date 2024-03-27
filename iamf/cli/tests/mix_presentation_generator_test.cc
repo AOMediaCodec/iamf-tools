@@ -225,7 +225,7 @@ TEST(CopyInfoType, SeveralLoudnessTypes) {
                                   LoudnessInfo::kTruePeak);
 }
 
-TEST(CopyInfoType, FallsBackToDeprecatedInfoTypeField) {
+TEST(CopyInfoType, DeprecatedInfoTypeIsNotSupported) {
   iamf_tools_cli_proto::LoudnessInfo user_loudness_info;
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -234,11 +234,10 @@ TEST(CopyInfoType, FallsBackToDeprecatedInfoTypeField) {
       )pb",
       &user_loudness_info));
 
-  uint8_t output_info_type;
-  EXPECT_TRUE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
-                                                     output_info_type)
-                  .ok());
-  EXPECT_EQ(output_info_type, LoudnessInfo::kAnchoredLoudness);
+  uint8_t unused_output_info_type;
+  EXPECT_FALSE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
+                                                      unused_output_info_type)
+                   .ok());
 }
 
 }  // namespace

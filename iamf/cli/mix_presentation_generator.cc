@@ -251,6 +251,21 @@ absl::Status FillLayouts(
 absl::Status MixPresentationGenerator::CopyInfoType(
     const iamf_tools_cli_proto::LoudnessInfo& input_loudness_info,
     uint8_t& loudness_info_type) {
+  if (input_loudness_info.has_deprecated_info_type()) {
+    return absl::InvalidArgumentError(
+        "Please upgrade the `deprecated_info_type` "
+        "field to the new `info_type_bit_masks` field."
+        "\nSuggested upgrades:\n"
+        "- `deprecated_info_type: 0` -> `info_type_bit_masks: []`\n"
+        "- `deprecated_info_type: 1` -> `info_type_bit_masks: "
+        "[LOUDNESS_INFO_TYPE_TRUE_PEAK]`\n"
+        "- `deprecated_info_type: 2` -> `info_type_bit_masks: "
+        "[LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS]`\n"
+        "- `deprecated_info_type: 3` -> `info_type_bit_masks: "
+        "[LOUDNESS_INFO_TYPE_TRUE_PEAK, "
+        "LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS]`\n");
+  }
+
   using enum iamf_tools_cli_proto::LoudnessInfoTypeBitMask;
   using enum LoudnessInfo::InfoTypeBitmask;
   static const absl::NoDestructor<
@@ -267,35 +282,24 @@ absl::Status MixPresentationGenerator::CopyInfoType(
           {LOUDNESS_INFO_TYPE_RESERVED_128, kInfoTypeBitMask128},
       });
 
-  if (input_loudness_info.has_deprecated_info_type()) {
-    LOG(WARNING) << "Please upgrade the `deprecated_info_type` "
-                    "field to the new "
-                    "`info_type_bit_masks` field.";
-
-    RETURN_IF_NOT_OK(Uint32ToUint8(input_loudness_info.deprecated_info_type(),
-                                   loudness_info_type));
-    return absl::OkStatus();
-  } else {
-    uint8_t accumulated_info_type_bitmask = 0;
-    for (int i = 0; i < input_loudness_info.info_type_bit_masks_size(); ++i) {
-      LoudnessInfo::InfoTypeBitmask user_output_bit_mask;
-      if (!LookupInMap(
-               *kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask,
-               input_loudness_info.info_type_bit_masks(i), user_output_bit_mask)
-               .ok()) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Unknown info_type_bit_masks(", i,
-                         ")= ", input_loudness_info.info_type_bit_masks(i)));
-      }
-
-      // Track the accumulated bit mask.
-      accumulated_info_type_bitmask |=
-          static_cast<uint8_t>(user_output_bit_mask);
+  uint8_t accumulated_info_type_bitmask = 0;
+  for (int i = 0; i < input_loudness_info.info_type_bit_masks_size(); ++i) {
+    LoudnessInfo::InfoTypeBitmask user_output_bit_mask;
+    if (!LookupInMap(
+             *kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask,
+             input_loudness_info.info_type_bit_masks(i), user_output_bit_mask)
+             .ok()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown info_type_bit_masks(", i,
+                       ")= ", input_loudness_info.info_type_bit_masks(i)));
     }
 
-    loudness_info_type = accumulated_info_type_bitmask;
-    return absl::OkStatus();
+    // Track the accumulated bit mask.
+    accumulated_info_type_bitmask |= static_cast<uint8_t>(user_output_bit_mask);
   }
+
+  loudness_info_type = accumulated_info_type_bitmask;
+  return absl::OkStatus();
 }
 
 absl::Status MixPresentationGenerator::Generate(
