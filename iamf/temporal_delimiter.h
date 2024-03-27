@@ -16,6 +16,7 @@
 #include "iamf/ia.h"
 #include "iamf/obu_base.h"
 #include "iamf/obu_header.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -49,6 +50,15 @@ class TemporalDelimiterObu : public ObuBase {
     // There is nothing to write for a Temporal Delimiter OBU payload.
     return absl::OkStatus();
   }
+
+  /*\!brief Reads the OBU payload from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` always.
+   */
+  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+    return absl::OkStatus();
+  };
 };
 }  // namespace iamf_tools
 

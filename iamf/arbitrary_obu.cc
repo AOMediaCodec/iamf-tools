@@ -17,6 +17,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/ia.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -35,6 +36,11 @@ absl::Status ArbitraryObu::WriteObusWithHook(
 absl::Status ArbitraryObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(payload_));
   return absl::OkStatus();
+}
+
+absl::Status ArbitraryObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "ArbitraryOBU ValidateAndReadPayload not yet implemented.");
 }
 
 void ArbitraryObu::PrintObu() const {

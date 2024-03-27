@@ -24,6 +24,7 @@
 #include "iamf/ia.h"
 #include "iamf/obu_util.h"
 #include "iamf/param_definitions.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -305,6 +306,11 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   }
 
   return absl::OkStatus();
+}
+
+absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "MixPresentationObu ValidateAndReadPayload not yet implemented.");
 }
 
 void LoudspeakersSsConventionLayout::Print() const {

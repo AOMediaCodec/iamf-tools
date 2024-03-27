@@ -18,6 +18,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/ia.h"
 #include "iamf/obu_util.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -56,6 +57,11 @@ absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
       wb.WriteUnsignedLiteral(static_cast<uint32_t>(additional_profile_), 8));
 
   return absl::OkStatus();
+}
+
+absl::Status IASequenceHeaderObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "IASequenceHeaderObu ValidateAndReadPayload not yet implemented.");
 }
 
 }  // namespace iamf_tools

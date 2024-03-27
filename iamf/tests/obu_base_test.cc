@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 #include "iamf/ia.h"
 #include "iamf/obu_header.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/tests/test_utils.h"
 #include "iamf/write_bit_buffer.h"
 
@@ -31,6 +32,10 @@ class ImaginaryObuNonIntegerBytes : public ObuBase {
  private:
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override {
     return wb.WriteUnsignedLiteral(0, 1);
+  }
+
+  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+    return absl::OkStatus();
   }
 };
 
@@ -55,6 +60,10 @@ class OneByteObu : public ObuBase {
  private:
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override {
     return wb.WriteUnsignedLiteral(255, 8);
+  }
+
+  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+    return absl::OkStatus();
   }
 };
 

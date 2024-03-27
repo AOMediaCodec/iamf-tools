@@ -25,6 +25,7 @@
 #include "iamf/obu_header.h"
 #include "iamf/obu_util.h"
 #include "iamf/param_definitions.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -611,6 +612,11 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   }
 
   return absl::OkStatus();
+}
+
+absl::Status ParameterBlockObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "ParameterBlockObu ValidateAndReadPayload not yet implemented.");
 }
 
 }  // namespace iamf_tools

@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "iamf/ia.h"
 #include "iamf/obu_header.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -71,6 +72,14 @@ class ObuBase {
    *     failure.
    */
   virtual absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const = 0;
+
+  /*\!brief Reads the OBU payload from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the payload is valid. A specific status on
+   *     failure.
+   */
+  virtual absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) = 0;
 
   /*\!brief Prints logging information about the OBU Header.
    *

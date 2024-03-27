@@ -19,6 +19,7 @@
 #include "iamf/ia.h"
 #include "iamf/obu_base.h"
 #include "iamf/obu_header.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -74,6 +75,14 @@ class AudioFrameObu : public ObuBase {
    *     failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
+
+  /*\!brief Reads the OBU payload from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the payload is valid. A specific status on
+   *     failure.
+   */
+  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

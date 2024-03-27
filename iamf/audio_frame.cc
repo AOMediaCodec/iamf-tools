@@ -19,6 +19,7 @@
 #include "iamf/ia.h"
 #include "iamf/obu_base.h"
 #include "iamf/obu_header.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -54,6 +55,11 @@ absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(audio_frame_));
 
   return absl::OkStatus();
+}
+
+absl::Status AudioFrameObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "AudioFrameOBU ValidateAndReadPayload not yet implemented.");
 }
 
 void AudioFrameObu::PrintObu() const {

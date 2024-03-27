@@ -180,6 +180,7 @@ cc_test(
         "//iamf:ia",
         "//iamf:obu_base",
         "//iamf:obu_header",
+        "//iamf:read_bit_buffer",
         "//iamf:write_bit_buffer",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",

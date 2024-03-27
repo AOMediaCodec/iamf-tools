@@ -23,6 +23,7 @@
 #include "iamf/obu_base.h"
 #include "iamf/obu_header.h"
 #include "iamf/opus_decoder_config.h"
+#include "iamf/read_bit_buffer.h"
 #include "iamf/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -144,6 +145,11 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(ValidateAndWriteDecoderConfig(wb));
 
   return absl::OkStatus();
+}
+
+absl::Status CodecConfigObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "CodecConfigOBU ValidateAndReadPayload not yet implemented.");
 }
 
 void CodecConfigObu::PrintObu() const {
