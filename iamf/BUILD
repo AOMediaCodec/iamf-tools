@@ -1,4 +1,4 @@
-package(default_visibility = ["//:__subpackages__"])
+package(default_visibility = ["//iamf:__subpackages__"])
 
 cc_library(
     name = "aac_decoder_config",

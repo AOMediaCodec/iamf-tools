@@ -1,6 +1,6 @@
 # Example commandline interface tools for the IAMF software.
 
-package(default_visibility = ["//:__subpackages__"])
+package(default_visibility = ["//iamf:__subpackages__"])
 
 exports_files(
     srcs = [

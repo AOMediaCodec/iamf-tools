@@ -1,4 +1,4 @@
-package(default_visibility = [":__subpackages__"])
+package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
 
 cc_library(
     name = "cli_test_utils",
