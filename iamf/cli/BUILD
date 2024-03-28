@@ -1,6 +1,6 @@
 # Example commandline interface tools for the IAMF software.
 
-package(default_visibility = ["//iamf:__subpackages__"])
+package(default_visibility = ["//iamf/cli:__subpackages__"])
 
 exports_files(
     srcs = [
@@ -369,6 +369,7 @@ cc_library(
     name = "leb_generator",
     srcs = ["leb_generator.cc"],
     hdrs = ["leb_generator.h"],
+    visibility = ["//iamf:__subpackages__"],
     deps = [
         "//iamf:ia",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
