@@ -22,12 +22,12 @@
 #endif
 
 #include "absl/status/status.h"
-#include "iamf/aac_decoder_config.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/decoder_base.h"
 #include "iamf/cli/encoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/codec_config.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "libAACdec/include/aacdecoder_lib.h"
 #include "libAACenc/include/aacenc_lib.h"
 

@@ -23,9 +23,9 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
-#include "iamf/param_definitions.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/param_definitions.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {

@@ -21,15 +21,15 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "iamf/arbitrary_obu.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia_sequence_header.h"
-#include "iamf/mix_presentation.h"
-#include "iamf/write_bit_buffer.h"
+#include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 

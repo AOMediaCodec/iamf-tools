@@ -18,10 +18,10 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "iamf/audio_element.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
-#include "iamf/parameter_block.h"
+#include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

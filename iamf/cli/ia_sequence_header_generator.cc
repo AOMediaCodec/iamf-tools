@@ -18,8 +18,8 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/ia.h"
-#include "iamf/ia_sequence_header.h"
+#include "iamf/common/macros.h"
+#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 

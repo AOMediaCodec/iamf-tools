@@ -19,7 +19,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/mix_presentation.h"
+#include "iamf/obu/mix_presentation.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
 

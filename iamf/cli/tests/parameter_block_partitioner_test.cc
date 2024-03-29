@@ -18,10 +18,12 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/ia.h"
-#include "iamf/obu_header.h"
-#include "iamf/param_definitions.h"
-#include "iamf/parameter_block.h"
+#include "iamf/common/macros.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 namespace {

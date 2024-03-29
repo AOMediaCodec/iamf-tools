@@ -27,11 +27,11 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/recon_gain_generator.h"
-#include "iamf/ia.h"
-#include "iamf/ia_sequence_header.h"
-#include "iamf/mix_presentation.h"
-#include "iamf/param_definitions.h"
-#include "iamf/parameter_block.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

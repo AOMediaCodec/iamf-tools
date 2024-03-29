@@ -24,16 +24,17 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/audio_element.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
-#include "iamf/obu_util.h"
-#include "iamf/param_definitions.h"
-#include "iamf/parameter_block.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
+#include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

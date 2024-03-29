@@ -21,11 +21,12 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/arbitrary_obu.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
-#include "iamf/ia.h"
-#include "iamf/obu_util.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
+#include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
 

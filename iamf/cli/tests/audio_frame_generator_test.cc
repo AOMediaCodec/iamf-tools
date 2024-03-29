@@ -19,7 +19,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
-#include "iamf/audio_frame.h"
 #include "iamf/cli/audio_element_generator.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -31,9 +30,10 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/codec_config.h"
-#include "iamf/obu_header.h"
-#include "iamf/param_definitions.h"
+#include "iamf/obu/audio_frame.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {

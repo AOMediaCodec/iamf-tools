@@ -26,7 +26,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
-#include "iamf/arbitrary_obu.h"
 #include "iamf/cli/arbitrary_obu_generator.h"
 #include "iamf/cli/audio_element_generator.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -47,12 +46,14 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/wav_sample_provider.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
-#include "iamf/ia_sequence_header.h"
-#include "iamf/mix_presentation.h"
-#include "iamf/param_definitions.h"
-#include "iamf/parameter_block.h"
+#include "iamf/common/macros.h"
+#include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

@@ -31,7 +31,7 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/ia.h"
+#include "iamf/obu/leb128.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

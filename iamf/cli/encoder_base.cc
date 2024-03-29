@@ -16,7 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "iamf/ia.h"
+#include "iamf/common/macros.h"
 
 namespace iamf_tools {
 

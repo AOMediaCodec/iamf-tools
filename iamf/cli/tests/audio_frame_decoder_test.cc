@@ -7,13 +7,13 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "gtest/gtest.h"
-#include "iamf/audio_frame.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
-#include "iamf/obu_header.h"
+#include "iamf/obu/audio_frame.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
 namespace {

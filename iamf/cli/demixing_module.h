@@ -28,8 +28,8 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/demixing_info_param_data.h"
-#include "iamf/ia.h"
+#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
 

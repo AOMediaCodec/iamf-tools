@@ -22,7 +22,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
-#include "iamf/mix_presentation.h"
+#include "iamf/obu/mix_presentation.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

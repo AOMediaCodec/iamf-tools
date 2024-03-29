@@ -16,7 +16,7 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/ia_sequence_header.h"
+#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 

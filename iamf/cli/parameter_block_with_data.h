@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "iamf/parameter_block.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

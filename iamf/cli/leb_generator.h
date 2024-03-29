@@ -19,7 +19,7 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/ia.h"
+#include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
 

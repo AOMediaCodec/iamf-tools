@@ -19,8 +19,8 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/encoder_base.h"
-#include "iamf/codec_config.h"
-#include "iamf/lpcm_decoder_config.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 
 namespace iamf_tools {
 

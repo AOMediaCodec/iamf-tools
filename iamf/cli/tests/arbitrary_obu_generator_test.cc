@@ -17,10 +17,9 @@
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
-#include "iamf/arbitrary_obu.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
-#include "iamf/ia.h"
-#include "iamf/obu_header.h"
+#include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/obu_header.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
 

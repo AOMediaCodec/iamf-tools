@@ -19,8 +19,8 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/audio_element.pb.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/leb128.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

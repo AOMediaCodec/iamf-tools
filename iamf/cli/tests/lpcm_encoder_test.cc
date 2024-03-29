@@ -18,9 +18,9 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/encoder_test_base.h"
-#include "iamf/codec_config.h"
-#include "iamf/lpcm_decoder_config.h"
-#include "iamf/obu_header.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
 namespace {

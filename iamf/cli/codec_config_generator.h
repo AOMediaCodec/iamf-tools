@@ -18,7 +18,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/codec_config.h"
+#include "iamf/obu/codec_config.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

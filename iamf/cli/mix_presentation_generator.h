@@ -19,7 +19,7 @@
 #include "absl/status/status.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/mix_presentation.h"
+#include "iamf/obu/mix_presentation.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

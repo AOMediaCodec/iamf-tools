@@ -25,7 +25,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/wav_reader.h"
-#include "iamf/ia.h"
+#include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
 

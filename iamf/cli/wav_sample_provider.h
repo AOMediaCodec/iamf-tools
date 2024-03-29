@@ -22,7 +22,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/wav_reader.h"
-#include "iamf/ia.h"
+#include "iamf/obu/leb128.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

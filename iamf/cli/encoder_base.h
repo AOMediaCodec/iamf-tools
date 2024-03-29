@@ -22,7 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/codec_config.h"
+#include "iamf/obu/codec_config.h"
 
 namespace iamf_tools {
 

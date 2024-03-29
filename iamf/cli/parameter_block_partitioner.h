@@ -17,8 +17,9 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/ia.h"
-#include "iamf/parameter_block.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

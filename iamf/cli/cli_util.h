@@ -28,14 +28,14 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/codec_config.h"
-#include "iamf/demixing_info_param_data.h"
-#include "iamf/ia.h"
-#include "iamf/ia_sequence_header.h"
-#include "iamf/mix_presentation.h"
-#include "iamf/obu_header.h"
-#include "iamf/param_definitions.h"
-#include "iamf/parameter_block.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/leb128.h"
+#include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 

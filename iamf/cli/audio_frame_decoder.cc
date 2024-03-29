@@ -31,8 +31,8 @@
 #include "iamf/cli/decoder_base.h"
 #include "iamf/cli/opus_encoder_decoder.h"
 #include "iamf/cli/wav_writer.h"
-#include "iamf/codec_config.h"
-#include "iamf/ia.h"
+#include "iamf/common/macros.h"
+#include "iamf/obu/codec_config.h"
 
 namespace iamf_tools {
 

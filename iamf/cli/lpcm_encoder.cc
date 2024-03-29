@@ -21,8 +21,8 @@
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
-#include "iamf/ia.h"
-#include "iamf/lpcm_decoder_config.h"
+#include "iamf/common/macros.h"
+#include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 
 namespace iamf_tools {
 

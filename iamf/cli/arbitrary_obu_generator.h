@@ -15,8 +15,8 @@
 #include <list>
 
 #include "absl/status/status.h"
-#include "iamf/arbitrary_obu.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
+#include "iamf/obu/arbitrary_obu.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

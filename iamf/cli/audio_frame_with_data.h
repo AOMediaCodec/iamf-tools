@@ -16,9 +16,9 @@
 #include <cstdint>
 #include <vector>
 
-#include "iamf/audio_frame.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/demixing_info_param_data.h"
+#include "iamf/obu/audio_frame.h"
+#include "iamf/obu/demixing_info_param_data.h"
 
 namespace iamf_tools {
 

@@ -15,7 +15,9 @@ format. These tools can be used as a complement to the `libiamf`
 
 *   `<root>` - Project-level files like the license, README (this file), and
     BUILD files.
-*   `iamf/` - Common data classes for the Open Bitstream Units (OBU)s and tools.
+*   `iamf/`
+    *   `common/` - Common utility files.
+        *   `tests/` - Unit tests for files under `common/`.
     *   `cli/` - Files related to the command line interface (CLI) to generate
         and write an IA Sequence.
         *   `proto/` - [Protocol buffers](https://protobuf.dev/) defining the
@@ -24,7 +26,10 @@ format. These tools can be used as a complement to the `libiamf`
         *   `testdata/` - Sample input files to the encoder. See also
             [Test Suite](#Test-Suite).
         *   `tests/` - Unit tests for files under `iamf/cli/`.
-    *   `tests/` - Unit tests for files under `iamf/`.
+    *   `obu/` - Files relating to IAMF Open Bitstream Units (OBU)s.
+        *   `decoder_config/` - Files relating codec-specific decoder configs.
+            *   `tests/` - Unit tests for files under `decoder_config/`.
+        *   `tests/` - Unit tests for files under `obu/`.
 *   `external/` - Custom `*.BUILD` files for external dependencies.
 
 ### Encoder

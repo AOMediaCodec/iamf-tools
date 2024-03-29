@@ -19,9 +19,8 @@
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/ia.h"
-#include "iamf/ia_sequence_header.h"
-#include "iamf/obu_header.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/obu_header.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {

@@ -22,9 +22,9 @@
 #include "iamf/cli/mix_presentation_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
-#include "iamf/ia.h"
-#include "iamf/mix_presentation.h"
-#include "iamf/obu_util.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 

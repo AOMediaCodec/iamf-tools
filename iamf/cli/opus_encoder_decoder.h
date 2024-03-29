@@ -21,8 +21,8 @@
 #include "iamf/cli/decoder_base.h"
 #include "iamf/cli/encoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/codec_config.h"
-#include "iamf/opus_decoder_config.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "include/opus.h"
 
 namespace iamf_tools {

@@ -22,8 +22,8 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/ia.h"
-#include "iamf/obu_util.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
 

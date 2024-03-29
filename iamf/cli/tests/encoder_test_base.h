@@ -21,9 +21,9 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
-#include "iamf/audio_frame.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/encoder_base.h"
+#include "iamf/obu/audio_frame.h"
 
 namespace iamf_tools {
 
