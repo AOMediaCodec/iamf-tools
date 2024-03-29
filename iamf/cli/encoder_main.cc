@@ -25,8 +25,11 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "src/google/protobuf/text_format.h"
 
-ABSL_FLAG(std::string, user_metadata_filename, "",
-          "Filename of the text proto containing user metadata");
+ABSL_FLAG(
+    std::string, user_metadata_filename, "",
+    "Filename of the proto containing user metadata. It will be read as "
+    "a textproto if the file extension is `.txtpb or `.textproto`. It will "
+    "be read as a binary proto if the file extension is `.binpb`.");
 ABSL_FLAG(std::string, input_wav_directory, "",
           "Directory containing the input wav files");
 ABSL_FLAG(std::string, output_wav_directory, "",
@@ -45,21 +48,30 @@ bool ReadInputUserMetadata(const std::filesystem::path& user_metadata_filename,
 
   std::ifstream user_metadata_file(user_metadata_filename.string());
   if (!user_metadata_file) {
-    LOG(ERROR) << "Error loading user_metadata_filename="
+    LOG(ERROR) << "Error loading user_metadata_filename= "
                << user_metadata_filename;
     return false;
   }
 
   std::ostringstream user_metadata_stream;
   user_metadata_stream << user_metadata_file.rdbuf();
-  if (!google::protobuf::TextFormat::ParseFromString(user_metadata_stream.str(),
-                                                     &user_metadata)) {
-    LOG(ERROR) << "Error parsing user_metadata_filename="
-               << user_metadata_filename;
-    return false;
+
+  bool is_parse_successful = false;
+  if (user_metadata_filename.extension() == ".binpb") {
+    is_parse_successful =
+        user_metadata.ParseFromString(user_metadata_stream.str());
+  } else if (user_metadata_filename.extension() == ".textproto" ||
+             user_metadata_filename.extension() == ".txtpb") {
+    is_parse_successful = google::protobuf::TextFormat::ParseFromString(
+        user_metadata_stream.str(), &user_metadata);
   }
 
-  return true;
+  if (!is_parse_successful) {
+    LOG(ERROR) << "Error parsing proto with user_metadata_filename= "
+               << user_metadata_filename;
+  }
+
+  return is_parse_successful;
 }
 
 }  // namespace

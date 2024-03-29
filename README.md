@@ -35,7 +35,7 @@ format. These tools can be used as a complement to the `libiamf`
 ### Encoder
 
 The encoder can be used to encode a standalone IAMF Sequence (`.iamf`) file
-based on an input `.textproto` file. See [Test Suite](#Test-Suite) for several
+based on an input proto file. See [Test Suite](#Test-Suite) for several
 example input files.
 
 #### Prerequisites for building the encoder
