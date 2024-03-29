@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
@@ -468,6 +469,14 @@ TEST_F(CodecConfigOpusTest, RedundantCopy) {
   header_.obu_redundant_copy = true;
   expected_header_ = {4, 20};
   InitAndTestWrite();
+}
+
+// TODO(b/329706105): Update test once ValidateAndReadPayload is implemented.
+TEST(CreateFromBuffer, IsNotSupported) {
+  std::vector<uint8_t> source;
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  EXPECT_FALSE(CodecConfigObu::CreateFromBuffer(header, buffer).ok());
 }
 
 }  // namespace

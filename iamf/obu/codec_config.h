@@ -16,6 +16,7 @@
 #include <variant>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -65,6 +66,20 @@ class CodecConfigObu : public ObuBase {
    */
   CodecConfigObu(const ObuHeader& header, const DecodedUleb128 codec_config_id,
                  const CodecConfig& codec_config);
+
+  /*!\brief Creates a `CodecConfigObu` from a `ReadBitBuffer`.
+   *
+   * This function is designed to be used from the perspective of the decoder.
+   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * therefore it can fail.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param rb `ReadBitBuffer` where the `CodecConfigObu` data is stored. Data
+   *    read from the buffer is consumed.
+   * \return a `CodecConfigObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<CodecConfigObu> CreateFromBuffer(
+      const ObuHeader& header, ReadBitBuffer& rb);
 
   /*\!brief Move constructor.*/
   CodecConfigObu(CodecConfigObu&& other) = default;
@@ -135,6 +150,13 @@ class CodecConfigObu : public ObuBase {
   const bool is_lossless_;
 
  private:
+  // Used only by the factory create function.
+  explicit CodecConfigObu(const ObuHeader& header)
+      : ObuBase(header, kObuIaCodecConfig),
+        codec_config_id_(DecodedUleb128()),
+        codec_config_(CodecConfig()),
+        is_lossless_(false) {}
+
   // Metadata fields.
   uint32_t input_sample_rate_ = 0;
   uint32_t output_sample_rate_ = 0;

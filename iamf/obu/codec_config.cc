@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -101,6 +102,14 @@ CodecConfigObu::CodecConfigObu(const ObuHeader& header,
       codec_config_(std::move(codec_config)),
       is_lossless_(IsLossless(codec_config_.codec_id)) {}
 
+absl::StatusOr<CodecConfigObu> CodecConfigObu::CreateFromBuffer(
+    const ObuHeader& header, ReadBitBuffer& rb) {
+  CodecConfigObu codec_config_obu(header);
+  RETURN_IF_NOT_OK(codec_config_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(codec_config_obu.Initialize());
+  return codec_config_obu;
+}
+
 absl::Status CodecConfigObu::ValidateAndWriteDecoderConfig(
     WriteBitBuffer& wb) const {
   if (!init_status_.ok()) {
@@ -148,6 +157,7 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
+// TODO(b/329706105): Implement.
 absl::Status CodecConfigObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   return absl::UnimplementedError(
       "CodecConfigOBU ValidateAndReadPayload not yet implemented.");
