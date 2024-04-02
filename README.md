@@ -20,6 +20,8 @@ format. These tools can be used as a complement to the `libiamf`
         *   `tests/` - Unit tests for files under `common/`.
     *   `cli/` - Files related to the command line interface (CLI) to generate
         and write an IA Sequence.
+        *   `adm_to_user_metadata/` - Components to convert ADM files to proto
+            files which can be used for input to the encoder.
         *   `proto/` - [Protocol buffers](https://protobuf.dev/) defining the
             data scheme for the input files under `iamf/cli/testdata/` or
             user-created ones.

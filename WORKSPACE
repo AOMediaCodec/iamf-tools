@@ -43,6 +43,14 @@ git_repository(
     commit = "f1669677fa16654be66e2f99ac9c4d5f16f4b719",
 )
 
+# Expat
+git_repository(
+    name = "libexpat",
+    remote = "https://github.com/libexpat/libexpat.git",
+    commit = "fa75b96546c069d17b8f80d91e0f4ef0cde3790d",
+    build_file = "libexpat.BUILD",
+)
+
 # FDK AAC.
 git_repository(
     name = "fdk_aac",

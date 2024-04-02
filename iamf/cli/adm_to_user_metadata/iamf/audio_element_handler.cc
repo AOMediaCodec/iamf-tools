@@ -1,0 +1,257 @@
+/*
+ * Copyright (c) 2024, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+
+#include "iamf/cli/adm_to_user_metadata/iamf/audio_element_handler.h"
+
+#include <cstdint>
+#include <vector>
+
+#include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
+#include "iamf/cli/proto/audio_element.pb.h"
+#include "iamf/cli/proto/user_metadata.pb.h"
+
+namespace iamf_tools {
+namespace adm_to_user_metadata {
+
+namespace {
+
+absl::StatusOr<int32_t> LookupNumSubstreamsFromInputLayout(
+    IamfInputLayout input_layout) {
+  // Map which holds the loudspeaker layout and the count of substream(s)
+  // corresponding to it.
+  using enum IamfInputLayout;
+  static const absl::NoDestructor<absl::flat_hash_map<IamfInputLayout, int32_t>>
+      kInputLayoutToNumSubstreams({
+          {kMono, 1},
+          {kStereo, 1},
+          {k5_1, 4},
+          {k5_1_2, 5},
+          {k5_1_4, 6},
+          {k5_1_4, 6},
+          {k7_1, 5},
+          {k7_1_4, 7},
+          {kBinaural, 1},
+          {kAmbisonicsOrder1, 4},
+          {kAmbisonicsOrder2, 9},
+          {kAmbisonicsOrder3, 16},
+      });
+
+  auto it = kInputLayoutToNumSubstreams->find(input_layout);
+  if (it == kInputLayoutToNumSubstreams->end()) {
+    return absl::NotFoundError(absl::StrCat(
+        "Num substreams not found for input_layout= ", input_layout));
+  }
+  return it->second;
+}
+
+absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
+    IamfInputLayout input_layout) {
+  // Map which holds the loudspeaker layout and the count of coupled
+  // substream(s) corresponding to it.
+  using enum IamfInputLayout;
+  static const absl::NoDestructor<absl::flat_hash_map<IamfInputLayout, int32_t>>
+      kInputLayoutToCoupledSubstreamCount({
+          {kMono, 0},
+          {kStereo, 1},
+          {k5_1, 2},
+          {k5_1_2, 3},
+          {k5_1_4, 4},
+          {k7_1, 3},
+          {k7_1_4, 5},
+          {kBinaural, 1},
+      });
+
+  auto it = kInputLayoutToCoupledSubstreamCount->find(input_layout);
+  if (it == kInputLayoutToCoupledSubstreamCount->end()) {
+    return absl::NotFoundError(absl::StrCat(
+        "Coupled substream count not found for input_layout= ", input_layout));
+  }
+  return it->second;
+}
+
+absl::StatusOr<iamf_tools_cli_proto::LoudspeakerLayout>
+LookupLoudspeakerLayoutFromInputLayout(IamfInputLayout input_layout) {
+  using enum IamfInputLayout;
+  using enum iamf_tools_cli_proto::LoudspeakerLayout;
+
+  // Map which holds the channel layout and the corresponding loudspeaker layout
+  // in IAMF.
+  static const absl::NoDestructor<absl::flat_hash_map<
+      IamfInputLayout, iamf_tools_cli_proto::LoudspeakerLayout>>
+      KInputLayoutToLoudspeakerLayout({
+          {kMono, LOUDSPEAKER_LAYOUT_MONO},
+          {kStereo, LOUDSPEAKER_LAYOUT_STEREO},
+          {k5_1, LOUDSPEAKER_LAYOUT_5_1_CH},
+          {k5_1_2, LOUDSPEAKER_LAYOUT_5_1_2_CH},
+          {k5_1_4, LOUDSPEAKER_LAYOUT_5_1_4_CH},
+          {k7_1, LOUDSPEAKER_LAYOUT_7_1_CH},
+          {k7_1_4, LOUDSPEAKER_LAYOUT_7_1_4_CH},
+          {kBinaural, LOUDSPEAKER_LAYOUT_BINAURAL},
+      });
+
+  auto it = KInputLayoutToLoudspeakerLayout->find(input_layout);
+  if (it == KInputLayoutToLoudspeakerLayout->end()) {
+    return absl::NotFoundError(absl::StrCat(
+        "Loudspeaker layout not found for input_layout= ", input_layout));
+  }
+  return it->second;
+}
+
+absl::StatusOr<iamf_tools_cli_proto::AudioElementType>
+LookupAudioElementTypeFromInputLayout(IamfInputLayout input_layout) {
+  using enum IamfInputLayout;
+  using enum iamf_tools_cli_proto::AudioElementType;
+
+  // Map which holds the channel layout and the corresponding audio element
+  // type.
+  static const absl::NoDestructor<absl::flat_hash_map<
+      IamfInputLayout, iamf_tools_cli_proto::AudioElementType>>
+      KInputLayoutToAudioElementType({
+          {kMono, AUDIO_ELEMENT_CHANNEL_BASED},
+          {kStereo, AUDIO_ELEMENT_CHANNEL_BASED},
+          {k5_1, AUDIO_ELEMENT_CHANNEL_BASED},
+          {k5_1_2, AUDIO_ELEMENT_CHANNEL_BASED},
+          {k5_1_4, AUDIO_ELEMENT_CHANNEL_BASED},
+          {k7_1, AUDIO_ELEMENT_CHANNEL_BASED},
+          {k7_1_4, AUDIO_ELEMENT_CHANNEL_BASED},
+          {kBinaural, AUDIO_ELEMENT_CHANNEL_BASED},
+          {kAmbisonicsOrder1, AUDIO_ELEMENT_SCENE_BASED},
+          {kAmbisonicsOrder2, AUDIO_ELEMENT_SCENE_BASED},
+          {kAmbisonicsOrder3, AUDIO_ELEMENT_SCENE_BASED},
+      });
+
+  auto it = KInputLayoutToAudioElementType->find(input_layout);
+  if (it == KInputLayoutToAudioElementType->end()) {
+    return absl::NotFoundError(absl::StrCat(
+        "Loudspeaker layout not found for input_layout= ", input_layout));
+  }
+  return it->second;
+}
+
+absl::Status PopulateChannelBasedAudioElementMetadata(
+    IamfInputLayout input_layout, int32_t num_substreams,
+    iamf_tools_cli_proto::ScalableChannelLayoutConfig&
+        scalable_channel_layout_config) {
+  // 'num_layers' is  set to 1 as ADM does not support scalable channels.
+  scalable_channel_layout_config.set_num_layers(1);
+
+  auto* channel_audio_layer_config =
+      scalable_channel_layout_config.add_channel_audio_layer_configs();
+
+  const auto loudspeaker_layout =
+      LookupLoudspeakerLayoutFromInputLayout(input_layout);
+  if (!loudspeaker_layout.ok()) {
+    return loudspeaker_layout.status();
+  }
+  channel_audio_layer_config->set_loudspeaker_layout(*loudspeaker_layout);
+
+  // Set 'output_gain_is_present_flag' and 'recon_gain_is_present_flag' to 0
+  // as ADM does not support scalable channels.
+  channel_audio_layer_config->set_output_gain_is_present_flag(0);
+  channel_audio_layer_config->set_recon_gain_is_present_flag(0);
+
+  // As 'num_layers' is set to 1, 'substream_count' is equal to
+  // 'num_substreams'.
+  channel_audio_layer_config->set_substream_count(num_substreams);
+  const auto coupled_substream_count =
+      LookupCoupledSubstreamCountFromInputLayout(input_layout);
+  if (!coupled_substream_count.ok()) {
+    return coupled_substream_count.status();
+  }
+  channel_audio_layer_config->set_coupled_substream_count(
+      *coupled_substream_count);
+  return absl::OkStatus();
+}
+
+void PopulateSceneBasedAudioElementMetadata(
+    int32_t num_substreams,
+    iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_obu_metadata) {
+  audio_element_obu_metadata.set_audio_element_type(
+      iamf_tools_cli_proto::AUDIO_ELEMENT_SCENE_BASED);
+
+  auto* ambisonics_config =
+      audio_element_obu_metadata.mutable_ambisonics_config();
+  // For typeDefinition = HOA and since input contains LPCM audio samples, set
+  // ambisonics_mode to AMBISONICS_MODE_MONO.
+  ambisonics_config->set_ambisonics_mode(
+      iamf_tools_cli_proto::AMBISONICS_MODE_MONO);
+
+  auto* ambisonics_mono_config =
+      ambisonics_config->mutable_ambisonics_mono_config();
+
+  ambisonics_mono_config->set_output_channel_count(num_substreams);
+  ambisonics_mono_config->set_substream_count(num_substreams);
+
+  for (int32_t substream_id = 0; substream_id < num_substreams;
+       ++substream_id) {
+    ambisonics_mono_config->mutable_channel_mapping()->Add(substream_id);
+  }
+}
+
+}  // namespace
+
+// Sets the required textproto fields for audio_element_metadata.
+absl::Status AudioElementHandler::PopulateAudioElementMetadata(
+    const int32_t audio_element_id, const IamfInputLayout input_layout,
+    iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_obu_metadata) {
+  audio_element_obu_metadata.set_audio_element_id(audio_element_id);
+  audio_element_obu_metadata.set_codec_config_id(0);
+
+  const auto num_substreams = LookupNumSubstreamsFromInputLayout(input_layout);
+  if (!num_substreams.ok()) {
+    return num_substreams.status();
+  }
+  audio_element_obu_metadata.set_num_substreams(*num_substreams);
+
+  std::vector<int32_t> stream_id;
+  for (int32_t substream_id = 0; substream_id < *num_substreams;
+       ++substream_id) {
+    stream_id.push_back(audio_stream_id_counter_);
+    audio_element_obu_metadata.mutable_audio_substream_ids()->Add(
+        audio_stream_id_counter_);
+    ++audio_stream_id_counter_;
+  }
+
+  // Set 'num_parameters' to zero as ADM does not have the concept of scalable
+  // channels.
+  audio_element_obu_metadata.set_num_parameters(0);
+
+  const auto audio_element_type =
+      LookupAudioElementTypeFromInputLayout(input_layout);
+  if (!audio_element_type.ok()) {
+    return audio_element_type.status();
+  }
+  audio_element_obu_metadata.set_audio_element_type(*audio_element_type);
+
+  switch (*audio_element_type) {
+    using enum iamf_tools_cli_proto::AudioElementType;
+    case AUDIO_ELEMENT_CHANNEL_BASED:
+      return PopulateChannelBasedAudioElementMetadata(
+          input_layout, *num_substreams,
+          *audio_element_obu_metadata.mutable_scalable_channel_layout_config());
+    case AUDIO_ELEMENT_SCENE_BASED:
+      PopulateSceneBasedAudioElementMetadata(*num_substreams,
+                                             audio_element_obu_metadata);
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unsupported audio_element_type= ", *audio_element_type));
+  }
+}
+
+}  // namespace adm_to_user_metadata
+}  // namespace iamf_tools
