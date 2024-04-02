@@ -147,6 +147,14 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
   return absl::OkStatus();
 }
 
+// Reads a standard int16_t in two's complement form from the read buffer.
+absl::Status ReadBitBuffer::ReadSigned16(int16_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteral(16, value));
+  output = static_cast<int16_t>(value) & 0xffff;
+  return absl::OkStatus();
+}
+
 /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
  *
  *

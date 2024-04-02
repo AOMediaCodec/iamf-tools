@@ -508,5 +508,72 @@ TEST_F(ReadBitBufferTest, ReadBooleanNotEnoughDataInBufferOrSource) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
 }
 
+// --- ReadSigned16 tests ---
+
+TEST_F(ReadBitBufferTest, Signed16Zero) {
+  source_data_ = {0x00, 0x00};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->bit_buffer().size(), 2);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  int16_t output = 0;
+  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_EQ(output, 0);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, Signed16MaxPositive) {
+  source_data_ = {0x7f, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->bit_buffer().size(), 2);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  int16_t output = 0;
+  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_EQ(output, 32767);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, Signed16MinPositive) {
+  source_data_ = {0x00, 0x01};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->bit_buffer().size(), 2);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  int16_t output = 0;
+  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_EQ(output, 1);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, Signed16MinNegative) {
+  source_data_ = {0x80, 0x00};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->bit_buffer().size(), 2);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  int16_t output = 0;
+  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_EQ(output, -32768);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, Signed16MaxNegative) {
+  source_data_ = {0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_EQ(rb_->bit_buffer().size(), 2);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  int16_t output = 0;
+  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_EQ(output, -1);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
 }  // namespace
 }  // namespace iamf_tools

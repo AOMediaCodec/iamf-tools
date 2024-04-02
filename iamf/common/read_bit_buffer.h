@@ -50,6 +50,16 @@ class ReadBitBuffer {
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint64_t& output);
 
+  /*!\brief Reads the signed 16 bit integer from the read buffer.
+   *
+   * \param output Signed 16 bit integer will be written here.
+   * \return `absl::OkStatus()` on success.  `absl::ResourceExhaustedError()` if
+   *     the buffer is exhausted before the signed 16 is fully read and source
+   *     does not have the requisite data to complete the signed 16.
+   *     `absl::UnknownError()` if the `rb->bit_offset` is negative.
+   */
+  absl::Status ReadSigned16(int16_t& output);
+
   /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
    *
    * \param uleb128 Decoded unsigned leb128 from buffer will be written here.
