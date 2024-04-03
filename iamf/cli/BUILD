@@ -657,6 +657,7 @@ cc_binary(
     ],
     deps = [
         ":encoder_main_lib",
+        "//iamf/cli/adm_to_user_metadata/app:adm_to_user_metadata_main_lib",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "@com_google_absl//absl/flags:flag",

@@ -15,7 +15,10 @@ cc_library(
     name = "adm_to_user_metadata_main_lib",
     srcs = ["adm_to_user_metadata_main_lib.cc"],
     hdrs = ["adm_to_user_metadata_main_lib.h"],
-    visibility = ["//iamf/cli/adm_to_user_metadata/app/tests:__pkg__"],
+    visibility = [
+        "//iamf/cli:__pkg__",
+        "//iamf/cli/adm_to_user_metadata/app/tests:__pkg__",
+    ],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
         "//iamf/cli/adm_to_user_metadata/adm:wav_file_splicer",

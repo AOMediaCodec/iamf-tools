@@ -67,6 +67,18 @@ options:
     - ./adm_to_user_metadata_main --importance_threshold=4 --adm_file_name input.wav
 ```
 
+### Conversion details
+
+-   IA Sequence Header OBU: a base profile sequence header is always generated.
+-   Codec Config OBU: an LPCM codec config is created with sample rate and
+    bit-depth determined based on the input file. `number_of_samples_per_frame`
+    is determined based on the `--frame_duration_ms` flag.
+-   Audio Element OBUs: audio elements are created based on ADM `audioObjects`.
+    Low importance objects are filtered out based on the
+    `--importance_threshold` flag.
+-   Mix Presentation OBUs: mix presentations are generated based on ADM
+    `audioProgramme`s.
+
 ## License
 
 Released under the BSD 3-Clause Clear License. See [LICENSE](LICENSE) for
