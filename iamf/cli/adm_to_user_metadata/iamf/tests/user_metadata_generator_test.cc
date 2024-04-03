@@ -32,7 +32,7 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
-const absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
+constexpr absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
 const AudioObject& GetStereoAudioObject() {
   constexpr absl::string_view kStereoAudioPackFormatId = "AP_00010001";
 
@@ -43,7 +43,7 @@ const AudioObject& GetStereoAudioObject() {
   return *kStereoAudioObject;
 }
 
-const absl::string_view kThirdOrderAmbisonicsAudioObjectId =
+constexpr absl::string_view kThirdOrderAmbisonicsAudioObjectId =
     "Third Order Ambisonics Audio Object";
 const AudioObject& GetThirdOrderAmbisonicsAudioObject() {
   constexpr absl::string_view kThirdOrderAmbisonicsAudioPackFormatId =
@@ -100,8 +100,8 @@ const ADM& GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes() {
 
 constexpr FormatInfoChunk kFormatInfoChunk = {
     .num_channels = 1, .samples_per_sec = 48000, .bits_per_sample = 16};
-const int kTotalSamplesPerChannel = 100;
-const int kMaxFrameDuration = 10;
+constexpr int kTotalSamplesPerChannel = 100;
+constexpr int kMaxFrameDuration = 10;
 
 using iamf_tools_cli_proto::UserMetadata;
 

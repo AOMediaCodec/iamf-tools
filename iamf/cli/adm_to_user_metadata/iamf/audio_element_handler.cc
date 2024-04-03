@@ -13,7 +13,6 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/audio_element_handler.h"
 
 #include <cstdint>
-#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -217,10 +216,10 @@ absl::Status AudioElementHandler::PopulateAudioElementMetadata(
   }
   audio_element_obu_metadata.set_num_substreams(*num_substreams);
 
-  std::vector<int32_t> stream_id;
-  for (int32_t substream_id = 0; substream_id < *num_substreams;
-       ++substream_id) {
-    stream_id.push_back(audio_stream_id_counter_);
+  // Generate sequential substream IDs. Although not REQUIRED by IAMF this helps
+  // ensure that the substream IDs are unique between subsequent calls to this
+  // function.
+  for (int i = 0; i < *num_substreams; ++i) {
     audio_element_obu_metadata.mutable_audio_substream_ids()->Add(
         audio_stream_id_counter_);
     ++audio_stream_id_counter_;

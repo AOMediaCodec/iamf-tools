@@ -164,8 +164,8 @@ absl::StatusOr<int64_t> Bw64Reader::GetTotalSamplesPerChannel() const {
     return absl::FailedPreconditionError("Missing `data` chunk.");
   }
 
-  const int64_t kDataLength = static_cast<int64_t>(chunk_info->size);
-  return kDataLength / (bits_per_sample_per_channel / kBitsPerByte);
+  const int64_t data_chunk_size = static_cast<int64_t>(chunk_info->size);
+  return data_chunk_size / (bits_per_sample_per_channel / kBitsPerByte);
 }
 
 absl::StatusOr<Bw64Reader> Bw64Reader::BuildFromStream(

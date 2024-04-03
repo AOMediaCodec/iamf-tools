@@ -48,7 +48,7 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
   auto it = kAudioPackFormatIdToInputLayout->find(audio_pack_format_id);
   if (it == kAudioPackFormatIdToInputLayout->end()) {
     return absl::NotFoundError(
-        absl::StrCat("Input layout not found for audio_pack_format_id=",
+        absl::StrCat("Input layout not found for audio_pack_format_id= ",
                      audio_pack_format_id));
   }
   return it->second;

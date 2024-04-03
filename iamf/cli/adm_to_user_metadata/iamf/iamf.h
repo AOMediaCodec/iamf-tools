@@ -30,6 +30,12 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+/*\!brief Helps maintain consistency within an IAMF stream.
+ *
+ * This class holds the mapping between ADM objects and IAMF OBUs. It also holds
+ * several handlers which help maintain consistency between particular types of
+ * OBUs.
+ */
 class IAMF {
  public:
   struct AudioObjectsAndMetadata {

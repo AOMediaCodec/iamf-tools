@@ -62,7 +62,7 @@ absl::StatusOr<std::vector<std::string>> LookupLabelsFromInputLayout(
   auto it = kInputLayoutToLabels->find(input_layout);
   if (it == kInputLayoutToLabels->end()) {
     return absl::NotFoundError(
-        absl::StrCat("Labels not found for input_layout=", input_layout));
+        absl::StrCat("Labels not found for input_layout= ", input_layout));
   }
   return it->second;
 }
@@ -82,7 +82,7 @@ absl::Status AudioFrameHandler::PopulateAudioFrameMetadata(
       num_samples_to_trim_at_end_);
   audio_frame_obu_metadata.set_audio_element_id(audio_element_id);
 
-  auto labels = LookupLabelsFromInputLayout(input_layout);
+  const auto& labels = LookupLabelsFromInputLayout(input_layout);
   if (!labels.ok()) {
     return labels.status();
   }

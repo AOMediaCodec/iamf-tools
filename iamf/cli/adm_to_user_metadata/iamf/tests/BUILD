@@ -62,6 +62,7 @@ cc_test(
     srcs = ["iamf_input_layout_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/iamf:iamf_input_layout",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -86,6 +87,7 @@ cc_test(
     deps = [
         "//iamf/cli/adm_to_user_metadata/iamf:test_vector_metadata_handler",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

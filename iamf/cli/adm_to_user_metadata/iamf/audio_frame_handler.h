@@ -24,6 +24,20 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+/*\!brief Helps create consistent audio frame metadatas for an IAMF stream.
+ *
+ * In `iamf-tools` this metadata is typically associated in a 1:1 mapping with
+ * an audio element.
+ *
+ * IAMF v1.0 REQUIRES certain fields to be consistent across all audio
+ * substreams in a given IAMF stream (e.g. `num_samples_to_trim_at_end`,
+ * `num_samples_to_trim_at_start`). This class helps enforce that by
+ * generating consistent audio frame metadata.
+ *
+ * `PopulateAudioFrameMetadata()` will generate a single audio frame metadata.
+ * It can be called multiple times to generate additional audio frame
+ * metadatas.
+ */
 class AudioFrameHandler {
  public:
   /*\!brief Constructor.

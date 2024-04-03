@@ -12,8 +12,7 @@
 
 #include "iamf/cli/adm_to_user_metadata/iamf/test_vector_metadata_handler.h"
 
-#include <string>
-
+#include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 
@@ -24,7 +23,7 @@ namespace {
 TEST(TestVectorMetadataHandler, GeneratesValidTestVectorMetadata) {
   iamf_tools_cli_proto::TestVectorMetadata test_vector_metadata;
 
-  const std::string kFilePrefix = "prefix";
+  constexpr absl::string_view kFilePrefix = "prefix";
   TestVectorMetadataHandler(kFilePrefix, test_vector_metadata);
 
   EXPECT_TRUE(test_vector_metadata.is_valid());

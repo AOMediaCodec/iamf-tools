@@ -3,7 +3,6 @@ cc_test(
     srcs = ["bw64_reader_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
-        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],

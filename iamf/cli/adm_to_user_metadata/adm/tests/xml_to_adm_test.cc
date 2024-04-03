@@ -26,17 +26,16 @@ using testing::ElementsAreArray;
 
 constexpr absl::string_view kAudioPackFormatIdMono = "AP_00010001";
 
-const int kImportanceThreshold = 0;
+constexpr int kImportanceThreshold = 0;
 
 TEST(ParseXmlToAdm, InvalidXml) {
-  auto adm = ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
-                           kImportanceThreshold);
-
-  EXPECT_FALSE(adm.ok());
+  EXPECT_FALSE(ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
+                             kImportanceThreshold)
+                   .ok());
 }
 
 TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
-  auto adm = ParseXmlToAdm(
+  const auto adm = ParseXmlToAdm(
       R"xml(
         <audioProgramme audioProgrammeID="audio_programme_id" audioProgrammeName="audio_programme_name" audioProgrammeLabel="audio_programme_label">
           <audioContentIDRef>audio_content_id</audioContentIDRef>
@@ -59,12 +58,12 @@ TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
 }
 
 TEST(ParseXmlToAdm, LoadsAudioContents) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
     <audioContent audioContentID="audio_content_id" audioContentName="audio_content_name">
       <audioObjectIDRef>object_1</audioObjectIDRef>
     </audioContent>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   ASSERT_FALSE(adm->audio_contents.empty());
@@ -76,7 +75,7 @@ TEST(ParseXmlToAdm, LoadsAudioContents) {
 }
 
 TEST(ParseXmlToAdm, LoadsAudioObject) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <audioObject audioObjectID="object_1" audioObjectName="object_name" importance="9">
     <audioPackFormatIDRef>AP_00010001</audioPackFormatIDRef>
     <audioTrackUIDRef>audio_track_uid_1</audioTrackUIDRef>
@@ -85,7 +84,7 @@ TEST(ParseXmlToAdm, LoadsAudioObject) {
     <gain>2.5</gain>
   </audioObject>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   ASSERT_FALSE(adm->audio_objects.empty());
@@ -104,7 +103,7 @@ TEST(ParseXmlToAdm, LoadsAudioObject) {
 }
 
 TEST(ParseXmlToAdm, LoudspeakerLayoutIsSupported) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <TopLevelElement>
     <audioObject audioObjectID="Mono">
         <audioPackFormatIDRef>AP_00010001</audioPackFormatIDRef>
@@ -129,14 +128,14 @@ TEST(ParseXmlToAdm, LoudspeakerLayoutIsSupported) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   EXPECT_EQ(adm->audio_objects.size(), 7);
 }
 
 TEST(ParseXmlToAdm, AmbisonicsLayoutIsSupported) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <TopLevelElement>
     <audioObject audioObjectID="FOA">
         <audioPackFormatIDRef>AP_00040001</audioPackFormatIDRef>
@@ -149,26 +148,26 @@ TEST(ParseXmlToAdm, AmbisonicsLayoutIsSupported) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   EXPECT_EQ(adm->audio_objects.size(), 3);
 }
 
 TEST(ParseXmlToAdm, BinauralLayoutIsSupported) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <audioObject>
       <audioPackFormatIDRef>AP_00050001</audioPackFormatIDRef>
   </audioObject>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
 }
 
 TEST(ParseXmlToAdm, FiltersOutUnsupportedLayouts) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <TopLevelElement>
     <audioObject audioObjectID="Mono">
         <audioPackFormatIDRef>AP_00010001</audioPackFormatIDRef>
@@ -187,7 +186,7 @@ TEST(ParseXmlToAdm, FiltersOutUnsupportedLayouts) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
@@ -195,10 +194,10 @@ TEST(ParseXmlToAdm, FiltersOutUnsupportedLayouts) {
 }
 
 TEST(ParseXmlToAdm, AudioObjectImportanceDefaultsToTen) {
-  auto adm = ParseXmlToAdm(R"xml(
+  const auto adm = ParseXmlToAdm(R"xml(
   <audioObject></audioObject>
   )xml",
-                           kImportanceThreshold);
+                                 kImportanceThreshold);
   ASSERT_TRUE(adm.ok());
 
   EXPECT_EQ(adm->audio_objects[0].importance, 10);
@@ -214,20 +213,23 @@ TEST(ParseXmlToAdm, FiltersOutLowImportanceAudioObjects) {
   </topLevelElement>
   )xml";
 
-  // All objects are below the threshold.
-  auto adm = ParseXmlToAdm(xml, /*importance_threshold=*/10);
-  ASSERT_TRUE(adm.ok());
-  EXPECT_EQ(adm->audio_objects.size(), 0);
+  const auto adm_with_all_objects_below_threshold =
+      ParseXmlToAdm(xml, /*importance_threshold=*/10);
+  ASSERT_TRUE(adm_with_all_objects_below_threshold.ok());
+  EXPECT_EQ(adm_with_all_objects_below_threshold->audio_objects.size(), 0);
 
   // One object is at or above the threshold.
-  adm = ParseXmlToAdm(xml, /*importance_threshold=*/9);
-  ASSERT_TRUE(adm.ok());
-  EXPECT_EQ(adm->audio_objects.size(), 1);
+  const auto adm_with_one_object_at_or_above_threshold =
+      ParseXmlToAdm(xml, /*importance_threshold=*/9);
+  ASSERT_TRUE(adm_with_one_object_at_or_above_threshold.ok());
+  EXPECT_EQ(adm_with_one_object_at_or_above_threshold->audio_objects.size(), 1);
 
   // Three objects are at or above the threshold.
-  adm = ParseXmlToAdm(xml, /*importance_threshold=*/3);
-  ASSERT_TRUE(adm.ok());
-  EXPECT_EQ(adm->audio_objects.size(), 3);
+  const auto adm_with_three_objects_at_or_above_threshold =
+      ParseXmlToAdm(xml, /*importance_threshold=*/3);
+  ASSERT_TRUE(adm_with_three_objects_at_or_above_threshold.ok());
+  EXPECT_EQ(adm_with_three_objects_at_or_above_threshold->audio_objects.size(),
+            3);
 }
 
 TEST(ParseXmlToAdm, InvalidWhenImportanceIsNonInteger) {

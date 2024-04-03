@@ -24,10 +24,10 @@ namespace {
 
 // The following constants are fixed for every call to
 // GenerateLpcmCodecConfigObuMetadata.
-const uint32_t kCodecConfigId = 0;
-const auto kLpcmCodecId = iamf_tools_cli_proto::CODEC_ID_LPCM;
-const uint32_t kAudioRollDistance = 0;
-const auto kSampleFormatFlags = iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN;
+constexpr uint32_t kCodecConfigId = 0;
+constexpr auto kLpcmCodecId = iamf_tools_cli_proto::CODEC_ID_LPCM;
+constexpr uint32_t kAudioRollDistance = 0;
+constexpr auto kSampleFormatFlags = iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN;
 
 TEST(CodecConfigObuMetadataHandlerTest, PopulatesCodecConfigObuMetadata) {
   // Configure some constants that affect the output.

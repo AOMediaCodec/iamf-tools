@@ -26,13 +26,20 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-// This class is used for reading and validating RIFF WAV files, extracting
-// chunk information, and storing format details. The class performs RIFF
-// header validation, and create maps with chunk names as keys and associated
-// offsets (name, size, data). It also creates an object of the FormatInfoChunk
-// class to store attributes of the 'fmt' chunk in the WAV file. It also
-// provides a method to retrieve the axml (ADM XML) data associated with the WAV
-// file.
+/*\!brief Indexes and extracts ADM information from a BW64 WAV file.
+ *
+ * This class processes Bw64 WAV files
+ * (https://adm.ebu.io/reference/excursions/bw64_and_adm.html).
+ *
+ * The class can be built from a stream which represents a valid RIFF WAV file
+ * with an `axml` chunk.
+ *
+ * This class provides information about the WAV file:
+ *   - A index of the chunks within the WAV file (name, size, data).
+ *   - A `FormatInfoChunk` associated with the WAV file.
+ *   - An ADM structure associated with the `axml` chunk.
+ */
+
 class Bw64Reader {
  public:
   struct ChunkInfo {
@@ -79,6 +86,13 @@ class Bw64Reader {
   const FormatInfoChunk format_info_;
 
  private:
+  /*!\brief Constructor.
+   *
+   * \param adm ADM associated with the bw64 reader.
+   * \param format_info FormatInfoChunk associated with the stream.
+   * \param chunks_offset_map Chunk name to offset map associated with the
+   *     stream.
+   */
   Bw64Reader(const ADM& adm, const FormatInfoChunk& format_info,
              const ChunksOffsetMap& chunks_offset_map)
       : adm_(adm),

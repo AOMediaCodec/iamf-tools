@@ -21,6 +21,13 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+/*\!brief Populates a `CodecConfigObuMetadata` proto for LPCM.
+ *
+ * \param format_info_chunk FormatInfoChunk to extract the sample size and
+ *     sample rate from.
+ * \param num_samples_per_frame Number of samples per frame.
+ * \param codec_config_obu_metadata Data to populate.
+ */
 void GenerateLpcmCodecConfigObuMetadata(
     const FormatInfoChunk& format_info, int64_t num_samples_per_frame,
     iamf_tools_cli_proto::CodecConfigObuMetadata& codec_config_obu_metadata);

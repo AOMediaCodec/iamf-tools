@@ -17,7 +17,6 @@
 #include <sstream>
 #include <string>
 
-#include "absl/base/macros.h"
 #include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
 
@@ -25,9 +24,9 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
-const int32_t kImportanceThreshold = 10;
+constexpr int32_t kImportanceThreshold = 10;
 
-const char kValidWav[] =
+constexpr absl::string_view kValidWav(
     "RIFF"
     "\x54\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
     "WAVE"
@@ -47,23 +46,23 @@ const char kValidWav[] =
     "\xcd\xef"          // Sample[1] for channel 1.
     "axml"
     "\x1b\x00\x00\x00"  // Size of `axml` chunk.
-    "<audioObject></audioObject>";
-const auto kValidWavSize = ABSL_ARRAYSIZE(kValidWav);
+    "<audioObject></audioObject>",
+    87);
 
-const uint32_t kWavHeaderSize = 12;
-const uint32_t kFmtChunkSize = 16;
-const uint32_t kDataChunkSize = 8;
-const uint32_t kAxmlChunkSize = 27;
-const uint16_t kExpectedFormatTag = 1;
-const uint16_t kExpectedNumChannels = 2;
-const uint32_t kExpectedSamplesPerSec = 3;
-const uint32_t kExpectedAvgBytesPerSec = 4;
-const uint16_t kExpectedBlockAlign = 16;
-const uint16_t kExpectedBitsPerSample = 16;
+constexpr uint32_t kWavHeaderSize = 12;
+constexpr uint32_t kFmtChunkSize = 16;
+constexpr uint32_t kDataChunkSize = 8;
+constexpr uint32_t kAxmlChunkSize = 27;
+constexpr uint16_t kExpectedFormatTag = 1;
+constexpr uint16_t kExpectedNumChannels = 2;
+constexpr uint32_t kExpectedSamplesPerSec = 3;
+constexpr uint32_t kExpectedAvgBytesPerSec = 4;
+constexpr uint16_t kExpectedBlockAlign = 16;
+constexpr uint16_t kExpectedBitsPerSample = 16;
 
-const size_t kExpectedNumObjects = 1;
+constexpr size_t kExpectedNumObjects = 1;
 
-const int64_t kExpectedTotalSamplesPerChannel = 2;
+constexpr int64_t kExpectedTotalSamplesPerChannel = 2;
 
 void ValidateGetChunkInfo(const Bw64Reader& reader,
                           absl::string_view chunk_name, int32_t expected_size,
@@ -81,9 +80,9 @@ TEST(BuildFromStream, FailsOnEmptyStream) {
 }
 
 TEST(BuildFromStream, PopulatesChunkInfo) {
-  std::istringstream ss(std::string(kValidWav, kValidWavSize));
+  std::istringstream ss((std::string(kValidWav)));
 
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   // Chunk name | Size | Offset
@@ -101,9 +100,9 @@ TEST(BuildFromStream, PopulatesChunkInfo) {
 }
 
 TEST(BuildFromStream, PopulatesFormatInfo) {
-  std::istringstream ss(std::string(kValidWav, kValidWavSize));
+  std::istringstream ss((std::string(kValidWav)));
 
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   EXPECT_EQ(reader->format_info_.format_tag, kExpectedFormatTag);
@@ -115,18 +114,18 @@ TEST(BuildFromStream, PopulatesFormatInfo) {
 }
 
 TEST(BuildFromStream, PopulatesAudioObjects) {
-  std::istringstream ss(std::string(kValidWav, kValidWavSize));
+  std::istringstream ss((std::string(kValidWav)));
 
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   EXPECT_EQ(reader->adm_.audio_objects.size(), kExpectedNumObjects);
 }
 
 TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
-  std::istringstream ss(std::string(kValidWav, kValidWavSize));
+  std::istringstream ss((std::string(kValidWav)));
 
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   // Returns error when Looking up an invalid chunk name returns an error.
@@ -134,18 +133,18 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
 }
 
 TEST(GetTotalSamplesPerChannel, ReturnsTotalSamplesPerChannel) {
-  std::istringstream ss(std::string(kValidWav, kValidWavSize));
+  std::istringstream ss((std::string(kValidWav)));
   auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
-  auto total_samples_per_channel = reader->GetTotalSamplesPerChannel();
+  const auto total_samples_per_channel = reader->GetTotalSamplesPerChannel();
   ASSERT_TRUE(total_samples_per_channel.ok());
 
   EXPECT_EQ(*total_samples_per_channel, kExpectedTotalSamplesPerChannel);
 }
 
 TEST(GetTotalSamplesPerChannel, ReturnsErrorWhenInvalidNumberOfChannels) {
-  const char kInvalidNumberOfChannels[] =
+  constexpr absl::string_view kInvalidNumberOfChannels(
       "RIFF"
       "\x44\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
       "WAVE"
@@ -161,13 +160,11 @@ TEST(GetTotalSamplesPerChannel, ReturnsErrorWhenInvalidNumberOfChannels) {
       "\x00\x00\x00\x00"
       "axml"
       "\x1b\x00\x00\x00"  // Size of `axml` chunk.
-      "<audioObject></audioObject>";
-  const auto kInvalidNumberOfChannelsSize =
-      ABSL_ARRAYSIZE(kInvalidNumberOfChannels);
+      "<audioObject></audioObject>",
+      79);
 
-  std::istringstream ss(
-      std::string(kInvalidNumberOfChannels, kInvalidNumberOfChannelsSize));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  std::istringstream ss((std::string(kInvalidNumberOfChannels)));
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   EXPECT_FALSE(reader->GetTotalSamplesPerChannel().ok());

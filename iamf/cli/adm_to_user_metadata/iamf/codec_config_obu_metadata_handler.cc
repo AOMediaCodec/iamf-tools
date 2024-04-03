@@ -18,19 +18,20 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+constexpr uint32_t kCodecConfigId = 0;
+
 // Sets the required textproto fields for codec_config_metadata.
 void GenerateLpcmCodecConfigObuMetadata(
     const FormatInfoChunk& format_info, int64_t num_samples_per_frame,
     iamf_tools_cli_proto::CodecConfigObuMetadata& codec_config_obu_metadata) {
-  codec_config_obu_metadata.set_codec_config_id(0);
-  iamf_tools_cli_proto::CodecConfig* codec_config =
-      codec_config_obu_metadata.mutable_codec_config();
+  codec_config_obu_metadata.set_codec_config_id(kCodecConfigId);
+  auto* codec_config = codec_config_obu_metadata.mutable_codec_config();
   // Set codec id as ipcm.
   codec_config->set_codec_id(iamf_tools_cli_proto::CODEC_ID_LPCM);
   codec_config->set_num_samples_per_frame(num_samples_per_frame);
   codec_config->set_audio_roll_distance(0);
 
-  auto decode_config = codec_config->mutable_decoder_config_lpcm();
+  auto* decode_config = codec_config->mutable_decoder_config_lpcm();
   decode_config->set_sample_format_flags(
       iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN);
   decode_config->set_sample_size(format_info.bits_per_sample);

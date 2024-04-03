@@ -11,8 +11,7 @@
  */
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 
-#include <string>
-
+#include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
@@ -27,7 +26,7 @@ TEST(LookupInputLayoutFromAudioPackFormatId, UnknownAudioPackFormatId) {
 }
 
 struct SupportedAudioPackFormatIdTestCase {
-  std::string test_audio_pack_format_id;
+  absl::string_view test_audio_pack_format_id;
   IamfInputLayout expected_layout;
 };
 

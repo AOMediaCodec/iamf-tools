@@ -23,6 +23,17 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+/*\!brief Helps create consistent audio element metadata for an IAMF stream.
+ *
+ * This class stores state information to avoid conflicts between audio
+ * elements in a single IAMF stream. It helps generate audio streams that may
+ * have multiple audio elements while ensuring they all have unique substream
+ * IDs.
+ *
+ * `PopulateAudioElementMetadata()` will generate a single audio element
+ * metadata. It can be called multiple times to generate additional audio
+ * element metadata.
+ */
 class AudioElementHandler {
  public:
   AudioElementHandler() = default;

@@ -13,7 +13,6 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <iostream>
 #include <map>
 #include <string>
@@ -32,7 +31,7 @@ namespace adm_to_user_metadata {
 
 namespace {
 
-const uint64_t kMaxAudioElementPerMix = 2;
+constexpr uint64_t kMaxAudioElementPerMix = 2;
 
 struct HasComplementaryObjectIdAndAudioObjectGroup {
   bool has_complementary_object_group;

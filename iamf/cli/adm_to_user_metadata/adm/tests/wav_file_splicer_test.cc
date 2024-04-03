@@ -79,7 +79,7 @@ constexpr absl::string_view kExpectedOutputForStereoObject(
     "\xcd\xef",         // Sample[1] for channel 1.
     52);
 
-const absl::string_view kInvalidWavFileWithInconsistentDataChunkSize(
+constexpr absl::string_view kInvalidWavFileWithInconsistentDataChunkSize(
     "RIFF"
     "\xb8\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
     "WAVE"
@@ -106,7 +106,7 @@ const absl::string_view kInvalidWavFileWithInconsistentDataChunkSize(
     "\xcd\xef",         // Sample[1] for channel 0.
     184);
 
-const absl::string_view kAdmBwfWithOneStereoAndOneMonoObject(
+constexpr absl::string_view kAdmBwfWithOneStereoAndOneMonoObject(
     "RIFF"
     "\xf5\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
     "WAVE"
@@ -180,7 +180,7 @@ void ValidateFileContents(std::filesystem::path file_path,
 
 TEST(SpliceWavFilesFromAdm, CreatesWavFiles) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoObject)));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   EXPECT_TRUE(
@@ -193,7 +193,7 @@ TEST(SpliceWavFilesFromAdm,
      InvalidAndDoesNotCreateWavFilehenDataChunkIsInconsistent) {
   std::istringstream ss(
       (std::string(kInvalidWavFileWithInconsistentDataChunkSize)));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
   const auto kPathOnSuccess =
       std::filesystem::path(::testing::TempDir()) / "prefix_converted1.wav";
@@ -206,7 +206,7 @@ TEST(SpliceWavFilesFromAdm,
 
 TEST(SpliceWavFilesFromAdm, StripsAxmlChunkAndUpdatesChunkSizes) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoObject)));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   ASSERT_TRUE(
@@ -219,7 +219,7 @@ TEST(SpliceWavFilesFromAdm, StripsAxmlChunkAndUpdatesChunkSizes) {
 
 TEST(SpliceWavFilesFromAdm, OutputsOneWavFilePerObject) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoAndOneMonoObject)));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_TRUE(reader.ok());
 
   EXPECT_TRUE(

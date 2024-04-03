@@ -18,8 +18,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-// This struct holds the various attributes related to format information chunk
-// of a wav audio file.
+/*!\brief Represents the format info chunk ("fmt ") of a wav audio file. */
 struct FormatInfoChunk {
   uint16_t format_tag;
   uint16_t num_channels;

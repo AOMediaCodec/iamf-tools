@@ -30,9 +30,9 @@ namespace adm_to_user_metadata {
  * This class stores information common between mix presentations in a single
  * IAMF stream.
  *
- * `PopulateMixPresentation()` will generate a single one mix presention
- * metadata proto. It can be called multiple times to generate additional mix
- * presentation metadata protos.
+ * `PopulateMixPresentation()` will generate a single mix presentation metadata.
+ * It can be called multiple times to generate additional mix presentation
+ * metadatas.
  */
 class MixPresentationHandler {
  public:
