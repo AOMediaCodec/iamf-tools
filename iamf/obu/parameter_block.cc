@@ -532,36 +532,14 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
     }
   }
 
-  // Validate restrictions about `num_subblocks`, `duration` and
-  // `constant_subblock_duration`.
-  const DecodedUleb128 num_subblocks = GetNumSubblocks();
-  if (metadata_->param_definition_type ==
-          ParamDefinition::kParameterDefinitionDemixing ||
-      metadata_->param_definition_type ==
-          ParamDefinition::kParameterDefinitionReconGain) {
-    if (num_subblocks != 1) {
-      LOG(ERROR) << "The spec allows only one subblock for "
-                 << "`kParameterDefinitionMixGain` and "
-                 << "`kParameterDefinitionReconGain`, but got "
-                 << num_subblocks;
-      return absl::InvalidArgumentError("");
-    }
-    const DecodedUleb128 constant_subblock_duration =
-        GetConstantSubblockDuration();
-    const DecodedUleb128 duration = GetDuration();
-    if (constant_subblock_duration != duration) {
-      LOG(ERROR)
-          << "The spec requires `duration` == `constant_subblock_duration`, "
-          << "but got (" << duration << " != " << constant_subblock_duration
-          << ")";
-      return absl::InvalidArgumentError("");
-    }
-  }
+  // Validate the associated `param_definition`.
+  RETURN_IF_NOT_OK(metadata_->param_definition.Validate());
 
   int64_t total_subblock_durations = 0;
   bool validate_total_subblock_durations = false;
 
   // Loop through to write the `subblocks_` vector.
+  const DecodedUleb128 num_subblocks = GetNumSubblocks();
   for (int i = 0; i < num_subblocks; i++) {
     // `subblock_duration` is conditionally included based on
     // `param_definition_mode_` and `constant_subblock_duration_`.

@@ -445,18 +445,10 @@ TEST_F(DemixingParameterBlockTest, ParamDefinitionMode1TooManySubblocks) {
   InitAndTestWrite();
 }
 
-TEST_F(DemixingParameterBlockTest, OneSubblockParamDefinitionMode1) {
-  // TODO(b/295173212): Modify this test case when the restriction of
-  //                    `param_definition_mode` on recon gain parameter blocks
-  //                    is enforced.
+TEST_F(DemixingParameterBlockTest, InvalidWhenParamDefinitionModeIsOne) {
   metadata_args_.param_definition_mode = true;
 
-  demixing_info_args_ = {.dmixp_mode = {DemixingInfoParameterData::kDMixPMode1},
-                         .reserved = {0}};
-
-  expected_header_ = {kObuIaParameterBlock << 3, 4};
-  expected_payload_ = {3, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5};
-
+  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   InitAndTestWrite();
 }
 
@@ -643,10 +635,7 @@ TEST_F(ReconGainBlockTest, TooManySubblocks) {
   InitAndTestWrite();
 }
 
-TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode1) {
-  // TODO(b/295173212): Modify this test case when the restriction of
-  //                    `param_definition_mode` on recon gain parameter blocks
-  //                    is enforced.
+TEST_F(ReconGainBlockTest, InvalidWhenParamDefinitionModeIsOne) {
   metadata_args_.param_definition_mode = true;
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
@@ -656,8 +645,7 @@ TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode1) {
        .recon_gains = {{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
                         {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
 
-  expected_header_ = {kObuIaParameterBlock << 3, 5};
-  expected_payload_ = {3, 64, 64, ReconGainElement::kReconGainFlagR, 255};
+  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
 
   InitAndTestWrite();
 }
