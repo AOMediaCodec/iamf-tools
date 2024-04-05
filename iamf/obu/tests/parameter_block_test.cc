@@ -30,20 +30,21 @@
 namespace iamf_tools {
 namespace {
 
+constexpr uint32_t kAudioElementId = 0;
+
 // TODO(b/273545873): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests. Test
 //                    `PerIdParameterMetadata` settings more thoroughly.
 class ParameterBlockObuTestBase : public ObuTestBase {
  public:
-  ParameterBlockObuTestBase(
-      ParamDefinition::ParameterDefinitionType param_definition_type)
+  ParameterBlockObuTestBase(ParamDefinition param_definition)
       : ObuTestBase(
             /*expected_header=*/{kObuIaParameterBlock << 3, 4},
             /*expected_payload=*/{}),
         obu_(nullptr),
+        metadata_({.param_definition = param_definition}),
         parameter_id_(3),
         metadata_args_({
-            .param_definition_type = param_definition_type,
             .parameter_rate = 1,
             .param_definition_mode = 0,
             .reserved = 0,
@@ -74,7 +75,6 @@ class ParameterBlockObuTestBase : public ObuTestBase {
   DecodedUleb128 parameter_id_;
 
   struct {
-    ParamDefinition::ParameterDefinitionType param_definition_type;
     DecodedUleb128 parameter_rate;
     bool param_definition_mode;
     uint8_t reserved;
@@ -102,7 +102,8 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // Code within `iamf_tools` will find the associated Audio Element or Mix
     // Presentation OBU and use that metadata. For testing here the metadata is
     // initialized based on `metadata_args_`.
-    metadata_.param_definition_type = metadata_args_.param_definition_type;
+    ASSERT_TRUE(metadata_.param_definition.GetType().has_value());
+    metadata_.param_definition_type = *metadata_.param_definition.GetType();
     metadata_.param_definition.parameter_id_ = parameter_id_;
     metadata_.param_definition.parameter_rate_ = metadata_args_.parameter_rate;
     metadata_.param_definition.param_definition_mode_ =
@@ -143,7 +144,7 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
                                   public testing::Test {
  public:
   MixGainParameterBlockTest()
-      : ParameterBlockObuTestBase(ParamDefinition::kParameterDefinitionMixGain),
+      : ParameterBlockObuTestBase(MixGainParamDefinition()),
         mix_gain_param_datas_(
             {{.animation_type = MixGainParameterData::kAnimateStep,
               .param_data = AnimationStepInt16{1}}}) {}
@@ -371,8 +372,7 @@ class DemixingParameterBlockTest : public ParameterBlockObuTestBase,
                                    public testing::Test {
  public:
   DemixingParameterBlockTest()
-      : ParameterBlockObuTestBase(
-            ParamDefinition::kParameterDefinitionDemixing),
+      : ParameterBlockObuTestBase(DemixingParamDefinition()),
         demixing_info_args_(
             {.dmixp_mode = {DemixingInfoParameterData::kDMixPMode1},
              .reserved = {0}}) {
@@ -464,8 +464,7 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
                            public testing::Test {
  public:
   ReconGainBlockTest()
-      : ParameterBlockObuTestBase(
-            ParamDefinition::kParameterDefinitionReconGain) {}
+      : ParameterBlockObuTestBase(ReconGainParamDefinition(kAudioElementId)) {}
 
  protected:
   void InitParameterBlockTypeSpecificFields() override {
@@ -667,8 +666,8 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
                                     public testing::Test {
  public:
   ExtensionParameterBlockTest()
-      : ParameterBlockObuTestBase(
-            ParamDefinition::kParameterDefinitionReservedStart),
+      : ParameterBlockObuTestBase(ExtendedParamDefinition(
+            ParamDefinition::kParameterDefinitionReservedStart)),
         parameter_block_extensions_({{0, {}}}) {}
 
  protected:
@@ -694,8 +693,8 @@ TEST_F(ExtensionParameterBlockTest, DefaultOneSubblockParamDefinitionMode0) {
 }
 
 TEST_F(ExtensionParameterBlockTest, MaxParamDefinitionType) {
-  metadata_args_.param_definition_type =
-      ParamDefinition::kParameterDefinitionReservedEnd;
+  metadata_.param_definition =
+      ExtendedParamDefinition(ParamDefinition::kParameterDefinitionReservedEnd);
 
   expected_header_ = {kObuIaParameterBlock << 3, 2};
   expected_payload_ = {3, 0};
