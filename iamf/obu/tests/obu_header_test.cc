@@ -163,43 +163,48 @@ TEST_F(ObuHeaderTest, LowerEdgeObuSizeTwoByteLeb128) {
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, UpperEdgeObuSizeFourByteLeb128) {
+constexpr uint32_t kMaxObuSizeIamfV1WithMinimalLeb = 2097148;
+constexpr uint32_t kMaxObuSizeIamfV1WithFixedSizeLebEight = 2097143;
+
+TEST_F(ObuHeaderTest, TwoMegaByteObuWithMinimalLebIamfV1) {
   obu_type_ = kObuIaCodecConfig;
-  payload_serialized_size_ = ((1 << 28) - 1);
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb;
   expected_data_ = {// `obu_type`, `obu_redundant_copy`,
                     // `obu_trimming_status_flag, `obu_extension_flag`.
                     kObuIaCodecConfig << kObuTypeBitShift,
                     // `obu_size`.
-                    0xff, 0xff, 0xff, 0x7f};
+                    0xfc, 0xff, 0x7f};
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, LowerEdgeObuSizeFiveByteLeb128) {
+TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithMinimalLebIamfV1) {
   obu_type_ = kObuIaCodecConfig;
-  payload_serialized_size_ = (1 << 28);
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb + 1;
+
+  TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
+}
+
+TEST_F(ObuHeaderTest, TwoMegaByteObuWithFixedSizeLeb8IamfV1) {
+  obu_type_ = kObuIaCodecConfig;
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight;
+  leb_generator_ =
+      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
 
   expected_data_ = {// `obu_type`, `obu_redundant_copy`,
                     // `obu_trimming_status_flag, `obu_extension_flag`.
                     kObuIaCodecConfig << kObuTypeBitShift,
                     // `obu_size`.
-                    0x80, 0x80, 0x80, 0x80, 0x01};
+                    0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80, 0x00};
+
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, MaxObuSizeFullPayload) {
+TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithFixedSizeLeb8IamfV1) {
   obu_type_ = kObuIaCodecConfig;
-  payload_serialized_size_ = std::numeric_limits<uint32_t>::max();
-  expected_data_ = {// `obu_type`, `obu_redundant_copy`,
-                    // `obu_trimming_status_flag, `obu_extension_flag`.
-                    kObuIaCodecConfig << kObuTypeBitShift,
-                    // `obu_size`.
-                    0xff, 0xff, 0xff, 0xff, 0x0f};
-  TestGenerateAndWrite();
-}
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight + 1;
+  leb_generator_ =
+      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
 
-TEST_F(ObuHeaderTest, InvalidArgumentOver32Bits) {
-  payload_serialized_size_ =
-      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
   TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
 }
 
@@ -208,19 +213,50 @@ TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalTrim) {
   obu_header_.obu_trimming_status_flag = true;
   obu_header_.num_samples_to_trim_at_end = 0;
   obu_header_.num_samples_to_trim_at_start = 0;
-  payload_serialized_size_ = std::numeric_limits<uint32_t>::max() - 2;
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb - 2;
 
   expected_data_ = {
       // `obu_type`, `obu_redundant_copy`,
       // `obu_trimming_status_flag, `obu_extension_flag`.
       kObuIaAudioFrameId0 << kObuTypeBitShift | kObuTrimFlagBitMask,
       // `obu_size`.
-      0xff, 0xff, 0xff, 0xff, 0x0f,
+      0xfc, 0xff, 0x7f,
       // `num_samples_to_trim_at_end`.
       0x00,
       // `num_samples_to_trim_at_start`.
       0x00};
   TestGenerateAndWrite();
+}
+
+TEST_F(ObuHeaderTest,
+       MaxObuSizeWithTrimUsingGenerationModeFixedSizeWithEightBytes) {
+  obu_type_ = kObuIaAudioFrameId0;
+  obu_header_.obu_trimming_status_flag = true;
+  leb_generator_ =
+      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
+  obu_header_.num_samples_to_trim_at_end = 0;
+  obu_header_.num_samples_to_trim_at_start = 0;
+
+  // Obu size includes the trim fields. This reduce the maximum payload.
+  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight - 16;
+
+  expected_data_ = {
+      // `obu_type`, `obu_redundant_copy`,
+      // `obu_trimming_status_flag, `obu_extension_flag`.
+      kObuIaAudioFrameId0 << kObuTypeBitShift | kObuTrimFlagBitMask,
+      // `obu_size`.
+      0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80, 0x00,
+      // `num_samples_to_trim_at_end`.
+      0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00,
+      // `num_samples_to_trim_at_start`.
+      0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
+  TestGenerateAndWrite();
+}
+
+TEST_F(ObuHeaderTest, InvalidArgumentOver32Bits) {
+  payload_serialized_size_ =
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1;
+  TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(ObuHeaderTest, PayloadSizeOverflow) {
@@ -234,31 +270,6 @@ TEST_F(ObuHeaderTest, PayloadSizeOverflow) {
   obu_header_.num_samples_to_trim_at_start = 0;
 
   TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
-}
-
-TEST_F(ObuHeaderTest,
-       MaxObuSizeWithTrimUsingGenerationModeFixedSizeWithEightBytes) {
-  obu_type_ = kObuIaAudioFrameId0;
-  obu_header_.obu_trimming_status_flag = true;
-  leb_generator_ =
-      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
-  obu_header_.num_samples_to_trim_at_end = 0;
-  obu_header_.num_samples_to_trim_at_start = 0;
-
-  // Obu size includes the trim fields. This reduce the maximum payload.
-  payload_serialized_size_ = std::numeric_limits<uint32_t>::max() - 16;
-
-  expected_data_ = {
-      // `obu_type`, `obu_redundant_copy`,
-      // `obu_trimming_status_flag, `obu_extension_flag`.
-      kObuIaAudioFrameId0 << kObuTypeBitShift | kObuTrimFlagBitMask,
-      // `obu_size`.
-      0xff, 0xff, 0xff, 0xff, 0x8f, 0x80, 0x80, 0x00,
-      // `num_samples_to_trim_at_end`.
-      0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00,
-      // `num_samples_to_trim_at_start`.
-      0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
-  TestGenerateAndWrite();
 }
 
 TEST_F(ObuHeaderTest, IllegalTrimmingStatusFlagIaSequenceHeader) {

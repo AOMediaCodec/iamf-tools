@@ -17,6 +17,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
@@ -113,6 +114,37 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
   return absl::OkStatus();
 }
 
+// IAMF imposes two restrictions on the size of an entire OBU.
+//   - IAMF V1 imposes a maximum size of an entire OBU must be 2 MB or less.
+//   - IAMF V1 also imposes a maximum size of `obu_size` must be 2^21 - 4 or
+//     less.
+//
+// The second restriction is equivalent when `obu_size` is written using the
+// minimal number of bytes. It is less strict than the first restriction if
+// `obu_size` is written using padded bytes. Therefore the second restriction is
+// irrelevant.
+absl::Status ValidateObuIsUnderTwoMegabytes(const DecodedUleb128& obu_size,
+                                            const LebGenerator& leb_generator) {
+  constexpr uint32_t kEntireObuSizeTwoMegabytes = (1 << 21);
+
+  // Calculate how many bytes `obu_size` will take up based on the current leb
+  // generator.
+  WriteBitBuffer temp_wb_obu_size_only(8, leb_generator);
+  RETURN_IF_NOT_OK(temp_wb_obu_size_only.WriteUleb128(obu_size));
+
+  // Subtract out `obu_size` and all preceding data (one byte).
+  const uint32_t max_obu_size = kEntireObuSizeTwoMegabytes - 1 -
+                                temp_wb_obu_size_only.bit_buffer().size();
+
+  if (obu_size > max_obu_size) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("obu_size= ", obu_size,
+                     " results in an OBU greater than 2 MB in size."));
+  }
+
+  return absl::OkStatus();
+}
+
 // Validates the header and initializes the output argument. On success
 // `obu_size` is set to imply the associated payload has a size of
 // `payload_serialized_size`.
@@ -154,6 +186,8 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
     RETURN_IF_NOT_OK(AddUint32CheckOverflow(
         static_cast<uint32_t>(fields_after_obu_size),
         static_cast<uint32_t>(payload_serialized_size), obu_size));
+
+    RETURN_IF_NOT_OK(ValidateObuIsUnderTwoMegabytes(obu_size, leb_generator));
   }
 
   // Validate the OBU.
