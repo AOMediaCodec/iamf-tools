@@ -329,7 +329,8 @@ TEST_F(AudioElementScalableChannelTest, InvalidParameterDefinitionMixGain) {
 TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
   required_args_.audio_element_params[0] = {
       ParamDefinition::kParameterDefinitionReservedStart,
-      std::make_unique<ExtendedParamDefinition>()};
+      std::make_unique<ExtendedParamDefinition>(
+          ParamDefinition::kParameterDefinitionReservedStart)};
 
   expected_header_ = {kObuIaAudioElement << 3, 15};
 
@@ -370,7 +371,8 @@ TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
 TEST_F(AudioElementScalableChannelTest, MaxParamDefinitionType) {
   required_args_.audio_element_params[0] = {
       ParamDefinition::kParameterDefinitionReservedEnd,
-      std::make_unique<ExtendedParamDefinition>()};
+      std::make_unique<ExtendedParamDefinition>(
+          ParamDefinition::kParameterDefinitionReservedEnd)};
 
   expected_header_ = {kObuIaAudioElement << 3, 19};
 
@@ -409,7 +411,8 @@ TEST_F(AudioElementScalableChannelTest, MaxParamDefinitionType) {
 }
 
 TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
-  auto param_definition = std::make_unique<ExtendedParamDefinition>();
+  auto param_definition = std::make_unique<ExtendedParamDefinition>(
+      ParamDefinition::kParameterDefinitionReservedStart);
   param_definition->param_definition_size_ = 5;
   param_definition->param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
@@ -517,12 +520,12 @@ TEST_F(AudioElementScalableChannelTest,
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
 
-  required_args_.audio_element_params.emplace_back(
-      AudioElementParam{kDuplicateParameterDefinition,
-                        std::make_unique<ExtendedParamDefinition>()});
-  required_args_.audio_element_params.emplace_back(
-      AudioElementParam{kDuplicateParameterDefinition,
-                        std::make_unique<ExtendedParamDefinition>()});
+  required_args_.audio_element_params.emplace_back(AudioElementParam{
+      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                         kDuplicateParameterDefinition)});
+  required_args_.audio_element_params.emplace_back(AudioElementParam{
+      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                         kDuplicateParameterDefinition)});
 
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   InitAndTestWrite();

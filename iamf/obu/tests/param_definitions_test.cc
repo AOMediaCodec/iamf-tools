@@ -518,5 +518,60 @@ TEST_F(ReconGainParamDefinitionTest, InvalidWhenParamDefinitionModeIsOne) {
   EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
+class ExtendedParamDefinitionTest : public ParamDefinitionTestBase {
+ public:
+  ExtendedParamDefinitionTest() = default;
+  void Init(ParamDefinition::ParameterDefinitionType param_definition_type) {
+    auto extended_param_definition =
+        std::make_unique<ExtendedParamDefinition>(param_definition_type);
+    extended_param_definition_ = extended_param_definition.get();
+    PopulateParameterDefinition(extended_param_definition.get());
+    param_definition_ = std::move(extended_param_definition);
+    ParamDefinitionTestBase::Init();
+  }
+
+ protected:
+  // Alias for accessing the sub-class data.
+  ExtendedParamDefinition* extended_param_definition_;
+};
+
+TEST_F(ExtendedParamDefinitionTest, GetTypeHasCorrectValue) {
+  Init(ParamDefinition::kParameterDefinitionReservedEnd);
+
+  EXPECT_TRUE(param_definition_->GetType().has_value());
+  EXPECT_EQ(param_definition_->GetType().value(),
+            ParamDefinition::kParameterDefinitionReservedEnd);
+}
+
+TEST_F(ExtendedParamDefinitionTest, SizeMayBeZero) {
+  Init(ParamDefinition::kParameterDefinitionReservedEnd);
+  extended_param_definition_->param_definition_size_ = 0;
+  extended_param_definition_->param_definition_bytes_ = {};
+
+  TestWrite({// Param Definition Size.
+             0x00});
+}
+
+TEST_F(ExtendedParamDefinitionTest, WritesOnlySizeAndParamDefinitionBytes) {
+  Init(ParamDefinition::kParameterDefinitionReservedEnd);
+  extended_param_definition_->param_definition_size_ = 4;
+  extended_param_definition_->param_definition_bytes_ = {0x01, 0x02, 0x03,
+                                                         0x04};
+
+  TestWrite({// Param Definition Size.
+             0x04,
+             // Param Definition Bytes.
+             0x01, 0x02, 0x03, 0x04});
+}
+
+TEST_F(ExtendedParamDefinitionTest, WriteFailsIfSizeIsInconsistent) {
+  Init(ParamDefinition::kParameterDefinitionReservedEnd);
+  extended_param_definition_->param_definition_size_ = 0;
+  extended_param_definition_->param_definition_bytes_ = {100};
+
+  expected_status_code_ = absl::StatusCode::kInvalidArgument;
+  TestWrite({});
+}
+
 }  // namespace
 }  // namespace iamf_tools

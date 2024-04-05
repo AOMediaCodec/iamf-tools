@@ -300,8 +300,9 @@ class ExtendedParamDefinition : public ParamDefinition {
  public:
   /*!\brief Default constructor.
    */
-  ExtendedParamDefinition()
-      : ParamDefinition(kParameterDefinitionReservedStart) {}
+  explicit ExtendedParamDefinition(
+      ParamDefinition::ParameterDefinitionType type)
+      : ParamDefinition(type) {}
 
   /*!\brief Default destructor.
    */
