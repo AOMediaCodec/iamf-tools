@@ -190,7 +190,7 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
       ArbitraryObu::kInsertionHookAfterIaSequenceHeader, arbitrary_obus, wb));
 
   // Write Codec Config OBUs in ascending order of Codec Config IDs.
-  // TODO(b/302384688): Support a different ordering.
+  // TODO(b/332956880): Support customizing the ordering.
   const std::vector<uint32_t> codec_config_ids =
       SortedKeys(codec_config_obus, std::less<uint32_t>());
   for (const auto id : codec_config_ids) {
@@ -199,7 +199,7 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
   }
 
   // Write Audio Element OBUs in ascending order of Audio Element IDs.
-  // TODO(b/302384688): Support a different ordering.
+  // TODO(b/332956880): Support customizing the ordering.
   const std::vector<uint32_t> audio_element_ids =
       SortedKeys(audio_elements, std::less<uint32_t>());
   for (const auto id : audio_element_ids) {
@@ -208,7 +208,7 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
   }
 
   // Write Mix Presentation OBUs in ascending order of Mix Presentation IDs.
-  // TODO(b/302384688): Support a different ordering.
+  // TODO(b/332956880): Support customizing the ordering.
   std::list<MixPresentationObu> sorted_mix_presentation_obus(
       mix_presentation_obus);
   sorted_mix_presentation_obus.sort(
