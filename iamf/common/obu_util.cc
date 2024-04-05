@@ -12,12 +12,14 @@
 #include "iamf/common/obu_util.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
 
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/obu/leb128.h"
@@ -148,9 +150,13 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
 }
 
 bool IsNativeBigEndian() {
-  // TODO(b/279912408): Implement and test this function for portability of
-  //                    reference software.
-  return false;
+  if (std::endian::native == std::endian::big) {
+    return true;
+  } else if (std::endian::native == std::endian::little) {
+    return false;
+  } else {
+    CHECK(false) << "Mixed-endian systems are not supported.";
+  }
 }
 
 absl::Status ValidateVectorSizeEqual(const std::string& field_name,
