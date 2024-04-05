@@ -19,6 +19,7 @@ cc_test(
     deps = [
         "//iamf/common:obu_util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )

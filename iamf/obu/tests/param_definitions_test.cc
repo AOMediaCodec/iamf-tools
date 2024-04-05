@@ -38,7 +38,7 @@ class ParamDefinitionTestBase : public testing::Test {
  public:
   ParamDefinitionTestBase() = default;
 
-  void InitAndTestWrite() {
+  void Init() {
     // Initialize the `subblock_durations_` vector then loop to populate it.
     param_definition_->InitializeSubblockDurations(
         static_cast<DecodedUleb128>(subblock_durations_.size()));
@@ -47,20 +47,21 @@ class ParamDefinitionTestBase : public testing::Test {
           param_definition_->SetSubblockDuration(i, subblock_durations_[i])
               .ok());
     }
+  }
 
+  void TestWrite(std::vector<uint8_t> expected_data) {
     ASSERT_NE(leb_generator_, nullptr);
-    WriteBitBuffer wb(expected_data_.size(), *leb_generator_);
+    WriteBitBuffer wb(expected_data.size(), *leb_generator_);
     EXPECT_EQ(param_definition_->ValidateAndWrite(wb).code(),
               expected_status_code_);
     if (expected_status_code_ == absl::StatusCode::kOk) {
-      ValidateWriteResults(wb, expected_data_);
+      ValidateWriteResults(wb, expected_data);
     }
   }
 
  protected:
   std::unique_ptr<ParamDefinition> param_definition_;
   std::vector<DecodedUleb128> subblock_durations_ = {};
-  std::vector<uint8_t> expected_data_ = {};
   absl::StatusCode expected_status_code_ = absl::StatusCode::kOk;
 
   std::unique_ptr<LebGenerator> leb_generator_ = LebGenerator::Create();
@@ -88,20 +89,32 @@ class MixGainParamDefinitionTest : public ParamDefinitionTestBase {
 };
 
 TEST_F(MixGainParamDefinitionTest, GetTypeHasCorrectValue) {
-  EXPECT_TRUE(mix_gain_->GetType().has_value());
+  ASSERT_TRUE(mix_gain_->GetType().has_value());
   EXPECT_EQ(mix_gain_->GetType().value(),
             ParamDefinition::kParameterDefinitionMixGain);
 }
 
 TEST_F(MixGainParamDefinitionTest, DefaultParamDefinitionMode1) {
-  expected_data_ = {0x00, 1, 0x80, 0, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             1,
+             // Param Definition Mode (upper bit).
+             0x80,
+             // Default Mix Gain.
+             0, 0});
 }
 
 TEST_F(MixGainParamDefinitionTest, ParameterId) {
   param_definition_->parameter_id_ = 1;
-  expected_data_ = {0x01, 1, 0x80, 0, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x01,
+             // Same as default.
+             1, 0x80, 0, 0});
 }
 
 TEST_F(MixGainParamDefinitionTest, NonMinimalLeb) {
@@ -109,78 +122,124 @@ TEST_F(MixGainParamDefinitionTest, NonMinimalLeb) {
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
   param_definition_->parameter_id_ = 1;
   param_definition_->parameter_rate_ = 5;
+  Init();
 
-  expected_data_ = {0x81, 0x00, 0x85, 0x00, 0x80, 0, 0};
-  InitAndTestWrite();
+  TestWrite({// Parameter ID.
+             0x81, 0x00,
+             // Parameter Rate.
+             0x85, 0x00,
+             // Same as default.
+             0x80, 0, 0});
 }
 
 TEST_F(MixGainParamDefinitionTest, ParameterRate) {
   param_definition_->parameter_rate_ = 64;
-  expected_data_ = {0x00, 64, 0x80, 0, 0};
-  InitAndTestWrite();
-}
+  Init();
 
-TEST_F(MixGainParamDefinitionTest, InvalidParameterRate) {
-  param_definition_->parameter_rate_ = 0;
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  TestWrite({0x00,
+             // Parameter Rate.
+             64,
+             // Same as default.
+             0x80, 0, 0});
 }
 
 TEST_F(MixGainParamDefinitionTest, DefaultMixGain) {
   mix_gain_->default_mix_gain_ = 3;
-  expected_data_ = {0x00, 1, 0x80, 0, 3};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00, 1, 0x80,
+             // Default Mix Gain.
+             0, 3});
+}
+
+TEST_F(MixGainParamDefinitionTest, ParameterRateMustNotBeZero) {
+  param_definition_->parameter_rate_ = 0;
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
 TEST_F(MixGainParamDefinitionTest,
-       ParamDefinitionMode0ConstantSubblockDuration) {
+       ParamDefinitionMode0WithConstantSubblockDurationNonZero) {
   param_definition_->param_definition_mode_ = false;
   param_definition_->duration_ = 3;
   param_definition_->constant_subblock_duration_ = 3;
+  Init();
 
-  expected_data_ = {0x00, 1, 0, 3, 3, 0, 0};
-  InitAndTestWrite();
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             1,
+             // Param Definition Mode (upper bit).
+             0,
+             // Duration.
+             3,
+             // Constant Subblock Duration.
+             3,
+             // Default Mix Gain.
+             0, 0});
 }
 
-TEST_F(MixGainParamDefinitionTest, ParamDefinitionMode0ExplicitSubblocks) {
+TEST_F(MixGainParamDefinitionTest,
+       ParamDefinitionMode0WithConstantSubblockDurationZeroIncludesDurations) {
   param_definition_->param_definition_mode_ = false;
   param_definition_->duration_ = 10;
   param_definition_->constant_subblock_duration_ = 0;
   subblock_durations_ = {1, 2, 3, 4};
+  Init();
 
-  expected_data_ = {0x00, 1, 0, 10, 0, 4, 1, 2, 3, 4, 0, 0};
-  InitAndTestWrite();
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             1,
+             // Parameter Definition Mode (upper bit).
+             0,
+             // Duration.
+             10,
+             // Constant Subblock Duration.
+             0,
+             // Num subblocks.
+             4,
+             // Subblock 0.
+             1,
+             // Subblock 1.
+             2,
+             // Subblock 2.
+             3,
+             // Subblock 3.
+             4,
+             // Default Mix Gain.
+             0, 0});
 }
 
-TEST_F(MixGainParamDefinitionTest, ParamDefinitionMode0InconsistentDuration) {
+TEST_F(MixGainParamDefinitionTest,
+       InvalidWhenExplicitSubblockDurationsDoNotSumToDuration) {
   param_definition_->param_definition_mode_ = false;
-  param_definition_->duration_ = 11;
+  param_definition_->duration_ = 100;
   param_definition_->constant_subblock_duration_ = 0;
-  subblock_durations_ = {1, 2, 3, 4};
+  subblock_durations_ = {1, 2, 3, 4};  // Does not sum 100.
+  Init();
 
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(MixGainParamDefinitionTest, ParamDefinitionMode0IllegalDurationZero) {
+TEST_F(MixGainParamDefinitionTest, InvalidWhenDurationIsZero) {
   param_definition_->param_definition_mode_ = false;
   param_definition_->duration_ = 0;
   param_definition_->constant_subblock_duration_ = 0;
   subblock_durations_ = {0};
+  Init();
 
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(MixGainParamDefinitionTest,
-       ParamDefinitionMode0IllegalSubblockDurationZero) {
+TEST_F(MixGainParamDefinitionTest, InvalidWhenSubblockDurationIsZero) {
   param_definition_->param_definition_mode_ = false;
   param_definition_->duration_ = 10;
   param_definition_->constant_subblock_duration_ = 0;
   subblock_durations_ = {5, 0, 5};
 
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
 class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
@@ -212,46 +271,85 @@ TEST_F(DemixingParamDefinitionTest, GetTypeHasCorrectValue) {
 }
 
 TEST_F(DemixingParamDefinitionTest, DefaultParamDefinitionMode0) {
-  expected_data_ = {
-      0x00, 0x01, 0x00, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             0x01,
+             // Parameter Definition Mode (upper bit).
+             0x00,
+             // Duration.
+             64,
+             // Constant Subblock Duration.
+             64,
+             // Default Demixing Info Parameter Data.
+             DemixingInfoParameterData::kDMixPMode1 << 5, 0});
 }
 
 TEST_F(DemixingParamDefinitionTest, ParameterId) {
   param_definition_->parameter_id_ = 1;
-  expected_data_ = {
-      0x01, 0x01, 0x00, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x01,
+             // Same as default.
+             0x01, 0x00, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5,
+             0});
 }
 
 TEST_F(DemixingParamDefinitionTest, ParameterRate) {
   param_definition_->parameter_rate_ = 2;
-  expected_data_ = {
-      0x00, 0x02, 0x00, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00,
+             // Parameter Rate.
+             0x02,
+             // Same as default.
+             0x00, 64, 64, DemixingInfoParameterData::kDMixPMode1 << 5, 0});
 }
 
-TEST_F(DemixingParamDefinitionTest, Duration) {
+TEST_F(DemixingParamDefinitionTest, EqualDurationAndConstantSubblockDuration) {
   param_definition_->duration_ = 32;
   param_definition_->constant_subblock_duration_ = 32;
-  expected_data_ = {0x00, 0x01, 0x00, 32, 32, 0, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00, 0x01, 0x00,
+             // Duration.
+             32,
+             // Constant Subblock Duration.
+             32, 0, 0});
+}
+
+TEST_F(DemixingParamDefinitionTest,
+       InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
+  param_definition_->duration_ = 64;
+  param_definition_->constant_subblock_duration_ = 65;
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
 TEST_F(DemixingParamDefinitionTest, DefaultDmixPMode) {
   demixing_->default_demixing_info_parameter_data_.dmixp_mode =
       DemixingInfoParameterData::kDMixPMode2;
-  expected_data_ = {
-      0x00, 0x01, 0x00, 64, 64, DemixingInfoParameterData::kDMixPMode2 << 5, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00, 0x01, 0x00, 64, 64,
+             // `dmixp_mode`.
+             DemixingInfoParameterData::kDMixPMode2 << 5,
+             // `default_w`.
+             0});
 }
 
 TEST_F(DemixingParamDefinitionTest, DefaultW) {
   demixing_->default_demixing_info_parameter_data_.default_w = 1;
-  expected_data_ = {0x00,  0x01, 0x00,
-                    64,    64,   DemixingInfoParameterData::kDMixPMode1 << 5,
-                    1 << 4};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00, 0x01, 0x00, 64, 64,
+             DemixingInfoParameterData::kDMixPMode1 << 5,
+             // `default_w`.
+             1 << 4});
 }
 
 TEST_F(DemixingParamDefinitionTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
@@ -261,38 +359,42 @@ TEST_F(DemixingParamDefinitionTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   param_definition_->parameter_rate_ = 1;
   param_definition_->duration_ = 64;
   param_definition_->constant_subblock_duration_ = 64;
-  expected_data_ = {// `parameter_id`.
-                    0x80, 0x00,
-                    // `parameter_rate`.
-                    0x81, 0x00,
-                    // `param_definition_mode` (1), reserved (7).
-                    0x00,
-                    // `duration`.
-                    0xc0, 0x00,
-                    // `constant_subblock_duration`.
-                    0xc0, 0x00, DemixingInfoParameterData::kDMixPMode1 << 5, 0};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// `parameter_id`.
+             0x80, 0x00,
+             // `parameter_rate`.
+             0x81, 0x00,
+             // `param_definition_mode` (1), reserved (7).
+             0x00,
+             // `duration`.
+             0xc0, 0x00,
+             // `constant_subblock_duration`.
+             0xc0, 0x00, DemixingInfoParameterData::kDMixPMode1 << 5, 0});
 }
 
-TEST_F(DemixingParamDefinitionTest, InvalidMoreThanOneSubblock) {
+TEST_F(DemixingParamDefinitionTest, InvalidWhenConstantSubblockDurationIsZero) {
   param_definition_->duration_ = 64;
   param_definition_->constant_subblock_duration_ = 0;
   subblock_durations_ = {32, 32};
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(DemixingParamDefinitionTest, InvalidInconsistentDuration) {
+TEST_F(DemixingParamDefinitionTest, InvalidWhenImpliedNumSubblocksIsNotOne) {
   param_definition_->duration_ = 64;
-  param_definition_->constant_subblock_duration_ = 65;
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  param_definition_->constant_subblock_duration_ = 32;
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(DemixingParamDefinitionTest, InvalidParamDefinitionMode1) {
+TEST_F(DemixingParamDefinitionTest, InvalidWhenParamDefinitionModeIsOne) {
   param_definition_->param_definition_mode_ = true;
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
 class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
@@ -315,27 +417,51 @@ TEST_F(ReconGainParamDefinitionTest, GetTypeHasCorrectValue) {
 }
 
 TEST_F(ReconGainParamDefinitionTest, Default) {
-  expected_data_ = {0x00, 0x01, 0x00, 64, 64};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             0x01,
+             // Parameter Definition Mode (upper bit).
+             0x00,
+             // Duration.
+             64,
+             // Constant Subblock Duration.
+             64});
 }
 
 TEST_F(ReconGainParamDefinitionTest, ParameterId) {
   param_definition_->parameter_id_ = 1;
-  expected_data_ = {0x01, 0x01, 0x00, 64, 64};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({// Parameter ID.
+             0x01,
+             // Same as default.
+             0x01, 0x00, 64, 64});
 }
 
 TEST_F(ReconGainParamDefinitionTest, ParameterRate) {
   param_definition_->parameter_id_ = 1;
-  expected_data_ = {0x01, 0x01, 0x00, 64, 64};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x01,
+             // Parameter Rate.
+             0x01,
+             // Same as default.
+             0x00, 64, 64});
 }
 
 TEST_F(ReconGainParamDefinitionTest, Duration) {
   param_definition_->duration_ = 32;
   param_definition_->constant_subblock_duration_ = 32;
-  expected_data_ = {0x00, 0x01, 0x00, 32, 32};
-  InitAndTestWrite();
+  Init();
+
+  TestWrite({0x00, 0x01, 0x00,
+             // Duration.
+             32,
+             // Constant Subblock Duration.
+             32});
 }
 
 TEST_F(ReconGainParamDefinitionTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
@@ -344,39 +470,52 @@ TEST_F(ReconGainParamDefinitionTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   param_definition_->parameter_id_ = 0;
   param_definition_->parameter_rate_ = 1;
   param_definition_->constant_subblock_duration_ = 64;
+  Init();
 
-  expected_data_ = {// `parameter_id`.
-                    0x80, 0x00,
-                    // `parameter_rate`.
-                    0x81, 0x00,
-                    // `param_definition_mode` (1), reserved (7).
-                    0x00,
-                    // `duration`.
-                    0x80 | 64, 0x00,
-                    // `constant_subblock_duration`.
-                    0x80 | 64, 0x00};
-  InitAndTestWrite();
+  TestWrite({// `parameter_id`.
+             0x80, 0x00,
+             // `parameter_rate`.
+             0x81, 0x00,
+             // `param_definition_mode` (1), reserved (7).
+             0x00,
+             // `duration`.
+             0x80 | 64, 0x00,
+             // `constant_subblock_duration`.
+             0x80 | 64, 0x00});
 }
 
-TEST_F(ReconGainParamDefinitionTest, InvalidMoreThanOneSubblock) {
+TEST_F(ReconGainParamDefinitionTest,
+       InvalidWhenConstantSubblockDurationIsZero) {
   param_definition_->duration_ = 64;
   param_definition_->constant_subblock_duration_ = 0;
   subblock_durations_ = {32, 32};
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(ReconGainParamDefinitionTest, InvalidInconsistentDuration) {
+TEST_F(ReconGainParamDefinitionTest, InvalidWhenImpliedNumSubblocksIsNotOne) {
+  param_definition_->duration_ = 64;
+  param_definition_->constant_subblock_duration_ = 32;
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
+}
+
+TEST_F(ReconGainParamDefinitionTest,
+       InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
   param_definition_->duration_ = 64;
   param_definition_->constant_subblock_duration_ = 65;
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
-TEST_F(ReconGainParamDefinitionTest, InvalidParamDefinitionMode1) {
+TEST_F(ReconGainParamDefinitionTest, InvalidWhenParamDefinitionModeIsOne) {
   param_definition_->param_definition_mode_ = true;
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  Init();
+
+  EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
 }  // namespace

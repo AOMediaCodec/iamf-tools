@@ -85,6 +85,12 @@ class ParamDefinition {
    */
   absl::Status SetSubblockDuration(int subblock_index, DecodedUleb128 duration);
 
+  /*!\brief Validates the parameter definition called by `ValidateAndWrite()`.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Validate() const;
+
   /*!\brief Validates and writes the parameter definition.
    *
    * This function defines the validating and writing of the common parts,
@@ -136,12 +142,6 @@ class ParamDefinition {
    * \return True if the subblock durations are included.
    */
   bool IncludeSubblockDurationArray() const;
-
-  /*!\brief Validates the parameter definition called by `ValidateAndWrite()`.
-   *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status Validate() const;
 
   // Type of this parameter definition.
   std::optional<ParameterDefinitionType> type_;

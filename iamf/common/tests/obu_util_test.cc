@@ -653,5 +653,17 @@ TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
   EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, "").ok());
 }
 
+TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
+  const auto kLeftArg = 123;
+  const auto kRightArg = 124;
+  EXPECT_TRUE(ValidateNotEqual(kLeftArg, kRightArg, "").ok());
+}
+
+TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
+  const auto kLeftArg = 123;
+  const auto kEqualRightArg = 123;
+  EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, "").ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

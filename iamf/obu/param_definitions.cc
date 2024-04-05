@@ -15,6 +15,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -25,22 +26,38 @@ namespace iamf_tools {
 
 namespace {
 
-absl::Status ValidateDemixingOrReconGainParamDefinition(
+absl::Status ValidateSpecificParamDefinition(
     const ParamDefinition& param_definition) {
-  // The IAMF spec requires several restrictions for demixing and recon gain
-  // parameter definitions.
-  if (param_definition.param_definition_mode_ == 0 &&
-      param_definition.duration_ != 0 &&
-      param_definition.duration_ ==
-          param_definition.constant_subblock_duration_) {
-    // `num_subblocks` is calculated implicitly as
-    // `ceil(duration / constant_subblock_duration)`. Since the values being
-    // divided are non-zero and equal it is implicitly the required value of 1.
-
+  using enum ParamDefinition::ParameterDefinitionType;
+  const auto& type = param_definition.GetType();
+  if (!type.has_value()) {
     return absl::OkStatus();
   }
+  switch (*type) {
+    case kParameterDefinitionDemixing:
+    case kParameterDefinitionReconGain:
+      RETURN_IF_NOT_OK(ValidateEqual(
+          param_definition.param_definition_mode_, uint8_t{0},
+          absl::StrCat("`param_definition_mode` for parameter_id= ",
+                       param_definition.parameter_id_)));
+      RETURN_IF_NOT_OK(
+          ValidateNotEqual(param_definition.duration_, DecodedUleb128{0},
+                           absl::StrCat("duration for parameter_id= ",
+                                        param_definition.parameter_id_)));
+      RETURN_IF_NOT_OK(ValidateEqual(
+          param_definition.constant_subblock_duration_,
+          param_definition.duration_,
+          absl::StrCat("`constant_subblock_duration` for parameter_id= ",
+                       param_definition.parameter_id_)));
+      return absl::OkStatus();
 
-  return absl::InvalidArgumentError("");
+    // Mix gain does not have any specific validation. For backwards
+    // compatibility we must assume extension param definitions are valid as
+    // well.
+    case kParameterDefinitionMixGain:
+    default:
+      return absl::OkStatus();
+  }
 }
 
 }  // namespace
@@ -213,6 +230,8 @@ absl::Status ParamDefinition::Validate() const {
     }
   }
 
+  RETURN_IF_NOT_OK(ValidateSpecificParamDefinition(*this));
+
   return status;
 }
 
@@ -240,9 +259,6 @@ absl::Status DemixingParamDefinition::ValidateAndWrite(
   // The sub-class specific part.
   RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.Write(wb));
 
-  // Validate restrictions, but obey the user if `NO_CHECK_ERROR` is defined.
-  RETURN_IF_NOT_OK(ValidateDemixingOrReconGainParamDefinition(*this));
-
   return absl::OkStatus();
 }
 
@@ -258,9 +274,6 @@ absl::Status ReconGainParamDefinition::ValidateAndWrite(
   RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
 
   // No sub-class specific part for Recon Gain Parameter Definition.
-
-  // Validate restrictions, but obey the user if `NO_CHECK_ERROR` is defined.
-  RETURN_IF_NOT_OK(ValidateDemixingOrReconGainParamDefinition(*this));
 
   return absl::OkStatus();
 }
