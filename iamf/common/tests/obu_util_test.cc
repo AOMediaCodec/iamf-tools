@@ -665,5 +665,21 @@ TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
   EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, "").ok());
 }
 
+TEST(ValidateUnique, OkIfArgsAreUnique) {
+  const std::vector<int> kVectorWithUniqueValues = {1, 2, 3, 99};
+
+  EXPECT_TRUE(ValidateUnique(kVectorWithUniqueValues.begin(),
+                             kVectorWithUniqueValues.end(), "")
+                  .ok());
+}
+
+TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
+  const std::vector<int> kVectorWithDuplicateValues = {1, 2, 3, 99, 1};
+
+  EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
+                              kVectorWithDuplicateValues.end(), "")
+                   .ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

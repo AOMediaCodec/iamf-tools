@@ -17,6 +17,7 @@
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/obu/leb128.h"
@@ -223,6 +224,29 @@ absl::Status ValidateNotEqual(const T& left, const T& right,
 
   return absl::InvalidArgumentError(absl::StrCat(
       "Invalid ", context, ". Expected ", left, " != ", right, "."));
+}
+
+/*\!brief Validates that all values in the range [first, last) are unique.
+ *
+ * \param first Iterator to start from.
+ * \param last Iterator to stop before.
+ * \param context Context to insert into the error message for debugging
+ *     purposes.
+ * \return `absl::OkStatus()` if no duplicates are found while iterating.
+ *      `absl::InvalidArgumentError()` if duplicates are found.
+ */
+template <class InputIt>
+absl::Status ValidateUnique(InputIt first, InputIt last,
+                            const std::string& context) {
+  absl::flat_hash_set<typename InputIt::value_type> seen_values;
+
+  for (auto iter = first; iter != last; ++iter) {
+    if (const auto& [_, inserted] = seen_values.insert(*iter); !inserted) {
+      return absl::InvalidArgumentError(
+          absl::StrCat(context, " must be unique. Found duplicate: ", *iter));
+    }
+  }
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

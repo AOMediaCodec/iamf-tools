@@ -16,11 +16,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <sstream>
-#include <tuple>
 #include <variant>
 #include <vector>
 
-#include "absl/container/btree_set.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -136,24 +134,18 @@ void LogSceneBased(const AmbisonicsConfig& ambisonics_config) {
 // Returns `absl::OkStatus()` if all parameters have a unique
 // `param_definition_type` in the OBU. `absl::InvalidArgumentError()`
 // otherwise.
+
 absl::Status ValidateUniqueParamDefinitionType(
     const std::vector<AudioElementParam>& audio_element_params) {
-  absl::btree_set<ParamDefinition::ParameterDefinitionType>
-      unique_param_definition_types;
-  for (int i = 0; i < audio_element_params.size(); ++i) {
-    const auto& param = audio_element_params[i];
-    const auto [iter, inserted] =
-        unique_param_definition_types.insert(param.param_definition_type);
-    if (!inserted) {
-      LOG(ERROR) << "Duplicated parameter definition type found at "
-                 << "`audio_element_params[" << i << "]`; type= " << *iter;
-      return absl::InvalidArgumentError("");
-    }
+  std::vector<ParamDefinition::ParameterDefinitionType>
+      collected_param_definition_types(audio_element_params.size());
+  for (const auto& param : audio_element_params) {
+    collected_param_definition_types.push_back(param.param_definition_type);
   }
-
-  return absl::OkStatus();
+  return ValidateUnique(collected_param_definition_types.begin(),
+                        collected_param_definition_types.end(),
+                        "audio_element_params");
 }
-
 absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
   uint8_t next_valid_output_channel_count;
   RETURN_IF_NOT_OK(AmbisonicsConfig ::GetNextValidOutputChannelCount(

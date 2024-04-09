@@ -34,39 +34,31 @@ namespace {
 
 absl::Status ValidateUniqueAudioElementIds(
     const std::vector<MixPresentationSubMix>& sub_mixes) {
+  std::vector<DecodedUleb128> collected_audio_element_ids;
+
   absl::flat_hash_set<DecodedUleb128> seen_audio_element_ids;
   // Audio Element IDs must be unique across all sub-mixes.
   for (const auto& sub_mix : sub_mixes) {
     for (const auto& audio_element : sub_mix.audio_elements) {
-      const auto [unused_iter, inserted] =
-          seen_audio_element_ids.insert(audio_element.audio_element_id);
-      if (!inserted) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Audio element IDs must be unique. Found duplicate: ",
-                         audio_element.audio_element_id));
-      }
+      collected_audio_element_ids.push_back(audio_element.audio_element_id);
     }
   }
 
-  return absl::OkStatus();
+  return ValidateUnique(collected_audio_element_ids.begin(),
+                        collected_audio_element_ids.end(), "Audio element IDs");
 }
 
 absl::Status ValidateUniqueAnchorElements(
-    const AnchoredLoudness& anchored_loudness) {
-  // Store the seen elements as `uint8_t` to handle reserved values.
-  absl::flat_hash_set<uint8_t> seen_elements;
-
-  for (const auto& anchor_element : anchored_loudness.anchor_elements) {
-    const auto [unused_iter, inserted] = seen_elements.insert(
+    const std::vector<AnchoredLoudnessElement>& anchor_elements) {
+  std::vector<uint8_t> anchor_elements_as_uint8;
+  anchor_elements_as_uint8.reserve(anchor_elements.size());
+  for (const auto& anchor_element : anchor_elements) {
+    anchor_elements_as_uint8.push_back(
         static_cast<uint8_t>(anchor_element.anchor_element));
-    if (!inserted) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Anchored loudness types must be unique. Found duplicate: ",
-          anchor_element.anchor_element));
-    }
   }
-
-  return absl::OkStatus();
+  return ValidateUnique(anchor_elements_as_uint8.begin(),
+                        anchor_elements_as_uint8.end(),
+                        "Anchored loudness types");
 }
 
 absl::Status ValidateAndWriteSubMixAudioElement(
@@ -135,8 +127,8 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   }
   // Conditionally write `anchored_loudness` based on `info_type`.
   if ((layout.loudness.info_type & LoudnessInfo::kAnchoredLoudness) != 0) {
-    RETURN_IF_NOT_OK(
-        ValidateUniqueAnchorElements(layout.loudness.anchored_loudness));
+    RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
+        layout.loudness.anchored_loudness.anchor_elements));
     const AnchoredLoudness& anchored_loudness =
         layout.loudness.anchored_loudness;
     RETURN_IF_NOT_OK(
