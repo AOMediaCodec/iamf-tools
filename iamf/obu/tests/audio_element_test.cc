@@ -456,26 +456,84 @@ TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
   InitAndTestWrite();
 }
 
-TEST_F(AudioElementScalableChannelTest, TooFewLayers) {
-  scalable_channel_arguments_.num_layers = 0;
-  InitLayers();
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
+    .num_layers = 2,
+    .channel_audio_layer_configs = {
+        ChannelAudioLayerConfig{
+            .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
+            .output_gain_is_present_flag = false,
+            .recon_gain_is_present_flag = false,
+            .substream_count = 1,
+            .coupled_substream_count = 0},
+        ChannelAudioLayerConfig{
+            .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+            .output_gain_is_present_flag = false,
+            .recon_gain_is_present_flag = false,
+            .substream_count = 1,
+            .coupled_substream_count = 0}}};
+const DecodedUleb128 kTwoLayerStereoSubstreamCount = 2;
+
+TEST(ScalableChannelLayoutConfigValidate, IsOkWithMultipleLayers) {
+  EXPECT_TRUE(
+      kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount).ok());
 }
 
-TEST_F(AudioElementScalableChannelTest, TooManyLayers) {
-  scalable_channel_arguments_.num_layers = 7;
-  InitLayers();
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+TEST(ScalableChannelLayoutConfigValidate,
+     IsNotOkWhenSubstreamCountDoesNotMatchWithMultipleLayers) {
+  EXPECT_FALSE(
+      kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount + 1).ok());
 }
 
-TEST_F(AudioElementScalableChannelTest, InconistentSubstreamCount) {
-  required_args_.num_substreams = 2;
-  scalable_channel_arguments_.substream_count = {1};
-  InitSubstreamIds();
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+TEST(ScalableChannelLayoutConfigValidate, TooFewLayers) {
+  const ScalableChannelLayoutConfig kConfigWithZeroLayer = {.num_layers = 0};
+
+  EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
+}
+
+TEST(ScalableChannelLayoutConfigValidate, TooManyLayers) {
+  const ScalableChannelLayoutConfig kConfigWithZeroLayer = {
+      .num_layers = 7,
+      .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(7)};
+
+  EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
+}
+
+const ChannelAudioLayerConfig kChannelAudioLayerConfigBinaural = {
+    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutBinaural,
+    .output_gain_is_present_flag = false,
+    .recon_gain_is_present_flag = false,
+    .substream_count = 1,
+    .coupled_substream_count = 1};
+
+const ChannelAudioLayerConfig kChannelAudioLayerConfigStereo = {
+    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+    .output_gain_is_present_flag = false,
+    .recon_gain_is_present_flag = false,
+    .substream_count = 1,
+    .coupled_substream_count = 1};
+
+TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
+  const ScalableChannelLayoutConfig kBinauralConfig = {
+      .num_layers = 1,
+      .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural}};
+
+  EXPECT_TRUE(kBinauralConfig.Validate(1).ok());
+}
+
+TEST(ScalableChannelLayoutConfigValidate,
+     MustHaveExactlyOneLayerIfBinauralIsPresent) {
+  const ScalableChannelLayoutConfig kInvalidBinauralConfigWithFirstLayerStereo =
+      {.num_layers = 2,
+       .channel_audio_layer_configs = {kChannelAudioLayerConfigStereo,
+                                       kChannelAudioLayerConfigBinaural}};
+  const ScalableChannelLayoutConfig
+      kInvalidBinauralConfigWithSecondLayerStereo = {
+          .num_layers = 2,
+          .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural,
+                                          kChannelAudioLayerConfigStereo}};
+
+  EXPECT_FALSE(kInvalidBinauralConfigWithFirstLayerStereo.Validate(2).ok());
+  EXPECT_FALSE(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2).ok());
 }
 
 TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {

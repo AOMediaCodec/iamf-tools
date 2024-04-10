@@ -22,6 +22,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -181,31 +182,14 @@ absl::Status ValidateAndWriteAudioElementParam(const AudioElementParam& param,
 absl::Status ValidateAndWriteScalableChannelLayout(
     const ScalableChannelLayoutConfig& layout,
     const DecodedUleb128 num_substreams, WriteBitBuffer& wb) {
-  if (layout.num_layers == 0 || layout.num_layers > 6) {
-    LOG(ERROR) << "Number of layers in `ScalableChannelLayoutConfig` "
-               << "should be in [0, 6]; got " << layout.num_layers;
-    return absl::InvalidArgumentError("");
-  }
+  RETURN_IF_NOT_OK(layout.Validate(num_substreams));
 
   // Write the main portion of the `ScalableChannelLayoutConfig`.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.num_layers, 3));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.reserved, 5));
 
   // Loop to write the `channel_audio_layer_configs` array.
-  DecodedUleb128 cumulative_substream_count = 0;
-  for (int i = 0; i < layout.num_layers; i++) {
-    const ChannelAudioLayerConfig& layer_config =
-        layout.channel_audio_layer_configs[i];
-    if (layer_config.loudspeaker_layout ==
-            ChannelAudioLayerConfig::kLayoutBinaural &&
-        layout.num_layers != 1) {
-      LOG(ERROR) << "Binaural layout can only have one layer; got "
-                 << layout.num_layers;
-      return absl::InvalidArgumentError("");
-    }
-    cumulative_substream_count +=
-        static_cast<DecodedUleb128>(layer_config.substream_count);
-
+  for (const auto& layer_config : layout.channel_audio_layer_configs) {
     RETURN_IF_NOT_OK(
         wb.WriteUnsignedLiteral(layer_config.loudspeaker_layout, 4));
     RETURN_IF_NOT_OK(
@@ -223,12 +207,6 @@ absl::Status ValidateAndWriteScalableChannelLayout(
       RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.reserved_b, 2));
       RETURN_IF_NOT_OK(wb.WriteSigned16(layer_config.output_gain));
     }
-  }
-
-  if (cumulative_substream_count != num_substreams) {
-    LOG(INFO) << "Cumulative substream count from all layers is not eqaul to "
-              << "the `num_substreams` in the OBU.";
-    return absl::InvalidArgumentError("");
   }
 
   return absl::OkStatus();
@@ -297,6 +275,44 @@ absl::Status ValidateAndWriteAmbisonicsConfig(const AmbisonicsConfig& config,
 }
 
 }  // namespace
+
+absl::Status ScalableChannelLayoutConfig::Validate(
+    DecodedUleb128 num_substreams_in_audio_element) const {
+  if (num_layers == 0 || num_layers > 6) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected `num_layers` in [0, 6]; got ", num_layers));
+  }
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("channel_audio_layer_configs",
+                                           num_layers,
+                                           channel_audio_layer_configs.size()));
+
+  // Determine whether any binaural layouts are found and the total number of
+  // substreams.
+  DecodedUleb128 cumulative_substream_count = 0;
+  bool has_binaural_layout = false;
+  for (const auto& layer_config : channel_audio_layer_configs) {
+    if (layer_config.loudspeaker_layout ==
+        ChannelAudioLayerConfig::kLayoutBinaural) {
+      has_binaural_layout = true;
+    }
+
+    cumulative_substream_count +=
+        static_cast<DecodedUleb128>(layer_config.substream_count);
+  }
+
+  if (cumulative_substream_count != num_substreams_in_audio_element) {
+    return absl::InvalidArgumentError(
+        "Cumulative substream count from all layers is not equal to "
+        "the `num_substreams` in the OBU.");
+  }
+
+  if (has_binaural_layout && num_layers != 1) {
+    return absl::InvalidArgumentError(
+        "There must be exactly 1 layer if there is a binaural layout.");
+  }
+
+  return absl::OkStatus();
+}
 
 absl::Status AmbisonicsMonoConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {

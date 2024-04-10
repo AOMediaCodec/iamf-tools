@@ -90,6 +90,14 @@ struct ScalableChannelLayoutConfig {
   friend bool operator==(const ScalableChannelLayoutConfig& lhs,
                          const ScalableChannelLayoutConfig& rhs) = default;
 
+  /*!\brief Validates the configuration.
+   *
+   * \param num_substreams_in_audio_element Number of substreams in the
+   *     corresponding OBU.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
+
   uint8_t num_layers;  // 3 bits.
   uint8_t reserved;    // 5 bits.
 
