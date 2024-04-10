@@ -58,6 +58,12 @@ class IASequenceHeaderObu : public ObuBase {
   /*\!brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
+  /*!\brief Validates the OBU.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Validate() const;
+
   const uint32_t ia_code_;
   const ProfileVersion primary_profile_;
   const ProfileVersion additional_profile_;

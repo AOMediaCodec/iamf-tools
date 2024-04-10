@@ -34,6 +34,15 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
   }
 }
 
+absl::Status IASequenceHeaderObu::Validate() const {
+  // If the IA Code is any other value then the data may not actually be an IA
+  // Sequence, or it may mean the data is corrupt / misaligned.
+  RETURN_IF_NOT_OK(
+      ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
+  RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
+  return absl::OkStatus();
+}
+
 void IASequenceHeaderObu::PrintObu() const {
   LOG(INFO) << "IA Sequence Header OBU:";
   LOG(INFO) << "  ia_code= " << ia_code_;
@@ -44,13 +53,8 @@ void IASequenceHeaderObu::PrintObu() const {
 
 absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
-  // If the IA Code is any other value then the data may not actually be an IA
-  // Sequence, or it may mean the data is corrupt / misaligned.
-  RETURN_IF_NOT_OK(
-      ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
+  RETURN_IF_NOT_OK(Validate());
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(ia_code_, 32));
-
-  RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral(static_cast<uint32_t>(primary_profile_), 8));
   RETURN_IF_NOT_OK(
