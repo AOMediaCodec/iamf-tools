@@ -256,6 +256,19 @@ TEST_F(MixPresentationObuTest, InvalidNonUniqueAudioElementIds) {
   InitAndTestWrite();
 }
 
+TEST_F(MixPresentationObuTest, InvalidWhenSubMixHasNoAudioElements) {
+  ASSERT_EQ(sub_mixes_.size(), 1);
+  // Reconfigure the sub-mix to have no audio elements and no `element_mix`
+  // gains which are typically 1:1 with the audio elements.
+  sub_mixes_[0].num_audio_elements = 0;
+  sub_mixes_[0].audio_elements.clear();
+  dynamic_sub_mix_args_[0].element_mix_gain_subblocks.clear();
+
+  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+
+  InitAndTestWrite();
+}
+
 TEST_F(MixPresentationObuTest, TwoAnchorElements) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
   sub_mixes_[0].layouts[0].loudness.anchored_loudness = {

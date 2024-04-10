@@ -159,6 +159,10 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
 
 absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
                                     WriteBitBuffer& wb) {
+  // IAMF requires there to be at least one audio element.
+  RETURN_IF_NOT_OK(ValidateNotEqual(
+      DecodedUleb128{0}, sub_mix.num_audio_elements, "num_audio_elements"));
+
   // Write the main portion of a `MixPresentationSubMix`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(sub_mix.num_audio_elements));
 
