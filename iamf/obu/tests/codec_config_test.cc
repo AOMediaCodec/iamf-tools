@@ -471,7 +471,8 @@ TEST_F(CodecConfigOpusTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-// TODO(b/329706105): Update test once ValidateAndReadPayload is implemented.
+// TODO(b/331831900, b/331829911): Update test once ValidateAndReadDecoderConfig
+// and OpusDecoderConfig::ValidateAndRead are implemented.
 TEST(CreateFromBuffer, IsNotSupported) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);

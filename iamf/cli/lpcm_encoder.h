@@ -29,7 +29,7 @@ class LpcmEncoder : public EncoderBase {
   LpcmEncoder(const CodecConfigObu& codec_config, int num_channels)
       : EncoderBase(true, codec_config, num_channels),
         decoder_config_(std::get<LpcmDecoderConfig>(
-            codec_config.codec_config_.decoder_config)) {}
+            codec_config.GetCodecConfig().decoder_config)) {}
 
   ~LpcmEncoder() override = default;
 

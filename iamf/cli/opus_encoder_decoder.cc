@@ -133,7 +133,7 @@ OpusDecoder::OpusDecoder(const CodecConfigObu& codec_config_obu,
     : DecoderBase(num_channels,
                   static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
       opus_decoder_config_(std::get<OpusDecoderConfig>(
-          codec_config_obu.codec_config_.decoder_config)),
+          codec_config_obu.GetCodecConfig().decoder_config)),
       output_sample_rate_(codec_config_obu.GetOutputSampleRate()) {}
 
 OpusDecoder::~OpusDecoder() {

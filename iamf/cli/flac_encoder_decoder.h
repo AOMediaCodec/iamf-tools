@@ -65,7 +65,7 @@ class FlacEncoder : public EncoderBase {
       : EncoderBase(false, codec_config, num_channels),
         encoder_metadata_(flac_encoder_metadata),
         decoder_config_(std::get<FlacDecoderConfig>(
-            codec_config.codec_config_.decoder_config)) {}
+            codec_config.GetCodecConfig().decoder_config)) {}
 
   ~FlacEncoder() override;
 

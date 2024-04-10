@@ -142,9 +142,17 @@ class CodecConfigObu : public ObuBase {
     return codec_config_.num_samples_per_frame;
   }
 
-  // Fields in the OBU as per the IAMF specification.
-  const DecodedUleb128 codec_config_id_;
-  const CodecConfig codec_config_;
+  /*!\brief Gets the codec config id of the OBU.
+   *
+   * \return codec config id of the OBU.
+   */
+  DecodedUleb128 GetCodecConfigId() const { return codec_config_id_; }
+
+  /*!\brief Gets the codec config of the OBU.
+   *
+   * \return codec config of the OBU.
+   */
+  const CodecConfig& GetCodecConfig() const { return codec_config_; }
 
   // Metadata fields.
   const bool is_lossless_;
@@ -153,9 +161,13 @@ class CodecConfigObu : public ObuBase {
   // Used only by the factory create function.
   explicit CodecConfigObu(const ObuHeader& header)
       : ObuBase(header, kObuIaCodecConfig),
+        is_lossless_(false),
         codec_config_id_(DecodedUleb128()),
-        codec_config_(CodecConfig()),
-        is_lossless_(false) {}
+        codec_config_(CodecConfig()) {}
+
+  // Fields in the OBU as per the IAMF specification.
+  DecodedUleb128 codec_config_id_;
+  CodecConfig codec_config_;
 
   // Metadata fields.
   uint32_t input_sample_rate_ = 0;

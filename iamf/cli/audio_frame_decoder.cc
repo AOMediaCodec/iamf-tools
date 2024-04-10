@@ -41,7 +41,7 @@ namespace {
 absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
                                int num_channels,
                                std::unique_ptr<DecoderBase>& decoder) {
-  switch (codec_config.codec_config_.codec_id) {
+  switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
       break;
@@ -58,7 +58,7 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
       break;
     default:
       LOG(ERROR) << "Unrecognized `codec_id`= "
-                 << codec_config.codec_config_.codec_id;
+                 << codec_config.GetCodecConfig().codec_id;
       return absl::InvalidArgumentError("");
   }
 

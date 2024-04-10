@@ -334,7 +334,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresLpcmBigEndian) {
   ASSERT_TRUE(output_obus.ok());
 
   EXPECT_EQ(std::get<LpcmDecoderConfig>(
-                output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .sample_format_flags_,
             LpcmDecoderConfig::kLpcmBigEndian);
 }
@@ -424,7 +424,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputChannelCount) {
   ASSERT_TRUE(output_obus.ok());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .output_channel_count_,
             kInvalidOutputChannelCount);
 }
@@ -444,7 +444,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputGain) {
   ASSERT_TRUE(output_obus.ok());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .output_gain_,
             kInvalidOutputGain);
 }
@@ -464,7 +464,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusChannelMapping) {
   ASSERT_TRUE(output_obus.ok());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
-                output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .mapping_family_,
             kInvalidMappingFamily);
 }
@@ -557,7 +557,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacDecoderConfig) {
   const auto output_obus = InitAndGenerate();
   ASSERT_TRUE(output_obus.ok());
   const auto& decoder_config = std::get<AacDecoderConfig>(
-      output_obus->at(kCodecConfigId).codec_config_.decoder_config);
+      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);
 
   EXPECT_EQ(decoder_config.decoder_config_descriptor_tag_,
             kInvalidDecoderConfigDescriptorTag);
@@ -593,7 +593,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacAudioSpecificConfig) {
 
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
-          output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config;
   EXPECT_EQ(audio_specific_config.audio_object_type_, kInvalidAudioObjectType);
   EXPECT_EQ(audio_specific_config.channel_configuration_,
@@ -618,7 +618,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidDecoderSpecificInfo) {
   ASSERT_TRUE(output_obus.ok());
 
   EXPECT_EQ(std::get<AacDecoderConfig>(
-                output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+                output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
                 .decoder_specific_info_.decoder_specific_info_tag,
             kInvalidDecoderSpecificInfoTag);
 }
@@ -648,7 +648,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacGaSpecificConfig) {
   ASSERT_TRUE(output_obus.ok());
   const auto& generated_ga_specific_config =
       std::get<AacDecoderConfig>(
-          output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config.ga_specific_config_;
 
   EXPECT_EQ(generated_ga_specific_config.frame_length_flag,
@@ -689,7 +689,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithExplicitSamplingFrequency) {
 
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
-          output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config;
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
             AudioSpecificConfig::kSampleFrequencyIndexEscapeValue);
@@ -767,7 +767,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
 
   const auto& stream_info = std::get<FlacMetaBlockStreamInfo>(
       std::get<FlacDecoderConfig>(
-          output_obus->at(kCodecConfigId).codec_config_.decoder_config)
+          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .metadata_blocks_[0]
           .payload);
   EXPECT_EQ(stream_info.minimum_frame_size, kInvalidMinimumFrameSize);
@@ -807,7 +807,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
   ASSERT_TRUE(output_obus.ok());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
-      output_obus->at(kCodecConfigId).codec_config_.decoder_config);
+      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);
   ASSERT_EQ(decoder_config.metadata_blocks_.size(), 2);
 
   EXPECT_EQ(decoder_config.metadata_blocks_[0].header.block_type,

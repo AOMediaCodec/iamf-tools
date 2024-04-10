@@ -142,11 +142,11 @@ absl::Status GenerateParameterDefinitions(
             demixing_param_definition->default_demixing_info_parameter_data_
                 .reserved_default));
         if (demixing_param_definition->duration_ !=
-            codec_config_obu.codec_config_.num_samples_per_frame) {
+            codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           LOG(ERROR) << "Demixing parameter duration= "
                      << demixing_param_definition->duration_
                      << " is inconsistent with num_samples_per_frame="
-                     << codec_config_obu.codec_config_.num_samples_per_frame;
+                     << codec_config_obu.GetCodecConfig().num_samples_per_frame;
           return absl::InvalidArgumentError("");
         }
 
@@ -162,11 +162,11 @@ absl::Status GenerateParameterDefinitions(
             user_data_parameter.recon_gain_param().param_definition(),
             recon_gain_param_definition.get()));
         if (recon_gain_param_definition->duration_ !=
-            codec_config_obu.codec_config_.num_samples_per_frame) {
+            codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           LOG(ERROR) << "Recon gain parameter duration= "
                      << recon_gain_param_definition->duration_
                      << " is inconsistent with num_samples_per_frame="
-                     << codec_config_obu.codec_config_.num_samples_per_frame;
+                     << codec_config_obu.GetCodecConfig().num_samples_per_frame;
           return absl::InvalidArgumentError("");
         }
         audio_element_param.param_definition =

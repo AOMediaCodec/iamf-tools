@@ -233,7 +233,7 @@ AacDecoder::AacDecoder(const CodecConfigObu& codec_config_obu, int num_channels)
     : DecoderBase(num_channels,
                   static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
       aac_decoder_config_(std::get<AacDecoderConfig>(
-          codec_config_obu.codec_config_.decoder_config)) {}
+          codec_config_obu.GetCodecConfig().decoder_config)) {}
 
 AacDecoder::~AacDecoder() {
   if (decoder_ != nullptr) {

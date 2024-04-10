@@ -63,7 +63,7 @@ absl::Status InitializeEncoder(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config, int num_channels,
     std::unique_ptr<EncoderBase>& encoder) {
-  switch (codec_config.codec_config_.codec_id) {
+  switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
       encoder = std::make_unique<LpcmEncoder>(codec_config, num_channels);
@@ -85,7 +85,7 @@ absl::Status InitializeEncoder(
       break;
     default:
       return absl::InvalidArgumentError(absl::StrCat(
-          "Unknown codec_id= ", codec_config.codec_config_.codec_id));
+          "Unknown codec_id= ", codec_config.GetCodecConfig().codec_id));
   }
   RETURN_IF_NOT_OK(encoder->Initialize());
   return absl::OkStatus();
@@ -105,11 +105,11 @@ absl::Status GetEncodingDataAndInitializeEncoders(
     const CodecConfigObu& codec_config_obu =
         *audio_element_with_data.codec_config;
     auto codec_config_metadata_iter =
-        codec_config_metadata.find(codec_config_obu.codec_config_id_);
+        codec_config_metadata.find(codec_config_obu.GetCodecConfigId());
     if (codec_config_metadata_iter == codec_config_metadata.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Failed to find codec config metadata for codec_config_id= ",
-          codec_config_obu.codec_config_id_));
+          codec_config_obu.GetCodecConfigId()));
     }
 
     RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata_iter->second,
@@ -627,7 +627,7 @@ absl::Status DumpCodecSpecificHeader(const CodecConfigObu& codec_config_obu,
   wb.Reset();
 
   // Write a codec-specific header to make some files easier to debug.
-  switch (codec_config_obu.codec_config_.codec_id) {
+  switch (codec_config_obu.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdFlac:
       // Stamp on the "fLaC" header and `decoder_config_` to make a valid FLAC
@@ -710,8 +710,9 @@ absl::Status DumpRawAudioFrames(
 
     // Pick a reasonable extension based on the type of data.
     std::string file_extension = ".bin";
-    const uint32_t codec_id = audio_frame.audio_element_with_data->codec_config
-                                  ->codec_config_.codec_id;
+    const uint32_t codec_id =
+        audio_frame.audio_element_with_data->codec_config->GetCodecConfig()
+            .codec_id;
     if (codec_id == CodecConfig::kCodecIdFlac) {
       file_extension = ".flac";
     } else if (codec_id == CodecConfig::kCodecIdLpcm) {

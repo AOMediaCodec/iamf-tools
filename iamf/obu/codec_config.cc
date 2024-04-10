@@ -92,15 +92,20 @@ absl::Status SetSampleRatesAndBitDepths(
   }
 }
 
+absl::Status ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "CodecConfigOBU ValidateAndReadDecoderConfig not yet implemented.");
+}
+
 }  // namespace
 
 CodecConfigObu::CodecConfigObu(const ObuHeader& header,
                                const DecodedUleb128 codec_config_id,
                                const CodecConfig& codec_config)
     : ObuBase(header, kObuIaCodecConfig),
+      is_lossless_(IsLossless(codec_config.codec_id)),
       codec_config_id_(codec_config_id),
-      codec_config_(std::move(codec_config)),
-      is_lossless_(IsLossless(codec_config_.codec_id)) {}
+      codec_config_(std::move(codec_config)) {}
 
 absl::StatusOr<CodecConfigObu> CodecConfigObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
@@ -157,10 +162,19 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-// TODO(b/329706105): Implement.
 absl::Status CodecConfigObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "CodecConfigOBU ValidateAndReadPayload not yet implemented.");
+  RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
+  uint64_t codec_id;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, codec_id));
+  codec_config_.codec_id = static_cast<CodecConfig::CodecId>(codec_id);
+  RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_.num_samples_per_frame));
+  RETURN_IF_NOT_OK(
+      ValidateNumSamplesPerFrame(codec_config_.num_samples_per_frame));
+  RETURN_IF_NOT_OK(rb.ReadSigned16(codec_config_.audio_roll_distance));
+
+  // Read the `decoder_config_`. This is codec specific.
+  RETURN_IF_NOT_OK(ValidateAndReadDecoderConfig(rb));
+  return absl::OkStatus();
 }
 
 void CodecConfigObu::PrintObu() const {
