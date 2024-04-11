@@ -92,11 +92,6 @@ absl::Status SetSampleRatesAndBitDepths(
   }
 }
 
-absl::Status ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "CodecConfigOBU ValidateAndReadDecoderConfig not yet implemented.");
-}
-
 }  // namespace
 
 CodecConfigObu::CodecConfigObu(const ObuHeader& header,
@@ -159,6 +154,31 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   // Write the `decoder_config_`. This is codec specific.
   RETURN_IF_NOT_OK(ValidateAndWriteDecoderConfig(wb));
 
+  return absl::OkStatus();
+}
+
+absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
+  if (!init_status_.ok()) {
+    return init_status_;
+  }
+
+  const int16_t audio_roll_distance = codec_config_.audio_roll_distance;
+  const uint32_t num_samples_per_frame = codec_config_.num_samples_per_frame;
+  // Read the `decoder_config` struct portion. This is codec specific.
+  switch (codec_config_.codec_id) {
+    using enum CodecConfig::CodecId;
+    case kCodecIdOpus:
+      return std::get<OpusDecoderConfig>(codec_config_.decoder_config)
+          .ValidateAndRead(num_samples_per_frame, audio_roll_distance, rb);
+    case kCodecIdLpcm:
+      return absl::UnimplementedError("LPCM is not supported.");
+    case kCodecIdAacLc:
+      return absl::UnimplementedError("AAC is not supported.");
+    case kCodecIdFlac:
+      return absl::UnimplementedError("Flac is not supported.");
+    default:
+      return absl::InvalidArgumentError("");
+  }
   return absl::OkStatus();
 }
 

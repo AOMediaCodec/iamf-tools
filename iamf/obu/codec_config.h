@@ -110,6 +110,13 @@ class CodecConfigObu : public ObuBase {
    */
   absl::Status ValidateAndWriteDecoderConfig(WriteBitBuffer& wb) const;
 
+  /*!\brief Validates and reads the `DecoderConfig` portion of the OBU.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status ValidateAndReadDecoderConfig(ReadBitBuffer& rb);
+
   /*!\brief Gets the output sample rate associated with the OBU.
    *
    * \return Output sample rate in Hz if the OBU was initialized successfully.

@@ -16,6 +16,7 @@
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -264,6 +265,18 @@ TEST_F(OpusTest, IllegalMappingFamilyNotZero) {
   opus_decoder_config_.mapping_family_ = 1;
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
+}
+
+TEST(ValidateAndRead, IsNotSupported) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source;
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_FALSE(opus_decoder_config
+                   .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                    read_buffer)
+                   .ok());
 }
 
 struct AudioRollDistanceTestCase {

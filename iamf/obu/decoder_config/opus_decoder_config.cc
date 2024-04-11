@@ -18,6 +18,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -103,6 +104,12 @@ absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(mapping_family_, 8));
 
   return absl::OkStatus();
+}
+
+absl::Status OpusDecoderConfig::ValidateAndRead(uint32_t num_samples_per_frame,
+                                                int16_t audio_roll_distance,
+                                                ReadBitBuffer& rb) {
+  return absl::UnimplementedError("Not implemented");
 }
 
 void OpusDecoderConfig::Print() const {
