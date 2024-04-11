@@ -80,6 +80,7 @@ cc_test(
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )

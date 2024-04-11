@@ -109,7 +109,34 @@ absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
 absl::Status OpusDecoderConfig::ValidateAndRead(uint32_t num_samples_per_frame,
                                                 int16_t audio_roll_distance,
                                                 ReadBitBuffer& rb) {
-  return absl::UnimplementedError("Not implemented");
+  RETURN_IF_NOT_OK(
+      ValidateAudioRollDistance(num_samples_per_frame, audio_roll_distance));
+  // TODO(b/333893772): Add overloads for ReadUnsignedLiteral to accept other
+  // data types (uint8_t, uint16_t, uint32_t, etc.)
+  uint64_t version;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, version));
+  version_ = version;
+
+  uint64_t output_channel_count;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, output_channel_count));
+  output_channel_count_ = output_channel_count;
+
+  uint64_t pre_skip;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(16, pre_skip));
+  pre_skip_ = pre_skip;
+
+  uint64_t input_sample_rate;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, input_sample_rate));
+  input_sample_rate_ = input_sample_rate;
+
+  RETURN_IF_NOT_OK(rb.ReadSigned16(output_gain_));
+
+  uint64_t mapping_family;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mapping_family));
+  mapping_family_ = mapping_family;
+
+  RETURN_IF_NOT_OK(ValidatePayload(*this));
+  return absl::OkStatus();
 }
 
 void OpusDecoderConfig::Print() const {

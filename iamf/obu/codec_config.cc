@@ -158,10 +158,6 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
 }
 
 absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
-  if (!init_status_.ok()) {
-    return init_status_;
-  }
-
   const int16_t audio_roll_distance = codec_config_.audio_roll_distance;
   const uint32_t num_samples_per_frame = codec_config_.num_samples_per_frame;
   // Read the `decoder_config` struct portion. This is codec specific.

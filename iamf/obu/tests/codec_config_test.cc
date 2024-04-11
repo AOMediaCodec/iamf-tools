@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -471,13 +472,81 @@ TEST_F(CodecConfigOpusTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-// TODO(b/331831900, b/331829911): Update test once ValidateAndReadDecoderConfig
-// and OpusDecoderConfig::ValidateAndRead are implemented.
-TEST(CreateFromBuffer, IsNotSupported) {
-  std::vector<uint8_t> source;
-  ReadBitBuffer buffer(1024, &source);
+TEST(CreateFromBuffer, OpusDecoderConfig) {
+  std::vector<uint8_t> source_data = {123, 'O', 'p', 'u', 's',
+                                      // num_samples_per_frame
+                                      0xc0, 0x07,
+                                      // audio_roll_distance
+                                      0xff, 0xfc,
+                                      // Start `DecoderConfig`.
+                                      // `version`.
+                                      15,
+                                      // `output_channel_count`.
+                                      OpusDecoderConfig::kOutputChannelCount,
+                                      // `pre_skip`
+                                      0, 3,
+                                      //
+                                      // `input_sample_rate`.
+                                      0, 0, 0, 4,
+                                      // `output_gain`.
+                                      0, 0,
+                                      // `mapping_family`.
+                                      OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer buffer(1024, &source_data);
   ObuHeader header;
-  EXPECT_FALSE(CodecConfigObu::CreateFromBuffer(header, buffer).ok());
+  absl::StatusOr<CodecConfigObu> obu =
+      CodecConfigObu::CreateFromBuffer(header, buffer);
+  EXPECT_TRUE(obu.ok());
+
+  // Set up expected data
+  DecodedUleb128 expected_codec_config_id = 123;
+  CodecConfig expected_codec_config = {
+      .codec_id = static_cast<CodecConfig::CodecId>(CodecConfig::kCodecIdOpus),
+      .num_samples_per_frame = 960,
+      .audio_roll_distance = -4,
+      .decoder_config =
+          OpusDecoderConfig{
+              .version_ = 15,
+              .output_channel_count_ = OpusDecoderConfig::kOutputChannelCount,
+              .pre_skip_ = 3,
+              .input_sample_rate_ = 4,
+              .output_gain_ = 0,
+              .mapping_family_ = OpusDecoderConfig::kMappingFamily},
+  };
+
+  // Validate fields
+  EXPECT_EQ(obu.value().GetCodecConfigId(), expected_codec_config_id);
+  EXPECT_EQ(obu.value().GetCodecConfig(), expected_codec_config);
+}
+
+// TODO(b/331831247, b/331833384, b/331831926): Add test cases for other
+// decoder configs.
+TEST(CreateFromBuffer, LpcmDecoderConfigNotSupported) {
+  std::vector<uint8_t> source_data = {123,  // `codec_id`.
+                                      'i', 'p', 'c', 'm',
+                                      // num_samples_per_frame
+                                      0xc0, 0x07,
+                                      // audio_roll_distance
+                                      0xff, 0xfc,
+                                      // Start `DecoderConfig`.
+                                      // `version`.
+                                      15,
+                                      // `output_channel_count`.
+                                      OpusDecoderConfig::kOutputChannelCount,
+                                      // `pre_skip`
+                                      0, 3,
+                                      //
+                                      // `input_sample_rate`.
+                                      0, 0, 0, 4,
+                                      // `output_gain`.
+                                      0, 0,
+                                      // `mapping_family`.
+                                      OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer buffer(1024, &source_data);
+  ObuHeader header;
+  absl::StatusOr<CodecConfigObu> obu =
+      CodecConfigObu::CreateFromBuffer(header, buffer);
+  EXPECT_FALSE(obu.ok());
 }
 
 }  // namespace

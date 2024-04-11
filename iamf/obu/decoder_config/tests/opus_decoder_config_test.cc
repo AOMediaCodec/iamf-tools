@@ -267,16 +267,255 @@ TEST_F(OpusTest, IllegalMappingFamilyNotZero) {
   TestWriteDecoderConfig();
 }
 
-TEST(ValidateAndRead, IsNotSupported) {
+// --- Begin ValidateAndRead Tests ---
+
+TEST(ValidateAndRead, VaryAllLegalFields) {
   OpusDecoderConfig opus_decoder_config;
   uint32_t num_samples_per_frame = 960;
   int16_t audio_roll_distance = -4;
-  std::vector<uint8_t> source;
+  std::vector<uint8_t> source = {// `version`.
+                                 2,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 3,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 4,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 2);
+  EXPECT_EQ(opus_decoder_config.pre_skip_, 3);
+  EXPECT_EQ(opus_decoder_config.input_sample_rate_, 4);
+}
+
+TEST(ValidateAndRead, MaxAllLegalFields) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 15,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0xff, 0xff,
+                                 // `input_sample_rate`.
+                                 0xff, 0xff, 0xff, 0xff,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 15);
+  EXPECT_EQ(opus_decoder_config.pre_skip_, 0xffff);
+  EXPECT_EQ(opus_decoder_config.input_sample_rate_, 0xffffffff);
+}
+
+TEST(ValidateAndRead, MinorVersion) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 2,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 2);
+}
+
+TEST(ValidateAndRead, IllegalVersionZero) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 0,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
   EXPECT_FALSE(opus_decoder_config
                    .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
                                     read_buffer)
                    .ok());
+}
+
+TEST(ValidateAndRead, IllegalVersionFuture) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 16,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_FALSE(opus_decoder_config
+                   .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                    read_buffer)
+                   .ok());
+}
+
+TEST(ValidateAndRead, IllegalVersionmax) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 255,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_FALSE(opus_decoder_config
+                   .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                    read_buffer)
+                   .ok());
+}
+
+TEST(ValidateAndRead, IllegalChannelCountZero) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 2,
+                                 // `output_channel_count`.
+                                 0,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_FALSE(opus_decoder_config
+                   .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                    read_buffer)
+                   .ok());
+}
+
+TEST(ValidateAndRead, ReadPreSkip312) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 1,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0x01, 0x38,
+                                 // `input_sample_rate`.
+                                 0, 0, 0, 0,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 1);
+  EXPECT_EQ(opus_decoder_config.pre_skip_, 312);
+}
+
+TEST(ValidateAndRead, ReadSampleRate48kHz) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 1,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0, 0xbb, 0x80,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 1);
+  EXPECT_EQ(opus_decoder_config.input_sample_rate_, 48000);
+}
+
+TEST(ValidateAndRead, ReadSampleRate192kHz) {
+  OpusDecoderConfig opus_decoder_config;
+  uint32_t num_samples_per_frame = 960;
+  int16_t audio_roll_distance = -4;
+  std::vector<uint8_t> source = {// `version`.
+                                 1,
+                                 // `output_channel_count`.
+                                 OpusDecoderConfig::kOutputChannelCount,
+                                 // `pre_skip`.
+                                 0, 0,
+                                 // `input_sample_rate`.
+                                 0, 0x2, 0xee, 0x00,
+                                 // `output_gain`.
+                                 0, 0,
+                                 // `mapping_family`.
+                                 OpusDecoderConfig::kMappingFamily};
+  ReadBitBuffer read_buffer(1024, &source);
+  EXPECT_TRUE(opus_decoder_config
+                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
+                                   read_buffer)
+                  .ok());
+
+  EXPECT_EQ(opus_decoder_config.version_, 1);
+  EXPECT_EQ(opus_decoder_config.input_sample_rate_, 192000);
 }
 
 struct AudioRollDistanceTestCase {
