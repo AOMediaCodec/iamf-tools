@@ -571,22 +571,41 @@ TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {
 }
 
 TEST_F(AudioElementScalableChannelTest,
-       InvalidDuplicateParamDefinitionTypesExtension) {
-  required_args_.num_parameters = 2;
+       ValidateAndWriteFailsWithDuplicateExtendedParamDefinitions) {
   required_args_.audio_element_params.clear();
-
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
 
-  required_args_.audio_element_params.emplace_back(AudioElementParam{
-      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
-                                         kDuplicateParameterDefinition)});
-  required_args_.audio_element_params.emplace_back(AudioElementParam{
-      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
-                                         kDuplicateParameterDefinition)});
+  required_args_.num_parameters = 2;
+  required_args_.audio_element_params.push_back(
+      {kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                          kDuplicateParameterDefinition)});
+  required_args_.audio_element_params.push_back(
+      {kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                          kDuplicateParameterDefinition)});
+  Init();
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST_F(AudioElementScalableChannelTest,
+       ValidateAndWriteSucceedsWithMultipleUniqueExtendedParamDefinitions) {
+  required_args_.audio_element_params.clear();
+
+  required_args_.num_parameters = 2;
+  required_args_.audio_element_params.push_back(
+      {ParamDefinition::kParameterDefinitionReservedStart,
+       std::make_unique<ExtendedParamDefinition>(
+           ParamDefinition::kParameterDefinitionReservedStart)});
+  required_args_.audio_element_params.push_back(
+      {ParamDefinition::kParameterDefinitionReservedEnd,
+       std::make_unique<ExtendedParamDefinition>(
+           ParamDefinition::kParameterDefinitionReservedEnd)});
+  Init();
+
+  WriteBitBuffer unused_wb(0);
+  EXPECT_TRUE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(AudioElementScalableChannelTest,

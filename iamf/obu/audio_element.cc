@@ -139,10 +139,12 @@ void LogSceneBased(const AmbisonicsConfig& ambisonics_config) {
 absl::Status ValidateUniqueParamDefinitionType(
     const std::vector<AudioElementParam>& audio_element_params) {
   std::vector<ParamDefinition::ParameterDefinitionType>
-      collected_param_definition_types(audio_element_params.size());
+      collected_param_definition_types;
+  collected_param_definition_types.reserve(audio_element_params.size());
   for (const auto& param : audio_element_params) {
     collected_param_definition_types.push_back(param.param_definition_type);
   }
+
   return ValidateUnique(collected_param_definition_types.begin(),
                         collected_param_definition_types.end(),
                         "audio_element_params");
