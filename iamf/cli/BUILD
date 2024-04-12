@@ -388,6 +388,17 @@ cc_library(
 )
 
 cc_library(
+    name = "loudness_calculator",
+    srcs = ["loudness_calculator.cc"],
+    hdrs = ["loudness_calculator.h"],
+    deps = [
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "lpcm_encoder",
     srcs = ["lpcm_encoder.cc"],
     hdrs = ["lpcm_encoder.h"],

@@ -304,6 +304,16 @@ cc_test(
 )
 
 cc_test(
+    name = "loudness_calculator_test",
+    srcs = ["loudness_calculator_test.cc"],
+    deps = [
+        "//iamf/cli:loudness_calculator",
+        "//iamf/obu:mix_presentation",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "lpcm_encoder_test",
     size = "small",
     srcs = ["lpcm_encoder_test.cc"],
