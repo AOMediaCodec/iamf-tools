@@ -16,7 +16,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/tests/test_utils.h"
@@ -40,33 +39,31 @@ class ObuTestBase {
 
  protected:
   void InitAndTestWrite(bool only_validate_size = false) {
-    Init();
-    TestWrite(only_validate_size);
+    InitExpectOk();
+    TestWriteExpectOk(only_validate_size);
   }
 
-  void TestWrite(bool only_validate_size) {
+  void TestWriteExpectOk(bool only_validate_size) {
     ASSERT_NE(leb_generator_, nullptr);
     // Allocate space for the expected size of the OBU.
     ASSERT_NE(leb_generator_, nullptr);
     WriteBitBuffer wb(expected_header_.size() + expected_payload_.size(),
                       *leb_generator_);
     // Write the OBU.
-    WriteObu(wb);
+    WriteObuExpectOk(wb);
 
-    if (expected_write_status_code_ == absl::StatusCode::kOk) {
-      // Validate either the size or byte-by-byte results match expected
-      // depending on the mode.
-      if (only_validate_size) {
-        EXPECT_EQ(wb.bit_buffer().size(),
-                  expected_header_.size() + expected_payload_.size());
-      } else {
-        ValidateObuWriteResults(wb, expected_header_, expected_payload_);
-      }
+    // Validate either the size or byte-by-byte results match expected
+    // depending on the mode.
+    if (only_validate_size) {
+      EXPECT_EQ(wb.bit_buffer().size(),
+                expected_header_.size() + expected_payload_.size());
+    } else {
+      ValidateObuWriteResults(wb, expected_header_, expected_payload_);
     }
   }
 
-  virtual void Init() = 0;
-  virtual void WriteObu(WriteBitBuffer& wb) = 0;
+  virtual void InitExpectOk() = 0;
+  virtual void WriteObuExpectOk(WriteBitBuffer& wb) = 0;
 
   // Override this in subclasses to destroy the specific OBU.
   virtual ~ObuTestBase() = 0;
@@ -74,8 +71,6 @@ class ObuTestBase {
   std::unique_ptr<LebGenerator> leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kMinimum);
   ObuHeader header_;
-  absl::StatusCode expected_init_status_code_ = absl::StatusCode::kOk;
-  absl::StatusCode expected_write_status_code_ = absl::StatusCode::kOk;
   // TODO(b/296044377): Find a way to initialize `expected_header_` in a less
   //                    verbose way. Many tests manually configure it when the
   //                    size of the OBU or flags in the `ObuHeader` vary.

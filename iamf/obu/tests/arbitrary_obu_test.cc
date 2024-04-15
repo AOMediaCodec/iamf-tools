@@ -40,14 +40,13 @@ class ArbitraryObuTest : public ObuTestBase, public testing::Test {
   ~ArbitraryObuTest() override = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     obu_ = std::make_unique<ArbitraryObu>(obu_type_, header_, payload_,
                                           insertion_hook_);
   }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   std::unique_ptr<ArbitraryObu> obu_;

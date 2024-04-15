@@ -46,34 +46,27 @@ class CodecConfigTestBase : public ObuTestBase {
   ~CodecConfigTestBase() override = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
                                             codec_config_);
-    EXPECT_EQ(obu_->Initialize().code(), expected_init_status_code_);
+    EXPECT_TRUE(obu_->Initialize().ok());
   }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   void TestInputSampleRate() {
-    if (expected_init_status_code_ == absl::StatusCode::kOk) {
-      EXPECT_EQ(obu_->GetInputSampleRate(), expected_input_sample_rate_);
-    }
+    EXPECT_EQ(obu_->GetInputSampleRate(), expected_input_sample_rate_);
   }
 
   void TestOutputSampleRate() {
-    if (expected_init_status_code_ == absl::StatusCode::kOk) {
-      EXPECT_EQ(obu_->GetOutputSampleRate(), expected_output_sample_rate_);
-    }
+    EXPECT_EQ(obu_->GetOutputSampleRate(), expected_output_sample_rate_);
   }
 
   void TestGetBitDepthToMeasureLoudness() {
-    if (expected_init_status_code_ == absl::StatusCode::kOk) {
-      EXPECT_EQ(obu_->GetBitDepthToMeasureLoudness(),
-                expected_output_pcm_bit_depth_);
-    }
+    EXPECT_EQ(obu_->GetBitDepthToMeasureLoudness(),
+              expected_output_pcm_bit_depth_);
   }
 
   uint32_t expected_input_sample_rate_;
@@ -88,7 +81,7 @@ class CodecConfigTestBase : public ObuTestBase {
 
 struct SampleRateTestCase {
   uint32_t sample_rate;
-  absl::StatusCode expected_status_code;
+  bool expect_ok;
 };
 
 class CodecConfigLpcmTestForSampleRate
@@ -110,40 +103,43 @@ TEST_P(CodecConfigLpcmTestForSampleRate, TestCodecConfigLpcm) {
   // Replace the default sample rate and expected status codes.
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       GetParam().sample_rate;
-  expected_init_status_code_ = GetParam().expected_status_code;
-  expected_write_status_code_ = GetParam().expected_status_code;
 
-  expected_header_ = std::vector<uint8_t>(2);
-  expected_payload_ = std::vector<uint8_t>(14);
+  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
+                                          codec_config_);
 
-  InitAndTestWrite(/*only_validate_size=*/true);
+  const bool expect_ok = GetParam().expect_ok;
+  EXPECT_EQ(obu_->Initialize().ok(), expect_ok);
+  WriteBitBuffer unused_wb(0);
+  EXPECT_EQ(obu_->ValidateAndWriteObu(unused_wb).ok(), expect_ok);
 
-  // Validate the functions to get the sample rate return the expected value.
-  expected_output_sample_rate_ = GetParam().sample_rate;
-  TestOutputSampleRate();
+  if (expect_ok) {
+    // Validate the functions to get the sample rate return the expected value.
+    expected_output_sample_rate_ = GetParam().sample_rate;
+    TestOutputSampleRate();
 
-  // The input sample rate function for LPCM should the output sample rate
-  // function.
-  expected_input_sample_rate_ = expected_output_sample_rate_;
-  TestInputSampleRate();
+    // The input sample rate function for LPCM should the output sample rate
+    // function.
+    expected_input_sample_rate_ = expected_output_sample_rate_;
+    TestInputSampleRate();
+  }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    LegalSampleRates, CodecConfigLpcmTestForSampleRate,
-    testing::ValuesIn<SampleRateTestCase>({{48000, absl::StatusCode::kOk},
-                                           {16000, absl::StatusCode::kOk},
-                                           {32000, absl::StatusCode::kOk},
-                                           {44100, absl::StatusCode::kOk},
-                                           {48000, absl::StatusCode::kOk},
-                                           {96000, absl::StatusCode::kOk}}));
+INSTANTIATE_TEST_SUITE_P(LegalSampleRates, CodecConfigLpcmTestForSampleRate,
+                         testing::ValuesIn<SampleRateTestCase>({{48000, true},
+                                                                {16000, true},
+                                                                {32000, true},
+                                                                {44100, true},
+                                                                {48000, true},
+                                                                {96000,
+                                                                 true}}));
 
-INSTANTIATE_TEST_SUITE_P(IllegalSampleRates, CodecConfigLpcmTestForSampleRate,
-                         ::testing::ValuesIn<SampleRateTestCase>(
-                             {{0, absl::StatusCode::kInvalidArgument},
-                              {8000, absl::StatusCode::kInvalidArgument},
-                              {22050, absl::StatusCode::kInvalidArgument},
-                              {23000, absl::StatusCode::kInvalidArgument},
-                              {196000, absl::StatusCode::kInvalidArgument}}));
+INSTANTIATE_TEST_SUITE_P(
+    IllegalSampleRates, CodecConfigLpcmTestForSampleRate,
+    ::testing::ValuesIn<SampleRateTestCase>({{0, false},
+                                             {8000, false},
+                                             {22050, false},
+                                             {23000, false},
+                                             {196000, false}}));
 
 class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
  public:
@@ -196,31 +192,37 @@ TEST_F(CodecConfigLpcmTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   InitAndTestWrite();
 }
 
-TEST_F(CodecConfigLpcmTest, IllegalCodecId) {
+TEST_F(CodecConfigLpcmTest, InitFailsWithIllegalCodecId) {
   codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
-  expected_init_status_code_ = absl::StatusCode::kInvalidArgument;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
+                                          codec_config_);
+  EXPECT_FALSE(obu_->Initialize().ok());
 }
 
-TEST_F(CodecConfigLpcmTest, WriteIllegalSampleSize) {
+TEST_F(CodecConfigLpcmTest, InitializeFailsWithWriteIllegalSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 33;
-  expected_init_status_code_ = absl::StatusCode::kInvalidArgument;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
+                                          codec_config_);
+  EXPECT_FALSE(obu_->Initialize().ok());
 }
 
-TEST_F(CodecConfigLpcmTest, GetIllegalSampleSize) {
+TEST_F(CodecConfigLpcmTest, InitializeFailsWithGetIllegalSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 33;
-  expected_init_status_code_ = absl::StatusCode::kInvalidArgument;
-  Init();
-  TestGetBitDepthToMeasureLoudness();
+
+  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
+                                          codec_config_);
+  EXPECT_FALSE(obu_->Initialize().ok());
 }
 
-TEST_F(CodecConfigLpcmTest, IllegalNumSamplesPerFrame) {
+TEST_F(CodecConfigLpcmTest,
+       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
   codec_config_.num_samples_per_frame = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(CodecConfigLpcmTest, Default) { InitAndTestWrite(); }
@@ -324,7 +326,7 @@ TEST_F(CodecConfigLpcmTest, WriteSampleSize) {
 TEST_F(CodecConfigLpcmTest, GetSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 24;
   expected_output_pcm_bit_depth_ = 24;
-  Init();
+  InitExpectOk();
   TestGetBitDepthToMeasureLoudness();
 }
 
@@ -353,7 +355,7 @@ TEST_F(CodecConfigLpcmTest, GetOutputSampleRate) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       16000;
   expected_output_sample_rate_ = 16000;
-  Init();
+  InitExpectOk();
   TestOutputSampleRate();
 }
 
@@ -361,7 +363,7 @@ TEST_F(CodecConfigLpcmTest, GetInputSampleRate) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       16000;
   expected_input_sample_rate_ = 16000;
-  Init();
+  InitExpectOk();
   TestInputSampleRate();
 }
 
@@ -427,17 +429,21 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
   InitAndTestWrite();
 }
 
-TEST_F(CodecConfigOpusTest, IllegalCodecId) {
+TEST_F(CodecConfigOpusTest, InitializeFailsWithIllegalCodecId) {
   codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
-  expected_init_status_code_ = absl::StatusCode::kInvalidArgument;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
+                                          codec_config_);
+  EXPECT_FALSE(obu_->Initialize().ok());
 }
 
-TEST_F(CodecConfigOpusTest, IllegalNumSamplesPerFrame) {
+TEST_F(CodecConfigOpusTest,
+       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
   codec_config_.num_samples_per_frame = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }

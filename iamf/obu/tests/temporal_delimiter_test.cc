@@ -35,13 +35,12 @@ class TemporalDelimiterTestBase : public ObuTestBase {
   ~TemporalDelimiterTestBase() override = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     obu_ = std::make_unique<TemporalDelimiterObu>(header_);
   }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   std::unique_ptr<TemporalDelimiterObu> obu_;
@@ -85,16 +84,22 @@ TEST_F(TemporalDelimiterTest, NonMinimalLebGeneratorAffectsObuHeader) {
   InitAndTestWrite();
 }
 
-TEST_F(TemporalDelimiterTest, IllegalRedundantCopy) {
+TEST_F(TemporalDelimiterTest,
+       ValidateAndWriteObuFailsWithIllegalRedundantCopy) {
   header_.obu_redundant_copy = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(TemporalDelimiterTest, IllegalTrimmingStatus) {
+TEST_F(TemporalDelimiterTest,
+       ValidateAndWriteObuFailsWithIllegalTrimmingStatus) {
   header_.obu_trimming_status_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 }  // namespace

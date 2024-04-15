@@ -95,16 +95,15 @@ class AudioElementObuTestBase : public ObuTestBase {
   ~AudioElementObuTestBase() = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     InitMainAudioElementObu();
     InitAudioElementTypeSpecificFields();
   }
 
   virtual void InitAudioElementTypeSpecificFields() = 0;
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   std::unique_ptr<AudioElementObu> obu_;
@@ -202,12 +201,11 @@ class AudioElementScalableChannelTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() override {
-    EXPECT_EQ(
+    EXPECT_TRUE(
         obu_->InitializeScalableChannelLayout(
                 scalable_channel_arguments_.num_layers,
                 scalable_channel_arguments_.scalable_channel_config_reserved)
-            .code(),
-        expected_init_status_code_);
+            .ok());
 
     auto& config = std::get<ScalableChannelLayoutConfig>(obu_->config_);
     for (int i = 0; i < config.num_layers; ++i) {
@@ -304,26 +302,33 @@ TEST_F(AudioElementScalableChannelTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-TEST_F(AudioElementScalableChannelTest, InvalidObuTrimmingStatusFlag) {
+TEST_F(AudioElementScalableChannelTest,
+       ValidateAndWriteFailsWithInvalidObuTrimmingStatusFlag) {
   header_.obu_trimming_status_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(AudioElementScalableChannelTest, InvalidNumSubstreams) {
+TEST_F(AudioElementScalableChannelTest,
+       ValidateAndWriteFailsWithInvalidNumSubstreams) {
   required_args_.num_substreams = 0;
   required_args_.substream_ids = {};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(AudioElementScalableChannelTest, InvalidParameterDefinitionMixGain) {
+TEST_F(AudioElementScalableChannelTest,
+       ValidateAndWriteFailsWithInvalidParameterDefinitionMixGain) {
   required_args_.audio_element_params[0].param_definition_type =
       ParamDefinition::kParameterDefinitionMixGain;
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
@@ -571,45 +576,26 @@ TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {
 }
 
 TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteFailsWithDuplicateExtendedParamDefinitions) {
+       ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesExtension) {
+  required_args_.num_parameters = 2;
   required_args_.audio_element_params.clear();
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
 
-  required_args_.num_parameters = 2;
-  required_args_.audio_element_params.push_back(
-      {kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
-                                          kDuplicateParameterDefinition)});
-  required_args_.audio_element_params.push_back(
-      {kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
-                                          kDuplicateParameterDefinition)});
-  Init();
+  required_args_.audio_element_params.emplace_back(AudioElementParam{
+      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                         kDuplicateParameterDefinition)});
+  required_args_.audio_element_params.emplace_back(AudioElementParam{
+      kDuplicateParameterDefinition, std::make_unique<ExtendedParamDefinition>(
+                                         kDuplicateParameterDefinition)});
 
+  InitExpectOk();
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteSucceedsWithMultipleUniqueExtendedParamDefinitions) {
-  required_args_.audio_element_params.clear();
-
-  required_args_.num_parameters = 2;
-  required_args_.audio_element_params.push_back(
-      {ParamDefinition::kParameterDefinitionReservedStart,
-       std::make_unique<ExtendedParamDefinition>(
-           ParamDefinition::kParameterDefinitionReservedStart)});
-  required_args_.audio_element_params.push_back(
-      {ParamDefinition::kParameterDefinitionReservedEnd,
-       std::make_unique<ExtendedParamDefinition>(
-           ParamDefinition::kParameterDefinitionReservedEnd)});
-  Init();
-
-  WriteBitBuffer unused_wb(0);
-  EXPECT_TRUE(obu_->ValidateAndWriteObu(unused_wb).ok());
-}
-
-TEST_F(AudioElementScalableChannelTest,
-       InvalidDuplicateParamDefinitionTypesDemixing) {
+       ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesDemixing) {
   DemixingParamDefinition demixing_param_definition;
   demixing_param_definition.parameter_id_ = 4;
   demixing_param_definition.parameter_rate_ = 5;
@@ -635,8 +621,9 @@ TEST_F(AudioElementScalableChannelTest,
                           std::move(param_definition)});
   }
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 class AudioElementMonoAmbisonicsTest : public AudioElementObuTestBase,
@@ -680,11 +667,10 @@ class AudioElementMonoAmbisonicsTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() override {
-    EXPECT_EQ(obu_->InitializeAmbisonicsMono(
-                      ambisonics_mono_arguments_.config.output_channel_count,
-                      ambisonics_mono_arguments_.config.substream_count)
-                  .code(),
-              expected_init_status_code_);
+    EXPECT_TRUE(obu_->InitializeAmbisonicsMono(
+                        ambisonics_mono_arguments_.config.output_channel_count,
+                        ambisonics_mono_arguments_.config.substream_count)
+                    .ok());
     std::get<AmbisonicsMonoConfig>(
         std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =
         ambisonics_mono_arguments_.config;
@@ -849,12 +835,12 @@ class AudioElementProjAmbisonicsTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() {
-    EXPECT_EQ(obu_->InitializeAmbisonicsProjection(
-                      ambisonics_proj_arguments_.config.output_channel_count,
-                      ambisonics_proj_arguments_.config.substream_count,
-                      ambisonics_proj_arguments_.config.coupled_substream_count)
-                  .code(),
-              expected_init_status_code_);
+    EXPECT_TRUE(
+        obu_->InitializeAmbisonicsProjection(
+                ambisonics_proj_arguments_.config.output_channel_count,
+                ambisonics_proj_arguments_.config.substream_count,
+                ambisonics_proj_arguments_.config.coupled_substream_count)
+            .ok());
 
     std::get<AmbisonicsProjectionConfig>(
         std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =

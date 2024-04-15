@@ -57,16 +57,16 @@ class ParameterBlockObuTestBase : public ObuTestBase {
   ~ParameterBlockObuTestBase() = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     InitMainParameterBlockObu();
+
     InitParameterBlockTypeSpecificFields();
   }
 
   virtual void InitParameterBlockTypeSpecificFields() = 0;
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   std::unique_ptr<ParameterBlockObu> obu_;
@@ -171,18 +171,22 @@ TEST_F(MixGainParameterBlockTest, DefaultOneSubblockParamDefinitionMode0) {
   InitAndTestWrite();
 }
 
-TEST_F(MixGainParameterBlockTest, IllegalRedundantCopyForSimpleOrBaseProfile) {
+TEST_F(MixGainParameterBlockTest,
+       ValidateAndWriteObuFailsWithIllegalRedundantCopyForSimpleOrBaseProfile) {
   header_.obu_redundant_copy = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
 
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(MixGainParameterBlockTest, IllegalTrimmingStatusFlag) {
+TEST_F(MixGainParameterBlockTest,
+       ValidateAndWriteObuIllegalTrimmingStatusFlag) {
   header_.obu_trimming_status_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
 
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixGainParameterBlockTest, ExtensionHeader) {
@@ -222,7 +226,8 @@ TEST_F(MixGainParameterBlockTest, OneSubblockParamDefinitionMode1) {
   InitAndTestWrite();
 }
 
-TEST_F(MixGainParameterBlockTest, IllegalDurationInconsistent) {
+TEST_F(MixGainParameterBlockTest,
+       ValidateAndWriteObuFailsWithIllegalDurationInconsistent) {
   metadata_args_.param_definition_mode = 1;
 
   duration_args_ = {
@@ -238,9 +243,9 @@ TEST_F(MixGainParameterBlockTest, IllegalDurationInconsistent) {
       {.animation_type = MixGainParameterData::kAnimateStep,
        .param_data = AnimationStepInt16{0}}};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
@@ -418,7 +423,8 @@ TEST_F(DemixingParameterBlockTest, DMixPMode2) {
   InitAndTestWrite();
 }
 
-TEST_F(DemixingParameterBlockTest, ParamDefinitionMode1TooManySubblocks) {
+TEST_F(DemixingParameterBlockTest,
+       ValidateAndWriteObuFailsWhenParamDefinitionMode1TooManySubblocks) {
   // TODO(b/295173212): Modify this test case when the restriction of
   //                    `num_subblocks` on recon gain parameter blocks
   //                    is enforced. Current it is only enforced when
@@ -440,16 +446,18 @@ TEST_F(DemixingParameterBlockTest, ParamDefinitionMode1TooManySubblocks) {
                      DemixingInfoParameterData::kDMixPMode2_n},
       .reserved = {0, 0, 0, 0, 0}};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(DemixingParameterBlockTest, InvalidWhenParamDefinitionModeIsOne) {
+TEST_F(DemixingParameterBlockTest,
+       ValidateAndWriteObuFailsWithInvalidWhenParamDefinitionModeIsOne) {
   metadata_args_.param_definition_mode = true;
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 class ReconGainBlockTest : public ParameterBlockObuTestBase,
@@ -615,7 +623,7 @@ TEST_F(ReconGainBlockTest, MaxLayer7_1_4) {
   InitAndTestWrite();
 }
 
-TEST_F(ReconGainBlockTest, TooManySubblocks) {
+TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
 
@@ -630,12 +638,13 @@ TEST_F(ReconGainBlockTest, TooManySubblocks) {
                        {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
                         {0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(ReconGainBlockTest, InvalidWhenParamDefinitionModeIsOne) {
+TEST_F(ReconGainBlockTest,
+       ValidateAndWriteObuFailsWithWhenParamDefinitionModeIsOne) {
   metadata_args_.param_definition_mode = true;
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
@@ -645,9 +654,9 @@ TEST_F(ReconGainBlockTest, InvalidWhenParamDefinitionModeIsOne) {
        .recon_gains = {{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
                         {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,

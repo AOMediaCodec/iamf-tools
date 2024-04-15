@@ -12,7 +12,6 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
         "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest",
     ],
 )

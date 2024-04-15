@@ -52,15 +52,14 @@ class IASequenceHeaderObuTestBase : public ObuTestBase {
   ~IASequenceHeaderObuTestBase() override = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     obu_ = std::make_unique<IASequenceHeaderObu>(header_, init_args_.ia_code,
                                                  init_args_.primary_profile,
                                                  init_args_.additional_profile);
   }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   IASequenceHeaderInitArgs init_args_;
@@ -71,28 +70,39 @@ class IASequenceHeaderObuTestBase : public ObuTestBase {
 class IASequenceHeaderObuTest : public IASequenceHeaderObuTestBase,
                                 public testing::Test {};
 
-TEST_F(IASequenceHeaderObuTest, UnsupportedPrimaryProfile2) {
+TEST_F(IASequenceHeaderObuTest,
+       ValidateAndWriteFailsWithUnsupportedPrimaryProfile2) {
   init_args_.primary_profile = static_cast<ProfileVersion>(2);
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(IASequenceHeaderObuTest, UnsupportedPrimaryProfile255) {
+TEST_F(IASequenceHeaderObuTest,
+       ValidateAndWriteFailsWithUnsupportedPrimaryProfile255) {
   init_args_.primary_profile = static_cast<ProfileVersion>(255);
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(IASequenceHeaderObuTest, IllegalIACode) {
+TEST_F(IASequenceHeaderObuTest, ValidateAndWriteFailsWithIllegalIACode) {
   init_args_.ia_code = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(IASequenceHeaderObuTest, IllegalIACodeUppercase) {
+TEST_F(IASequenceHeaderObuTest,
+       ValidateAndWriteFailsWithIllegalIACodeUppercase) {
   init_args_.ia_code = 0x49414d46u;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(IASequenceHeaderObuTest, DefaultSimpleProfile) { InitAndTestWrite(); }
@@ -127,10 +137,13 @@ TEST_F(IASequenceHeaderObuTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-TEST_F(IASequenceHeaderObuTest, IllegalTrimmingStatusFlag) {
+TEST_F(IASequenceHeaderObuTest,
+       ValidateAndWriteFailsWithIllegalTrimmingStatusFlag) {
   header_.obu_trimming_status_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(IASequenceHeaderObuTest, BaseProfileBackwardsCompatible) {

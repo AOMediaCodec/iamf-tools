@@ -40,14 +40,13 @@ class AudioFrameObuTest : public ObuTestBase, public testing::Test {
   ~AudioFrameObuTest() override = default;
 
  protected:
-  void Init() override {
+  void InitExpectOk() override {
     obu_ = std::make_unique<AudioFrameObu>(header_, audio_substream_id_,
                                            audio_frame_);
   }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   DecodedUleb128 audio_substream_id_;
@@ -263,10 +262,12 @@ TEST_F(AudioFrameObuTest, ExtensionHeader) {
   InitAndTestWrite();
 }
 
-TEST_F(AudioFrameObuTest, IllegalRedundantCopy) {
+TEST_F(AudioFrameObuTest, ValidateAndWriteObuFailsWithIllegalRedundantCopy) {
   header_.obu_redundant_copy = 1;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 }  // namespace

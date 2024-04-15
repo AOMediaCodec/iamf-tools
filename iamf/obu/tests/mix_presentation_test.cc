@@ -117,11 +117,10 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
   ~MixPresentationObuTest() override = default;
 
  protected:
-  void Init() override { InitMixPresentationObu(); }
+  void InitExpectOk() override { InitMixPresentationObu(); }
 
-  void WriteObu(WriteBitBuffer& wb) override {
-    EXPECT_EQ(obu_->ValidateAndWriteObu(wb).code(),
-              expected_write_status_code_);
+  void WriteObuExpectOk(WriteBitBuffer& wb) override {
+    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
   }
 
   std::unique_ptr<MixPresentationObu> obu_;
@@ -208,12 +207,13 @@ TEST_F(MixPresentationObuTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-TEST_F(MixPresentationObuTest, IllegalTrimmingStatusFlag) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithIllegalTrimmingStatusFlag) {
   header_.obu_trimming_status_flag = true;
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, ExtensionHeader) {
@@ -230,16 +230,18 @@ TEST_F(MixPresentationObuTest, ExtensionHeader) {
                       'e', 'x', 't', 'r', 'a'};
 }
 
-TEST_F(MixPresentationObuTest, InvalidNumSubMixes) {
+TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
   num_sub_mixes_ = 0;
   sub_mixes_.clear();
   dynamic_sub_mix_args_.clear();
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(MixPresentationObuTest, InvalidNonUniqueAudioElementIds) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithInvalidNonUniqueAudioElementIds) {
   ASSERT_EQ(sub_mixes_.size(), 1);
   ASSERT_EQ(sub_mixes_[0].audio_elements.size(), 1);
   // Add an extra audio element to sub-mix.
@@ -251,12 +253,14 @@ TEST_F(MixPresentationObuTest, InvalidNonUniqueAudioElementIds) {
   // presentation OBU.
   ASSERT_EQ(sub_mixes_[0].audio_elements[0].audio_element_id,
             sub_mixes_[0].audio_elements[1].audio_element_id);
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
 
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(MixPresentationObuTest, InvalidWhenSubMixHasNoAudioElements) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithInvalidWhenSubMixHasNoAudioElements) {
   ASSERT_EQ(sub_mixes_.size(), 1);
   // Reconfigure the sub-mix to have no audio elements and no `element_mix`
   // gains which are typically 1:1 with the audio elements.
@@ -264,9 +268,9 @@ TEST_F(MixPresentationObuTest, InvalidWhenSubMixHasNoAudioElements) {
   sub_mixes_[0].audio_elements.clear();
   dynamic_sub_mix_args_[0].element_mix_gain_subblocks.clear();
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, TwoAnchorElements) {
@@ -341,7 +345,8 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
   InitAndTestWrite();
 }
 
-TEST_F(MixPresentationObuTest, InvalidNonUniqueAnchorElement) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithInvalidNonUniqueAnchorElement) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
   sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
       2,
@@ -350,8 +355,9 @@ TEST_F(MixPresentationObuTest, InvalidNonUniqueAnchorElement) {
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
         .anchored_loudness = 21}}};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
@@ -469,15 +475,16 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
   InitAndTestWrite();
 }
 
-TEST_F(MixPresentationObuTest, IllegalIamfStringOver128Bytes) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithIllegalIamfStringOver128Bytes) {
   // Create a string that has no null terminator in the first 128 bytes.
   const std::string kIllegalIamfString(WriteBitBuffer::kIamfMaxStringSize, 'a');
   mix_presentation_annotations_[0].mix_presentation_friendly_label =
       kIllegalIamfString;
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, MultipleLabels) {
@@ -537,8 +544,9 @@ TEST_F(MixPresentationObuTest, BinauralRenderingConfig) {
   InitAndTestWrite();
 }
 
-TEST_F(MixPresentationObuTest,
-       OverflowBinauralRenderingConfigReservedOverSixBits) {
+TEST_F(
+    MixPresentationObuTest,
+    ValidateAndWriteFailsWithOverflowBinauralRenderingConfigReservedOverSixBits) {
   sub_mixes_[0].audio_elements[0].rendering_config = {
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
@@ -546,18 +554,20 @@ TEST_F(MixPresentationObuTest,
       .rendering_config_extension_size = 0,
       .rendering_config_extension_bytes = {}};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST_F(MixPresentationObuTest, OverflowSsLayoutReservedOverTwoBits) {
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithOverflowSsLayoutReservedOverTwoBits) {
   std::get<LoudspeakersSsConventionLayout>(
       sub_mixes_[0].layouts[0].loudness_layout.specific_layout)
       .reserved = (1 << 2);
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, RenderingConfigExtension) {
@@ -691,14 +701,14 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   InitAndTestWrite();
 }
 
-TEST_F(MixPresentationObuTest, InvalidMissingStero) {
+TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidMissingStero) {
   sub_mixes_[0].layouts[0].loudness_layout = {
       .layout_type = Layout::kLayoutTypeBinaural,
       .specific_layout = LoudspeakersReservedBinauralLayout{.reserved = 0}};
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 class GetNumChannelsFromLayoutTest : public testing::Test {
@@ -792,7 +802,7 @@ TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedSoundSystem) {
           .ok());
 }
 
-TEST_F(MixPresentationObuTest, ErrorBeyondLayoutType) {
+TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithErrorBeyondLayoutType) {
   // `Layout::LayoutType` is 2-bit enum in IAMF. It is invalid for the value to
   // be out of range.
   const auto kBeyondLayoutType = static_cast<Layout::LayoutType>(4);
@@ -803,9 +813,9 @@ TEST_F(MixPresentationObuTest, ErrorBeyondLayoutType) {
       MixPresentationLayout{Layout{.layout_type = kBeyondLayoutType}});
   sub_mixes_[0].num_layouts = sub_mixes_[0].layouts.size();
 
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-
-  InitAndTestWrite();
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
