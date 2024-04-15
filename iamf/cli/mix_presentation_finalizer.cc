@@ -106,14 +106,18 @@ absl::Status MixPresentationFinalizerBase::CopyUserLayoutExtension(
   return absl::OkStatus();
 }
 
-absl::Status DummyMixPresentationFinalizer::Finalize(
+absl::Status
+MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer::Finalize(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>&,
     const IdTimeLabeledFrameMap&, const std::list<ParameterBlockWithData>&,
     std::list<MixPresentationObu>& mix_presentation_obus) {
-  LOG(INFO) << "Calling DummyMixPresentationFinalizer::Finalize():";
-  LOG(INFO) << "  Loudness information will be copied from user "
+  LOG(INFO) << "Calling "
+               "MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer"
+               "::Finalize():";
+  LOG(INFO) << "  Loudness information may be copied from user "
             << "provided values.";
 
+  // TODO(b/332567539): Render and measure loudness for certain layouts.
   int metadata_index = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     for (int sub_mix_index = 0;

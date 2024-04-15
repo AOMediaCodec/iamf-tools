@@ -99,9 +99,15 @@ class MixPresentationFinalizerBase {
       mix_presentation_metadata_;
 };
 
-class DummyMixPresentationFinalizer : public MixPresentationFinalizerBase {
+/*\!brief Finalizer that measures loudness or echoes user provided loudness. */
+class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer
+    : public MixPresentationFinalizerBase {
  public:
-  explicit DummyMixPresentationFinalizer(
+  /*\!brief Constructor.
+   *
+   * \param mix_presentation_metadata Input mix presentation metadata.
+   */
+  explicit MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer(
       const ::google::protobuf::RepeatedPtrField<
           iamf_tools_cli_proto::MixPresentationObuMetadata>&
           mix_presentation_metadata)
@@ -109,15 +115,18 @@ class DummyMixPresentationFinalizer : public MixPresentationFinalizerBase {
 
   /*\!brief Destructor.
    */
-  ~DummyMixPresentationFinalizer() override = default;
+  ~MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer() override =
+      default;
 
   /*\!brief Finalizes the list of Mix Presentation OBUs.
    *
-   * Ignores most inputs and just copies user provided values over.
+   * Attempt to render the layouts associated with the mix presentation OBU and
+   * populate the `LoudnessInfo` accurately. May fall back to simply copying
+   * user provided loudness information for any number of layouts.
    *
-   * \param audio_elements Ignored input Audio Element OBUs with data.
-   * \param id_to_time_to_labeled_frame Ignored data structure of samples.
-   * \param parameter_blocks Ignored input Parameter Block OBUs.
+   * \param audio_elements Input Audio Element OBUs with data.
+   * \param id_to_time_to_labeled_frame Data structure of samples.
+   * \param parameter_blocks Input Parameter Block OBUs.
    * \param mix_presentation_obus Output list of OBUs to finalize.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */

@@ -224,9 +224,10 @@ TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
   EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
 }
 
-class DummyMixPresentationFinalizerTest : public ::testing::Test {
+class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest
+    : public ::testing::Test {
  public:
-  DummyMixPresentationFinalizerTest() {
+  MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest() {
     // Initialize the input OBUs which will have loudness finalized.
     AddMixPresentationObuWithAudioElementIds(
         /*mix_presentation_id=*/42, /*audio_element_id=*/300,
@@ -242,7 +243,8 @@ class DummyMixPresentationFinalizerTest : public ::testing::Test {
 
   void InitAndTestGenerate(
       absl::StatusCode expected_finalize_status_code = absl::StatusCode::kOk) {
-    DummyMixPresentationFinalizer finalizer(mix_presentation_metadata_);
+    MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer finalizer(
+        mix_presentation_metadata_);
 
     // `Finalize()` ignores most of the arguments.
     EXPECT_EQ(finalizer.Finalize({}, {}, {}, obus_to_finalize_).code(),
@@ -261,13 +263,14 @@ class DummyMixPresentationFinalizerTest : public ::testing::Test {
   std::list<MixPresentationObu> expected_obus_;
 };
 
-TEST_F(DummyMixPresentationFinalizerTest, NoMixPresentationObus) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       NoMixPresentationObus) {
   obus_to_finalize_.clear();
   expected_obus_.clear();
   InitAndTestGenerate();
 }
 
-TEST_F(DummyMixPresentationFinalizerTest,
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
        CopiesIntegratedLoudnessAndDigitalPeak) {
   // Omit unused user metadata.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -296,7 +299,8 @@ TEST_F(DummyMixPresentationFinalizerTest,
   InitAndTestGenerate();
 }
 
-TEST_F(DummyMixPresentationFinalizerTest, CopiesTruePeak) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       CopiesTruePeak) {
   // Omit unused user metadata.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -328,7 +332,8 @@ TEST_F(DummyMixPresentationFinalizerTest, CopiesTruePeak) {
   InitAndTestGenerate();
 }
 
-TEST_F(DummyMixPresentationFinalizerTest, InvalidInconsistentInfoType) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       InvalidInconsistentInfoType) {
   // Omit unused user metadata.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -356,7 +361,8 @@ TEST_F(DummyMixPresentationFinalizerTest, InvalidInconsistentInfoType) {
   InitAndTestGenerate(absl::StatusCode::kInvalidArgument);
 }
 
-TEST_F(DummyMixPresentationFinalizerTest, CopiesAnchoredLoudness) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       CopiesAnchoredLoudness) {
   // Omit unused user metadata.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -407,7 +413,8 @@ TEST_F(DummyMixPresentationFinalizerTest, CopiesAnchoredLoudness) {
   InitAndTestGenerate();
 }
 
-TEST_F(DummyMixPresentationFinalizerTest, CopiesExtensionLoudness) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       CopiesExtensionLoudness) {
   // Omit unused user metadata.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -448,7 +455,8 @@ TEST_F(DummyMixPresentationFinalizerTest, CopiesExtensionLoudness) {
   InitAndTestGenerate();
 }
 
-TEST_F(DummyMixPresentationFinalizerTest, CopiesMultipleObus) {
+TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
+       CopiesMultipleObus) {
   expected_obus_.clear();
   obus_to_finalize_.clear();
 
