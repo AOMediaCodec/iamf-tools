@@ -32,9 +32,11 @@ namespace iamf_tools {
  * - Call `Flush()` to retrieve finished frames, in the order they were
  *   received by `RenderLabeledFrame()`.
  * - Call `Finalize()` to close the renderer, telling it to finish rendering
- *   any remaining frames, which can be retrieved one last time via `Flush()`.
- *   After calling `Finalize()`, any subsequent call to `RenderAudioFrame()`
- *   may fail.
+ *   any remaining frames. Afterwards `IsFinalized()` should be called until it
+ *   returns true, then audio frames should be  retrieved one last time via
+ *   `Flush()`. After calling `Finalize()`, any subsequent call to
+ *   `RenderAudioFrame()` may fail.
+ * - Call `IsFinalized()` to ensure the renderer is Finalized.
  */
 class AudioElementRendererBase {
  public:
@@ -74,12 +76,25 @@ class AudioElementRendererBase {
 
   /*!\brief Finalizes the renderer. Waits for it to finish any remaining frames.
    *
-   * This function MUST be called at most once before flushing the last batch
-   * of encoded audio frames.
-   *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  virtual absl::Status Finalize() { return absl::OkStatus(); }
+  virtual absl::Status Finalize() {
+    absl::MutexLock lock(&mutex_);
+    is_finalized_ = true;
+    return absl::OkStatus();
+  }
+
+  /*!\brief Checks if the renderer is finalized.
+   *
+   * Sub-classes should override this if the renderer is not finalized directly
+   * in the body of `Finalize()`.
+   *
+   * \return `true` if the render is finalized. `false` otherwise.
+   */
+  virtual bool IsFinalized() const {
+    absl::MutexLock lock(&mutex_);
+    return is_finalized_;
+  }
 
  protected:
   /*\!brief Constructor. */
@@ -88,6 +103,7 @@ class AudioElementRendererBase {
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
   std::vector<int32_t> rendered_samples_ ABSL_GUARDED_BY(mutex_);
+  bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
 };
 
 }  // namespace iamf_tools

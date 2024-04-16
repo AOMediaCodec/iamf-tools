@@ -179,9 +179,21 @@ class MockAudioElementRenderer : public AudioElementRendererBase {
   }
 };
 
+TEST(AudioElementRendererBase, IsFinalizedReturnsFalseBeforeFinalizeIsCalled) {
+  MockAudioElementRenderer renderer;
+  EXPECT_FALSE(renderer.IsFinalized());
+}
+
+TEST(AudioElementRendererBase, BaseImmediatelyAfterFinalizeIsFinalized) {
+  MockAudioElementRenderer renderer;
+  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_TRUE(renderer.IsFinalized());
+}
+
 TEST(AudioElementRendererBase, FinalizeAndFlushWithOutRenderingSucceeds) {
   MockAudioElementRenderer renderer;
   EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_TRUE(renderer.IsFinalized());
   std::vector<int32_t> rendered_samples;
   EXPECT_TRUE(renderer.Flush(rendered_samples).ok());
   EXPECT_TRUE(rendered_samples.empty());
@@ -193,6 +205,8 @@ TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
 
   EXPECT_TRUE(renderer.RenderLabeledFrame({}).ok());
   EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_TRUE(renderer.IsFinalized());
+
   EXPECT_TRUE(renderer.Flush(vector_to_collect_rendered_samples).ok());
   EXPECT_FALSE(vector_to_collect_rendered_samples.empty());
   vector_to_collect_rendered_samples.clear();
@@ -212,6 +226,8 @@ TEST(AudioElementRendererBase, AppendsWhenFlushing) {
 
   EXPECT_TRUE(renderer.RenderLabeledFrame({}).ok());
   EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_TRUE(renderer.IsFinalized());
+
   EXPECT_TRUE(renderer.Flush(vector_to_collect_rendered_samples).ok());
   EXPECT_EQ(vector_to_collect_rendered_samples, expected_samples);
 }
