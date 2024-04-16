@@ -180,21 +180,21 @@ absl::Status MixPresentationLayoutHandler(
   auto* layout = mix_presentation_sub_mix.add_layouts();
   const auto& loudness_layout = layout->mutable_loudness_layout();
 
-  // If typeDefinition is binaural, set layout_type as LAYOUT_TYPE_BINAURAL else
-  // LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION.
+  // If the input is binaural, configure a "reserved or binaural" layout.
+  // Otherwise configure an "ss convention" layout.
   if (input_layout == IamfInputLayout::kBinaural) {
     loudness_layout->set_layout_type(
         iamf_tools_cli_proto::LAYOUT_TYPE_BINAURAL);
+    loudness_layout->mutable_reserved_or_binaural_layout()->set_reserved(0);
   } else {
     loudness_layout->set_layout_type(
         iamf_tools_cli_proto::LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION);
+    const auto& sound_system = LookupSoundSystemFromInputLayout(input_layout);
+    if (!sound_system.ok()) {
+      return sound_system.status();
+    }
+    loudness_layout->mutable_ss_layout()->set_sound_system(*sound_system);
   }
-
-  const auto& sound_system = LookupSoundSystemFromInputLayout(input_layout);
-  if (!sound_system.ok()) {
-    return sound_system.status();
-  }
-  loudness_layout->mutable_ss_layout()->set_sound_system(*sound_system);
 
   return CopyLoudness(loudness_metadata, *layout->mutable_loudness());
 }
@@ -208,9 +208,9 @@ bool IsChannelBasedAndNotStereo(IamfInputLayout input_layout) {
     case k5_1_4:
     case k7_1:
     case k7_1_4:
+    case kBinaural:
       return true;
     case kStereo:
-    case kBinaural:
     case kAmbisonicsOrder1:
     case kAmbisonicsOrder2:
     case kAmbisonicsOrder3:

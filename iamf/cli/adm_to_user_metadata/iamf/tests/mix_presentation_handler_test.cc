@@ -136,7 +136,7 @@ TEST(PopulateMixPresentation, SetsStereoRenderingModeForStereoAudioObject) {
             iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_STEREO);
 }
 
-TEST(PopulateMixPresentation, SetsBinauralRendringModeForBinauralAudioObject) {
+TEST(PopulateMixPresentation, SetsBinauralRenderingModeForBinauralAudioObject) {
   const auto& mix_presentation_metadata =
       GetMixObuMetataExpectOk({GetBinauralAudioObject()});
 
@@ -218,6 +218,29 @@ TEST(PopulateMixPresentation, PopulatesStereoAndHighestLayout) {
   const auto& layout_5_1 = mix_presentation_metadata.sub_mixes(0).layouts(1);
   EXPECT_EQ(layout_5_1.loudness_layout().ss_layout().sound_system(),
             iamf_tools_cli_proto::SOUND_SYSTEM_B_0_5_0);
+}
+
+TEST(PopulateMixPresentation,
+     PopulatesExactlyOneBinauralLayoutForBinauralAudioObject) {
+  const auto& mix_presentation_metadata =
+      GetMixObuMetataExpectOk({GetBinauralAudioObject()});
+
+  // Find and validate the singular binaural layout. The spec does not require
+  // it to be in any particular index.
+  bool found_binaural_layout = false;
+  for (const auto& layout : mix_presentation_metadata.sub_mixes(0).layouts()) {
+    if (layout.loudness_layout().layout_type() !=
+        iamf_tools_cli_proto::LAYOUT_TYPE_BINAURAL) {
+      continue;
+    }
+    EXPECT_FALSE(found_binaural_layout)
+        << "Found more than one binaural layout.";
+    found_binaural_layout = true;
+    EXPECT_TRUE(layout.loudness_layout().has_reserved_or_binaural_layout());
+    EXPECT_EQ(layout.loudness_layout().reserved_or_binaural_layout().reserved(),
+              0);
+  }
+  EXPECT_TRUE(found_binaural_layout) << "Found no binaural layouts.";
 }
 
 TEST(PopulateMixPresentation, AlwaysPopulatesExactlyOneSubmix) {
