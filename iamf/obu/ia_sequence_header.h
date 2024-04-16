@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -46,6 +47,20 @@ class IASequenceHeaderObu : public ObuBase {
         primary_profile_(primary_profile),
         additional_profile_(additional_profile) {}
 
+  /*!\brief Creates a `IASequenceHeaderObu` from a `ReadBitBuffer`.
+   *
+   * This function is designed to be used from the perspective of the decoder.
+   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * therefore it can fail.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param rb `ReadBitBuffer` where the `IASequenceHeaderObu` data is stored.
+   *     Data read from the buffer is consumed.
+   * \return a `IASequenceHeaderObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<IASequenceHeaderObu> CreateFromBuffer(
+      const ObuHeader& header, ReadBitBuffer& rb);
+
   /*\!brief Move constructor.*/
   IASequenceHeaderObu(IASequenceHeaderObu&& other) = default;
 
@@ -69,6 +84,12 @@ class IASequenceHeaderObu : public ObuBase {
   const ProfileVersion additional_profile_;
 
  private:
+  // Used only by the factory create function.
+  explicit IASequenceHeaderObu(const ObuHeader& header)
+      : ObuBase(header, kObuIaSequenceHeader),
+        ia_code_(kIaCode),
+        primary_profile_(ProfileVersion::kIamfBaseProfile),
+        additional_profile_(ProfileVersion::kIamfBaseProfile) {}
   /*\!brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.

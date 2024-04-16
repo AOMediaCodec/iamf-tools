@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_base.h"
@@ -217,6 +218,14 @@ TEST_F(IASequenceHeaderObuTest, NonMinimalLebGeneratorAffectsObuHeader) {
                       // `extension_header_bytes`.
                       'e', 'x', 't', 'r', 'a'};
   InitAndTestWrite();
+}
+
+// TODO(b/329705593): Update test once ValidateAndReadPayload is implemented.
+TEST(CreateFromBuffer, IsNotSupported) {
+  std::vector<uint8_t> source;
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  EXPECT_FALSE(IASequenceHeaderObu::CreateFromBuffer(header, buffer).ok());
 }
 
 }  // namespace

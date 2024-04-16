@@ -20,6 +20,7 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
 
@@ -41,6 +42,13 @@ absl::Status IASequenceHeaderObu::Validate() const {
       ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
   RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
   return absl::OkStatus();
+}
+
+absl::StatusOr<IASequenceHeaderObu> IASequenceHeaderObu::CreateFromBuffer(
+    const ObuHeader& header, ReadBitBuffer& rb) {
+  IASequenceHeaderObu ia_sequence_header_obu(header);
+  RETURN_IF_NOT_OK(ia_sequence_header_obu.ValidateAndReadPayload(rb));
+  return ia_sequence_header_obu;
 }
 
 void IASequenceHeaderObu::PrintObu() const {
