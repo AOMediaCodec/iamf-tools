@@ -15,19 +15,21 @@
 #include <string>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/common/macros.h"
 
 namespace iamf_tools {
 
 namespace {
 
 // Returns the common number of time ticks to be rendered for the requested
-// labels in `labeled_frame`. This represents the number of time ticks in the
-// rendered audio after trimming.
+// labels or associated demixed label in `labeled_frame`. This represents the
+// number of time ticks in the rendered audio after trimming.
 absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
     const LabeledFrame& labeled_frame,
     const std::vector<std::string>& ordered_labels) {
@@ -37,16 +39,20 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
     if (label.empty()) {
       continue;
     }
-    auto it = labeled_frame.label_to_samples.find(label);
-    if (it == labeled_frame.label_to_samples.end()) {
+
+    const std::vector<int32_t>* samples_to_render = nullptr;
+    RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
+        label, labeled_frame.label_to_samples, &samples_to_render));
+
+    if (samples_to_render == nullptr) {
       return absl::InvalidArgumentError(
-          absl::StrCat("Label ", label, " not found."));
+          absl::StrCat("Label ", label, " or D_", label, " not found."));
     } else if (num_raw_time_ticks == kUnknownNumTimeTicks) {
-      num_raw_time_ticks = it->second.size();
-    } else if (num_raw_time_ticks != it->second.size()) {
+      num_raw_time_ticks = samples_to_render->size();
+    } else if (num_raw_time_ticks != samples_to_render->size()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "All labels must have the same number of samples ", label, " (",
-          it->second.size(), " vs. ", num_raw_time_ticks, ")"));
+          samples_to_render->size(), " vs. ", num_raw_time_ticks, ")"));
     }
   }
 
@@ -92,13 +98,18 @@ absl::Status AudioElementRendererBase::ArrangeSamplesToRender(
       continue;
     }
 
+    const std::vector<int32_t>* channel_samples = nullptr;
+    RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
+        channel_label, labeled_frame.label_to_samples, &channel_samples));
+    // The lookup should not fail because its presence was already checked in
+    // `GetCommonNumTrimmedTimeTicks`.
+    CHECK_NE(channel_samples, nullptr);
+
     // Grab the entire time axes for this label, Skip over any samples that
     // should be trimmed.
-    const auto& channel_samples =
-        labeled_frame.label_to_samples.at(channel_label);
     for (int time = 0; time < *num_trimmed_time_ticks; ++time) {
       samples_to_render[time][channel] =
-          channel_samples[time + labeled_frame.samples_to_trim_at_start];
+          (*channel_samples)[time + labeled_frame.samples_to_trim_at_start];
     }
   }
 

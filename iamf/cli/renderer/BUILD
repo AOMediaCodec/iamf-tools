@@ -6,7 +6,9 @@ cc_library(
     hdrs = ["audio_element_renderer_base.h"],
     deps = [
         "//iamf/cli:demixing_module",
+        "//iamf/common:macros",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

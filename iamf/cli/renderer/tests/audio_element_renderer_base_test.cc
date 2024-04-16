@@ -45,6 +45,19 @@ TEST(ArrangeSamplesToRender, ArrangesSamplesInTimeChannelAxes) {
             std::vector<std::vector<int32_t>>({{0, 10}, {1, 11}, {2, 12}}));
 }
 
+TEST(ArrangeSamplesToRender, FindsDemixedLabels) {
+  const LabeledFrame kDemixedTwoLayerStereoFrame = {
+      .label_to_samples = {{"M", {75}}, {"L2", {50}}, {"D_R2", {100}}}};
+  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+
+  std::vector<std::vector<int32_t>> samples;
+  EXPECT_TRUE(AudioElementRendererBase::ArrangeSamplesToRender(
+                  kDemixedTwoLayerStereoFrame, kStereoArrangement, samples)
+                  .ok());
+
+  EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{50, 100}}));
+}
+
 TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
   const LabeledFrame kStereoLabeledFrameWithExtraLabel = {
       .label_to_samples = {{"L2", {0}}, {"R2", {10}}, {"LFE", {999}}}};
