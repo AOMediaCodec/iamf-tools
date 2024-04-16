@@ -16,6 +16,7 @@ cc_test(
     name = "audio_element_renderer_passthrough_test",
     srcs = ["audio_element_renderer_passthrough_test.cc"],
     deps = [
+        "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",

@@ -25,6 +25,7 @@ cc_library(
         "//iamf/cli:demixing_module",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/common:macros",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/base:no_destructor",
@@ -34,6 +35,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 
