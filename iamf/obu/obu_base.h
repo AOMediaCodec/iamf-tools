@@ -29,8 +29,9 @@ class ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param obu_type `obu_type` of the OBU.
    */
-  ObuBase(const ObuHeader& header, ObuType obu_type)
-      : obu_type_(obu_type), header_(header) {}
+  ObuBase(const ObuHeader& header, ObuType obu_type) : header_(header) {
+    header_.obu_type = obu_type;
+  }
 
   /*\!brief Constructor.
    *
@@ -60,7 +61,6 @@ class ObuBase {
   /*\!brief Prints logging information about the OBU.*/
   virtual void PrintObu() const = 0;
 
-  const ObuType obu_type_;
   ObuHeader header_;
 
  protected:

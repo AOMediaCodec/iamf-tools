@@ -196,6 +196,12 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
   }
 };
 
+TEST_F(MixPresentationObuTest, ConstructorSetsObuTyoe) {
+  InitExpectOk();
+
+  EXPECT_EQ(obu_->header_.obu_type, kObuIaMixPresentation);
+}
+
 TEST_F(MixPresentationObuTest, DefaultSingleStereo) { InitAndTestWrite(); }
 
 TEST_F(MixPresentationObuTest, RedundantCopy) {

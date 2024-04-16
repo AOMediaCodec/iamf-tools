@@ -48,7 +48,7 @@ AudioFrameObu::AudioFrameObu(const ObuHeader& header,
       audio_substream_id_(substream_id) {}
 
 absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
-  if (obu_type_ == kObuIaAudioFrame) {
+  if (header_.obu_type == kObuIaAudioFrame) {
     // The ID is explicitly in the bitstream when `kObuIaAudioFrame`. Otherwise
     // it is implied by `obu_type`.
     RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id_));

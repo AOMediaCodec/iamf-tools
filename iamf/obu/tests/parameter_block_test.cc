@@ -162,6 +162,11 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
   std::vector<MixGainParameterData> mix_gain_param_datas_;
 };
 
+TEST_F(MixGainParameterBlockTest, ConstructSetsObuType) {
+  InitExpectOk();
+  EXPECT_EQ(obu_->header_.obu_type, kObuIaParameterBlock);
+}
+
 TEST_F(MixGainParameterBlockTest, DefaultOneSubblockParamDefinitionMode0) {
   expected_payload_ = {// `parameter_id`.
                        3,

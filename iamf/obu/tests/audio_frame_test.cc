@@ -28,6 +28,21 @@
 namespace iamf_tools {
 namespace {
 
+TEST(AudioFrameConstructor, SetsImplicitObuType0) {
+  AudioFrameObu obu({}, /*audio_substream_id=*/0, {});
+  EXPECT_EQ(obu.header_.obu_type, kObuIaAudioFrameId0);
+}
+
+TEST(AudioFrameConstructor, SetsImplicitObuType17) {
+  AudioFrameObu obu({}, /*audio_substream_id=*/17, {});
+  EXPECT_EQ(obu.header_.obu_type, kObuIaAudioFrameId17);
+}
+
+TEST(AudioFrameConstructor, SetsExplicitObuType) {
+  AudioFrameObu obu({}, /*audio_substream_id=*/18, {});
+  EXPECT_EQ(obu.header_.obu_type, kObuIaAudioFrame);
+}
+
 class AudioFrameObuTest : public ObuTestBase, public testing::Test {
  public:
   AudioFrameObuTest()

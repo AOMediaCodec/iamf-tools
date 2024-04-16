@@ -89,13 +89,16 @@ ObuHeader GetHeaderFromMetadata(
                  extension_header_bytes.begin(),
                  [](char c) { return static_cast<uint8_t>(c); });
 
-  return ObuHeader{input_obu_header.obu_redundant_copy(),
-                   input_obu_header.obu_trimming_status_flag(),
-                   input_obu_header.obu_extension_flag(),
-                   input_obu_header.num_samples_to_trim_at_end(),
-                   input_obu_header.num_samples_to_trim_at_start(),
-                   input_obu_header.extension_header_size(),
-                   extension_header_bytes};
+  return ObuHeader{
+      .obu_redundant_copy = input_obu_header.obu_redundant_copy(),
+      .obu_trimming_status_flag = input_obu_header.obu_trimming_status_flag(),
+      .obu_extension_flag = input_obu_header.obu_extension_flag(),
+      .num_samples_to_trim_at_end =
+          input_obu_header.num_samples_to_trim_at_end(),
+      .num_samples_to_trim_at_start =
+          input_obu_header.num_samples_to_trim_at_start(),
+      .extension_header_size = input_obu_header.extension_header_size(),
+      .extension_header_bytes = extension_header_bytes};
 }
 
 absl::Status CopyDemixingInfoParameterData(

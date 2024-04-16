@@ -62,7 +62,7 @@ bool IsTrimmingStatusFlagAllowed(ObuType type) {
 
 // Validates the OBU and returns an error if anything is non-comforming.
 // Requires that all fields including `obu_size_` are initialized.
-absl::Status Validate(ObuType obu_type, const ObuHeader& header) {
+absl::Status Validate(const ObuHeader& header) {
   // Validate member fields are self-consistent.
   if (!header.obu_extension_flag && header.extension_header_size > 0) {
     LOG(ERROR)
@@ -76,18 +76,18 @@ absl::Status Validate(ObuType obu_type, const ObuHeader& header) {
                                            header.extension_header_size));
 
   // Validate IAMF imposed requirements.
-  if (header.obu_redundant_copy && !IsRedundantCopyAllowed(obu_type)) {
+  if (header.obu_redundant_copy && !IsRedundantCopyAllowed(header.obu_type)) {
     LOG(ERROR)
         << "The redundant copy flag is not allowed to be set for obu_type="
-        << static_cast<int>(obu_type) << ".";
+        << static_cast<int>(header.obu_type) << ".";
     return absl::InvalidArgumentError("");
   }
 
   if (header.obu_trimming_status_flag &&
-      !IsTrimmingStatusFlagAllowed(obu_type)) {
+      !IsTrimmingStatusFlagAllowed(header.obu_type)) {
     LOG(ERROR) << "The trimming status flag flag is not allowed to be set for "
                   "obu_type="
-               << static_cast<int>(obu_type) << ".";
+               << static_cast<int>(header.obu_type) << ".";
     return absl::InvalidArgumentError("");
   }
 
@@ -191,7 +191,7 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
   }
 
   // Validate the OBU.
-  RETURN_IF_NOT_OK(Validate(obu_type, header));
+  RETURN_IF_NOT_OK(Validate(header));
 
   return absl::OkStatus();
 }
@@ -211,8 +211,7 @@ int64_t GetObuPayloadSize(const DecodedUleb128& obu_size,
 
 }  // namespace
 
-absl::Status ObuHeader::ValidateAndWrite(ObuType obu_type,
-                                         int64_t payload_serialized_size,
+absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
                                          WriteBitBuffer& wb) const {
   DecodedUleb128 obu_size;
   RETURN_IF_NOT_OK(GetObuSizeAndValidate(wb.leb_generator_, *this, obu_type,
@@ -238,10 +237,10 @@ absl::Status ObuHeader::ValidateAndWrite(ObuType obu_type,
 // parameters. Note that `output_payload_serialized_size` is a derived value
 // from `obu_size`, as this is the value the caller is more interested in.
 absl::Status ObuHeader::ValidateAndRead(
-    ReadBitBuffer& rb, ObuType& output_obu_type,
-    int64_t& output_payload_serialized_size) {
-  uint64_t obu_type = 0;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type));
+    ReadBitBuffer& rb, int64_t& output_payload_serialized_size) {
+  uint64_t obu_type_uint64_t = 0;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type_uint64_t));
+  obu_type = static_cast<ObuType>(obu_type_uint64_t);
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_redundant_copy));
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_trimming_status_flag));
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_extension_flag));
@@ -266,14 +265,13 @@ absl::Status ObuHeader::ValidateAndRead(
       obu_size, num_samples_to_trim_at_end_size,
       num_samples_to_trim_at_start_size, extension_header_size_size,
       extension_header_bytes.size());
-  output_obu_type = static_cast<ObuType>(obu_type);
 
-  RETURN_IF_NOT_OK(Validate(output_obu_type, *this));
+  RETURN_IF_NOT_OK(Validate(*this));
 
   return absl::OkStatus();
 }
 
-void ObuHeader::Print(const LebGenerator& leb_generator, ObuType obu_type,
+void ObuHeader::Print(const LebGenerator& leb_generator,
                       int64_t payload_serialized_size) const {
   // Generate the header. Solely for the purpose of getting the correct
   // `obu_size`.

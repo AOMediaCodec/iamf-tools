@@ -25,6 +25,13 @@
 namespace iamf_tools {
 namespace {
 
+TEST(IaSequenceHeaderConstructor, SetsObuType) {
+  IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
+                          ProfileVersion::kIamfSimpleProfile,
+                          ProfileVersion::kIamfSimpleProfile);
+  EXPECT_EQ(obu.header_.obu_type, kObuIaSequenceHeader);
+}
+
 struct IASequenceHeaderInitArgs {
   uint32_t ia_code;
   ProfileVersion primary_profile;

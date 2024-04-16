@@ -27,6 +27,14 @@
 namespace iamf_tools {
 namespace {
 
+TEST(ArbitraryObuConstructor, SetsObuType) {
+  const ObuType kExpectedObuType = kObuIaReserved25;
+  ArbitraryObu obu(kExpectedObuType, {}, {},
+                   ArbitraryObu::kInsertionHookBeforeDescriptors);
+
+  EXPECT_EQ(obu.header_.obu_type, kExpectedObuType);
+}
+
 class ArbitraryObuTest : public ObuTestBase, public testing::Test {
  public:
   ArbitraryObuTest()

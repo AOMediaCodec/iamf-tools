@@ -24,6 +24,12 @@
 namespace iamf_tools {
 namespace {
 
+TEST(TemporalDelimiterConstructor, SetsObuType) {
+  TemporalDelimiterObu obu({});
+
+  EXPECT_EQ(obu.header_.obu_type, kObuIaTemporalDelimiter);
+}
+
 class TemporalDelimiterTestBase : public ObuTestBase {
  public:
   TemporalDelimiterTestBase()

@@ -64,7 +64,6 @@ struct ObuHeader {
 
   /*!\brief Validates and writes an `ObuHeader`.
    *
-   * \param obu_type `obu_type` of the output OBU.
    * \param payload_serialized_size `payload_serialized_size` of the output OBU.
    *     The value MUST be able to be cast to `uint32_t` without losing data.
    * \param wb Buffer to write to.
@@ -75,34 +74,32 @@ struct ObuHeader {
    *     calculated `obu_size_` larger than IAMF limitations. Or a specific
    *     status if the write fails.
    */
-  absl::Status ValidateAndWrite(ObuType obu_type,
-                                int64_t payload_serialized_size,
+  absl::Status ValidateAndWrite(int64_t payload_serialized_size,
                                 WriteBitBuffer& wb) const;
 
   /*!\brief Validates and reads an `ObuHeader`.
    *
    * \param rb Buffer to read from.
-   * \param output_obu_type `output_obu_type` ObuType of the OBU. This is read
-   *      from `rb`.
+
    * \param output_payload_serialized_size `output_payload_serialized_size` Size
    *      of the payload of the OBU.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
    *      the fields are invalid or set in a manner that is inconsistent with
    *      the IAMF specification.
    */
-  absl::Status ValidateAndRead(ReadBitBuffer& rb, ObuType& output_obu_type,
+  absl::Status ValidateAndRead(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
 
   /*!\brief Prints logging information about an `ObuHeader`.
    *
    * \param leb_generator `LebGenerator` to use when calculating `obu_size_`.
-   * \param obu_type `obu_type` of the output OBU.
    * \param payload_serialized_size `payload_serialized_size` of the output OBU.
    *     The value MUST be able to be cast to `uint32_t` without losing data.
    */
-  void Print(const LebGenerator& leb_generator, ObuType obu_type,
+  void Print(const LebGenerator& leb_generator,
              int64_t payload_serialized_size) const;
 
+  ObuType obu_type;
   bool obu_redundant_copy = false;
   bool obu_trimming_status_flag = false;
   bool obu_extension_flag = false;

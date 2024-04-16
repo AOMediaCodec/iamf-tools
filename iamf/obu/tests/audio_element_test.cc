@@ -232,6 +232,11 @@ class AudioElementScalableChannelTest : public AudioElementObuTestBase,
   ScalableChannelArguments scalable_channel_arguments_;
 };
 
+TEST_F(AudioElementScalableChannelTest, ConstructSetsObuType) {
+  InitExpectOk();
+  EXPECT_EQ(obu_->header_.obu_type, kObuIaAudioElement);
+}
+
 TEST_F(AudioElementScalableChannelTest, Default) {
   expected_payload_ = {
       // `audio_element_id`.

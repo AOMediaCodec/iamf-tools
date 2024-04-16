@@ -44,8 +44,7 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
   // Write the header now that the payload size is known.
   const int64_t payload_size_bytes = temp_wb.bit_buffer().size();
 
-  RETURN_IF_NOT_OK(
-      header_.ValidateAndWrite(obu_type_, payload_size_bytes, final_wb));
+  RETURN_IF_NOT_OK(header_.ValidateAndWrite(payload_size_bytes, final_wb));
 
   const int64_t expected_end_payload =
       final_wb.bit_offset() + payload_size_bytes * 8;
@@ -65,7 +64,7 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
 void ObuBase::PrintHeader(int64_t payload_size_bytes) const {
   // TODO(b/299480731): Use the correct `LebGenerator` when printing OBU
   //                    headers.
-  header_.Print(*LebGenerator::Create(), obu_type_, payload_size_bytes);
+  header_.Print(*LebGenerator::Create(), payload_size_bytes);
 }
 
 }  // namespace iamf_tools

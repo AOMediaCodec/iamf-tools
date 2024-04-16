@@ -167,6 +167,12 @@ class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
   }
 };
 
+TEST_F(CodecConfigLpcmTest, ConstructorSetsObuTyoe) {
+  InitExpectOk();
+
+  EXPECT_EQ(obu_->header_.obu_type, kObuIaCodecConfig);
+}
+
 TEST_F(CodecConfigLpcmTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
