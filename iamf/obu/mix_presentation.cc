@@ -278,6 +278,9 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
       "language_labels", language_labels_.size(), count_label_));
+  RETURN_IF_NOT_OK(ValidateUnique(language_labels_.begin(),
+                                  language_labels_.end(), "Language labels"));
+
   for (const auto& language_label : language_labels_) {
     RETURN_IF_NOT_OK(wb.WriteString(language_label));
   }

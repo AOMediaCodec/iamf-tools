@@ -28,9 +28,6 @@
 namespace iamf_tools {
 namespace {
 
-// TODO(b/272518631): Add more "expected failure" tests. Add more "successful"
-//                    test cases to existing tests.
-
 class MixPresentationObuTest : public ObuTestBase, public testing::Test {
  public:
   // Used to populate a `MixPresentationSubMix`.
@@ -234,6 +231,8 @@ TEST_F(MixPresentationObuTest, ExtensionHeader) {
                       5,
                       // `extension_header_bytes`.
                       'e', 'x', 't', 'r', 'a'};
+
+  InitAndTestWrite();
 }
 
 TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
@@ -520,6 +519,39 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
   };
 
   InitAndTestWrite();
+}
+
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteSucceedsWhenLanguageLabelsAreUnique) {
+  const std::vector<std::string> kLanguageLabelsWithDifferentRegions = {
+      {"en-us"}, {"en-gb"}};
+  language_labels_ = kLanguageLabelsWithDifferentRegions;
+
+  count_label_ = 2;
+  mix_presentation_annotations_ = {{"0"}, {"1"}};
+  sub_mixes_[0].audio_elements[0].mix_presentation_element_annotations = {
+      {{"0"}, {"1"}}};
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_TRUE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWhenLanguageLabelsAreNotUnique) {
+  const std::vector<std::string> kInvalidLanguageLabelsWithDuplicate = {
+      {"en-us"}, {"en-us"}};
+  language_labels_ = kInvalidLanguageLabelsWithDuplicate;
+
+  // Configure plausible values for the related fields.
+  count_label_ = 2;
+  mix_presentation_annotations_ = {{"0"}, {"1"}};
+  sub_mixes_[0].audio_elements[0].mix_presentation_element_annotations = {
+      {{"0"}, {"1"}}};
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST_F(MixPresentationObuTest, BinauralRenderingConfig) {
