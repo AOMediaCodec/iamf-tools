@@ -36,3 +36,12 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
     ],
 )
+
+cc_library(
+    name = "precomputed_gains",
+    srcs = ["precomputed_gains.cc"],
+    hdrs = ["precomputed_gains.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
