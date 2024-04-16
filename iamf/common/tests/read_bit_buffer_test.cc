@@ -575,5 +575,15 @@ TEST_F(ReadBitBufferTest, Signed16MaxNegative) {
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
 
+TEST_F(ReadBitBufferTest, IsDataAvailable) {
+  source_data_ = {0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  EXPECT_TRUE(rb_->IsDataAvailable());
+  uint64_t output = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(16, output).ok());
+  EXPECT_FALSE(rb_->IsDataAvailable());
+}
+
 }  // namespace
 }  // namespace iamf_tools

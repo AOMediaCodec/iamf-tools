@@ -157,6 +157,15 @@ class ReadBitBuffer {
   absl::Status LoadBits(int32_t required_num_bits,
                         bool fill_to_capacity = true);
 
+  /*!\brief Checks whether there is any data left in the buffer or source.
+   *
+   * Has no effect on the state of the buffer.
+   *
+   * \return `true` if there is some data left in the buffer or source that has
+   *      not been consumed yet. `false` otherwise.
+   */
+  bool IsDataAvailable();
+
   /*!\brief Empties the buffer.*/
   void DiscardAllBits();
 

@@ -272,6 +272,14 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits,
   return absl::OkStatus();
 }
 
+bool ReadBitBuffer::IsDataAvailable() {
+  bool valid_data_in_buffer =
+      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
+  bool valid_data_in_source =
+      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_->size());
+  return valid_data_in_buffer || valid_data_in_source;
+}
+
 void ReadBitBuffer::DiscardAllBits() {
   buffer_bit_offset_ = 0;
   buffer_size_ = 0;
