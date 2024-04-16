@@ -585,5 +585,62 @@ TEST_F(ReadBitBufferTest, IsDataAvailable) {
   EXPECT_FALSE(rb_->IsDataAvailable());
 }
 
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax32) {
+  source_data_ = {0xff, 0xff, 0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint32_t output = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(32, output).ok());
+  EXPECT_EQ(output, 4294967295);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 32);
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteral32Overflow) {
+  source_data_ = {0xff, 0xff, 0xff, 0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint32_t output = 0;
+  EXPECT_FALSE(rb_->ReadUnsignedLiteral(40, output).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax16) {
+  source_data_ = {0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint16_t output = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(16, output).ok());
+  EXPECT_EQ(output, 65535);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 16);
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteral16Overflow) {
+  source_data_ = {0xff, 0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint16_t output = 0;
+  EXPECT_FALSE(rb_->ReadUnsignedLiteral(24, output).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax8) {
+  source_data_ = {0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint8_t output = 0;
+  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output).ok());
+  EXPECT_EQ(output, 255);
+  EXPECT_EQ(rb_->buffer_bit_offset(), 8);
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteral8Overflow) {
+  source_data_ = {0xff, 0xff};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  uint8_t output = 0;
+  EXPECT_FALSE(rb_->ReadUnsignedLiteral(9, output).ok());
+  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
 }  // namespace
 }  // namespace iamf_tools

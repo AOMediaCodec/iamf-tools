@@ -112,13 +112,11 @@ ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source,
   bit_buffer_.reserve(capacity);
 }
 
-// Reads n = `num_bits` bits from the buffer. These are the upper n bits of
-// `bit_buffer_`. n must be <= 64. The read data is consumed, meaning
-// `buffer_bit_offset_` is incremented by n as a side effect of this fxn.
-absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
-                                                uint64_t& output) {
-  if (num_bits > 64) {
-    return absl::InvalidArgumentError("num_bits must be <= 64.");
+absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
+                                                        const int max_num_bits,
+                                                        uint64_t& output) {
+  if (num_bits > max_num_bits) {
+    return absl::InvalidArgumentError("num_bits must be <= max_num_bits.");
   }
   if (buffer_bit_offset_ < 0) {
     return absl::UnknownError("buffer_bit_offset_ must be >= 0.");
@@ -144,6 +142,38 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
                               remaining_bits_to_read, output);
     }
   }
+  return absl::OkStatus();
+}
+
+// Reads n = `num_bits` bits from the buffer. These are the upper n bits of
+// `bit_buffer_`. n must be <= 64. The read data is consumed, meaning
+// `buffer_bit_offset_` is incremented by n as a side effect of this fxn.
+absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
+                                                uint64_t& output) {
+  return ReadUnsignedLiteralInternal(num_bits, 64, output);
+}
+
+absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
+                                                uint32_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteralInternal(num_bits, 32, value));
+  output = static_cast<uint32_t>(value);
+  return absl::OkStatus();
+}
+
+absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
+                                                uint16_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteralInternal(num_bits, 16, value));
+  output = static_cast<uint16_t>(value);
+  return absl::OkStatus();
+}
+
+absl::Status ReadBitBuffer::ReadUnsignedLiteral(const int num_bits,
+                                                uint8_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteralInternal(num_bits, 8, value));
+  output = static_cast<uint8_t>(value);
   return absl::OkStatus();
 }
 

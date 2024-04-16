@@ -50,6 +50,45 @@ class ReadBitBuffer {
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint64_t& output);
 
+  /*!\brief Reads upper `num_bits` from buffer to lower `num_bits` of `output`.
+   *
+   * \param num_bits Number of upper bits to read from buffer. Maximum value of
+   *     32.
+   * \param output Unsigned literal from buffer will be written here.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     `num_bits > 32`. `absl::ResourceExhaustedError()` if the buffer runs
+   *     out of data and cannot get more from source before the desired
+   *     `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset` is
+   *     negative.
+   */
+  absl::Status ReadUnsignedLiteral(int num_bits, uint32_t& output);
+
+  /*!\brief Reads upper `num_bits` from buffer to lower `num_bits` of `output`.
+   *
+   * \param num_bits Number of upper bits to read from buffer. Maximum value of
+   *     16.
+   * \param output Unsigned literal from buffer will be written here.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     `num_bits > 16`. `absl::ResourceExhaustedError()` if the buffer runs
+   *     out of data and cannot get more from source before the desired
+   *     `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset` is
+   *     negative.
+   */
+  absl::Status ReadUnsignedLiteral(int num_bits, uint16_t& output);
+
+  /*!\brief Reads upper `num_bits` from buffer to lower `num_bits` of `output`.
+   *
+   * \param num_bits Number of upper bits to read from buffer. Maximum value of
+   *     8.
+   * \param output Unsigned literal from buffer will be written here.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     `num_bits > 8`. `absl::ResourceExhaustedError()` if the buffer runs
+   *     out of data and cannot get more from source before the desired
+   *     `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset` is
+   *     negative.
+   */
+  absl::Status ReadUnsignedLiteral(int num_bits, uint8_t& output);
+
   /*!\brief Reads the signed 16 bit integer from the read buffer.
    *
    * \param output Signed 16 bit integer will be written here.
@@ -182,6 +221,10 @@ class ReadBitBuffer {
   std::vector<uint8_t>* source_;
   // Specifies the next bit to consume from the source data `source_`.
   int64_t source_bit_offset_ = 0;
+
+  absl::Status ReadUnsignedLiteralInternal(const int num_bits,
+                                           const int max_num_bits,
+                                           uint64_t& output);
 };
 
 }  // namespace iamf_tools
