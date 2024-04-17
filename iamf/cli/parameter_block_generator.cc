@@ -757,7 +757,7 @@ absl::Status ParameterBlockGenerator::Initialize(
     LOG(ERROR) << "IA Sequence Header OBU is not present.";
     return absl::InvalidArgumentError("");
   }
-  primary_profile_ = ia_sequence_header_obu->primary_profile_;
+  primary_profile_ = ia_sequence_header_obu->GetPrimaryProfile();
 
   RETURN_IF_NOT_OK(PopulateAssociatedAudioElements(
       audio_elements, mix_presentation_obus, associated_audio_elements_));

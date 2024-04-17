@@ -79,17 +79,30 @@ class IASequenceHeaderObu : public ObuBase {
    */
   absl::Status Validate() const;
 
-  const uint32_t ia_code_;
-  const ProfileVersion primary_profile_;
-  const ProfileVersion additional_profile_;
+  /*!\brief Gets the primary profile of the OBU.
+   *
+   * \return primary profile of the OBU.
+   */
+  ProfileVersion GetPrimaryProfile() const { return primary_profile_; }
+
+  /*!\brief Gets the additional profile of the OBU.
+   *
+   * \return additional profile of the OBU.
+   */
+  ProfileVersion GetAdditionalProfile() const { return additional_profile_; }
 
  private:
+  uint32_t ia_code_;
+  ProfileVersion primary_profile_;
+  ProfileVersion additional_profile_;
+
   // Used only by the factory create function.
   explicit IASequenceHeaderObu(const ObuHeader& header)
       : ObuBase(header, kObuIaSequenceHeader),
         ia_code_(kIaCode),
         primary_profile_(ProfileVersion::kIamfBaseProfile),
         additional_profile_(ProfileVersion::kIamfBaseProfile) {}
+
   /*\!brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.

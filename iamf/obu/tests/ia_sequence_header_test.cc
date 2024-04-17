@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -220,12 +221,23 @@ TEST_F(IASequenceHeaderObuTest, NonMinimalLebGeneratorAffectsObuHeader) {
   InitAndTestWrite();
 }
 
-// TODO(b/329705593): Update test once ValidateAndReadPayload is implemented.
-TEST(CreateFromBuffer, IsNotSupported) {
-  std::vector<uint8_t> source;
+TEST(CreateFromBuffer, SimpleAndBaseProfile) {
+  std::vector<uint8_t> source = {
+      // `ia_code`.
+      0x69, 0x61, 0x6d, 0x66,
+      // `primary_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
+      // `additional_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_FALSE(IASequenceHeaderObu::CreateFromBuffer(header, buffer).ok());
+  absl::StatusOr<IASequenceHeaderObu> obu =
+      IASequenceHeaderObu::CreateFromBuffer(header, buffer);
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu.value().GetPrimaryProfile(),
+            ProfileVersion::kIamfSimpleProfile);
+  EXPECT_EQ(obu.value().GetAdditionalProfile(),
+            ProfileVersion::kIamfBaseProfile);
 }
 
 }  // namespace

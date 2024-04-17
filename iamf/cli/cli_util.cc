@@ -166,9 +166,9 @@ absl::Status GetIncludeTemporalDelimiterObus(
   // "support" them they can be safely ignored.
   if (input_include_temporal_delimiter &&
       (!ProfileSupportsTemporalDelimiterObus(
-           ia_sequence_header_obu.primary_profile_) &&
+           ia_sequence_header_obu.GetPrimaryProfile()) &&
        !ProfileSupportsTemporalDelimiterObus(
-           ia_sequence_header_obu.additional_profile_))) {
+           ia_sequence_header_obu.GetAdditionalProfile()))) {
     LOG(ERROR) << "Temporal Delimiter OBUs need either `primary_profile` or "
                   "`additional_profile` to support them.";
     return absl::InvalidArgumentError("");

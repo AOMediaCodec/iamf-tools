@@ -72,8 +72,15 @@ absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
 }
 
 absl::Status IASequenceHeaderObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "IASequenceHeaderObu ValidateAndReadPayload not yet implemented.");
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, ia_code_));
+  uint8_t primary_profile;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, primary_profile));
+  primary_profile_ = static_cast<ProfileVersion>(primary_profile);
+  uint8_t additional_profile;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, additional_profile));
+  additional_profile_ = static_cast<ProfileVersion>(additional_profile);
+  RETURN_IF_NOT_OK(Validate());
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools
