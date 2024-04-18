@@ -18,6 +18,7 @@
 
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -157,6 +158,20 @@ TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
   std::vector<std::vector<int32_t>> unused_samples;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
                                       unused_samples)
+                   .ok());
+}
+
+TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
+     SucceedsForChannelBasedLayout) {
+  EXPECT_TRUE(LookupInputChannelOrderFromScalableLoudspeakerLayout(
+                  ChannelAudioLayerConfig::kLayoutMono)
+                  .ok());
+}
+
+TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
+     FailsForReservedLayout) {
+  EXPECT_FALSE(LookupInputChannelOrderFromScalableLoudspeakerLayout(
+                   ChannelAudioLayerConfig::kLayoutReservedEnd)
                    .ok());
 }
 

@@ -79,6 +79,7 @@ cc_library(
     deps = [
         "//iamf/cli:demixing_module",
         "//iamf/common:macros",
+        "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",

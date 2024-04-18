@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -104,43 +103,6 @@ absl::StatusOr<ChannelAudioLayerConfig::LoudspeakerLayout> FindEquivalentLayer(
       "here. Downmixing may be required.");
 }
 
-absl::StatusOr<std::vector<std::string>>
-LookupChannelOrderFromScalableLoudspeakerLayout(
-    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
-  using enum LoudspeakersSsConventionLayout::SoundSystem;
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
-  static const absl::NoDestructor<absl::flat_hash_map<
-      ChannelAudioLayerConfig::LoudspeakerLayout, std::vector<std::string>>>
-      kSoundSystemToLoudspeakerLayout({
-          {kLayoutMono, {"M"}},
-          {kLayoutStereo, {"L2", "R2"}},
-          {kLayout5_1_ch, {"L5", "R5", "C", "LFE", "Ls5", "Rs5"}},
-          {kLayout5_1_2_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"}},
-          {kLayout5_1_4_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf4", "Rtf4", "Ltb4",
-            "Rtb4"}},
-          {kLayout7_1_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7"}},
-          {kLayout7_1_2_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf2",
-            "Rtf2"}},
-          {kLayout7_1_4_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
-            "Rtf4", "Ltb4", "Rtb4"}},
-          {kLayout3_1_2_ch, {"L3", "R3", "C", "LFE", "Ltf3", "Rtf3"}},
-          {kLayoutBinaural, {"L2", "R2"}},
-      });
-
-  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
-  if (it == kSoundSystemToLoudspeakerLayout->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Channel order not found for layout= ", loudspeaker_layout));
-  }
-  return it->second;
-}
-
 }  // namespace
 
 std::unique_ptr<AudioElementRendererPassThrough>
@@ -153,7 +115,8 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
     return nullptr;
   }
   const auto& channel_order =
-      LookupChannelOrderFromScalableLoudspeakerLayout(*equivalent_layer);
+      renderer_utils::LookupInputChannelOrderFromScalableLoudspeakerLayout(
+          *equivalent_layer);
   if (!channel_order.ok()) {
     return nullptr;
   }

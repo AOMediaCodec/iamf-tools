@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -116,6 +117,43 @@ absl::Status ArrangeSamplesToRender(
   }
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<std::vector<std::string>>
+LookupInputChannelOrderFromScalableLoudspeakerLayout(
+    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
+  using enum LoudspeakersSsConventionLayout::SoundSystem;
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+
+  static const absl::NoDestructor<absl::flat_hash_map<
+      ChannelAudioLayerConfig::LoudspeakerLayout, std::vector<std::string>>>
+      kSoundSystemToLoudspeakerLayout({
+          {kLayoutMono, {"M"}},
+          {kLayoutStereo, {"L2", "R2"}},
+          {kLayout5_1_ch, {"L5", "R5", "C", "LFE", "Ls5", "Rs5"}},
+          {kLayout5_1_2_ch,
+           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"}},
+          {kLayout5_1_4_ch,
+           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf4", "Rtf4", "Ltb4",
+            "Rtb4"}},
+          {kLayout7_1_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7"}},
+          {kLayout7_1_2_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf2",
+            "Rtf2"}},
+          {kLayout7_1_4_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
+            "Rtf4", "Ltb4", "Rtb4"}},
+          {kLayout3_1_2_ch, {"L3", "R3", "C", "LFE", "Ltf3", "Rtf3"}},
+          {kLayoutBinaural, {"L2", "R2"}},
+      });
+
+  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
+  if (it == kSoundSystemToLoudspeakerLayout->end()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Channel order not found for layout= ", loudspeaker_layout));
+  }
+  return it->second;
 }
 
 absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
