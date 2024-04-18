@@ -35,11 +35,29 @@ class WavReader {
   /*!\brief Destructor. */
   ~WavReader();
 
+  /*!\brief Gets the number of channels of the reader.
+   *
+   * \return Number of channels.
+   */
   int num_channels() const { return info_.num_channels; }
 
+  /*!\brief Gets the sample rate of the reader.
+   *
+   * \return Sample rate.
+   */
   int sample_rate_hz() const { return info_.sample_rate_hz; }
 
+  /*!\brief Gets the bit-depth of the reader.
+   *
+   * \return Bit-depth.
+   */
   int bit_depth() const { return info_.bit_depth; }
+
+  /*!\brief Gets the number of remaining samples in the file.
+   *
+   * \return Number of samples remaining to be read.
+   */
+  int remaining_samples() const { return info_.remaining_samples; }
 
   /*!\brief Read up to one frame worth of samples.
    *
@@ -51,7 +69,7 @@ class WavReader {
    */
   size_t ReadFrame();
 
-  /*!\ Buffers stored a vector of interleaved samples.
+  /*!\brief Buffers stored a vector of interleaved samples.
    *
    * The samples are left-justified; the upper `bit_depth()` bits represent the
    * sample, with the remaining lower bits set to 0.

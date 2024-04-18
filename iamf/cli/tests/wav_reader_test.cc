@@ -24,27 +24,83 @@ namespace iamf_tools {
 namespace {
 
 WavReader InitAndValidate(const std::filesystem::path& filename,
-                          const size_t num_samples_per_frame,
-                          const int expected_num_channels,
-                          const int expected_sample_rate_hz,
-                          const int expected_bit_depth) {
+                          const size_t num_samples_per_frame) {
   const auto input_wav_file = std::filesystem::current_path() /
                               std::string("iamf/cli/testdata/") / filename;
   WavReader wav_reader(input_wav_file.c_str(), num_samples_per_frame);
 
   // Validate `wav_reader` sees the expected properties from the wav header.
   EXPECT_EQ(wav_reader.num_samples_per_frame_, num_samples_per_frame);
-  EXPECT_EQ(wav_reader.num_channels(), expected_num_channels);
-  EXPECT_EQ(wav_reader.sample_rate_hz(), expected_sample_rate_hz);
-  EXPECT_EQ(wav_reader.bit_depth(), expected_bit_depth);
   return wav_reader;
 }
 
+TEST(WavReader, GetNumChannelsMatchesWavFile) {
+  const size_t kNumSamplesPerFrame = 8;
+
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame)
+          .num_channels(),
+      2);
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s24le.wav", kNumSamplesPerFrame)
+          .num_channels(),
+      2);
+  EXPECT_EQ(
+      InitAndValidate("sine_1000_16khz_512ms_s32le.wav", kNumSamplesPerFrame)
+          .num_channels(),
+      1);
+}
+
+TEST(WavReader, GetSampleRateHzMatchesWavFile) {
+  const size_t kNumSamplesPerFrame = 8;
+
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame)
+          .sample_rate_hz(),
+      48000);
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s24le.wav", kNumSamplesPerFrame)
+          .sample_rate_hz(),
+      48000);
+  EXPECT_EQ(
+      InitAndValidate("sine_1000_16khz_512ms_s32le.wav", kNumSamplesPerFrame)
+          .sample_rate_hz(),
+      16000);
+}
+
+TEST(WavReader, GetBitDepthMatchesWavFile) {
+  const size_t kNumSamplesPerFrame = 8;
+
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame)
+          .bit_depth(),
+      16);
+  EXPECT_EQ(
+      InitAndValidate("stereo_8_samples_48khz_s24le.wav", kNumSamplesPerFrame)
+          .bit_depth(),
+      24);
+  EXPECT_EQ(
+      InitAndValidate("sine_1000_16khz_512ms_s32le.wav", kNumSamplesPerFrame)
+          .bit_depth(),
+      32);
+}
+
+TEST(WavReader, GetNumRemainingSamplesUpdatesWithRead) {
+  // Read four samples x two channels per frame.
+  const size_t kNumSamplesPerFrame = 4;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), 16);
+  wav_reader.ReadFrame();
+  EXPECT_EQ(wav_reader.remaining_samples(), 8);
+  wav_reader.ReadFrame();
+  EXPECT_EQ(wav_reader.remaining_samples(), 0);
+}
+
 TEST(WavReader, OneFrame16BitLittleEndian) {
-  auto wav_reader = InitAndValidate(
-      "stereo_8_samples_48khz_s16le.wav",
-      /*num_samples_per_frame=*/8, /*expected_num_channels=*/2,
-      /*expected_sample_rate_hz=*/48000, /*expected_bit_depth=*/16);
+  const size_t kNumSamplesPerFrame = 8;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame);
 
   // Read one frame. The result of n-bit samples are stored in the upper `n`
   // bits.
@@ -63,10 +119,9 @@ TEST(WavReader, OneFrame16BitLittleEndian) {
 }
 
 TEST(WavReader, TwoFrames16BitLittleEndian) {
-  auto wav_reader = InitAndValidate(
-      "stereo_8_samples_48khz_s16le.wav",
-      /*num_samples_per_frame=*/4, /*expected_num_channels=*/2,
-      /*expected_sample_rate_hz=*/48000, /*expected_bit_depth=*/16);
+  const size_t kNumSamplesPerFrame = 4;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame);
 
   EXPECT_EQ(wav_reader.ReadFrame(), 8);
   std::vector<std::vector<int32_t>> expected_frame = {
@@ -86,11 +141,10 @@ TEST(WavReader, TwoFrames16BitLittleEndian) {
 }
 
 TEST(WavReader, OneFrame24BitLittleEndian) {
-  auto wav_reader = InitAndValidate("stereo_8_samples_48khz_s24le.wav",
-                                    /*num_samples_per_frame=*/2,
-                                    /*expected_num_channels=*/2,
-                                    /*expected_sample_rate_hz=*/48000,
-                                    /*expected_bit_depth=*/24);
+  const size_t kNumSamplesPerFrame = 2;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s24le.wav", kNumSamplesPerFrame);
+
   EXPECT_EQ(wav_reader.ReadFrame(), 4);
   std::vector<std::vector<int32_t>> expected_frame = {
       {0x00000100, static_cast<int32_t>(0xffffff00)},
@@ -101,10 +155,10 @@ TEST(WavReader, OneFrame24BitLittleEndian) {
 }
 
 TEST(WavReader, OneFrame32BitLittleEndian) {
-  auto wav_reader = InitAndValidate(
-      "sine_1000_16khz_512ms_s32le.wav",
-      /*num_samples_per_frame=*/8, /*expected_num_channels=*/1,
-      /*expected_sample_rate_hz=*/16000, /*expected_bit_depth=*/32);
+  const size_t kNumSamplesPerFrame = 8;
+
+  auto wav_reader =
+      InitAndValidate("sine_1000_16khz_512ms_s32le.wav", kNumSamplesPerFrame);
 
   EXPECT_EQ(wav_reader.ReadFrame(), 8);
   std::vector<std::vector<int32_t>> expected_frame = {
