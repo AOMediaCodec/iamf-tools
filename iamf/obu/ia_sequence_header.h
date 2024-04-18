@@ -61,6 +61,9 @@ class IASequenceHeaderObu : public ObuBase {
   static absl::StatusOr<IASequenceHeaderObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
 
+  /*\!brief Copy constructor.*/
+  IASequenceHeaderObu(IASequenceHeaderObu& other) = default;
+
   /*\!brief Move constructor.*/
   IASequenceHeaderObu(IASequenceHeaderObu&& other) = default;
 
