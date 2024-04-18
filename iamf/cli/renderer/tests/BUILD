@@ -43,6 +43,7 @@ cc_test(
     deps = [
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:renderer_utils",
+        "//iamf/obu:mix_presentation",
         "@com_google_googletest//:gtest_main",
     ],
 )

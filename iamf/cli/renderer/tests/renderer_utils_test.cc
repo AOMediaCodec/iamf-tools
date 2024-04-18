@@ -18,6 +18,7 @@
 
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace renderer_utils {
@@ -156,6 +157,31 @@ TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
   std::vector<std::vector<int32_t>> unused_samples;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
                                       unused_samples)
+                   .ok());
+}
+
+TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
+  EXPECT_TRUE(
+      LookupOutputKeyFromPlaybackLayout(
+          {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+           .specific_layout =
+               LoudspeakersSsConventionLayout{
+                   .sound_system =
+                       LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}})
+          .ok());
+}
+
+TEST(LookupOutputKeyFromPlaybackLayout, FailsOnBinauralBasedLayout) {
+  EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
+                   {.layout_type = Layout::kLayoutTypeBinaural,
+                    .specific_layout = LoudspeakersReservedBinauralLayout{}})
+                   .ok());
+}
+
+TEST(LookupOutputKeyFromPlaybackLayout, FailsOnReservedLayout) {
+  EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
+                   {.layout_type = Layout::kLayoutTypeReserved0,
+                    .specific_layout = LoudspeakersReservedBinauralLayout{}})
                    .ok());
 }
 

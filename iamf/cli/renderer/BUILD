@@ -7,6 +7,7 @@ cc_library(
     deps = [
         ":audio_element_renderer_base",
         ":precomputed_gains",
+        ":renderer_utils",
         "//iamf/cli:demixing_module",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
@@ -78,6 +79,9 @@ cc_library(
     deps = [
         "//iamf/cli:demixing_module",
         "//iamf/common:macros",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",

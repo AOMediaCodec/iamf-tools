@@ -13,12 +13,15 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 
@@ -114,6 +117,55 @@ absl::Status ArrangeSamplesToRender(
 
   return absl::OkStatus();
 }
+
+absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
+    const Layout& output_layout) {
+  switch (output_layout.layout_type) {
+    using enum Layout::LayoutType;
+    case kLayoutTypeLoudspeakersSsConvention: {
+      auto sound_system = std::get<LoudspeakersSsConventionLayout>(
+                              output_layout.specific_layout)
+                              .sound_system;
+      using enum LoudspeakersSsConventionLayout::SoundSystem;
+      static const absl::NoDestructor<absl::flat_hash_map<
+          LoudspeakersSsConventionLayout::SoundSystem, std::string>>
+          kSoundSystemToInputKey({
+              {kSoundSystemA_0_2_0, "0+2+0"},
+              {kSoundSystemB_0_5_0, "0+5+0"},
+              {kSoundSystemC_2_5_0, "2+5+0"},
+              {kSoundSystemD_4_5_0, "4+5+0"},
+              {kSoundSystemE_4_5_1, "4+5+1"},
+              {kSoundSystemF_3_7_0, "3+7+0"},
+              {kSoundSystemG_4_9_0, "4+9+0"},
+              {kSoundSystemH_9_10_3, "9+10+3"},
+              {kSoundSystemI_0_7_0, "0+7+0"},
+              {kSoundSystemJ_4_7_0, "4+7+0"},
+              {kSoundSystem10_2_7_0, "7.1.2"},
+              {kSoundSystem11_2_3_0, "3.1.2"},
+              {kSoundSystem12_0_1_0, "0+1+0"},
+          });
+
+      auto it = kSoundSystemToInputKey->find(sound_system);
+      if (it == kSoundSystemToInputKey->end()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Output key not found for sound_system= ", sound_system));
+      }
+      return it->second;
+    }
+
+    case kLayoutTypeBinaural:
+      return absl::UnimplementedError(
+          "Loudness layout key for BINAURAL not supported "
+          "yet.");
+    case kLayoutTypeReserved0:
+    case kLayoutTypeReserved1:
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unsupported layout_type= ", output_layout.layout_type));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace renderer_utils
 
 }  // namespace iamf_tools

@@ -16,7 +16,9 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 
@@ -37,6 +39,17 @@ absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<std::string>& ordered_labels,
     std::vector<std::vector<int32_t>>& samples_to_render);
+
+/*\!brief Gets a key associated with the playback layout.
+ *
+ * The output key is the layout name of sound systems described in [ITU2051-3],
+ * e.g. "0+2+0", "4+7+0".
+ *
+ * \param output_layout Layout to get key from.
+ * \return Key associated with the layout. Or a specific status on failure.
+ */
+absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
+    const Layout& output_layout);
 
 }  // namespace renderer_utils
 
