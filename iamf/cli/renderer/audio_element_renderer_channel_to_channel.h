@@ -14,11 +14,9 @@
 #include <memory>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
-#include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
-#include "iamf/cli/renderer/precomputed_gains.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
@@ -60,9 +58,11 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
   /*\!brief Accumulates samples to be rendered.
    *
    * \param labeled_frame Labeled frame to render.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return Number of ticks which will be rendered. A specific status on
+   *     failure.
    */
-  absl::Status RenderLabeledFrame(const LabeledFrame& labeled_frame) override;
+  absl::StatusOr<int> RenderLabeledFrame(
+      const LabeledFrame& labeled_frame) override;
 
  private:
   /*\!brief Constructor. */

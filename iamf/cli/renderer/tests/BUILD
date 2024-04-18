@@ -6,6 +6,7 @@ cc_test(
     deps = [
         "//iamf/cli/renderer:audio_element_renderer_channel_to_channel",
         "//iamf/obu:audio_element",
+        "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:mix_presentation",
         "@com_google_googletest//:gtest_main",
     ],
@@ -18,6 +19,7 @@ cc_test(
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:audio_element_renderer_base",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_googletest//:gtest_main",
     ],

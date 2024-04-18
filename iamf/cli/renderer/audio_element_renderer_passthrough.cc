@@ -161,7 +161,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
   return absl::WrapUnique(new AudioElementRendererPassThrough(*channel_order));
 }
 
-absl::Status AudioElementRendererPassThrough::RenderLabeledFrame(
+absl::StatusOr<int> AudioElementRendererPassThrough::RenderLabeledFrame(
     const LabeledFrame& labeled_frame) {
   std::vector<std::vector<int32_t>> samples_to_render;
   RETURN_IF_NOT_OK(AudioElementRendererBase::ArrangeSamplesToRender(
@@ -173,7 +173,7 @@ absl::Status AudioElementRendererPassThrough::RenderLabeledFrame(
     // Skip applying the identity matrix.
     rendered_samples_.insert(rendered_samples_.end(), tick.begin(), tick.end());
   }
-  return absl::OkStatus();
+  return samples_to_render.size();
 }
 
 }  // namespace iamf_tools

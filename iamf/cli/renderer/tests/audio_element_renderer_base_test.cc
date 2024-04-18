@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
@@ -171,11 +172,12 @@ class MockAudioElementRenderer : public AudioElementRendererBase {
  public:
   MockAudioElementRenderer() = default;
 
-  absl::Status RenderLabeledFrame(const LabeledFrame& labeled_frame) override {
+  absl::StatusOr<int> RenderLabeledFrame(
+      const LabeledFrame& labeled_frame) override {
     absl::MutexLock lock(&mutex_);
     rendered_samples_.insert(rendered_samples_.end(), kSamplesToRender.begin(),
                              kSamplesToRender.end());
-    return absl::OkStatus();
+    return kSamplesToRender.size();
   }
 };
 

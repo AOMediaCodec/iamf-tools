@@ -17,6 +17,7 @@
 
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/demixing_module.h"
 
@@ -62,9 +63,10 @@ class AudioElementRendererBase {
   /*\!brief Accumulates samples to be rendered.
    *
    * \param labeled_frame Labeled frame to render.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return Number of ticks which will be rendered. A specific status on
+   *     failure.
    */
-  virtual absl::Status RenderLabeledFrame(
+  virtual absl::StatusOr<int> RenderLabeledFrame(
       const LabeledFrame& labeled_frame) = 0;
 
   /*!\brief Flush finished audio frames.

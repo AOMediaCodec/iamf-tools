@@ -213,6 +213,33 @@ TEST(RenderLabeledFrame, RendersDemixedSamples) {
   EXPECT_EQ(rendered_samples, std::vector<int32_t>({1, 2}));
 }
 
+TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
+  const LabeledFrame kStereoFrameWithTwoRenderedTicks = {
+      .samples_to_trim_at_end = 1,
+      .samples_to_trim_at_start = 1,
+      .label_to_samples = {{"L2", {999, 1, 2, 999}}, {"R2", {999, 1, 2, 999}}}};
+
+  auto stereo_pass_through_renderer =
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          kStereoScalableChannelLayoutConfig, kStereoLayout);
+  const auto result = stereo_pass_through_renderer->RenderLabeledFrame(
+      kStereoFrameWithTwoRenderedTicks);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(*result, 2);
+}
+
+TEST(RenderLabeledFrame, EdgeCaseWithAllSamplesTrimmedReturnsZero) {
+  const LabeledFrame kMono = {.samples_to_trim_at_start = 1,
+                              .label_to_samples = {{"M", {1}}}};
+
+  auto mono_pass_through_renderer =
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          kMonoScalableChannelLayoutConfig, kMonoLayout);
+  const auto result = mono_pass_through_renderer->RenderLabeledFrame(kMono);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(*result, 0);
+}
+
 // Renders a sequence of `num_frames` frames, each with `samples_per_frame`
 // samples. The sequence increases by one for each value in the sequence.
 void RenderMonoSequence(int num_frames, int samples_per_frame,

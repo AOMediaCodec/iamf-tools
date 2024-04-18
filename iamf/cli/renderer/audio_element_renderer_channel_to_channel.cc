@@ -159,7 +159,7 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
   return absl::WrapUnique(new AudioElementRendererChannelToChannel(*gains));
 }
 
-absl::Status AudioElementRendererChannelToChannel::RenderLabeledFrame(
+absl::StatusOr<int> AudioElementRendererChannelToChannel::RenderLabeledFrame(
     const LabeledFrame& labeled_frame) {
   return absl::UnimplementedError("Not implemented");
 }
