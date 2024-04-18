@@ -5,6 +5,7 @@ cc_library(
     testonly = True,
     srcs = ["cli_test_utils.cc"],
     hdrs = ["cli_test_utils.h"],
+    visibility = ["//iamf/cli:__subpackages__"],
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/obu:audio_element",
