@@ -29,7 +29,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/renderer/audio_element_renderer_base.h"
+#include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
@@ -164,7 +164,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
 absl::StatusOr<int> AudioElementRendererPassThrough::RenderLabeledFrame(
     const LabeledFrame& labeled_frame) {
   std::vector<std::vector<int32_t>> samples_to_render;
-  RETURN_IF_NOT_OK(AudioElementRendererBase::ArrangeSamplesToRender(
+  RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
       labeled_frame, channel_order_, samples_to_render));
 
   // Flatten the (time, channel) axes into interleaved samples.

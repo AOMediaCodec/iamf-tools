@@ -12,7 +12,6 @@
 #ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
 #define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
 #include <cstdint>
-#include <string>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -41,22 +40,6 @@ namespace iamf_tools {
  */
 class AudioElementRendererBase {
  public:
-  /*\!brief Arranges the samples to be rendered in (time, channel) axes.
-   *
-   * \param labeled_frame Labeled frame determine which original or demixed
-   *     samples to trim and render.
-   * \param ordered_labels Ordered list of original labels. Samples are arranged
-   *     based on the original or demixed label samples in each time tick. Slots
-   *     corresponding with empty labels ("") will create zeroed-out samples.
-   * \param samples_to_render Output samples to render in (time, channel) axes.
-   *     Samples which should be trimmed are omitted from the output.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  static absl::Status ArrangeSamplesToRender(
-      const LabeledFrame& labeled_frame,
-      const std::vector<std::string>& ordered_labels,
-      std::vector<std::vector<int32_t>>& samples_to_render);
-
   /*\!brief Destructor. */
   virtual ~AudioElementRendererBase() = 0;
 

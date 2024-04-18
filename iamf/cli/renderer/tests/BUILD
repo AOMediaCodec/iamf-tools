@@ -36,3 +36,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "renderer_utils_test",
+    srcs = ["renderer_utils_test.cc"],
+    deps = [
+        "//iamf/cli:demixing_module",
+        "//iamf/cli/renderer:renderer_utils",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
