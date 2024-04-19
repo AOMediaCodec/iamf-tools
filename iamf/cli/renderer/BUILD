@@ -1,30 +1,6 @@
 package(default_visibility = ["//iamf/cli:__subpackages__"])
 
 cc_library(
-    name = "audio_element_renderer_channel_to_channel",
-    srcs = ["audio_element_renderer_channel_to_channel.cc"],
-    hdrs = ["audio_element_renderer_channel_to_channel.h"],
-    deps = [
-        ":audio_element_renderer_base",
-        ":precomputed_gains",
-        ":renderer_utils",
-        "//iamf/cli:demixing_module",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:string_view",
-    ],
-)
-
-cc_library(
     name = "audio_element_renderer_base",
     srcs = ["audio_element_renderer_base.cc"],
     hdrs = ["audio_element_renderer_base.h"],
