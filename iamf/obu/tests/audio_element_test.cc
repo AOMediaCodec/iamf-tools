@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -1296,6 +1297,15 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
   EXPECT_FALSE(AmbisonicsConfig::GetNextValidOutputChannelCount(
                    226, unused_next_valid_count)
                    .ok());
+}
+
+// --- Begin CreateFromBuffer tests ---
+// TODO(b/329700768): Update test once ValidateAndReadPayload is implemented.
+TEST(CreateFromBuffer, IsNotSupported) {
+  std::vector<uint8_t> source;
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
 }
 
 }  // namespace

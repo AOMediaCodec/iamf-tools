@@ -439,6 +439,13 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
       num_substreams_(0),
       num_parameters_(0) {}
 
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
+    const ObuHeader& header, ReadBitBuffer& rb) {
+  AudioElementObu audio_element_obu(header);
+  RETURN_IF_NOT_OK(audio_element_obu.ValidateAndReadPayload(rb));
+  return audio_element_obu;
+}
+
 void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
   num_substreams_ = num_substreams;
   audio_substream_ids_.resize(static_cast<size_t>(num_substreams));
