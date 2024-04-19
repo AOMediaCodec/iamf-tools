@@ -404,6 +404,7 @@ cc_test(
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/common:write_bit_buffer",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",

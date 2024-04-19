@@ -160,6 +160,14 @@ absl::Status GetPerIdMetadata(
                  << target_parameter_id
                  << ". This is unusual, but allowed. Attempting to infer"
                     " the user-implied settings.";
+    if (audio_elements.empty() ||
+        audio_elements.begin()->second.codec_config == nullptr) {
+      return absl::UnknownError(
+          "No matching Codec Config OBU found. Cannot infer parameter rate.");
+    }
+    per_id_metadata.param_definition.parameter_rate_ =
+        audio_elements.begin()->second.codec_config->GetOutputSampleRate();
+
     per_id_metadata.param_definition.param_definition_mode_ = 1;
     if (parameter_block_metadata.subblocks().empty()) {
       LOG(ERROR) << "The stray parameter block had no subblocks. Cannot "
