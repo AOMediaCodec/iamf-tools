@@ -157,7 +157,7 @@ absl::Status GenerateParameterDefinitions(
       case kParameterDefinitionReconGain: {
         auto recon_gain_param_definition =
             std::make_unique<ReconGainParamDefinition>(
-                audio_element_obu.audio_element_id_);
+                audio_element_obu.GetAudioElementId());
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.recon_gain_param().param_definition(),
             recon_gain_param_definition.get()));
@@ -599,7 +599,7 @@ absl::Status ValidateReconGainDefined(
     LOG(ERROR) << "Recon gain is " << (recon_gain_required ? "" : "not ")
                << "required but is " << (recon_gain_defined ? "" : "not ")
                << "defined in Audio Element OBU ID= "
-               << audio_element_obu.audio_element_id_;
+               << audio_element_obu.GetAudioElementId();
     return absl::InvalidArgumentError("");
   }
 
@@ -969,7 +969,7 @@ absl::Status AudioElementGenerator::Generate(
       return absl::InvalidArgumentError("");
     }
 
-    switch (new_audio_element_iter->second.obu.audio_element_type_) {
+    switch (new_audio_element_iter->second.obu.GetAudioElementType()) {
       using enum AudioElementObu::AudioElementType;
       case kAudioElementChannelBased:
         RETURN_IF_NOT_OK(FillScalableChannelLayoutConfig(

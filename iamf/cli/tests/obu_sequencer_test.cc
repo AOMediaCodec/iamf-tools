@@ -102,7 +102,7 @@ TEST(GenerateTemporalUnitMap, SubstreamsOrderedByAudioElementIdSubstreamId) {
   // Validate the order of the output frames matches the expected order.
   auto expected_results_iter = expected_results.begin();
   for (const auto& audio_frame : temporal_unit_map[0].audio_frames) {
-    EXPECT_EQ(audio_frame->audio_element_with_data->obu.audio_element_id_,
+    EXPECT_EQ(audio_frame->audio_element_with_data->obu.GetAudioElementId(),
               expected_results_iter->audio_element_id);
     EXPECT_EQ(audio_frame->obu.GetSubstreamId(),
               expected_results_iter->substream_id);

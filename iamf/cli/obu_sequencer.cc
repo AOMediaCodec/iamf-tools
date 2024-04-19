@@ -78,9 +78,9 @@ absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
   auto compare_audio_element_id_audio_substream_id =
       [](const AudioFrameWithData* a, const AudioFrameWithData* b) {
         const auto audio_element_id_a =
-            a->audio_element_with_data->obu.audio_element_id_;
+            a->audio_element_with_data->obu.GetAudioElementId();
         const auto audio_element_id_b =
-            b->audio_element_with_data->obu.audio_element_id_;
+            b->audio_element_with_data->obu.GetAudioElementId();
         if (audio_element_id_a == audio_element_id_b) {
           return a->obu.GetSubstreamId() < b->obu.GetSubstreamId();
         } else {

@@ -1308,5 +1308,24 @@ TEST(CreateFromBuffer, IsNotSupported) {
   EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
 }
 
+TEST(CreateFromBuffer, AudioElementNoConfigNoParams) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementChannelBased << 5,
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      1,
+      // `audio_substream_ids`
+      3,
+      // `num_parameters`.
+      0};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  EXPECT_TRUE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

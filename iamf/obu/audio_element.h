@@ -319,12 +319,9 @@ class AudioElementObu : public ObuBase {
   /*\!brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
-  const DecodedUleb128 audio_element_id_;
-  const AudioElementType audio_element_type_;  // 3 bits.
-  uint8_t reserved_ = 0;                       // 5 bits.
+  AudioElementType GetAudioElementType() const { return audio_element_type_; }
 
-  // ID of the associated Codec Config OBU.
-  const DecodedUleb128 codec_config_id_;
+  DecodedUleb128 GetAudioElementId() const { return audio_element_id_; }
 
   // Length and vector of substream IDs.
   DecodedUleb128 num_substreams_;
@@ -339,6 +336,13 @@ class AudioElementObu : public ObuBase {
       config_;
 
  private:
+  DecodedUleb128 audio_element_id_;
+  AudioElementType audio_element_type_;  // 3 bits.
+  uint8_t reserved_ = 0;                 // 5 bits.
+
+  // ID of the associated Codec Config OBU.
+  DecodedUleb128 codec_config_id_;
+
   // Used only by the factory create function.
   explicit AudioElementObu(const ObuHeader& header)
       : ObuBase(header, kObuIaAudioElement),

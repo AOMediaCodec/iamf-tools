@@ -15,7 +15,9 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <sstream>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -135,7 +137,6 @@ void LogSceneBased(const AmbisonicsConfig& ambisonics_config) {
 // Returns `absl::OkStatus()` if all parameters have a unique
 // `param_definition_type` in the OBU. `absl::InvalidArgumentError()`
 // otherwise.
-
 absl::Status ValidateUniqueParamDefinitionType(
     const std::vector<AudioElementParam>& audio_element_params) {
   std::vector<ParamDefinition::ParameterDefinitionType>
@@ -180,6 +181,14 @@ absl::Status ValidateAndWriteAudioElementParam(const AudioElementParam& param,
   return absl::OkStatus();
 }
 
+// Reads an element of the `audio_element_params` array of a scalable channel
+// `AudioElementObu`.
+absl::Status ValidateAndReadAudioElementParam(AudioElementParam& param,
+                                              ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "Reading audio element param is not implemented.");
+}
+
 // Writes the `ScalableChannelLayoutConfig` of an `AudioElementObu`.
 absl::Status ValidateAndWriteScalableChannelLayout(
     const ScalableChannelLayoutConfig& layout,
@@ -212,6 +221,14 @@ absl::Status ValidateAndWriteScalableChannelLayout(
   }
 
   return absl::OkStatus();
+}
+
+// Reads the `ScalableChannelLayoutConfig` of an `AudioElementObu`.
+absl::Status ValidateAndReadScalableChannelLayout(
+    ScalableChannelLayoutConfig& layout, const DecodedUleb128 num_substreams,
+    ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "Reading scalable channel layout is not implemented.");
 }
 
 // Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
@@ -274,6 +291,14 @@ absl::Status ValidateAndWriteAmbisonicsConfig(const AmbisonicsConfig& config,
     default:
       return absl::OkStatus();
   }
+}
+
+// Reads the `AmbisonicsConfig` of an ambisonics `AudioElementObu`.
+absl::Status ValidateAndReadAmbisonicsConfig(AmbisonicsConfig& config,
+                                             DecodedUleb128 num_substreams,
+                                             ReadBitBuffer& rb) {
+  return absl::UnimplementedError(
+      "Reading ambisonics config is not implemented.");
 }
 
 }  // namespace
@@ -432,12 +457,12 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
                                  const uint8_t reserved,
                                  DecodedUleb128 codec_config_id)
     : ObuBase(header, kObuIaAudioElement),
+      num_substreams_(0),
+      num_parameters_(0),
       audio_element_id_(audio_element_id),
       audio_element_type_(audio_element_type),
       reserved_(reserved),
-      codec_config_id_(codec_config_id),
-      num_substreams_(0),
-      num_parameters_(0) {}
+      codec_config_id_(codec_config_id) {}
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
@@ -617,8 +642,66 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
 }
 
 absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "AudioElementOBU ValidateAndReadPayload not yet implemented.");
+  RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id_));
+  uint8_t audio_element_type;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, audio_element_type));
+  audio_element_type_ = static_cast<AudioElementType>(audio_element_type);
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved_));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_substreams_));
+
+  // Loop to read the audio substream IDs portion of the obu.
+  for (int i = 0; i < num_substreams_; ++i) {
+    DecodedUleb128 audio_substream_id;
+    RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id));
+    audio_substream_ids_.push_back(audio_substream_id);
+  }
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "audio_substream_ids", audio_substream_ids_.size(), num_substreams_));
+
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters_));
+
+  // Loop to write the parameter portion of the obu.
+  for (int i = 0; i < num_parameters_; ++i) {
+    AudioElementParam audio_element_param;
+    RETURN_IF_NOT_OK(ValidateAndReadAudioElementParam(audio_element_param, rb));
+    audio_element_params_.push_back(std::move(audio_element_param));
+  }
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      "num_parameters", audio_element_params_.size(), num_parameters_));
+
+  // TODO(b/335711463, b/335727200): Remove this line once param + config
+  // reading functions are implemented.
+  return absl::OkStatus();
+
+  // Write the specific `audio_element_type`'s config.
+  switch (audio_element_type_) {
+    case kAudioElementChannelBased:
+      return ValidateAndReadScalableChannelLayout(
+          std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, rb);
+    case kAudioElementSceneBased:
+      return ValidateAndReadAmbisonicsConfig(
+          std::get<AmbisonicsConfig>(config_), num_substreams_, rb);
+    default: {
+      ExtensionConfig extension_config;
+      RETURN_IF_NOT_OK(
+          rb.ReadULeb128(extension_config.audio_element_config_size));
+      for (int i = 0; i < extension_config.audio_element_config_size; ++i) {
+        uint8_t config_bytes;
+        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, config_bytes));
+        extension_config.audio_element_config_bytes.push_back(config_bytes);
+      }
+
+      RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+          "audio_element_config_bytes",
+          extension_config.audio_element_config_bytes.size(),
+          extension_config.audio_element_config_size));
+
+      return absl::OkStatus();
+    }
+  }
+
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

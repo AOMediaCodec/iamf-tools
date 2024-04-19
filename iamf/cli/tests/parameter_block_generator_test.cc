@@ -386,7 +386,7 @@ void AddReconGainParamDefinition(
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
   auto param_definition = std::make_unique<ReconGainParamDefinition>(
-      audio_element_obu.audio_element_id_);
+      audio_element_obu.GetAudioElementId());
   param_definitions.insert({kParameterId, param_definition.get()});
 
   param_definition->parameter_id_ = kParameterId;
