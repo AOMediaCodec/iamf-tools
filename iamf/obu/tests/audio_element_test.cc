@@ -1308,7 +1308,7 @@ TEST(CreateFromBuffer, IsNotSupported) {
   EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
 }
 
-TEST(CreateFromBuffer, AudioElementNoConfigNoParams) {
+TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
   std::vector<uint8_t> source = {
       // `audio_element_id`.
       1,
@@ -1317,14 +1317,119 @@ TEST(CreateFromBuffer, AudioElementNoConfigNoParams) {
       // `codec_config_id`.
       2,
       // `num_substreams`.
-      1,
+      2,
       // `audio_substream_ids`
-      3,
+      3, 4,
       // `num_parameters`.
-      0};
+      0,
+      // `scalable_channel_layout_config`.
+      // `num_layers` (3), reserved (5).
+      2 << 5,
+      // `channel_audio_layer_config[0]`.
+      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+      // `recon_gain_is_present_flag` (1), `reserved` (2).
+      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+      // `substream_count`.
+      1,
+      // `coupled_substream_count`.
+      1,
+      // `output_gain_flags` (6) << reserved.
+      1 << 2,
+      // `output_gain`.
+      0, 1,
+      // `channel_audio_layer_config[1]`.
+      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+      // `recon_gain_is_present_flag` (1), `reserved` (2).
+      ChannelAudioLayerConfig::kLayout5_1_ch << 4 | (1 << 3) | (1 << 2),
+      // `substream_count`.
+      1,
+      // `coupled_substream_count`.
+      1,
+      // `output_gain_flags` (6) << reserved.
+      1 << 2,
+      // `output_gain`.
+      0, 1};
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_TRUE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
+  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+
+  // Validate
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu.value().GetAudioElementId(), 1);
+  EXPECT_EQ(obu.value().GetAudioElementType(),
+            AudioElementObu::kAudioElementChannelBased);
+  EXPECT_EQ(obu.value().num_substreams_, 2);
+  EXPECT_EQ(obu.value().audio_substream_ids_[0], 3);
+  EXPECT_EQ(obu.value().audio_substream_ids_[1], 4);
+  EXPECT_EQ(obu.value().num_parameters_, 0);
+
+  ScalableChannelLayoutConfig expected_scalable_channel_layout_config = {
+      .num_layers = 2,
+      .channel_audio_layer_configs = {
+          ChannelAudioLayerConfig{
+              .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+              .output_gain_is_present_flag = true,
+              .recon_gain_is_present_flag = true,
+              .substream_count = 1,
+              .coupled_substream_count = 1,
+              .output_gain_flag = 1,
+              .reserved_b = 0,
+              .output_gain = 1},
+          ChannelAudioLayerConfig{
+              .loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch,
+              .output_gain_is_present_flag = true,
+              .recon_gain_is_present_flag = true,
+              .substream_count = 1,
+              .coupled_substream_count = 1,
+              .output_gain_flag = 1,
+              .reserved_b = 0,
+              .output_gain = 1}}};
+  EXPECT_EQ(std::get<ScalableChannelLayoutConfig>(obu.value().config_),
+            expected_scalable_channel_layout_config);
+}
+
+TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementChannelBased << 5,
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      2,
+      // `audio_substream_ids`
+      3, 4,
+      // `num_parameters`.
+      0,
+      // `scalable_channel_layout_config`.
+      // `num_layers` (3), reserved (5).
+      2 << 5,
+      // `channel_audio_layer_config[0]`.
+      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+      // `recon_gain_is_present_flag` (1), `reserved` (2).
+      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+      // `substream_count`.
+      1,
+      // `coupled_substream_count`.
+      1,
+      // `output_gain_flags` (6) << reserved.
+      1 << 2,
+      // `output_gain`.
+      0, 1,
+      // `channel_audio_layer_config[1]`.
+      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+      // `recon_gain_is_present_flag` (1), `reserved` (2).
+      ChannelAudioLayerConfig::kLayoutBinaural << 4 | (0 << 3) | (0 << 2),
+      // `substream_count`.
+      1,
+      // `coupled_substream_count`.
+      1};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+
+  EXPECT_FALSE(obu.ok());
 }
 
 }  // namespace

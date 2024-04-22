@@ -227,8 +227,38 @@ absl::Status ValidateAndWriteScalableChannelLayout(
 absl::Status ValidateAndReadScalableChannelLayout(
     ScalableChannelLayoutConfig& layout, const DecodedUleb128 num_substreams,
     ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "Reading scalable channel layout is not implemented.");
+  // Read the main portion of the `ScalableChannelLayoutConfig`.
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, layout.num_layers));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, layout.reserved));
+
+  for (int i = 0; i < layout.num_layers; ++i) {
+    ChannelAudioLayerConfig layer_config;
+    uint8_t loudspeaker_layout;
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, loudspeaker_layout));
+    layer_config.loudspeaker_layout =
+        static_cast<ChannelAudioLayerConfig::LoudspeakerLayout>(
+            loudspeaker_layout);
+    RETURN_IF_NOT_OK(
+        rb.ReadUnsignedLiteral(1, layer_config.output_gain_is_present_flag));
+    RETURN_IF_NOT_OK(
+        rb.ReadUnsignedLiteral(1, layer_config.recon_gain_is_present_flag));
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layer_config.reserved_a));
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, layer_config.substream_count));
+    RETURN_IF_NOT_OK(
+        rb.ReadUnsignedLiteral(8, layer_config.coupled_substream_count));
+
+    if (layer_config.output_gain_is_present_flag == 1) {
+      RETURN_IF_NOT_OK(
+          rb.ReadUnsignedLiteral(6, layer_config.output_gain_flag));
+      RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layer_config.reserved_b));
+      RETURN_IF_NOT_OK(rb.ReadSigned16(layer_config.output_gain));
+    }
+    layout.channel_audio_layer_configs.push_back(layer_config);
+  }
+
+  RETURN_IF_NOT_OK(layout.Validate(num_substreams));
+
+  return absl::OkStatus();
 }
 
 // Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
@@ -670,13 +700,10 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
       "num_parameters", audio_element_params_.size(), num_parameters_));
 
-  // TODO(b/335711463, b/335727200): Remove this line once param + config
-  // reading functions are implemented.
-  return absl::OkStatus();
-
   // Write the specific `audio_element_type`'s config.
   switch (audio_element_type_) {
     case kAudioElementChannelBased:
+      config_ = ScalableChannelLayoutConfig();
       return ValidateAndReadScalableChannelLayout(
           std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, rb);
     case kAudioElementSceneBased:
