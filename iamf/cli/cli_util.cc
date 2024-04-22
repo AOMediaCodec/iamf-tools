@@ -244,20 +244,16 @@ absl::Status CompareTimestamps(int32_t expected_timestamp,
 absl::Status WritePcmFrameToBuffer(
     const std::vector<std::vector<int32_t>>& frame,
     uint32_t samples_to_trim_at_start, uint32_t samples_to_trim_at_end,
-    uint8_t bit_depth, bool big_endian, size_t buffer_size,
-    uint8_t* const buffer) {
+    uint8_t bit_depth, bool big_endian, std::vector<uint8_t>& buffer) {
   if (bit_depth % 8 != 0) {
-    LOG(ERROR) << "This function only supports an integer number of bytes.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "This function only supports an integer number of bytes.");
   }
   const size_t num_samples =
       (frame.size() - samples_to_trim_at_start - samples_to_trim_at_end) *
       frame[0].size();
 
-  if (buffer_size < num_samples * (bit_depth / 8)) {
-    LOG(ERROR) << "Invalid buffer size";
-    return absl::InvalidArgumentError("");
-  }
+  buffer.resize(num_samples * (bit_depth / 8));
 
   // The input frame is arranged in (time, channel) axes. Interlace these in the
   // output PCM and skip over any trimmed samples.
@@ -266,8 +262,8 @@ absl::Status WritePcmFrameToBuffer(
        t < frame.size() - samples_to_trim_at_end; t++) {
     for (int c = 0; c < frame[0].size(); ++c) {
       const uint32_t sample = static_cast<uint32_t>(frame[t][c]);
-      RETURN_IF_NOT_OK(WritePcmSample(sample, bit_depth, big_endian, buffer,
-                                      write_position));
+      RETURN_IF_NOT_OK(WritePcmSample(sample, bit_depth, big_endian,
+                                      buffer.data(), write_position));
     }
   }
 

@@ -65,23 +65,15 @@ absl::Status LpcmEncoder::EncodeAudioFrame(
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
   RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
-  // Since this implementation supports partial frames get the number of samples
-  // per channel from the input.
-  const int num_samples_per_channel = static_cast<int>(samples.size());
 
-  // The size of an LPCM frame can easily be calculated before encoding.
-  // Frame size = (# time ticks) * (# channels) * (bit_depth / 8) bytes.
-  auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
-  audio_frame.resize(num_samples_per_channel * num_channels_ *
-                         decoder_config_.sample_size_ / 8,
-                     0);
   // Write the entire PCM frame the buffer. Nothing should be trimmed when
   // encoding the sample.
+  auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
   RETURN_IF_NOT_OK(WritePcmFrameToBuffer(
       samples, /*samples_to_trim_at_start=*/0,
       /*samples_to_trim_at_end=*/0, decoder_config_.sample_size_,
       decoder_config_.sample_format_flags_ == LpcmDecoderConfig::kLpcmBigEndian,
-      audio_frame.size(), audio_frame.data()));
+      audio_frame));
 
   absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(

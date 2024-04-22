@@ -119,14 +119,13 @@ absl::Status CompareTimestamps(int32_t expected_timestamp,
  * \param bit_depth Sample size in bits.
  * \param big_endian Whether the sample should be written as big or little
  *     endian.
- * \param buffer_size Size of the buffer.
- * \param buffer Buffer to write to.
+ * \param buffer Buffer to resize and write to.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status WritePcmFrameToBuffer(
     const std::vector<std::vector<int32_t>>& frame,
     uint32_t samples_to_trim_at_start, uint32_t samples_to_trim_at_end,
-    uint8_t bit_depth, bool big_endian, size_t buffer_size, uint8_t* buffer);
+    uint8_t bit_depth, bool big_endian, std::vector<uint8_t>& buffer);
 
 /*\!brief Gets the common output sample rate and bit-deph of the input sets.
  *

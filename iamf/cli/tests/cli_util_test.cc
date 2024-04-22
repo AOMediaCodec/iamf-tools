@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/cli_util.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <vector>
@@ -98,6 +99,92 @@ INSTANTIATE_TEST_SUITE_P(EnabledBaseAndSimpleProfile, IncludeTemporalDelimiters,
                              {{ProfileVersion::kIamfSimpleProfile,
                                ProfileVersion::kIamfBaseProfile, true,
                                absl::StatusCode::kOk}}));
+
+TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
+  const size_t kExpectedSize = 12;  // 3 bytes per sample * 4 samples.
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f000000, 0x7e000000},
+                                                      {0x7f000000, 0x7e000000}};
+  const uint8_t kBitDepth = 24;
+  const uint32_t kSamplesToTrimAtStart = 0;
+  const uint32_t kSamplesToTrimAtEnd = 0;
+  const bool kBigEndian = false;
+  std::vector<uint8_t> output_buffer;
+  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+                                    output_buffer)
+                  .ok());
+
+  EXPECT_EQ(output_buffer.size(), kExpectedSize);
+}
+
+TEST(WritePcmFrameToBuffer, WritesBigEndian) {
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
+                                                      {0x7f005600, 0x7e007800}};
+  const uint8_t kBitDepth = 24;
+  const uint32_t kSamplesToTrimAtStart = 0;
+  const uint32_t kSamplesToTrimAtEnd = 0;
+  const bool kBigEndian = true;
+  std::vector<uint8_t> output_buffer;
+  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+                                    output_buffer)
+                  .ok());
+
+  const std::vector<uint8_t> kExpectedBytes = {
+      0x7f, 0x00, 0x12, 0x7e, 0x00, 0x34, 0x7f, 0x00, 0x56, 0x7e, 0x00, 0x78};
+  EXPECT_EQ(output_buffer, kExpectedBytes);
+}
+
+TEST(WritePcmFrameToBuffer, WritesLittleEndian) {
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
+                                                      {0x7f005600, 0x7e007800}};
+  const uint8_t kBitDepth = 24;
+  const uint32_t kSamplesToTrimAtStart = 0;
+  const uint32_t kSamplesToTrimAtEnd = 0;
+  const bool kBigEndian = false;
+  std::vector<uint8_t> output_buffer;
+  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+                                    output_buffer)
+                  .ok());
+
+  const std::vector<uint8_t> kExpectedBytes = {
+      0x12, 0x00, 0x7f, 0x34, 0x00, 0x7e, 0x56, 0x00, 0x7f, 0x78, 0x00, 0x7e};
+  EXPECT_EQ(output_buffer, kExpectedBytes);
+}
+
+TEST(WritePcmFrameToBuffer, TrimsSamples) {
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
+                                                      {0x7f005600, 0x7e007800}};
+  const uint8_t kBitDepth = 24;
+  const uint32_t kSamplesToTrimAtStart = 1;
+  const uint32_t kSamplesToTrimAtEnd = 0;
+  const bool kBigEndian = false;
+  std::vector<uint8_t> output_buffer;
+  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+                                    output_buffer)
+                  .ok());
+
+  const std::vector<uint8_t> kExpectedBytes = {0x56, 0x00, 0x7f,
+                                               0x78, 0x00, 0x7e};
+  EXPECT_EQ(output_buffer, kExpectedBytes);
+}
+
+TEST(WritePcmFrameToBuffer, RequiresBitDepthIsMultipleOfEight) {
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
+                                                      {0x7f005600, 0x7e007800}};
+  const uint8_t kBitDepth = 23;
+  const uint32_t kSamplesToTrimAtStart = 0;
+  const uint32_t kSamplesToTrimAtEnd = 0;
+  const bool kBigEndian = false;
+  std::vector<uint8_t> output_buffer;
+
+  EXPECT_FALSE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+                                     output_buffer)
+                   .ok());
+}
 
 class GetCommonSampleRateAndBitDepthTest : public ::testing::Test {
  public:

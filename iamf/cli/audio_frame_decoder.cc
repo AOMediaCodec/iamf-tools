@@ -161,15 +161,10 @@ absl::Status WriteInterlacedSamplesToWav(
     WavWriter& wav_writer, uint32_t substream_id) {
   // Buffer of raw input PCM with channels interlaced and no padding.
   std::vector<uint8_t> buffer;
-  const size_t num_samples =
-      (samples.size() - samples_to_trim_at_start - samples_to_trim_at_end) *
-      samples[0].size();
-  buffer.resize(num_samples * (wav_writer.bit_depth() / 8));
-
-  RETURN_IF_NOT_OK(WritePcmFrameToBuffer(
-      samples, samples_to_trim_at_start, samples_to_trim_at_end,
-      wav_writer.bit_depth(),
-      /*big_endian=*/false, buffer.size(), buffer.data()));
+  RETURN_IF_NOT_OK(WritePcmFrameToBuffer(samples, samples_to_trim_at_start,
+                                         samples_to_trim_at_end,
+                                         wav_writer.bit_depth(),
+                                         /*big_endian=*/false, buffer));
 
   // Write the raw PCM to a ".wav" file.
   if (!wav_writer.WriteSamples(buffer.data(), buffer.size())) {
