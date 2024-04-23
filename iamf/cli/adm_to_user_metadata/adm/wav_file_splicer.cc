@@ -61,7 +61,7 @@ void AbortAllWavWriters(
 
 void FlushToWavWriter(std::vector<uint8_t>& samples_to_flush,
                       WavWriter& wav_writer) {
-  wav_writer.WriteSamples(samples_to_flush.data(), samples_to_flush.size());
+  wav_writer.WriteSamples(samples_to_flush);
   samples_to_flush.clear();
 }
 

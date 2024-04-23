@@ -52,7 +52,7 @@ TEST(WavWriterTest, InvalidBitDepthFailsAtWriting) {
 
   // `WriteSamples()` returning `false` means writing failed.
   std::vector<uint8_t> samples(10, 0);
-  EXPECT_FALSE(wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_FALSE(wav_writer.WriteSamples(samples));
 }
 
 TEST(WavWriterTest, WriteEmptySamplesSucceeds) {
@@ -60,8 +60,7 @@ TEST(WavWriterTest, WriteEmptySamplesSucceeds) {
                        kBitDepth24);
 
   std::vector<uint8_t> empty_samples(0);
-  EXPECT_TRUE(
-      wav_writer.WriteSamples(empty_samples.data(), empty_samples.size()));
+  EXPECT_TRUE(wav_writer.WriteSamples(empty_samples));
 }
 
 TEST(WavWriterTest, WriteIntegerSamplesSucceeds) {
@@ -70,7 +69,7 @@ TEST(WavWriterTest, WriteIntegerSamplesSucceeds) {
 
   // Bit depth = 16, and writing 6 bytes = 48 bits = 3 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_TRUE(wav_writer.WriteSamples(samples));
 }
 
 TEST(WavWriterTest, WriteNonIntegerNumberOfSamplesFails) {
@@ -79,7 +78,7 @@ TEST(WavWriterTest, WriteNonIntegerNumberOfSamplesFails) {
 
   // Bit depth = 16, and writing 3 bytes = 24 bits = 1.5 samples fails.
   std::vector<uint8_t> samples(3, 0);
-  EXPECT_FALSE(wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_FALSE(wav_writer.WriteSamples(samples));
 }
 
 TEST(WavWriterTest, Write24BitSamplesSucceeds) {
@@ -88,7 +87,7 @@ TEST(WavWriterTest, Write24BitSamplesSucceeds) {
 
   // Bit depth = 24, and writing 6 bytes = 48 bits = 2 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_TRUE(wav_writer.WriteSamples(samples));
 }
 
 TEST(WavWriterTest, Write32BitSamplesSucceeds) {
@@ -97,7 +96,7 @@ TEST(WavWriterTest, Write32BitSamplesSucceeds) {
 
   // Bit depth = 32, and writing 8 bytes = 64 bits = 2 samples succeeds.
   std::vector<uint8_t> samples = {1, 0, 0, 0, 2, 0, 0, 0};
-  EXPECT_TRUE(wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_TRUE(wav_writer.WriteSamples(samples));
 }
 
 TEST(WavWriterTest, OutputFileExists) {
@@ -133,7 +132,7 @@ TEST(WavWriterTest, MovingSucceeds) {
 
   // Expect the new `wav_writer` can write samples.
   std::vector<uint8_t> samples(10, 0);
-  EXPECT_TRUE(new_wav_writer.WriteSamples(samples.data(), samples.size()));
+  EXPECT_TRUE(new_wav_writer.WriteSamples(samples));
 
   // Expect that aborting after moving deletes the output file.
   new_wav_writer.Abort();

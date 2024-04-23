@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace iamf_tools {
 
@@ -53,14 +54,13 @@ class WavWriter {
    *
    * There must be an integer number of samples and the number of samples %
    * `num_channels()` must equal 0. The number of samples is implicitly
-   * calculated by `buffer_size` / (bit_depth / 8).
+   * calculated by `buffer.size()` / (bit_depth / 8).
    *
    * \param buffer Buffer of raw input PCM with channels interlaced and no
    *     padding.
-   * \param buffer_size Size of the buffer in bytes.
    * \return `true` on success. `false` on failure.
    */
-  bool WriteSamples(uint8_t* buffer, size_t buffer_size);
+  bool WriteSamples(const std::vector<uint8_t>& buffer);
 
   /*\!brief Aborts the write process and deletes the wav file.*/
   void Abort();

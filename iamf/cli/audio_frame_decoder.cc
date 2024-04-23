@@ -167,7 +167,7 @@ absl::Status WriteInterlacedSamplesToWav(
                                          /*big_endian=*/false, buffer));
 
   // Write the raw PCM to a ".wav" file.
-  if (!wav_writer.WriteSamples(buffer.data(), buffer.size())) {
+  if (!wav_writer.WriteSamples(buffer)) {
     LOG_FIRST_N(WARNING, 1)
         << "Failed to write to wav file for substream ID: " << substream_id
         << ".";

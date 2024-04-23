@@ -76,10 +76,12 @@ WavWriter::WavWriter(WavWriter&& original)
 }
 
 // Write samples for all channels.
-bool WavWriter::WriteSamples(uint8_t* buffer, size_t buffer_size) {
+bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
   if (file_ == nullptr) {
     return false;
   }
+
+  const auto buffer_size = buffer.size();
 
   if (buffer_size == 0) {
     // Nothing to write.
