@@ -26,6 +26,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
+#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
@@ -306,6 +307,13 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   }
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<MixPresentationObu> MixPresentationObu::CreateFromBuffer(
+    const ObuHeader& header, ReadBitBuffer& rb) {
+  MixPresentationObu mix_presentation_obu(header);
+  RETURN_IF_NOT_OK(mix_presentation_obu.ValidateAndReadPayload(rb));
+  return mix_presentation_obu;
 }
 
 absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {

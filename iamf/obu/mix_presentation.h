@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
@@ -338,6 +339,20 @@ class MixPresentationObu : public ObuBase {
         num_sub_mixes_(num_sub_mixes),
         sub_mixes_(std::move(sub_mixes)) {}
 
+  /*!\brief Creates a `MixPresentationObu` from a `ReadBitBuffer`.
+   *
+   * This function is designed to be used from the perspective of the decoder.
+   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * therefore it can fail.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param rb `ReadBitBuffer` where the `MixPresentationObu` data is stored.
+   *     Data read from the buffer is consumed.
+   * \return an `MixPresentationObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<MixPresentationObu> CreateFromBuffer(
+      const ObuHeader& header, ReadBitBuffer& rb);
+
   /*!\brief Move Constructor. */
   MixPresentationObu(MixPresentationObu&& other) = default;
 
@@ -365,6 +380,15 @@ class MixPresentationObu : public ObuBase {
   std::vector<MixPresentationSubMix> sub_mixes_;
 
  private:
+  // Used only by the factory create function.
+  explicit MixPresentationObu(const ObuHeader& header)
+      : ObuBase(header, kObuIaAudioElement),
+        mix_presentation_id_(DecodedUleb128()),
+        count_label_(DecodedUleb128()),
+        language_labels_({}),
+        mix_presentation_annotations_({}),
+        num_sub_mixes_(DecodedUleb128()),
+        sub_mixes_({}) {}
   /*\!brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
