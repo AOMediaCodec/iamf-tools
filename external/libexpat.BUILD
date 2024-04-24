@@ -30,6 +30,7 @@ cc_library(
     copts = ["-w"],
     defines = [
         "XML_STATIC",
+        "XML_GE",
     ],
     # Internally `libexpat` does not qualify any headers.
     includes = [

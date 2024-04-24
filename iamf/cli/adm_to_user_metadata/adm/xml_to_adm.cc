@@ -189,13 +189,13 @@ bool IsUserMetadataDefined(absl::string_view xxxx_substring) {
 bool IsLoudspeakerLayoutValid(absl::string_view xxxx_substring) {
   static const absl::NoDestructor<absl::flat_hash_set<std::string>>
       kValidLoudspeakerLayouts({
-          "0001",  // Mono
-          "0002",  // Stereo
-          "0003",  // 5.1
-          "0004",  // 5.1.2
-          "0005",  // 5.1.4
-          "000f",  // 7.1
-          "0017",  // 7.1.4
+          {"0001"},  // Mono
+          {"0002"},  // Stereo
+          {"0003"},  // 5.1
+          {"0004"},  // 5.1.2
+          {"0005"},  // 5.1.4
+          {"000f"},  // 7.1
+          {"0017"},  // 7.1.4
       });
   return kValidLoudspeakerLayouts->contains(xxxx_substring);
 }
@@ -205,9 +205,9 @@ bool IsLoudspeakerLayoutValid(absl::string_view xxxx_substring) {
 bool IsHoaLayoutValid(absl::string_view xxxx_substring) {
   static const absl::NoDestructor<absl::flat_hash_set<std::string>>
       kValidHoaLayouts({
-          "0001",  // First-order ambisonics.
-          "0002",  // Second-order ambisonics.
-          "0003",  // Third-order ambisonics.
+          {"0001"},  // First-order ambisonics.
+          {"0002"},  // Second-order ambisonics.
+          {"0003"},  // Third-order ambisonics.
       });
   return kValidHoaLayouts->contains(xxxx_substring);
 }

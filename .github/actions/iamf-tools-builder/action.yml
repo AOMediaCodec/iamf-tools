@@ -1,0 +1,10 @@
+name: iamf-tools-builder
+
+description: Run unit tests for IAMF Tools.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        bazelisk -c opt test iamf/...

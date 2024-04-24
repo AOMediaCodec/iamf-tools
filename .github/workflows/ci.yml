@@ -1,0 +1,15 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Build
+        uses: ./.github/actions/iamf-tools-builder
+        with:
+          platform: linux
+          architecture: amd64
