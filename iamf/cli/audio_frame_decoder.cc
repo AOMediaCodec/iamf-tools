@@ -67,50 +67,29 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
   return absl::OkStatus();
 }
 
-absl::Status InitializeWavWriters(
-    absl::string_view output_wav_directory, absl::string_view file_prefix,
-    const std::list<DecodedAudioFrame>& decoded_audio_frames,
-    absl::node_hash_map<uint32_t, WavWriter>& wav_writers) {
-  for (const auto& decoded_audio_frame : decoded_audio_frames) {
-    const uint32_t substream_id = decoded_audio_frame.substream_id;
-    // Create one `WavWriter` for each substream.
-    if (wav_writers.find(substream_id) != wav_writers.end()) {
-      continue;
-    }
-
-    const auto& audio_element = decoded_audio_frame.audio_element_with_data;
-    // Get all the arguments for the constructor. Based on the substream ID and
-    // found Codec Config OBU.
-    const auto& iter = audio_element->substream_id_to_labels.find(substream_id);
-    if (iter == audio_element->substream_id_to_labels.end()) {
-      LOG(ERROR) << "Unknown number of channels for substream id: "
-                 << substream_id;
-      return absl::UnknownError("");
-    }
-    const int num_channels = static_cast<int>(iter->second.size());
-
-    const std::filesystem::path file_directory =
-        std::filesystem::path(output_wav_directory);
-    const std::filesystem::path file_name(
-        absl::StrCat(file_prefix, "_decoded_substream_",
-                     decoded_audio_frame.substream_id, ".wav"));
-    // Write directly to special files (e.g. `/dev/null`). Otherwise append the
-    // filename.
-    const std::filesystem::path wav_path =
-        std::filesystem::is_character_file(output_wav_directory)
-            ? file_directory
-            : file_directory / file_name;
-
-    wav_writers.emplace(
-        substream_id,
-        iamf_tools::WavWriter(
-            wav_path, num_channels,
-            static_cast<int>(
-                audio_element->codec_config->GetOutputSampleRate()),
-            static_cast<int>(
-                audio_element->codec_config->GetBitDepthToMeasureLoudness())));
+// Configures a wav writer for a given substream ID.
+absl::Status InitializeWavWriterForSubstreamId(
+    uint32_t substream_id, absl::string_view output_wav_directory,
+    absl::string_view file_prefix, int num_channels, int sample_rate,
+    int bit_depth, absl::node_hash_map<uint32_t, WavWriter>& wav_writers) {
+  if (wav_writers.contains(substream_id)) {
+    return absl::OkStatus();
   }
 
+  const std::filesystem::path file_directory =
+      std::filesystem::path(output_wav_directory);
+  const std::filesystem::path file_name(
+      absl::StrCat(file_prefix, "_decoded_substream_", substream_id, ".wav"));
+  // Write directly to special files (e.g. `/dev/null`). Otherwise append the
+  // filename.
+  const std::filesystem::path wav_path =
+      std::filesystem::is_character_file(output_wav_directory)
+          ? file_directory
+          : file_directory / file_name;
+
+  wav_writers.emplace(
+      substream_id,
+      iamf_tools::WavWriter(wav_path, num_channels, sample_rate, bit_depth));
   return absl::OkStatus();
 }
 
@@ -175,24 +154,14 @@ absl::Status WriteInterlacedSamplesToWav(
   return absl::OkStatus();
 }
 
-// Dumps the interlaced `decoded_frames` field of the input
-// `decoded_audio_frames` to a WAV file per substream.
-absl::Status DumpDecodedAudioFramesWav(
-    absl::string_view output_wav_directory, absl::string_view file_prefix,
-    const std::list<DecodedAudioFrame>& decoded_audio_frames) {
-  // Initialize all `WavWriter`s.
-  absl::node_hash_map<uint32_t, WavWriter> wav_writers;
-  RETURN_IF_NOT_OK(InitializeWavWriters(output_wav_directory, file_prefix,
-                                        decoded_audio_frames, wav_writers));
-
-  // Trim and write out all decoded audio frames to the `WavWriter`s.
-  for (const auto& decoded_audio_frame : decoded_audio_frames) {
-    const uint32_t substream_id = decoded_audio_frame.substream_id;
-    auto wav_writer_iter = wav_writers.find(substream_id);
-    if (wav_writer_iter == wav_writers.end()) {
-      return absl::UnknownError("");
-    }
-
+// Trims and writes out the `decoded_audio_frame ` to the associated wav writer
+// if it can be found. Or does nothing if the wav writer cannot be found.
+absl::Status DumpDecodedAudioFrameToWavWriter(
+    const DecodedAudioFrame& decoded_audio_frame,
+    absl::node_hash_map<uint32_t, WavWriter>& substream_id_to_wav_writers) {
+  const auto substream_id = decoded_audio_frame.substream_id;
+  auto wav_writer_iter = substream_id_to_wav_writers.find(substream_id);
+  if (wav_writer_iter != substream_id_to_wav_writers.end()) {
     // Write this frame to a WAV file.
     RETURN_IF_NOT_OK(WriteInterlacedSamplesToWav(
         decoded_audio_frame.decoded_samples,
@@ -204,6 +173,13 @@ absl::Status DumpDecodedAudioFramesWav(
   return absl::OkStatus();
 }
 
+void AbortAllWavWriters(
+    absl::node_hash_map<uint32_t, WavWriter>& substream_id_to_wav_writers) {
+  for (auto& [_, wav_writer] : substream_id_to_wav_writers) {
+    wav_writer.Abort();
+  }
+}
+
 }  // namespace
 
 absl::Status AudioFrameDecoder::Decode(
@@ -213,6 +189,8 @@ absl::Status AudioFrameDecoder::Decode(
   // necessary to process streams with stateful decoders correctly.
   absl::node_hash_map<uint32_t, std::unique_ptr<DecoderBase>>
       substream_id_to_decoder;
+  // A map of substream IDs to the relevant wav writer.
+  absl::node_hash_map<uint32_t, WavWriter> substream_id_to_wav_writer;
 
   // Initialize all decoders and find all corresponding Codec Config OBUs.
   for (const auto& audio_frame : encoded_audio_frames) {
@@ -243,6 +221,12 @@ absl::Status AudioFrameDecoder::Decode(
     // channels.
     RETURN_IF_NOT_OK(
         InitializeDecoder(*audio_element.codec_config, num_channels, decoder));
+    RETURN_IF_NOT_OK(InitializeWavWriterForSubstreamId(
+        substream_id, output_wav_directory_, file_prefix_, num_channels,
+        static_cast<int>(audio_element.codec_config->GetOutputSampleRate()),
+        static_cast<int>(
+            audio_element.codec_config->GetBitDepthToMeasureLoudness()),
+        substream_id_to_wav_writer));
   }
 
   // Decode all frames in all substreams.
@@ -255,13 +239,13 @@ absl::Status AudioFrameDecoder::Decode(
     if (!decode_status.ok()) {
       LOG(ERROR) << "Failed to decode audio streams. decode_status: "
                  << decode_status;
+      AbortAllWavWriters(substream_id_to_wav_writer);
       return decode_status;
     }
+    RETURN_IF_NOT_OK(DumpDecodedAudioFrameToWavWriter(
+        decoded_audio_frame, substream_id_to_wav_writer));
     decoded_audio_frames.push_back(decoded_audio_frame);
   }
-
-  RETURN_IF_NOT_OK(DumpDecodedAudioFramesWav(
-      output_wav_directory_, file_prefix_, decoded_audio_frames));
 
   return absl::OkStatus();
 }
