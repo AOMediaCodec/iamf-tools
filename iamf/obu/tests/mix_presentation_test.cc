@@ -874,7 +874,7 @@ TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
 
 // --- Begin CreateFromBuffer tests ---
 // TODO(b/329706068): Update test once ValidateAndReadPayload is implemented.
-TEST(CreateFromBuffer, IsNotSupported) {
+TEST(CreateFromBufferTest, IsNotSupported) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
@@ -883,7 +883,7 @@ TEST(CreateFromBuffer, IsNotSupported) {
 
 // TODO(b/329706068, b/336615335): Switch to a failing test case once submix
 // reading is implemented.
-TEST(CreateFromBuffer, NoSubMix) {
+TEST(CreateFromBufferTest, NoSubMix) {
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
@@ -908,6 +908,51 @@ TEST(CreateFromBuffer, NoSubMix) {
       obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
       "Mix 1");
   EXPECT_EQ(obu->GetNumSubMixes(), 0);
+}
+
+TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
+  std::vector<uint8_t> source = {
+      // Start SubMixAudioElement.
+      // audio_element_id
+      11,
+      // mix_presentation_annotation[0].audio_element_friendly_label
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6, 0,
+      // End RenderingConfig.
+      // Start ElementMixConfig
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4
+      // End ElementMixConfig
+  };
+  ReadBitBuffer buffer(1024, &source);
+  SubMixAudioElement audio_element;
+  EXPECT_TRUE(audio_element.ReadAndValidate(/*count_label=*/1, buffer).ok());
+
+  // Set up expected values.
+  SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
+      .audio_element_id = 11,
+      .mix_presentation_element_annotations =
+          {MixPresentationElementAnnotations(
+              {.audio_element_friendly_label = "Submix 1"})},
+      .rendering_config =
+          {.headphones_rendering_mode =
+               RenderingConfig::kHeadphonesRenderingModeBinaural},
+      .element_mix_config = {.mix_gain = MixGainParamDefinition()}};
+  expected_submix_audio_element.element_mix_config.mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_config.mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_config.mix_gain
+      .param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_config.mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_config.mix_gain.default_mix_gain_ =
+      4;
+  EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 
 }  // namespace

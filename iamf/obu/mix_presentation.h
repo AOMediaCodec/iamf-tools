@@ -69,6 +69,14 @@ struct SubMixAudioElement {
   friend bool operator==(const SubMixAudioElement& lhs,
                          const SubMixAudioElement& rhs) = default;
 
+  /*\!brief Reads and validates the SubMixAudioElement from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the layout is valid. A specific status if the
+   *     write fails.
+   */
+  absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
+
   // The ID of the associated Audio Element OBU.
   DecodedUleb128 audio_element_id;
   // Length `count_labels`.

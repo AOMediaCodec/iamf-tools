@@ -210,6 +210,38 @@ absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
 
 }  // namespace
 
+absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
+                                                 ReadBitBuffer& rb) {
+  // Read the main portion of an `SubMixAudioElement`.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id));
+  for (int i = 0; i < count_label; ++i) {
+    MixPresentationElementAnnotations mix_presentation_element_annotation;
+    RETURN_IF_NOT_OK(rb.ReadString(
+        mix_presentation_element_annotation.audio_element_friendly_label));
+    mix_presentation_element_annotations.push_back(
+        mix_presentation_element_annotation);
+  }
+
+  // Read `rendering_config`.
+  uint8_t headphones_rendering_mode;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, headphones_rendering_mode));
+  rendering_config.headphones_rendering_mode =
+      static_cast<RenderingConfig::HeadphonesRenderingMode>(
+          headphones_rendering_mode);
+
+  uint8_t reserved;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, reserved));
+  rendering_config.reserved = reserved;
+  RETURN_IF_NOT_OK(
+      rb.ReadULeb128(rendering_config.rendering_config_extension_size));
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Vector(rendering_config.rendering_config_extension_size,
+                         rendering_config.rendering_config_extension_bytes));
+
+  RETURN_IF_NOT_OK(element_mix_config.mix_gain.ReadAndValidate(rb));
+  return absl::OkStatus();
+}
+
 // Validates and writes a `LoudspeakersSsConventionLayout` and sets
 // `found_stereo_layout` to true if it is a stereo layout.
 absl::Status LoudspeakersSsConventionLayout::Write(bool& found_stereo_layout,
