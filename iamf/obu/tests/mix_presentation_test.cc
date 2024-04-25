@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
@@ -484,7 +485,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
 TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithIllegalIamfStringOver128Bytes) {
   // Create a string that has no null terminator in the first 128 bytes.
-  const std::string kIllegalIamfString(WriteBitBuffer::kIamfMaxStringSize, 'a');
+  const std::string kIllegalIamfString(kIamfMaxStringSize, 'a');
   mix_presentation_annotations_[0].mix_presentation_friendly_label =
       kIllegalIamfString;
 
@@ -878,6 +879,35 @@ TEST(CreateFromBuffer, IsNotSupported) {
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
   EXPECT_FALSE(MixPresentationObu::CreateFromBuffer(header, buffer).ok());
+}
+
+// TODO(b/329706068, b/336615335): Switch to a failing test case once submix
+// reading is implemented.
+TEST(CreateFromBuffer, NoSubMix) {
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      1,
+      // language_labels
+      'e', 'n', '-', 'u', 's', '\0',
+      // mix_presentation_annotation
+      // mix_presentation_friendly_label
+      'M', 'i', 'x', ' ', '1', '\0',
+      // num_submixes
+      0,
+      // End Mix OBU.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu = MixPresentationObu::CreateFromBuffer(header, buffer);
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu->GetMixPresentationId(), 10);
+  EXPECT_EQ(
+      obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
+      "Mix 1");
+  EXPECT_EQ(obu->GetNumSubMixes(), 0);
 }
 
 }  // namespace

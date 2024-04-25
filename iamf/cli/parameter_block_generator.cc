@@ -32,7 +32,6 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
-#include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
@@ -107,7 +106,7 @@ absl::Status PopulateAssociatedAudioElements(
   // Loop through all Mix Presentation OBUs to associate audio elements with
   // referred `parameter_id`s.
   for (auto& mix_presentation_obu : mix_presentation_obus) {
-    for (int i = 0; i < mix_presentation_obu.num_sub_mixes_; ++i) {
+    for (int i = 0; i < mix_presentation_obu.GetNumSubMixes(); ++i) {
       const auto& sub_mix = mix_presentation_obu.sub_mixes_[i];
 
       // Check the `output_mix_config`. If a parameter is used an output mix,
@@ -125,8 +124,8 @@ absl::Status PopulateAssociatedAudioElements(
         if (!audio_elements.contains(element_mix_audio_element_id)) {
           LOG(ERROR) << "Audio Element ID: " << element_mix_audio_element_id
                      << " mentioned in Mix Presentation OBU ID: "
-                     << mix_presentation_obu.mix_presentation_id_ << " Sub Mix["
-                     << i << "] is not defined";
+                     << mix_presentation_obu.GetMixPresentationId()
+                     << " Sub Mix[" << i << "] is not defined";
           return absl::InvalidArgumentError("");
         }
 
@@ -573,55 +572,6 @@ absl::Status GenerateParameterBlockSubblock(
   return absl::OkStatus();
 }
 
-absl::Status GetTargetParameterBlockDuration(
-    const DecodedUleb128 parameter_id, const ProfileVersion primary_profile,
-    const absl::flat_hash_map<uint32_t,
-                              absl::flat_hash_set<const AudioElementWithData*>>&
-        associated_audio_elements,
-    DecodedUleb128& target_parameter_block_duration) {
-  // Find any Codec Config OBUs associated with this parameter block.
-  absl::flat_hash_set<const CodecConfigObu*> associated_codec_config_obus;
-  if (!associated_audio_elements.contains(parameter_id)) {
-    // This is a stray parameter without an associated Codec Config OBU.
-    // However, we can pretending the sole Codec Config OBU in the bit stream
-    // is the associated one. This logic only works for base and simple
-    // profiles, where there is one unique set of descriptor OBUs.
-    LOG(INFO) << "Stray parameter found with Parameter ID: " << parameter_id
-              << "; proceed with the sole Codec Config OBU found in the "
-              << "bitstream";
-    if (primary_profile != ProfileVersion::kIamfSimpleProfile &&
-        primary_profile != ProfileVersion::kIamfBaseProfile) {
-      // This function only implements limitations described in IAMF V1 are for
-      // simple and base profile.
-      return absl::InvalidArgumentError("");
-    }
-    const auto* first_audio_element =
-        *associated_audio_elements.begin()->second.begin();
-    associated_codec_config_obus.insert(first_audio_element->codec_config);
-  } else {
-    for (const auto* audio_element :
-         associated_audio_elements.at(parameter_id)) {
-      associated_codec_config_obus.insert(audio_element->codec_config);
-    }
-  }
-
-  if (associated_codec_config_obus.size() > 1) {
-    // Theoretically there can be more than one associated Codec Config, but
-    // this is not allowed in simple or base profile. Reject this case.
-    LOG(ERROR)
-        << "Automatic partitioning is not implemented when there is more "
-           "than 1 Codec Config OBU.";
-    return absl::InvalidArgumentError("");
-  }
-
-  // TODO(b/283281856): Set the duration to a different value when
-  //                    `parameter_rate != sample rate`.
-  target_parameter_block_duration =
-      (*associated_codec_config_obus.begin())->GetNumSamplesPerFrame();
-
-  return absl::OkStatus();
-}
-
 struct ParameterStreamTimestamps {
   int32_t global_start;
   int32_t global_end;
@@ -670,12 +620,10 @@ absl::Status PopulateSubblocks(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata,
     const bool override_computed_recon_gains,
-    const bool partition_mix_gain_parameter_blocks,
     const absl::flat_hash_map<uint32_t,
                               absl::flat_hash_set<const AudioElementWithData*>>&
         associated_audio_elements,
     const ProfileVersion primary_profile,
-    const ParameterBlockPartitioner& partitioner,
     const ReconGainGenerator* recon_gain_generator,
     PerIdParameterMetadata& per_id_metadata,
     ParameterBlockWithData& parameter_block_with_data,
@@ -700,32 +648,7 @@ absl::Status PopulateSubblocks(
         include_subblock_duration, i, parameter_block_metadata.subblocks(i),
         recon_gain_generator, parameter_block_obu));
   }
-
-  DecodedUleb128 target_parameter_block_duration;
-  RETURN_IF_NOT_OK(GetTargetParameterBlockDuration(
-      per_id_metadata.param_definition.parameter_id_, primary_profile,
-      associated_audio_elements, target_parameter_block_duration));
-
-  if (partition_mix_gain_parameter_blocks &&
-      per_id_metadata.param_definition_type ==
-          ParamDefinition::kParameterDefinitionMixGain) {
-    // The user requested to partition the input mix gain parameter blocks
-    // to be aligned with single frames.
-    RETURN_IF_NOT_OK(partitioner.PartitionFrameAligned(
-        target_parameter_block_duration, parameter_block_with_data,
-        per_id_metadata, output_parameter_blocks));
-  } else {
-    output_parameter_blocks.push_back(std::move(parameter_block_with_data));
-    const DecodedUleb128 parameter_block_duration =
-        parameter_block_obu.GetDuration();
-    if (parameter_block_duration != target_parameter_block_duration) {
-      LOG(ERROR)
-          << "The spec requires all simple and base profile parameter blocks "
-             "to have a duration corresponding to the sample rate.";
-      return absl::InvalidArgumentError("");
-    }
-  }
-
+  output_parameter_blocks.push_back(std::move(parameter_block_with_data));
   return absl::OkStatus();
 }
 
@@ -796,8 +719,6 @@ absl::Status ParameterBlockGenerator::Initialize(
         parameter_block_metadata);
   }
 
-  partitioner_ = std::make_unique<ParameterBlockPartitioner>(primary_profile_);
-
   return absl::OkStatus();
 }
 
@@ -849,9 +770,9 @@ absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
 
     RETURN_IF_NOT_OK(PopulateSubblocks(
         parameter_block_metadata, override_computed_recon_gains_,
-        partition_mix_gain_parameter_blocks_, associated_audio_elements_,
-        primary_profile_, *partitioner_, recon_gain_generator_.get(),
-        per_id_metadata, parameter_block_with_data, output_parameter_blocks));
+        associated_audio_elements_, primary_profile_,
+        recon_gain_generator_.get(), per_id_metadata, parameter_block_with_data,
+        output_parameter_blocks));
 
     // Disable some verbose logging after the first recon gain block is
     // produced.

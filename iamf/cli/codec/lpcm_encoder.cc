@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/lpcm_encoder.h"
+#include "iamf/cli/codec/lpcm_encoder.h"
 
 #include <cstdint>
 #include <memory>

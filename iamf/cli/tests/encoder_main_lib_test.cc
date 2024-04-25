@@ -6,6 +6,7 @@
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -23,15 +24,53 @@ void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
       user_metadata.add_ia_sequence_header_metadata()));
 }
 
+void AddCodecConfig(iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        codec_config_id: 200
+        codec_config {
+          codec_id: CODEC_ID_LPCM
+          num_samples_per_frame: 64
+          audio_roll_distance: 0
+          decoder_config_lpcm {
+            sample_format_flags: LPCM_LITTLE_ENDIAN
+            sample_size: 16
+            sample_rate: 48000
+          }
+        }
+      )pb",
+      user_metadata.add_codec_config_metadata()));
+}
+
 TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {
   EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "", "").ok());
 }
 
-TEST(EncoderMainLibTest, IaSequenceHeaderOnlySucceeds) {
+TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // Populate the user metadata with only an IA Sequence Header, leaving
-  // everything else empty, which would still succeed.
+  // everything else empty. This will fail if
+  // `partition_mix_gain_parameter_blocks` is left true (the default value).
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
+  EXPECT_FALSE(TestMain(user_metadata, "", "",
+                        std::filesystem::temp_directory_path().string())
+                   .ok());
+
+  // After setting `partition_mix_gain_parameter_blocks` to false, `TestMain()`
+  // will succeed.
+  user_metadata.mutable_test_vector_metadata()
+      ->set_partition_mix_gain_parameter_blocks(false);
+  EXPECT_TRUE(TestMain(user_metadata, "", "",
+                       std::filesystem::temp_directory_path().string())
+                  .ok());
+}
+
+TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
+  // Populate the user metadata with an IA Sequence Header AND a Codec Config,
+  // leaving everything else empty. This will succeed.
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  AddIaSequenceHeader(user_metadata);
+  AddCodecConfig(user_metadata);
   EXPECT_TRUE(TestMain(user_metadata, "", "",
                        std::filesystem::temp_directory_path().string())
                   .ok());
@@ -41,6 +80,9 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
   // Initialize prerequisites.
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
+  user_metadata.mutable_test_vector_metadata()
+      ->set_partition_mix_gain_parameter_blocks(false);
+
   // Configure a reasonable bit-depth to output to.
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(16);
@@ -54,6 +96,9 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
   // Initialize prerequisites.
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
+  user_metadata.mutable_test_vector_metadata()
+      ->set_partition_mix_gain_parameter_blocks(false);
+
   const uint32_t kBitDepthTooHigh = 256;
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(kBitDepthTooHigh);
@@ -66,6 +111,8 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
 TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
+  user_metadata.mutable_test_vector_metadata()
+      ->set_partition_mix_gain_parameter_blocks(false);
 
   // Setting a filename prefix makes the function output a .iamf file.
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix("empty");
@@ -81,6 +128,9 @@ TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
 TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
+  user_metadata.mutable_test_vector_metadata()
+      ->set_partition_mix_gain_parameter_blocks(false);
+
   // Setting a filename prefix makes the function output a .iamf file.
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix("empty");
 

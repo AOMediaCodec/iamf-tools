@@ -116,10 +116,10 @@ TEST_F(MixPresentationGeneratorTest, SupportsUtf8) {
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
   ASSERT_TRUE(generator.Generate(generated_obus_).ok());
-  ASSERT_FALSE(generated_obus_.back().mix_presentation_annotations_.empty());
+  ASSERT_FALSE(generated_obus_.back().GetMixPresentationAnnotations().empty());
 
   EXPECT_EQ(generated_obus_.back()
-                .mix_presentation_annotations_[0]
+                .GetMixPresentationAnnotations()[0]
                 .mix_presentation_friendly_label,
             kUtf8FourByteSequenceCode);
 }

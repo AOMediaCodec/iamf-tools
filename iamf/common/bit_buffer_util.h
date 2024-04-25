@@ -19,6 +19,13 @@
 
 namespace iamf_tools {
 
+/*!\brief The maximum length of an IAMF string in bytes.
+ *
+ * The spec limits the length of a string to 128 bytes including the
+ * null terminator ('\0').
+ */
+static constexpr int kIamfMaxStringSize = 128;
+
 /*!\brief Confirms that `num_bits` can be written to `bit_buffer`.
  *
  * \param allow_resizing Whether the buffer can be resized if need be.

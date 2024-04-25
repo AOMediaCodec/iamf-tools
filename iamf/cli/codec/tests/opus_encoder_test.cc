@@ -14,9 +14,9 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "iamf/cli/opus_encoder_decoder.h"
+#include "iamf/cli/codec/opus_encoder_decoder.h"
+#include "iamf/cli/codec/tests/encoder_test_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/cli/tests/encoder_test_base.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"

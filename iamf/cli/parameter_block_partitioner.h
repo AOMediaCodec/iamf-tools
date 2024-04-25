@@ -12,53 +12,60 @@
 #ifndef CLI_PARAMETER_BLOCK_PARTITIONER_H_
 #define CLI_PARAMETER_BLOCK_PARTITIONER_H_
 
+#include <cstdint>
 #include <list>
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/leb128.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto/ia_sequence_header.pb.h"
+#include "iamf/cli/proto/parameter_block.pb.h"
 
 namespace iamf_tools {
 
 class ParameterBlockPartitioner {
  public:
   /*\!brief Constructor.
-   * \param primary_profile Input primary profile version.
    */
-  ParameterBlockPartitioner(ProfileVersion primary_profile)
-      : primary_profile_(primary_profile) {}
+  ParameterBlockPartitioner() = default;
 
   /*\!brief Finds the `constant_subblock_duration` for the input durations.
    *
    * \param subblock_durations Vector of subblock durations.
    * \return `constant_subblock_duration` which results in the best bit-rate.
    */
-  static DecodedUleb128 FindConstantSubblockDuration(
-      const std::vector<DecodedUleb128>& subblock_durations);
+  static uint32_t FindConstantSubblockDuration(
+      const std::vector<uint32_t>& subblock_durations);
+
+  /*\!brief Finds the desired duration of partitioned parameter blocks.
+   *
+   * \param primary_profile Input primary profile version.
+   * \param codec_config_obu_metadata Input codec config OBU metadata.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status FindPartitionDuration(
+      iamf_tools_cli_proto::ProfileVersion primary_profile,
+      const iamf_tools_cli_proto::CodecConfigObuMetadata&
+          codec_config_obu_metadata,
+      uint32_t& partition_duration);
 
   /*\!brief Partitions the input parameter block into a smaller one.
    *
-   * \param full_parameter_block Input full parameter block.
+   * \param full_parameter_block Input full parameter block OBU metadata.
    * \param partitioned_start_time Start time of the output partitioned
    *     parameter block.
    * \param partitioned_end_time End time of the output partitioned parameter
    *     block.
-   * \param per_id_metadata Per-ID parameter metadata.
-   * \param partitioned_parameter_block Output partitioned parameter block which
-   *     must be destroyed later only if this function was successful.
-   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     `partitioned_start_time >= partitioned_end_time`.
-   *     `absl::InvalidArgumentError()` if the block cannot be partitioned to
-   *     fully cover the interval or partitioned to fulfill restrictions.
+   * \param partitioned_parameter_block Output partitioned parameter block OBU
+   *     metadata.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PartitionParameterBlock(
-      const ParameterBlockWithData& full_parameter_block,
-      int partitioned_start_time, int partitioned_end_time,
-      PerIdParameterMetadata& per_id_metadata,
-      ParameterBlockWithData& partitioned_parameter_block) const;
+      const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+          full_parameter_block,
+      int32_t partitioned_start_time, int32_t partitioned_end_time,
+      iamf_tools_cli_proto::ParameterBlockObuMetadata&
+          partitioned_parameter_block) const;
 
   /*\!brief Partitions the input parameter block into frame-aligned ones.
    *
@@ -70,13 +77,11 @@ class ParameterBlockPartitioner {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PartitionFrameAligned(
-      DecodedUleb128 partition_duration,
-      ParameterBlockWithData& parameter_block_with_data,
-      PerIdParameterMetadata& per_id_metadata,
-      std::list<ParameterBlockWithData>& parameter_blocks) const;
-
- private:
-  const ProfileVersion primary_profile_;
+      uint32_t partition_duration,
+      const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+          full_parameter_block,
+      std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+          partitioned_parameter_block_metadata) const;
 };
 
 }  // namespace iamf_tools

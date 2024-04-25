@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/audio_frame_decoder.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <list>
@@ -24,12 +23,12 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/aac_encoder_decoder.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
-#include "iamf/cli/decoder_base.h"
-#include "iamf/cli/opus_encoder_decoder.h"
+#include "iamf/cli/codec/aac_encoder_decoder.h"
+#include "iamf/cli/codec/decoder_base.h"
+#include "iamf/cli/codec/opus_encoder_decoder.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/codec_config.h"

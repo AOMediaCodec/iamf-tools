@@ -41,6 +41,7 @@
 #include "iamf/cli/mix_presentation_generator.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/parameter_block_generator.h"
+#include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -58,6 +59,37 @@
 namespace iamf_tools {
 
 namespace {
+
+absl::Status PartitionParameterMetadata(
+    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  ParameterBlockPartitioner parameter_block_partitioner;
+  uint32_t partition_duration = 0;
+  if (user_metadata.ia_sequence_header_metadata().empty() ||
+      user_metadata.codec_config_metadata().empty()) {
+    return absl::InvalidArgumentError(
+        "Parameter block partitioner requires at least one "
+        "`ia_sequence_header_metadata` and one `codec_config_metadata`");
+  }
+  std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>
+      partitioned_parameter_blocks;
+  RETURN_IF_NOT_OK(ParameterBlockPartitioner::FindPartitionDuration(
+      user_metadata.ia_sequence_header_metadata(0).primary_profile(),
+      user_metadata.codec_config_metadata(0), partition_duration));
+  for (const auto& parameter_block_metadata :
+       user_metadata.parameter_block_metadata()) {
+    RETURN_IF_NOT_OK(parameter_block_partitioner.PartitionFrameAligned(
+        partition_duration, parameter_block_metadata,
+        partitioned_parameter_blocks));
+  }
+
+  // Replace the original parameter block metadata.
+  user_metadata.clear_parameter_block_metadata();
+  for (const auto& partitioned_parameter_block : partitioned_parameter_blocks) {
+    *user_metadata.add_parameter_block_metadata() = partitioned_parameter_block;
+  }
+
+  return absl::OkStatus();
+}
 
 // TODO(b/315924757): When parameter blocks are generated iteratively (one
 //                    timestamp at a time), this function can be removed or
@@ -175,12 +207,9 @@ absl::Status GenerateObus(
   RETURN_IF_NOT_OK(global_timing_module.Initialize(
       audio_elements, codec_config_obus, param_definitions));
 
-  // Parameter blocks.
   ParameterBlockGenerator parameter_block_generator(
       user_metadata.parameter_block_metadata(),
       user_metadata.test_vector_metadata().override_computed_recon_gains(),
-      user_metadata.test_vector_metadata()
-          .partition_mix_gain_parameter_blocks(),
       parameter_id_to_metadata);
   RETURN_IF_NOT_OK(parameter_block_generator.Initialize(
       ia_sequence_header_obu, audio_elements, mix_presentation_obus,
@@ -342,10 +371,14 @@ absl::Status WriteObus(
 
 }  // namespace
 
-absl::Status TestMain(const iamf_tools_cli_proto::UserMetadata& user_metadata,
-                      const std::string& input_wav_directory,
-                      const std::string& output_wav_directory,
-                      const std::string& output_iamf_directory) {
+absl::Status TestMain(
+    const iamf_tools_cli_proto::UserMetadata& input_user_metadata,
+    const std::string& input_wav_directory,
+    const std::string& output_wav_directory,
+    const std::string& output_iamf_directory) {
+  // Make a copy before modifying.
+  iamf_tools_cli_proto::UserMetadata user_metadata(input_user_metadata);
+
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
@@ -359,6 +392,13 @@ absl::Status TestMain(const iamf_tools_cli_proto::UserMetadata& user_metadata,
   // Create output directories.
   RETURN_IF_NOT_OK(CreateOutputDirectory(output_wav_directory));
   RETURN_IF_NOT_OK(CreateOutputDirectory(output_iamf_directory));
+
+  // Partition parameter block metadata if necessary. This will overwrite
+  // `user_metadata.mutable_parameter_block_metadata()`.
+  if (user_metadata.test_vector_metadata()
+          .partition_mix_gain_parameter_blocks()) {
+    RETURN_IF_NOT_OK(PartitionParameterMetadata(user_metadata));
+  }
 
   RETURN_IF_NOT_OK(
       GenerateObus(user_metadata, input_wav_directory, output_wav_directory,

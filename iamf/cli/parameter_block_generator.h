@@ -23,7 +23,6 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
-#include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/recon_gain_generator.h"
@@ -43,6 +42,8 @@ class ParameterBlockGenerator {
   /*\!brief Constructor.
    *
    * \param parameter_block_metadata Input parameter block metadata.
+   * \param override_computed_recon_gains Whether to override recon gains
+   *     with user provided values.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
    *     parameter metadata.
    */
@@ -51,13 +52,10 @@ class ParameterBlockGenerator {
           iamf_tools_cli_proto::ParameterBlockObuMetadata>&
           parameter_block_metadata,
       bool override_computed_recon_gains,
-      bool partition_mix_gain_parameter_blocks,
       absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata)
       : parameter_block_metadata_(parameter_block_metadata),
         override_computed_recon_gains_(override_computed_recon_gains),
-        partition_mix_gain_parameter_blocks_(
-            partition_mix_gain_parameter_blocks),
         parameter_id_to_metadata_(parameter_id_to_metadata) {}
 
   /*\!brief Initializes the class.
@@ -131,11 +129,10 @@ class ParameterBlockGenerator {
       const GlobalTimingModule& global_timing_module);
 
   const ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::ParameterBlockObuMetadata>
+      iamf_tools_cli_proto::ParameterBlockObuMetadata>&
       parameter_block_metadata_;
 
   const bool override_computed_recon_gains_;
-  const bool partition_mix_gain_parameter_blocks_;
 
   // Mapping from parameter IDs to sets of audio element with data.
   absl::flat_hash_map<DecodedUleb128,
@@ -147,8 +144,6 @@ class ParameterBlockGenerator {
       parameter_id_to_metadata_;
 
   ProfileVersion primary_profile_;
-
-  std::unique_ptr<ParameterBlockPartitioner> partitioner_;
 
   std::unique_ptr<ReconGainGenerator> recon_gain_generator_;
 

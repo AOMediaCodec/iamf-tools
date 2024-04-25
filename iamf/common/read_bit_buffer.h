@@ -13,6 +13,7 @@
 #define COMMON_READ_BIT_BUFFER_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -98,6 +99,17 @@ class ReadBitBuffer {
    *     `absl::UnknownError()` if the `rb->bit_offset` is negative.
    */
   absl::Status ReadSigned16(int16_t& output);
+
+  /*!\brief Reads a null terminated string from the read buffer.
+   *
+   * \param output String will be written here.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     the string is not terminated within `kIamfMaxStringSize` bytes.
+   *     `absl::Status::kResourceExhausted` if the buffer is exhausted before
+   *     the string is terminated and source does not have the requisite data to
+   *     complete the string. Other specific statuses on failure.
+   */
+  absl::Status ReadString(std::string& output);
 
   /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
    *

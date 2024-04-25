@@ -251,9 +251,9 @@ TEST_F(ObuSequencerTest, MixPresentationsAreAscendingOrderByDefault) {
   // OBUs of the same type. By default `WriteDescriptorObus` orders them in
   // ascending order regardless of their order in the input list.
   ASSERT_LT(kFirstMixPresentationId, kMixPresentationId);
-  ASSERT_EQ(mix_presentation_obus_.back().mix_presentation_id_,
+  ASSERT_EQ(mix_presentation_obus_.back().GetMixPresentationId(),
             kFirstMixPresentationId);
-  ASSERT_EQ(mix_presentation_obus_.front().mix_presentation_id_,
+  ASSERT_EQ(mix_presentation_obus_.front().GetMixPresentationId(),
             kMixPresentationId);
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),

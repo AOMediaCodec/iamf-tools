@@ -22,7 +22,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/encoder_base.h"
+#include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/audio_frame.h"
 
 namespace iamf_tools {

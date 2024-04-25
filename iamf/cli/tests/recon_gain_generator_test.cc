@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -46,7 +45,7 @@ void TestOneChannelLrs7(const std::vector<int32_t>& original_channel,
                   .ComputeReconGain("D_Lrs7", audio_element_id, start_timestamp,
                                     recon_gain)
                   .ok());
-  EXPECT_THAT(recon_gain, testing::DoubleNear(expected_recon_gain, 0.0001));
+  EXPECT_NEAR(recon_gain, expected_recon_gain, 0.0001);
 }
 
 TEST(ReconGainGenerator, LessThanFirstThreshold) {

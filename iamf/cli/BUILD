@@ -12,30 +12,6 @@ exports_files(
 )
 
 cc_library(
-    name = "aac_encoder_decoder",
-    srcs = ["aac_encoder_decoder.cc"],
-    hdrs = ["aac_encoder_decoder.h"],
-    deps = [
-        ":audio_frame_with_data",
-        ":decoder_base",
-        ":encoder_base",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:aac_decoder_config",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
-        "@fdk_aac//:aac_decoder_lib",
-        "@fdk_aac//:aac_encoder_lib",
-        "@fdk_aac//:fdk_sys_lib",
-    ],
-)
-
-cc_library(
     name = "arbitrary_obu_generator",
     srcs = ["arbitrary_obu_generator.cc"],
     hdrs = ["arbitrary_obu_generator.h"],
@@ -98,13 +74,13 @@ cc_library(
     srcs = ["audio_frame_decoder.cc"],
     hdrs = ["audio_frame_decoder.h"],
     deps = [
-        ":aac_encoder_decoder",
         ":audio_element_with_data",
         ":audio_frame_with_data",
         ":cli_util",
-        ":decoder_base",
-        ":opus_encoder_decoder",
         ":wav_writer",
+        "//iamf/cli/codec:aac_encoder_decoder",
+        "//iamf/cli/codec:decoder_base",
+        "//iamf/cli/codec:opus_encoder_decoder",
         "//iamf/common:macros",
         "//iamf/obu:codec_config",
         "@com_google_absl//absl/container:node_hash_map",
@@ -119,16 +95,16 @@ cc_library(
     srcs = ["audio_frame_generator.cc"],
     hdrs = ["audio_frame_generator.h"],
     deps = [
-        ":aac_encoder_decoder",
         ":audio_element_with_data",
         ":audio_frame_with_data",
         ":demixing_module",
-        ":encoder_base",
-        ":flac_encoder_decoder",
         ":global_timing_module",
-        ":lpcm_encoder",
-        ":opus_encoder_decoder",
         ":parameters_manager",
+        "//iamf/cli/codec:aac_encoder_decoder",
+        "//iamf/cli/codec:encoder_base",
+        "//iamf/cli/codec:flac_encoder_decoder",
+        "//iamf/cli/codec:lpcm_encoder",
+        "//iamf/cli/codec:opus_encoder_decoder",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
@@ -213,12 +189,6 @@ cc_library(
 )
 
 cc_library(
-    name = "decoder_base",
-    hdrs = ["decoder_base.h"],
-    deps = ["@com_google_absl//absl/status"],
-)
-
-cc_library(
     name = "demixing_module",
     srcs = ["demixing_module.cc"],
     hdrs = ["demixing_module.h"],
@@ -243,21 +213,6 @@ cc_library(
 )
 
 cc_library(
-    name = "encoder_base",
-    srcs = ["encoder_base.cc"],
-    hdrs = ["encoder_base.h"],
-    deps = [
-        ":audio_frame_with_data",
-        "//iamf/common:macros",
-        "//iamf/obu:codec_config",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/synchronization",
-    ],
-)
-
-cc_library(
     name = "encoder_main_lib",
     srcs = ["encoder_main_lib.cc"],
     hdrs = ["encoder_main_lib.h"],
@@ -277,6 +232,7 @@ cc_library(
         ":mix_presentation_generator",
         ":obu_sequencer",
         ":parameter_block_generator",
+        ":parameter_block_partitioner",
         ":parameter_block_with_data",
         ":parameters_manager",
         ":wav_sample_provider",
@@ -295,27 +251,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-    ],
-)
-
-cc_library(
-    name = "flac_encoder_decoder",
-    srcs = ["flac_encoder_decoder.cc"],
-    hdrs = ["flac_encoder_decoder.h"],
-    deps = [
-        ":audio_frame_with_data",
-        ":encoder_base",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:btree",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/synchronization",
-        "@flac//:src",
     ],
 )
 
@@ -399,23 +334,6 @@ cc_library(
 )
 
 cc_library(
-    name = "lpcm_encoder",
-    srcs = ["lpcm_encoder.cc"],
-    hdrs = ["lpcm_encoder.h"],
-    deps = [
-        ":audio_frame_with_data",
-        ":cli_util",
-        ":encoder_base",
-        "//iamf/common:macros",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/synchronization",
-    ],
-)
-
-cc_library(
     name = "mix_presentation_finalizer",
     srcs = ["mix_presentation_finalizer.cc"],
     hdrs = ["mix_presentation_finalizer.h"],
@@ -486,27 +404,6 @@ cc_library(
 )
 
 cc_library(
-    name = "opus_encoder_decoder",
-    srcs = ["opus_encoder_decoder.cc"],
-    hdrs = ["opus_encoder_decoder.h"],
-    deps = [
-        ":audio_frame_with_data",
-        ":decoder_base",
-        ":encoder_base",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
-        "@libopus",
-    ],
-)
-
-cc_library(
     name = "parameter_block_generator",
     srcs = ["parameter_block_generator.cc"],
     hdrs = ["parameter_block_generator.h"],
@@ -515,7 +412,6 @@ cc_library(
         ":cli_util",
         ":demixing_module",
         ":global_timing_module",
-        ":parameter_block_partitioner",
         ":parameter_block_with_data",
         ":recon_gain_generator",
         "//iamf/cli/proto:parameter_block_cc_proto",
@@ -546,14 +442,12 @@ cc_library(
     hdrs = ["parameter_block_partitioner.h"],
     deps = [
         ":cli_util",
-        ":parameter_block_with_data",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/common:macros",
-        "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:ia_sequence_header",
-        "//iamf/obu:leb128",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
+        "//iamf/common:obu_util",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

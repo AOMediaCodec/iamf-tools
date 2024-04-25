@@ -25,10 +25,10 @@ namespace iamf_tools {
 
 namespace {
 absl::Status CopyProfileVersion(
-    iamf_tools_cli_proto::ProfileVerson metadata_profile_version,
+    iamf_tools_cli_proto::ProfileVersion metadata_profile_version,
     ProfileVersion& obu_profile_version) {
   switch (metadata_profile_version) {
-    using enum iamf_tools_cli_proto::ProfileVerson;
+    using enum iamf_tools_cli_proto::ProfileVersion;
     case PROFILE_VERSION_SIMPLE:
       obu_profile_version = ProfileVersion::kIamfSimpleProfile;
       return absl::OkStatus();

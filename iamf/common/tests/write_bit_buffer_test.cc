@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/obu/leb128.h"
 
@@ -226,9 +227,9 @@ TEST_F(WriteBitBufferTest, StringUtf8) {
 TEST_F(WriteBitBufferTest, StringMaxLength) {
   // Make a string and expected output with 127 non-NULL characters, followed by
   // a NULL character.
-  const std::string kMaxLengthString = absl::StrCat(
-      std::string(WriteBitBuffer::kIamfMaxStringSize - 1, 'a'), "\0");
-  std::vector<uint8_t> expected_result(WriteBitBuffer::kIamfMaxStringSize, 'a');
+  const std::string kMaxLengthString =
+      absl::StrCat(std::string(kIamfMaxStringSize - 1, 'a'), "\0");
+  std::vector<uint8_t> expected_result(kIamfMaxStringSize, 'a');
   expected_result.back() = '\0';
 
   EXPECT_TRUE(wb_->WriteString(kMaxLengthString).ok());
@@ -236,7 +237,7 @@ TEST_F(WriteBitBufferTest, StringMaxLength) {
 }
 
 TEST_F(WriteBitBufferTest, InvalidStringMissingNullTerminator) {
-  const std::string kMaxLengthString(WriteBitBuffer::kIamfMaxStringSize, 'a');
+  const std::string kMaxLengthString(kIamfMaxStringSize, 'a');
 
   EXPECT_FALSE(wb_->WriteString(kMaxLengthString).ok());
 }

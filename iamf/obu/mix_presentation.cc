@@ -195,6 +195,11 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
   return absl::OkStatus();
 }
 
+absl::Status ValidateAndReadSubMix(MixPresentationSubMix& sub_mix,
+                                   ReadBitBuffer& rb) {
+  return absl::UnimplementedError("Reading sub-mixes is not implemented.");
+}
+
 absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
   if (num_sub_mixes == 0) {
     return absl::InvalidArgumentError(
@@ -317,8 +322,35 @@ absl::StatusOr<MixPresentationObu> MixPresentationObu::CreateFromBuffer(
 }
 
 absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "MixPresentationObu ValidateAndReadPayload not yet implemented.");
+  // Read the main portion of the OBU.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
+
+  for (int i = 0; i < count_label_; ++i) {
+    std::string language_label;
+    RETURN_IF_NOT_OK(rb.ReadString(language_label));
+    language_labels_.push_back(language_label);
+  }
+  RETURN_IF_NOT_OK(ValidateUnique(language_labels_.begin(),
+                                  language_labels_.end(), "Language labels"));
+
+  for (int i = 0; i < count_label_; ++i) {
+    MixPresentationAnnotations mix_presentation_annotation;
+    RETURN_IF_NOT_OK(rb.ReadString(
+        mix_presentation_annotation.mix_presentation_friendly_label));
+    mix_presentation_annotations_.push_back(mix_presentation_annotation);
+  }
+
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes_));
+
+  // Loop to read the `sub_mixes` array.
+  for (int i = 0; i < num_sub_mixes_; ++i) {
+    MixPresentationSubMix sub_mix;
+    RETURN_IF_NOT_OK(ValidateAndReadSubMix(sub_mix, rb));
+    sub_mixes_.push_back(sub_mix);
+  }
+
+  return absl::OkStatus();
 }
 
 void LoudspeakersSsConventionLayout::Print() const {

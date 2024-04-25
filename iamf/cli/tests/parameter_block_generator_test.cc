@@ -39,15 +39,14 @@ constexpr DecodedUleb128 kParameterId = 100;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 8;
 constexpr bool kOverrideComputedReconGains = false;
-constexpr bool kPartitionMixGainParameterBlocks = false;
 
 TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  ParameterBlockGenerator generator(
-      user_metadata.parameter_block_metadata(), kOverrideComputedReconGains,
-      kPartitionMixGainParameterBlocks, parameter_id_to_metadata);
+  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
+                                    kOverrideComputedReconGains,
+                                    parameter_id_to_metadata);
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -162,9 +161,9 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
                              &param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(
-      user_metadata.parameter_block_metadata(), kOverrideComputedReconGains,
-      kPartitionMixGainParameterBlocks, parameter_id_to_metadata);
+  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
+                                    kOverrideComputedReconGains,
+                                    parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
                               mix_presentation_obus, param_definitions)
@@ -288,9 +287,9 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
                             param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(
-      user_metadata.parameter_block_metadata(), kOverrideComputedReconGains,
-      kPartitionMixGainParameterBlocks, parameter_id_to_metadata);
+  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
+                                    kOverrideComputedReconGains,
+                                    parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
                               mix_presentation_obus, param_definitions)
@@ -475,9 +474,9 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                               param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(
-      user_metadata.parameter_block_metadata(), kOverrideComputedReconGains,
-      kPartitionMixGainParameterBlocks, parameter_id_to_metadata);
+  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
+                                    kOverrideComputedReconGains,
+                                    parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
                               mix_presentation_obus, param_definitions)
@@ -527,9 +526,9 @@ TEST(Initialize, GeneratesValidStrayParameterBlocks) {
                              audio_elements, mix_presentation_obus);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(
-      user_metadata.parameter_block_metadata(), kOverrideComputedReconGains,
-      kPartitionMixGainParameterBlocks, parameter_id_to_metadata);
+  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
+                                    kOverrideComputedReconGains,
+                                    parameter_id_to_metadata);
   absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,

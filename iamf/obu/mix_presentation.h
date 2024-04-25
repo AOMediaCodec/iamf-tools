@@ -332,12 +332,12 @@ class MixPresentationObu : public ObuBase {
                      DecodedUleb128 num_sub_mixes,
                      std::vector<MixPresentationSubMix>& sub_mixes)
       : ObuBase(header, kObuIaMixPresentation),
+        sub_mixes_(std::move(sub_mixes)),
         mix_presentation_id_(mix_presentation_id),
         count_label_(count_label),
         language_labels_(language_labels),
         mix_presentation_annotations_(mix_presentation_annotations),
-        num_sub_mixes_(num_sub_mixes),
-        sub_mixes_(std::move(sub_mixes)) {}
+        num_sub_mixes_(num_sub_mixes) {}
 
   /*!\brief Creates a `MixPresentationObu` from a `ReadBitBuffer`.
    *
@@ -368,27 +368,36 @@ class MixPresentationObu : public ObuBase {
   /*\!brief Prints logging information about the OBU. */
   void PrintObu() const override;
 
-  const DecodedUleb128 mix_presentation_id_;
-  const DecodedUleb128 count_label_;
-  // Length `count_label`.
-  const std::vector<std::string> language_labels_;
-  // Length `count_label`.
-  const std::vector<MixPresentationAnnotations> mix_presentation_annotations_;
+  DecodedUleb128 GetMixPresentationId() const { return mix_presentation_id_; }
 
-  const DecodedUleb128 num_sub_mixes_;
-  // Length `num_sub_mixes`.
+  std::vector<MixPresentationAnnotations> GetMixPresentationAnnotations()
+      const {
+    return mix_presentation_annotations_;
+  }
+
+  DecodedUleb128 GetNumSubMixes() const { return num_sub_mixes_; }
+
   std::vector<MixPresentationSubMix> sub_mixes_;
 
  private:
+  DecodedUleb128 mix_presentation_id_;
+  DecodedUleb128 count_label_;
+  // Length `count_label`.
+  std::vector<std::string> language_labels_;
+  // Length `count_label`.
+  std::vector<MixPresentationAnnotations> mix_presentation_annotations_;
+
+  DecodedUleb128 num_sub_mixes_;
+
   // Used only by the factory create function.
   explicit MixPresentationObu(const ObuHeader& header)
       : ObuBase(header, kObuIaAudioElement),
+        sub_mixes_({}),
         mix_presentation_id_(DecodedUleb128()),
         count_label_(DecodedUleb128()),
         language_labels_({}),
         mix_presentation_annotations_({}),
-        num_sub_mixes_(DecodedUleb128()),
-        sub_mixes_({}) {}
+        num_sub_mixes_(DecodedUleb128()) {}
   /*\!brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.

@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -183,6 +184,25 @@ absl::Status ReadBitBuffer::ReadSigned16(int16_t& output) {
   RETURN_IF_NOT_OK(ReadUnsignedLiteral(16, value));
   output = static_cast<int16_t>(value) & 0xffff;
   return absl::OkStatus();
+}
+
+// Reads a null terminated C-style string from the buffer.
+absl::Status ReadBitBuffer::ReadString(std::string& output) {
+  // Read up to the first `kIamfMaxStringSize` characters. Exit after seeing the
+  // null terminator. Override anything in `output`.
+  output = "";
+  for (int i = 0; i < kIamfMaxStringSize; i++) {
+    uint8_t byte;
+    RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
+    if (byte == '\0') {
+      return absl::OkStatus();
+    }
+    output.push_back(byte);
+  }
+
+  // Failed to find the null terminator within `kIamfMaxStringSize` bytes.
+  return absl::InvalidArgumentError(
+      "Failed to find the null terminator for data= ");
 }
 
 /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.

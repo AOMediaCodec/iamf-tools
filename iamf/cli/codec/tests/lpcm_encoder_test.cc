@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/lpcm_encoder.h"
+#include "iamf/cli/codec/lpcm_encoder.h"
 
 #include <cstdint>
 #include <memory>
@@ -17,7 +17,7 @@
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/tests/encoder_test_base.h"
+#include "iamf/cli/codec/tests/encoder_test_base.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/obu_header.h"

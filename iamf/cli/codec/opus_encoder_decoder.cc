@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/opus_encoder_decoder.h"
+#include "iamf/cli/codec/opus_encoder_decoder.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -22,7 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/decoder_base.h"
+#include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"

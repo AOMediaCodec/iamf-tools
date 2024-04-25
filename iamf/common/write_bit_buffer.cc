@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/leb128.h"
 
@@ -51,12 +52,6 @@ absl::Status CanWriteBits(const bool allow_resizing, const int num_bits,
   bit_buffer.resize(required_bytes, 0);
 
   return absl::OkStatus();
-}
-
-absl::Status CanWriteBytes(const bool allow_resizing, const int num_bytes,
-                           const int64_t bit_offset,
-                           std::vector<uint8_t>& bit_buffer) {
-  return CanWriteBits(allow_resizing, num_bytes * 8, bit_offset, bit_buffer);
 }
 
 // Write one bit to the buffer using an AND or OR mask. All unwritten bits are

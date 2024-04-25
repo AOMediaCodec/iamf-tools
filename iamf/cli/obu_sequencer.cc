@@ -213,7 +213,7 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
       mix_presentation_obus);
   sorted_mix_presentation_obus.sort(
       [](const MixPresentationObu& obu_1, const MixPresentationObu& obu_2) {
-        return obu_1.mix_presentation_id_ < obu_2.mix_presentation_id_;
+        return obu_1.GetMixPresentationId() < obu_2.GetMixPresentationId();
       });
   for (const auto& mix_presentation_obu : sorted_mix_presentation_obus) {
     RETURN_IF_NOT_OK(mix_presentation_obu.ValidateAndWriteObu(wb));

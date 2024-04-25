@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/encoder_base.h"
+#include "iamf/cli/codec/encoder_base.h"
 
 #include <cstdint>
 #include <vector>

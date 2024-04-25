@@ -23,36 +23,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "encoder_test_base",
-    testonly = True,
-    srcs = ["encoder_test_base.cc"],
-    hdrs = ["encoder_test_base.h"],
-    deps = [
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:encoder_base",
-        "//iamf/obu:audio_frame",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
-cc_test(
-    name = "aac_encoder_test",
-    srcs = ["aac_encoder_test.cc"],
-    deps = [
-        ":encoder_test_base",
-        "//iamf/cli:aac_encoder_decoder",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:aac_decoder_config",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
 cc_test(
     name = "arbitrary_obu_generator_test",
     srcs = ["arbitrary_obu_generator_test.cc"],
@@ -200,46 +170,17 @@ cc_test(
 )
 
 cc_test(
-    name = "encoder_base_test",
-    srcs = ["encoder_base_test.cc"],
-    deps = [
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:encoder_base",
-        "//iamf/obu:audio_frame",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:leb128",
-        "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "encoder_main_lib_test",
     srcs = ["encoder_main_lib_test.cc"],
     deps = [
         "//iamf/cli:encoder_main_lib",
+        "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "flac_encoder_test",
-    srcs = ["flac_encoder_test.cc"],
-    deps = [
-        ":encoder_test_base",
-        "//iamf/cli:flac_encoder_decoder",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -315,21 +256,6 @@ cc_test(
 )
 
 cc_test(
-    name = "lpcm_encoder_test",
-    size = "small",
-    srcs = ["lpcm_encoder_test.cc"],
-    deps = [
-        ":encoder_test_base",
-        "//iamf/cli:lpcm_encoder",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "mix_presentation_finalizer_test",
     srcs = ["mix_presentation_finalizer_test.cc"],
     deps = [
@@ -378,20 +304,6 @@ cc_test(
 )
 
 cc_test(
-    name = "opus_encoder_test",
-    srcs = ["opus_encoder_test.cc"],
-    deps = [
-        ":encoder_test_base",
-        "//iamf/cli:opus_encoder_decoder",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "parameter_block_generator_test",
     size = "small",
     srcs = ["parameter_block_generator_test.cc"],
@@ -426,13 +338,8 @@ cc_test(
     srcs = ["parameter_block_partitioner_test.cc"],
     deps = [
         "//iamf/cli:parameter_block_partitioner",
-        "//iamf/cli:parameter_block_with_data",
-        "//iamf/common:macros",
-        "//iamf/obu:ia_sequence_header",
-        "//iamf/obu:leb128",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
+        "//iamf/cli/proto:parameter_block_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
     ],

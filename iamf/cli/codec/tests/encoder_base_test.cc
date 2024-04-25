@@ -1,4 +1,4 @@
-#include "iamf/cli/encoder_base.h"
+#include "iamf/cli/codec/encoder_base.h"
 
 #include <cstdint>
 #include <list>

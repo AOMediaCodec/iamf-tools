@@ -11,7 +11,6 @@
  */
 #include "iamf/obu/parameter_block.h"
 
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -184,68 +183,45 @@ ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     const MixGainParameterData& mix_gain_parameter_data, int32_t start_time,
     int32_t end_time, int32_t target_time, int16_t& target_mix_gain) {
-  if (target_time < start_time || target_time > end_time ||
-      start_time > end_time) {
-    return absl::InvalidArgumentError("");
-  }
-
-  // Shift times so start_time=0 to simplify calculations.
-  end_time -= start_time;
-  target_time -= start_time;
-  start_time = 0;
-
-  // TODO(b/283281856): Support resampling parameter blocks.
-  const int sample_rate_ratio = 1;
-  const int n_0 = start_time * sample_rate_ratio;
-  const int n = target_time * sample_rate_ratio;
-  const int n_2 = end_time * sample_rate_ratio;
-
-  switch (mix_gain_parameter_data.animation_type) {
-    using enum MixGainParameterData::AnimationType;
-    case kAnimateStep: {
-      const auto& step =
-          std::get<AnimationStepInt16>(mix_gain_parameter_data.param_data);
-      // No interpolation is needed for step.
-      target_mix_gain = step.start_point_value;
-      return absl::OkStatus();
-    }
-    case kAnimateLinear: {
-      const auto& linear =
-          std::get<AnimationLinearInt16>(mix_gain_parameter_data.param_data);
-      // Interpolate using the exact formula from the spec.
-      const float a = (float)n / (float)n_2;
-      const float p_0 = Q7_8ToFloat(linear.start_point_value);
-      const float p_2 = Q7_8ToFloat(linear.end_point_value);
-      RETURN_IF_NOT_OK(FloatToQ7_8((1 - a) * p_0 + a * p_2, target_mix_gain));
-      return absl::OkStatus();
-    }
-    case kAnimateBezier: {
-      const auto& bezier =
-          std::get<AnimationBezierInt16>(mix_gain_parameter_data.param_data);
-      const float control_point_float =
-          Q0_8ToFloat(bezier.control_point_relative_time);
-      // Using the definition of `round` in the IAMF spec.
-      const int n_1 = floor((end_time * control_point_float) + 0.5);
-
-      const float p_0 = Q7_8ToFloat(bezier.start_point_value);
-      const float p_1 = Q7_8ToFloat(bezier.control_point_value);
-      const float p_2 = Q7_8ToFloat(bezier.end_point_value);
-
-      const float alpha = n_0 - 2 * n_1 + n_2;
-      const float beta = 2 * (n_1 - n_0);
-      const float gamma = n_0 - n;
-      const float a =
-          alpha == 0
-              ? -gamma / beta
-              : (-beta + sqrt(beta * beta - 4 * alpha * gamma)) / (2 * alpha);
-      const float target_mix_gain_float =
-          (1 - a) * (1 - a) * p_0 + 2 * (1 - a) * a * p_1 + a * a * p_2;
-      RETURN_IF_NOT_OK(FloatToQ7_8(target_mix_gain_float, target_mix_gain));
-      return absl::OkStatus();
-    }
-    default:
-      return absl::InvalidArgumentError("");
-  }
+  return InterpolateMixGainValue(
+      mix_gain_parameter_data.animation_type,
+      MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
+      MixGainParameterData::kAnimateBezier,
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationStepInt16>(mix_gain_parameter_data.param_data)
+            .start_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationLinearInt16>(
+                   mix_gain_parameter_data.param_data)
+            .start_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationLinearInt16>(
+                   mix_gain_parameter_data.param_data)
+            .end_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationBezierInt16>(
+                   mix_gain_parameter_data.param_data)
+            .start_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationBezierInt16>(
+                   mix_gain_parameter_data.param_data)
+            .end_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationBezierInt16>(
+                   mix_gain_parameter_data.param_data)
+            .control_point_value;
+      },
+      [&mix_gain_parameter_data]() {
+        return std::get<AnimationBezierInt16>(
+                   mix_gain_parameter_data.param_data)
+            .control_point_relative_time;
+      },
+      start_time, end_time, target_time, target_mix_gain);
 }
 
 DecodedUleb128 ParameterBlockObu::GetDuration() const {
@@ -291,41 +267,13 @@ DecodedUleb128 ParameterBlockObu::GetNumSubblocks() const {
 
 absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
     int subblock_index) const {
-  const DecodedUleb128 num_subblocks = GetNumSubblocks();
-  if (subblock_index > num_subblocks) {
-    return absl::InvalidArgumentError("subblock_index > num_subblocks");
-  }
-
-  DecodedUleb128 subblock_duration;
-  const DecodedUleb128 constant_subblock_duration =
-      GetConstantSubblockDuration();
-  if (constant_subblock_duration == 0) {
-    if (metadata_->param_definition.param_definition_mode_ == 1) {
-      // The durations are explicitly specified in the parameter block.
-      subblock_duration = subblocks_[subblock_index].subblock_duration;
-    } else {
-      // The durations are explicitly specified in the parameter definition.
-      subblock_duration =
-          metadata_->param_definition.GetSubblockDuration(subblock_index);
-    }
-    return subblock_duration;
-  }
-
-  // Otherwise the duration is implicit.
-  const DecodedUleb128 total_duration = GetDuration();
-  if (subblock_index == num_subblocks - 1 &&
-      num_subblocks * constant_subblock_duration > total_duration) {
-    // Sometimes the last subblock duration is shorter. The spec describes how
-    // to calculate the special case: "If NS x CSD > D, the actual duration of
-    // the last subblock SHALL be D - (NS - 1) x CSD."
-    subblock_duration =
-        total_duration - (num_subblocks - 1) * constant_subblock_duration;
-  } else {
-    // Otherwise the duration is based on `constant_subblock_duration`.
-    subblock_duration = constant_subblock_duration;
-  }
-
-  return subblock_duration;
+  return GetParameterSubblockDuration<DecodedUleb128>(
+      subblock_index, GetNumSubblocks(), GetConstantSubblockDuration(),
+      GetDuration(), metadata_->param_definition.param_definition_mode_,
+      [this](int i) { return this->subblocks_[i].subblock_duration; },
+      [this](int i) {
+        return this->metadata_->param_definition.GetSubblockDuration(i);
+      });
 }
 
 absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,

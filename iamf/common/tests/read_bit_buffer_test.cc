@@ -13,11 +13,13 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/bit_buffer_util.h"
 #include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
@@ -640,6 +642,69 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteral8Overflow) {
   uint8_t output = 0;
   EXPECT_FALSE(rb_->ReadUnsignedLiteral(9, output).ok());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+TEST_F(ReadBitBufferTest, StringOnlyNullCharacter) {
+  source_data_ = {'\0'};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_EQ(output, "");
+}
+
+TEST_F(ReadBitBufferTest, StringAscii) {
+  source_data_ = {'A', 'B', 'C', '\0'};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_EQ(output, "ABC");
+}
+
+TEST_F(ReadBitBufferTest, StringOverrideOutputParam) {
+  source_data_ = {'A', 'B', 'C', '\0'};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output = "xyz";
+  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_EQ(output, "ABC");
+}
+
+TEST_F(ReadBitBufferTest, StringUtf8) {
+  source_data_ = {0xc3, 0xb3,              // A 1-byte UTF-8 character.
+                  0xf0, 0x9d, 0x85, 0x9f,  // A 4-byte UTF-8 character.
+                  '\0'};
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_EQ(output, "\303\263\360\235\205\237");
+}
+
+TEST_F(ReadBitBufferTest, StringMaxLength) {
+  source_data_ = std::vector<uint8_t>(kIamfMaxStringSize - 1, 'a');
+  source_data_.push_back('\0');
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_EQ(output, std::string(kIamfMaxStringSize - 1, 'a'));
+}
+
+TEST_F(ReadBitBufferTest, InvalidStringMissingNullTerminator) {
+  source_data_ = std::vector<uint8_t>({'a', 'b', 'c'});
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_FALSE(rb_->ReadString(output).ok());
+}
+
+TEST_F(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
+  source_data_ = std::vector<uint8_t>(kIamfMaxStringSize, 'a');
+  rb_capacity_ = 1024;
+  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
+  std::string output;
+  EXPECT_FALSE(rb_->ReadString(output).ok());
 }
 
 }  // namespace

@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/tests/encoder_test_base.h"
+#include "iamf/cli/codec/tests/encoder_test_base.h"
 
 namespace iamf_tools {
 

@@ -27,6 +27,7 @@ cc_test(
     name = "read_bit_buffer_test",
     srcs = ["read_bit_buffer_test.cc"],
     deps = [
+        "//iamf/common:bit_buffer_util",
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/status",
@@ -57,6 +58,7 @@ cc_test(
     deps = [
         ":test_utils",
         "//iamf/cli:leb_generator",
+        "//iamf/common:bit_buffer_util",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/status",
