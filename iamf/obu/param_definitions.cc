@@ -275,6 +275,15 @@ absl::Status MixGainParamDefinition::ValidateAndWrite(
   return absl::OkStatus();
 }
 
+absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
+  // The common part.
+  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
+
+  // The sub-class specific part.
+  RETURN_IF_NOT_OK(rb.ReadSigned16(default_mix_gain_));
+  return absl::OkStatus();
+}
+
 void MixGainParamDefinition::Print() const {
   LOG(INFO) << "MixGainParamDefinition:";
   ParamDefinition::Print();

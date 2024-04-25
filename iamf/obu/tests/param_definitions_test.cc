@@ -628,5 +628,52 @@ TEST(ReadParamDefinitionTest, Mode0SubblockArray) {
   EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
 }
 
+TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
+  MixGainParamDefinition param_definition;
+  std::vector<uint8_t> source = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4};
+  ReadBitBuffer buffer(1024, &source);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_EQ(param_definition.GetType().value(),
+            ParamDefinition::kParameterDefinitionMixGain);
+  EXPECT_EQ(param_definition.default_mix_gain_, 4);
+}
+
+TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
+  MixGainParamDefinition param_definition;
+  std::vector<uint8_t> source = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x00,
+      // `duration` (64).
+      0xc0, 0x00,
+      // `constant_subblock_duration`.
+      0x00,
+      // `num_subblocks`
+      0x02,
+      // `subblock_durations`
+      // `subblock_duration`
+      40,
+      // `subblock_duration`
+      24,
+      // Default Mix Gain.
+      0, 3};
+  ReadBitBuffer buffer(1024, &source);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_EQ(param_definition.GetType().value(),
+            ParamDefinition::kParameterDefinitionMixGain);
+  EXPECT_EQ(param_definition.default_mix_gain_, 3);
+}
+
 }  // namespace
 }  // namespace iamf_tools
