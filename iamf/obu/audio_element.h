@@ -217,6 +217,10 @@ class AudioElementObu : public ObuBase {
     kAudioElementEndReserved = 7,
   };
 
+  typedef std::variant<ScalableChannelLayoutConfig, AmbisonicsConfig,
+                       ExtensionConfig>
+      AudioElementConfig;
+
   /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
@@ -332,8 +336,7 @@ class AudioElementObu : public ObuBase {
   std::vector<AudioElementParam> audio_element_params_;
 
   // Active field depends on `audio_element_type_`.
-  std::variant<ScalableChannelLayoutConfig, AmbisonicsConfig, ExtensionConfig>
-      config_;
+  AudioElementConfig config_;
 
  private:
   DecodedUleb128 audio_element_id_;

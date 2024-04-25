@@ -378,6 +378,21 @@ cc_test(
 )
 
 cc_test(
+    name = "renderer_factory_test",
+    srcs = ["renderer_factory_test.cc"],
+    deps = [
+        "//iamf/cli:renderer_factory",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/cli/proto:temporal_delimiter_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:mix_presentation",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "wav_reader_test",
     srcs = ["wav_reader_test.cc"],
     data = [

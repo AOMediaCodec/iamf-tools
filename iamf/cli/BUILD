@@ -496,6 +496,19 @@ cc_library(
 )
 
 cc_library(
+    name = "renderer_factory",
+    srcs = ["renderer_factory.cc"],
+    hdrs = ["renderer_factory.h"],
+    deps = [
+        ":audio_element_with_data",
+        "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:leb128",
+        "//iamf/obu:mix_presentation",
+    ],
+)
+
+cc_library(
     name = "wav_reader",
     srcs = ["wav_reader.cc"],
     hdrs = ["wav_reader.h"],

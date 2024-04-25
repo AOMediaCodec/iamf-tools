@@ -117,7 +117,7 @@ MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer::Finalize(
   LOG(INFO) << "  Loudness information may be copied from user "
             << "provided values.";
 
-  // TODO(b/332567539): Render and measure loudness for certain layouts.
+  // TODO(b/332567539): Use `RendererFactory` to render certain layouts.
   int metadata_index = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     for (int sub_mix_index = 0;
