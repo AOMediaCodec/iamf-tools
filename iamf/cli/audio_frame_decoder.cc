@@ -15,7 +15,6 @@
 #include <filesystem>
 #include <list>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
@@ -68,7 +68,7 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
 }
 
 absl::Status InitializeWavWriters(
-    const std::string& output_wav_directory, const std::string& file_prefix,
+    absl::string_view output_wav_directory, absl::string_view file_prefix,
     const std::list<DecodedAudioFrame>& decoded_audio_frames,
     absl::node_hash_map<uint32_t, WavWriter>& wav_writers) {
   for (const auto& decoded_audio_frame : decoded_audio_frames) {
@@ -178,7 +178,7 @@ absl::Status WriteInterlacedSamplesToWav(
 // Dumps the interlaced `decoded_frames` field of the input
 // `decoded_audio_frames` to a WAV file per substream.
 absl::Status DumpDecodedAudioFramesWav(
-    const std::string& output_wav_directory, const std::string& file_prefix,
+    absl::string_view output_wav_directory, absl::string_view file_prefix,
     const std::list<DecodedAudioFrame>& decoded_audio_frames) {
   // Initialize all `WavWriter`s.
   absl::node_hash_map<uint32_t, WavWriter> wav_writers;

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 
@@ -39,6 +40,16 @@ struct DecodedAudioFrame {
   const AudioElementWithData* audio_element_with_data;
 };
 
+/*\!brief Decodes Audio Frame OBUs based on the associated codec.
+ *
+ * This class is related to the "Codec Decoder" as used in the IAMF
+ * specification. "The Codec Decoder for each Audio Substream outputs the
+ * decoded channels."
+ *
+ * This class manages the underlying codec decoders for all substreams. Codec
+ * decoders may be stateful; this class manages a one-to-one mapping between
+ * codec decoders and substream.
+ */
 class AudioFrameDecoder {
  public:
   /*\!brief Constructor.
@@ -46,8 +57,8 @@ class AudioFrameDecoder {
    * \param output_wav_directory Directory to write debugging wav files to.
    * \param file_prefix File name prefix for debugging files.
    */
-  AudioFrameDecoder(const std::string& output_wav_directory,
-                    const std::string& file_prefix)
+  AudioFrameDecoder(absl::string_view output_wav_directory,
+                    absl::string_view file_prefix)
       : output_wav_directory_(output_wav_directory),
         file_prefix_(file_prefix) {}
 
