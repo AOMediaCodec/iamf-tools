@@ -118,6 +118,8 @@ MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer::Finalize(
             << "provided values.";
 
   // TODO(b/332567539): Use `RendererFactory` to render certain layouts.
+  // TODO(b/302273947): Once layouts are rendered and mixed then use a
+  //                    `LoudnessCalculatorFactory` to measure loudness.
   int metadata_index = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     for (int sub_mix_index = 0;

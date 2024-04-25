@@ -64,7 +64,8 @@ class LoudnessCalculatorUserProvidedLoudness : public LoudnessCalculatorBase {
    *
    * \param user_provided_loudness User provided loudness to echo back.
    */
-  LoudnessCalculatorUserProvidedLoudness(LoudnessInfo user_provided_loudness)
+  LoudnessCalculatorUserProvidedLoudness(
+      const LoudnessInfo& user_provided_loudness)
       : user_provided_loudness_(user_provided_loudness) {}
 
   /*\!brief Destructor. */

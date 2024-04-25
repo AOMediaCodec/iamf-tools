@@ -334,6 +334,16 @@ cc_library(
 )
 
 cc_library(
+    name = "loudness_calculator_factory",
+    srcs = ["loudness_calculator_factory.cc"],
+    hdrs = ["loudness_calculator_factory.h"],
+    deps = [
+        ":loudness_calculator",
+        "//iamf/obu:mix_presentation",
+    ],
+)
+
+cc_library(
     name = "mix_presentation_finalizer",
     srcs = ["mix_presentation_finalizer.cc"],
     hdrs = ["mix_presentation_finalizer.h"],
