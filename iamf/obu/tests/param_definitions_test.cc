@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_param_data.h"
@@ -571,6 +572,60 @@ TEST_F(ExtendedParamDefinitionTest, WriteFailsIfSizeIsInconsistent) {
 
   expected_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWrite({});
+}
+
+TEST(ReadParamDefinitionTest, Mode1) {
+  ParamDefinition param_definition;
+  std::vector<uint8_t> source = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80};
+  ReadBitBuffer buffer(1024, &source);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+}
+
+TEST(ReadParamDefinitionTest, Mode0NonZeroSubblockDuration) {
+  ParamDefinition param_definition;
+  std::vector<uint8_t> source = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x00,
+      // `duration`.
+      0xc0, 0x00,
+      // `constant_subblock_duration`.
+      0xc0, 0x00};
+  ReadBitBuffer buffer(1024, &source);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+}
+
+TEST(ReadParamDefinitionTest, Mode0SubblockArray) {
+  ParamDefinition param_definition;
+  std::vector<uint8_t> source = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x00,
+      // `duration` (64).
+      0xc0, 0x00,
+      // `constant_subblock_duration`.
+      0x00,
+      // `num_subblocks`
+      0x02,
+      // `subblock_durations`
+      // `subblock_duration`
+      40,
+      // `subblock_duration`
+      24};
+  ReadBitBuffer buffer(1024, &source);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
 }
 
 }  // namespace

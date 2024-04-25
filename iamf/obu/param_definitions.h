@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -100,6 +101,16 @@ class ParamDefinition {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   virtual absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads and validates the parameter definition.
+   *
+   * This function defines the validating and reading of the common parts,
+   * and the sub-classes's overridden ones shall define their specific parts.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  virtual absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   /*!\brief Gets the `ParameterDefinitionType`.
    *

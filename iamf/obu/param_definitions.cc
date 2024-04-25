@@ -18,6 +18,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -153,6 +154,35 @@ absl::Status ParamDefinition::ValidateAndWrite(WriteBitBuffer& wb) const {
   for (const auto& subblock_duration : subblock_durations_) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(subblock_duration));
   }
+  return absl::OkStatus();
+}
+
+absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
+  // Read the fields that are always present in `param_definition`.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id_));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_rate_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, param_definition_mode_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(7, reserved_));
+  if (param_definition_mode_ != 0) {
+    return absl::OkStatus();
+  }
+
+  // Read the fields dependent on `param_definition_mode == 0`.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));
+  RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration_));
+  if (constant_subblock_duration_ != 0) {
+    return absl::OkStatus();
+  }
+
+  // Loop to read the `subblock_durations` array if it should be included.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
+  for (int i = 0; i < num_subblocks_; i++) {
+    DecodedUleb128 subblock_duration;
+    RETURN_IF_NOT_OK(rb.ReadULeb128(subblock_duration));
+    subblock_durations_.push_back(subblock_duration);
+  }
+
+  RETURN_IF_NOT_OK(Validate());
   return absl::OkStatus();
 }
 

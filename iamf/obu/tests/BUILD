@@ -168,6 +168,7 @@ cc_test(
     srcs = ["param_definitions_test.cc"],
     deps = [
         "//iamf/cli:leb_generator",
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
         "//iamf/obu:demixing_info_param_data",

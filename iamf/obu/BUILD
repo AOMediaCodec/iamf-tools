@@ -179,6 +179,7 @@ cc_library(
         ":leb128",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
