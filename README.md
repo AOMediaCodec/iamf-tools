@@ -59,7 +59,7 @@ bazel build -c opt //iamf/cli:encoder_main
 Running built-in tests:
 
 ```
-bazel test //iamf/...
+bazel test -c opt //iamf/...
 ```
 
 #### Using the encoder with proto input
