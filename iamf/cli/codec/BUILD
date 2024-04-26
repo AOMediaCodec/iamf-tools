@@ -69,6 +69,19 @@ cc_library(
 )
 
 cc_library(
+    name = "lpcm_decoder",
+    srcs = ["lpcm_decoder.cc"],
+    hdrs = ["lpcm_decoder.h"],
+    deps = [
+        ":decoder_base",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:lpcm_decoder_config",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
     name = "lpcm_encoder",
     srcs = ["lpcm_encoder.cc"],
     hdrs = ["lpcm_encoder.h"],
