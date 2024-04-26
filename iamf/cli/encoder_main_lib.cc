@@ -156,6 +156,23 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   return absl::OkStatus();
 }
 
+absl::Status InitAudioFrameDecoderForAllAudioElements(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    AudioFrameDecoder& audio_frame_decoder) {
+  for (const auto& [_, audio_element] : audio_elements) {
+    if (audio_element.codec_config == nullptr) {
+      // Skip stray audio elements. We won't know how to decode their
+      // substreams.
+      continue;
+    }
+
+    RETURN_IF_NOT_OK(audio_frame_decoder.InitDecodersForSubstreams(
+        audio_element.substream_id_to_labels, *audio_element.codec_config));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status GenerateObus(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const std::string& input_wav_directory,
@@ -239,8 +256,16 @@ absl::Status GenerateObus(
       output_wav_directory,
       user_metadata.test_vector_metadata().file_name_prefix(), demixing_module,
       parameters_manager, global_timing_module);
-
   RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
+
+  // Initialize the audio frame decoder. It is needed to determine the recon
+  // gain parameters and measure the loudness of the mixes.
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  AudioFrameDecoder audio_frame_decoder(
+      output_wav_directory,
+      user_metadata.test_vector_metadata().file_name_prefix());
+  RETURN_IF_NOT_OK(InitAudioFrameDecoderForAllAudioElements(
+      audio_elements, audio_frame_decoder));
 
   // TODO(b/315924757): Currently getting all parameter blocks corresponding to
   //                    a timestamp from `parameter_blocks` to simulate
@@ -280,17 +305,14 @@ absl::Status GenerateObus(
     if (temp_audio_frames.empty()) {
       absl::SleepFor(absl::Milliseconds(50));
     } else {
+      // Decode all of the newly encoded frames and collect them.
+      RETURN_IF_NOT_OK(
+          audio_frame_decoder.Decode(temp_audio_frames, decoded_audio_frames));
+
       audio_frames.splice(audio_frames.end(), temp_audio_frames);
     }
   }
   PrintAudioFrames(audio_frames);
-
-  AudioFrameDecoder audio_frame_decoder(
-      output_wav_directory,
-      user_metadata.test_vector_metadata().file_name_prefix());
-  std::list<DecodedAudioFrame> decoded_audio_frames;
-  RETURN_IF_NOT_OK(
-      audio_frame_decoder.Decode(audio_frames, decoded_audio_frames));
 
   // Demix audio samples; useful for the following operations.
   IdTimeLabeledFrameMap id_to_time_to_labeled_frame;

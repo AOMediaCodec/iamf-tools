@@ -14,13 +14,18 @@
 
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
+#include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/codec/decoder_base.h"
+#include "iamf/cli/wav_writer.h"
+#include "iamf/obu/codec_config.h"
 
 namespace iamf_tools {
 
@@ -49,6 +54,14 @@ struct DecodedAudioFrame {
  * This class manages the underlying codec decoders for all substreams. Codec
  * decoders may be stateful; this class manages a one-to-one mapping between
  * codec decoders and substream.
+ *
+ * Call `InitDecodersForSubstreams` with pairs of `SubstreamIdLabelsMap` and
+ * `CodecConfigObu`. This typically will require one call per Audio Element OBU.
+ *
+ * Then call `Decode` repeatedly with a list of `AudioFrameWithData`. There may
+ * be multiple `AudioFrameWithData`s in a single call to this function. Each
+ * substream in the list is assumed to be self-consistent in temporal order. It
+ * is permitted in any order relative to other substreams.
  */
 class AudioFrameDecoder {
  public:
@@ -62,7 +75,18 @@ class AudioFrameDecoder {
       : output_wav_directory_(output_wav_directory),
         file_prefix_(file_prefix) {}
 
-  // TODO(b/306319126): Decode one audio frame at a time.
+  /*\!brief Initialize codec decoders for each substream.
+   *
+   * \param substream_id_to_labels Substreams and their associated labels to
+   *     initialize. The number of channels is determined by the number of
+   *     labels.
+   * \param codec_config Codec Config OBU to use for all substreams.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status InitDecodersForSubstreams(
+      const SubstreamIdLabelsMap& substream_id_to_labels,
+      const CodecConfigObu& codec_config);
+
   /*\!brief Decodes a list of Audio Frame OBUs.
    *
    * \param encoded_audio_frames Input Audio Frame OBUs.
@@ -75,6 +99,14 @@ class AudioFrameDecoder {
  private:
   const std::string output_wav_directory_;
   const std::string file_prefix_;
+
+  // A map of substream IDs to the relevant decoder and codec config. This is
+  // necessary to process streams with stateful decoders correctly.
+  absl::node_hash_map<uint32_t, std::unique_ptr<DecoderBase>>
+      substream_id_to_decoder_;
+
+  // A map of substream IDs to the relevant wav writer.
+  absl::node_hash_map<uint32_t, WavWriter> substream_id_to_wav_writer_;
 };
 
 }  // namespace iamf_tools

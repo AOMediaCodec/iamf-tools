@@ -30,7 +30,7 @@ const int kNumSamplesPerFrame = 8;
 const int kBytesPerSample = 2;
 constexpr absl::string_view kWavFilePrefix = "test";
 
-TEST(AudioFrameDecoderTest, NoAudioFrames) {
+TEST(Decode, SucceedsOnEmptyInput) {
   AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
 
   std::list<DecodedAudioFrame> decoded_audio_frames;
@@ -64,7 +64,80 @@ std::list<AudioFrameWithData> PrepareEncodedAudioFrames(
   return encoded_audio_frames;
 }
 
-TEST(AudioFrameDecoderTest, DecodeLpcmFrame) {
+TEST(Decode, RequiresSubstreamsAreInitialized) {
+  AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
+  // Encoded frames.
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  std::list<AudioFrameWithData> encoded_audio_frames =
+      PrepareEncodedAudioFrames(codec_config_obus, audio_elements);
+
+  // Decoding fails before substreams are initialized.
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  EXPECT_FALSE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  const auto& audio_element = audio_elements.at(kAudioElementId);
+  // Decoding succeeds after substreams are initialized.
+  EXPECT_TRUE(
+      decoder
+          .InitDecodersForSubstreams(audio_element.substream_id_to_labels,
+                                     *audio_element.codec_config)
+          .ok());
+  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+}
+
+TEST(InitDecodersForSubstreams,
+     ShouldNotBeCalledTwiceWithTheSameSubstreamIdForStatefulEncoders) {
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  const auto& codec_config = codec_config_obus.at(kCodecConfigId);
+
+  AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
+  const SubstreamIdLabelsMap kLabelsForSubstreamZero = {{kSubstreamId, {"M"}}};
+  EXPECT_TRUE(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config)
+          .ok());
+  EXPECT_FALSE(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config)
+          .ok());
+
+  const SubstreamIdLabelsMap kLabelsForSubstreamOne = {
+      {kSubstreamId + 1, {"M"}}};
+  EXPECT_TRUE(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamOne, codec_config)
+          .ok());
+}
+
+void InitAllAudioElements(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    AudioFrameDecoder& decoder) {
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       audio_elements) {
+    EXPECT_TRUE(decoder
+                    .InitDecodersForSubstreams(
+                        audio_element_with_data.substream_id_to_labels,
+                        *audio_element_with_data.codec_config)
+                    .ok());
+  }
+}
+
+TEST(Decode, AppendsToOutputList) {
+  AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
+  // Encoded frames.
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  std::list<AudioFrameWithData> encoded_audio_frames =
+      PrepareEncodedAudioFrames(codec_config_obus, audio_elements);
+  InitAllAudioElements(audio_elements, decoder);
+
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_EQ(decoded_audio_frames.size(), 1);
+  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_EQ(decoded_audio_frames.size(), 2);
+}
+
+TEST(Decode, DecodesLpcmFrame) {
   AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
 
   // Encoded frames.
@@ -72,6 +145,7 @@ TEST(AudioFrameDecoderTest, DecodeLpcmFrame) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<AudioFrameWithData> encoded_audio_frames =
       PrepareEncodedAudioFrames(codec_config_obus, audio_elements);
+  InitAllAudioElements(audio_elements, decoder);
 
   // Decode.
   std::list<DecodedAudioFrame> decoded_audio_frames;
@@ -110,6 +184,8 @@ void DecodeEightSampleAudioFrame(uint32_t num_samples_to_trim_at_end = 0,
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<AudioFrameWithData> encoded_audio_frames =
       PrepareEncodedAudioFrames(codec_config_obus, audio_elements);
+  InitAllAudioElements(audio_elements, decoder);
+
   encoded_audio_frames.front().obu.header_.num_samples_to_trim_at_end =
       num_samples_to_trim_at_end;
   encoded_audio_frames.front().obu.header_.num_samples_to_trim_at_start =
@@ -119,7 +195,7 @@ void DecodeEightSampleAudioFrame(uint32_t num_samples_to_trim_at_end = 0,
   EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
 }
 
-TEST(AudioFrameDecoderTest, WritesDebuggingWavFileWithExpectedNumberOfSamples) {
+TEST(Decode, WritesDebuggingWavFileWithExpectedNumberOfSamples) {
   DecodeEightSampleAudioFrame();
 
   EXPECT_TRUE(std::filesystem::exists(GetFirstExpectedWavFile(kSubstreamId)));
@@ -128,7 +204,7 @@ TEST(AudioFrameDecoderTest, WritesDebuggingWavFileWithExpectedNumberOfSamples) {
   EXPECT_EQ(reader.remaining_samples(), kNumSamplesPerFrame);
 }
 
-TEST(AudioFrameDecoderTest, DebuggingWavFileHasSamplesTrimmed) {
+TEST(Decode, DebuggingWavFileHasSamplesTrimmed) {
   const uint32_t kNumSamplesToTrimAtEnd = 5;
   const uint32_t kNumSamplesToTrimAtStart = 2;
   DecodeEightSampleAudioFrame(kNumSamplesToTrimAtEnd, kNumSamplesToTrimAtStart);
