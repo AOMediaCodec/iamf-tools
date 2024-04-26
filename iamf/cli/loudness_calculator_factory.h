@@ -48,7 +48,20 @@ class LoudnessCalculatorFactoryBase {
 
 // TODO(b/302273947): Use this class to measure loudness when finalizing mix
 //                    presentations.
-/*\!brief Factory which always provides a fallback loudness calculator. */
+/*\!brief Factory which always provides a fallback loudness calculator.
+ *
+ * This factory produces underlying loudness calculators which entirely ignore
+ * all input samples. Those calculators are useful if the user does not wish to
+ * provide samples to the calculator, or knows the samples they provide are
+ * inaccurate or not valid for some reason.
+ *
+ * This factory is intended to be used when the user does not care about
+ * "accurate" loudness measurement. One such case is if the user does not
+ * support rendering to a layout that loudness should be measured on.
+ *
+ * This factory is also intended be used as a fallback when other loudness
+ * factories fail to be created.
+ */
 class LoudnessCalculatorFactoryUserProvidedLoudness
     : public LoudnessCalculatorFactoryBase {
  public:
