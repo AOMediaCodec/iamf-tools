@@ -29,10 +29,13 @@ cc_library(
     hdrs = glob([
         "libFDK/include/*.h",
         "libFDK/include/x86/*.h",
+        "libFDK/include/arm/*.h",
+        "libFDK/src/arm/*.cpp"
     ]),
     includes = [
         "libFDK/include",
         "libSYS/include",
+        "libFDK/src",
     ],
     deps = [
         ":fdk_sys_lib",
@@ -220,6 +223,7 @@ cc_library(
     ]),
     hdrs = glob([
         "libAACdec/include/*.h",
+        "libAACdec/src/arm/*.cpp"
     ]),
     copts = [
         "-Wno-implicit-fallthrough",
@@ -235,6 +239,7 @@ cc_library(
         "libSACdec/include",
         "libSACenc/include",
         "libSBRdec/include",
+        "libAACdec/src",
     ],
     deps = [
         ":arith_coding_lib",
