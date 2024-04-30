@@ -45,8 +45,11 @@ input files.
 
 #### Prerequisites for building the encoder
 
-`iamf-tools` is built using Bazel. See Bazel's
-[Getting started](https://bazel.build/start) page for installation instructions.
+-   Bazel: `iamf-tools` uses the Bazel build system. See Bazel's
+    [Getting started](https://bazel.build/start) page for installation
+    instructions.
+-   `libexpat1-dev`: Provides `expat_config.h`. May be installed by common
+    package managers (e.g. `sudo apt-get install libexpat1-dev`).
 
 #### Building the encoder on Linux
 
@@ -107,7 +110,7 @@ bazel-bin/iamf/cli/encoder_main --adm_filename=path/to/adm.wav --output_iamf_dir
 These samples can be used as encoder input. After encoding the resultant `.iamf`
 files can be used to assist in testing or debugging an IAMF-compliant decoder.
 
-See the separate [REAMDE.md](iamf/cli/testdata/README.md) for further
+See the separate [README.md](iamf/cli/testdata/README.md) for further
 documentation.
 
 ## License
