@@ -48,8 +48,7 @@ input files.
 -   Bazel: `iamf-tools` uses the Bazel build system. See Bazel's
     [Getting started](https://bazel.build/start) page for installation
     instructions.
--   `libexpat1-dev`: Provides `expat_config.h`. May be installed by common
-    package managers (e.g. `sudo apt-get install libexpat1-dev`).
+-   CMake: required to build some dependencies. See CMake's [Download](https://cmake.org/download/) page to install.
 
 #### Building the encoder on Linux
 
