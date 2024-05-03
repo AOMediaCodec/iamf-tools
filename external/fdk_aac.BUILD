@@ -37,6 +37,8 @@ cc_library(
         "libFDK/include/*.h",
     ]) + select({
         "@platforms//cpu:arm": ARM_HEADERS,
+        "@platforms//cpu:armv7": ARM_HEADERS,
+        "@platforms//cpu:arm64": ARM_HEADERS,
         "@platforms//cpu:x86_32": X86_HEADERS,
         "@platforms//cpu:x86_64": X86_HEADERS,
     }),
@@ -233,6 +235,8 @@ cc_library(
         "libAACdec/include/*.h",
     ]) + select({
         "@platforms//cpu:arm": ARM_HEADERS,
+        "@platforms//cpu:armv7": ARM_HEADERS,
+        "@platforms//cpu:arm64": ARM_HEADERS,
          "//conditions:default": [],
     }),
     copts = [
