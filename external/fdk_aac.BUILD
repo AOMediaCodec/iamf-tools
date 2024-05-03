@@ -20,6 +20,13 @@ cc_library(
     ],
 )
 
+ARM_HEADERS = glob([
+    "libFDK/include/arm/*.h",
+    "libFDK/src/arm/*.cpp",
+])
+
+X86_HEADERS = glob(["libFDK/include/x86/*.h"])
+
 cc_library(
     name = "fdk_core_lib",
     srcs = glob([
@@ -28,14 +35,15 @@ cc_library(
     ]),
     hdrs = glob([
         "libFDK/include/*.h",
-        "libFDK/include/x86/*.h",
-        "libFDK/include/arm/*.h",
-        "libFDK/src/arm/*.cpp"
-    ]),
+    ]) + select({
+        "@platforms//cpu:arm": ARM_HEADERS,
+        "@platforms//cpu:x86_32": X86_HEADERS,
+        "@platforms//cpu:x86_64": X86_HEADERS,
+    }),
     includes = [
         "libFDK/include",
-        "libSYS/include",
         "libFDK/src",
+        "libSYS/include",
     ],
     deps = [
         ":fdk_sys_lib",
@@ -223,14 +231,17 @@ cc_library(
     ]),
     hdrs = glob([
         "libAACdec/include/*.h",
-        "libAACdec/src/arm/*.cpp"
-    ]),
+    ]) + select({
+        "@platforms//cpu:arm": ARM_HEADERS,
+         "//conditions:default": [],
+    }),
     copts = [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-variable",
     ],
     includes = [
         "libAACdec/include",
+        "libAACdec/src",
         "libArithCoding/include",
         "libDRCdec/include",
         "libFDK/include",
@@ -239,7 +250,6 @@ cc_library(
         "libSACdec/include",
         "libSACenc/include",
         "libSBRdec/include",
-        "libAACdec/src",
     ],
     deps = [
         ":arith_coding_lib",
