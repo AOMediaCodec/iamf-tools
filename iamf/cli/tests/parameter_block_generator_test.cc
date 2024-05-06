@@ -171,9 +171,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
-      global_timing_module
-          .Initialize(audio_elements, codec_config_obus, param_definitions)
-          .ok());
+      global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -297,9 +295,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
-      global_timing_module
-          .Initialize(audio_elements, codec_config_obus, param_definitions)
-          .ok());
+      global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -484,9 +480,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
-      global_timing_module
-          .Initialize(audio_elements, codec_config_obus, param_definitions)
-          .ok());
+      global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
   // Generate.
   // Set the decoded frames identical to the original frames, so that recon

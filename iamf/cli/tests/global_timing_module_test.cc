@@ -67,8 +67,7 @@ class GlobalTimingModuleTest : public ::testing::Test {
     }
 
     return global_timing_module_->Initialize(
-        audio_elements_, codec_config_obus_,
-        parameter_id_to_param_definition_pointer);
+        audio_elements_, parameter_id_to_param_definition_pointer);
   }
 
   void TestGetNextAudioFrameStamps(
@@ -204,8 +203,6 @@ TEST_F(GlobalTimingModuleTest,
 }
 
 TEST_F(GlobalTimingModuleTest, InvalidWhenParameterRateIsZero) {
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus_);
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
   AddParamDefinitionWithMode0AndOneSubblock(kFirstParameterId,

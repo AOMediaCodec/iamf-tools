@@ -17,55 +17,18 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
-
-namespace {
-
-absl::Status FindParameterRate(
-    const DecodedUleb128 parameter_id,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions,
-    DecodedUleb128& parameter_rate) {
-  auto iter = param_definitions.find(parameter_id);
-  // TODO(b/337184341): Simplify this further since we can now assume that
-  //                    stray parameter blocks are not allowed.
-  if (iter == param_definitions.end()) {
-    LOG(WARNING) << "Parameter ID: " << parameter_id
-                 << " is a stray parameter block. Safely ignoring, but this is "
-                    "typically not desired. Trying to infer the theoretical "
-                    "`parameter_rate` from context.";
-    if (codec_config_obus.size() != 1) {
-      LOG(ERROR) << "Infering the parameter rate with multiple Codec Config "
-                    "OBUs is not supported yet.";
-      return absl::InvalidArgumentError("");
-    }
-    // Assume the user meant to have it at the same rate as the sole Codec
-    // Config OBU.
-    parameter_rate = static_cast<DecodedUleb128>(
-        codec_config_obus.begin()->second.GetOutputSampleRate());
-  } else {
-    parameter_rate = iter->second->parameter_rate_;
-  }
-  if (parameter_rate == 0) {
-    LOG(ERROR) << "Parameter ID: " << parameter_id
-               << " refers to a parameter definition with invalid rate= "
-               << parameter_rate;
-    return absl::InvalidArgumentError("");
-  }
-  return absl::OkStatus();
-}
-
-}  // namespace
 
 absl::Status GlobalTimingModule::GetTimestampsForId(
     const DecodedUleb128 id, const uint32_t duration,
@@ -92,7 +55,6 @@ absl::Status GlobalTimingModule::GetTimestampsForId(
 absl::Status GlobalTimingModule::Initialize(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
   // TODO(b/277899855): Handle different rates.
@@ -101,49 +63,38 @@ absl::Status GlobalTimingModule::Initialize(
     // actually appear in the bitstream.
     for (const auto& audio_substream_id :
          audio_element.obu.audio_substream_ids_) {
-      uint32_t sample_rate = audio_element.codec_config->GetOutputSampleRate();
-      if (sample_rate == 0) {
-        LOG(ERROR) << "Audio Substream ID: " << audio_substream_id
-                   << " refers to a codec config with invalid sample rate= "
-                   << sample_rate;
-        return absl::InvalidArgumentError("");
-      }
+      const uint32_t sample_rate =
+          audio_element.codec_config->GetOutputSampleRate();
+      RETURN_IF_NOT_OK(
+          ValidateNotEqual(sample_rate, uint32_t{0}, "sample rate"));
 
-      if (audio_frame_timing_data_.contains(audio_substream_id)) {
-        LOG(ERROR) << "Audio Substream ID: " << audio_substream_id
-                   << " already exists in the Global Timing Module";
-        return absl::InvalidArgumentError("");
-      }
-      audio_frame_timing_data_.insert(
+      const auto [_, inserted] = audio_frame_timing_data_.insert(
           {audio_substream_id,
            {.rate = sample_rate, .global_start_timestamp = 0, .timestamp = 0}});
+
+      if (!inserted) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Audio substream ID: ", audio_substream_id,
+                         " already exists in the Global Timing Module"));
+      }
     }
   }
 
-  // Collect all parameter IDs.
-  absl::flat_hash_set<uint32_t> parameter_ids;
-  // Add in all `ParamDefinitions` even if their corresponding Parameter Block
-  // OBUs are omitted from the bitstream.
-  for (const auto& [parameter_id, unused_param_definition] :
-       param_definitions) {
-    parameter_ids.insert(parameter_id);
-  }
-
   // Initialize all parameter IDs to start with a timestamp 0.
-  for (const auto parameter_id : parameter_ids) {
-    DecodedUleb128 parameter_rate;
-    RETURN_IF_NOT_OK(FindParameterRate(parameter_id, codec_config_obus,
-                                       param_definitions, parameter_rate));
+  for (const auto& [parameter_id, param_definition] : param_definitions) {
+    const DecodedUleb128 parameter_rate = param_definition->parameter_rate_;
+    RETURN_IF_NOT_OK(
+        ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
 
-    auto [iter, inserted] =
+    const auto [_, inserted] =
         parameter_block_timing_data_.insert({parameter_id,
                                              {.rate = parameter_rate,
                                               .global_start_timestamp = 0,
                                               .timestamp = 0}});
     if (!inserted) {
-      LOG(ERROR) << "Parameter ID: " << parameter_id
-                 << " already exists in the Global Timing Module";
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Parameter ID: ", parameter_id,
+                       " already exists in the Global Timing Module"));
     }
   }
 

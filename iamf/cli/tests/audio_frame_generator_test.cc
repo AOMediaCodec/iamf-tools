@@ -109,9 +109,7 @@ void GenerateAudioFrameWithEightSamples(
   DemixingModule demixing_module(user_metadata, audio_elements);
   GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
-      global_timing_module
-          .Initialize(audio_elements, codec_config_obus, param_definitions)
-          .ok());
+      global_timing_module.Initialize(audio_elements, param_definitions).ok());
   ParametersManager parameters_manager(audio_elements);
   ASSERT_TRUE(parameters_manager.Initialize().ok());
 

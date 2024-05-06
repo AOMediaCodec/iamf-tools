@@ -264,6 +264,7 @@ cc_library(
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:leb128",
@@ -272,6 +273,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
     ],
 )
 

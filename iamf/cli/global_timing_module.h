@@ -19,7 +19,6 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 
@@ -38,14 +37,12 @@ class GlobalTimingModule {
    *
    * \param audio_elements Audio Element OBUs with data to search for sample
    *     rates.
-   * \param codec_config_obus Codec Config OBUs to search for sample rates.
    * \param param_definitions Parameter definitions keyed by parameter IDs.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
-      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
           param_definitions);
 

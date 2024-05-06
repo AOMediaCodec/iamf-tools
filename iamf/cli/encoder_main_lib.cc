@@ -221,8 +221,8 @@ absl::Status GenerateObus(
 
   // Global timing module.
   GlobalTimingModule global_timing_module;
-  RETURN_IF_NOT_OK(global_timing_module.Initialize(
-      audio_elements, codec_config_obus, param_definitions));
+  RETURN_IF_NOT_OK(
+      global_timing_module.Initialize(audio_elements, param_definitions));
 
   ParameterBlockGenerator parameter_block_generator(
       user_metadata.parameter_block_metadata(),
