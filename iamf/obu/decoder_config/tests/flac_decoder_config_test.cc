@@ -28,7 +28,7 @@ class FlacTest : public testing::Test {
  public:
   FlacTest()
       : num_samples_per_frame_(16),
-        flac_decoder_config_(
+        flac_decoder_config_{
             {{.header = {.last_metadata_block_flag = true,
                          .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
                          .metadata_data_block_length = 34},
@@ -37,7 +37,7 @@ class FlacTest : public testing::Test {
                                           .maximum_block_size = 16,
                                           .sample_rate = 48000,
                                           .bits_per_sample = 15,
-                                          .total_samples_in_stream = 0}}}) {
+                                          .total_samples_in_stream = 0}}}} {
     first_stream_info_payload_ = &std::get<FlacMetaBlockStreamInfo>(
         flac_decoder_config_.metadata_blocks_[0].payload);
   }

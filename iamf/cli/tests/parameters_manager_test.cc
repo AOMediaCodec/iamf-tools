@@ -47,9 +47,10 @@ absl::Status AddOneDemixingParameterBlock(
       .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = param_definition,
   };
-  parameter_blocks.emplace_back(std::make_unique<ParameterBlockObu>(
-                                    ObuHeader(), kParameterId, per_id_metadata),
-                                start_timestamp, start_timestamp + kDuration);
+  parameter_blocks.emplace_back(ParameterBlockWithData{
+      std::make_unique<ParameterBlockObu>(ObuHeader(), kParameterId,
+                                          per_id_metadata),
+      start_timestamp, start_timestamp + static_cast<int32_t>(kDuration)});
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
   absl::Status status =
       parameter_block_obu.InitializeSubblocks(kDuration, kDuration, 1);
