@@ -17,7 +17,6 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
@@ -50,7 +49,7 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   EXPECT_TRUE(
       generator.GenerateDemixing(global_timing_module, output_parameter_blocks)
           .ok());
@@ -170,7 +169,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
                   .ok());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
@@ -296,7 +295,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
                   .ok());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
@@ -483,7 +482,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                   .ok());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
@@ -511,7 +510,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                                 /*expected_end_timestamps=*/{8, 16});
 }
 
-TEST(Initialize, GeneratesValidStrayParameterBlocks) {
+TEST(Generate, FailsWhenGeneratingStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<uint32_t, PerIdParameterMetadata>
       parameter_id_to_metadata;
@@ -536,21 +535,16 @@ TEST(Initialize, GeneratesValidStrayParameterBlocks) {
                   .ok());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)
           .ok());
 
   std::list<ParameterBlockWithData> output_parameter_blocks;
-  EXPECT_TRUE(
+  EXPECT_FALSE(
       generator.GenerateDemixing(global_timing_module, output_parameter_blocks)
           .ok());
-  ASSERT_FALSE(output_parameter_blocks.empty());
-
-  WriteBitBuffer wb(0);
-  EXPECT_TRUE(
-      output_parameter_blocks.front().obu->ValidateAndWriteObu(wb).ok());
 }
 
 }  // namespace

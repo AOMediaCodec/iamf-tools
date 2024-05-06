@@ -202,7 +202,6 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -333,7 +332,6 @@ cc_test(
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/common:write_bit_buffer",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",

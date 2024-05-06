@@ -220,7 +220,7 @@ absl::Status GenerateObus(
       audio_elements, mix_presentation_obus, param_definitions));
 
   // Global timing module.
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   RETURN_IF_NOT_OK(global_timing_module.Initialize(
       audio_elements, codec_config_obus, param_definitions));
 

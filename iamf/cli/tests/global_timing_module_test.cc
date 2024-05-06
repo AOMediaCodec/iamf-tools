@@ -26,7 +26,6 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
-#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
@@ -54,8 +53,8 @@ class GlobalTimingModuleTest : public ::testing::Test {
 
   // Constructs and initializes `global_timing_module_`.
   absl::Status Initialize() {
-    global_timing_module_ = std::make_unique<GlobalTimingModule>(
-        GlobalTimingModule(user_metadata_));
+    global_timing_module_ =
+        std::make_unique<GlobalTimingModule>(GlobalTimingModule());
 
     // Normally the `ParamDefinitions` are stored in the descriptor OBUs. For
     // simplicity they are stored in the class. Transform it to a map of
@@ -103,7 +102,6 @@ class GlobalTimingModuleTest : public ::testing::Test {
     EXPECT_EQ(end_timestamp, expected_end_timestamp);
   }
 
-  iamf_tools_cli_proto::UserMetadata user_metadata_ = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module_ = nullptr;
 
  protected:
@@ -189,46 +187,20 @@ TEST_F(GlobalTimingModuleTest, OneParameterId) {
 }
 
 TEST_F(GlobalTimingModuleTest,
-       SupportsStrayParameterBlocksWithOneCodecConfigObu) {
+       FailsWhenGettingTimestampForStrayParameterBlock) {
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus_);
 
-  // Stray parameters are represented by parameter blocks in the user metadata,
-  // without a corresponding `ParamDefinition` in the descriptor OBUs.
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        parameter_id: 0
-        duration: 64
-        constant_subblock_duration: 64
-        num_subblocks: 1
-        start_timestamp: 0
-      )pb",
-      user_metadata_.add_parameter_block_metadata()));
-
   EXPECT_TRUE(Initialize().ok());
 
-  // Timing can be generated as expected. It has an implicit `parameter_rate`
-  // matching the sampler rate of the Codec Config OBU.
-  TestGetNextParameterBlockTimestamps(kFirstParameterId, 0, 64, 0, 64);
-  TestGetNextParameterBlockTimestamps(kFirstParameterId, 64, 64, 64, 128);
-  TestGetNextParameterBlockTimestamps(kFirstParameterId, 128, 64, 128, 192);
-}
-
-TEST_F(GlobalTimingModuleTest,
-       InvalidWhenThereAreStrayParameterBlocksWithoutCodecConfigObu) {
-  // Stray parameters are represented by parameter blocks in the user metadata,
-  // without a corresponding `ParamDefinition` in the descriptor OBUs.
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        parameter_id: 0
-        duration: 64
-        constant_subblock_duration: 64
-        num_subblocks: 1
-        start_timestamp: 0
-      )pb",
-      user_metadata_.add_parameter_block_metadata()));
-
-  EXPECT_FALSE(Initialize().ok());
+  int32_t start_timestamp;
+  int32_t end_timestamp;
+  const auto kStrayParameterBlockId = kFirstParameterId + 1;
+  EXPECT_FALSE(global_timing_module_
+                   ->GetNextParameterBlockTimestamps(kStrayParameterBlockId, 0,
+                                                     64, start_timestamp,
+                                                     end_timestamp)
+                   .ok());
 }
 
 TEST_F(GlobalTimingModuleTest, InvalidWhenParameterRateIsZero) {

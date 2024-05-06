@@ -153,6 +153,8 @@ absl::Status GetPerIdMetadata(
   // Initialize some fields that may not be set later.
   per_id_metadata.num_layers = 0;
 
+  // TODO(b/337184341): Simplify logic since stray parameter blocks in the
+  //                    metadata are not allowed.
   auto iter = param_definitions.find(target_parameter_id);
   if (iter == param_definitions.end()) {
     LOG(WARNING) << "Found a stray parameter block with id: "

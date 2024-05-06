@@ -107,7 +107,7 @@ void GenerateAudioFrameWithEightSamples(
   const std::string output_wav_directory = "/dev/null";
 
   DemixingModule demixing_module(user_metadata, audio_elements);
-  GlobalTimingModule global_timing_module(user_metadata);
+  GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module
           .Initialize(audio_elements, codec_config_obus, param_definitions)

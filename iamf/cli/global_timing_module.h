@@ -28,10 +28,8 @@ namespace iamf_tools {
 class GlobalTimingModule {
  public:
   /*\!brief Constructor.
-   * \param user_metadata Input user metadata.
    */
-  GlobalTimingModule(const iamf_tools_cli_proto::UserMetadata& user_metadata)
-      : user_metadata_(user_metadata) {}
+  GlobalTimingModule() = default;
 
   /*\!brief Initializes a Global Timing Module.
    *
@@ -111,7 +109,6 @@ class GlobalTimingModule {
       absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
       int32_t& start_timestamp, int32_t& end_timestamp);
 
-  const iamf_tools_cli_proto::UserMetadata user_metadata_;
   absl::flat_hash_map<DecodedUleb128, TimingData> audio_frame_timing_data_;
   absl::flat_hash_map<DecodedUleb128, TimingData> parameter_block_timing_data_;
 };

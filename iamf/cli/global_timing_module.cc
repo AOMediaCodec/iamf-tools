@@ -20,7 +20,6 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -38,6 +37,8 @@ absl::Status FindParameterRate(
         param_definitions,
     DecodedUleb128& parameter_rate) {
   auto iter = param_definitions.find(parameter_id);
+  // TODO(b/337184341): Simplify this further since we can now assume that
+  //                    stray parameter blocks are not allowed.
   if (iter == param_definitions.end()) {
     LOG(WARNING) << "Parameter ID: " << parameter_id
                  << " is a stray parameter block. Safely ignoring, but this is "
@@ -126,12 +127,6 @@ absl::Status GlobalTimingModule::Initialize(
   for (const auto& [parameter_id, unused_param_definition] :
        param_definitions) {
     parameter_ids.insert(parameter_id);
-  }
-  // Add in all user metadata parameter blocks. Even if the are strays (i.e.
-  // there is no corresponding `ParamDefinition`.
-  for (const auto& parameter_block :
-       user_metadata_.parameter_block_metadata()) {
-    parameter_ids.insert(parameter_block.parameter_id());
   }
 
   // Initialize all parameter IDs to start with a timestamp 0.
