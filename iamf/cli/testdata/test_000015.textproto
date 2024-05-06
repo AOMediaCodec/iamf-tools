@@ -14,7 +14,7 @@
 test_vector_metadata {
   human_readable_description:
     "A stereo IAMF stream that includes an extra parameter block which is not "
-    "used by any audio element."
+    "used by any audio element or mix presentation."
   file_name_prefix: "test_000015"
   is_valid: true
   mp4_fixed_timestamp: "2023-04-19 00:00:00"
@@ -157,24 +157,20 @@ parameter_block_metadata {
   ]
 }
 
-parameter_block_metadata {
-  parameter_id: 101
-  start_timestamp: 0
-  duration: 8000
-  num_subblocks: 1
-  constant_subblock_duration: 8000
-  subblocks: [
-    {
-      mix_gain_parameter_data {
-        animation_type: ANIMATE_STEP
-        param_data {
-          step {
-            start_point_value: 1
-          }
-        }
-      }
-    }
-  ]
+arbitrary_obu_metadata {
+  insertion_hook: INSERTION_HOOK_AFTER_DESCRIPTORS
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+
+  # `parameter_id` = 0x65`.
+  # `animation_type` = 0x00`.
+  # `param_data` = 0xbbcc`.
+  payload: "\x65\x00\xbb\xcc"
+
 }
 
 temporal_delimiter_metadata {
