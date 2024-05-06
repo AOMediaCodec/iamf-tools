@@ -39,7 +39,6 @@
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
@@ -147,51 +146,14 @@ absl::Status GetPerIdMetadata(
         audio_elements,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions,
-    const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-        parameter_block_metadata,
     PerIdParameterMetadata& per_id_metadata) {
   // Initialize some fields that may not be set later.
   per_id_metadata.num_layers = 0;
 
-  // TODO(b/337184341): Simplify logic since stray parameter blocks in the
-  //                    metadata are not allowed.
   auto iter = param_definitions.find(target_parameter_id);
   if (iter == param_definitions.end()) {
-    LOG(WARNING) << "Found a stray parameter block with id: "
-                 << target_parameter_id
-                 << ". This is unusual, but allowed. Attempting to infer"
-                    " the user-implied settings.";
-    if (audio_elements.empty() ||
-        audio_elements.begin()->second.codec_config == nullptr) {
-      return absl::UnknownError(
-          "No matching Codec Config OBU found. Cannot infer parameter rate.");
-    }
-    per_id_metadata.param_definition.parameter_rate_ =
-        audio_elements.begin()->second.codec_config->GetOutputSampleRate();
-
-    per_id_metadata.param_definition.param_definition_mode_ = 1;
-    if (parameter_block_metadata.subblocks().empty()) {
-      LOG(ERROR) << "The stray parameter block had no subblocks. Cannot "
-                    "infer type.";
-      return absl::UnknownError("");
-    }
-
-    auto& param_definition_type = per_id_metadata.param_definition_type;
-    const auto& first_subblock = parameter_block_metadata.subblocks(0);
-    // Get the type of the parameter block based on the user input data.
-    if (first_subblock.has_mix_gain_parameter_data()) {
-      param_definition_type = ParamDefinition::kParameterDefinitionMixGain;
-    } else if (first_subblock.has_demixing_info_parameter_data()) {
-      param_definition_type = ParamDefinition::kParameterDefinitionDemixing;
-    } else if (first_subblock.has_recon_gain_info_parameter_data()) {
-      param_definition_type = ParamDefinition::kParameterDefinitionReconGain;
-    } else {
-      LOG(ERROR) << "The stray parameter block had an unknown type of "
-                    "parameter data. Cannot infer type.";
-      return absl::UnknownError("");
-    }
-
-    return absl::OkStatus();
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Found a stray parameter block with id: ", target_parameter_id, "."));
   }
 
   const auto [parameter_id, param_definition] = *iter;
@@ -703,9 +665,8 @@ absl::Status ParameterBlockGenerator::Initialize(
     if (inserted) {
       // Create a new entry.
       auto& per_id_metadata = iter->second;
-      RETURN_IF_NOT_OK(
-          GetPerIdMetadata(parameter_id, audio_elements, param_definitions,
-                           parameter_block_metadata, per_id_metadata));
+      RETURN_IF_NOT_OK(GetPerIdMetadata(parameter_id, audio_elements,
+                                        param_definitions, per_id_metadata));
     }
 
     const auto param_definition_type = iter->second.param_definition_type;

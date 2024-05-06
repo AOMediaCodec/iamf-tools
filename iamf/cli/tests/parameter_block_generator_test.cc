@@ -510,7 +510,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                                 /*expected_end_timestamps=*/{8, 16});
 }
 
-TEST(Generate, FailsWhenGeneratingStrayParameterBlocks) {
+TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<uint32_t, PerIdParameterMetadata>
       parameter_id_to_metadata;
@@ -529,22 +529,10 @@ TEST(Generate, FailsWhenGeneratingStrayParameterBlocks) {
                                     kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
   absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
-  EXPECT_TRUE(generator
-                  .Initialize(ia_sequence_header_obu, audio_elements,
-                              mix_presentation_obus, param_definitions)
-                  .ok());
-
-  // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module;
-  ASSERT_TRUE(
-      global_timing_module
-          .Initialize(audio_elements, codec_config_obus, param_definitions)
-          .ok());
-
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  EXPECT_FALSE(
-      generator.GenerateDemixing(global_timing_module, output_parameter_blocks)
-          .ok());
+  EXPECT_FALSE(generator
+                   .Initialize(ia_sequence_header_obu, audio_elements,
+                               mix_presentation_obus, param_definitions)
+                   .ok());
 }
 
 }  // namespace

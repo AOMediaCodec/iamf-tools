@@ -429,7 +429,6 @@ cc_library(
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
-        "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:leb128",
