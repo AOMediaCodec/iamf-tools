@@ -327,6 +327,8 @@ class AudioElementObu : public ObuBase {
 
   DecodedUleb128 GetAudioElementId() const { return audio_element_id_; }
 
+  DecodedUleb128 GetCodecConfigId() const { return codec_config_id_; }
+
   // Length and vector of substream IDs.
   DecodedUleb128 num_substreams_;
   std::vector<DecodedUleb128> audio_substream_ids_;
