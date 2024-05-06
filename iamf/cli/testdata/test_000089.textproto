@@ -32,7 +32,8 @@ test_vector_metadata {
     "6/ISOBMFF IAMF Encapsulation",
     "7/IAMF Processing",
     "7.3.2/Rendering an Audio Element",
-    "7.3.2.1/Rendering a Channel-Based Audio Element to Loudspeakers"
+    "7.3.2.1/Rendering a Channel-Based Audio Element to Loudspeakers",
+    "7.3.2.3/Rendering a Channel-Based Audio Element to Headphones"
   ]
   base_test: "test_000050"
   output_wav_file_bit_depth_override: 16
