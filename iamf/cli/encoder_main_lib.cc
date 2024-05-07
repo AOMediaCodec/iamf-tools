@@ -249,7 +249,11 @@ absl::Status GenerateObus(
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
   RETURN_IF_NOT_OK(
       wav_sample_provider.Initialize(input_wav_directory, audio_elements));
+
+  // Demix audio samples while decoding them; useful for recon gain calculation
+  // and measuring loudness.
   DemixingModule demixing_module(user_metadata, audio_elements);
+
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), audio_elements,
@@ -260,7 +264,6 @@ absl::Status GenerateObus(
 
   // Initialize the audio frame decoder. It is needed to determine the recon
   // gain parameters and measure the loudness of the mixes.
-  std::list<DecodedAudioFrame> decoded_audio_frames;
   AudioFrameDecoder audio_frame_decoder(
       output_wav_directory,
       user_metadata.test_vector_metadata().file_name_prefix());
@@ -298,6 +301,8 @@ absl::Status GenerateObus(
   RETURN_IF_NOT_OK(audio_frame_generator.Finalize());
 
   // TODO(b/329375123): This should be on Thread 2.
+  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
+  IdTimeLabeledFrameMap id_to_time_to_labeled_decoded_frame;
   while (audio_frame_generator.GeneratingFrames()) {
     std::list<AudioFrameWithData> temp_audio_frames;
     RETURN_IF_NOT_OK(audio_frame_generator.OutputFrames(temp_audio_frames));
@@ -305,24 +310,23 @@ absl::Status GenerateObus(
     if (temp_audio_frames.empty()) {
       absl::SleepFor(absl::Milliseconds(50));
     } else {
-      // Decode all of the newly encoded frames and collect them.
+      // Decode the audio frames. They are required to determine the demixed
+      // frames.
+      std::list<DecodedAudioFrame> decoded_audio_frames;
       RETURN_IF_NOT_OK(
           audio_frame_decoder.Decode(temp_audio_frames, decoded_audio_frames));
+
+      RETURN_IF_NOT_OK(demixing_module.DemixAudioSamples(
+          temp_audio_frames, decoded_audio_frames, id_to_time_to_labeled_frame,
+          id_to_time_to_labeled_decoded_frame));
 
       audio_frames.splice(audio_frames.end(), temp_audio_frames);
     }
   }
   PrintAudioFrames(audio_frames);
 
-  // Demix audio samples; useful for the following operations.
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
-  IdTimeLabeledFrameMap id_to_time_to_labeled_decoded_frame;
-  RETURN_IF_NOT_OK(demixing_module.DemixAudioSamples(
-      audio_frames, decoded_audio_frames, id_to_time_to_labeled_frame,
-      id_to_time_to_labeled_decoded_frame));
-
-  // Generate the remaining parameter blocks. Recon gain blocks depends on
-  // decoded audio frames.
+  // Generate the remaining parameter blocks. Recon gain blocks blocks are
+  // determined based on the original and demixed audio frames.
   std::list<ParameterBlockWithData> recon_gain_parameter_blocks;
   RETURN_IF_NOT_OK(parameter_block_generator.GenerateReconGain(
       id_to_time_to_labeled_frame, id_to_time_to_labeled_decoded_frame,
