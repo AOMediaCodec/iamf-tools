@@ -562,7 +562,8 @@ absl::Status ApplyUserTrimForFrame(const bool from_start,
   user_trim_left -= frame_samples_to_trim;
 
   // Ensure the `obu_trimming_status_flag` is accurate.
-  if (audio_frame.obu.header_.num_samples_to_trim_at_end != 0) {
+  if (audio_frame.obu.header_.num_samples_to_trim_at_end != 0 ||
+      audio_frame.obu.header_.num_samples_to_trim_at_start != 0) {
     audio_frame.obu.header_.obu_trimming_status_flag = 1;
   }
 

@@ -65,6 +65,8 @@ absl::Status AudioFrameObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
 
 void AudioFrameObu::PrintObu() const {
   LOG(INFO) << "  audio_substream_id= " << GetSubstreamId();
+  LOG(INFO) << "  // obu_trimming_status_flag= "
+            << header_.obu_trimming_status_flag;
   LOG(INFO) << "  // samples_to_trim_at_end= "
             << header_.num_samples_to_trim_at_end;
   LOG(INFO) << "  // samples_to_trim_at_start= "

@@ -476,6 +476,7 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {
   ASSERT_FALSE(audio_frames.empty());
 
   EXPECT_EQ(audio_frames.front().obu.header_.num_samples_to_trim_at_start, 4);
+  EXPECT_TRUE(audio_frames.front().obu.header_.obu_trimming_status_flag);
 }
 
 TEST(AudioFrameGenerator, NoAudioFrames) {
