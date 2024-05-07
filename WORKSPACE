@@ -33,7 +33,7 @@ protobuf_deps()
 git_repository(
     name = "com_google_absl",
     remote = "https://github.com/abseil/abseil-cpp.git",
-    commit = "10f3e6117b1154ca8e7e744809d82988f0ff481d",
+    commit = "7e149e40c7a2d8049ecd28d1f83f64cc197cc128",
 )
 
 # Google Audio-to-Tactile Lib
