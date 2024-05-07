@@ -36,10 +36,10 @@ class EncoderBase {
    * - Call `EncodeAudioFrame()` to encode an audio frame. The encoding may
    *   happen asynchronously.
    * - Call `FramesAvailable()` to see if there is any finished frame.
-   * - Call `Flush()` to retrieve finished frames, in the order they were
-   *   received by `EncodeAudioFrame()`.
+   * - Call `Pop()` to retrieve finished frames one at a time, in the order
+   *   they were received by `EncodeAudioFrame()`.
    * - Call `Finalize()` to close the encoder, telling it to finish encoding
-   *   any remaining frames, which can be retrieved one last time via `Flush()`.
+   *   any remaining frames, which can be retrieved via subsequent `Pop()`s.
    *   After calling `Finalize()`, any subsequent call to `EncodeAudioFrame()`
    *   will fail.
    *
@@ -83,7 +83,7 @@ class EncoderBase {
 
   /*!\brief Gets whether there are frames available.
    *
-   * Available frames can be retrieved by `Flush()`.
+   * Available frames can be retrieved by `Pop()`.
    *
    * \return True if there is any finished audio frame.
    */
@@ -92,20 +92,23 @@ class EncoderBase {
     return !finalized_audio_frames_.empty();
   }
 
-  /*!\brief Flush finished audio frames.
+  /*!\brief Pop the first finished audio frame (if any).
    *
-   * \param audio_frames List to append finished frames to.
+   * \param audio_frames List to append the first finished frame to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Flush(std::list<AudioFrameWithData>& audio_frames) {
+  absl::Status Pop(std::list<AudioFrameWithData>& audio_frames) {
     absl::MutexLock lock(&mutex_);
-    audio_frames.splice(audio_frames.end(), finalized_audio_frames_);
+    if (!finalized_audio_frames_.empty()) {
+      audio_frames.splice(audio_frames.end(), finalized_audio_frames_,
+                          finalized_audio_frames_.begin());
+    }
     return absl::OkStatus();
   }
 
   /*!\brief Finalizes the encoder, signaling it to finish any remaining frames.
    *
-   * This function MUST be called at most once before flushing the last batch
+   * This function MUST be called at most once before popping the last batch
    * of encoded audio frames.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -122,7 +125,7 @@ class EncoderBase {
    */
   bool Finished() const {
     absl::MutexLock lock(&mutex_);
-    return finished_;
+    return finished_ && finalized_audio_frames_.empty();
   }
 
   /*!\brief Gets the required number of samples to delay at the start.

@@ -66,11 +66,11 @@ TEST(EncoderBaseTest,
   EXPECT_EQ(encoder.Initialize().code(), absl::StatusCode::kUnknown);
 }
 
-TEST(EncoderBaseTest, FinalizeAndFlushAppendAudioFrames) {
+TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
   MockEncoder encoder;
 
   // Expect the returned `audio_frames` is just the same as before calling
-  // `FinalizeAndFlush()`, because we know an empty list
+  // `Finalize()` and `Pop()`, because we know an empty list
   // (`finalized_audio_frames_`) is appended at the end.
   const DecodedUleb128 kSubstreamId = 137;
   const int32_t kStartTimestamp = 77;
@@ -84,8 +84,14 @@ TEST(EncoderBaseTest, FinalizeAndFlushAppendAudioFrames) {
       .end_timestamp = kEndTimestamp,
       .audio_element_with_data = nullptr,
   });
+
   EXPECT_TRUE(encoder.Finalize().ok());
-  EXPECT_TRUE(encoder.Flush(audio_frames).ok());
+
+  // Since nothing has been added, there are no frames available.
+  EXPECT_FALSE(encoder.FramesAvailable());
+
+  // `Pop()` still works, just adding nothing.
+  EXPECT_TRUE(encoder.Pop(audio_frames).ok());
 
   // Expect the `audio_frames` is unaltered.
   ASSERT_EQ(audio_frames.size(), 1);

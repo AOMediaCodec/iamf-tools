@@ -75,8 +75,15 @@ class EncoderTestBase {
       int expected_num_frames) {
     std::list<AudioFrameWithData> output_audio_frames;
     EXPECT_TRUE(encoder_->Finalize().ok());
-    EXPECT_TRUE(encoder_->Flush(output_audio_frames).ok());
+
+    // Pop all the frames.
+    for (int i = 0; i < expected_num_frames; i++) {
+      EXPECT_TRUE(encoder_->Pop(output_audio_frames).ok());
+    }
     EXPECT_EQ(output_audio_frames.size(), expected_num_frames);
+
+    // Check that there are no more frames left.
+    EXPECT_FALSE(encoder_->FramesAvailable());
 
     ValidateOrder(output_audio_frames);
     return output_audio_frames;

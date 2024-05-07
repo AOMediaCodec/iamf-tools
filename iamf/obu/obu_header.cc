@@ -97,13 +97,13 @@ absl::Status Validate(const ObuHeader& header) {
 absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
                                      WriteBitBuffer& wb) {
   // These fields are conditionally in the OBU.
-  if (header.obu_trimming_status_flag == 1) {
+  if (header.obu_trimming_status_flag) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.num_samples_to_trim_at_end));
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.num_samples_to_trim_at_start));
   }
 
   // These fields are conditionally in the OBU.
-  if (header.obu_extension_flag == 1) {
+  if (header.obu_extension_flag) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.extension_header_size));
     RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
         "extension_header_bytes_", header.extension_header_bytes.size(),

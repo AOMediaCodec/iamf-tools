@@ -86,7 +86,7 @@ void GenerateAudioFrameWithEightSamples(
     std::list<AudioFrameWithData>& output_audio_frames,
     bool expected_initialize_is_ok = true,
     bool expected_add_samples_is_ok = true,
-    bool expected_output_frames_is_ok = true) {
+    bool expected_output_frames_all_ok = true) {
   // Initialize pre-requisite OBUs and the global timing module. This is all
   // derived from the `user_metadata`.
   CodecConfigGenerator codec_config_generator(
@@ -160,16 +160,18 @@ void GenerateAudioFrameWithEightSamples(
   }
   EXPECT_TRUE(audio_frame_generator.Finalize().ok());
 
+  bool output_frames_all_ok = true;
   while (audio_frame_generator.GeneratingFrames()) {
     std::list<AudioFrameWithData> temp_audio_frames;
     const auto output_frames_status =
         audio_frame_generator.OutputFrames(temp_audio_frames);
-    EXPECT_EQ(expected_output_frames_is_ok, output_frames_status.ok());
-    if (!expected_output_frames_is_ok) {
-      return;
+    if (!output_frames_status.ok()) {
+      output_frames_all_ok = false;
+      break;
     }
     output_audio_frames.splice(output_audio_frames.end(), temp_audio_frames);
   }
+  EXPECT_EQ(expected_output_frames_all_ok, output_frames_all_ok);
 }
 
 void AddStereoAudioElementAndAudioFrameMetadata(
@@ -456,7 +458,7 @@ TEST(AudioFrameGenerator, InvalidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
   GenerateAudioFrameWithEightSamples(user_metadata, audio_frames,
                                      /*expected_initialize_is_ok=*/true,
                                      /*expected_add_samples_is_ok=*/true,
-                                     /*expected_output_frames_is_ok=*/false);
+                                     /*expected_output_frames_all_ok=*/false);
 }
 
 TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {

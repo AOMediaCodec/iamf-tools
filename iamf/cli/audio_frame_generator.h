@@ -103,8 +103,6 @@ class AudioFrameGenerator {
   struct TrimmingState {
     int64_t user_samples_left_to_trim_at_end;
     int64_t user_samples_left_to_trim_at_start;
-    bool found_first_partial_frame_from_end;
-    bool found_first_partial_frame_from_start;
   };
 
   /*\!brief Initializes encoders and relevant data structures.
@@ -156,6 +154,9 @@ class AudioFrameGenerator {
   }
 
   /*\!brief Outputs a list of generated Audio Frame OBUs (and associated data).
+   *
+   * The output frames all belong to the same temporal unit, sharing the same
+   * start and end timestamps.
    *
    * \param audio_frames Output list of audio frames.
    * \return `absl::OkStatus()` on success. A specific status on failure.

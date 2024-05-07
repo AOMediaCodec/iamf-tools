@@ -50,12 +50,12 @@ struct FlacFrame {
  *
  * Data associated with the frames are stored in `frame_index_to_frame_`
  * until they are fully encoded. Any finished frame will be moved to
- * `EncoderBase::finalized_audio_frames_` and can be flushed into the output
- * list provided to `Flush()`.
+ * `EncoderBase::finalized_audio_frames_` and can be moved into the output
+ * list provided to `Pop()`.
  *
  * `Finalize()` function closes the encoder. When the `STREAMINFO` metadata
  * block is produced, the last batch of Audio Frame OBUs are encoded and
- * available to be flushed.
+ * available to be popped.
  */
 class FlacEncoder : public EncoderBase {
  public:
@@ -85,12 +85,11 @@ class FlacEncoder : public EncoderBase {
       std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data)
       override;
 
-  /*!\brief Finalize and flushes all audio frames to output argument.
+  /*!\brief Finalizes the encoder.
    *
-   * This function MUST be called to ensure all audio frames are flushed from
+   * This function MUST be called to ensure all audio frames are popped from
    * the encoder.
    *
-   * \param audio_frames List to output finished frames to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Finalize() override;
