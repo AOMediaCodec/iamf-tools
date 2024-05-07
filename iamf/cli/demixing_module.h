@@ -71,9 +71,10 @@ typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap*);
 
 class DemixingModule {
  public:
-  /*\!brief Mapping from Audio Element ID to the demixers.
-   */
-  typedef absl::flat_hash_map<DecodedUleb128, std::list<Demixer>> DemixerMap;
+  struct DemxingMetadataForAudioElementId {
+    std::list<Demixer> demixers;
+    std::list<Demixer> down_mixers;
+  };
 
   /*\!brief Constructor.
    *
@@ -154,8 +155,9 @@ class DemixingModule {
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
       audio_elements_;
   absl::Status init_status_;
-  DemixerMap demixer_map_;
-  DemixerMap down_mixer_map_;
+
+  absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>
+      audio_element_id_to_demixing_metadata_;
 };
 
 }  // namespace iamf_tools
