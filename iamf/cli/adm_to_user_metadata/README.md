@@ -17,7 +17,7 @@ to
 to Immersive Audio Model and Formats (IAMF) textproto file and the associated
 set of wav file(s) to be used as inputs for an IAMF encoder. The tool does not
 handle the ADM-BWF files with <metadata/features> not supported by the IAMF
-specification [v1.0.0](https://aomediacodec.github.io/iamf/v1.0.0.html).
+specification [v1.0.0-errata](https://aomediacodec.github.io/iamf/v1.0.0-errata.html).
 
 ## Folder Structure
 
