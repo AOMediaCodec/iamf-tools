@@ -69,6 +69,23 @@ typedef absl::flat_hash_map<DecodedUleb128, TimeLabeledFrameMap>
 
 typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap*);
 
+/*\!brief Manages data and processing to down-mix and demix audio elements.
+ *
+ * This class relates to the "Element Reconstructor" as used in the IAMF
+ * specifications. "An Element Reconstructor re-assembles the Audio Elements by
+ * combining the Channel Group(s) guided by Descriptors and Parameter
+ * Substream(s)." This class does not apply the reconstruction gain, so
+ * additional post processing is needed to finish audio element reconstruction.
+ *
+ * Down-mixers are used to down-mix the input channels to the substream
+ * channels. Typically there are down-mixers for scalable channel audio
+ * elements with more than one layer. Down-mixers are created according to
+ * https://aomediacodec.github.io/iamf/#iamfgeneration-scalablechannelaudio-downmixmechanism
+ *
+ * Demixers are used to recreate the original audio from the substreams.
+ * Demixers are created according to
+ * https://aomediacodec.github.io/iamf/#processing-scalablechannelaudio.
+ */
 class DemixingModule {
  public:
   struct DemxingMetadataForAudioElementId {
@@ -82,6 +99,10 @@ class DemixingModule {
   DemixingModule() = default;
 
   /*\!brief Initializes the module to process the given audio elements.
+   *
+   * Initializes metadata for each input audio element ID. The metadata includes
+   * information about the channels and the specific down-mixers and demixers
+   * needed for that audio element.
    *
    * \param user_metadata Input user metadata.
    * \param audio_elements Audio elements. Used only for `audio_element_id`,
