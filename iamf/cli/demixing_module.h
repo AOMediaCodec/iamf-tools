@@ -74,6 +74,8 @@ class DemixingModule {
   struct DemxingMetadataForAudioElementId {
     std::list<Demixer> demixers;
     std::list<Demixer> down_mixers;
+    SubstreamIdLabelsMap substream_id_to_labels;
+    LabelGainMap label_to_output_gain;
   };
 
   /*\!brief Constructor.
@@ -152,8 +154,6 @@ class DemixingModule {
                            const std::list<Demixer>*& demixers) const;
 
  private:
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-      audio_elements_;
   absl::Status init_status_;
 
   absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>
