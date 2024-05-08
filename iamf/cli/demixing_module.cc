@@ -833,14 +833,10 @@ absl::Status ApplyDemixers(const std::list<Demixer>& demixers,
 }
 
 absl::Status GetDemixerMetadata(
-    const absl::Status init_error, const DecodedUleb128 audio_element_id,
+    const DecodedUleb128 audio_element_id,
     const absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>&
         audio_element_id_to_demixing_metadata,
     const DemxingMetadataForAudioElementId*& demixing_metadata) {
-  if (init_error != absl::OkStatus()) {
-    return absl::InvalidArgumentError("");
-  }
-
   const auto iter =
       audio_element_id_to_demixing_metadata.find(audio_element_id);
   if (iter == audio_element_id_to_demixing_metadata.end()) {
@@ -871,23 +867,24 @@ absl::Status DemixingModule::FindSamplesOrDemixedSamples(
   }
 }
 
-DemixingModule::DemixingModule(
+absl::Status DemixingModule::Initialize(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements)
-    : init_status_(absl::OkStatus()) {
+        audio_elements) {
   for (const auto& audio_frame_metadata :
        user_metadata.audio_frame_metadata()) {
     const auto audio_element_id = audio_frame_metadata.audio_element_id();
-    init_status_ = FillRequiredDemixingMetadata(
-        audio_frame_metadata, audio_elements.at(audio_element_id),
-        audio_element_id_to_demixing_metadata_[audio_element_id]);
-
-    if (init_status_ != absl::OkStatus()) {
-      LOG(ERROR) << "Initialization of `DemixingModule` failed; abort";
-      break;
+    auto audio_element = audio_elements.find(audio_element_id);
+    if (audio_element == audio_elements.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));
     }
+
+    RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
+        audio_frame_metadata, audio_element->second,
+        audio_element_id_to_demixing_metadata_[audio_element_id]));
   }
+  return absl::OkStatus();
 }
 
 absl::Status DemixingModule::DownMixSamplesToSubstreams(
@@ -895,14 +892,8 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     LabelSamplesMap& input_label_to_samples,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) const {
-  if (init_status_ != absl::OkStatus()) {
-    LOG(ERROR) << "Cannot call `DownMixSamplesToSubstreams()` when "
-               << "initialization failed.";
-    return init_status_;
-  }
-
   const DemxingMetadataForAudioElementId* demixing_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDemixerMetadata(init_status_, audio_element_id,
+  RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
                                       demixing_metadata));
 
@@ -980,11 +971,6 @@ absl::Status DemixingModule::DemixAudioSamples(
     const std::list<DecodedAudioFrame>& decoded_audio_frames,
     IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
     IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame) const {
-  if (init_status_ != absl::OkStatus()) {
-    LOG(ERROR) << "Cannot call `DemixAudioSamples()` when initialization "
-               << "failed.";
-    return init_status_;
-  }
   for (const auto& [audio_element_id, demixing_metadata] :
        audio_element_id_to_demixing_metadata_) {
     auto& time_to_labeled_frame = id_to_time_to_labeled_frame[audio_element_id];
@@ -1023,7 +1009,7 @@ absl::Status DemixingModule::GetDownMixers(
     DecodedUleb128 audio_element_id,
     const std::list<Demixer>*& down_mixers) const {
   const DemxingMetadataForAudioElementId* demixing_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDemixerMetadata(init_status_, audio_element_id,
+  RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
                                       demixing_metadata));
   down_mixers = &demixing_metadata->down_mixers;
@@ -1034,7 +1020,7 @@ absl::Status DemixingModule::GetDemixers(
     DecodedUleb128 audio_element_id,
     const std::list<Demixer>*& demixers) const {
   const DemxingMetadataForAudioElementId* demixing_metadata = nullptr;
-  RETURN_IF_NOT_OK(GetDemixerMetadata(init_status_, audio_element_id,
+  RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
                                       demixing_metadata));
   demixers = &demixing_metadata->demixers;

@@ -78,13 +78,17 @@ class DemixingModule {
     LabelGainMap label_to_output_gain;
   };
 
-  /*\!brief Constructor.
+  /*\!brief Constructor. */
+  DemixingModule() = default;
+
+  /*\!brief Initializes the module to process the given audio elements.
    *
    * \param user_metadata Input user metadata.
    * \param audio_elements Audio elements. Used only for `audio_element_id`,
    *     `substream_id_to_labels`, and `label_to_output_gain`.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  DemixingModule(
+  absl::Status Initialize(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);

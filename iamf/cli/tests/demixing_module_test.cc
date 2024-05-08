@@ -32,6 +32,7 @@
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
+#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
@@ -85,6 +86,75 @@ TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
             absl::StatusCode::kUnknown);
 }
 
+TEST(Initialize, ValidWhenCalledOncePerAudioElement) {
+  const DecodedUleb128 kAudioElementId = 137;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 137
+        channel_ids: [ 0, 1 ]
+        channel_labels: [ "L2", "R2" ]
+      )pb",
+      user_metadata.add_audio_frame_metadata()));
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  audio_elements.emplace(
+      kAudioElementId,
+      AudioElementWithData{
+          .obu = AudioElementObu(ObuHeader(), kAudioElementId,
+                                 AudioElementObu::kAudioElementChannelBased,
+                                 /*reserved=*/0,
+                                 /*codec_config_id=*/0),
+          .substream_id_to_labels = {{0, {"M"}}, {1, {"L2"}}},
+      });
+
+  DemixingModule demixing_module;
+  EXPECT_TRUE(demixing_module.Initialize(user_metadata, audio_elements).ok());
+  // Each audio element can only be added once.
+  EXPECT_FALSE(demixing_module.Initialize(user_metadata, audio_elements).ok());
+}
+
+TEST(Initialize, InvalidWhenChannelLabelsAndChannelIdsMismatch) {
+  const DecodedUleb128 kAudioElementId = 137;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 137
+        channel_ids: [ 0, 1, 2 ]
+        channel_labels: [ "L2", "R2" ]
+      )pb",
+      user_metadata.add_audio_frame_metadata()));
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  audio_elements.emplace(
+      kAudioElementId,
+      AudioElementWithData{
+          .obu = AudioElementObu(ObuHeader(), kAudioElementId,
+                                 AudioElementObu::kAudioElementChannelBased,
+                                 /*reserved=*/0,
+                                 /*codec_config_id=*/0),
+          .substream_id_to_labels = {{0, {"M"}}, {1, {"L2"}}},
+      });
+
+  DemixingModule demixing_module;
+  EXPECT_FALSE(demixing_module.Initialize(user_metadata, audio_elements).ok());
+}
+
+TEST(Initialize, InvalidWhenMissingAudioElement) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 137
+        channel_ids: [ 0, 1 ]
+        channel_labels: [ "L2", "R2" ]
+      )pb",
+      user_metadata.add_audio_frame_metadata()));
+  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      kNoMatchingAudioElement;
+
+  DemixingModule demixing_module;
+  EXPECT_FALSE(
+      demixing_module.Initialize(user_metadata, kNoMatchingAudioElement).ok());
+}
+
 class DemixingModuleTestBase {
  public:
   DemixingModuleTestBase() {
@@ -104,16 +174,15 @@ class DemixingModuleTestBase {
             .substream_id_to_labels = substream_id_to_labels_,
         });
 
-    demixing_module_ =
-        std::make_unique<DemixingModule>(user_metadata, audio_elements_);
+    ASSERT_TRUE(
+        demixing_module_.Initialize(user_metadata, audio_elements_).ok());
 
     const std::list<Demixer>* down_mixers = nullptr;
     const std::list<Demixer>* demixers = nullptr;
 
     ASSERT_TRUE(
-        demixing_module_->GetDownMixers(audio_element_id_, down_mixers).ok());
-    ASSERT_TRUE(
-        demixing_module_->GetDemixers(audio_element_id_, demixers).ok());
+        demixing_module_.GetDownMixers(audio_element_id_, down_mixers).ok());
+    ASSERT_TRUE(demixing_module_.GetDemixers(audio_element_id_, demixers).ok());
     EXPECT_EQ(down_mixers->size(), expected_number_of_down_mixers);
     EXPECT_EQ(demixers->size(), expected_number_of_down_mixers);
   }
@@ -131,7 +200,7 @@ class DemixingModuleTestBase {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
   SubstreamIdLabelsMap substream_id_to_labels_;
 
-  std::unique_ptr<DemixingModule> demixing_module_;
+  DemixingModule demixing_module_;
 };
 
 class DownMixingModuleTest : public DemixingModuleTestBase,
@@ -141,12 +210,12 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
                       int expected_number_of_down_mixers) {
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
-    EXPECT_TRUE(
-        demixing_module_
-            ->DownMixSamplesToSubstreams(audio_element_id_, down_mixing_params,
-                                         input_label_to_samples_,
-                                         substream_id_to_substream_data_)
-            .ok());
+    EXPECT_TRUE(demixing_module_
+                    .DownMixSamplesToSubstreams(audio_element_id_,
+                                                down_mixing_params,
+                                                input_label_to_samples_,
+                                                substream_id_to_substream_data_)
+                    .ok());
 
     for (const auto& [substream_id, substream_data] :
          substream_id_to_substream_data_) {
@@ -561,9 +630,9 @@ class DemixingModuleTest : public DemixingModuleTestBase,
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
     EXPECT_TRUE(demixing_module_
-                    ->DemixAudioSamples(audio_frames_, decoded_audio_frames_,
-                                        unused_id_to_time_to_labeled_frame,
-                                        id_to_time_to_labeled_decoded_frame)
+                    .DemixAudioSamples(audio_frames_, decoded_audio_frames_,
+                                       unused_id_to_time_to_labeled_frame,
+                                       id_to_time_to_labeled_decoded_frame)
                     .ok());
 
     // Check that the demixed samples have the correct values.
@@ -595,14 +664,13 @@ TEST_F(DemixingModuleTest, DemixingAudioSamplesSucceedsWithEmptyInputs) {
 
   // Clear the inputs.
   audio_elements_.clear();
-  demixing_module_ =
-      std::make_unique<DemixingModule>(user_metadata, audio_elements_);
+  ASSERT_TRUE(demixing_module_.Initialize(user_metadata, audio_elements_).ok());
 
   // Call `DemixAudioSamples()`.
   IdTimeLabeledFrameMap id_to_time_to_labeled_frame,
       id_to_time_to_labeled_decoded_frame;
   EXPECT_TRUE(demixing_module_
-                  ->DemixAudioSamples(
+                  .DemixAudioSamples(
                       /*audio_frames=*/{},
                       /*decoded_audio_frames=*/{}, id_to_time_to_labeled_frame,
                       id_to_time_to_labeled_decoded_frame)
