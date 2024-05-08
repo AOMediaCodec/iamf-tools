@@ -53,6 +53,7 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
     ],
 )
 

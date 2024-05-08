@@ -20,6 +20,7 @@
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
@@ -283,6 +284,17 @@ TEST_F(AudioFrameObuTest, ValidateAndWriteObuFailsWithIllegalRedundantCopy) {
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+// --- Begin CreateFromBuffer tests ---
+// TODO(b/329700769): Update test once ValidateAndReadPayload is implemented.
+TEST(CreateFromBuffer, IsNotSupported) {
+  std::vector<uint8_t> source;
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  int64_t obu_payload_size = 16;
+  EXPECT_FALSE(
+      AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer).ok());
 }
 
 }  // namespace

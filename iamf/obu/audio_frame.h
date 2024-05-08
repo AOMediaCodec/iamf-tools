@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
@@ -37,6 +38,22 @@ namespace iamf_tools {
  */
 class AudioFrameObu : public ObuBase {
  public:
+  /*!\brief Creates an `AudioFrameObu` from a `ReadBitBuffer`.
+   *
+   * This function is designed to be used from the perspective of the decoder.
+   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * therefore it can fail.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param obu_payload_serialized_size Size of the obu payload in bytes.
+   * \param rb `ReadBitBuffer` where the `AudioFrameObu` data is stored.
+   *     Data read from the buffer is consumed.
+   * \return a `AudioFrameObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<AudioFrameObu> CreateFromBuffer(
+      const ObuHeader& header, int64_t obu_payload_serialized_size,
+      ReadBitBuffer& rb);
+
   /*\!brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
@@ -68,6 +85,11 @@ class AudioFrameObu : public ObuBase {
   // This field is not serialized when in the range [0, 17].
   const DecodedUleb128 audio_substream_id_;
 
+  // Used only by the factory create function.
+  explicit AudioFrameObu(const ObuHeader& header)
+      : ObuBase(header, kObuIaAudioElement),
+        audio_frame_({}),
+        audio_substream_id_(DecodedUleb128()) {}
   /*\!brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.

@@ -47,6 +47,14 @@ AudioFrameObu::AudioFrameObu(const ObuHeader& header,
       audio_frame_(audio_frame),
       audio_substream_id_(substream_id) {}
 
+absl::StatusOr<AudioFrameObu> AudioFrameObu::CreateFromBuffer(
+    const ObuHeader& header, const int64_t obu_payload_serialized_size,
+    ReadBitBuffer& rb) {
+  AudioFrameObu audio_frame_obu(header);
+  RETURN_IF_NOT_OK(audio_frame_obu.ValidateAndReadPayload(rb));
+  return audio_frame_obu;
+}
+
 absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   if (header_.obu_type == kObuIaAudioFrame) {
     // The ID is explicitly in the bitstream when `kObuIaAudioFrame`. Otherwise
