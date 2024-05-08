@@ -71,6 +71,20 @@ cc_test(
 )
 
 cc_test(
+    name = "lpcm_decoder_test",
+    size = "small",
+    srcs = ["lpcm_decoder_test.cc"],
+    deps = [
+        "//iamf/cli/codec:lpcm_decoder",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:obu_header",
+        "//iamf/obu/decoder_config:lpcm_decoder_config",
+        "@com_google_absl//absl/status",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "lpcm_encoder_test",
     size = "small",
     srcs = ["lpcm_encoder_test.cc"],
