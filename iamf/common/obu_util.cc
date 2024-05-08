@@ -22,6 +22,7 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
@@ -109,6 +110,29 @@ absl::Status Int32ToInt16(int32_t input, int16_t& output) {
     return absl::InvalidArgumentError("");
   }
   output = static_cast<int16_t>(input);
+  return absl::OkStatus();
+}
+
+absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
+                                      int32_t& output) {
+  // If we have bytes A, B, C, D, then we need to read them as:
+  //   (D << 24) | (C << 16) | (B << 8) | A
+  // If we have less than four bytes, e.g. two bytes, we would read them as:
+  //   (B << 8) | A
+  // with the upper bits filled with the sign bit.
+  const size_t num_bytes = bytes.size();
+  if (num_bytes > 4 || num_bytes < 1) {
+    return absl::InvalidArgumentError("Need [1, 4] bytes to make an int32_t");
+  }
+  int32_t result = 0;
+  for (int i = 0; i < bytes.size(); ++i) {
+    result |= static_cast<int32_t>(bytes[i]) << (i * 8);
+  }
+  // If we had less than 4 input bytes, we need to fill the upper bits with the
+  // sign bit to get the correct result.
+  const int shift = 8 * (4 - num_bytes);
+  result = (result << shift) >> shift;
+  output = result;
   return absl::OkStatus();
 }
 

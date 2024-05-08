@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/leb128.h"
 
@@ -128,6 +129,16 @@ absl::Status Uint32ToUint16(uint32_t input, uint16_t& output);
  *     the input cannot be cast to a `int16_t`.
  */
 absl::Status Int32ToInt16(int32_t input, int16_t& output);
+
+/*!\brief Creates a 32-bit signed integer from the [1, 4] bytes.
+ *
+ * \param bytes Bytes to convert.
+ * \param output Converted value if successful.
+ * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
+ *     the number of bytes is not in the range of [1, 4].
+ */
+absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
+                                      int32_t& output);
 
 /*!\brief Clips and typecasts the input value and writes to the output argument.
  *

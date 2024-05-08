@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
@@ -514,6 +515,74 @@ INSTANTIATE_TEST_SUITE_P(Invalid, Int32ToInt16Format,
                              {-32769, 0, absl::StatusCode::kInvalidArgument},
                              {32768, 0, absl::StatusCode::kInvalidArgument},
                              {INT32_MAX, 0, absl::StatusCode::kInvalidArgument},
+                         }));
+
+struct LittleEndianBytesToInt32TestCase {
+  std::vector<uint8_t> test_val;
+  int32_t expected_val;
+};
+
+using LittleEndianBytesToInt32Format =
+    ::testing::TestWithParam<LittleEndianBytesToInt32TestCase>;
+
+TEST_P(LittleEndianBytesToInt32Format, TestLittleEndianBytesToInt32) {
+  const LittleEndianBytesToInt32TestCase& test_case = GetParam();
+
+  int32_t result;
+  EXPECT_TRUE(LittleEndianBytesToInt32(test_case.test_val, result).ok());
+  EXPECT_EQ(result, test_case.expected_val);
+}
+
+TEST(LittleEndianBytesToInt32Test, InvalidTooManyBytes) {
+  int32_t unused_result = 0;
+  absl::Status status =
+      LittleEndianBytesToInt32({1, 2, 3, 4, 5}, unused_result);
+
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+TEST(LittleEndianBytesToInt32Test, InvalidTooFewBytes) {
+  int32_t result = 0;
+  absl::Status status = LittleEndianBytesToInt32({}, result);
+
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+INSTANTIATE_TEST_SUITE_P(OneByte, LittleEndianBytesToInt32Format,
+                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+                             {{0b00000000}, 0},
+                             {{0b01111111}, 127},
+                             {{0b11111111}, -1},
+                             {{0b10000000}, -128},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(TwoBytes, LittleEndianBytesToInt32Format,
+                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00}, 0},
+                             {{0x01, 0x00}, 1},
+                             {{0xff, 0x7f}, 32767},
+                             {{0xff, 0xff}, -1},
+                             {{0x00, 0x80}, -32768},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(ThreeBytes, LittleEndianBytesToInt32Format,
+                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00, 0x00}, 0},
+                             {{0x01, 0x00, 0x00}, 1},
+                             {{0xff, 0xff, 0x7f}, 8388607},
+                             {{0xff, 0xff, 0xff}, -1},
+                             {{0x00, 0x00, 0x80}, -8388608},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(FourBytes, LittleEndianBytesToInt32Format,
+                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00, 0x00, 0x00}, 0},
+                             {{0x01, 0x00, 0x00, 0x00}, 1},
+                             {{0xff, 0xff, 0xff, 0x7f}, 2147483647},
+                             {{0xff, 0xff, 0xff, 0xff}, -1},
+                             {{0x00, 0x00, 0x00, 0x80}, -2147483648},
                          }));
 
 struct ClipDoubleToInt32TestCase {
