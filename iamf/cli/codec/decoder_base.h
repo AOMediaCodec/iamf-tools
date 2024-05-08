@@ -20,7 +20,8 @@
 
 namespace iamf_tools {
 
-// TODO(b/306325926): Test this class.
+/*\!brief A common interfaces for all decoders.
+ */
 class DecoderBase {
  public:
   /*\!brief Constructor.

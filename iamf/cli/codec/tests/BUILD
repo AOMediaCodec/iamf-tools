@@ -31,6 +31,16 @@ cc_test(
 )
 
 cc_test(
+    name = "decoder_base_test",
+    srcs = ["decoder_base_test.cc"],
+    deps = [
+        "//iamf/cli/codec:decoder_base",
+        "@com_google_absl//absl/status",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "encoder_base_test",
     srcs = ["encoder_base_test.cc"],
     deps = [
