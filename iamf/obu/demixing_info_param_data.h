@@ -20,6 +20,8 @@
 namespace iamf_tools {
 
 struct DownMixingParams {
+  friend bool operator==(const DownMixingParams& lhs,
+                         const DownMixingParams& rhs) = default;
   double alpha;
   double beta;
   double gamma;

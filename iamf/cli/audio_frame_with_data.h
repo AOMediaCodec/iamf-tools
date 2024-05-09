@@ -23,6 +23,8 @@
 namespace iamf_tools {
 
 struct AudioFrameWithData {
+  friend bool operator==(const AudioFrameWithData& lhs,
+                         const AudioFrameWithData& rhs) = default;
   AudioFrameObu obu;
   int32_t start_timestamp;  // Start time of this frame. Measured in ticks from
                             // the Global Timing Module.
