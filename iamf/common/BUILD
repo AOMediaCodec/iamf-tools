@@ -38,7 +38,6 @@ cc_library(
     deps = [
         ":bit_buffer_util",
         ":macros",
-        "//iamf/cli:leb_generator",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/status",
     ],

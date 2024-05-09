@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/cli/leb_generator.h"
 #include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
@@ -30,10 +29,8 @@ class ReadBitBuffer {
    * \param capacity Capacity of the internal buffer in bytes.
    * \param source Pointer to the data source from which the read buffer will
    *     iteratively load data.
-   * \param leb_generator `LebGenerator` to use.
    */
-  ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source,
-                const LebGenerator& leb_generator = *LebGenerator::Create());
+  ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source);
 
   /*!\brief Destructor.*/
   ~ReadBitBuffer() = default;
@@ -219,8 +216,6 @@ class ReadBitBuffer {
 
   /*!\brief Empties the buffer.*/
   void DiscardAllBits();
-
-  LebGenerator leb_generator_;
 
  private:
   // Read buffer.

@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/cli/leb_generator.h"
 #include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/leb128.h"
@@ -107,9 +106,8 @@ absl::Status AccumulateUleb128Byte(const uint64_t& byte, const int index,
 
 }  // namespace
 
-ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source,
-                             const LebGenerator& leb_generator)
-    : leb_generator_(leb_generator), source_(source) {
+ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source)
+    : source_(source) {
   bit_buffer_.reserve(capacity);
 }
 
