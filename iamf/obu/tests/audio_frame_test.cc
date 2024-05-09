@@ -287,14 +287,46 @@ TEST_F(AudioFrameObuTest, ValidateAndWriteObuFailsWithIllegalRedundantCopy) {
 }
 
 // --- Begin CreateFromBuffer tests ---
-// TODO(b/329700769): Update test once ValidateAndReadPayload is implemented.
-TEST(CreateFromBuffer, IsNotSupported) {
-  std::vector<uint8_t> source;
+TEST(CreateFromBuffer, ValidAudioFrameWithExplicitId) {
+  std::vector<uint8_t> source = {// `explicit_audio_substream_id`
+                                 18,
+                                 // `audio_frame`.
+                                 8, 6, 24, 55, 11};
   ReadBitBuffer buffer(1024, &source);
-  ObuHeader header;
-  int64_t obu_payload_size = 16;
-  EXPECT_FALSE(
-      AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer).ok());
+  ObuHeader header = {.obu_type = kObuIaAudioFrame};
+  const int64_t obu_payload_size = 6;
+  auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer);
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu->GetSubstreamId(), 18);
+  EXPECT_EQ(obu->audio_frame_, std::vector<uint8_t>({8, 6, 24, 55, 11}));
+}
+
+TEST(CreateFromBuffer, ValidAudioFrameWithImplicitId) {
+  std::vector<uint8_t> source = {// `audio_frame`.
+                                 8, 6, 24, 55, 11};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header = {.obu_type = kObuIaAudioFrameId0};
+  int64_t obu_payload_size = 5;
+  auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer);
+  EXPECT_TRUE(obu.ok());
+  // audio_substream_id is set implicitly to the value of `obu_type`
+  AudioFrameObu expected_obu =
+      AudioFrameObu(header, /*audio_substream_id=*/6,
+                    /*audio_frame=*/{8, 6, 24, 55, 11});
+  EXPECT_EQ(obu->GetSubstreamId(), 6);
+  EXPECT_EQ(obu->audio_frame_, std::vector<uint8_t>({8, 6, 24, 55, 11}));
+}
+
+TEST(CreateFromBuffer, FailsWithPayloadSizeTooLarge) {
+  std::vector<uint8_t> source = {// `explicit_audio_substream_id`
+                                 18,
+                                 // `audio_frame`.
+                                 8, 6, 24, 55, 11};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header = {.obu_type = kObuIaAudioFrame};
+  int64_t obu_payload_size = 7;
+  auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer);
+  EXPECT_FALSE(obu.ok());
 }
 
 }  // namespace

@@ -83,11 +83,14 @@ class AudioFrameObu : public ObuBase {
 
  private:
   // This field is not serialized when in the range [0, 17].
-  const DecodedUleb128 audio_substream_id_;
+  DecodedUleb128 audio_substream_id_;
+
+  // Size of the obu in bytes. Used for the decoder only.
+  int64_t payload_serialized_size_ = 0;
 
   // Used only by the factory create function.
   explicit AudioFrameObu(const ObuHeader& header)
-      : ObuBase(header, kObuIaAudioElement),
+      : ObuBase(header, header.obu_type),
         audio_frame_({}),
         audio_substream_id_(DecodedUleb128()) {}
   /*\!brief Writes the OBU payload to the buffer.

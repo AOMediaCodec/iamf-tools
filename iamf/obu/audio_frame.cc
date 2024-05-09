@@ -51,6 +51,7 @@ absl::StatusOr<AudioFrameObu> AudioFrameObu::CreateFromBuffer(
     const ObuHeader& header, const int64_t obu_payload_serialized_size,
     ReadBitBuffer& rb) {
   AudioFrameObu audio_frame_obu(header);
+  audio_frame_obu.payload_serialized_size_ = obu_payload_serialized_size;
   RETURN_IF_NOT_OK(audio_frame_obu.ValidateAndReadPayload(rb));
   return audio_frame_obu;
 }
@@ -67,8 +68,17 @@ absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
 }
 
 absl::Status AudioFrameObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "AudioFrameOBU ValidateAndReadPayload not yet implemented.");
+  int8_t encoded_uleb128_size = 0;
+  if (header_.obu_type == kObuIaAudioFrame) {
+    // The ID is explicitly in the bitstream when `kObuIaAudioFrame`. Otherwise
+    // it is implied by `obu_type`.
+    RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id_, encoded_uleb128_size));
+  } else {
+    audio_substream_id_ = header_.obu_type;
+  }
+  RETURN_IF_NOT_OK(rb.ReadUint8Vector(
+      payload_serialized_size_ - encoded_uleb128_size, audio_frame_));
+  return absl::OkStatus();
 }
 
 void AudioFrameObu::PrintObu() const {
