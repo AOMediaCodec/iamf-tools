@@ -98,7 +98,7 @@ class DemixingModule {
   /*\!brief Constructor. */
   DemixingModule() = default;
 
-  /*\!brief Initializes the module to process the given audio elements.
+  /*\!brief Initializes for down-mixing and demixing the input audio elements.
    *
    * Initializes metadata for each input audio element ID. The metadata includes
    * information about the channels and the specific down-mixers and demixers
@@ -109,8 +109,21 @@ class DemixingModule {
    *     `substream_id_to_labels`, and `label_to_output_gain`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Initialize(
+  absl::Status InitializeForDownMixingAndReconstruction(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
+      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          audio_elements);
+
+  /*\!brief Initializes for reconstruction (demixing) the input audio elements.
+   *
+   * Initializes metadata for each input audio element ID. The metadata includes
+   * information about the channels and the specific down-mixers and demixers
+   * needed for that audio element.
+   *
+   * \param audio_elements Audio elements.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status InitializeForReconstruction(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 

@@ -100,7 +100,7 @@ absl::StatusOr<ChannelAudioLayerConfig::LoudspeakerLayout> FindEquivalentLayer(
 
   return absl::InvalidArgumentError(
       "Loudspeaker layout not found. The passthrough render is not suitable "
-      "here. Downmixing may be required.");
+      "here. Down-mixing may be required.");
 }
 
 }  // namespace

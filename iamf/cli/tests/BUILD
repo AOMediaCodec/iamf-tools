@@ -156,6 +156,7 @@ cc_test(
     name = "demixing_module_test",
     srcs = ["demixing_module_test.cc"],
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
@@ -163,6 +164,7 @@ cc_test(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",
         "//iamf/obu:obu_header",

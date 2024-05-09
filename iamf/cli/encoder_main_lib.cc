@@ -250,10 +250,12 @@ absl::Status GenerateObus(
   RETURN_IF_NOT_OK(
       wav_sample_provider.Initialize(input_wav_directory, audio_elements));
 
-  // Demix audio samples while decoding them; useful for recon gain calculation
-  // and measuring loudness.
+  // Down-mix the audio samples and then demix audio samples while decoding
+  // them. This is useful to create multi-layer audio elements and to determine
+  // the recon gain parameters and to measuring loudness.
   DemixingModule demixing_module;
-  RETURN_IF_NOT_OK(demixing_module.Initialize(user_metadata, audio_elements));
+  RETURN_IF_NOT_OK(demixing_module.InitializeForDownMixingAndReconstruction(
+      user_metadata, audio_elements));
 
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),

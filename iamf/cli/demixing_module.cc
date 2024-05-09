@@ -20,9 +20,12 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
@@ -31,6 +34,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -587,7 +591,7 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
 }
 
 absl::Status FillRequiredDemixingMetadata(
-    const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
+    const absl::flat_hash_set<std::string>& labels_to_demix,
     const AudioElementWithData& audio_element_with_data,
     DemxingMetadataForAudioElementId& demixing_metadata) {
   auto& down_mixers = demixing_metadata.down_mixers;
@@ -603,31 +607,17 @@ absl::Status FillRequiredDemixingMetadata(
   demixing_metadata.label_to_output_gain =
       audio_element_with_data.label_to_output_gain;
 
-  const auto& input_channel_ids = audio_frame_metadata.channel_ids();
-  const auto& input_channel_labels = audio_frame_metadata.channel_labels();
-  if (input_channel_ids.size() != input_channel_labels.size()) {
-    LOG(ERROR) << "#channel IDs and #channel labels differ: ("
-               << input_channel_ids.size() << " vs "
-               << input_channel_labels.size() << ").";
-    return absl::InvalidArgumentError("");
-  }
-
   // Find the input surround number.
   int input_surround_number = 0;
-  if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                "L7") != input_channel_labels.end()) {
+  if (labels_to_demix.contains("L7")) {
     input_surround_number = 7;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "L5") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("L5")) {
     input_surround_number = 5;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "L3") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("L3")) {
     input_surround_number = 3;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "L2") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("L2")) {
     input_surround_number = 2;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "M") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("M")) {
     input_surround_number = 1;
   }
 
@@ -684,14 +674,11 @@ absl::Status FillRequiredDemixingMetadata(
   // Find the input height number. Artificially defining the height number of
   // "TF2" as 1.
   int input_height_number = 0;
-  if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                "Ltf4") != input_channel_labels.end()) {
+  if (labels_to_demix.contains("Ltf4")) {
     input_height_number = 4;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "Ltf2") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("Ltf2")) {
     input_height_number = 2;
-  } else if (std::find(input_channel_labels.begin(), input_channel_labels.end(),
-                       "Ltf3") != input_channel_labels.end()) {
+  } else if (labels_to_demix.contains("Ltf3")) {
     input_height_number = 1;
   }
 
@@ -763,6 +750,7 @@ absl::Status StoreSamplesForAudioElementId(
       return absl::InvalidArgumentError("");
     }
     const auto& labels = substream_id_labels_iter->second;
+    // TODO(b/339037792): Remove dependency on `raw_samples`.
     if (audio_frame_iter->raw_samples[0].size() != labels.size() ||
         decoded_audio_frame_iter->decoded_samples[0].size() != labels.size()) {
       LOG(ERROR) << "Channel number mismatch: "
@@ -848,6 +836,75 @@ absl::Status GetDemixerMetadata(
   return absl::OkStatus();
 }
 
+// TODO(b/339618019): Unify this with a similar function in `render_utils`:
+//                    `LookupInputChannelOrderFromScalableLoudspeakerLayout`.
+absl::StatusOr<absl::flat_hash_set<std::string>>
+LookupLabelsToReconstructForLoudspeakerLayout(
+    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout) {
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+
+  static const absl::NoDestructor<
+      absl::flat_hash_map<ChannelAudioLayerConfig::LoudspeakerLayout,
+                          absl::flat_hash_set<std::string>>>
+      kLoudspeakerLayoutToReconstructedLabels({
+          {kLayoutMono, {"M"}},
+          {kLayoutStereo, {"L2", "R2"}},
+          {kLayout5_1_ch, {"L5", "R5", "C", "LFE", "Ls5", "Rs5"}},
+          {kLayout5_1_2_ch,
+           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"}},
+          {kLayout5_1_4_ch,
+           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf4", "Rtf4", "Ltb4",
+            "Rtb4"}},
+          {kLayout7_1_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7"}},
+          {kLayout7_1_2_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf2",
+            "Rtf2"}},
+          {kLayout7_1_4_ch,
+           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
+            "Rtf4", "Ltb4", "Rtb4"}},
+          {kLayout3_1_2_ch, {"L3", "R3", "C", "LFE", "Ltf3", "Rtf3"}},
+          {kLayoutBinaural, {"L2", "R2"}},
+      });
+
+  auto it = kLoudspeakerLayoutToReconstructedLabels->find(loudspeaker_layout);
+  if (it == kLoudspeakerLayoutToReconstructedLabels->end()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Channel order not found for layout= ", loudspeaker_layout));
+  }
+  return it->second;
+}
+
+absl::StatusOr<absl::flat_hash_set<std::string>> LookupLabelsToReconstruct(
+    const AudioElementObu& obu) {
+  switch (obu.GetAudioElementType()) {
+    using enum AudioElementObu::AudioElementType;
+    case kAudioElementChannelBased: {
+      const auto& channel_audio_layer_configs =
+          std::get<ScalableChannelLayoutConfig>(obu.config_)
+              .channel_audio_layer_configs;
+      if (channel_audio_layer_configs.empty()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Expected non-empty channel audio layer configs for Audio "
+            "Element ID= ",
+            obu.GetAudioElementId()));
+      }
+
+      // Reconstruct the highest layer.
+      return LookupLabelsToReconstructForLoudspeakerLayout(
+          channel_audio_layer_configs.back().loudspeaker_layout);
+      break;
+    }
+    case kAudioElementSceneBased:
+      // OK. Ambisonics does not any channels to be reconstructed.
+      return absl::flat_hash_set<std::string>{};
+      break;
+    default:
+      return absl::UnimplementedError(absl::StrCat(
+          "Unsupported audio element type= ", obu.GetAudioElementType()));
+  }
+}
+
 }  // namespace
 
 absl::Status DemixingModule::FindSamplesOrDemixedSamples(
@@ -867,7 +924,7 @@ absl::Status DemixingModule::FindSamplesOrDemixedSamples(
   }
 }
 
-absl::Status DemixingModule::Initialize(
+absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements) {
@@ -880,9 +937,47 @@ absl::Status DemixingModule::Initialize(
           absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));
     }
 
+    const auto input_channel_ids_size =
+        audio_frame_metadata.channel_ids().size();
+    const auto& input_channel_labels_proto =
+        audio_frame_metadata.channel_labels();
+    if (input_channel_ids_size != input_channel_labels_proto.size()) {
+      LOG(ERROR) << "#channel IDs and #channel labels differ: ("
+                 << input_channel_ids_size << " vs "
+                 << input_channel_labels_proto.size() << ").";
+      return absl::InvalidArgumentError("");
+    }
+
+    const absl::flat_hash_set<std::string> input_channel_labels(
+        input_channel_labels_proto.begin(), input_channel_labels_proto.end());
+
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
-        audio_frame_metadata, audio_element->second,
+        input_channel_labels, audio_element->second,
         audio_element_id_to_demixing_metadata_[audio_element_id]));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status DemixingModule::InitializeForReconstruction(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       audio_elements) {
+    auto labels_to_reconstruct =
+        LookupLabelsToReconstruct(audio_element_with_data.obu);
+    if (!labels_to_reconstruct.ok()) {
+      return labels_to_reconstruct.status();
+    }
+
+    auto [iter, inserted] = audio_element_id_to_demixing_metadata_.insert(
+        {audio_element_id, DemxingMetadataForAudioElementId()});
+    if (!inserted) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Audio Element ID= ", audio_element_id, " already initialized."));
+    }
+    RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
+        *labels_to_reconstruct, audio_element_with_data, iter->second));
+    iter->second.down_mixers.clear();
   }
   return absl::OkStatus();
 }
