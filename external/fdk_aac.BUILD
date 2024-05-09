@@ -20,6 +20,17 @@ cc_library(
     ],
 )
 
+ARM_LIB_FDK_HEADERS = glob([
+    "libFDK/include/arm/*.h",
+    "libFDK/src/arm/*.cpp",
+])
+
+ARM_LIB_FDK_INCLUDES = [
+    "libFDK/src",
+]
+
+X86_LIB_FDK_HEADERS = glob(["libFDK/include/x86/*.h"])
+
 cc_library(
     name = "fdk_core_lib",
     srcs = glob([
@@ -28,15 +39,20 @@ cc_library(
     ]),
     hdrs = glob([
         "libFDK/include/*.h",
-        "libFDK/include/x86/*.h",
-        "libFDK/include/arm/*.h",
-        "libFDK/src/arm/*.cpp"
-    ]),
+    ]) + select({
+        "@platforms//cpu:arm": ARM_LIB_FDK_HEADERS,
+        "@platforms//cpu:arm64": ARM_LIB_FDK_HEADERS,
+        "@platforms//cpu:x86_32": X86_LIB_FDK_HEADERS,
+        "@platforms//cpu:x86_64": X86_LIB_FDK_HEADERS,
+    }),
     includes = [
         "libFDK/include",
         "libSYS/include",
-        "libFDK/src",
-    ],
+    ] + select({
+        "@platforms//cpu:arm": ARM_LIB_FDK_INCLUDES,
+        "@platforms//cpu:arm64": ARM_LIB_FDK_INCLUDES,
+        "//conditions:default": [],
+    }),
     deps = [
         ":fdk_sys_lib",
     ],
@@ -214,6 +230,14 @@ cc_library(
     ],
 )
 
+ARM_LIB_AAC_DEC_HEADERS = glob([
+    "libAACdec/src/arm/*.cpp",
+])
+
+ARM_LIB_AAC_DEC_INCLUDES = [
+    "libAACdec/src",
+]
+
 cc_library(
     name = "aac_decoder_lib",
     srcs = glob([
@@ -223,8 +247,11 @@ cc_library(
     ]),
     hdrs = glob([
         "libAACdec/include/*.h",
-        "libAACdec/src/arm/*.cpp"
-    ]),
+    ]) + select({
+        "@platforms//cpu:arm": ARM_LIB_AAC_DEC_HEADERS,
+        "@platforms//cpu:arm64": ARM_LIB_AAC_DEC_HEADERS,
+        "//conditions:default": [],
+    }),
     copts = [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-variable",
@@ -239,8 +266,11 @@ cc_library(
         "libSACdec/include",
         "libSACenc/include",
         "libSBRdec/include",
-        "libAACdec/src",
-    ],
+    ] + select({
+        "@platforms//cpu:arm": ARM_LIB_AAC_DEC_INCLUDES,
+        "@platforms//cpu:arm64": ARM_LIB_AAC_DEC_INCLUDES,
+        "//conditions:default": [],
+    }),
     deps = [
         ":arith_coding_lib",
         ":drcdec_lib",
