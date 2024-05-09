@@ -119,7 +119,6 @@ TEST(InitializeForDownMixingAndReconstruction,
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         audio_element_id: 137
-        channel_ids: [ 0, 1 ]
         channel_labels: [ "L2", "R2" ]
       )pb",
       user_metadata.add_audio_frame_metadata()));
@@ -141,35 +140,11 @@ TEST(InitializeForDownMixingAndReconstruction,
                    .ok());
 }
 
-TEST(InitializeForDownMixingAndReconstruction,
-     InvalidWhenChannelLabelsAndChannelIdsMismatch) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_id: 137
-        channel_ids: [ 0, 1, 2 ]
-        channel_labels: [ "L2", "R2" ]
-      )pb",
-      user_metadata.add_audio_frame_metadata()));
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{0, {"M"}}, {1, {"L2"}}},
-                                      {ChannelAudioLayerConfig::kLayoutMono,
-                                       ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
-
-  DemixingModule demixing_module;
-  EXPECT_FALSE(demixing_module
-                   .InitializeForDownMixingAndReconstruction(user_metadata,
-                                                             audio_elements)
-                   .ok());
-}
-
 TEST(InitializeForDownMixingAndReconstruction, InvalidWhenMissingAudioElement) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         audio_element_id: 137
-        channel_ids: [ 0, 1 ]
         channel_labels: [ "L2", "R2" ]
       )pb",
       user_metadata.add_audio_frame_metadata()));
@@ -299,9 +274,6 @@ class DemixingModuleTestBase {
 
  protected:
   void ConfigureAudioFrameMetadata(const std::string& label) {
-    // The channel ID itself does not matter. Generate a unique one.
-    audio_frame_metadata_.add_channel_ids(
-        audio_frame_metadata_.channel_ids_size());
     audio_frame_metadata_.add_channel_labels(label);
   }
 

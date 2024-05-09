@@ -937,19 +937,9 @@ absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
           absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));
     }
 
-    const auto input_channel_ids_size =
-        audio_frame_metadata.channel_ids().size();
-    const auto& input_channel_labels_proto =
-        audio_frame_metadata.channel_labels();
-    if (input_channel_ids_size != input_channel_labels_proto.size()) {
-      LOG(ERROR) << "#channel IDs and #channel labels differ: ("
-                 << input_channel_ids_size << " vs "
-                 << input_channel_labels_proto.size() << ").";
-      return absl::InvalidArgumentError("");
-    }
-
     const absl::flat_hash_set<std::string> input_channel_labels(
-        input_channel_labels_proto.begin(), input_channel_labels_proto.end());
+        audio_frame_metadata.channel_labels().begin(),
+        audio_frame_metadata.channel_labels().end());
 
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
         input_channel_labels, audio_element->second,
