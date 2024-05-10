@@ -210,6 +210,70 @@ absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
 
 }  // namespace
 
+absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
+  // Read the `loudness_layout` portion of a `MixPresentationLayout`.
+  uint8_t layout_type;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layout_type));
+  loudness_layout.layout_type = static_cast<Layout::LayoutType>(layout_type);
+
+  // Read the specific type of `Layout` dependent on `layout_type`.
+  switch (loudness_layout.layout_type) {
+    using enum Layout::LayoutType;
+    case kLayoutTypeLoudspeakersSsConvention:
+      // Implement LoudspeakersSsConventionLayout::ReadAndValidate
+      RETURN_IF_NOT_OK(std::get<LoudspeakersSsConventionLayout>(
+                           loudness_layout.specific_layout)
+                           .Read(rb));
+      break;
+    case kLayoutTypeReserved0:
+    case kLayoutTypeReserved1:
+      return absl::InvalidArgumentError("Layout is not supported.");
+    case kLayoutTypeBinaural:
+      return absl::UnimplementedError("Binaural layout is not supported.");
+      break;
+  }
+
+  // Read the `loudness` portion of a `MixPresentationLayout`.
+  uint8_t info_type;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, info_type));
+  loudness.info_type = static_cast<LoudnessInfo::InfoTypeBitmask>(info_type);
+  RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.integrated_loudness));
+  RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.digital_peak));
+
+  // Conditionally read `true_peak` based on `info_type`.
+  if (loudness.info_type & LoudnessInfo::kTruePeak) {
+    RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.true_peak));
+  }
+  // Conditionally read `anchored_loudness` based on `info_type`.
+  if (loudness.info_type & LoudnessInfo::kAnchoredLoudness) {
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
+        8, loudness.anchored_loudness.num_anchored_loudness));
+
+    for (int i = 0; i < loudness.anchored_loudness.num_anchored_loudness; ++i) {
+      AnchoredLoudnessElement anchor_loudness_element;
+      uint8_t anchor_element;
+      RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, anchor_element));
+      anchor_loudness_element.anchor_element =
+          static_cast<AnchoredLoudnessElement::AnchorElement>(anchor_element);
+      RETURN_IF_NOT_OK(
+          rb.ReadSigned16(anchor_loudness_element.anchored_loudness));
+      loudness.anchored_loudness.anchor_elements.push_back(
+          anchor_loudness_element);
+    }
+    RETURN_IF_NOT_OK(ValidateUniqueAnchorElements(
+        loudness.anchored_loudness.anchor_elements));
+  }
+  // Conditionally read `layout_extension` based on `info_type`.
+  if (loudness.info_type & LoudnessInfo::kAnyLayoutExtension) {
+    RETURN_IF_NOT_OK(rb.ReadULeb128(loudness.layout_extension.info_type_size));
+    RETURN_IF_NOT_OK(
+        rb.ReadUint8Vector(loudness.layout_extension.info_type_size,
+                           loudness.layout_extension.info_type_bytes));
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
                                                  ReadBitBuffer& rb) {
   // Read the main portion of an `SubMixAudioElement`.
@@ -252,6 +316,17 @@ absl::Status LoudspeakersSsConventionLayout::Write(bool& found_stereo_layout,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sound_system, 4));
 
   return wb.WriteUnsignedLiteral(reserved, 2);
+}
+
+// Reads and validates a `LoudspeakersSsConventionLayout`
+// TODO(b/339855338): Set `found_stereo_layout` to true if it is a stereo layout
+// and check that its been found in MixPresentationSubMix::Read.
+absl::Status LoudspeakersSsConventionLayout::Read(ReadBitBuffer& rb) {
+  uint8_t sound_system;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, sound_system));
+  sound_system = static_cast<SoundSystem>(sound_system);
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved));
+  return absl::OkStatus();
 }
 
 absl::Status LoudspeakersReservedBinauralLayout::Write(

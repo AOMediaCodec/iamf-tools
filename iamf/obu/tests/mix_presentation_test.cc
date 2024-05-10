@@ -955,5 +955,42 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
   EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 
+// TODO(b/339855295): Add more tests.
+TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
+  std::vector<uint8_t> source = {
+      // Start Layout.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kAnchoredLoudness, 0, 18, 0, 19,
+      // Start anchored loudness.
+      2, AnchoredLoudnessElement::kAnchorElementAlbum, 0, 20,
+      AnchoredLoudnessElement::kAnchorElementDialogue, 0, 21,
+      // End anchored loudness.
+      // End Layout.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  MixPresentationLayout layout;
+  EXPECT_TRUE(layout.ReadAndValidate(buffer).ok());
+  EXPECT_EQ(layout.loudness_layout.layout_type,
+            Layout::kLayoutTypeLoudspeakersSsConvention);
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                layout.loudness_layout.specific_layout),
+            LoudspeakersSsConventionLayout(
+                {.sound_system =
+                     LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
+  EXPECT_EQ(layout.loudness.info_type, LoudnessInfo::kAnchoredLoudness);
+  EXPECT_EQ(layout.loudness.anchored_loudness.num_anchored_loudness, 2);
+  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements[0].anchor_element,
+            AnchoredLoudnessElement::kAnchorElementAlbum);
+  EXPECT_EQ(
+      layout.loudness.anchored_loudness.anchor_elements[0].anchored_loudness,
+      20);
+  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements[1].anchor_element,
+            AnchoredLoudnessElement::kAnchorElementDialogue);
+  EXPECT_EQ(
+      layout.loudness.anchored_loudness.anchor_elements[1].anchored_loudness,
+      21);
+}
+
 }  // namespace
 }  // namespace iamf_tools

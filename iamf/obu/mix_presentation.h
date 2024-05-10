@@ -193,6 +193,14 @@ struct LoudspeakersSsConventionLayout {
    */
   absl::Status Write(bool& found_stereo_layout, WriteBitBuffer& wb) const;
 
+  /*\!brief Reads the layout from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the layout is valid. A specific status if the
+   *     read fails.
+   */
+  absl::Status Read(ReadBitBuffer& rb);
+
   /*\!brief Prints logging information about the layout. */
   void Print() const;
 
@@ -245,6 +253,14 @@ struct Layout {
 struct MixPresentationLayout {
   friend bool operator==(const MixPresentationLayout& lhs,
                          const MixPresentationLayout& rhs) = default;
+
+  /*\!brief Reads and validates the MixPresentationLayout from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the layout is valid. A specific status if the
+   *     read fails.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   Layout loudness_layout;
   LoudnessInfo loudness;
