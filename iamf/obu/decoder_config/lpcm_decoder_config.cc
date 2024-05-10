@@ -79,6 +79,11 @@ absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
 
 }  // namespace
 
+bool LpcmDecoderConfig::IsLittleEndian() const {
+  return sample_format_flags_bitmask_ &
+         LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
+}
+
 absl::Status LpcmDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
                                                  WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));

@@ -36,6 +36,9 @@ class LpcmDecoderConfig {
   friend bool operator==(const LpcmDecoderConfig& lhs,
                          const LpcmDecoderConfig& rhs) = default;
 
+  /*!\brief Returns true if the samples are encoded in little-endian format.*/
+  bool IsLittleEndian() const;
+
   /*!\brief Validates and writes the `LpcmDecoderConfig` to a buffer.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
