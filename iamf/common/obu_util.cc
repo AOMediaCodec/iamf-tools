@@ -18,10 +18,12 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/obu/leb128.h"
 
@@ -33,7 +35,8 @@ absl::Status AddUint32CheckOverflow(uint32_t x_1, uint32_t x_2,
   const uint64_t sum = static_cast<uint64_t>(x_1) + static_cast<uint64_t>(x_2);
   // Check if this would overflow as a `uint32_t`.
   if (sum > std::numeric_limits<uint32_t>::max()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Result of AddUint32CheckOverflow would overflow a uint32_t.");
   }
   result = static_cast<uint32_t>(sum);
   return absl::OkStatus();
@@ -42,7 +45,8 @@ absl::Status AddUint32CheckOverflow(uint32_t x_1, uint32_t x_2,
 absl::Status FloatToQ7_8(float value, int16_t& result) {
   // Q7.8 format can represent values in the range [-2^7, 2^7 - 2^-8].
   if (std::isnan(value) || value < -128 || (128.0 - 1.0 / 256.0) < value) {
-    return absl::UnknownError("");
+    return absl::UnknownError(absl::StrCat(
+        "Value, ", value, " cannot be represented in Q7.8 format."));
   }
   result = static_cast<int16_t>(value * (1 << 8));
   return absl::OkStatus();
@@ -55,7 +59,8 @@ float Q7_8ToFloat(int16_t value) {
 absl::Status FloatToQ0_8(float value, uint8_t& result) {
   // Q0.8 format can represent values in the range [0, 1 - 2^-8].
   if (std::isnan(value) || value < 0 || 1 <= value) {
-    return absl::UnknownError("");
+    return absl::UnknownError(absl::StrCat(
+        "Value, ", value, " cannot be represented in Q0.8 format."));
   }
 
   result = static_cast<uint8_t>(value * (1 << 8));
@@ -78,7 +83,7 @@ float Int32ToNormalizedFloat(int32_t value) {
 
 absl::Status NormalizedFloatToInt32(float value, int32_t& result) {
   if (std::isnan(value) || std::isinf(value)) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Input is NaN or infinity.");
   }
 
   const double clamped_input =
@@ -90,7 +95,7 @@ absl::Status NormalizedFloatToInt32(float value, int32_t& result) {
 
 absl::Status Uint32ToUint16(uint32_t input, uint16_t& output) {
   if (std::numeric_limits<uint16_t>::max() < input) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Input is too large for uint16_t.");
   }
   output = static_cast<uint16_t>(input);
   return absl::OkStatus();
@@ -98,7 +103,7 @@ absl::Status Uint32ToUint16(uint32_t input, uint16_t& output) {
 
 absl::Status Uint32ToUint8(uint32_t input, uint8_t& output) {
   if (std::numeric_limits<uint8_t>::max() < input) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Input is too large for uint8_t.");
   }
   output = static_cast<uint8_t>(input);
   return absl::OkStatus();
@@ -107,7 +112,8 @@ absl::Status Uint32ToUint8(uint32_t input, uint8_t& output) {
 absl::Status Int32ToInt16(int32_t input, int16_t& output) {
   if (input < std::numeric_limits<int16_t>::min() ||
       std::numeric_limits<int16_t>::max() < input) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Input is outside the range of an int16_t.");
   }
   output = static_cast<int16_t>(input);
   return absl::OkStatus();
@@ -136,9 +142,20 @@ absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
   return absl::OkStatus();
 }
 
+absl::Status BigEndianBytesToInt32(absl::Span<const uint8_t> bytes,
+                                   int32_t& output) {
+  // If we have bytes A, B, C, D, then we need to read them as:
+  //   (A << 24) | (B << 16) | (C << 8) | D
+  // If we have less than four bytes, e.g. two bytes, we would read them as:
+  //   (A << 8) | B
+  // with the upper bits filled with the sign bit.
+  auto reversed_bytes = std::vector<uint8_t>(bytes.rbegin(), bytes.rend());
+  return LittleEndianBytesToInt32(reversed_bytes, output);
+}
+
 absl::Status ClipDoubleToInt32(double input, int32_t& output) {
   if (std::isnan(input)) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Input is NaN.");
   }
 
   if (input > std::numeric_limits<int32_t>::max()) {
@@ -157,7 +174,8 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             int& write_position) {
   // Validate assumptions of the logic in the `for` loop below.
   if (sample_size % 8 != 0 || sample_size > 32) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid sample size: ", sample_size));
   }
 
   for (int shift = 32 - sample_size; shift < 32; shift += 8) {
@@ -187,10 +205,11 @@ absl::Status ValidateVectorSizeEqual(const std::string& field_name,
                                      size_t vector_size,
                                      DecodedUleb128 obu_reported_size) {
   if (vector_size != obu_reported_size) {
-    LOG(ERROR) << "Found inconcistency with `" << field_name
-               << ".size()`= " << vector_size << ". Expected a value of "
-               << obu_reported_size << ".";
-    return absl::InvalidArgumentError("");
+    auto error_message = absl::StrCat(
+        "Found inconsistency with `", field_name, ".size()`= ", vector_size,
+        ". Expected a value of ", obu_reported_size, ".");
+    LOG(ERROR) << error_message;
+    return absl::InvalidArgumentError(error_message);
   }
   return absl::OkStatus();
 }

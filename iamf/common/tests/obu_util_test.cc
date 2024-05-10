@@ -517,22 +517,6 @@ INSTANTIATE_TEST_SUITE_P(Invalid, Int32ToInt16Format,
                              {INT32_MAX, 0, absl::StatusCode::kInvalidArgument},
                          }));
 
-struct LittleEndianBytesToInt32TestCase {
-  std::vector<uint8_t> test_val;
-  int32_t expected_val;
-};
-
-using LittleEndianBytesToInt32Format =
-    ::testing::TestWithParam<LittleEndianBytesToInt32TestCase>;
-
-TEST_P(LittleEndianBytesToInt32Format, TestLittleEndianBytesToInt32) {
-  const LittleEndianBytesToInt32TestCase& test_case = GetParam();
-
-  int32_t result;
-  EXPECT_TRUE(LittleEndianBytesToInt32(test_case.test_val, result).ok());
-  EXPECT_EQ(result, test_case.expected_val);
-}
-
 TEST(LittleEndianBytesToInt32Test, InvalidTooManyBytes) {
   int32_t unused_result = 0;
   absl::Status status =
@@ -548,6 +532,22 @@ TEST(LittleEndianBytesToInt32Test, InvalidTooFewBytes) {
 
   EXPECT_FALSE(status.ok());
   EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+struct LittleEndianBytesToInt32TestCase {
+  std::vector<uint8_t> test_val;
+  int32_t expected_val;
+};
+
+using LittleEndianBytesToInt32Format =
+    ::testing::TestWithParam<LittleEndianBytesToInt32TestCase>;
+
+TEST_P(LittleEndianBytesToInt32Format, TestLittleEndianBytesToInt32) {
+  const LittleEndianBytesToInt32TestCase& test_case = GetParam();
+
+  int32_t result;
+  EXPECT_TRUE(LittleEndianBytesToInt32(test_case.test_val, result).ok());
+  EXPECT_EQ(result, test_case.expected_val);
 }
 
 INSTANTIATE_TEST_SUITE_P(OneByte, LittleEndianBytesToInt32Format,
@@ -583,6 +583,73 @@ INSTANTIATE_TEST_SUITE_P(FourBytes, LittleEndianBytesToInt32Format,
                              {{0xff, 0xff, 0xff, 0x7f}, 2147483647},
                              {{0xff, 0xff, 0xff, 0xff}, -1},
                              {{0x00, 0x00, 0x00, 0x80}, -2147483648},
+                         }));
+
+TEST(BigEndianBytesToInt32Test, InvalidTooManyBytes) {
+  int32_t unused_result = 0;
+  absl::Status status = BigEndianBytesToInt32({1, 2, 3, 4, 5}, unused_result);
+
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+TEST(BigEndianBytesToInt32Test, InvalidTooFewBytes) {
+  int32_t result = 0;
+  absl::Status status = BigEndianBytesToInt32({}, result);
+
+  EXPECT_FALSE(status.ok());
+  EXPECT_EQ(status.code(), absl::StatusCode::kInvalidArgument);
+}
+
+struct BigEndianBytesToInt32TestCase {
+  std::vector<uint8_t> test_val;
+  int32_t expected_val;
+};
+
+using BigEndianBytesToInt32Format =
+    ::testing::TestWithParam<BigEndianBytesToInt32TestCase>;
+
+TEST_P(BigEndianBytesToInt32Format, TestBigEndianBytesToInt32) {
+  const BigEndianBytesToInt32TestCase& test_case = GetParam();
+
+  int32_t result;
+  EXPECT_TRUE(BigEndianBytesToInt32(test_case.test_val, result).ok());
+  EXPECT_EQ(result, test_case.expected_val);
+}
+
+INSTANTIATE_TEST_SUITE_P(OneByte, BigEndianBytesToInt32Format,
+                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+                             {{0b00000000}, 0},
+                             {{0b01111111}, 127},
+                             {{0b11111111}, -1},
+                             {{0b10000000}, -128},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(TwoBytes, BigEndianBytesToInt32Format,
+                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00}, 0},
+                             {{0x00, 0x01}, 1},
+                             {{0x7f, 0xff}, 32767},
+                             {{0xff, 0xff}, -1},
+                             {{0x80, 0x00}, -32768},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(ThreeBytes, BigEndianBytesToInt32Format,
+                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00, 0x00}, 0},
+                             {{0x00, 0x00, 0x01}, 1},
+                             {{0x7f, 0xff, 0xff}, 8388607},
+                             {{0xff, 0xff, 0xff}, -1},
+                             {{0x80, 0x00, 0x00}, -8388608},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(FourBytes, BigEndianBytesToInt32Format,
+                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+                             {{0x00, 0x00, 0x00, 0x00}, 0},
+                             {{0x0, 0x00, 0x00, 0x01}, 1},
+                             {{0x7f, 0xff, 0xff, 0xff}, 2147483647},
+                             {{0xff, 0xff, 0xff, 0xff}, -1},
+                             {{0x80, 0x00, 0x00, 0x00}, -2147483648},
                          }));
 
 struct ClipDoubleToInt32TestCase {
