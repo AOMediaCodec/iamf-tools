@@ -38,9 +38,7 @@ class ObuBase {
    * \param obu_type `obu_type` of the OBU.
    */
   ObuBase(ObuType obu_type) : ObuBase(ObuHeader(), obu_type) {}
-
-  /*\!brief Move constructor.*/
-  ObuBase(ObuBase&& other) = default;
+  ObuBase() = default;
 
   /*\!brief Copy constructor.*/
   ObuBase(const ObuBase& other) = default;

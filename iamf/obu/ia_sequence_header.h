@@ -47,6 +47,8 @@ class IASequenceHeaderObu : public ObuBase {
         primary_profile_(primary_profile),
         additional_profile_(additional_profile) {}
 
+  IASequenceHeaderObu() = default;
+
   /*!\brief Creates a `IASequenceHeaderObu` from a `ReadBitBuffer`.
    *
    * This function is designed to be used from the perspective of the decoder.
@@ -62,10 +64,7 @@ class IASequenceHeaderObu : public ObuBase {
       const ObuHeader& header, ReadBitBuffer& rb);
 
   /*\!brief Copy constructor.*/
-  IASequenceHeaderObu(IASequenceHeaderObu& other) = default;
-
-  /*\!brief Move constructor.*/
-  IASequenceHeaderObu(IASequenceHeaderObu&& other) = default;
+  IASequenceHeaderObu(const IASequenceHeaderObu& other) = default;
 
   /*!\brief Destructor. */
   ~IASequenceHeaderObu() override = default;
