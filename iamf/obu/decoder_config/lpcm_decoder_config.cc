@@ -84,10 +84,16 @@ bool LpcmDecoderConfig::IsLittleEndian() const {
          LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
 }
 
-absl::Status LpcmDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
-                                                 WriteBitBuffer& wb) const {
+absl::Status LpcmDecoderConfig::Validate(int16_t audio_roll_distance) const {
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
+
+  return absl::OkStatus();
+}
+
+absl::Status LpcmDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
+                                                 WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(Validate(audio_roll_distance));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_format_flags_bitmask_, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_size_, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_rate_, 32));

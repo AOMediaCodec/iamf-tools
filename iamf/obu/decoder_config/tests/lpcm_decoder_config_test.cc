@@ -37,7 +37,7 @@ TEST(LpcmDecoderConfigTest, IsLittleEndian_False) {
   EXPECT_FALSE(lpcm_decoder_config.IsLittleEndian());
 }
 
-TEST(LpcmDecoderConfigTest, WriteValidLittleEndian) {
+TEST(LpcmDecoderConfigTest, Validate_ValidLittleEndian) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            16, 48000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -48,12 +48,10 @@ TEST(LpcmDecoderConfigTest, WriteValidLittleEndian) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteValidBigEndian) {
+TEST(LpcmDecoderConfigTest, Validate_ValidBigEndian) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmBigEndian,
                                            16, 48000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -62,34 +60,27 @@ TEST(LpcmDecoderConfigTest, WriteValidBigEndian) {
       0x00, 0x00, 0xbb, 0x80  // sample_rate
   };
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleFormatFlagsMin) {
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleFormatFlagsMin) {
   LpcmDecoderConfig lpcm_decoder_config = {
       LpcmDecoderConfig::kLpcmBeginReserved, 16, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleFormatFlagsMax) {
+TEST(LpcmDecoderConfigTest, Validate_IllegalSampleFormatFlagsMax) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmEndReserved,
                                            16, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteSampleSize24) {
+TEST(LpcmDecoderConfigTest, Validate_SampleSize24) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            24, 48000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -100,12 +91,10 @@ TEST(LpcmDecoderConfigTest, WriteSampleSize24) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteSampleSize32) {
+TEST(LpcmDecoderConfigTest, Validate_SampleSize32) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            32, 48000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -116,62 +105,50 @@ TEST(LpcmDecoderConfigTest, WriteSampleSize32) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, AudioRollDistanceMustBeZero_A) {
+TEST(LpcmDecoderConfigTest, Validate_AudioRollDistanceMustBeZero_A) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            16, 48000};
   int16_t audio_roll_distance = -1;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, AudioRollDistanceMustBeZero_B) {
+TEST(LpcmDecoderConfigTest, Validate_AudioRollDistanceMustBeZero_B) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            16, 48000};
   int16_t audio_roll_distance = 1;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleSizeZero) {
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeZero) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            0, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleSizeEight) {
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeEight) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            8, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleSizeOverMax) {
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleSizeOverMax) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            40, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
 
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteSampleRateMin_16kHz) {
+TEST(LpcmDecoderConfigTest, Validate_SampleRateMin_16kHz) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            32, 16000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -182,12 +159,10 @@ TEST(LpcmDecoderConfigTest, WriteSampleRateMin_16kHz) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteSampleRate44_1kHz) {
+TEST(LpcmDecoderConfigTest, Validate_SampleRate44_1kHz) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            32, 44100};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -198,12 +173,10 @@ TEST(LpcmDecoderConfigTest, WriteSampleRate44_1kHz) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
-  EXPECT_TRUE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-  ValidateWriteResults(wb, expected_decoder_config_payload_);
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
 }
 
-TEST(LpcmDecoderConfigTest, WriteSampleRateMax_96kHz) {
+TEST(LpcmDecoderConfigTest, Validate_SampleRateMax_96kHz) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            32, 96000};
   std::vector<uint8_t> expected_decoder_config_payload_ = {
@@ -214,37 +187,70 @@ TEST(LpcmDecoderConfigTest, WriteSampleRateMax_96kHz) {
   int16_t audio_roll_distance = 0;
   WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
+  EXPECT_TRUE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+}
+
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRateZero) {
+  LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
+                                           16, 0};
+  int16_t audio_roll_distance = 0;
+
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+}
+
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRate192kHz) {
+  LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
+                                           16, 192000};
+  int16_t audio_roll_distance = 0;
+
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+}
+
+TEST(LpcmDecoderConfigTest, Validate_InvalidSampleRateMax) {
+  LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
+                                           16,
+                                           std::numeric_limits<int16_t>::max()};
+  int16_t audio_roll_distance = 0;
+
+  EXPECT_FALSE(lpcm_decoder_config.Validate(audio_roll_distance).ok());
+}
+
+TEST(LpcmDecoderConfigTest, Write_AllValid) {
+  LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
+                                           16, 48000};
+  std::vector<uint8_t> expected_decoder_config_payload_ = {
+      1,                      // sample_format_flags
+      16,                     // sample_size
+      0x00, 0x00, 0xbb, 0x80  // sample_rate
+  };
+  int16_t audio_roll_distance = 0;
+  WriteBitBuffer wb(expected_decoder_config_payload_.size());
+
   EXPECT_TRUE(
       lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
   ValidateWriteResults(wb, expected_decoder_config_payload_);
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleRateZero) {
+TEST(LpcmDecoderConfigTest, Write_InvalidDoesNotWrite) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
-                                           16, 0};
+                                           8, 48000};
   int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
+  WriteBitBuffer wb(48);  // Arbitrary size.  We'll fail before writing.
 
   EXPECT_FALSE(
       lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
 }
 
-TEST(LpcmDecoderConfigTest, IllegalSampleRate192kHz) {
+TEST(LpcmDecoderConfigTest, Write_InvalidRollDistance) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
-                                           16, 192000};
-  int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
-
-  EXPECT_FALSE(
-      lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
-}
-
-TEST(LpcmDecoderConfigTest, IllegalSampleRateMax) {
-  LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
-                                           16,
-                                           std::numeric_limits<int16_t>::max()};
-  int16_t audio_roll_distance = 0;
-  WriteBitBuffer wb(48);  // Arbitrary size, we'll fail before writing.
+                                           16, 48000};
+  std::vector<uint8_t> expected_decoder_config_payload_ = {
+      1,                      // sample_format_flags
+      16,                     // sample_size
+      0x00, 0x00, 0xbb, 0x80  // sample_rate
+  };
+  int16_t audio_roll_distance = 1;
+  WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
   EXPECT_FALSE(
       lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
