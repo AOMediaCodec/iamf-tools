@@ -38,9 +38,9 @@ absl::Status LpcmEncoder::InitializeEncoder() {
   // `EncodeAudioFrame` assume there are only 2 possible values of
   // `sample_format_flags`. Even though the LPCM specification has this as an
   // extension point.
-  if (decoder_config_.sample_format_flags_ !=
+  if (decoder_config_.sample_format_flags_bitmask_ !=
           LpcmDecoderConfig::kLpcmBigEndian &&
-      decoder_config_.sample_format_flags_ !=
+      decoder_config_.sample_format_flags_bitmask_ !=
           LpcmDecoderConfig::kLpcmLittleEndian) {
     LOG(ERROR) << "Unrecognized sample_format_flags";
     return absl::InvalidArgumentError("");
@@ -51,10 +51,10 @@ absl::Status LpcmEncoder::InitializeEncoder() {
                        << num_channels_ << " channels as "
                        << static_cast<int>(decoder_config_.sample_size_)
                        << "-bit LPCM in "
-                       << (decoder_config_.sample_format_flags_ ==
-                                   LpcmDecoderConfig::kLpcmBigEndian
-                               ? "big"
-                               : "little")
+                       << (decoder_config_.sample_format_flags_bitmask_ &
+                                   LpcmDecoderConfig::kLpcmLittleEndian
+                               ? "little"
+                               : "big")
                        << " endian";
 
   return absl::OkStatus();
@@ -69,10 +69,11 @@ absl::Status LpcmEncoder::EncodeAudioFrame(
   // Write the entire PCM frame the buffer. Nothing should be trimmed when
   // encoding the sample.
   auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
+  const bool big_endian = !(decoder_config_.sample_format_flags_bitmask_ &
+                            LpcmDecoderConfig::kLpcmLittleEndian);
   RETURN_IF_NOT_OK(WritePcmFrameToBuffer(
       samples, /*samples_to_trim_at_start=*/0,
-      /*samples_to_trim_at_end=*/0, decoder_config_.sample_size_,
-      decoder_config_.sample_format_flags_ == LpcmDecoderConfig::kLpcmBigEndian,
+      /*samples_to_trim_at_end=*/0, decoder_config_.sample_size_, big_endian,
       audio_frame));
 
   absl::MutexLock lock(&mutex_);

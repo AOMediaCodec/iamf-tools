@@ -149,12 +149,12 @@ absl::Status GenerateLpcmDecoderConfig(
   const auto& lpcm_metadata = user_codec_config.decoder_config_lpcm();
   switch (lpcm_metadata.sample_format_flags()) {
     using enum iamf_tools_cli_proto::LpcmFormatFlags;
-    using enum LpcmDecoderConfig::LpcmFormatFlags;
+    using enum LpcmDecoderConfig::LpcmFormatFlagsBitmask;
     case LPCM_BIG_ENDIAN:
-      obu_decoder_config.sample_format_flags_ = kLpcmBigEndian;
+      obu_decoder_config.sample_format_flags_bitmask_ = kLpcmBigEndian;
       break;
     case LPCM_LITTLE_ENDIAN:
-      obu_decoder_config.sample_format_flags_ = kLpcmLittleEndian;
+      obu_decoder_config.sample_format_flags_bitmask_ = kLpcmLittleEndian;
       break;
     default:
       return absl::InvalidArgumentError(

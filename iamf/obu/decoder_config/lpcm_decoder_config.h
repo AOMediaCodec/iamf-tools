@@ -26,7 +26,7 @@ class LpcmDecoderConfig {
    *
    * See `format_flags` in MP4-PCM.
    */
-  enum LpcmFormatFlags : uint8_t {
+  enum LpcmFormatFlagsBitmask : uint8_t {
     kLpcmBigEndian = 0x00,
     kLpcmLittleEndian = 0x01,
     kLpcmBeginReserved = 0x02,
@@ -72,7 +72,7 @@ class LpcmDecoderConfig {
    */
   void Print() const;
 
-  LpcmFormatFlags sample_format_flags_;
+  LpcmFormatFlagsBitmask sample_format_flags_bitmask_;
   uint8_t sample_size_;
   uint32_t sample_rate_;
 };

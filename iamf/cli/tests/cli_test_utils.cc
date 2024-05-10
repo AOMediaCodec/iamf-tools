@@ -46,7 +46,7 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
        .num_samples_per_frame = 8,
        .audio_roll_distance = 0,
        .decoder_config = LpcmDecoderConfig{
-           .sample_format_flags_ = LpcmDecoderConfig::kLpcmLittleEndian,
+           .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
            .sample_size_ = 16,
            .sample_rate_ = sample_rate}});
   EXPECT_TRUE(obu.Initialize().ok());

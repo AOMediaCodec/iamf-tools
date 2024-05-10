@@ -45,7 +45,7 @@ class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
   }
 
   LpcmDecoderConfig lpcm_decoder_config_ = {
-      .sample_format_flags_ = LpcmDecoderConfig::kLpcmLittleEndian,
+      .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
       .sample_size_ = 32,
       .sample_rate_ = 48000};
 };  // namespace iamf_tools
@@ -59,7 +59,8 @@ TEST_F(LpcmEncoderTest, LittleEndian32bit) {
 }
 
 TEST_F(LpcmEncoderTest, BigEndian32bit) {
-  lpcm_decoder_config_.sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian;
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::kLpcmBigEndian;
   Init();
 
   EncodeAudioFrame({{0x01234567}});
@@ -89,7 +90,8 @@ TEST_F(LpcmEncoderTest, LittleEndian16bit) {
 
 TEST_F(LpcmEncoderTest, BigEndian16bit) {
   lpcm_decoder_config_.sample_size_ = 16;
-  lpcm_decoder_config_.sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian;
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::kLpcmBigEndian;
 
   input_sample_size_ = 16;
   Init();
@@ -111,7 +113,8 @@ TEST_F(LpcmEncoderTest, LittleEndian24bit) {
 
 TEST_F(LpcmEncoderTest, BigEndian24bit) {
   lpcm_decoder_config_.sample_size_ = 24;
-  lpcm_decoder_config_.sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian;
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::kLpcmBigEndian;
   input_sample_size_ = 24;
   Init();
 

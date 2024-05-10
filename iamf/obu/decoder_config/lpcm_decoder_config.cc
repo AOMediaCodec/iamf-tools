@@ -52,15 +52,15 @@ absl::Status ValidateSampleRate(uint32_t sample_rate) {
 // Validates the `LpcmDecoderConfig`.
 absl::Status ValidatePayload(const LpcmDecoderConfig& decoder_config) {
   // Only 2 enumerations are defined for the 8-bit `sample_format_flags` field.
-  switch (decoder_config.sample_format_flags_) {
-    using enum LpcmDecoderConfig::LpcmFormatFlags;
+  switch (decoder_config.sample_format_flags_bitmask_) {
+    using enum LpcmDecoderConfig::LpcmFormatFlagsBitmask;
     case kLpcmBigEndian:
     case kLpcmLittleEndian:
       break;
     default:
       return absl::UnimplementedError(
           absl::StrCat("Invalid sample_format_flags= ",
-                       decoder_config.sample_format_flags_));
+                       decoder_config.sample_format_flags_bitmask_));
   }
 
   RETURN_IF_NOT_OK(ValidateSampleSize(decoder_config.sample_size_));
@@ -83,7 +83,7 @@ absl::Status LpcmDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
                                                  WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_format_flags_, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_format_flags_bitmask_, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_size_, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_rate_, 32));
 
@@ -105,7 +105,7 @@ absl::Status LpcmDecoderConfig::GetBitDepthToMeasureLoudness(
 void LpcmDecoderConfig::Print() const {
   LOG(INFO) << "    decoder_config(ipcm):";
   LOG(INFO) << "      sample_format_flags= "
-            << static_cast<int>(sample_format_flags_);
+            << static_cast<int>(sample_format_flags_bitmask_);
   LOG(INFO) << "      sample_size= " << static_cast<int>(sample_size_);
   LOG(INFO) << "      sample_rate= " << sample_rate_;
 }

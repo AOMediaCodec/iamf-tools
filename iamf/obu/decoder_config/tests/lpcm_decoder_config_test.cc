@@ -64,7 +64,8 @@ TEST_F(LpcmTest, WriteDefault) {
 }
 
 TEST_F(LpcmTest, WriteSampleFormatFlags) {
-  lpcm_decoder_config_.sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian;
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::kLpcmBigEndian;
   expected_decoder_config_payload_ = {// `sample_format_flags`.
                                       0,
                                       // `sample_size`.
@@ -75,17 +76,15 @@ TEST_F(LpcmTest, WriteSampleFormatFlags) {
 }
 
 TEST_F(LpcmTest, IllegalSampleFormatFlagsMin) {
-  lpcm_decoder_config_.sample_format_flags_ =
-      static_cast<LpcmDecoderConfig::LpcmFormatFlags>(
-          LpcmDecoderConfig::kLpcmBeginReserved);
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmBeginReserved;
   expected_write_status_code_ = absl::StatusCode::kUnimplemented;
   TestWriteDecoderConfig();
 }
 
 TEST_F(LpcmTest, IllegalSampleFormatFlagsMax) {
-  lpcm_decoder_config_.sample_format_flags_ =
-      static_cast<LpcmDecoderConfig::LpcmFormatFlags>(
-          LpcmDecoderConfig::kLpcmEndReserved);
+  lpcm_decoder_config_.sample_format_flags_bitmask_ =
+      LpcmDecoderConfig::LpcmDecoderConfig::kLpcmEndReserved;
   expected_write_status_code_ = absl::StatusCode::kUnimplemented;
   TestWriteDecoderConfig();
 }

@@ -91,10 +91,10 @@ class CodecConfigLpcmTestForSampleRate
   CodecConfigLpcmTestForSampleRate()
       : CodecConfigTestBase(
             CodecConfig::kCodecIdLpcm,
-            LpcmDecoderConfig{
-                .sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian,
-                .sample_size_ = 16,
-                .sample_rate_ = 48000}) {}
+            LpcmDecoderConfig{.sample_format_flags_bitmask_ =
+                                  LpcmDecoderConfig::kLpcmBigEndian,
+                              .sample_size_ = 16,
+                              .sample_rate_ = 48000}) {}
 };
 
 // Instantiate an LPCM `CodecConfigOBU` with the specified parameters. Verify
@@ -146,10 +146,10 @@ class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
   CodecConfigLpcmTest()
       : CodecConfigTestBase(
             CodecConfig::kCodecIdLpcm,
-            LpcmDecoderConfig{
-                .sample_format_flags_ = LpcmDecoderConfig::kLpcmBigEndian,
-                .sample_size_ = 16,
-                .sample_rate_ = 48000}) {
+            LpcmDecoderConfig{.sample_format_flags_bitmask_ =
+                                  LpcmDecoderConfig::kLpcmBigEndian,
+                              .sample_size_ = 16,
+                              .sample_rate_ = 48000}) {
     expected_payload_ = {// `codec_config_id`.
                          0,
                          // `codec_id`.
@@ -290,7 +290,7 @@ TEST_F(CodecConfigLpcmTest, NumSamplesPerFrame) {
 
 TEST_F(CodecConfigLpcmTest, SampleFormatFlags) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config)
-      .sample_format_flags_ = LpcmDecoderConfig::kLpcmLittleEndian;
+      .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian;
   expected_payload_ = {// `codec_config_id`.
                        0,
                        // `codec_id`.

@@ -62,15 +62,15 @@ void InitExpectedObuForLpcm(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
   expected_obus.emplace(
       kCodecConfigId,
-      CodecConfigObu(
-          ObuHeader(), kCodecConfigId,
-          {.codec_id = CodecConfig::kCodecIdLpcm,
-           .num_samples_per_frame = 64,
-           .audio_roll_distance = 0,
-           .decoder_config = LpcmDecoderConfig{
-               .sample_format_flags_ = LpcmDecoderConfig::kLpcmLittleEndian,
-               .sample_size_ = 16,
-               .sample_rate_ = 16000}}));
+      CodecConfigObu(ObuHeader(), kCodecConfigId,
+                     {.codec_id = CodecConfig::kCodecIdLpcm,
+                      .num_samples_per_frame = 64,
+                      .audio_roll_distance = 0,
+                      .decoder_config = LpcmDecoderConfig{
+                          .sample_format_flags_bitmask_ =
+                              LpcmDecoderConfig::kLpcmLittleEndian,
+                          .sample_size_ = 16,
+                          .sample_rate_ = 16000}}));
   ASSERT_TRUE(expected_obus.at(kCodecConfigId).Initialize().ok());
 }
 
@@ -335,7 +335,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresLpcmBigEndian) {
 
   EXPECT_EQ(std::get<LpcmDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
-                .sample_format_flags_,
+                .sample_format_flags_bitmask_,
             LpcmDecoderConfig::kLpcmBigEndian);
 }
 
