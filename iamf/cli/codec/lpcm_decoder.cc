@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/codec/decoder_base.h"
+#include "iamf/common/macros.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 
@@ -27,11 +28,13 @@ LpcmDecoder::LpcmDecoder(const CodecConfigObu& codec_config_obu,
     : DecoderBase(num_channels,
                   static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
       decoder_config_(std::get<LpcmDecoderConfig>(
-          codec_config_obu.GetCodecConfig().decoder_config)) {}
+          codec_config_obu.GetCodecConfig().decoder_config)),
+      audio_roll_distance_(
+          codec_config_obu.GetCodecConfig().audio_roll_distance) {}
 
 absl::Status LpcmDecoder::Initialize() {
-  return absl::UnimplementedError(
-      "LPCMDecoder::Initialize() is not implemented.");
+  RETURN_IF_NOT_OK(decoder_config_.Validate(audio_roll_distance_));
+  return absl::OkStatus();
 }
 
 absl::Status LpcmDecoder::DecodeAudioFrame(

@@ -13,6 +13,7 @@
 #ifndef CLI_CODEC_LPCM_DECODER_H_
 #define CLI_CODEC_LPCM_DECODER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -40,14 +41,17 @@ class LpcmDecoder : public DecoderBase {
 
   ~LpcmDecoder() override = default;
 
- private:
   absl::Status Initialize() override;
 
   absl::Status DecodeAudioFrame(
       const std::vector<uint8_t>& encoded_frame,
       std::vector<std::vector<int32_t>>& decoded_frames) override;
 
+ private:
   const LpcmDecoderConfig decoder_config_;
+  // We don't need the audio_roll_distance_ for decoding, but needed to validate
+  // the LpcmDecoderConfig.
+  int16_t audio_roll_distance_;
 };
 
 }  // namespace iamf_tools
