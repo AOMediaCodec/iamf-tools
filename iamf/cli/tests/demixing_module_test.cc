@@ -39,6 +39,12 @@ namespace iamf_tools {
 namespace {
 
 constexpr DecodedUleb128 kAudioElementId = 137;
+const uint32_t kZeroSamplesToTrimAtEnd = 0;
+const uint32_t kZeroSamplesToTrimAtStart = 0;
+const int kStartTimestamp = 0;
+const int kEndTimestamp = 4;
+const DecodedUleb128 kMonoSubstreamId = 0;
+const DecodedUleb128 kL2SubstreamId = 1;
 
 // TODO(b/305927287): Test computation of linear output gains. Test some cases
 //                    of erroneous input.
@@ -236,6 +242,183 @@ TEST(InitializeForReconstruction, CreatesNoDemixersForAmbisonics) {
   const std::list<Demixer>* demixer = nullptr;
   EXPECT_TRUE(demixing_module.GetDemixers(kAudioElementId, demixer).ok());
   EXPECT_TRUE(demixer->empty());
+}
+
+TEST(DemixAudioSamples, OutputContainsOriginalAndDemixedSamples) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {"M"}}, {kL2SubstreamId, {"L2"}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kMonoSubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{0}},
+                        .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kL2SubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{0}},
+                        .down_mixing_params = DownMixingParams()});
+  DemixingModule demixing_module;
+  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  IdLabeledFrameMap id_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_TRUE(demixing_module
+                  .DemixAudioSamples({}, decoded_audio_frames, id_labeled_frame,
+                                     id_to_labeled_decoded_frame)
+                  .ok());
+
+  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains("L2"));
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains("M"));
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains("D_R2"));
+  // When being used for reconstruction the original audio frames are not
+  // output.
+  EXPECT_FALSE(id_labeled_frame.contains(kAudioElementId));
+}
+
+TEST(DemixAudioSamples, OutputEchoesTimingInformation) {
+  // These values are not very sensible, but as long as they are consistent
+  // between related frames it is OK.
+  const DecodedUleb128 kExpectedStartTimestamp = 99;
+  const DecodedUleb128 kExpectedEndTimestamp = 123;
+  const DecodedUleb128 kExpectedNumSamplesToTrimAtEnd = 999;
+  const DecodedUleb128 kExpectedNumSamplesToTrimAtStart = 9999;
+  const DecodedUleb128 kL2SubstreamId = 1;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {"M"}}, {kL2SubstreamId, {"L2"}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kMonoSubstreamId,
+      .start_timestamp = kExpectedStartTimestamp,
+      .end_timestamp = kExpectedEndTimestamp,
+      .samples_to_trim_at_end = kExpectedNumSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
+      .decoded_samples = {{0}},
+      .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kL2SubstreamId,
+      .start_timestamp = kExpectedStartTimestamp,
+      .end_timestamp = kExpectedEndTimestamp,
+      .samples_to_trim_at_end = kExpectedNumSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
+      .decoded_samples = {{0}},
+      .down_mixing_params = DownMixingParams()});
+  DemixingModule demixing_module;
+  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  IdLabeledFrameMap unused_id_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_TRUE(demixing_module
+                  .DemixAudioSamples({}, decoded_audio_frames,
+                                     unused_id_labeled_frame,
+                                     id_to_labeled_decoded_frame)
+                  .ok());
+
+  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  EXPECT_EQ(labeled_frame.end_timestamp, kExpectedEndTimestamp);
+  EXPECT_EQ(labeled_frame.samples_to_trim_at_end,
+            kExpectedNumSamplesToTrimAtEnd);
+  EXPECT_EQ(labeled_frame.samples_to_trim_at_start,
+            kExpectedNumSamplesToTrimAtStart);
+}
+
+TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {"M"}}, {kL2SubstreamId, {"L2"}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kMonoSubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{1}, {2}, {3}},
+                        .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kL2SubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{9}, {10}, {11}},
+                        .down_mixing_params = DownMixingParams()});
+  DemixingModule demixing_module;
+  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+
+  IdLabeledFrameMap unused_id_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_TRUE(demixing_module
+                  .DemixAudioSamples({}, decoded_audio_frames,
+                                     unused_id_labeled_frame,
+                                     id_to_labeled_decoded_frame)
+                  .ok());
+
+  // Examine the demixed frame.
+  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  EXPECT_EQ(labeled_frame.label_to_samples.at("M"),
+            std::vector<int32_t>({1, 2, 3}));
+  EXPECT_EQ(labeled_frame.label_to_samples.at("L2"),
+            std::vector<int32_t>({9, 10, 11}));
+}
+
+TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {"M"}}, {kL2SubstreamId, {"L2"}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kMonoSubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{750}},
+                        .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kL2SubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {{1000}},
+                        .down_mixing_params = DownMixingParams()});
+  DemixingModule demixing_module;
+  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+
+  IdLabeledFrameMap unused_id_time_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_TRUE(demixing_module
+                  .DemixAudioSamples({}, decoded_audio_frames,
+                                     unused_id_time_labeled_frame,
+                                     id_to_labeled_decoded_frame)
+                  .ok());
+
+  // Examine the demixed frame.
+  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
+  EXPECT_EQ(labeled_frame.label_to_samples.at("D_R2"),
+            std::vector<int32_t>({500}));
 }
 
 class DemixingModuleTestBase {
@@ -657,7 +840,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
       DownMixingParams down_mixing_params = {
           .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25}) {
     // The substream ID itself does not matter. Generate a unique one.
-    const uint32_t substream_id = substream_id_to_labels_.size();
+    const DecodedUleb128 substream_id = substream_id_to_labels_.size();
     substream_id_to_labels_[substream_id] = labels;
 
     // Configure a pair of audio frames and decoded audio frames. They share a
@@ -669,10 +852,13 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .raw_samples = raw_samples,
         .down_mixing_params = down_mixing_params,
     });
+
     decoded_audio_frames_.push_back(
         DecodedAudioFrame{.substream_id = substream_id,
                           .start_timestamp = kStartTimestamp,
                           .end_timestamp = kEndTimestamp,
+                          .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                          .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
                           .decoded_samples = raw_samples,
                           .down_mixing_params = down_mixing_params});
 
@@ -723,10 +909,6 @@ class DemixingModuleTest : public DemixingModuleTestBase,
   std::list<DecodedAudioFrame> decoded_audio_frames_;
 
   IdLabeledFrameMap expected_id_to_labeled_decoded_frame_;
-
- private:
-  const int32_t kStartTimestamp = 0;
-  const int32_t kEndTimestamp = 1;
 };  // namespace
 
 TEST_F(DemixingModuleTest, DemixingAudioSamplesSucceedsWithEmptyInputs) {
