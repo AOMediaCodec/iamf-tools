@@ -164,7 +164,7 @@ absl::Status OpusDecoder::Initialize() {
 
 absl::Status OpusDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame,
-    std::vector<std::vector<int32_t>>& decoded_frames) {
+    std::vector<std::vector<int32_t>>& decoded_samples) {
   // `opus_decode_float` decodes to `float` samples with channels interlaced.
   // Typically these values are in the range of [-1, +1] (always for
   // `iamf_tools`-encoded data). Values outside of that range will be clipped in
@@ -182,11 +182,6 @@ absl::Status OpusDecoder::DecodeAudioFrame(
       output_pcm_float.data(),
       /*frame_size=*/num_samples_per_channel_,
       /*decode_fec=*/0);
-  output_pcm_float.resize(num_output_samples * num_channels_);
-  LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
-                       << " samples per channel. With " << num_channels_
-                       << " channels.";
-
   if (num_output_samples < 0) {
     // When `num_output_samples` is negative, it is an Opus error code.
     return absl::Status(
@@ -194,10 +189,14 @@ absl::Status OpusDecoder::DecodeAudioFrame(
         absl::StrCat("Failed to initialize Opus decoder: num_output_samples= ",
                      num_output_samples));
   }
-
+  output_pcm_float.resize(num_output_samples * num_channels_);
+  LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
+                       << " samples per channel. With " << num_channels_
+                       << " channels.";
   // Convert data to channels arranged in (time, channel) axes. There can only
   // be one or two channels.
-  decoded_frames.reserve(output_pcm_float.size() / num_channels_);
+  decoded_samples.reserve(decoded_samples.size() +
+                          output_pcm_float.size() / num_channels_);
   for (int i = 0; i < output_pcm_float.size(); i += num_channels_) {
     std::vector<int32_t> time_sample(num_channels_, 0);
     // Grab samples in all channels associated with this time instant.
@@ -205,7 +204,7 @@ absl::Status OpusDecoder::DecodeAudioFrame(
       RETURN_IF_NOT_OK(
           NormalizedFloatToInt32(output_pcm_float[i + j], time_sample[j]));
     }
-    decoded_frames.push_back(time_sample);
+    decoded_samples.push_back(time_sample);
   }
 
   return absl::OkStatus();

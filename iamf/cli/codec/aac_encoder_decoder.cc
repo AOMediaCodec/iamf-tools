@@ -262,7 +262,7 @@ absl::Status AacDecoder::Initialize() {
 
 absl::Status AacDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame,
-    std::vector<std::vector<int32_t>>& decoded_frames) {
+    std::vector<std::vector<int32_t>>& decoded_samples) {
   // Transform the data and feed it to the decoder.
   std::vector<UCHAR> input_data(encoded_frame.size());
   std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),
@@ -292,7 +292,8 @@ absl::Status AacDecoder::DecodeAudioFrame(
   // Transform the data to channels arranged in (time, channel) axes with
   // samples stored in the upper bytes of an `int32_t`. There can only be one or
   // two channels.
-  decoded_frames.reserve(output_pcm.size() / num_channels_);
+  decoded_samples.reserve(decoded_samples.size() +
+                          output_pcm.size() / num_channels_);
   for (int i = 0; i < output_pcm.size(); i += num_channels_) {
     // Grab samples in all channels associated with this time instant and store
     // it in the upper bytes.
@@ -301,7 +302,7 @@ absl::Status AacDecoder::DecodeAudioFrame(
       time_sample[j] = static_cast<int32_t>(output_pcm[i + j])
                        << (32 - kFdkAacBitDepth);
     }
-    decoded_frames.push_back(time_sample);
+    decoded_samples.push_back(time_sample);
   }
 
   return absl::OkStatus();
