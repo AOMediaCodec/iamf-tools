@@ -26,6 +26,7 @@
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/demixing_info_param_data.h"
 
 namespace iamf_tools {
 
@@ -40,6 +41,9 @@ struct DecodedAudioFrame {
 
   // Decoded samples. Includes any samples that will be trimmed in processing.
   std::vector<std::vector<int32_t>> decoded_samples;
+
+  // Down-mixing parameters used to create this audio frame.
+  DownMixingParams down_mixing_params;
 
   // The audio element with data associated with this frame.
   const AudioElementWithData* audio_element_with_data;

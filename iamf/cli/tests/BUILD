@@ -67,6 +67,7 @@ cc_test(
         "//iamf/cli:wav_reader",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/container:flat_hash_map",

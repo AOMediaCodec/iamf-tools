@@ -784,6 +784,8 @@ absl::Status StoreSamplesForAudioElementId(
           decoded_audio_frame_iter->samples_to_trim_at_end;
       labeled_decoded_frame.samples_to_trim_at_start =
           decoded_audio_frame_iter->samples_to_trim_at_start;
+      labeled_decoded_frame.demixing_params =
+          decoded_audio_frame_iter->down_mixing_params;
 
       auto& samples = labeled_frame.label_to_samples[label];
       auto& decoded_samples = labeled_decoded_frame.label_to_samples[label];
@@ -808,7 +810,7 @@ absl::Status ApplyDemixers(const std::list<Demixer>& demixers,
   for (const auto& demixer : demixers) {
     RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
                              &labeled_frame.label_to_samples));
-    RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
+    RETURN_IF_NOT_OK(demixer(labeled_decoded_frame.demixing_params,
                              &labeled_decoded_frame.label_to_samples));
   }
   return absl::OkStatus();

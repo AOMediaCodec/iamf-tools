@@ -26,6 +26,7 @@
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
 
@@ -36,6 +37,7 @@ constexpr DecodedUleb128 kCodecConfigId = 44;
 constexpr uint32_t kSampleRate = 16000;
 constexpr DecodedUleb128 kAudioElementId = 13;
 constexpr DecodedUleb128 kSubstreamId = 0;
+constexpr DownMixingParams kDownMixingParams = {.alpha = 0.5, .beta = 0.5};
 const int kNumChannels = 1;
 const int kNumSamplesPerFrame = 8;
 const int kBytesPerSample = 2;
@@ -69,6 +71,7 @@ std::list<AudioFrameWithData> PrepareEncodedAudioFrames(
       .end_timestamp = kNumSamplesPerFrame,
       .raw_samples = std::vector<std::vector<int32_t>>(
           kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels, 0)),
+      .down_mixing_params = kDownMixingParams,
       .audio_element_with_data = &audio_elements.at(kAudioElementId),
   });
 
@@ -168,6 +171,7 @@ TEST(Decode, DecodesLpcmFrame) {
   EXPECT_EQ(decoded_audio_frame.substream_id, kSubstreamId);
   EXPECT_EQ(decoded_audio_frame.start_timestamp, 0);
   EXPECT_EQ(decoded_audio_frame.end_timestamp, kNumSamplesPerFrame);
+  EXPECT_EQ(decoded_audio_frame.down_mixing_params, kDownMixingParams);
   EXPECT_EQ(decoded_audio_frame.audio_element_with_data,
             &audio_elements.at(kAudioElementId));
 

@@ -83,6 +83,7 @@ cc_library(
         "//iamf/cli/codec:opus_encoder_decoder",
         "//iamf/common:macros",
         "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_info_param_data",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

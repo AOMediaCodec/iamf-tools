@@ -103,6 +103,7 @@ absl::Status DecodeAudioFrame(const AudioFrameWithData& encoded_frame,
       encoded_frame.obu.header_.num_samples_to_trim_at_end;
   decoded_audio_frame.samples_to_trim_at_start =
       encoded_frame.obu.header_.num_samples_to_trim_at_start;
+  decoded_audio_frame.down_mixing_params = encoded_frame.down_mixing_params;
   decoded_audio_frame.audio_element_with_data =
       encoded_frame.audio_element_with_data;
 

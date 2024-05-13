@@ -673,7 +673,8 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         DecodedAudioFrame{.substream_id = substream_id,
                           .start_timestamp = kStartTimestamp,
                           .end_timestamp = kEndTimestamp,
-                          .decoded_samples = raw_samples});
+                          .decoded_samples = raw_samples,
+                          .down_mixing_params = down_mixing_params});
 
     auto& expected_label_to_samples =
         expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
