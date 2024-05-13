@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -58,6 +59,16 @@ class LpcmDecoderConfig {
    */
   absl::Status ValidateAndWrite(int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
+
+  /*!\brief Reads and validates the `LpcmDecoderConfig` to a buffer.
+   *
+   * \param audio_roll_distance `audio_roll_distance` in the associated Codec
+   *     Config OBU.
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the decoder config is valid. A specific error
+   *     code on failure.
+   */
+  absl::Status ReadAndValidate(int16_t audio_roll_distance, ReadBitBuffer& rb);
 
   /*\!brief Gets the output sample rate represented within the decoder config.
    *

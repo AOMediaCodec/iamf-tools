@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -254,6 +255,37 @@ TEST(LpcmDecoderConfigTest, Write_InvalidRollDistance) {
 
   EXPECT_FALSE(
       lpcm_decoder_config.ValidateAndWrite(audio_roll_distance, wb).ok());
+}
+
+TEST(ReadAndValidateTest, ReadAllFields) {
+  std::vector<uint8_t> source = {
+      1,                      // sample_format_flags
+      16,                     // sample_size
+      0x00, 0x00, 0xbb, 0x80  // sample_rate
+  };
+  int16_t audio_roll_distance = 0;
+  ReadBitBuffer read_buffer(1024, &source);
+  LpcmDecoderConfig lpcm_decoder_config;
+  EXPECT_TRUE(
+      lpcm_decoder_config.ReadAndValidate(audio_roll_distance, read_buffer)
+          .ok());
+  LpcmDecoderConfig expected_lpcm_decoder_config = {
+      LpcmDecoderConfig::kLpcmLittleEndian, 16, 48000};
+  EXPECT_EQ(lpcm_decoder_config, expected_lpcm_decoder_config);
+}
+
+TEST(ReadAndValidateTest, RejectInvalidAudioRollDistance) {
+  std::vector<uint8_t> source = {
+      1,                      // sample_format_flags
+      16,                     // sample_size
+      0x00, 0x00, 0xbb, 0x80  // sample_rate
+  };
+  int16_t audio_roll_distance = 1;
+  ReadBitBuffer read_buffer(1024, &source);
+  LpcmDecoderConfig lpcm_decoder_config;
+  EXPECT_FALSE(
+      lpcm_decoder_config.ReadAndValidate(audio_roll_distance, read_buffer)
+          .ok());
 }
 
 }  // namespace

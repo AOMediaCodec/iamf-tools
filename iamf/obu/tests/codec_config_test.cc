@@ -531,34 +531,28 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   EXPECT_EQ(obu.value().GetCodecConfig(), expected_codec_config);
 }
 
-// TODO(b/331831247, b/331833384, b/331831926): Add test cases for other
+// TODO(b/331833384, b/331831926): Add test cases for other
 // decoder configs.
-TEST(CreateFromBuffer, LpcmDecoderConfigNotSupported) {
-  std::vector<uint8_t> source_data = {123,  // `codec_id`.
+TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
+  std::vector<uint8_t> source_data = {// `codec_config_id`.
+                                      0,
+                                      // `codec_id`.
                                       'i', 'p', 'c', 'm',
-                                      // num_samples_per_frame
-                                      0xc0, 0x07,
-                                      // audio_roll_distance
-                                      0xff, 0xfc,
-                                      // Start `DecoderConfig`.
-                                      // `version`.
-                                      15,
-                                      // `output_channel_count`.
-                                      OpusDecoderConfig::kOutputChannelCount,
-                                      // `pre_skip`
-                                      0, 3,
-                                      //
-                                      // `input_sample_rate`.
-                                      0, 0, 0, 4,
-                                      // `output_gain`.
+                                      // `num_samples_per_frame`.
+                                      64,
+                                      // `audio_roll_distance`.
                                       0, 0,
-                                      // `mapping_family`.
-                                      OpusDecoderConfig::kMappingFamily};
+                                      // `sample_format_flags`.
+                                      0,
+                                      // `sample_size`.
+                                      16,
+                                      // `sample_rate`.
+                                      0, 0, 0xbb, 0x80};
   ReadBitBuffer buffer(1024, &source_data);
   ObuHeader header;
   absl::StatusOr<CodecConfigObu> obu =
       CodecConfigObu::CreateFromBuffer(header, buffer);
-  EXPECT_FALSE(obu.ok());
+  EXPECT_TRUE(obu.ok());
 }
 
 }  // namespace

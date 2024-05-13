@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -98,6 +99,18 @@ absl::Status LpcmDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_size_, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sample_rate_, 32));
 
+  return absl::OkStatus();
+}
+
+absl::Status LpcmDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
+                                                ReadBitBuffer& rb) {
+  uint8_t sample_format_flags_bitmask;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, sample_format_flags_bitmask));
+  sample_format_flags_bitmask_ =
+      static_cast<LpcmFormatFlagsBitmask>(sample_format_flags_bitmask);
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, sample_size_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, sample_rate_));
+  RETURN_IF_NOT_OK(Validate(audio_roll_distance));
   return absl::OkStatus();
 }
 

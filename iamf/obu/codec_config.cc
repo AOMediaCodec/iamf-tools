@@ -167,7 +167,11 @@ absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
       return std::get<OpusDecoderConfig>(codec_config_.decoder_config)
           .ValidateAndRead(num_samples_per_frame, audio_roll_distance, rb);
     case kCodecIdLpcm:
-      return absl::UnimplementedError("LPCM is not supported.");
+      LpcmDecoderConfig lpcm_decoder_config;
+      RETURN_IF_NOT_OK(
+          lpcm_decoder_config.ReadAndValidate(audio_roll_distance, rb));
+      codec_config_.decoder_config = lpcm_decoder_config;
+      return absl::OkStatus();
     case kCodecIdAacLc:
       return absl::UnimplementedError("AAC is not supported.");
     case kCodecIdFlac:

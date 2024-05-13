@@ -30,11 +30,11 @@ cc_test(
     name = "lpcm_decoder_config_test",
     srcs = ["lpcm_decoder_config_test.cc"],
     deps = [
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
