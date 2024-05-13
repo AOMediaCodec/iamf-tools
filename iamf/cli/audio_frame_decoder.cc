@@ -174,7 +174,7 @@ absl::Status DumpDecodedAudioFrameToWavWriter(
 
 void AbortAllWavWriters(
     absl::node_hash_map<uint32_t, WavWriter>& substream_id_to_wav_writers) {
-  for (auto& [_, wav_writer] : substream_id_to_wav_writers) {
+  for (auto& [unused_substream_id, wav_writer] : substream_id_to_wav_writers) {
     wav_writer.Abort();
   }
 }

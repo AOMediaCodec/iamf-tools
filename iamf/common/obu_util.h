@@ -266,7 +266,8 @@ absl::Status ValidateUnique(InputIt first, InputIt last,
   absl::flat_hash_set<typename InputIt::value_type> seen_values;
 
   for (auto iter = first; iter != last; ++iter) {
-    if (const auto& [_, inserted] = seen_values.insert(*iter); !inserted) {
+    if (const auto& [unused_iter, inserted] = seen_values.insert(*iter);
+        !inserted) {
       return absl::InvalidArgumentError(
           absl::StrCat(context, " must be unique. Found duplicate: ", *iter));
     }

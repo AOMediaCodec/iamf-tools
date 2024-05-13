@@ -860,7 +860,7 @@ absl::Status AudioFrameGenerator::OutputFrames(
 
 absl::Status AudioFrameGenerator::Finalize() {
   absl::MutexLock lock(&mutex_);
-  for (auto& [_, encoder] : substream_id_to_encoder_) {
+  for (auto& [unused_substream_id, encoder] : substream_id_to_encoder_) {
     // Signal all encoders that there are no more samples to come.
     RETURN_IF_NOT_OK(encoder->Finalize());
   }

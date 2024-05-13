@@ -68,7 +68,7 @@ absl::Status GlobalTimingModule::Initialize(
       RETURN_IF_NOT_OK(
           ValidateNotEqual(sample_rate, uint32_t{0}, "sample rate"));
 
-      const auto [_, inserted] = audio_frame_timing_data_.insert(
+      const auto [unused_iter, inserted] = audio_frame_timing_data_.insert(
           {audio_substream_id,
            {.rate = sample_rate, .global_start_timestamp = 0, .timestamp = 0}});
 
@@ -86,7 +86,7 @@ absl::Status GlobalTimingModule::Initialize(
     RETURN_IF_NOT_OK(
         ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
 
-    const auto [_, inserted] =
+    const auto [unused_iter, inserted] =
         parameter_block_timing_data_.insert({parameter_id,
                                              {.rate = parameter_rate,
                                               .global_start_timestamp = 0,

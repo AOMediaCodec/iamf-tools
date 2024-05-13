@@ -160,7 +160,7 @@ absl::Status InitAudioFrameDecoderForAllAudioElements(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
     AudioFrameDecoder& audio_frame_decoder) {
-  for (const auto& [_, audio_element] : audio_elements) {
+  for (const auto& [unused_audio_element_id, audio_element] : audio_elements) {
     if (audio_element.codec_config == nullptr) {
       // Skip stray audio elements. We won't know how to decode their
       // substreams.
