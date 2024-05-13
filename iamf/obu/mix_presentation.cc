@@ -195,11 +195,6 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
   return absl::OkStatus();
 }
 
-absl::Status ValidateAndReadSubMix(MixPresentationSubMix& sub_mix,
-                                   ReadBitBuffer& rb) {
-  return absl::UnimplementedError("Reading sub-mixes is not implemented.");
-}
-
 absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
   if (num_sub_mixes == 0) {
     return absl::InvalidArgumentError(
@@ -472,9 +467,12 @@ absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   // Loop to read the `sub_mixes` array.
   for (int i = 0; i < num_sub_mixes_; ++i) {
     MixPresentationSubMix sub_mix;
-    RETURN_IF_NOT_OK(ValidateAndReadSubMix(sub_mix, rb));
+    RETURN_IF_NOT_OK(sub_mix.ReadAndValidate(count_label_, rb));
     sub_mixes_.push_back(sub_mix);
   }
+
+  RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes_));
+  RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
 
   return absl::OkStatus();
 }

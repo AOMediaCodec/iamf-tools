@@ -873,17 +873,14 @@ TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
 }
 
 // --- Begin CreateFromBuffer tests ---
-// TODO(b/329706068): Update test once ValidateAndReadPayload is implemented.
-TEST(CreateFromBufferTest, IsNotSupported) {
+TEST(CreateFromBufferTest, RejectEmptyBitstream) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
   EXPECT_FALSE(MixPresentationObu::CreateFromBuffer(header, buffer).ok());
 }
 
-// TODO(b/329706068, b/336615335): Switch to a failing test case once submix
-// reading is implemented.
-TEST(CreateFromBufferTest, NoSubMix) {
+TEST(CreateFromBufferTest, RejectNoSubMix) {
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
@@ -901,13 +898,51 @@ TEST(CreateFromBufferTest, NoSubMix) {
   };
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
+  EXPECT_FALSE(MixPresentationObu::CreateFromBuffer(header, buffer).ok());
+}
+
+TEST(CreateFromBufferTest, OneSubMix) {
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      1,
+      // language_labels
+      'e', 'n', '-', 'u', 's', '\0',
+      // mix_presentation_annotation
+      // mix_presentation_friendly_label
+      'M', 'i', 'x', ' ', '1', '\0',
+      // num_submixes
+      1,
+      // Start Submix.
+      1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      2,
+      // Start Layout1.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0 << 2),
+      0, 0, 31, 0, 32,
+      // Start Layout2.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32,
+      // End SubMix.
+      // End Mix OBU.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
   auto obu = MixPresentationObu::CreateFromBuffer(header, buffer);
   EXPECT_TRUE(obu.ok());
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
   EXPECT_EQ(
       obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
       "Mix 1");
-  EXPECT_EQ(obu->GetNumSubMixes(), 0);
+  EXPECT_EQ(obu->GetNumSubMixes(), 1);
 }
 
 TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
