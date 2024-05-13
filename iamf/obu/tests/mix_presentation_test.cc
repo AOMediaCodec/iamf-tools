@@ -992,5 +992,70 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
       21);
 }
 
+TEST(ReadMixPresentationLayoutTest, LoudSpeakerDifferentSoundSystem) {
+  std::vector<uint8_t> source = {
+      // Start Layout.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0 << 2),
+      0,
+      0,
+      31,
+      0,
+      32,
+      // End Layout.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  MixPresentationLayout layout;
+  EXPECT_TRUE(layout.ReadAndValidate(buffer).ok());
+  EXPECT_EQ(layout.loudness_layout.layout_type,
+            Layout::kLayoutTypeLoudspeakersSsConvention);
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                layout.loudness_layout.specific_layout)
+                .sound_system,
+            LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0);
+  EXPECT_EQ(layout.loudness.integrated_loudness, 31);
+  EXPECT_EQ(layout.loudness.digital_peak, 32);
+}
+
+TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
+  std::vector<uint8_t> source = {
+      // Start Submix.
+      1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      2,
+      // Start Layout1.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0 << 2),
+      0, 0, 31, 0, 32,
+      // Start Layout2.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32,
+      // End SubMix.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  MixPresentationSubMix sub_mix;
+  EXPECT_TRUE(sub_mix.ReadAndValidate(/*count_label=*/1, buffer).ok());
+  EXPECT_EQ(sub_mix.audio_elements.size(), 1);
+  EXPECT_EQ(sub_mix.layouts[0].loudness_layout.layout_type,
+            Layout::kLayoutTypeLoudspeakersSsConvention);
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                sub_mix.layouts[0].loudness_layout.specific_layout),
+            LoudspeakersSsConventionLayout(
+                {.sound_system =
+                     LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0}));
+  EXPECT_EQ(sub_mix.layouts[1].loudness_layout.layout_type,
+            Layout::kLayoutTypeLoudspeakersSsConvention);
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                sub_mix.layouts[1].loudness_layout.specific_layout),
+            LoudspeakersSsConventionLayout(
+                {.sound_system =
+                     LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
+}
+
 }  // namespace
 }  // namespace iamf_tools

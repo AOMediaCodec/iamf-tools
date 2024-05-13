@@ -296,6 +296,14 @@ struct MixPresentationSubMix {
   friend bool operator==(const MixPresentationSubMix& lhs,
                          const MixPresentationSubMix& rhs) = default;
 
+  /*\!brief Reads and validates the MixPresentationSubMix from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the sub-mix is valid. A specific status if
+   *    the read fails.
+   */
+  absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
+
   DecodedUleb128 num_audio_elements;
   // Length `num_audio_elements`.
   std::vector<SubMixAudioElement> audio_elements;
