@@ -49,13 +49,14 @@ class DecoderBase {
   /*\!brief Decodes an audio frame.
    *
    * \param encoded_frame Frame to decode.
-   * \param decoded_frames Output decoded frames arranged in (time, sample)
-   *     axes.
+   * \param decoded_samples Output decoded frames arranged in (time, sample)
+   *     axes.  That is to say, each inner vector has one sample for per channel
+   *     and the outer vector contains one inner vector for each time tick.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status DecodeAudioFrame(
       const std::vector<uint8_t>& encoded_frame,
-      std::vector<std::vector<int32_t>>& decoded_frames) = 0;
+      std::vector<std::vector<int32_t>>& decoded_samples) = 0;
 
  protected:
   const int num_channels_;

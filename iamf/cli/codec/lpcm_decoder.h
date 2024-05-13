@@ -45,7 +45,7 @@ class LpcmDecoder : public DecoderBase {
 
   absl::Status DecodeAudioFrame(
       const std::vector<uint8_t>& encoded_frame,
-      std::vector<std::vector<int32_t>>& decoded_frames) override;
+      std::vector<std::vector<int32_t>>& decoded_samples) override;
 
  private:
   const LpcmDecoderConfig decoder_config_;

@@ -75,11 +75,12 @@ cc_library(
     deps = [
         ":decoder_base",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:codec_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
