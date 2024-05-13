@@ -676,9 +676,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
                           .decoded_samples = raw_samples});
 
     auto& expected_label_to_samples =
-        expected_id_to_time_to_labeled_decoded_frame_[kAudioElementId]
-                                                     [kStartTimestamp]
-                                                         .label_to_samples;
+        expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
     // `raw_samples` is arranged in (time, channel axes). Arrange the samples
     // associated with each channel by time. The demixing process never changes
     // data for the input labels.
@@ -698,42 +696,32 @@ class DemixingModuleTest : public DemixingModuleTestBase,
       const std::string& label, std::vector<int32_t> expected_demixed_samples) {
     // Configure the expected demixed channels. Typically the input `label`
     // should have a "D_" prefix.
-    expected_id_to_time_to_labeled_decoded_frame_[kAudioElementId]
-                                                 [kStartTimestamp]
-                                                     .label_to_samples[label] =
-        expected_demixed_samples;
+    expected_id_to_labeled_decoded_frame_[kAudioElementId]
+        .label_to_samples[label] = expected_demixed_samples;
   }
 
   void TestDemixing(int expected_number_of_down_mixers) {
-    IdTimeLabeledFrameMap unused_id_to_time_to_labeled_frame,
-        id_to_time_to_labeled_decoded_frame;
+    IdLabeledFrameMap unused_id_to_labeled_frame, id_to_labeled_decoded_frame;
 
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
     EXPECT_TRUE(demixing_module_
                     .DemixAudioSamples(audio_frames_, decoded_audio_frames_,
-                                       unused_id_to_time_to_labeled_frame,
-                                       id_to_time_to_labeled_decoded_frame)
+                                       unused_id_to_labeled_frame,
+                                       id_to_labeled_decoded_frame)
                     .ok());
 
     // Check that the demixed samples have the correct values.
-    EXPECT_EQ(
-        id_to_time_to_labeled_decoded_frame[kAudioElementId].size(),
-        expected_id_to_time_to_labeled_decoded_frame_[kAudioElementId].size());
-    for (const auto& [time, labeled_frame] :
-         id_to_time_to_labeled_decoded_frame[kAudioElementId]) {
-      EXPECT_EQ(
-          labeled_frame.label_to_samples,
-          expected_id_to_time_to_labeled_decoded_frame_[kAudioElementId][time]
-              .label_to_samples);
-    }
+    EXPECT_EQ(id_to_labeled_decoded_frame[kAudioElementId].label_to_samples,
+              expected_id_to_labeled_decoded_frame_[kAudioElementId]
+                  .label_to_samples);
   }
 
  protected:
   std::list<AudioFrameWithData> audio_frames_;
   std::list<DecodedAudioFrame> decoded_audio_frames_;
 
-  IdTimeLabeledFrameMap expected_id_to_time_to_labeled_decoded_frame_;
+  IdLabeledFrameMap expected_id_to_labeled_decoded_frame_;
 
  private:
   const int32_t kStartTimestamp = 0;
@@ -751,18 +739,17 @@ TEST_F(DemixingModuleTest, DemixingAudioSamplesSucceedsWithEmptyInputs) {
                   .ok());
 
   // Call `DemixAudioSamples()`.
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame,
-      id_to_time_to_labeled_decoded_frame;
+  IdLabeledFrameMap id_to_labeled_frame, id_to_labeled_decoded_frame;
   EXPECT_TRUE(demixing_module_
                   .DemixAudioSamples(
                       /*audio_frames=*/{},
-                      /*decoded_audio_frames=*/{}, id_to_time_to_labeled_frame,
-                      id_to_time_to_labeled_decoded_frame)
+                      /*decoded_audio_frames=*/{}, id_to_labeled_frame,
+                      id_to_labeled_decoded_frame)
                   .ok());
 
   // Expect empty outputs.
-  EXPECT_TRUE(id_to_time_to_labeled_frame.empty());
-  EXPECT_TRUE(id_to_time_to_labeled_decoded_frame.empty());
+  EXPECT_TRUE(id_to_labeled_frame.empty());
+  EXPECT_TRUE(id_to_labeled_decoded_frame.empty());
 }
 
 TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {

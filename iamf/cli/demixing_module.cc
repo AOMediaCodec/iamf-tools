@@ -30,6 +30,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/common/macros.h"
@@ -731,10 +732,10 @@ absl::Status StoreSamplesForAudioElementId(
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<DecodedAudioFrame>& decoded_audio_frames,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    TimeLabeledFrameMap& time_to_labeled_frame,
-    TimeLabeledFrameMap& time_to_labeled_decoded_frame) {
+    LabeledFrame& labeled_frame, LabeledFrame& labeled_decoded_frame) {
   auto audio_frame_iter = audio_frames.begin();
   auto decoded_audio_frame_iter = decoded_audio_frames.begin();
+  const int32_t common_start_timestamp = audio_frame_iter->start_timestamp;
   for (; audio_frame_iter != audio_frames.end() &&
          decoded_audio_frame_iter != decoded_audio_frames.end();
        audio_frame_iter++, decoded_audio_frame_iter++) {
@@ -760,17 +761,16 @@ absl::Status StoreSamplesForAudioElementId(
       return absl::InvalidArgumentError("");
     }
 
+    // Validate that the frames are all aligned in time.
+    RETURN_IF_NOT_OK(CompareTimestamps(common_start_timestamp,
+                                       audio_frame_iter->start_timestamp));
+    RETURN_IF_NOT_OK(CompareTimestamps(
+        common_start_timestamp, decoded_audio_frame_iter->start_timestamp));
+
     int channel_index = 0;
     for (const auto& label : labels) {
       const size_t num_ticks = audio_frame_iter->raw_samples.size();
-      const int32_t start_timestamp = audio_frame_iter->start_timestamp;
-      if (decoded_audio_frame_iter->start_timestamp != start_timestamp) {
-        LOG(ERROR) << "Start timestamp mismatch: " << start_timestamp << " vs "
-                   << decoded_audio_frame_iter->start_timestamp;
-        return absl::InvalidArgumentError("");
-      }
 
-      auto& labeled_frame = time_to_labeled_frame[start_timestamp];
       labeled_frame.end_timestamp = audio_frame_iter->end_timestamp;
       labeled_frame.samples_to_trim_at_end =
           audio_frame_iter->obu.header_.num_samples_to_trim_at_end;
@@ -778,8 +778,6 @@ absl::Status StoreSamplesForAudioElementId(
           audio_frame_iter->obu.header_.num_samples_to_trim_at_start;
       labeled_frame.demixing_params = audio_frame_iter->down_mixing_params;
 
-      auto& labeled_decoded_frame =
-          time_to_labeled_decoded_frame[start_timestamp];
       labeled_decoded_frame.end_timestamp =
           decoded_audio_frame_iter->end_timestamp;
       labeled_decoded_frame.samples_to_trim_at_end =
@@ -805,18 +803,14 @@ absl::Status StoreSamplesForAudioElementId(
 }
 
 absl::Status ApplyDemixers(const std::list<Demixer>& demixers,
-                           TimeLabeledFrameMap* time_to_labeled_frame,
-                           TimeLabeledFrameMap* time_to_labeled_decoded_frame) {
-  for (auto& [time, labeled_frame] : *time_to_labeled_frame) {
-    auto& labeled_decoded_frame = time_to_labeled_decoded_frame->at(time);
-    for (const auto& demixer : demixers) {
-      RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
-                               &labeled_frame.label_to_samples));
-      RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
-                               &labeled_decoded_frame.label_to_samples));
-    }
+                           LabeledFrame& labeled_frame,
+                           LabeledFrame& labeled_decoded_frame) {
+  for (const auto& demixer : demixers) {
+    RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
+                             &labeled_frame.label_to_samples));
+    RETURN_IF_NOT_OK(demixer(labeled_frame.demixing_params,
+                             &labeled_decoded_frame.label_to_samples));
   }
-
   return absl::OkStatus();
 }
 
@@ -1054,36 +1048,25 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
 absl::Status DemixingModule::DemixAudioSamples(
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<DecodedAudioFrame>& decoded_audio_frames,
-    IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-    IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame) const {
+    IdLabeledFrameMap& id_to_labeled_frame,
+    IdLabeledFrameMap& id_to_labeled_decoded_frame) const {
   for (const auto& [audio_element_id, demixing_metadata] :
        audio_element_id_to_demixing_metadata_) {
-    auto& time_to_labeled_frame = id_to_time_to_labeled_frame[audio_element_id];
-    auto& time_to_labeled_decoded_frame =
-        id_to_time_to_labeled_decoded_frame[audio_element_id];
+    auto& labeled_frame = id_to_labeled_frame[audio_element_id];
+    auto& labeled_decoded_frame = id_to_labeled_decoded_frame[audio_element_id];
 
-    RETURN_IF_NOT_OK(StoreSamplesForAudioElementId(
-        audio_frames, decoded_audio_frames,
-        demixing_metadata.substream_id_to_labels, time_to_labeled_frame,
-        time_to_labeled_decoded_frame));
-    RETURN_IF_NOT_OK(ApplyDemixers(demixing_metadata.demixers,
-                                   &time_to_labeled_frame,
-                                   &time_to_labeled_decoded_frame));
+    RETURN_IF_NOT_OK(
+        StoreSamplesForAudioElementId(audio_frames, decoded_audio_frames,
+                                      demixing_metadata.substream_id_to_labels,
+                                      labeled_frame, labeled_decoded_frame));
+    RETURN_IF_NOT_OK(ApplyDemixers(demixing_metadata.demixers, labeled_frame,
+                                   labeled_decoded_frame));
 
-    LOG(INFO) << "Demixing Audio Element ID= " << audio_element_id;
-    LOG(INFO) << "  Samples has " << time_to_labeled_frame.size() << " frames";
-    LOG(INFO) << "  Decoded Samples has "
-              << time_to_labeled_decoded_frame.size() << " frames";
-    if (!time_to_labeled_frame.empty() &&
-        !time_to_labeled_decoded_frame.empty()) {
-      for (const auto& [label, samples] :
-           time_to_labeled_frame.begin()->second.label_to_samples) {
-        const auto& decoded_samples = time_to_labeled_decoded_frame.begin()
-                                          ->second.label_to_samples[label];
-        LOG(INFO) << "  Channel " << label
-                  << ":\tframe size= " << samples.size()
-                  << "; decoded frame size= " << decoded_samples.size();
-      }
+    for (const auto& [label, samples] : labeled_frame.label_to_samples) {
+      const auto& decoded_samples =
+          labeled_decoded_frame.label_to_samples.at(label);
+      LOG(INFO) << "  Channel " << label << ":\tframe size= " << samples.size()
+                << "; decoded frame size= " << decoded_samples.size();
     }
   }
 

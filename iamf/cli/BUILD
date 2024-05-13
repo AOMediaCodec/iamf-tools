@@ -196,6 +196,7 @@ cc_library(
         ":audio_element_with_data",
         ":audio_frame_decoder",
         ":audio_frame_with_data",
+        ":cli_util",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common:macros",

@@ -309,19 +309,32 @@ absl::Status GenerateObus(
   while (audio_frame_generator.GeneratingFrames()) {
     std::list<AudioFrameWithData> temp_audio_frames;
     RETURN_IF_NOT_OK(audio_frame_generator.OutputFrames(temp_audio_frames));
-
     if (temp_audio_frames.empty()) {
       absl::SleepFor(absl::Milliseconds(50));
     } else {
       // Decode the audio frames. They are required to determine the demixed
       // frames.
-      std::list<DecodedAudioFrame> decoded_audio_frames;
-      RETURN_IF_NOT_OK(
-          audio_frame_decoder.Decode(temp_audio_frames, decoded_audio_frames));
+      std::list<DecodedAudioFrame> temp_decoded_audio_frames;
+      RETURN_IF_NOT_OK(audio_frame_decoder.Decode(temp_audio_frames,
+                                                  temp_decoded_audio_frames));
 
+      // Demix the audio frames.
+      IdLabeledFrameMap id_to_labeled_frame;
+      IdLabeledFrameMap id_to_labeled_decoded_frame;
       RETURN_IF_NOT_OK(demixing_module.DemixAudioSamples(
-          temp_audio_frames, decoded_audio_frames, id_to_time_to_labeled_frame,
-          id_to_time_to_labeled_decoded_frame));
+          temp_audio_frames, temp_decoded_audio_frames, id_to_labeled_frame,
+          id_to_labeled_decoded_frame));
+
+      // Collect and organize in time.
+      const auto start_timestamp = temp_audio_frames.front().start_timestamp;
+      for (const auto& [id, labeled_frame] : id_to_labeled_frame) {
+        id_to_time_to_labeled_frame[id][start_timestamp] = labeled_frame;
+      }
+      for (const auto& [id, labeled_decoded_frame] :
+           id_to_labeled_decoded_frame) {
+        id_to_time_to_labeled_decoded_frame[id][start_timestamp] =
+            labeled_decoded_frame;
+      }
 
       audio_frames.splice(audio_frames.end(), temp_audio_frames);
     }

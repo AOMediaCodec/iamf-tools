@@ -60,10 +60,13 @@ struct LabeledFrame {
   DownMixingParams demixing_params;
 };
 
-// Mapping from starting timestamp to a `LabeledFrame`.
+// Mapping from audio element ids to `LabeledFrame`s.
+typedef absl::flat_hash_map<DecodedUleb128, LabeledFrame> IdLabeledFrameMap;
+
+// Mapping from starting timestamps to `LabeledFrame`s.
 typedef absl::btree_map<int32_t, LabeledFrame> TimeLabeledFrameMap;
 
-// Mapping from audio element id to a `TimeLabeledFrameMap`.
+// Mapping from audio element ids to `TimeLabeledFrameMap`s.
 typedef absl::flat_hash_map<DecodedUleb128, TimeLabeledFrameMap>
     IdTimeLabeledFrameMap;
 
@@ -162,16 +165,16 @@ class DemixingModule {
    *
    * \param audio_frames Audio Frames.
    * \param decoded_audio_frames Decoded Audio Frames.
-   * \param id_to_time_to_labeled_frame Output data structure for samples.
-   * \param id_to_time_to_labeled_decoded_frame Output data structure for
-   *     decoded samples.
+   * \param id_to_labeled_frame Output data structure for samples.
+   * \param id_to_labeled_decoded_frame Output data structure for decoded
+   *     samples.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DemixAudioSamples(
       const std::list<AudioFrameWithData>& audio_frames,
       const std::list<DecodedAudioFrame>& decoded_audio_frames,
-      IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-      IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame) const;
+      IdLabeledFrameMap& id_to_labeled_frame,
+      IdLabeledFrameMap& id_to_labeled_decoded_frame) const;
 
   /*\!brief Gets the down-mixers associated with an Audio Element ID.
    *
