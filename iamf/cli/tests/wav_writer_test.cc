@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "iamf/cli/wav_reader.h"
 
 namespace iamf_tools {
 namespace {
@@ -110,10 +111,50 @@ TEST(WavWriterTest, Write32BitSamplesSucceeds) {
   EXPECT_TRUE(wav_writer.WriteSamples(samples));
 }
 
-TEST(WavWriterTest, OutputFileExists) {
-  WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
-                       kBitDepth16);
-  EXPECT_TRUE(std::filesystem::exists(std::filesystem::path(GetTestWavPath())));
+const int kArbitraryNumSamplesPerFrame = 1;
+TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples16Bit) {
+  const int kInputBytes = 12;
+  {
+    // Create the writer in a small scope. It should be destroyed before
+    // checking the results.
+    WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
+                         kBitDepth16);
+    std::vector<uint8_t> samples(kInputBytes, 0);
+    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  }
+
+  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), 6);
+}
+
+TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples24Bit) {
+  const int kInputBytes = 12;
+  {
+    // Create the writer in a small scope. It should be destroyed before
+    // checking the results.
+    WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
+                         kBitDepth24);
+    std::vector<uint8_t> samples(kInputBytes, 0);
+    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  }
+
+  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), 4);
+}
+
+TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples32Bit) {
+  const int kInputBytes = 12;
+  {
+    // Create the writer in a small scope. It should be destroyed before
+    // checking the results.
+    WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
+                         kBitDepth32);
+    std::vector<uint8_t> samples(kInputBytes, 0);
+    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  }
+
+  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), 3);
 }
 
 TEST(WavWriterTest, AbortDeletesOutputFile) {

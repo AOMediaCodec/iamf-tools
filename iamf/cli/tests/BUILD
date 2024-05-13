@@ -450,6 +450,7 @@ cc_test(
     name = "wav_writer_test",
     srcs = ["wav_writer_test.cc"],
     deps = [
+        "//iamf/cli:wav_reader",
         "//iamf/cli:wav_writer",
         "@com_google_googletest//:gtest_main",
     ],
