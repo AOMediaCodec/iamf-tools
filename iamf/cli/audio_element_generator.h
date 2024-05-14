@@ -53,6 +53,17 @@ class AudioElementGenerator {
       LabelGainMap* label_to_output_gain,
       std::vector<ChannelNumbers>* channel_numbers_for_layers);
 
+  /*\!brief Populates substream_id_to_labels for the ambisonics config.
+   *
+   * \param audio_element_obu Mono ambisonics config OBU to process.
+   * \param substream_id_to_labels Output map of substream IDs to labels.
+   * \return `absl::OkStatus()` on success. An error if the input OBU is not an
+   *     ambisonics config. A specific status on failure.
+   */
+  static absl::Status FinalizeAmbisonicsConfig(
+      const AudioElementObu& audio_element_obu,
+      SubstreamIdLabelsMap& substream_id_to_labels);
+
   /*\!brief Generates a list of Audio Element OBUs from the input metadata.
    *
    * \param codec_conifgs Map of Codec Config IDs to Codec Config OBUs.

@@ -653,6 +653,59 @@ absl::Status FillScalableChannelLayoutConfig(
       &audio_element.channel_numbers_for_layers);
 }
 
+absl::Status FinalizeAmbisonicsMonoConfig(
+    const AudioElementObu& audio_element_obu,
+    const AmbisonicsMonoConfig& mono_config,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  // Fill `substream_id_to_labels`. `channel_mapping` encodes the mapping of
+  // Ambisonics Channel Number (ACN) to substream index.
+  for (int ambisonics_channel_number = 0;
+       ambisonics_channel_number < mono_config.channel_mapping.size();
+       ++ambisonics_channel_number) {
+    const uint8_t obu_substream_index =
+        mono_config.channel_mapping[ambisonics_channel_number];
+    if (obu_substream_index ==
+        AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
+      LOG(INFO) << "Detected mixed-order ambisonics with  A"
+                << ambisonics_channel_number << "dropped.";
+      continue;
+    }
+    const DecodedUleb128 substream_id =
+        audio_element_obu.audio_substream_ids_[obu_substream_index];
+
+    // Add the associated ACN to the labels associated with that substream.
+    substream_id_to_labels[substream_id].push_back(
+        {absl::StrCat("A", ambisonics_channel_number)});
+  }
+  return absl::OkStatus();
+}
+
+absl::Status FinalizeAmbisonicsProjectionConfig(
+    const AudioElementObu& audio_element_obu,
+    const AmbisonicsProjectionConfig& projection_config,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  if (audio_element_obu.num_substreams_ !=
+      static_cast<uint32_t>(projection_config.substream_count)) {
+    LOG(ERROR) << "`num_substreams` different from `substream_count`: ("
+               << audio_element_obu.num_substreams_ << " vs "
+               << static_cast<int>(projection_config.substream_count) << ")";
+    return absl::InvalidArgumentError("");
+  }
+
+  // For projection mode, assume coupled substreams (using 2 channels) come
+  // first and are followed by non-coupled substreams (using 1 channel each).
+  for (int i = 0; i < audio_element_obu.num_substreams_; ++i) {
+    substream_id_to_labels[audio_element_obu.audio_substream_ids_[i]] =
+        (i < projection_config.coupled_substream_count
+             ? std::list<std::string>{absl::StrCat("A", 2 * i),
+                                      absl::StrCat("A", 2 * i + 1)}
+             : std::list<std::string>{absl::StrCat(
+                   "A", 2 * projection_config.coupled_substream_count + i)});
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status FillAmbisonicsMonoConfig(
     const iamf_tools_cli_proto::AmbisonicsConfig& input_config,
     const DecodedUleb128 audio_element_id, AudioElementObu& audio_element_obu,
@@ -687,27 +740,9 @@ absl::Status FillAmbisonicsMonoConfig(
   // Validate the mono config. This ensures no substream indices should be out
   // of bounds.
   RETURN_IF_NOT_OK(mono_config.Validate(audio_element_obu.num_substreams_));
-  // Fill `substream_id_to_labels`. `channel_mapping` encodes the mapping of
-  // Ambisonics Channel Number (ACN) to substream index.
-  for (int ambisonics_channel_number = 0;
-       ambisonics_channel_number < input_mono_config.channel_mapping_size();
-       ++ambisonics_channel_number) {
-    const uint8_t obu_substream_index =
-        mono_config.channel_mapping[ambisonics_channel_number];
-    if (obu_substream_index ==
-        AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
-      LOG(INFO) << "Detected mixed-order ambisonics with  A"
-                << ambisonics_channel_number << "dropped.";
-      continue;
-    }
-    const DecodedUleb128 substream_id =
-        audio_element_obu.audio_substream_ids_[obu_substream_index];
-
-    // Add the associated ACN to the labels associated with that substream.
-    substream_id_to_labels[substream_id].push_back(
-        {absl::StrCat("A", ambisonics_channel_number)});
-  }
-
+  // Populate substream_id_to_labels.
+  RETURN_IF_NOT_OK(FinalizeAmbisonicsMonoConfig(audio_element_obu, mono_config,
+                                                substream_id_to_labels));
   return absl::OkStatus();
 }
 
@@ -748,27 +783,8 @@ absl::Status FillAmbisonicsProjectionConfig(
     RETURN_IF_NOT_OK(Int32ToInt16(input_projection_config.demixing_matrix(i),
                                   projection_config.demixing_matrix[i]));
   }
-
-  // Fill `substream_id_to_labels`.
-  if (audio_element_obu.num_substreams_ !=
-      static_cast<uint32_t>(projection_config.substream_count)) {
-    LOG(ERROR) << "`num_substreams` different from `substream_count`: ("
-               << audio_element_obu.num_substreams_ << " vs "
-               << static_cast<int>(projection_config.substream_count) << ")";
-    return absl::InvalidArgumentError("");
-  }
-
-  // For projection mode, assume coupled substreams (using 2 channels) come
-  // first and are followed by non-coupled substreams (using 1 channel each).
-  for (int i = 0; i < audio_element_obu.num_substreams_; ++i) {
-    substream_id_to_labels[audio_element_obu.audio_substream_ids_[i]] =
-        (i < projection_config.coupled_substream_count
-             ? std::list<std::string>{absl::StrCat("A", 2 * i),
-                                      absl::StrCat("A", 2 * i + 1)}
-             : std::list<std::string>{absl::StrCat(
-                   "A", 2 * projection_config.coupled_substream_count + i)});
-  }
-
+  RETURN_IF_NOT_OK(FinalizeAmbisonicsProjectionConfig(
+      audio_element_obu, projection_config, substream_id_to_labels));
   return absl::OkStatus();
 }
 
@@ -908,6 +924,38 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
   }
 
   return absl::OkStatus();
+}
+
+// TODO(b/340540080): Add tests for this function and remove fragility, for
+// example, null pointers, get<> that can fail, etc.
+absl::Status AudioElementGenerator::FinalizeAmbisonicsConfig(
+    const AudioElementObu& audio_element_obu,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  if (audio_element_obu.GetAudioElementType() !=
+      AudioElementObu::AudioElementType::kAudioElementSceneBased) {
+    return absl::InvalidArgumentError(
+        "Cannot finalize AmbisonicsMonoConfig for a non-scene-based Audio "
+        "Element OBU.");
+  }
+  const auto& ambisonics_config =
+      std::get<AmbisonicsConfig>(audio_element_obu.config_);
+  switch (ambisonics_config.ambisonics_mode) {
+    case AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono:
+      return FinalizeAmbisonicsMonoConfig(
+          audio_element_obu,
+          std::get<AmbisonicsMonoConfig>(ambisonics_config.ambisonics_config),
+          substream_id_to_labels);
+    case AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection:
+      return FinalizeAmbisonicsProjectionConfig(
+          audio_element_obu,
+          std::get<AmbisonicsProjectionConfig>(
+              ambisonics_config.ambisonics_config),
+          substream_id_to_labels);
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unimplemented Ambisonics mode: ",
+                       ambisonics_config.ambisonics_mode));
+  }
 }
 
 absl::Status AudioElementGenerator::Generate(
