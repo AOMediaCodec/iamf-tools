@@ -17,7 +17,10 @@
 #include <variant>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -30,6 +33,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using absl_testing::IsOkAndHolds;
 
 constexpr uint32_t kAudioElementId = 0;
 
@@ -161,6 +166,224 @@ TEST(MixGainParameterData,
 
   MixGainParameterData mix_gain_param_data;
   EXPECT_FALSE(mix_gain_param_data.ReadAndValidate(buffer).ok());
+}
+
+TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
+  const DecodedUleb128 kParameterId = 0x07;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      0x0a,
+      // Constant subblock duration.
+      0x00,
+      // Number of subblocks.
+      0x03,
+      // Subblock duration.
+      0x01,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+      // Subblock duration.
+      0x03,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x07,
+      0x66,
+      // Subblock duration.
+      0x06,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x05,
+      0x44,
+  };
+  ReadBitBuffer buffer(1024, &source_data);
+  // Usually metadata would live in the descriptor OBUs.
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = MixGainParamDefinition(),
+  };
+  per_param_metadata[kParameterId].param_definition.parameter_id_ =
+      kParameterId;
+  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  auto parameter_block = ParameterBlockObu::CreateFromBuffer(
+      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+  EXPECT_TRUE(parameter_block.ok());
+
+  // Validate all the getters match the input data.
+  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
+  EXPECT_EQ(parameter_block->GetDuration(), 10);
+  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(parameter_block->GetNumSubblocks(), 3);
+  EXPECT_THAT(parameter_block->GetSubblockDuration(0), IsOkAndHolds(1));
+  EXPECT_THAT(parameter_block->GetSubblockDuration(1), IsOkAndHolds(3));
+  EXPECT_THAT(parameter_block->GetSubblockDuration(2), IsOkAndHolds(6));
+
+  int16_t mix_gain;
+  // The first subblock covers [0, subblock_duration[0]).
+  EXPECT_TRUE(parameter_block->GetMixGain(0, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0988);
+  EXPECT_TRUE(parameter_block->GetMixGain(1, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0766);
+  EXPECT_TRUE(parameter_block->GetMixGain(4, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0544);
+
+  // Parameter blocks are open intervals.
+  EXPECT_FALSE(parameter_block->GetMixGain(10, mix_gain).ok());
+}
+
+TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
+  const DecodedUleb128 kParameterId = 0x07;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x07,
+      0x66,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x05,
+      0x44,
+  };
+  ReadBitBuffer buffer(1024, &source_data);
+  // Usually metadata would live in the descriptor OBUs.
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = MixGainParamDefinition(),
+  };
+  auto& param_definition = per_param_metadata[kParameterId].param_definition;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.duration_ = 10;
+  param_definition.constant_subblock_duration_ = 0;
+  param_definition.InitializeSubblockDurations(3);
+  ASSERT_TRUE(param_definition.SetSubblockDuration(0, 1).ok());
+  ASSERT_TRUE(param_definition.SetSubblockDuration(1, 3).ok());
+  ASSERT_TRUE(param_definition.SetSubblockDuration(2, 6).ok());
+  auto parameter_block = ParameterBlockObu::CreateFromBuffer(
+      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+  EXPECT_TRUE(parameter_block.ok());
+
+  // Validate all the getters match the input data. Note the getters return data
+  // based on the `param_definition` and not the data in the OBU.
+  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
+  EXPECT_EQ(parameter_block->GetDuration(), 10);
+  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ(parameter_block->GetNumSubblocks(), 3);
+  EXPECT_THAT(parameter_block->GetSubblockDuration(0), IsOkAndHolds(1));
+  EXPECT_THAT(parameter_block->GetSubblockDuration(1), IsOkAndHolds(3));
+  EXPECT_THAT(parameter_block->GetSubblockDuration(2), IsOkAndHolds(6));
+
+  int16_t mix_gain;
+  // The first subblock covers [0, subblock_duration[0]).
+  EXPECT_TRUE(parameter_block->GetMixGain(0, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0988);
+  EXPECT_TRUE(parameter_block->GetMixGain(1, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0766);
+  EXPECT_TRUE(parameter_block->GetMixGain(4, mix_gain).ok());
+  EXPECT_EQ(mix_gain, 0x0544);
+
+  // Parameter blocks are open intervals.
+  EXPECT_FALSE(parameter_block->GetMixGain(10, mix_gain).ok());
+}
+
+TEST(ParameterBlockObu,
+     CreateFromBufferFailsWhenSubblockDurationsAreInconsistent) {
+  const DecodedUleb128 kParameterId = 0x07;
+  const DecodedUleb128 kTotalDuration = 0xaa;
+  const DecodedUleb128 kFirstSubblockDuration = 0x01;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      kTotalDuration,
+      // Constant subblock duration.
+      0x00,
+      // Number of subblocks.
+      0x01,
+      // Subblock duration.
+      kFirstSubblockDuration,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+  };
+  ReadBitBuffer buffer(1024, &source_data);
+  // Usually metadata would live in the descriptor OBUs.
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = MixGainParamDefinition(),
+  };
+  per_param_metadata[kParameterId].param_definition.parameter_id_ =
+      kParameterId;
+  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+
+  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
+                   ObuHeader{.obu_type = kObuIaParameterBlock},
+                   per_param_metadata, buffer)
+                   .ok());
+}
+
+TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
+  const DecodedUleb128 kParameterId = 0x07;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // Duration.
+      0x0a,
+      // Constant subblock duration.
+      0x0a,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+  };
+  ReadBitBuffer buffer(1024, &source_data);
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = MixGainParamDefinition(),
+  };
+  per_param_metadata[kParameterId].param_definition.parameter_id_ =
+      kParameterId;
+  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock},
+                  per_param_metadata, buffer),
+              absl_testing::IsOk());
+
+  // When there is no matching metadata, the parameter block cannot be created.
+  per_param_metadata.erase(kParameterId);
+  ReadBitBuffer buffer_to_use_without_metadata(1024, &source_data);
+  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
+                   ObuHeader{.obu_type = kObuIaParameterBlock},
+                   per_param_metadata, buffer_to_use_without_metadata)
+                   .ok());
 }
 
 class ParameterBlockObuTestBase : public ObuTestBase {

@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -219,6 +220,25 @@ absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
       return absl::UnimplementedError(
           absl::StrCat("Unknown animation type= ", animation_type_uleb));
   }
+}
+
+absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
+    const ObuHeader& header,
+    absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
+        parameter_id_to_metadata,
+    ReadBitBuffer& rb) {
+  DecodedUleb128 parameter_id;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id));
+  auto it = parameter_id_to_metadata.find(parameter_id);
+  if (it == parameter_id_to_metadata.end()) {
+    return absl::InvalidArgumentError(
+        "Found a stray parameter block OBU (no matching parameter "
+        "definition).");
+  }
+
+  ParameterBlockObu parameter_block_obu(header, parameter_id, &it->second);
+  RETURN_IF_NOT_OK(parameter_block_obu.ValidateAndReadPayload(rb));
+  return parameter_block_obu;
 }
 
 ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
@@ -590,8 +610,59 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
 }
 
 absl::Status ParameterBlockObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "ParameterBlockObu ValidateAndReadPayload not yet implemented.");
+  if (metadata_ == nullptr) {
+    return absl::FailedPreconditionError("Expected non-null metadata.");
+  }
+  // Validate the associated `param_definition`.
+  RETURN_IF_NOT_OK(metadata_->param_definition.Validate());
+
+  if (metadata_->param_definition.param_definition_mode_) {
+    RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));
+    RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration_));
+    if (constant_subblock_duration_ == 0) {
+      RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
+    }
+  }
+
+  const auto num_subblocks = GetNumSubblocks();
+  subblocks_.resize(num_subblocks);
+
+  // `subblock_duration` is conditionally included based on
+  // `param_definition_mode_` and `constant_subblock_duration_`.
+  const bool include_subblock_duration =
+      metadata_->param_definition.param_definition_mode_ &&
+      constant_subblock_duration_ == 0;
+
+  int64_t total_subblock_durations = 0;
+  const bool validate_total_subblock_durations = include_subblock_duration;
+
+  for (int i = 0; i < num_subblocks; i++) {
+    if (include_subblock_duration) {
+      RETURN_IF_NOT_OK(rb.ReadULeb128(subblocks_[i].subblock_duration));
+      total_subblock_durations += subblocks_[i].subblock_duration;
+    }
+
+    auto param_definition_type = metadata_->param_definition.GetType();
+    if (!param_definition_type.has_value()) {
+      return absl::InvalidArgumentError("Unknown parameter definition type.");
+    } else if (*param_definition_type ==
+               ParamDefinition::kParameterDefinitionMixGain) {
+      MixGainParameterData mix_gain_param_data;
+      RETURN_IF_NOT_OK(mix_gain_param_data.ReadAndValidate(rb));
+      subblocks_[i].param_data = mix_gain_param_data;
+    } else {
+      return absl::UnimplementedError("Unsupported parameter definition type.");
+    }
+  }
+
+  if (validate_total_subblock_durations &&
+      total_subblock_durations != duration_) {
+    return absl::InvalidArgumentError(
+        "Subblock durations do not match the total duration.");
+  }
+
+  init_status_ = absl::OkStatus();
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

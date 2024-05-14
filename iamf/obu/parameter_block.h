@@ -17,6 +17,7 @@
 #include <variant>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -212,6 +213,24 @@ struct ParameterSubblock {
  */
 class ParameterBlockObu : public ObuBase {
  public:
+  /*!\brief Creates a `ParameterBlockObu` from a `ReadBitBuffer`.
+   *
+   * This function is designed to be used from the perspective of the decoder.
+   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * therefore it can fail.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param metadata Map containing the Per-ID parameter metadata.
+   * \param rb `ReadBitBuffer` where the `ParameterBlockObu` data is stored.
+   * Data read from the buffer is consumed.
+   * \return a `ParameterBlockObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<ParameterBlockObu> CreateFromBuffer(
+      const ObuHeader& header,
+      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
+          parameter_id_to_metadata,
+      ReadBitBuffer& rb);
+
   /*!\brief Constructor.
    *
    * After constructing `InitializeSubblocks()` MUST be called and return

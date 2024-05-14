@@ -194,7 +194,9 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
