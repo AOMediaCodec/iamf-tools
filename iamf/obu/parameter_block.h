@@ -38,6 +38,13 @@ struct AnimationStepInt16 {
 
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
+  /*!\brief Reads and validates the `AnimationStepInt16` to a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
+
   int16_t start_point_value;
 };
 
@@ -49,6 +56,13 @@ struct AnimationLinearInt16 {
   void Print() const;
 
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads and validates the `AnimationLinearInt16` to a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   int16_t start_point_value;
   int16_t end_point_value;
@@ -62,6 +76,13 @@ struct AnimationBezierInt16 {
   void Print() const;
 
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads and validates the `AnimationBezierInt16` to a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   int16_t start_point_value;
   int16_t end_point_value;
@@ -80,6 +101,13 @@ struct MixGainParameterData {
 
   friend bool operator==(const MixGainParameterData& lhs,
                          const MixGainParameterData& rhs) = default;
+
+  /*!\brief Reads and validates the `MixGainParameterData` to a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()`. Or a specific error code on failure.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   AnimationType animation_type;  // Serialized to a ULEB128.
 

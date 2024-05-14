@@ -18,6 +18,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -144,6 +145,11 @@ absl::Status AnimationStepInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
+absl::Status AnimationStepInt16::ReadAndValidate(ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
+  return absl::OkStatus();
+}
+
 void AnimationLinearInt16::Print() const {
   LOG(INFO) << "     // Linear";
   LOG(INFO) << "     start_point_value= " << start_point_value;
@@ -153,6 +159,12 @@ void AnimationLinearInt16::Print() const {
 absl::Status AnimationLinearInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteSigned16(start_point_value));
   RETURN_IF_NOT_OK(wb.WriteSigned16(end_point_value));
+  return absl::OkStatus();
+}
+
+absl::Status AnimationLinearInt16::ReadAndValidate(ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
+  RETURN_IF_NOT_OK(rb.ReadSigned16(end_point_value));
   return absl::OkStatus();
 }
 
@@ -171,6 +183,42 @@ absl::Status AnimationBezierInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteSigned16(control_point_value));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(control_point_relative_time, 8));
   return absl::OkStatus();
+}
+
+absl::Status AnimationBezierInt16::ReadAndValidate(ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
+  RETURN_IF_NOT_OK(rb.ReadSigned16(end_point_value));
+  RETURN_IF_NOT_OK(rb.ReadSigned16(control_point_value));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, control_point_relative_time));
+
+  return absl::OkStatus();
+}
+
+absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
+  DecodedUleb128 animation_type_uleb;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
+  animation_type = static_cast<AnimationType>(animation_type_uleb);
+  switch (animation_type) {
+    using enum AnimationType;
+    case kAnimateStep:
+      AnimationStepInt16 step_param_data;
+      RETURN_IF_NOT_OK(step_param_data.ReadAndValidate(rb));
+      param_data = step_param_data;
+      return absl::OkStatus();
+    case kAnimateLinear:
+      AnimationLinearInt16 linear_param_data;
+      RETURN_IF_NOT_OK(linear_param_data.ReadAndValidate(rb));
+      param_data = linear_param_data;
+      return absl::OkStatus();
+    case kAnimateBezier:
+      AnimationBezierInt16 bezier_param_data;
+      RETURN_IF_NOT_OK(bezier_param_data.ReadAndValidate(rb));
+      param_data = bezier_param_data;
+      return absl::OkStatus();
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unknown animation type= ", animation_type_uleb));
+  }
 }
 
 ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
