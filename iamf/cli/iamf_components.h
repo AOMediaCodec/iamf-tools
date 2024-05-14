@@ -35,6 +35,8 @@ namespace iamf_tools {
  * \param file_name_prefix Prefix of output file name.
  * \param output_wav_file_bit_depth_override Override for the bit-depth of
  *     the rendered wav file.
+ * \param validate_loudness Whether to validate computed loudness matches the
+ *     user-provided loudness.
  * \return Unique pointer to the created Mix Presentation finalizer.
  */
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
@@ -42,7 +44,8 @@ std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
         iamf_tools_cli_proto::MixPresentationObuMetadata>&
         mix_presentation_metadata,
     const std::string& file_name_prefix,
-    std::optional<uint8_t> output_wav_file_bit_depth_override);
+    std::optional<uint8_t> output_wav_file_bit_depth_override,
+    bool validate_loudness);
 
 /*\!brief Creates instances of `ObuSequencerBase`.
  *

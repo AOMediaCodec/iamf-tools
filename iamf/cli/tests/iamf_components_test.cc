@@ -24,10 +24,13 @@
 namespace iamf_tools {
 namespace {
 
+constexpr bool kValidateLoudness = true;
+
 TEST(IamfComponentsTest, CreateMixPresentationFinalizerReturnsNonNull) {
   EXPECT_NE(CreateMixPresentationFinalizer(
                 {}, /*file_name_prefix=*/"",
-                /*output_wav_file_bit_depth_override=*/std::nullopt),
+                /*output_wav_file_bit_depth_override=*/std::nullopt,
+                kValidateLoudness),
             nullptr);
 }
 
@@ -64,9 +67,9 @@ TEST(IamfComponentsTest, CanBeConfiguredWithFixedSizeLebGenerator) {
 
 TEST(IamfComponentsTest, CanBeConfiguredWithOutputWavFileBitDepthOverride) {
   const uint8_t kOutputWavFileBitDepthOverride = 16;
-  EXPECT_NE(
-      CreateMixPresentationFinalizer({}, "", kOutputWavFileBitDepthOverride),
-      nullptr);
+  EXPECT_NE(CreateMixPresentationFinalizer(
+                {}, "", kOutputWavFileBitDepthOverride, kValidateLoudness),
+            nullptr);
 }
 
 TEST(IamfComponentsTest, ReturnsEmptyListWhenLebGeneratorIsInvalid) {

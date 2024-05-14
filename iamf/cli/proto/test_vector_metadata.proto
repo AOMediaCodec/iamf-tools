@@ -39,6 +39,11 @@ message TestVectorMetadata {
   optional string base_test = 7;
   optional int32 ms_per_fragment = 8 [default = 10000];
   optional bool override_computed_recon_gains = 9 [default = false];
+
+  // Controls whether to validate the user-provided loudness against the
+  // computed loudness.
+  optional bool validate_user_loudness = 13 [default = false];
+
   // An override to control the output bit-depth of the output `rendered` wav
   // file.
   optional uint32 output_wav_file_bit_depth_override = 12;

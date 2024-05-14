@@ -374,7 +374,8 @@ absl::Status GenerateObus(
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
       user_metadata.mix_presentation_metadata(),
       user_metadata.test_vector_metadata().file_name_prefix(),
-      output_wav_file_bit_depth_override);
+      output_wav_file_bit_depth_override,
+      user_metadata.test_vector_metadata().validate_user_loudness());
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
       audio_elements, id_to_time_to_labeled_frame, mix_gain_parameter_blocks,
       mix_presentation_obus));

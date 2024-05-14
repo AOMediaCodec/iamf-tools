@@ -34,7 +34,8 @@ std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
         iamf_tools_cli_proto::MixPresentationObuMetadata>&
         mix_presentation_metadata,
     const std::string& /*file_name_prefix*/,
-    std::optional<uint8_t> /*output_wav_file_bit_depth_override*/) {
+    std::optional<uint8_t> /*output_wav_file_bit_depth_override*/,
+    bool /*validate_loudness*/) {
   return std::make_unique<
       MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer>(
       mix_presentation_metadata);

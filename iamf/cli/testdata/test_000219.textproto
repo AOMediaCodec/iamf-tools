@@ -17,6 +17,7 @@ test_vector_metadata {
     "blocks."
   file_name_prefix: "test_000219"
   is_valid: true
+  validate_user_loudness: true
   mp4_fixed_timestamp: "2023-04-19 00:00:00"
   primary_tested_spec_sections: [
     "3.2/num_samples_to_trim_at_end",
