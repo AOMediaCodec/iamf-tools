@@ -1432,5 +1432,99 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
   EXPECT_FALSE(obu.ok());
 }
 
+TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,  // Arbitrary.  Doesn't matter for this test.
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementSceneBased << 5,  // Req. for Ambisonics.
+      // `codec_config_id`.
+      2,  // Arbitrary.  Doesn't matter for this test.
+      // `num_substreams`.
+      4,  // Matters for validating the AmbisonicsMonoConfig.
+      // `audio_substream_ids`
+      3, 4, 5, 6,  // Arbitrary IDs, need one per substream.
+      // `num_parameters`.
+      0,  // Skip parameters, not part of the tested AmbisonicsMonoConfig.
+
+      // Now we're into the fields of the AmbisonicsMonoConfig.
+      static_cast<uint8_t>(
+          AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeMono),
+      4,          // `output_channel_count`
+      4,          // `substream_count`
+      0, 1, 2, 3  // `channel_mapping`, one per `output_channel_count`.
+  };
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+
+  // Validate
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu.value().GetAudioElementType(),
+            AudioElementObu::kAudioElementSceneBased);
+  EXPECT_EQ(obu.value().num_substreams_, 4);
+
+  AmbisonicsMonoConfig expected_ambisonics_mono_config = {
+      .output_channel_count = 4,
+      .substream_count = 4,
+      .channel_mapping = {0, 1, 2, 3}};
+  AmbisonicsConfig expected_ambisonics_config = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+      .ambisonics_config = expected_ambisonics_mono_config};
+  EXPECT_EQ(std::get<AmbisonicsConfig>(obu.value().config_),
+            expected_ambisonics_config);
+}
+
+TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,  // Arbitrary.  Doesn't matter for this test.
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementSceneBased << 5,  // Req. for Ambisonics.
+      // `codec_config_id`.
+      2,  // Arbitrary.  Doesn't matter for this test.
+      // `num_substreams`.
+      4,  // Matters for validating the AmbisonicsMonoConfig.
+      // `audio_substream_ids`.  Arbitrary IDs, need one per substream.
+      3, 4, 5, 6,
+      // `num_parameters`.
+      0,  // Skip parameters, not part of the tested AmbisonicsMonoConfig.
+
+      // Now we're into the fields of the AmbisonicsMonoConfig.
+      static_cast<uint8_t>(
+          AmbisonicsConfig::AmbisonicsMode::kAmbisonicsModeProjection),
+      4,  // `output_channel_count`
+      4,  // `substream_count`
+      0,  // `coupled_substream_count`
+      // We need (`substream_count` + `coupled_substream_count`) *
+      // `output_channel_count` values for `demixing matrix`.
+      0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, 0x05, 0x00, 0x06,
+      0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c,
+      0x00, 0x0d, 0x00, 0x0e, 0x00, 0x0f, 0x00, 0x10};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+
+  // Validate
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu.value().GetAudioElementType(),
+            AudioElementObu::kAudioElementSceneBased);
+  EXPECT_EQ(obu.value().num_substreams_, 4);
+
+  AmbisonicsProjectionConfig expected_ambisonics_projection_config = {
+      .output_channel_count = 4,
+      .substream_count = 4,
+      .coupled_substream_count = 0,
+      .demixing_matrix = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                          16}};
+  AmbisonicsConfig expected_ambisonics_config = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+      .ambisonics_config = expected_ambisonics_projection_config};
+  AmbisonicsConfig actual_ambisonics_config =
+      std::get<AmbisonicsConfig>(obu.value().config_);
+  EXPECT_EQ(std::get<AmbisonicsConfig>(obu.value().config_),
+            expected_ambisonics_config);
+}
+
 }  // namespace
 }  // namespace iamf_tools

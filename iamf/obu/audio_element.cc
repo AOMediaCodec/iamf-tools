@@ -36,6 +36,8 @@
 
 namespace iamf_tools {
 
+using absl::OkStatus;
+
 namespace {
 
 // Returns the number of elements in the demixing_matrix.
@@ -150,6 +152,7 @@ absl::Status ValidateUniqueParamDefinitionType(
                         collected_param_definition_types.end(),
                         "audio_element_params");
 }
+
 absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
   uint8_t next_valid_output_channel_count;
   RETURN_IF_NOT_OK(AmbisonicsConfig ::GetNextValidOutputChannelCount(
@@ -323,12 +326,63 @@ absl::Status ValidateAndWriteAmbisonicsConfig(const AmbisonicsConfig& config,
   }
 }
 
+absl::Status ReadAndValidateAmbisonicsProjection(
+    AmbisonicsProjectionConfig& projection_config,
+    DecodedUleb128 num_substreams, ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(
+      rb.ReadUnsignedLiteral(8, projection_config.output_channel_count));
+  RETURN_IF_NOT_OK(
+      rb.ReadUnsignedLiteral(8, projection_config.substream_count));
+  RETURN_IF_NOT_OK(
+      rb.ReadUnsignedLiteral(8, projection_config.coupled_substream_count));
+  const size_t demixing_matrix_size =
+      GetNumDemixingMatrixElements(projection_config);
+  for (size_t i = 0; i < demixing_matrix_size; ++i) {
+    int16_t demixing_matrix_value;
+    RETURN_IF_NOT_OK(rb.ReadSigned16(demixing_matrix_value));
+    projection_config.demixing_matrix.push_back(demixing_matrix_value);
+  }
+  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams));
+  return OkStatus();
+}
+
+absl::Status ReadAndValidateAmbisonicsMonoConfig(
+    AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
+    ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.output_channel_count));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.substream_count));
+  const size_t channel_mapping_size = mono_config.output_channel_count;
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Vector(channel_mapping_size, mono_config.channel_mapping));
+  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams));
+  return OkStatus();
+}
+
 // Reads the `AmbisonicsConfig` of an ambisonics `AudioElementObu`.
-absl::Status ValidateAndReadAmbisonicsConfig(AmbisonicsConfig& config,
+absl::Status ReadAndValidateAmbisonicsConfig(AmbisonicsConfig& config,
                                              DecodedUleb128 num_substreams,
                                              ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "Reading ambisonics config is not implemented.");
+  DecodedUleb128 ambisonics_mode;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(ambisonics_mode));
+  config.ambisonics_mode =
+      static_cast<AmbisonicsConfig::AmbisonicsMode>(ambisonics_mode);
+  switch (config.ambisonics_mode) {
+    using enum AmbisonicsConfig::AmbisonicsMode;
+    case kAmbisonicsModeMono: {
+      config.ambisonics_config = AmbisonicsMonoConfig();
+      return ReadAndValidateAmbisonicsMonoConfig(
+          std::get<AmbisonicsMonoConfig>(config.ambisonics_config),
+          num_substreams, rb);
+    }
+    case kAmbisonicsModeProjection: {
+      config.ambisonics_config = AmbisonicsProjectionConfig();
+      return ReadAndValidateAmbisonicsProjection(
+          std::get<AmbisonicsProjectionConfig>(config.ambisonics_config),
+          num_substreams, rb);
+    }
+    default:
+      return OkStatus();
+  }
 }
 
 }  // namespace
@@ -691,7 +745,7 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
 
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters_));
 
-  // Loop to write the parameter portion of the obu.
+  // Loop to read the parameter portion of the obu.
   for (int i = 0; i < num_parameters_; ++i) {
     AudioElementParam audio_element_param;
     RETURN_IF_NOT_OK(ValidateAndReadAudioElementParam(audio_element_param, rb));
@@ -707,7 +761,8 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
       return ValidateAndReadScalableChannelLayout(
           std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, rb);
     case kAudioElementSceneBased:
-      return ValidateAndReadAmbisonicsConfig(
+      config_ = AmbisonicsConfig();
+      return ReadAndValidateAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), num_substreams_, rb);
     default: {
       ExtensionConfig extension_config;
