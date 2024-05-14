@@ -28,6 +28,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/codec/aac_encoder_decoder.h"
 #include "iamf/cli/codec/decoder_base.h"
+#include "iamf/cli/codec/lpcm_decoder.h"
 #include "iamf/cli/codec/opus_encoder_decoder.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
@@ -43,6 +44,7 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
+      decoder = std::make_unique<LpcmDecoder>(codec_config, num_channels);
       break;
     case kCodecIdOpus:
       decoder = std::make_unique<OpusDecoder>(codec_config, num_channels);
@@ -113,8 +115,8 @@ absl::Status DecodeAudioFrame(const AudioFrameWithData& encoded_frame,
     RETURN_IF_NOT_OK(decoder->DecodeAudioFrame(
         encoded_frame.obu.audio_frame_, decoded_audio_frame.decoded_samples));
   } else {
-    // Currently `decoder` remains `nullptr` for LPCM and FLAC, which are
-    // lossless decoders and the decoding is skipped.
+    // Currently `decoder` remains `nullptr` for FLAC, which is a lossless
+    // codec and the decoding is skipped.
     // TODO(b/280490947): Support FLAC fully by decoding with `libflac`.
     //                    Although since it is lossless it *should* be
     //                    equivalent.

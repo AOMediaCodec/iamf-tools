@@ -80,6 +80,7 @@ cc_library(
         ":wav_writer",
         "//iamf/cli/codec:aac_encoder_decoder",
         "//iamf/cli/codec:decoder_base",
+        "//iamf/cli/codec:lpcm_decoder",
         "//iamf/cli/codec:opus_encoder_decoder",
         "//iamf/common:macros",
         "//iamf/obu:codec_config",

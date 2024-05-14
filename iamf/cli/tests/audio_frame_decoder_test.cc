@@ -69,8 +69,6 @@ std::list<AudioFrameWithData> PrepareEncodedAudioFrames(
           std::vector<uint8_t>(kNumSamplesPerFrame * kBytesPerSample, 0)),
       .start_timestamp = 0,
       .end_timestamp = kNumSamplesPerFrame,
-      .raw_samples = std::vector<std::vector<int32_t>>(
-          kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels, 0)),
       .down_mixing_params = kDownMixingParams,
       .audio_element_with_data = &audio_elements.at(kAudioElementId),
   });
@@ -175,9 +173,17 @@ TEST(Decode, DecodesLpcmFrame) {
   EXPECT_EQ(decoded_audio_frame.audio_element_with_data,
             &audio_elements.at(kAudioElementId));
 
-  // For LPCM, decoded samples are identical to raw amples.
-  EXPECT_EQ(decoded_audio_frame.decoded_samples,
-            encoded_audio_frames.back().raw_samples);
+  // For LPCM, the input bytes are all zeros, but we expect the decoder to
+  // combine kBytesPerSample bytes each into one int32_t sample.
+  // There are kNumSamplesPerFrame samples in the frame.
+  EXPECT_EQ(decoded_audio_frame.decoded_samples.size(), kNumSamplesPerFrame);
+  for (const std::vector<int32_t>& samples_for_one_time_tick :
+       decoded_audio_frame.decoded_samples) {
+    EXPECT_EQ(samples_for_one_time_tick.size(), kNumChannels);
+    for (int32_t sample : samples_for_one_time_tick) {
+      EXPECT_EQ(sample, 0);
+    }
+  }
 }
 
 std::filesystem::path GetFirstExpectedWavFile(uint32_t substream_id) {
