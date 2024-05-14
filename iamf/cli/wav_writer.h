@@ -36,9 +36,10 @@ class WavWriter {
    * \param num_channels Number of channels in the wav file, must be 1 or 2.
    * \param sample_rate_hz Sample rate of the wav file in Hz.
    * \param bit_depth Bit-depth of the wav file, must be 16, 24, or 32.
+   * \param write_header If true, the wav header is written.
    */
   WavWriter(const std::string& wav_filename, int num_channels,
-            int sample_rate_hz, int bit_depth);
+            int sample_rate_hz, int bit_depth, bool write_header = true);
 
   /*\!brief Moves the `WavWriter` without closing the underlying file.*/
   WavWriter(WavWriter&& original);
@@ -69,6 +70,7 @@ class WavWriter {
   const size_t num_channels_;
   const size_t sample_rate_hz_;
   const size_t bit_depth_;
+  const bool write_header_;
   size_t total_samples_written_;
   FILE* file_;
   const std::string filename_;

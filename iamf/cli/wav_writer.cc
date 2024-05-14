@@ -25,10 +25,11 @@
 namespace iamf_tools {
 
 WavWriter::WavWriter(const std::string& wav_filename, int num_channels,
-                     int sample_rate_hz, int bit_depth)
+                     int sample_rate_hz, int bit_depth, bool write_header)
     : num_channels_(num_channels),
       sample_rate_hz_(sample_rate_hz),
       bit_depth_(bit_depth),
+      write_header_(write_header),
       total_samples_written_(0),
       filename_(wav_filename) {
   // Open the file to write to.
@@ -43,16 +44,24 @@ WavWriter::WavWriter(const std::string& wav_filename, int num_channels,
   // call to `Finalize`.
   switch (bit_depth_) {
     case 16:
-      CHECK_NE(WriteWavHeader(file_, 0, sample_rate_hz_, num_channels_), 0)
-          << "Error writing header of file \"" << filename_ << "\"";
+      if (write_header) {
+        CHECK_NE(WriteWavHeader(file_, 0, sample_rate_hz_, num_channels_), 0)
+            << "Error writing header of file \"" << filename_ << "\"";
+      }
       return;
     case 24:
-      CHECK_NE(WriteWavHeader24Bit(file_, 0, sample_rate_hz_, num_channels_), 0)
-          << "Error writing header of file \"" << filename_ << "\"";
+      if (write_header) {
+        CHECK_NE(WriteWavHeader24Bit(file_, 0, sample_rate_hz_, num_channels_),
+                 0)
+            << "Error writing header of file \"" << filename_ << "\"";
+      }
       return;
     case 32:
-      CHECK_NE(WriteWavHeader32Bit(file_, 0, sample_rate_hz_, num_channels_), 0)
-          << "Error writing header of file \"" << filename_ << "\"";
+      if (write_header) {
+        CHECK_NE(WriteWavHeader32Bit(file_, 0, sample_rate_hz_, num_channels_),
+                 0)
+            << "Error writing header of file \"" << filename_ << "\"";
+      }
       return;
     default:
       LOG(WARNING) << "This implementation does not support writing "
@@ -67,6 +76,7 @@ WavWriter::WavWriter(WavWriter&& original)
     : num_channels_(original.num_channels_),
       sample_rate_hz_(original.sample_rate_hz_),
       bit_depth_(original.bit_depth_),
+      write_header_(original.write_header_),
       total_samples_written_(original.total_samples_written_),
       file_(original.file_),
       filename_(original.filename_) {
@@ -148,20 +158,22 @@ WavWriter::~WavWriter() {
   }
   // Finalize the temporary header based on the total number of samples written
   // and close the file.
-  std::fseek(file_, 0, SEEK_SET);
-  if (bit_depth_ == 16) {
-    WriteWavHeader(file_, total_samples_written_, sample_rate_hz_,
-                   num_channels_);
-  } else if (bit_depth_ == 24) {
-    WriteWavHeader24Bit(file_, total_samples_written_, sample_rate_hz_,
-                        num_channels_);
-  } else if (bit_depth_ == 32) {
-    WriteWavHeader32Bit(file_, total_samples_written_, sample_rate_hz_,
-                        num_channels_);
-  } else {
-    LOG(WARNING) << "This implementation does not support writing "
-                 << bit_depth_ << "-bit wav files.";
-    return;
+  if (write_header_) {
+    std::fseek(file_, 0, SEEK_SET);
+    if (bit_depth_ == 16) {
+      WriteWavHeader(file_, total_samples_written_, sample_rate_hz_,
+                     num_channels_);
+    } else if (bit_depth_ == 24) {
+      WriteWavHeader24Bit(file_, total_samples_written_, sample_rate_hz_,
+                          num_channels_);
+    } else if (bit_depth_ == 32) {
+      WriteWavHeader32Bit(file_, total_samples_written_, sample_rate_hz_,
+                          num_channels_);
+    } else {
+      LOG(WARNING) << "This implementation does not support writing "
+                   << bit_depth_ << "-bit wav files.";
+      return;
+    }
   }
   std::fclose(file_);
 }
