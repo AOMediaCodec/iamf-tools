@@ -311,9 +311,9 @@ TEST(CreateFromBuffer, ValidAudioFrameWithImplicitId) {
   EXPECT_TRUE(obu.ok());
   // audio_substream_id is set implicitly to the value of `obu_type`
   AudioFrameObu expected_obu =
-      AudioFrameObu(header, /*audio_substream_id=*/6,
+      AudioFrameObu(header, /*audio_substream_id=*/0,
                     /*audio_frame=*/{8, 6, 24, 55, 11});
-  EXPECT_EQ(obu->GetSubstreamId(), 6);
+  EXPECT_EQ(obu->GetSubstreamId(), 0);
   EXPECT_EQ(obu->audio_frame_, std::vector<uint8_t>({8, 6, 24, 55, 11}));
 }
 

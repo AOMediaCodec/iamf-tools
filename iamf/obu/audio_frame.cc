@@ -74,7 +74,7 @@ absl::Status AudioFrameObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
     // it is implied by `obu_type`.
     RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id_, encoded_uleb128_size));
   } else {
-    audio_substream_id_ = header_.obu_type;
+    audio_substream_id_ = header_.obu_type - kObuIaAudioFrameId0;
   }
   RETURN_IF_NOT_OK(rb.ReadUint8Vector(
       payload_serialized_size_ - encoded_uleb128_size, audio_frame_));
