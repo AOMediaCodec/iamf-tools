@@ -12,6 +12,7 @@
 #include "iamf/cli/global_timing_module.h"
 
 #include <cstdint>
+#include <optional>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -34,22 +35,23 @@ absl::Status GlobalTimingModule::GetTimestampsForId(
     const DecodedUleb128 id, const uint32_t duration,
     absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
     int32_t& start_timestamp, int32_t& end_timestamp) {
-  if (id_to_timing_data.contains(id)) {
-    auto& timing_data = id_to_timing_data.at(id);
-    start_timestamp = timing_data.timestamp;
-    end_timestamp = start_timestamp + duration;
-    timing_data.timestamp += duration;
-    return absl::OkStatus();
+  auto timing_data_iter = id_to_timing_data.find(id);
+  if (timing_data_iter == id_to_timing_data.end()) {
+    // This allows generating timing information when `NO_CHECK_ERROR` is
+    // defined.
+    // TODO(b/278865608): Find better solutions to generate negative test
+    //                    vectors.
+    start_timestamp = 0;
+    end_timestamp = duration;
+    return absl::InvalidArgumentError(
+        absl::StrCat("Timestamps for ID: ", id, " not found"));
   }
 
-  LOG(ERROR) << "Timestamps for ID: " << id << " not found";
-
-  // This allows generating timing information when `NO_CHECK_ERROR` is defined.
-  // TODO(b/278865608): Find better solutions to generate negative test
-  //                    vectors.
-  start_timestamp = 0;
-  end_timestamp = duration;
-  return absl::InvalidArgumentError("");
+  auto& timing_data = timing_data_iter->second;
+  start_timestamp = timing_data.timestamp;
+  end_timestamp = start_timestamp + duration;
+  timing_data.timestamp += duration;
+  return absl::OkStatus();
 }
 
 absl::Status GlobalTimingModule::Initialize(
@@ -69,8 +71,7 @@ absl::Status GlobalTimingModule::Initialize(
           ValidateNotEqual(sample_rate, uint32_t{0}, "sample rate"));
 
       const auto [unused_iter, inserted] = audio_frame_timing_data_.insert(
-          {audio_substream_id,
-           {.rate = sample_rate, .global_start_timestamp = 0, .timestamp = 0}});
+          {audio_substream_id, {.rate = sample_rate, .timestamp = 0}});
 
       if (!inserted) {
         return absl::InvalidArgumentError(
@@ -86,11 +87,8 @@ absl::Status GlobalTimingModule::Initialize(
     RETURN_IF_NOT_OK(
         ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
 
-    const auto [unused_iter, inserted] =
-        parameter_block_timing_data_.insert({parameter_id,
-                                             {.rate = parameter_rate,
-                                              .global_start_timestamp = 0,
-                                              .timestamp = 0}});
+    const auto [unused_iter, inserted] = parameter_block_timing_data_.insert(
+        {parameter_id, {.rate = parameter_rate, .timestamp = 0}});
     if (!inserted) {
       return absl::InvalidArgumentError(
           absl::StrCat("Parameter ID: ", parameter_id,
@@ -115,42 +113,30 @@ absl::Status GlobalTimingModule::GetNextParameterBlockTimestamps(
   RETURN_IF_NOT_OK(GetTimestampsForId(parameter_id, duration,
                                       parameter_block_timing_data_,
                                       start_timestamp, end_timestamp));
-  return CompareTimestamps(input_start_timestamp, start_timestamp);
+  return CompareTimestamps(
+      input_start_timestamp, start_timestamp,
+      absl::StrCat("In GetNextParameterBlockTimestamps() for param ID= ",
+                   parameter_id, ": "));
 }
 
-absl::Status GlobalTimingModule::ValidateParameterBlockCoversAudioFrame(
-    const uint32_t parameter_id, const int32_t parameter_block_start,
-    const int32_t parameter_block_end,
-    const uint32_t audio_substream_id) const {
-  if (!audio_frame_timing_data_.contains(audio_substream_id)) {
-    LOG(ERROR) << "Audio substream ID: " << audio_substream_id
-               << " has no global starting timestamp.";
-    return absl::InvalidArgumentError("");
+absl::Status GlobalTimingModule::GetGlobalAudioFrameTimestamp(
+    std::optional<int32_t>& global_timestamp) const {
+  if (audio_frame_timing_data_.empty()) {
+    return absl::InvalidArgumentError("No audio frames to get timestamps for");
   }
 
-  const auto& timing_data = audio_frame_timing_data_.at(audio_substream_id);
-
-  // Check that this parameter block's starting/ending timestamp is at
-  // least as early/late as the global starting/ending timestamp of its
-  // associated audio substreams.
-  if (parameter_block_start > timing_data.global_start_timestamp) {
-    LOG(ERROR) << "Parameter stream with ID: " << parameter_id << " starts at "
-               << parameter_block_start
-               << " , which is later than its associated audio"
-               << " substream with ID: " << audio_substream_id
-               << " starting at " << timing_data.global_start_timestamp;
-    return absl::InvalidArgumentError("");
+  const int32_t common_timestamp =
+      audio_frame_timing_data_.begin()->second.timestamp;
+  for (const auto& [unused_id, timing_data] : audio_frame_timing_data_) {
+    if (common_timestamp != timing_data.timestamp) {
+      // Some audio frames have not advance their timestamps yet, return OK
+      // but let `global_timestamp` hold no value.
+      global_timestamp = std::nullopt;
+      return absl::OkStatus();
+    }
   }
 
-  if (parameter_block_end < timing_data.timestamp) {
-    LOG(ERROR) << "Parameter stream with ID: " << parameter_id << " ends at "
-               << parameter_block_end
-               << " , which is earlier than its associated audio"
-               << " substream with ID: " << audio_substream_id << " ending at "
-               << timing_data.timestamp;
-    return absl::InvalidArgumentError("");
-  }
-
+  global_timestamp = common_timestamp;
   return absl::OkStatus();
 }
 

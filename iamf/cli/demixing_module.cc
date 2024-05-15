@@ -789,8 +789,9 @@ absl::Status StoreSamplesForAudioElementId(
     }
 
     // Validate that the frames are all aligned in time.
-    RETURN_IF_NOT_OK(
-        CompareTimestamps(common_start_timestamp, audio_frame.start_timestamp));
+    RETURN_IF_NOT_OK(CompareTimestamps(common_start_timestamp,
+                                       audio_frame.start_timestamp,
+                                       "In StoreSamplesForAudioElementId(): "));
 
     const auto& labels = substream_id_labels_iter->second;
     int channel_index = 0;

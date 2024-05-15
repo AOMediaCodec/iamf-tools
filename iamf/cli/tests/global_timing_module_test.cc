@@ -211,47 +211,7 @@ TEST_F(GlobalTimingModuleTest, InvalidWhenParameterRateIsZero) {
   EXPECT_FALSE(Initialize().ok());
 }
 
-TEST_F(GlobalTimingModuleTest, ValidatesParameterBlockCoverage) {
-  InitializeForTestingValidateParameterBlockCoverage();
-
-  EXPECT_TRUE(
-      global_timing_module_
-          ->ValidateParameterBlockCoversAudioFrame(
-              kParameterIdForLoggingPurposes, 0, 1024, kFirstAudioFrameId)
-          .ok());
-}
-
-TEST_F(GlobalTimingModuleTest, InvalidWhenParameterStreamEndsEarly) {
-  InitializeForTestingValidateParameterBlockCoverage();
-
-  EXPECT_FALSE(
-      global_timing_module_
-          ->ValidateParameterBlockCoversAudioFrame(
-              kParameterIdForLoggingPurposes, 0, 1023, kFirstAudioFrameId)
-          .ok());
-}
-
-TEST_F(GlobalTimingModuleTest,
-       InvalidWhenParameterStreamStartsLateAndEndsSameTime) {
-  InitializeForTestingValidateParameterBlockCoverage();
-
-  EXPECT_FALSE(
-      global_timing_module_
-          ->ValidateParameterBlockCoversAudioFrame(
-              kParameterIdForLoggingPurposes, 1, 1024, kFirstAudioFrameId)
-          .ok());
-}
-
-TEST_F(GlobalTimingModuleTest,
-       InvalidWhenParameterStreamStartsLateAndHasSameDuration) {
-  InitializeForTestingValidateParameterBlockCoverage();
-
-  EXPECT_FALSE(
-      global_timing_module_
-          ->ValidateParameterBlockCoversAudioFrame(
-              kParameterIdForLoggingPurposes, 1, 1025, kFirstAudioFrameId)
-          .ok());
-}
+// TODO(b/291732058): Bring back parameter block coverage validation.
 
 }  // namespace
 }  // namespace iamf_tools

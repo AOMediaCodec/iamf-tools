@@ -55,6 +55,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
@@ -91,32 +92,74 @@ absl::Status PartitionParameterMetadata(
   return absl::OkStatus();
 }
 
-// TODO(b/315924757): When parameter blocks are generated iteratively (one
-//                    timestamp at a time), this function can be removed or
-//                    greatly simplified.
-absl::Status AddAllDemixingParameterBlocksForCurrentTimestamp(
-    const std::list<ParameterBlockWithData>::const_iterator
-        demixing_parameter_block_end,
-    std::list<ParameterBlockWithData>::const_iterator&
-        demixing_parameter_block_iter,
-    ParametersManager& parameters_manager, int32_t& current_timestamp,
-    int32_t& next_timestamp) {
-  while (demixing_parameter_block_iter != demixing_parameter_block_end &&
-         demixing_parameter_block_iter->start_timestamp == current_timestamp) {
-    if (next_timestamp == current_timestamp) {
-      next_timestamp = demixing_parameter_block_iter->end_timestamp;
-    } else if (next_timestamp != demixing_parameter_block_iter->end_timestamp) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Inconsistent end timestamp: expecting ", next_timestamp, " but got ",
-          demixing_parameter_block_iter->end_timestamp));
+// TODO(b/306319126): Remove when parameter block metadata are taken one frame
+//                    at a time.
+absl::Status AddAllParameterBlockMetadataForCurrentTimestamp(
+    const google::protobuf::RepeatedPtrField<
+        iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+        parameter_block_metadata,
+    ParameterBlockGenerator& parameter_block_generator,
+    int32_t& current_timestamp) {
+  int32_t next_timestamp = current_timestamp;
+  for (const auto& metadata : parameter_block_metadata) {
+    if (metadata.start_timestamp() == current_timestamp) {
+      uint32_t duration;
+      RETURN_IF_NOT_OK(
+          parameter_block_generator.AddMetadata(metadata, duration));
+      const int32_t end_timestamp = current_timestamp + duration;
+      if (next_timestamp == current_timestamp) {
+        next_timestamp = end_timestamp;
+      } else if (next_timestamp != end_timestamp) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("Inconsistent end timestamp: expecting ",
+                         next_timestamp, " but got ", end_timestamp));
+      }
+    }
+  }
+
+  current_timestamp = next_timestamp;
+  return absl::OkStatus();
+}
+
+absl::Status MaybeGenerateDemixingAndMixGainParameterBlocks(
+    const google::protobuf::RepeatedPtrField<
+        iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+        parameter_block_metadata,
+    ParametersManager& parameters_manager,
+    ParameterBlockGenerator& parameter_block_generator,
+    GlobalTimingModule& global_timing_module, int32_t& current_timestamp,
+    std::list<ParameterBlockWithData>& demixing_parameter_blocks,
+    std::list<ParameterBlockWithData>& mix_gain_parameter_blocks) {
+  std::optional<int32_t> global_audio_frame_timestamp;
+  RETURN_IF_NOT_OK(global_timing_module.GetGlobalAudioFrameTimestamp(
+      global_audio_frame_timestamp));
+
+  // Only generate parameter blocks when all audio frames corresponding to
+  // the same temporal units are ready.
+  if (global_audio_frame_timestamp == current_timestamp) {
+    RETURN_IF_NOT_OK(AddAllParameterBlockMetadataForCurrentTimestamp(
+        parameter_block_metadata, parameter_block_generator,
+        current_timestamp));
+
+    std::list<ParameterBlockWithData> mix_gain_parameter_blocks_for_frame;
+    std::list<ParameterBlockWithData> demixing_parameter_blocks_for_frame;
+    RETURN_IF_NOT_OK(parameter_block_generator.GenerateDemixing(
+        global_timing_module, demixing_parameter_blocks_for_frame));
+    RETURN_IF_NOT_OK(parameter_block_generator.GenerateMixGain(
+        global_timing_module, mix_gain_parameter_blocks_for_frame));
+
+    // Add the newly generated demixing parameter blocks to the parameters
+    // manager so they can be easily queried by the audio frame genrator.
+    for (const auto& demixing_parameter_block :
+         demixing_parameter_blocks_for_frame) {
+      parameters_manager.AddDemixingParameterBlock(&demixing_parameter_block);
     }
 
-    parameters_manager.AddDemixingParameterBlock(
-        &(*demixing_parameter_block_iter));
-
-    ++demixing_parameter_block_iter;
+    demixing_parameter_blocks.splice(demixing_parameter_blocks.end(),
+                                     demixing_parameter_blocks_for_frame);
+    mix_gain_parameter_blocks.splice(mix_gain_parameter_blocks.end(),
+                                     mix_gain_parameter_blocks_for_frame);
   }
-  current_timestamp = next_timestamp;
 
   return absl::OkStatus();
 }
@@ -225,21 +268,11 @@ absl::Status GenerateObus(
       global_timing_module.Initialize(audio_elements, param_definitions));
 
   ParameterBlockGenerator parameter_block_generator(
-      user_metadata.parameter_block_metadata(),
       user_metadata.test_vector_metadata().override_computed_recon_gains(),
       parameter_id_to_metadata);
   RETURN_IF_NOT_OK(parameter_block_generator.Initialize(
       ia_sequence_header_obu, audio_elements, mix_presentation_obus,
       param_definitions));
-
-  // Generate demixing parameter blocks first. They are required to generate the
-  // audio frames.
-  std::list<ParameterBlockWithData> demixing_parameter_blocks;
-  RETURN_IF_NOT_OK(parameter_block_generator.GenerateDemixing(
-      global_timing_module, demixing_parameter_blocks));
-  std::list<ParameterBlockWithData> mix_gain_parameter_blocks;
-  RETURN_IF_NOT_OK(parameter_block_generator.GenerateMixGain(
-      global_timing_module, mix_gain_parameter_blocks));
 
   // Put generated parameter blocks in a manager that supports easier queries.
   ParametersManager parameters_manager(audio_elements);
@@ -273,19 +306,16 @@ absl::Status GenerateObus(
   RETURN_IF_NOT_OK(InitAudioFrameDecoderForAllAudioElements(
       audio_elements, audio_frame_decoder));
 
-  // TODO(b/315924757): Currently getting all parameter blocks corresponding to
-  //                    a timestamp from `parameter_blocks` to simulate
-  //                    iterative generations.
-  auto demixing_parameter_block_iter = demixing_parameter_blocks.cbegin();
-  int32_t current_timestamp = 0;
-  int32_t next_timestamp = 0;
-
   // TODO(b/329375123): Make these two while loops run on two threads. The
   //                    one below should be on Thread 1.
+  std::list<ParameterBlockWithData> demixing_parameter_blocks;
+  std::list<ParameterBlockWithData> mix_gain_parameter_blocks;
+  int32_t current_timestamp = 0;
   while (audio_frame_generator.TakingSamples()) {
-    RETURN_IF_NOT_OK(AddAllDemixingParameterBlocksForCurrentTimestamp(
-        demixing_parameter_blocks.cend(), demixing_parameter_block_iter,
-        parameters_manager, current_timestamp, next_timestamp));
+    RETURN_IF_NOT_OK(MaybeGenerateDemixingAndMixGainParameterBlocks(
+        user_metadata.parameter_block_metadata(), parameters_manager,
+        parameter_block_generator, global_timing_module, current_timestamp,
+        demixing_parameter_blocks, mix_gain_parameter_blocks));
 
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
@@ -335,8 +365,10 @@ absl::Status GenerateObus(
         id_to_time_to_labeled_decoded_frame[id][start_timestamp] =
             labeled_decoded_frame;
       }
-
       audio_frames.splice(audio_frames.end(), temp_audio_frames);
+
+      // TODO(b/315924757): Generate recon gain parameter blocks iteratively
+      //                    here.
     }
   }
   PrintAudioFrames(audio_frames);

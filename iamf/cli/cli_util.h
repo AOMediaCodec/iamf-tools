@@ -13,9 +13,7 @@
 #ifndef CLI_CLI_UTIL_H_
 #define CLI_CLI_UTIL_H_
 
-#include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <list>
 #include <string>
 #include <vector>
@@ -24,6 +22,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -105,11 +104,14 @@ absl::Status CollectAndValidateParamDefinitions(
  *
  * \param expected_timestamp Expected timestamp.
  * \param actual_timestamp Actual timestamp.
+ * \param prompt Prompt message to be included in the error status when the
+ *     timestamps do not match. Defaulted to be empty.
  * \return `absl::OkStatus()` if the timestamps are equal.
- * `absl::InvalidArgumentError("")` otherwise.
+ *     `absl::InvalidArgumentError()` with a custom message otherwise.
  */
 absl::Status CompareTimestamps(int32_t expected_timestamp,
-                               int32_t actual_timestamp);
+                               int32_t actual_timestamp,
+                               absl::string_view prompt = "");
 
 /*\!brief Writes interlaced PCM samples into the output buffer.
  *

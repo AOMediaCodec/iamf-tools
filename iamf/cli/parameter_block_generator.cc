@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/parameter_block_generator.h"
 
-#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <list>
@@ -22,9 +21,9 @@
 #include <variant>
 #include <vector>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -73,70 +72,6 @@ absl::Status GetParamFieldsFromAudioElementParam(
   }
   *param_definition = audio_element_param.param_definition.get();
   parameter_id = (*param_definition)->parameter_id_;
-  return absl::OkStatus();
-}
-
-absl::Status PopulateAssociatedAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
-    absl::flat_hash_map<uint32_t,
-                        absl::flat_hash_set<const AudioElementWithData*>>&
-        associated_audio_elements) {
-  // Loop through all audio element with data to associate them with referred
-  // `parameter_id`s.
-  for (const auto& [audio_element_id, audio_element] : audio_elements) {
-    const auto& obu = audio_element.obu;
-    // Loop over all parameters within this audio element.
-    for (const auto& audio_element_param : obu.audio_element_params_) {
-      // Get the `param_definition`, `param_definition_type`, and `parameter_id`
-      // for this `AudioElementParam`.
-      const ParamDefinition* param_definition = nullptr;
-      ParamDefinition::ParameterDefinitionType param_definition_type;
-      DecodedUleb128 parameter_id;
-      RETURN_IF_NOT_OK(GetParamFieldsFromAudioElementParam(
-          audio_element_param, &param_definition, param_definition_type,
-          parameter_id));
-
-      associated_audio_elements[parameter_id].insert(&audio_element);
-    }
-  }
-
-  // Loop through all Mix Presentation OBUs to associate audio elements with
-  // referred `parameter_id`s.
-  for (auto& mix_presentation_obu : mix_presentation_obus) {
-    for (int i = 0; i < mix_presentation_obu.GetNumSubMixes(); ++i) {
-      const auto& sub_mix = mix_presentation_obu.sub_mixes_[i];
-
-      // Check the `output_mix_config`. If a parameter is used an output mix,
-      // then all IDs in `sub_mix.audio_elements` shall be associated with
-      // that parameter.
-      const auto output_mix_parameter_id =
-          sub_mix.output_mix_config.output_mix_gain.parameter_id_;
-
-      // Search through all `element_mix_config`.
-      for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
-        const auto element_mix_parameter_id =
-            sub_mix_audio_element.element_mix_config.mix_gain.parameter_id_;
-        const uint32_t element_mix_audio_element_id =
-            sub_mix_audio_element.audio_element_id;
-        if (!audio_elements.contains(element_mix_audio_element_id)) {
-          LOG(ERROR) << "Audio Element ID: " << element_mix_audio_element_id
-                     << " mentioned in Mix Presentation OBU ID: "
-                     << mix_presentation_obu.GetMixPresentationId()
-                     << " Sub Mix[" << i << "] is not defined";
-          return absl::InvalidArgumentError("");
-        }
-
-        const auto& audio_element =
-            audio_elements.at(element_mix_audio_element_id);
-        for (const auto& parameter_id :
-             {element_mix_parameter_id, output_mix_parameter_id}) {
-          associated_audio_elements[parameter_id].insert(&audio_element);
-        }
-      }
-    }
-  }
   return absl::OkStatus();
 }
 
@@ -536,11 +471,6 @@ absl::Status GenerateParameterBlockSubblock(
   return absl::OkStatus();
 }
 
-struct ParameterStreamTimestamps {
-  int32_t global_start;
-  int32_t global_end;
-};
-
 absl::Status PopulateCommonFields(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata,
@@ -584,15 +514,11 @@ absl::Status PopulateSubblocks(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata,
     const bool override_computed_recon_gains,
-    const absl::flat_hash_map<uint32_t,
-                              absl::flat_hash_set<const AudioElementWithData*>>&
-        associated_audio_elements,
     const ProfileVersion primary_profile,
     const ReconGainGenerator* recon_gain_generator,
     PerIdParameterMetadata& per_id_metadata,
-    ParameterBlockWithData& parameter_block_with_data,
-    std::list<ParameterBlockWithData>& output_parameter_blocks) {
-  auto& parameter_block_obu = *parameter_block_with_data.obu;
+    ParameterBlockWithData& output_parameter_block) {
+  auto& parameter_block_obu = *output_parameter_block.obu;
   const DecodedUleb128 num_subblocks = parameter_block_obu.GetNumSubblocks();
 
   // All subblocks will include `subblock_duration` or none will include it.
@@ -607,12 +533,12 @@ absl::Status PopulateSubblocks(
   }
   for (int i = 0; i < num_subblocks; ++i) {
     RETURN_IF_NOT_OK(GenerateParameterBlockSubblock(
-        override_computed_recon_gains,
-        parameter_block_with_data.start_timestamp, per_id_metadata,
-        include_subblock_duration, i, parameter_block_metadata.subblocks(i),
-        recon_gain_generator, parameter_block_obu));
+        override_computed_recon_gains, output_parameter_block.start_timestamp,
+        per_id_metadata, include_subblock_duration, i,
+        parameter_block_metadata.subblocks(i), recon_gain_generator,
+        parameter_block_obu));
   }
-  output_parameter_blocks.push_back(std::move(parameter_block_with_data));
+
   return absl::OkStatus();
 }
 
@@ -649,17 +575,11 @@ absl::Status ParameterBlockGenerator::Initialize(
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
   if (!ia_sequence_header_obu.has_value()) {
-    LOG(ERROR) << "IA Sequence Header OBU is not present.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("IA Sequence Header OBU is not present");
   }
   primary_profile_ = ia_sequence_header_obu->GetPrimaryProfile();
 
-  RETURN_IF_NOT_OK(PopulateAssociatedAudioElements(
-      audio_elements, mix_presentation_obus, associated_audio_elements_));
-
-  for (const auto& parameter_block_metadata : parameter_block_metadata_) {
-    // Populate the `PerIdParameterMetadata`.
-    const DecodedUleb128 parameter_id = parameter_block_metadata.parameter_id();
+  for (const auto [parameter_id, unused_param_definition] : param_definitions) {
     auto [iter, inserted] = parameter_id_to_metadata_.insert(
         {parameter_id, PerIdParameterMetadata()});
     if (inserted) {
@@ -675,12 +595,34 @@ absl::Status ParameterBlockGenerator::Initialize(
         param_definition_type != ParamDefinition::kParameterDefinitionMixGain &&
         param_definition_type !=
             ParamDefinition::kParameterDefinitionReconGain) {
-      LOG(ERROR) << "Unsupported parameter type: " << param_definition_type;
-      return absl::UnknownError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported parameter type: ", param_definition_type));
     }
-    typed_proto_metadata_[param_definition_type].push_back(
-        parameter_block_metadata);
   }
+
+  return absl::OkStatus();
+}
+
+absl::Status ParameterBlockGenerator::AddMetadata(
+    const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+        parameter_block_metadata,
+    uint32_t& duration) {
+  const auto& per_id_metadata_iter =
+      parameter_id_to_metadata_.find(parameter_block_metadata.parameter_id());
+  if (per_id_metadata_iter == parameter_id_to_metadata_.end()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("No per-id parameter metadata found for parameter ID= ",
+                     parameter_block_metadata.parameter_id()));
+  }
+  auto& per_id_metadata =
+      parameter_id_to_metadata_.at(parameter_block_metadata.parameter_id());
+
+  duration = per_id_metadata.param_definition.param_definition_mode_ == 0
+                 ? per_id_metadata.param_definition.duration_
+                 : parameter_block_metadata.duration();
+
+  typed_proto_metadata_[per_id_metadata.param_definition_type].push_back(
+      parameter_block_metadata);
 
   return absl::OkStatus();
 }
@@ -705,6 +647,8 @@ absl::Status ParameterBlockGenerator::GenerateMixGain(
   return absl::OkStatus();
 }
 
+// TODO(b/306319126): Generate Recon Gain iteratively now that the audio frame
+//                    decoder decodes iteratively.
 absl::Status ParameterBlockGenerator::GenerateReconGain(
     const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
     const IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame,
@@ -719,96 +663,36 @@ absl::Status ParameterBlockGenerator::GenerateReconGain(
 }
 
 absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
-    const std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+    std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
         proto_metadata_list,
     GlobalTimingModule& global_timing_module,
     std::list<ParameterBlockWithData>& output_parameter_blocks) {
   for (auto& parameter_block_metadata : proto_metadata_list) {
-    ParameterBlockWithData parameter_block_with_data;
+    ParameterBlockWithData output_parameter_block;
     auto& per_id_metadata =
         parameter_id_to_metadata_.at(parameter_block_metadata.parameter_id());
     RETURN_IF_NOT_OK(PopulateCommonFields(parameter_block_metadata,
                                           per_id_metadata, global_timing_module,
-                                          parameter_block_with_data));
+                                          output_parameter_block));
 
     RETURN_IF_NOT_OK(PopulateSubblocks(
         parameter_block_metadata, override_computed_recon_gains_,
-        associated_audio_elements_, primary_profile_,
-        recon_gain_generator_.get(), per_id_metadata, parameter_block_with_data,
-        output_parameter_blocks));
+        primary_profile_, recon_gain_generator_.get(), per_id_metadata,
+        output_parameter_block));
 
     // Disable some verbose logging after the first recon gain block is
     // produced.
     if (recon_gain_generator_) {
       recon_gain_generator_->set_additional_logging(false);
     }
-  }
 
-  // Validate the coverage of the generated parameter blocks.
-  RETURN_IF_NOT_OK(
-      ValidateParameterCoverage(output_parameter_blocks, global_timing_module));
+    output_parameter_blocks.push_back(std::move(output_parameter_block));
+  }
 
   RETURN_IF_NOT_OK(LogParameterBlockObus(output_parameter_blocks));
 
-  return absl::OkStatus();
-}
-
-// Validates that each parameter block cover the whole duration of any
-// audio element that uses it.
-absl::Status ParameterBlockGenerator::ValidateParameterCoverage(
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const GlobalTimingModule& global_timing_module) {
-  absl::btree_map<DecodedUleb128, ParameterStreamTimestamps>
-      parameter_stream_timestamps;
-  absl::btree_map<DecodedUleb128, absl::flat_hash_set<DecodedUleb128>>
-      parameter_id_associated_substream_ids;
-  for (const auto& parameter_block : parameter_blocks) {
-    const auto parameter_id = parameter_block.obu->parameter_id_;
-
-    if (!associated_audio_elements_.contains(parameter_id)) {
-      LOG(INFO) << "Skipping validating a stray parameter block with ID: "
-                << parameter_id;
-      continue;
-    }
-
-    // All parameter blocks having the same ID belongs to the same stream.
-    // Find the earliest starting timestamp and the latest ending timestamp.
-    if (!parameter_stream_timestamps.contains(parameter_id)) {
-      parameter_stream_timestamps[parameter_id] = {
-          .global_start = INT_MAX,
-          .global_end = INT_MIN,
-      };
-    }
-    if (parameter_block.start_timestamp <
-        parameter_stream_timestamps[parameter_id].global_start) {
-      parameter_stream_timestamps[parameter_id].global_start =
-          parameter_block.start_timestamp;
-    }
-    if (parameter_block.end_timestamp >
-        parameter_stream_timestamps[parameter_id].global_end) {
-      parameter_stream_timestamps[parameter_id].global_end =
-          parameter_block.end_timestamp;
-    }
-
-    for (const auto* audio_element :
-         associated_audio_elements_.at(parameter_id)) {
-      // Get all the substreams in the associated Audio Elements.
-      for (const auto& substream_id : audio_element->obu.audio_substream_ids_) {
-        parameter_id_associated_substream_ids[parameter_id].insert(
-            substream_id);
-      }
-    }
-  }
-
-  for (const auto& [parameter_id, timestamps] : parameter_stream_timestamps) {
-    for (const auto& substream_id :
-         parameter_id_associated_substream_ids[parameter_id]) {
-      RETURN_IF_NOT_OK(
-          global_timing_module.ValidateParameterBlockCoversAudioFrame(
-              parameter_id, timestamps.global_start, timestamps.global_end,
-              substream_id));
-    }
-  }
+  // Clear the metadata of this frame.
+  proto_metadata_list.clear();
 
   return absl::OkStatus();
 }

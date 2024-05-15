@@ -53,10 +53,15 @@ constexpr bool kOverrideComputedReconGains = false;
 TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
-                                    kOverrideComputedReconGains,
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
+
+  // Add metadata.
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  for (const auto& metadata : user_metadata.parameter_block_metadata()) {
+    uint32_t unused_duration;
+    EXPECT_TRUE(generator.AddMetadata(metadata, unused_duration).ok());
+  }
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -171,8 +176,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
                              &param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
-                                    kOverrideComputedReconGains,
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
@@ -184,11 +188,24 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   ASSERT_TRUE(
       global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
-  // Generate.
+  // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
-  EXPECT_TRUE(
-      generator.GenerateDemixing(global_timing_module, output_parameter_blocks)
-          .ok());
+  for (const auto& metadata : user_metadata.parameter_block_metadata()) {
+    // Add metadata.
+    uint32_t duration = 0;
+    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_EQ(duration, 8);
+
+    // Generate parameter blocks.
+    std::list<ParameterBlockWithData> parameter_blocks_for_frame;
+    EXPECT_TRUE(
+        generator
+            .GenerateDemixing(global_timing_module, parameter_blocks_for_frame)
+            .ok());
+    EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
+    output_parameter_blocks.splice(output_parameter_blocks.end(),
+                                   parameter_blocks_for_frame);
+  }
   EXPECT_EQ(output_parameter_blocks.size(), 2);
 
   // Validate common parts.
@@ -295,8 +312,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
                             param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
-                                    kOverrideComputedReconGains,
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
@@ -308,11 +324,24 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   ASSERT_TRUE(
       global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
-  // Generate.
+  // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
-  EXPECT_TRUE(
-      generator.GenerateMixGain(global_timing_module, output_parameter_blocks)
-          .ok());
+  for (const auto& metadata : user_metadata.parameter_block_metadata()) {
+    // Add metadata.
+    uint32_t duration = 0;
+    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_EQ(duration, 8);
+
+    // Generate parameter blocks.
+    std::list<ParameterBlockWithData> parameter_blocks_for_frame;
+    EXPECT_TRUE(
+        generator
+            .GenerateMixGain(global_timing_module, parameter_blocks_for_frame)
+            .ok());
+    EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
+    output_parameter_blocks.splice(output_parameter_blocks.end(),
+                                   parameter_blocks_for_frame);
+  }
   EXPECT_EQ(output_parameter_blocks.size(), 2);
 
   // Validate common parts.
@@ -480,8 +509,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
                               param_definitions);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
-                                    kOverrideComputedReconGains,
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
   EXPECT_TRUE(generator
                   .Initialize(ia_sequence_header_obu, audio_elements,
@@ -492,6 +520,15 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   GlobalTimingModule global_timing_module;
   ASSERT_TRUE(
       global_timing_module.Initialize(audio_elements, param_definitions).ok());
+
+  // Loop to add all metadata at once.
+  // TODO(b/315924757): Generate recon gain iteratively too.
+  for (const auto& metadata : user_metadata.parameter_block_metadata()) {
+    // Add metadata.
+    uint32_t duration = 0;
+    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_EQ(duration, 8);
+  }
 
   // Generate.
   // Set the decoded frames identical to the original frames, so that recon
@@ -530,14 +567,22 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
                              audio_elements, mix_presentation_obus);
 
   // Construct and initialize.
-  ParameterBlockGenerator generator(user_metadata.parameter_block_metadata(),
-                                    kOverrideComputedReconGains,
+  ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
-  EXPECT_FALSE(generator
-                   .Initialize(ia_sequence_header_obu, audio_elements,
-                               mix_presentation_obus, param_definitions)
-                   .ok());
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      empty_param_definitions;
+  EXPECT_TRUE(generator
+                  .Initialize(ia_sequence_header_obu, audio_elements,
+                              mix_presentation_obus, empty_param_definitions)
+                  .ok());
+
+  // Try to add metadata, but since the param definitions are empty, these
+  // will fail because the generator cannot find the corresponding param
+  // definitions for the parameter (i.e. they are "stray").
+  for (const auto& metadata : user_metadata.parameter_block_metadata()) {
+    uint32_t unused_duration = 0;
+    EXPECT_FALSE(generator.AddMetadata(metadata, unused_duration).ok());
+  }
 }
 
 }  // namespace

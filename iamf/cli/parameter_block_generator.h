@@ -13,12 +13,12 @@
 #ifndef CLI_PARAMETER_BLOCK_GENERATOR_H_
 #define CLI_PARAMETER_BLOCK_GENERATOR_H_
 
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <optional>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
@@ -31,31 +31,40 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
 // TODO(b/296815263): Add tests for this class.
 // TODO(b/306319126): Generate one parameter block at a time.
+
+/*\!brief Generator of parameter blocks.
+ *
+ * The use pattern of this class is:
+ *
+ *   - Initialize (`Initialize()`).
+ *   - Repeat for each temporal unit (along with the audio frame generation):
+ *     - For all parameter blocks metadata that start at the current
+ *       timestamp:
+ *       - Add the metadata (`AddMetadata()`).
+ *     - Generate demixing parameter blocks (`GenerateDemixing()`).
+ *     - Generate mix gain parameter blocks (`GenerateMixGain()`).
+ *     - // After audio frames are decoded and demixed.
+ *     - Generate recon gain parameter blocks (`GenerateReconGain()`).
+ */
 class ParameterBlockGenerator {
  public:
   /*\!brief Constructor.
    *
-   * \param parameter_block_metadata Input parameter block metadata.
    * \param override_computed_recon_gains Whether to override recon gains
    *     with user provided values.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
    *     parameter metadata.
    */
   ParameterBlockGenerator(
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-          parameter_block_metadata,
       bool override_computed_recon_gains,
       absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata)
-      : parameter_block_metadata_(parameter_block_metadata),
-        override_computed_recon_gains_(override_computed_recon_gains),
+      : override_computed_recon_gains_(override_computed_recon_gains),
         parameter_id_to_metadata_(parameter_id_to_metadata) {}
 
   /*\!brief Initializes the class.
@@ -66,7 +75,8 @@ class ParameterBlockGenerator {
    * \param ia_sequence_header_obu IA Sequence Header OBU.
    * \param audio_elements Input Audio Element OBUs with data.
    * \param mix_presentation_obus Input Mix Presentation OBUs with all
-   *     `ParameterDefinitions` filled in.
+   *     `ParamDefinitions` filled in.
+   * \param param_definitions Mapping from parameter IDs to param definitions.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize(
@@ -77,8 +87,22 @@ class ParameterBlockGenerator {
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
           param_definitions);
 
+  /*\!brief Adds one parameter block metadata.
+   *
+   * \param parameter_block_metadata parameter block metadata to add.
+   * \param duration Output duration of the corresponding parameter block; may
+   *      come from the added metadata or its param definition.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status AddMetadata(
+      const iamf_tools_cli_proto::ParameterBlockObuMetadata&
+          parameter_block_metadata,
+      uint32_t& duration);
+
   /*\!brief Generates a list of demixing parameter blocks with data.
    *
+   * \param global_timing_module Global timing module to keep track of the
+   *     timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -88,6 +112,8 @@ class ParameterBlockGenerator {
 
   /*\!brief Generates a list of mix gain parameter blocks with data.
    *
+   * \param global_timing_module Global timing module to keep track of the
+   *     timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -100,6 +126,8 @@ class ParameterBlockGenerator {
    * \param id_to_time_to_labeled_frame Data structure for samples.
    * \param id_to_time_to_labeled_decoded_frame Data structure for decoded
    *     samples.
+   * \param global_timing_module Global timing module to keep track of the
+   *     timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -119,25 +147,12 @@ class ParameterBlockGenerator {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GenerateParameterBlocks(
-      const std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+      std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
           proto_metadata_list,
       GlobalTimingModule& global_timing_module,
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
-  absl::Status ValidateParameterCoverage(
-      const std::list<ParameterBlockWithData>& parameter_blocks,
-      const GlobalTimingModule& global_timing_module);
-
-  const ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-      parameter_block_metadata_;
-
   const bool override_computed_recon_gains_;
-
-  // Mapping from parameter IDs to sets of audio element with data.
-  absl::flat_hash_map<DecodedUleb128,
-                      absl::flat_hash_set<const AudioElementWithData*>>
-      associated_audio_elements_;
 
   // Mapping from parameter IDs to parameter metadata.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&

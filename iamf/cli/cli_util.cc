@@ -23,6 +23,8 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -232,11 +234,12 @@ absl::Status CollectAndValidateParamDefinitions(
 }
 
 absl::Status CompareTimestamps(int32_t expected_timestamp,
-                               int32_t actual_timestamp) {
+                               int32_t actual_timestamp,
+                               absl::string_view prompt) {
   if (expected_timestamp != actual_timestamp) {
-    LOG(ERROR) << "Expected timestamp != actual timestamp: ("
-               << expected_timestamp << " vs " << actual_timestamp << ").";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat(prompt, "Expected timestamp != actual timestamp: (",
+                     expected_timestamp, " vs ", actual_timestamp, ")"));
   }
   return absl::OkStatus();
 }

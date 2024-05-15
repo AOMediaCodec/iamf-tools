@@ -14,6 +14,7 @@
 #define CLI_GLOBAL_TIMING_MODULE_H_
 
 #include <cstdint>
+#include <optional>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -61,7 +62,7 @@ class GlobalTimingModule {
 
   /*\!brief Gets the start and end timestamps of the next Parameter Block.
    *
-   * \param parameter_id ID of the Parameter Block
+   * \param parameter_id ID of the Parameter Block.
    * \param input_start_timestamp Start timestamp specified by the user. Will be
    *     used to check if there are gaps.
    * \param duration Duration of this Parameter Block measured in ticks.
@@ -75,27 +76,24 @@ class GlobalTimingModule {
                                                int32_t& start_timestamp,
                                                int32_t& end_timestamp);
 
-  /*\!brief Validates that a parameter block covers an audio frame's duration.
+  // TODO(b/291732058): Bring back parameter block coverage validation.
+
+  /*\!brief Gets the global timestamp shared by all current Audio Frames.
    *
-   * \param parameter_id ID of the Parameter Block; for logging purposes.
-   * \param parameter_block_start Start timestamp of the parameter block
+   * May fill in `std::nullopt` if some Audio Frames have different timestamps
+   * (typically because the current temporal unit has not been processed fully).
    *
-   * \param parameter_block_end End timestamp of the parameter block.
-   * \param audio_substream_id Audio substream ID of the audio frame to be
-   *     covered.
+   * \param global_timestamp Global timestamp if it's shared by the current
+   *     Audio Frames; `std::nullopt` if not.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status ValidateParameterBlockCoversAudioFrame(
-      DecodedUleb128 parameter_id, int32_t parameter_block_start,
-      int32_t parameter_block_end, DecodedUleb128 audio_substream_id) const;
+  absl::Status GetGlobalAudioFrameTimestamp(
+      std::optional<int32_t>& global_timestamp) const;
 
  private:
   struct TimingData {
     // Ticks per second, used by audio sample rate and parameter rate.
     const uint32_t rate;
-
-    // Starting timestamp of the entire stream.
-    const int32_t global_start_timestamp;
 
     // Measured in ticks implied by `rate`.
     int32_t timestamp;
