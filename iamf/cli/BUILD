@@ -312,7 +312,6 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -359,15 +358,12 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":demixing_module",
-        ":mix_presentation_generator",
         ":parameter_block_with_data",
         "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/common:macros",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

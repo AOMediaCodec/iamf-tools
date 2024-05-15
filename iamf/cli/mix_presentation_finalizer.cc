@@ -19,10 +19,8 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/mix_presentation_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
-#include "iamf/common/macros.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -41,45 +39,6 @@ MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer::Finalize(
   // TODO(b/332567539): Use `RendererFactory` to render certain layouts.
   // TODO(b/302273947): Once layouts are rendered and mixed then use a
   //                    `LoudnessCalculatorFactory` to measure loudness.
-  int metadata_index = 0;
-  for (auto& mix_presentation_obu : mix_presentation_obus) {
-    for (int sub_mix_index = 0;
-         sub_mix_index < mix_presentation_obu.sub_mixes_.size();
-         ++sub_mix_index) {
-      MixPresentationSubMix& sub_mix =
-          mix_presentation_obu.sub_mixes_[sub_mix_index];
-      for (int layout_index = 0; layout_index < sub_mix.layouts.size();
-           layout_index++) {
-        const auto& user_loudness =
-            mix_presentation_metadata_.at(metadata_index)
-                .sub_mixes(sub_mix_index)
-                .layouts(layout_index)
-                .loudness();
-        auto& output_loudness = sub_mix.layouts[layout_index].loudness;
-
-        // The `info_type` should already be copied over in the
-        // `MixPresentationGenerator`. Check it is equivalent for extra safety.
-        uint8_t user_info_type;
-        RETURN_IF_NOT_OK(MixPresentationGenerator::CopyInfoType(
-            user_loudness, user_info_type));
-        if (user_info_type != output_loudness.info_type) {
-          LOG(ERROR) << "Mismatching loudness info types: ("
-                     << static_cast<uint32_t>(user_info_type) << " vs "
-                     << static_cast<uint32_t>(output_loudness.info_type) << ")";
-          return absl::InvalidArgumentError("");
-        }
-        RETURN_IF_NOT_OK(
-            MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                user_loudness, output_loudness));
-        RETURN_IF_NOT_OK(MixPresentationGenerator::CopyUserAnchoredLoudness(
-            user_loudness, output_loudness));
-        RETURN_IF_NOT_OK(MixPresentationGenerator::CopyUserLayoutExtension(
-            user_loudness, output_loudness));
-      }
-    }
-
-    metadata_index++;
-  }
 
   // Examine Mix Presentation OBUs.
   for (const auto& mix_presentation_obu : mix_presentation_obus) {

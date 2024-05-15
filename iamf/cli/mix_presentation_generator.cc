@@ -241,6 +241,14 @@ absl::Status FillLayouts(
     RETURN_IF_NOT_OK(MixPresentationGenerator::CopyInfoType(
         input_layout.loudness(), layout.loudness.info_type));
 
+    RETURN_IF_NOT_OK(
+        MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+            input_layout.loudness(), layout.loudness));
+    RETURN_IF_NOT_OK(MixPresentationGenerator::CopyUserAnchoredLoudness(
+        input_layout.loudness(), layout.loudness));
+    RETURN_IF_NOT_OK(MixPresentationGenerator::CopyUserLayoutExtension(
+        input_layout.loudness(), layout.loudness));
+
     sub_mix.layouts.push_back(layout);
   }
 

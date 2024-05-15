@@ -372,7 +372,6 @@ absl::Status GenerateObus(
   }
 
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
-      user_metadata.mix_presentation_metadata(),
       user_metadata.test_vector_metadata().file_name_prefix(),
       output_wav_file_bit_depth_override,
       user_metadata.test_vector_metadata().validate_user_loudness());

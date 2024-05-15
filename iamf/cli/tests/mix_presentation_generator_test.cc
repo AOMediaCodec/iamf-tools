@@ -150,6 +150,30 @@ TEST_F(MixPresentationGeneratorTest, InvalidInconsistentNumberOfLayouts) {
   EXPECT_FALSE(generator.Generate(generated_obus_).ok());
 }
 
+TEST_F(MixPresentationGeneratorTest, CopiesUserLoudness) {
+  const int16_t kIntegratedLoudness = -100;
+  const int16_t kDigitalPeak = -101;
+  const int16_t kTruePeak = -102;
+  auto* loudness = mix_presentation_metadata_.at(0)
+                       .mutable_sub_mixes(0)
+                       ->mutable_layouts(0)
+                       ->mutable_loudness();
+  loudness->add_info_type_bit_masks(
+      iamf_tools_cli_proto::LOUDNESS_INFO_TYPE_TRUE_PEAK);
+  loudness->set_integrated_loudness(kIntegratedLoudness);
+  loudness->set_digital_peak(kDigitalPeak);
+  loudness->set_true_peak(kTruePeak);
+  expected_obus_.back().sub_mixes_[0].layouts[0].loudness = {
+      .info_type = LoudnessInfo::kTruePeak,
+      .integrated_loudness = kIntegratedLoudness,
+      .digital_peak = kDigitalPeak,
+      .true_peak = kTruePeak};
+
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_TRUE(generator.Generate(generated_obus_).ok());
+}
+
 TEST_F(MixPresentationGeneratorTest, InvalidLayoutType) {
   mix_presentation_metadata_.at(0)
       .mutable_sub_mixes(0)

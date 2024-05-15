@@ -25,20 +25,15 @@
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
-    const ::google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::MixPresentationObuMetadata>&
-        mix_presentation_metadata,
     const std::string& /*file_name_prefix*/,
     std::optional<uint8_t> /*output_wav_file_bit_depth_override*/,
     bool /*validate_loudness*/) {
   return std::make_unique<
-      MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer>(
-      mix_presentation_metadata);
+      MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer>();
 }
 
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(

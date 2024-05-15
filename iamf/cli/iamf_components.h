@@ -23,7 +23,6 @@
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
@@ -31,7 +30,6 @@ namespace iamf_tools {
  *
  * This is useful for binding different kinds of finalizers in an IAMF Encoder.
  *
- * \param mix_presentation_metadata Input mix presentation metadata.
  * \param file_name_prefix Prefix of output file name.
  * \param output_wav_file_bit_depth_override Override for the bit-depth of
  *     the rendered wav file.
@@ -40,9 +38,6 @@ namespace iamf_tools {
  * \return Unique pointer to the created Mix Presentation finalizer.
  */
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
-    const ::google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::MixPresentationObuMetadata>&
-        mix_presentation_metadata,
     const std::string& file_name_prefix,
     std::optional<uint8_t> output_wav_file_bit_depth_override,
     bool validate_loudness);

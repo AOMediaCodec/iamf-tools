@@ -23,21 +23,13 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/obu/mix_presentation.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
 class MixPresentationFinalizerBase {
  public:
-  /*\!brief Constructor.
-   *
-   * \param mix_presentation_metadata Input mix presentation metadata.
-   */
-  explicit MixPresentationFinalizerBase(
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::MixPresentationObuMetadata>&
-          mix_presentation_metadata)
-      : mix_presentation_metadata_(mix_presentation_metadata) {}
+  /*\!brief Constructor. */
+  explicit MixPresentationFinalizerBase() {}
 
   /*\!brief Destructor.
    */
@@ -59,26 +51,15 @@ class MixPresentationFinalizerBase {
       const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
       const std::list<ParameterBlockWithData>& parameter_blocks,
       std::list<MixPresentationObu>& mix_presentation_obus) = 0;
-
- protected:
-  const ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::MixPresentationObuMetadata>
-      mix_presentation_metadata_;
 };
 
 /*\!brief Finalizer that measures loudness or echoes user provided loudness. */
 class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer
     : public MixPresentationFinalizerBase {
  public:
-  /*\!brief Constructor.
-   *
-   * \param mix_presentation_metadata Input mix presentation metadata.
-   */
-  explicit MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer(
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::MixPresentationObuMetadata>&
-          mix_presentation_metadata)
-      : MixPresentationFinalizerBase(mix_presentation_metadata) {}
+  /*\!brief Constructor. */
+  explicit MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer()
+      : MixPresentationFinalizerBase() {}
 
   /*\!brief Destructor.
    */
