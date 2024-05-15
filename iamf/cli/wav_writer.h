@@ -47,8 +47,6 @@ class WavWriter {
   /*\!brief Finalizes the wav header and closes the underlying file.*/
   ~WavWriter();
 
-  int num_channels() const { return num_channels_; }
-  int sample_rate_hz() const { return sample_rate_hz_; }
   int bit_depth() const { return bit_depth_; }
 
   /*\!brief Writes samples to the wav file.

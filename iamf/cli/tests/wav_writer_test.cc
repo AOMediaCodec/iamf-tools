@@ -37,32 +37,24 @@ constexpr int kBitDepth32 = 32;
 TEST(WavWriterTest, Construct16BitWavWriter) {
   WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                        kBitDepth16);
-  EXPECT_EQ(wav_writer.num_channels(), kNumChannels);
-  EXPECT_EQ(wav_writer.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_writer.bit_depth(), kBitDepth16);
 }
 
 TEST(WavWriterTest, Construct16BitWavWriterWithoutHeader) {
   WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                        kBitDepth16, /*write_header=*/false);
-  EXPECT_EQ(wav_writer.num_channels(), kNumChannels);
-  EXPECT_EQ(wav_writer.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_writer.bit_depth(), kBitDepth16);
 }
 
 TEST(WavWriterTest, Construct24BitWavWriter) {
   WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                        kBitDepth24);
-  EXPECT_EQ(wav_writer.num_channels(), kNumChannels);
-  EXPECT_EQ(wav_writer.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_writer.bit_depth(), kBitDepth24);
 }
 
 TEST(WavWriterTest, Construct32BitWavWriter) {
   WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                        kBitDepth32);
-  EXPECT_EQ(wav_writer.num_channels(), kNumChannels);
-  EXPECT_EQ(wav_writer.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_writer.bit_depth(), kBitDepth32);
 }
 
@@ -225,6 +217,35 @@ TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples32Bit) {
   EXPECT_EQ(wav_reader.remaining_samples(), 3);
 }
 
+TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {
+  {
+    // Create the writer in a small scope. It should be destroyed before
+    // checking the results.
+    WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
+                         kBitDepth32);
+  }
+
+  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.sample_rate_hz(), kSampleRateHz);
+  EXPECT_EQ(wav_reader.num_channels(), kNumChannels);
+  EXPECT_EQ(wav_reader.bit_depth(), kBitDepth32);
+}
+
+TEST(WavWriterTest, OutputWavFileHasCorrectPropertiesAfterMoving) {
+  {
+    WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
+                         kBitDepth32);
+    // Create the writer in a small scope. It should be destroyed before
+    // checking the results.
+    WavWriter new_wav_writer = std::move(wav_writer);
+  }
+
+  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.sample_rate_hz(), kSampleRateHz);
+  EXPECT_EQ(wav_reader.num_channels(), kNumChannels);
+  EXPECT_EQ(wav_reader.bit_depth(), kBitDepth32);
+}
+
 TEST(WavWriterTest, AbortDeletesOutputFile) {
   WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                        kBitDepth16);
@@ -243,8 +264,6 @@ TEST(WavWriterTest, MovingSucceeds) {
   WavWriter new_wav_writer = std::move(wav_writer);
 
   // Expect that the new `wav_writer` has the same attributes as the original.
-  EXPECT_EQ(new_wav_writer.num_channels(), kNumChannels);
-  EXPECT_EQ(new_wav_writer.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(new_wav_writer.bit_depth(), kBitDepth16);
 
   // Expect that the output file still exists.
