@@ -48,6 +48,7 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/wav_sample_provider.h"
+#include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
@@ -61,6 +62,17 @@
 namespace iamf_tools {
 
 namespace {
+
+std::unique_ptr<WavWriter> ProduceAllWavWriters(
+    DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
+    const Layout&, const std::filesystem::path& prefix, int num_channels,
+    int sample_rate, int bit_depth) {
+  const auto wav_path = absl::StrCat(
+      prefix.string(), "_rendered_id_", mix_presentation_id, "_sub_mix_",
+      sub_mix_index, "_layout_", layout_index, ".wav");
+  return std::make_unique<WavWriter>(wav_path, num_channels, sample_rate,
+                                     bit_depth);
+}
 
 absl::Status PartitionParameterMetadata(
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
@@ -443,7 +455,7 @@ absl::Status GenerateObus(
       user_metadata.test_vector_metadata().validate_user_loudness());
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
       audio_elements, id_to_time_to_labeled_frame, mix_gain_parameter_blocks,
-      mix_presentation_obus));
+      ProduceAllWavWriters, mix_presentation_obus));
 
   parameter_blocks.splice(parameter_blocks.end(), demixing_parameter_blocks);
   parameter_blocks.splice(parameter_blocks.end(), mix_gain_parameter_blocks);

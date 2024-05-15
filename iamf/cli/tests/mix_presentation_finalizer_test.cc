@@ -11,16 +11,27 @@
  */
 #include "iamf/cli/mix_presentation_finalizer.h"
 
+#include <filesystem>
 #include <list>
+#include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/wav_writer.h"
+#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace {
+
+std::unique_ptr<WavWriter> ProduceNoWavWriters(DecodedUleb128, int, int,
+                                               const Layout&,
+                                               const std::filesystem::path&,
+                                               int, int, int) {
+  return nullptr;
+}
 
 class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest
     : public ::testing::Test {
@@ -37,7 +48,9 @@ class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest
     MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer finalizer;
 
     // `Finalize()` ignores most of the arguments.
-    EXPECT_TRUE(finalizer.Finalize({}, {}, {}, obus_to_finalize_).ok());
+    EXPECT_TRUE(
+        finalizer.Finalize({}, {}, {}, ProduceNoWavWriters, obus_to_finalize_)
+            .ok());
   }
 
  protected:

@@ -29,6 +29,7 @@ absl::Status
 MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer::Finalize(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>&,
     const IdTimeLabeledFrameMap&, const std::list<ParameterBlockWithData>&,
+    const WavWriterFactory&,
     std::list<MixPresentationObu>& mix_presentation_obus) {
   LOG(INFO) << "Calling "
                "MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer"

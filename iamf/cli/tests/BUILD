@@ -281,6 +281,8 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:mix_presentation_finalizer",
+        "//iamf/cli:wav_writer",
+        "//iamf/obu:leb128",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest_main",
