@@ -75,14 +75,13 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
           .ok());
   EXPECT_TRUE(output_parameter_blocks.empty());
 
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
-  IdTimeLabeledFrameMap id_to_time_to_labeled_decoded_frame;
-  EXPECT_TRUE(generator
-                  .GenerateReconGain(id_to_time_to_labeled_frame,
-                                     id_to_time_to_labeled_decoded_frame,
-                                     global_timing_module,
-                                     output_parameter_blocks)
-                  .ok());
+  IdLabeledFrameMap id_to_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_TRUE(
+      generator
+          .GenerateReconGain(id_to_labeled_frame, id_to_labeled_decoded_frame,
+                             global_timing_module, output_parameter_blocks)
+          .ok());
   EXPECT_TRUE(output_parameter_blocks.empty());
 }
 
@@ -137,6 +136,8 @@ void ValidateParameterBlocksCommon(
     const DecodedUleb128 expected_parameter_id,
     const std::vector<int32_t>& expected_start_timestamps,
     const std::vector<int32_t>& expected_end_timestamps) {
+  EXPECT_EQ(expected_start_timestamps.size(), output_parameter_blocks.size());
+  EXPECT_EQ(expected_end_timestamps.size(), output_parameter_blocks.size());
   int block_index = 0;
   for (const auto& parameter_block : output_parameter_blocks) {
     EXPECT_EQ(parameter_block.start_timestamp,
@@ -206,7 +207,6 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
     output_parameter_blocks.splice(output_parameter_blocks.end(),
                                    parameter_blocks_for_frame);
   }
-  EXPECT_EQ(output_parameter_blocks.size(), 2);
 
   // Validate common parts.
   ValidateParameterBlocksCommon(output_parameter_blocks, kParameterId,
@@ -342,7 +342,6 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
     output_parameter_blocks.splice(output_parameter_blocks.end(),
                                    parameter_blocks_for_frame);
   }
-  EXPECT_EQ(output_parameter_blocks.size(), 2);
 
   // Validate common parts.
   ValidateParameterBlocksCommon(output_parameter_blocks, kParameterId,
@@ -472,17 +471,15 @@ void PrepareAudioElementWithDataForReconGain(
   };
 }
 
-IdTimeLabeledFrameMap PrepareIdTimeLabeledFrameMap() {
+IdLabeledFrameMap PrepareIdLabeledFrameMap() {
   const std::vector<int32_t> samples(8, 10000);
   LabelSamplesMap label_to_samples;
   for (const auto& label : {"L2", "R2", "D_L3", "D_R3", "D_Ls5", "D_Rs5"}) {
     label_to_samples[label] = samples;
   }
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
-  id_to_time_to_labeled_frame[kAudioElementId] = {
-      {0, {.label_to_samples = label_to_samples}},
-      {8, {.label_to_samples = label_to_samples}}};
-  return id_to_time_to_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_frame;
+  id_to_labeled_frame[kAudioElementId] = {.label_to_samples = label_to_samples};
+  return id_to_labeled_frame;
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
@@ -521,30 +518,29 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   ASSERT_TRUE(
       global_timing_module.Initialize(audio_elements, param_definitions).ok());
 
-  // Loop to add all metadata at once.
-  // TODO(b/315924757): Generate recon gain iteratively too.
+  // Loop to add all metadata and generate recon gain parameter blocks.
+  std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
     uint32_t duration = 0;
     EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
     EXPECT_EQ(duration, 8);
-  }
 
-  // Generate.
-  // Set the decoded frames identical to the original frames, so that recon
-  // gains will be identity.
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame =
-      PrepareIdTimeLabeledFrameMap();
-  IdTimeLabeledFrameMap id_to_time_to_labeled_decoded_frame =
-      id_to_time_to_labeled_frame;
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  EXPECT_TRUE(generator
-                  .GenerateReconGain(id_to_time_to_labeled_frame,
-                                     id_to_time_to_labeled_decoded_frame,
-                                     global_timing_module,
-                                     output_parameter_blocks)
-                  .ok());
-  EXPECT_EQ(output_parameter_blocks.size(), 2);
+    // Generate.
+    // Set the decoded frames identical to the original frames, so that recon
+    // gains will be identity.
+    IdLabeledFrameMap id_to_labeled_frame = PrepareIdLabeledFrameMap();
+    IdLabeledFrameMap id_to_labeled_decoded_frame = id_to_labeled_frame;
+    std::list<ParameterBlockWithData> parameter_blocks_for_frame;
+    EXPECT_TRUE(
+        generator
+            .GenerateReconGain(id_to_labeled_frame, id_to_labeled_decoded_frame,
+                               global_timing_module, parameter_blocks_for_frame)
+            .ok());
+    EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
+    output_parameter_blocks.splice(output_parameter_blocks.end(),
+                                   parameter_blocks_for_frame);
+  }
 
   // Validate common parts.
   ValidateParameterBlocksCommon(output_parameter_blocks, kParameterId,

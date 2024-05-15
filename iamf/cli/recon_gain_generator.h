@@ -13,7 +13,6 @@
 #ifndef CLI_RECON_GAIN_GENERATOR_H_
 #define CLI_RECON_GAIN_GENERATOR_H_
 
-#include <cstdint>
 #include <string>
 
 #include "absl/status/status.h"
@@ -23,51 +22,20 @@ namespace iamf_tools {
 
 class ReconGainGenerator {
  public:
-  /*\!brief Constructor.
-   * \param id_to_time_to_labeled_frame Data structure for samples.
-   * \param id_to_time_to_labeled_decoded_frame Data structure for decoded
-   *     samples.
-   */
-  ReconGainGenerator(
-      const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-      const IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame)
-      : id_to_time_to_labeled_frame_(id_to_time_to_labeled_frame),
-        id_to_time_to_labeled_decoded_frame_(
-            id_to_time_to_labeled_decoded_frame),
-        additional_logging_(true) {}
-
   /*\!brief Computes the recon gain for the input channel.
    *
    * \param label Label of the channel to compute.
-   * \param audio_element_id Audio Element ID.
-   * \param start_timestamp Start timestamp of the frame to compute recon gain
-   *     for.
+   * \param label_to_samples Mapping from channel labels to original samples.
+   * \param label_to_decoded_samples Mapping from channel labels to decoded
+   *     samples.
+   * \param additional_logging Whether to enable additinal logging.
    * \param recon_gain Result in the range [0, 1].
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status ComputeReconGain(const std::string& label,
-                                uint32_t audio_element_id,
-                                int32_t start_timestamp,
-                                double& recon_gain) const;
-
-  /*\!brief Gets the additional logging flag.
-   *
-   * \return Whether to enable additional logging.
-   */
-  bool additional_logging() const { return additional_logging_; }
-
-  /*\!brief Sets the additional logging flag.
-   *
-   * \param additional_logging Whether to enable additional logging.
-   */
-  void set_additional_logging(bool additional_logging) {
-    additional_logging_ = additional_logging;
-  }
-
- private:
-  const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame_;
-  const IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame_;
-  bool additional_logging_;
+  static absl::Status ComputeReconGain(
+      const std::string& label, const LabelSamplesMap& label_to_samples,
+      const LabelSamplesMap& label_to_decoded_samples, bool additional_logging,
+      double& recon_gain);
 };
 
 }  // namespace iamf_tools

@@ -66,9 +66,9 @@ absl::Status GetParamFieldsFromAudioElementParam(
   param_definition_type = audio_element_param.param_definition_type;
   if (param_definition_type != ParamDefinition::kParameterDefinitionDemixing &&
       param_definition_type != ParamDefinition::kParameterDefinitionReconGain) {
-    LOG(ERROR) << "Param definition type: " << param_definition_type
-               << " not allowed in an audio element";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Param definition type: ", param_definition_type,
+                     " not allowed in an audio element"));
   }
   *param_definition = audio_element_param.param_definition.get();
   parameter_id = (*param_definition)->parameter_id_;
@@ -94,8 +94,8 @@ absl::Status GetPerIdMetadata(
   const auto [parameter_id, param_definition] = *iter;
   per_id_metadata.param_definition = *param_definition;
   if (!param_definition->GetType().has_value()) {
-    LOG(ERROR) << "Internal error: `param_definition` has no type.";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError(
+        "Internal error: `param_definition` has no type.");
   }
   per_id_metadata.param_definition_type = param_definition->GetType().value();
   if (per_id_metadata.param_definition_type ==
@@ -106,11 +106,10 @@ absl::Status GetPerIdMetadata(
     auto audio_element_iter =
         audio_elements.find(recon_gain_param_definition->audio_element_id_);
     if (audio_element_iter == audio_elements.end()) {
-      LOG(ERROR) << "Audio Element ID: "
-                 << recon_gain_param_definition->audio_element_id_
-                 << " associated with the recon gain parameter of ID: "
-                 << parameter_id << " not found";
-      return absl::UnknownError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Audio Element ID: ", recon_gain_param_definition->audio_element_id_,
+          " associated with the recon gain parameter of ID: ", parameter_id,
+          " not found"));
     }
 
     per_id_metadata.audio_element_id = audio_element_iter->first;
@@ -180,7 +179,9 @@ absl::Status GenerateMixGainSubblock(
       break;
     }
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unrecognized animation type= ",
+                       metadata_mix_gain_parameter_data.animation_type()));
   }
 
   return absl::OkStatus();
@@ -215,8 +216,8 @@ absl::Status FindDemixedChannels(
         break;
       default:
         if (surround > 7) {
-          LOG(ERROR) << "Unsupported number of surround channels: " << surround;
-          return absl::InvalidArgumentError("");
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Unsupported number of surround channels: ", surround));
         }
         break;
     }
@@ -287,12 +288,13 @@ absl::Status ConvertReconGainsAndFlags(
 absl::Status ComputeReconGains(
     const int layer_index, const ChannelNumbers& layer_channels,
     const ChannelNumbers& accumulated_channels,
-    const ReconGainGenerator* recon_gain_generator,
-    const DecodedUleb128 audio_element_id, const int32_t start_timestamp,
+    const bool additional_recon_gains_logging,
+    const LabelSamplesMap& labeled_samples,
+    const LabelSamplesMap& label_to_decoded_samples,
     const std::vector<bool>& recon_gain_is_present_flags,
     std::vector<uint8_t>& computed_recon_gains,
     DecodedUleb128& computed_recon_gain_flag) {
-  if (recon_gain_generator->additional_logging()) {
+  if (additional_recon_gains_logging) {
     LogChannelNumbers(absl::StrCat("Layer[", layer_index, "]"), layer_channels);
   }
   absl::flat_hash_map<std::string, double> label_to_recon_gain;
@@ -301,49 +303,50 @@ absl::Status ComputeReconGains(
     RETURN_IF_NOT_OK(FindDemixedChannels(accumulated_channels, layer_channels,
                                          &demixed_channel_labels));
 
-    LOG_IF(INFO, recon_gain_generator->additional_logging())
-        << "Demixed channels: ";
+    LOG_IF(INFO, additional_recon_gains_logging) << "Demixed channels: ";
     for (const auto& label : demixed_channel_labels) {
-      RETURN_IF_NOT_OK(recon_gain_generator->ComputeReconGain(
-          label, audio_element_id, start_timestamp,
-          label_to_recon_gain[label]));
+      RETURN_IF_NOT_OK(ReconGainGenerator::ComputeReconGain(
+          label, labeled_samples, label_to_decoded_samples,
+          additional_recon_gains_logging, label_to_recon_gain[label]));
     }
   }
 
   if (recon_gain_is_present_flags[layer_index] !=
       (!label_to_recon_gain.empty())) {
-    LOG(ERROR) << "Mismatch of whether user specified recon gain is present: "
-               << recon_gain_is_present_flags[layer_index]
-               << " vs whether recon gain should be computed: "
-               << !label_to_recon_gain.empty();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Mismatch of whether user specified recon gain is present: ",
+        recon_gain_is_present_flags[layer_index],
+        " vs whether recon gain should be computed: ",
+        !label_to_recon_gain.empty()));
   }
 
   RETURN_IF_NOT_OK(ConvertReconGainsAndFlags(
-      recon_gain_generator->additional_logging(), label_to_recon_gain,
-      &computed_recon_gains, &computed_recon_gain_flag));
+      /*additional_logging=*/true, label_to_recon_gain, &computed_recon_gains,
+      &computed_recon_gain_flag));
 
   return absl::OkStatus();
 }
 
 absl::Status GenerateReconGainSubblock(
-    const bool override_computed_recon_gains, const uint8_t num_layers,
+    const bool override_computed_recon_gains,
+    const bool additional_recon_gains_logging,
+    const IdLabeledFrameMap& id_to_labeled_frame,
+    const IdLabeledFrameMap& id_to_labeled_decoded_frame,
+    const uint8_t num_layers,
     const std::vector<bool>& recon_gain_is_present_flags,
     const std::vector<ChannelNumbers>& channel_numbers_for_layers,
     const iamf_tools_cli_proto::ReconGainInfoParameterData&
         metadata_recon_gain_info_parameter_data,
-    const ReconGainGenerator* recon_gain_generator,
-    const DecodedUleb128 audio_element_id, const int32_t start_timestamp,
+    const DecodedUleb128 audio_element_id,
     ReconGainInfoParameterData* obu_recon_gain_info_param_data) {
   const auto& user_recon_gains_layers =
       metadata_recon_gain_info_parameter_data.recon_gains_for_layer();
   if (num_layers > 1 &&
       static_cast<size_t>(num_layers) != user_recon_gains_layers.size()) {
-    LOG(ERROR) << "There are " << static_cast<int>(num_layers)
-               << " layers of scalable  "
-               << "audio element, but the user only specifies "
-               << user_recon_gains_layers.size() << " layers.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("There are ", num_layers, " layers of scalable  ",
+                     "audio element, but the user only specifies ",
+                     user_recon_gains_layers.size(), " layers."));
   }
   obu_recon_gain_info_param_data->recon_gain_elements.resize(num_layers);
 
@@ -379,10 +382,24 @@ absl::Status GenerateReconGainSubblock(
     const auto& layer_channels = channel_numbers_for_layers[layer_index];
     std::vector<uint8_t> computed_recon_gains;
     DecodedUleb128 computed_recon_gain_flag = 0;
-    RETURN_IF_NOT_OK(ComputeReconGains(
-        layer_index, layer_channels, accumulated_channels, recon_gain_generator,
-        audio_element_id, start_timestamp, recon_gain_is_present_flags,
-        computed_recon_gains, computed_recon_gain_flag));
+
+    const auto labeled_frame_iter = id_to_labeled_frame.find(audio_element_id);
+    const auto labeled_decoded_frame_iter =
+        id_to_labeled_decoded_frame.find(audio_element_id);
+    if (labeled_frame_iter == id_to_labeled_frame.end() ||
+        labeled_decoded_frame_iter == id_to_labeled_decoded_frame.end()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Original or decoded audio frame for audio element ID= ",
+          audio_element_id, " not found when computing recon gains"));
+    }
+
+    RETURN_IF_NOT_OK(
+        ComputeReconGains(layer_index, layer_channels, accumulated_channels,
+                          additional_recon_gains_logging,
+                          labeled_frame_iter->second.label_to_samples,
+                          labeled_decoded_frame_iter->second.label_to_samples,
+                          recon_gain_is_present_flags, computed_recon_gains,
+                          computed_recon_gain_flag));
     accumulated_channels = layer_channels;
 
     if (!recon_gain_is_present_flags[layer_index]) {
@@ -391,10 +408,9 @@ absl::Status GenerateReconGainSubblock(
 
     // Compare computed and user specified flag and recon gain values.
     if (computed_recon_gain_flag != user_recon_gain_flag) {
-      LOG(ERROR) << "Computed recon gain flag different from what user "
-                 << "specified: " << computed_recon_gain_flag << " vs "
-                 << user_recon_gain_flag;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Computed recon gain flag different from what user specified: ",
+          computed_recon_gain_flag, " vs ", user_recon_gain_flag));
     }
     bool recon_gains_match = true;
     for (int i = 0; i < 12; i++) {
@@ -408,7 +424,7 @@ absl::Status GenerateReconGainSubblock(
       }
     }
     if (!recon_gains_match) {
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError("Recon gains mismatch");
     }
   }  // End of for (int layer_index ...)
 
@@ -416,11 +432,14 @@ absl::Status GenerateReconGainSubblock(
 }
 
 absl::Status GenerateParameterBlockSubblock(
-    const bool override_computed_recon_gains, const int32_t start_timestamp,
+    const bool override_computed_recon_gains,
+    const bool additional_recon_gains_logging,
+    const IdLabeledFrameMap* id_to_labeled_frame,
+    const IdLabeledFrameMap* id_to_labeled_decoded_frame,
     const PerIdParameterMetadata& per_id_metadata,
     const bool include_subblock_duration, const int subblock_index,
     const iamf_tools_cli_proto::ParameterSubblock& metadata_subblock,
-    const ReconGainGenerator* recon_gain_generator, ParameterBlockObu& obu) {
+    ParameterBlockObu& obu) {
   if (include_subblock_duration) {
     RETURN_IF_NOT_OK(obu.SetSubblockDuration(
         subblock_index, metadata_subblock.subblock_duration()));
@@ -438,8 +457,8 @@ absl::Status GenerateParameterBlockSubblock(
     }
     case kParameterDefinitionDemixing: {
       if (subblock_index > 1) {
-        LOG(ERROR) << "There should be only one subblock for demixing info.";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            "There should be only one subblock for demixing info.");
       }
       DemixingInfoParameterData param_data;
       RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
@@ -449,23 +468,26 @@ absl::Status GenerateParameterBlockSubblock(
     }
     case kParameterDefinitionReconGain: {
       if (subblock_index > 1) {
-        LOG(ERROR) << "There should be only one subblock for recon gain info.";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            "There should be only one subblock for recon gain info.");
       }
       ReconGainInfoParameterData param_data;
       RETURN_IF_NOT_OK(GenerateReconGainSubblock(
-          override_computed_recon_gains, per_id_metadata.num_layers,
+          override_computed_recon_gains, additional_recon_gains_logging,
+          *id_to_labeled_frame, *id_to_labeled_decoded_frame,
+          per_id_metadata.num_layers,
           per_id_metadata.recon_gain_is_present_flags,
           per_id_metadata.channel_numbers_for_layers,
           metadata_subblock.recon_gain_info_parameter_data(),
-          recon_gain_generator, per_id_metadata.audio_element_id,
-          start_timestamp, &param_data));
+          per_id_metadata.audio_element_id, &param_data));
       obu_subblock.param_data = param_data;
       break;
     }
     default:
       // TODO(b/289080630): Support the extension fields here.
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported param definition type= ",
+                       per_id_metadata.param_definition_type));
   }
 
   return absl::OkStatus();
@@ -514,8 +536,10 @@ absl::Status PopulateSubblocks(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata,
     const bool override_computed_recon_gains,
+    const bool additional_recon_gains_logging,
+    const IdLabeledFrameMap* id_to_labeled_frame,
+    const IdLabeledFrameMap* id_to_labeled_decoded_frame,
     const ProfileVersion primary_profile,
-    const ReconGainGenerator* recon_gain_generator,
     PerIdParameterMetadata& per_id_metadata,
     ParameterBlockWithData& output_parameter_block) {
   auto& parameter_block_obu = *output_parameter_block.obu;
@@ -527,15 +551,15 @@ absl::Status PopulateSubblocks(
       parameter_block_obu.GetConstantSubblockDuration() == 0;
 
   if (num_subblocks != parameter_block_metadata.subblocks_size()) {
-    LOG(ERROR) << "Expected " << num_subblocks << " subblocks, got "
-               << parameter_block_metadata.subblocks_size();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected ", num_subblocks, " subblocks, got ",
+                     parameter_block_metadata.subblocks_size()));
   }
   for (int i = 0; i < num_subblocks; ++i) {
     RETURN_IF_NOT_OK(GenerateParameterBlockSubblock(
-        override_computed_recon_gains, output_parameter_block.start_timestamp,
-        per_id_metadata, include_subblock_duration, i,
-        parameter_block_metadata.subblocks(i), recon_gain_generator,
+        override_computed_recon_gains, additional_recon_gains_logging,
+        id_to_labeled_frame, id_to_labeled_decoded_frame, per_id_metadata,
+        include_subblock_duration, i, parameter_block_metadata.subblocks(i),
         parameter_block_obu));
   }
 
@@ -631,6 +655,8 @@ absl::Status ParameterBlockGenerator::GenerateDemixing(
     GlobalTimingModule& global_timing_module,
     std::list<ParameterBlockWithData>& output_parameter_blocks) {
   RETURN_IF_NOT_OK(GenerateParameterBlocks(
+      /*id_to_labeled_frame=*/nullptr,
+      /*id_to_labeled_decoded_frame=*/nullptr,
       typed_proto_metadata_[ParamDefinition::kParameterDefinitionDemixing],
       global_timing_module, output_parameter_blocks));
 
@@ -641,6 +667,8 @@ absl::Status ParameterBlockGenerator::GenerateMixGain(
     GlobalTimingModule& global_timing_module,
     std::list<ParameterBlockWithData>& output_parameter_blocks) {
   RETURN_IF_NOT_OK(GenerateParameterBlocks(
+      /*id_to_labeled_frame=*/nullptr,
+      /*id_to_labeled_decoded_frame=*/nullptr,
       typed_proto_metadata_[ParamDefinition::kParameterDefinitionMixGain],
       global_timing_module, output_parameter_blocks));
 
@@ -650,19 +678,20 @@ absl::Status ParameterBlockGenerator::GenerateMixGain(
 // TODO(b/306319126): Generate Recon Gain iteratively now that the audio frame
 //                    decoder decodes iteratively.
 absl::Status ParameterBlockGenerator::GenerateReconGain(
-    const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-    const IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame,
+    const IdLabeledFrameMap& id_to_labeled_frame,
+    const IdLabeledFrameMap& id_to_labeled_decoded_frame,
     GlobalTimingModule& global_timing_module,
     std::list<ParameterBlockWithData>& output_parameter_blocks) {
-  recon_gain_generator_ = std::make_unique<ReconGainGenerator>(
-      id_to_time_to_labeled_frame, id_to_time_to_labeled_decoded_frame);
   RETURN_IF_NOT_OK(GenerateParameterBlocks(
+      &id_to_labeled_frame, &id_to_labeled_decoded_frame,
       typed_proto_metadata_[ParamDefinition::kParameterDefinitionReconGain],
       global_timing_module, output_parameter_blocks));
   return absl::OkStatus();
 }
 
 absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
+    const IdLabeledFrameMap* id_to_labeled_frame,
+    const IdLabeledFrameMap* id_to_labeled_decoded_frame,
     std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
         proto_metadata_list,
     GlobalTimingModule& global_timing_module,
@@ -677,13 +706,14 @@ absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
 
     RETURN_IF_NOT_OK(PopulateSubblocks(
         parameter_block_metadata, override_computed_recon_gains_,
-        primary_profile_, recon_gain_generator_.get(), per_id_metadata,
+        additional_recon_gains_logging_, id_to_labeled_frame,
+        id_to_labeled_decoded_frame, primary_profile_, per_id_metadata,
         output_parameter_block));
 
     // Disable some verbose logging after the first recon gain block is
     // produced.
-    if (recon_gain_generator_) {
-      recon_gain_generator_->set_additional_logging(false);
+    if (!override_computed_recon_gains_) {
+      additional_recon_gains_logging_ = false;
     }
 
     output_parameter_blocks.push_back(std::move(output_parameter_block));

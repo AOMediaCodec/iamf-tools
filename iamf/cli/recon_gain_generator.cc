@@ -80,33 +80,17 @@ absl::Status FindRelevantMixedSamples(
 }  // namespace
 
 absl::Status ReconGainGenerator::ComputeReconGain(
-    const std::string& label, const uint32_t audio_element_id,
-    const int32_t start_timestamp, double& recon_gain) const {
-  const auto& label_to_samples =
-      id_to_time_to_labeled_frame_.at(audio_element_id)
-          .at(start_timestamp)
-          .label_to_samples;
-  const auto& label_to_decoded_samples =
-      id_to_time_to_labeled_decoded_frame_.at(audio_element_id)
-          .at(start_timestamp)
-          .label_to_samples;
-  if (label_to_decoded_samples.find(label) == label_to_decoded_samples.end() ||
-      label_to_samples.find(label) == label_to_samples.end()) {
-    LOG(ERROR) << "Demixed channel: " << label << " not found";
-    return absl::InvalidArgumentError("");
-  }
-
-  LOG_IF(INFO, additional_logging_)
-      << "label_to_samples[" << label
-      << "].size()= " << label_to_samples.at(label).size();
-  LOG_IF(INFO, additional_logging_)
-      << "label_to_decoded_samples[" << label
-      << "].size()= " << label_to_decoded_samples.at(label).size();
-
+    const std::string& label, const LabelSamplesMap& label_to_samples,
+    const LabelSamplesMap& label_to_decoded_samples,
+    const bool additional_logging, double& recon_gain) {
   // Gather information about the original samples.
   const std::vector<int32_t>* original_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       label, label_to_samples, &original_samples));
+  LOG_IF(INFO, additional_logging)
+      << "[" << label
+      << "] original_samples.size()= " << original_samples->size();
+
   // Level Ok in the Spec.
   const double original_power = ComputeSignalPower(*original_samples);
 
@@ -117,7 +101,7 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   //                    should be changed from (2^15)^2 to (2^31)^2?
   const double max_l_squared = 32767 * 32767;
   const double original_power_db = 10 * log10(original_power / max_l_squared);
-  LOG_IF(INFO, additional_logging_) << "Level OK (db) " << original_power_db;
+  LOG_IF(INFO, additional_logging) << "Level OK (dB) " << original_power_db;
   if (original_power_db < -80) {
     recon_gain = 0;
     return absl::OkStatus();
@@ -126,21 +110,25 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   // Gather information about mixed samples.
   const std::vector<int32_t>* relevant_mixed_samples;
   RETURN_IF_NOT_OK(FindRelevantMixedSamples(
-      additional_logging_, label, label_to_samples, &relevant_mixed_samples));
+      additional_logging, label, label_to_samples, &relevant_mixed_samples));
+  LOG_IF(INFO, additional_logging)
+      << "[" << label
+      << "] relevant_mixed_samples.size()= " << relevant_mixed_samples->size();
+
   // Level Mk in the Spec.
   const double relevant_mixed_power =
       ComputeSignalPower(*relevant_mixed_samples);
   const double mixed_power_db =
       10 * log10(relevant_mixed_power / max_l_squared);
-  LOG_IF(INFO, additional_logging_) << "Level MK (db) " << mixed_power_db;
+  LOG_IF(INFO, additional_logging) << "Level MK (dB) " << mixed_power_db;
 
   // If 10*log10(level Ok / level Mk ) is less than the second threshold
   // value (e.g. -6dB), Recon_Gain (k, i) is set to the value which makes
   // level Ok = Recon_Gain (k, i)^2 x level Dk.
   double original_mixed_ratio_db =
       10 * log10(original_power / relevant_mixed_power);
-  LOG_IF(INFO, additional_logging_)
-      << "Level Ok / Level Mk (db) " << original_mixed_ratio_db;
+  LOG_IF(INFO, additional_logging)
+      << "Level Ok (dB) / Level Mk (dB) " << original_mixed_ratio_db;
 
   // Otherwise, Recon_Gain (k, i) = 1.
   if (original_mixed_ratio_db >= -6) {
@@ -152,13 +140,17 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   const std::vector<int32_t>* demixed_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       label, label_to_decoded_samples, &demixed_samples));
+  LOG_IF(INFO, additional_logging)
+      << "[" << label
+      << "] demixed_samples.size()= " << demixed_samples->size();
+
   // Level Dk in the Spec.
   const double demixed_power = ComputeSignalPower(*demixed_samples);
 
   // Set recon gain to the value implied by the spec.
   double demixed_power_ratio_db = 10 * log10(demixed_power / mixed_power_db);
-  LOG_IF(INFO, additional_logging_)
-      << "Level DK (db) " << demixed_power_ratio_db;
+  LOG_IF(INFO, additional_logging)
+      << "Level DK (dB) " << demixed_power_ratio_db;
   recon_gain = std::sqrt(original_power / demixed_power);
 
   return absl::OkStatus();

@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <list>
-#include <memory>
 #include <optional>
 
 #include "absl/container/flat_hash_map.h"
@@ -25,7 +24,6 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/cli/recon_gain_generator.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
@@ -35,7 +33,6 @@
 namespace iamf_tools {
 
 // TODO(b/296815263): Add tests for this class.
-// TODO(b/306319126): Generate one parameter block at a time.
 
 /*\!brief Generator of parameter blocks.
  *
@@ -65,6 +62,7 @@ class ParameterBlockGenerator {
       absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata)
       : override_computed_recon_gains_(override_computed_recon_gains),
+        additional_recon_gains_logging_(true),
         parameter_id_to_metadata_(parameter_id_to_metadata) {}
 
   /*\!brief Initializes the class.
@@ -123,17 +121,16 @@ class ParameterBlockGenerator {
 
   /*\!brief Generates a list of recon gain parameter blocks with data.
    *
-   * \param id_to_time_to_labeled_frame Data structure for samples.
-   * \param id_to_time_to_labeled_decoded_frame Data structure for decoded
-   *     samples.
+   * \param id_to_labeled_frame Data structure for samples.
+   * \param id_to_labeled_decoded_frame Data structure for decoded samples.
    * \param global_timing_module Global timing module to keep track of the
    *     timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GenerateReconGain(
-      const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-      const IdTimeLabeledFrameMap& id_to_time_to_labeled_decoded_frame,
+      const IdLabeledFrameMap& id_to_labeled_frame,
+      const IdLabeledFrameMap& id_to_labeled_decoded_frame,
       GlobalTimingModule& global_timing_module,
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
@@ -147,6 +144,8 @@ class ParameterBlockGenerator {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GenerateParameterBlocks(
+      const IdLabeledFrameMap* id_to_labeled_frame,
+      const IdLabeledFrameMap* id_to_labeled_decoded_frame,
       std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
           proto_metadata_list,
       GlobalTimingModule& global_timing_module,
@@ -154,13 +153,13 @@ class ParameterBlockGenerator {
 
   const bool override_computed_recon_gains_;
 
+  bool additional_recon_gains_logging_;
+
   // Mapping from parameter IDs to parameter metadata.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
       parameter_id_to_metadata_;
 
   ProfileVersion primary_profile_;
-
-  std::unique_ptr<ReconGainGenerator> recon_gain_generator_;
 
   // User metadata about Parameter Block OBUs categorized based on
   // the parameter definition type.
