@@ -303,6 +303,84 @@ absl::Status MixPresentationGenerator::CopyInfoType(
   return absl::OkStatus();
 }
 
+absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+    const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+    LoudnessInfo& output_loudness) {
+  RETURN_IF_NOT_OK(Int32ToInt16(user_loudness.integrated_loudness(),
+                                output_loudness.integrated_loudness));
+  RETURN_IF_NOT_OK(
+      Int32ToInt16(user_loudness.digital_peak(), output_loudness.digital_peak));
+
+  if ((output_loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
+    RETURN_IF_NOT_OK(
+        Int32ToInt16(user_loudness.true_peak(), output_loudness.true_peak));
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
+    const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+    LoudnessInfo& output_loudness) {
+  if ((output_loudness.info_type & LoudnessInfo::kAnchoredLoudness) == 0) {
+    // Not using anchored loudness.
+    return absl::OkStatus();
+  }
+
+  RETURN_IF_NOT_OK(
+      Uint32ToUint8(user_loudness.anchored_loudness().num_anchored_loudness(),
+                    output_loudness.anchored_loudness.num_anchored_loudness));
+
+  for (const auto& metadata_anchor_element :
+       user_loudness.anchored_loudness().anchor_elements()) {
+    AnchoredLoudnessElement::AnchorElement obu_anchor_element;
+    switch (metadata_anchor_element.anchor_element()) {
+      using enum iamf_tools_cli_proto::AnchorType;
+      using enum AnchoredLoudnessElement::AnchorElement;
+      case ANCHOR_TYPE_UNKNOWN:
+        obu_anchor_element = kAnchorElementUnknown;
+        break;
+      case ANCHOR_TYPE_DIALOGUE:
+        obu_anchor_element = kAnchorElementDialogue;
+        break;
+      case ANCHOR_TYPE_ALBUM:
+        obu_anchor_element = kAnchorElementAlbum;
+        break;
+      default:
+        LOG(ERROR) << "Unknown anchor_element: "
+                   << metadata_anchor_element.anchor_element();
+        return absl::InvalidArgumentError("");
+    }
+
+    int16_t obu_anchored_loudness;
+    RETURN_IF_NOT_OK(Int32ToInt16(metadata_anchor_element.anchored_loudness(),
+                                  obu_anchored_loudness));
+    output_loudness.anchored_loudness.anchor_elements.push_back(
+        {obu_anchor_element, obu_anchored_loudness});
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
+    const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+    LoudnessInfo& output_loudness) {
+  if ((output_loudness.info_type & LoudnessInfo::kAnyLayoutExtension) == 0) {
+    // Not using layout extension.
+    return absl::OkStatus();
+  }
+
+  output_loudness.layout_extension.info_type_size =
+      user_loudness.info_type_size();
+  output_loudness.layout_extension.info_type_bytes.reserve(
+      user_loudness.info_type_bytes().size());
+  for (const char& c : user_loudness.info_type_bytes()) {
+    output_loudness.layout_extension.info_type_bytes.push_back(
+        static_cast<uint8_t>(c));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status MixPresentationGenerator::Generate(
     std::list<MixPresentationObu>& mix_presentation_obus) {
   for (const auto& mix_presentation_metadata : mix_presentation_metadata_) {

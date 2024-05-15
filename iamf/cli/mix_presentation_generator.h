@@ -36,6 +36,39 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& input_loudness_info,
       uint8_t& loudness_info_type);
 
+  /*\!brief Copies over user provided integrated loudness and peak values.
+   *
+   * \param user_loudness User provided loudness information.
+   * \param output_loudness Output loudness information with `info_type`
+   *     initialized.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status CopyUserIntegratedLoudnessAndPeaks(
+      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+      LoudnessInfo& output_loudness);
+
+  /*\!brief Copies over user provided anchored loudness.
+   *
+   * \param user_loudness User provided loudness information.
+   * \param output_loudness Output loudness information with `info_type`
+   *     initialized.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status CopyUserAnchoredLoudness(
+      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+      LoudnessInfo& output_loudness);
+
+  /*\!brief Copies over user provided layout extension.
+   *
+   * \param user_loudness User provided loudness information.
+   * \param output_loudness Output loudness information with `info_type`
+   *     initialized.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status CopyUserLayoutExtension(
+      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
+      LoudnessInfo& output_loudness);
+
   /*\!brief Constructor.
    * \param mix_presentation_metadata Input mix presentation metadata.
    */

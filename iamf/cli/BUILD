@@ -363,7 +363,6 @@ cc_library(
         ":parameter_block_with_data",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",

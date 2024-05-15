@@ -12,8 +12,10 @@
 #include "iamf/cli/mix_presentation_generator.h"
 
 #include <cstdint>
+#include <limits>
 #include <list>
 #include <string>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -238,6 +240,203 @@ TEST(CopyInfoType, DeprecatedInfoTypeIsNotSupported) {
   EXPECT_FALSE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
                                                       unused_output_info_type)
                    .ok());
+}
+
+TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = 0};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        # `integrated_loudness` and `digital_peak` are always included.
+        integrated_loudness: -99 digital_peak: -100
+      )pb",
+      &user_loudness));
+
+  // Configured expected data. The function only writes to the
+  // integrated loudness and peak loudness fields.
+  const LoudnessInfo expected_output_loudness = {
+      .info_type = 0, .integrated_loudness = -99, .digital_peak = -100};
+
+  EXPECT_TRUE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness)
+                  .ok());
+  EXPECT_EQ(output_loudness, expected_output_loudness);
+}
+
+TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kTruePeak};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        integrated_loudness: -99
+        digital_peak: -100
+        # `true_peak` is included when `info_type & kTruePeak == 1`.
+        true_peak: -101
+      )pb",
+      &user_loudness));
+
+  // Configured expected data. The function only writes to the
+  // integrated loudness and peak loudness fields.
+  const LoudnessInfo expected_output_loudness = {
+      .info_type = LoudnessInfo::kTruePeak,
+      .integrated_loudness = -99,
+      .digital_peak = -100,
+      .true_peak = -101};
+
+  EXPECT_TRUE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness)
+                  .ok());
+  EXPECT_EQ(output_loudness, expected_output_loudness);
+}
+
+TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesIntegratedLoudness) {
+  // Configure valid prerequisites.
+  LoudnessInfo output_loudness = {.info_type = 0};
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.set_digital_peak(0);
+
+  // Configure `integrated_loudness` that cannot fit into an `int16_t`.
+  user_loudness.set_integrated_loudness(std::numeric_limits<int16_t>::max() +
+                                        1);
+  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                   user_loudness, output_loudness)
+                   .ok());
+}
+
+TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesDigitalPeak) {
+  // Configure valid prerequisites.
+  LoudnessInfo output_loudness = {.info_type = 0};
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.set_integrated_loudness(0);
+
+  // Configure `digital_peak` that cannot fit into an `int16_t`.
+  user_loudness.set_digital_peak(std::numeric_limits<int16_t>::min() - 1);
+
+  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                   user_loudness, output_loudness)
+                   .ok());
+}
+
+TEST(CopyUserIntegratedLoudnessAndPeaks, ValidatesTruePeak) {
+  // Configure valid prerequisites.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kTruePeak};
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.set_integrated_loudness(0);
+  user_loudness.set_digital_peak(0);
+
+  // Configure `true_peak` that cannot fit into an `int16_t`.
+  user_loudness.set_true_peak(std::numeric_limits<int16_t>::max() + 1);
+
+  EXPECT_FALSE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                   user_loudness, output_loudness)
+                   .ok());
+}
+
+TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        anchored_loudness {
+          num_anchored_loudness: 2
+          anchor_elements:
+          [ { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1000 }
+            , { anchor_element: ANCHOR_TYPE_ALBUM anchored_loudness: 1001 }]
+      )pb",
+      &user_loudness);
+
+  // Configured expected data. The function only writes to the
+  // `AnchoredLoudness`.
+  const AnchoredLoudness expected_output_loudness = {
+      .num_anchored_loudness = 2,
+      .anchor_elements = {
+          {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
+           .anchored_loudness = 1000},
+          {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
+           .anchored_loudness = 1001}}};
+
+  EXPECT_TRUE(MixPresentationGenerator::CopyUserAnchoredLoudness(
+                  user_loudness, output_loudness)
+                  .ok());
+  EXPECT_EQ(output_loudness.anchored_loudness, expected_output_loudness);
+}
+
+TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        anchored_loudness {
+          num_anchored_loudness: 1
+          anchor_elements:
+          [ { anchor_element: ANCHOR_TYPE_NOT_DEFINED anchored_loudness: 1000 }
+      )pb",
+      &user_loudness);
+
+  EXPECT_FALSE(MixPresentationGenerator::CopyUserAnchoredLoudness(
+                   user_loudness, output_loudness)
+                   .ok());
+}
+
+TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type =
+                                      LoudnessInfo::kAnyLayoutExtension};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        info_type_size: 3 info_type_bytes: "abc"
+      )pb",
+      &user_loudness));
+
+  // Configured expected data. The function only writes to the
+  // `LayoutExtension`.
+  const LayoutExtension expected_layout_extension = {
+      .info_type_size = 3,
+      .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
+
+  EXPECT_TRUE(MixPresentationGenerator::CopyUserLayoutExtension(user_loudness,
+                                                                output_loudness)
+                  .ok());
+  EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
+}
+
+TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kInfoTypeBitMask4};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        info_type_size: 3 info_type_bytes: "abc"
+      )pb",
+      &user_loudness));
+
+  // Configured expected data. The function only writes to the
+  // `LayoutExtension`.
+  const LayoutExtension expected_layout_extension = {
+      .info_type_size = 3,
+      .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
+
+  EXPECT_TRUE(MixPresentationGenerator::CopyUserLayoutExtension(user_loudness,
+                                                                output_loudness)
+                  .ok());
+  EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
 }
 
 }  // namespace

@@ -43,39 +43,6 @@ class MixPresentationFinalizerBase {
    */
   virtual ~MixPresentationFinalizerBase() = default;
 
-  /*\!brief Copies over user provided integrated loudness and peak values.
-   *
-   * \param user_loudness User provided loudness information.
-   * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  static absl::Status CopyUserIntegratedLoudnessAndPeaks(
-      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
-      LoudnessInfo& output_loudness);
-
-  /*\!brief Copies over user provided anchored loudness.
-   *
-   * \param user_loudness User provided loudness information.
-   * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  static absl::Status CopyUserAnchoredLoudness(
-      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
-      LoudnessInfo& output_loudness);
-
-  /*\!brief Copies over user provided layout extension.
-   *
-   * \param user_loudness User provided loudness information.
-   * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  static absl::Status CopyUserLayoutExtension(
-      const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
-      LoudnessInfo& output_loudness);
-
   /*\!brief Finalizes the list of Mix Presentation OBUs.
    *
    * Populates the loudness information for each Mix Presentation OBU.
