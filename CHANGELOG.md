@@ -31,12 +31,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 -   Add an IAMF encoder which takes in `UserMetadata` and outputs IAMF files.
--   Add a suite of `UserMetadata` textproto files to generate test IAMF files.
+-   Fork a test suite from
+    [`libiamf`](https://github.com/AOMediaCodec/libiamf/commit/f9cdea5c).
+    -   `*.proto`: A schema to describe IA Sequences and metadata to process
+        them. `UserMetadata` is the "top-level" file.
+    -   `*.textproto`: A suite of `UserMetadata` textproto files to generate
+        test IAMF files.
 
 ### Deprecated
 
 -   Deprecate `deprecated_codec_id`, `deprecated_info_type`,
-    `deprecated_param_definition_type`, `deprecated_loudspeaker_layout`.
+    `deprecated_param_definition_type`, `deprecated_loudspeaker_layout` from the
+    forked `.protos`.
 
 [unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0
