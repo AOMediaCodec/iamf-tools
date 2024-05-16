@@ -340,6 +340,13 @@ class ParameterBlockObu : public ObuBase {
   // Length `num_subblocks_`.
   std::vector<ParameterSubblock> subblocks_;
 
+  absl::StatusOr<PerIdParameterMetadata> GetPerIdParameterMetadata() const {
+    if (metadata_ == nullptr) {
+      return absl::NotFoundError("No metadata found.");
+    }
+    return *metadata_;
+  }
+
  private:
   /*\!brief Sets the `duration` of the output OBU or metadata.
    *

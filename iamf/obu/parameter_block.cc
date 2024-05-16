@@ -374,7 +374,7 @@ absl::Status ParameterBlockObu::GetMixGain(int32_t obu_relative_time,
                                            int16_t& mix_gain) const {
   if (metadata_->param_definition_type !=
       ParamDefinition::kParameterDefinitionMixGain) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Expected Mix Gain Parameter Definition");
   }
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
