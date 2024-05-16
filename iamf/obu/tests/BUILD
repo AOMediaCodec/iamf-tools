@@ -208,10 +208,12 @@ cc_test(
     deps = [
         ":obu_test_base",
         "//iamf/cli:leb_generator",
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:obu_header",
         "//iamf/obu:temporal_delimiter",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )

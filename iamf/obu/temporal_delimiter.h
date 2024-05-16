@@ -13,6 +13,7 @@
 #define OBU_TEMPORAL_DELIMITER_H_
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -22,6 +23,22 @@ namespace iamf_tools {
 
 class TemporalDelimiterObu : public ObuBase {
  public:
+  /*!\brief Creates a `TemporalDelimiterObu`,
+   *
+   * This is a factory method that creates a `TemporalDelimiterObu` from the
+   * given `ObuHeader` and `ReadBitBuffer`. It is simple because
+   * `TemporalDelimiterObu` has no payload.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param rb `ReadBitBuffer` where the `TemporalDelimiterObu` data is stored.
+   *     Data read from the buffer is consumed.
+   * \return a `TemporalDelimiterObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<TemporalDelimiterObu> CreateFromBuffer(
+      const ObuHeader& header, ReadBitBuffer& /*rb*/) {
+    return TemporalDelimiterObu(header);
+  }
+
   /*!\brief Constructor. */
   explicit TemporalDelimiterObu(ObuHeader header)
       : ObuBase(header, kObuIaTemporalDelimiter) {}

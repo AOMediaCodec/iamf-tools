@@ -11,12 +11,15 @@
  */
 #include "iamf/obu/temporal_delimiter.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_base.h"
@@ -106,6 +109,33 @@ TEST_F(TemporalDelimiterTest,
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
+  std::vector<uint8_t> source_data = {};
+  ReadBitBuffer buffer(1024, &source_data);
+
+  EXPECT_TRUE(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer).ok());
+}
+
+TEST(CreateFromBuffer, SetsObuType) {
+  std::vector<uint8_t> source_data = {};
+  ReadBitBuffer buffer(1024, &source_data);
+
+  absl::StatusOr<TemporalDelimiterObu> obu =
+      TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer);
+  EXPECT_TRUE(obu.ok());
+  EXPECT_EQ(obu->header_.obu_type, kObuIaTemporalDelimiter);
+}
+
+TEST(CreateFromBuffer, DoesNotConsumeBuffer) {
+  std::vector<uint8_t> source_data = {99};
+  ReadBitBuffer buffer(1024, &source_data);
+  EXPECT_TRUE(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer).ok());
+  uint8_t next_byte;
+  EXPECT_TRUE(buffer.ReadUnsignedLiteral(8, next_byte).ok());
+
+  EXPECT_EQ(next_byte, 99);
 }
 
 }  // namespace
