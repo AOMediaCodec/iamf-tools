@@ -63,7 +63,7 @@ void AddOpusCodecConfigWithId(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdOpus,
        .num_samples_per_frame = 8,
-       .audio_roll_distance = 0,
+       .audio_roll_distance = -480,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
   ASSERT_TRUE(obu.Initialize().ok());
