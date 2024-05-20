@@ -11,12 +11,16 @@
  */
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(LookupInputLayoutFromAudioPackFormatId, UnknownAudioPackFormatId) {
   EXPECT_FALSE(LookupInputLayoutFromAudioPackFormatId("").ok());
@@ -38,7 +42,7 @@ TEST_P(SupportedAudioPackFormatId, TestLookupInputLayoutFromAudioPackFormatId) {
 
   const auto layout = LookupInputLayoutFromAudioPackFormatId(
       test_case.test_audio_pack_format_id);
-  ASSERT_TRUE(layout.ok());
+  ASSERT_THAT(layout, IsOk());
   EXPECT_EQ(*layout, test_case.expected_layout);
 }
 
@@ -49,7 +53,7 @@ INSTANTIATE_TEST_SUITE_P(ChannelBased, SupportedAudioPackFormatId,
                              {"AP_00010017", IamfInputLayout::k7_1_4},
                          }));
 
-INSTANTIATE_TEST_SUITE_P(Binaraul, SupportedAudioPackFormatId,
+INSTANTIATE_TEST_SUITE_P(Binaural, SupportedAudioPackFormatId,
                          testing::ValuesIn<SupportedAudioPackFormatIdTestCase>(
                              {{"AP_00050001", IamfInputLayout::kBinaural}}));
 

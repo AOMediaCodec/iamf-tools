@@ -14,6 +14,7 @@
 
 #include <cstdint>
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -23,6 +24,8 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using testing::ElementsAreArray;
 
@@ -38,11 +41,10 @@ iamf_tools_cli_proto::AudioFrameObuMetadata GetAudioFrameMetadataExpectOk(
                                               kNumSamplesToTrimAtEnd);
 
   iamf_tools_cli_proto::AudioFrameObuMetadata audio_element_metadata;
-  EXPECT_TRUE(audio_frame_handler
-                  .PopulateAudioFrameMetadata(kFileNameSuffix, audio_element_id,
-                                              input_layout,
-                                              audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(audio_frame_handler.PopulateAudioFrameMetadata(
+                  kFileNameSuffix, audio_element_id, input_layout,
+                  audio_element_metadata),
+              IsOk());
   return audio_element_metadata;
 }
 

@@ -14,6 +14,8 @@
 
 #include <cstdint>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_element.pb.h"
@@ -22,17 +24,18 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
+using ::absl_testing::IsOk;
+
 const int32_t kAudioElementId = 999;
 
 TEST(PopulateAudioElementMetadata, SetsAudioElementId) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
   AudioElementHandler audio_element_handler;
 
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(kAudioElementId,
-                                                IamfInputLayout::kStereo,
-                                                audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(
+      audio_element_handler.PopulateAudioElementMetadata(
+          kAudioElementId, IamfInputLayout::kStereo, audio_element_metadata),
+      IsOk());
 
   EXPECT_EQ(audio_element_metadata.audio_element_id(), kAudioElementId);
 }
@@ -41,11 +44,10 @@ TEST(PopulateAudioElementMetadata, ConfiguresStereo) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
   AudioElementHandler audio_element_handler;
 
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(kAudioElementId,
-                                                IamfInputLayout::kStereo,
-                                                audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(
+      audio_element_handler.PopulateAudioElementMetadata(
+          kAudioElementId, IamfInputLayout::kStereo, audio_element_metadata),
+      IsOk());
 
   EXPECT_EQ(audio_element_metadata.num_substreams(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 1);
@@ -71,11 +73,10 @@ TEST(PopulateAudioElementMetadata, ConfiguresLoudspeakerLayoutForBinaural) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
   AudioElementHandler audio_element_handler;
 
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(kAudioElementId,
-                                                IamfInputLayout::kBinaural,
-                                                audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(
+      audio_element_handler.PopulateAudioElementMetadata(
+          kAudioElementId, IamfInputLayout::kBinaural, audio_element_metadata),
+      IsOk());
   ASSERT_TRUE(audio_element_metadata.has_scalable_channel_layout_config());
 
   EXPECT_EQ(audio_element_metadata.scalable_channel_layout_config()
@@ -88,11 +89,10 @@ TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
   AudioElementHandler audio_element_handler;
 
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(
-                      kAudioElementId, IamfInputLayout::kAmbisonicsOrder1,
-                      audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
+                  kAudioElementId, IamfInputLayout::kAmbisonicsOrder1,
+                  audio_element_metadata),
+              IsOk());
 
   EXPECT_EQ(audio_element_metadata.num_substreams(), 4);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 4);
@@ -120,16 +120,14 @@ TEST(PopulateAudioElementMetadata, GeneratesUniqueSubstreamIds) {
   iamf_tools_cli_proto::AudioElementObuMetadata first_audio_element_metadata;
   iamf_tools_cli_proto::AudioElementObuMetadata second_audio_element_metadata;
   AudioElementHandler audio_element_handler;
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(kAudioElementId,
-                                                IamfInputLayout::kStereo,
-                                                first_audio_element_metadata)
-                  .ok());
-  EXPECT_TRUE(audio_element_handler
-                  .PopulateAudioElementMetadata(kAudioElementId + 1,
-                                                IamfInputLayout::kStereo,
-                                                second_audio_element_metadata)
-                  .ok());
+  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
+                  kAudioElementId, IamfInputLayout::kStereo,
+                  first_audio_element_metadata),
+              IsOk());
+  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
+                  kAudioElementId + 1, IamfInputLayout::kStereo,
+                  second_audio_element_metadata),
+              IsOk());
 
   EXPECT_EQ(first_audio_element_metadata.audio_substream_ids(0), 0);
   EXPECT_EQ(second_audio_element_metadata.audio_substream_ids(0), 1);

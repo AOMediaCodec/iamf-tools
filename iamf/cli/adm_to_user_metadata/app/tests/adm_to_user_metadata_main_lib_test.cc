@@ -17,8 +17,9 @@
 #include <sstream>
 #include <string>
 
-#include "absl/base/no_destructor.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -27,6 +28,8 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 constexpr int32_t kImportanceThreshold = 10;
 constexpr int32_t kMaxFrameDurationMs = 10;
@@ -103,7 +106,7 @@ GenerateUserMetadataAndSpliceWavFilesExpectOk(absl::string_view input_adm) {
       kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
       ::testing::TempDir(), ss);
 
-  EXPECT_TRUE(user_metadata.ok()) << user_metadata.status();
+  EXPECT_THAT(user_metadata, IsOk());
 
   return *user_metadata;
 }

@@ -13,14 +13,14 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/strings/str_cat.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
@@ -29,9 +29,11 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
-const int32_t kFrameDurationMs = 10;
-const int64_t kTotalSamplesPerChannel = 100;
-const uint32_t kSamplesPerSec = 48000;
+using ::absl_testing::IsOk;
+
+constexpr int32_t kFrameDurationMs = 10;
+constexpr int64_t kTotalSamplesPerChannel = 100;
+constexpr uint32_t kSamplesPerSec = 48000;
 
 constexpr absl::string_view kStereoAudioPackFormatId = "AP_00010002";
 constexpr absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
@@ -127,10 +129,10 @@ const ADM& GetAdmWithComplementaryGroups() {
 }
 
 TEST(Create, WithNoAudioObjectsSucceeds) {
-  EXPECT_TRUE(IAMF::Create(/*file_name=*/"",
+  EXPECT_THAT(IAMF::Create(/*file_name=*/"",
                            /*adm=*/{}, kFrameDurationMs,
-                           kTotalSamplesPerChannel, kSamplesPerSec)
-                  .ok());
+                           kTotalSamplesPerChannel, kSamplesPerSec),
+              IsOk());
 }
 
 TEST(Create, WithObjectBasedAudioObjectFails) {
@@ -147,7 +149,7 @@ TEST(Create, PopulatesAudioFrameHandlerFilePrefix) {
   const auto iamf =
       IAMF::Create(kExpectedFileNamePrefix, /*adm=*/{}, kFrameDurationMs,
                    kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_frame_handler_.file_prefix_, kExpectedFileNamePrefix);
 }
@@ -156,7 +158,7 @@ TEST(Create, PopulatesIamfInputLayoutsFromObjects) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsWithoutAudioProgramme(),
                    kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   const std::vector<IamfInputLayout> kExpectedInputLayouts = {
       IamfInputLayout::kStereo, IamfInputLayout::kAmbisonicsOrder3};
@@ -171,7 +173,7 @@ TEST(Create, MapsAreEmptyWhenNoAudioProgramme) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsWithoutAudioProgramme(),
                    kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_TRUE(iamf->audio_object_to_audio_element_.empty());
   EXPECT_TRUE(iamf->mix_presentation_id_to_audio_objects_and_metadata_.empty());
@@ -181,7 +183,7 @@ TEST(Create, PopulatesAudioObjectToAudioElement) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes(),
                    kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_object_to_audio_element_.size(), 2);
   EXPECT_EQ(iamf->audio_object_to_audio_element_.at(
@@ -201,7 +203,7 @@ TEST(Create, PopulatesAudioProgrammeToAudioObjectsMap) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes(),
                    kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->mix_presentation_id_to_audio_objects_and_metadata_.size(), 2);
   const auto& first_mix_presentation_data =
@@ -239,7 +241,7 @@ TEST(Create, IgnoresAudioProgrammeWithMoreThanTwoAudioObjects) {
   adm.audio_objects.push_back(GetStereoAudioObject(kSecondStereoObjectId));
   const auto iamf = IAMF::Create("", adm, kFrameDurationMs,
                                  kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->mix_presentation_id_to_audio_objects_and_metadata_.size(), 2);
 }
@@ -248,7 +250,7 @@ TEST(Create, CreatesAudioProgrammesForComplementaryGroups) {
   const auto iamf =
       IAMF::Create("", GetAdmWithComplementaryGroups(), kFrameDurationMs,
                    kTotalSamplesPerChannel, kSamplesPerSec);
-  ASSERT_TRUE(iamf.ok());
+  ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_object_to_audio_element_.size(), 2);
 

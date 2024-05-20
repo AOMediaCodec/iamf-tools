@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -21,6 +22,8 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using testing::ElementsAreArray;
 
@@ -43,7 +46,7 @@ TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
         </audioProgramme>
   )xml",
       kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_programmes.empty());
   const auto& audio_programme = adm->audio_programmes[0];
@@ -64,7 +67,7 @@ TEST(ParseXmlToAdm, LoadsAudioContents) {
     </audioContent>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_contents.empty());
   const auto& audio_content = adm->audio_contents[0];
@@ -85,7 +88,7 @@ TEST(ParseXmlToAdm, LoadsAudioObject) {
   </audioObject>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_objects.empty());
   const auto& audio_object = adm->audio_objects[0];
@@ -129,7 +132,7 @@ TEST(ParseXmlToAdm, LoudspeakerLayoutIsSupported) {
   </TopLevelElement>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 7);
 }
@@ -149,7 +152,7 @@ TEST(ParseXmlToAdm, AmbisonicsLayoutIsSupported) {
   </TopLevelElement>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 3);
 }
@@ -161,7 +164,7 @@ TEST(ParseXmlToAdm, BinauralLayoutIsSupported) {
   </audioObject>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
 }
@@ -187,7 +190,7 @@ TEST(ParseXmlToAdm, FiltersOutUnsupportedLayouts) {
   </TopLevelElement>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
   EXPECT_EQ(adm->audio_objects[0].id, "Mono");
@@ -198,7 +201,7 @@ TEST(ParseXmlToAdm, AudioObjectImportanceDefaultsToTen) {
   <audioObject></audioObject>
   )xml",
                                  kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects[0].importance, 10);
 }
@@ -215,19 +218,19 @@ TEST(ParseXmlToAdm, FiltersOutLowImportanceAudioObjects) {
 
   const auto adm_with_all_objects_below_threshold =
       ParseXmlToAdm(xml, /*importance_threshold=*/10);
-  ASSERT_TRUE(adm_with_all_objects_below_threshold.ok());
+  ASSERT_THAT(adm_with_all_objects_below_threshold, IsOk());
   EXPECT_EQ(adm_with_all_objects_below_threshold->audio_objects.size(), 0);
 
   // One object is at or above the threshold.
   const auto adm_with_one_object_at_or_above_threshold =
       ParseXmlToAdm(xml, /*importance_threshold=*/9);
-  ASSERT_TRUE(adm_with_one_object_at_or_above_threshold.ok());
+  ASSERT_THAT(adm_with_one_object_at_or_above_threshold, IsOk());
   EXPECT_EQ(adm_with_one_object_at_or_above_threshold->audio_objects.size(), 1);
 
   // Three objects are at or above the threshold.
   const auto adm_with_three_objects_at_or_above_threshold =
       ParseXmlToAdm(xml, /*importance_threshold=*/3);
-  ASSERT_TRUE(adm_with_three_objects_at_or_above_threshold.ok());
+  ASSERT_THAT(adm_with_three_objects_at_or_above_threshold, IsOk());
   EXPECT_EQ(adm_with_three_objects_at_or_above_threshold->audio_objects.size(),
             3);
 }
@@ -259,7 +262,7 @@ TEST(ParseXmlToAdm, SetsExplicitLoudnessValuesAsFloat) {
         </audioProgramme>
   )xml",
       kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
   ASSERT_FALSE(adm->audio_programmes.empty());
 
   const auto& loudness_metadata = adm->audio_programmes[0].loudness_metadata;
@@ -286,7 +289,7 @@ TEST(ParseXmlToAdm, DefaultLoudnessValues) {
         </audioProgramme>
   )xml",
       kImportanceThreshold);
-  ASSERT_TRUE(adm.ok());
+  ASSERT_THAT(adm, IsOk());
   ASSERT_FALSE(adm->audio_programmes.empty());
 
   // The IAMF bitstream always needs `integrated_loudness`. The parser will

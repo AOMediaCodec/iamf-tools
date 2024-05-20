@@ -30,10 +30,10 @@ cc_library(
         "//iamf/cli/adm_to_user_metadata/app:__pkg__",
     ],
     deps = [
+        ":bw64_reader",
+        ":format_info_chunk",
+        ":xml_to_adm",
         "//iamf/cli:wav_writer",
-        "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
-        "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
-        "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",

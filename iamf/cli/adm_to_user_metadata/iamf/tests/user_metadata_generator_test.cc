@@ -17,9 +17,10 @@
 #include <string_view>
 
 #include "absl/base/no_destructor.h"
-#include "absl/log/log.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/adm_to_user_metadata/adm/format_info_chunk.h"
@@ -31,6 +32,8 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 constexpr absl::string_view kStereoAudioObjectId = "Stereo Audio Object";
 const AudioObject& GetStereoAudioObject() {
@@ -120,9 +123,9 @@ TEST(WriteUserMetadataToFile, CreatesTextprotoFile) {
   const auto kExpectedTextprotoPath =
       kPath / absl::StrCat(kFileNamePrefix, ".textproto");
 
-  EXPECT_TRUE(UserMetadataGenerator::WriteUserMetadataToFile(
-                  /*write_binary_proto=*/false, kPath, user_metadata)
-                  .ok());
+  EXPECT_THAT(UserMetadataGenerator::WriteUserMetadataToFile(
+                  /*write_binary_proto=*/false, kPath, user_metadata),
+              IsOk());
   EXPECT_TRUE(std::filesystem::exists(kExpectedTextprotoPath));
 }
 
@@ -135,9 +138,9 @@ TEST(WriteUserMetadataToFile, CreatesBinaryProtoFile) {
   const auto kExpectedBinaryProtoPath =
       kPath / absl::StrCat(kFileNamePrefix, ".binpb");
 
-  EXPECT_TRUE(UserMetadataGenerator::WriteUserMetadataToFile(
-                  /*write_binary_proto=*/true, kPath, user_metadata)
-                  .ok());
+  EXPECT_THAT(UserMetadataGenerator::WriteUserMetadataToFile(
+                  /*write_binary_proto=*/true, kPath, user_metadata),
+              IsOk());
   EXPECT_TRUE(std::filesystem::exists(kExpectedBinaryProtoPath));
 }
 
@@ -148,7 +151,7 @@ UserMetadata GenerateUserMetadataExpectOk(
 
   const auto user_metadata =
       user_metadata_generator.GenerateUserMetadata(input_file_prefix);
-  EXPECT_TRUE(user_metadata.ok()) << user_metadata.status();
+  EXPECT_THAT(user_metadata, IsOk()) << user_metadata.status();
   return *user_metadata;
 }
 

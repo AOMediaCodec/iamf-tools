@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -28,6 +29,8 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 constexpr uint32_t kCommonParameterRate = 48000;
 constexpr uint32_t kMixPresentationId = 99;
@@ -81,11 +84,10 @@ iamf_tools_cli_proto::MixPresentationObuMetadata GetMixObuMetataExpectOk(
                                  audio_object_id_to_audio_element_id);
 
   iamf_tools_cli_proto::MixPresentationObuMetadata mix_presentation_metadata;
-  EXPECT_TRUE(handler
-                  .PopulateMixPresentation(kMixPresentationId, audio_objects,
-                                           loudness_metadata,
-                                           mix_presentation_metadata)
-                  .ok());
+  EXPECT_THAT(handler.PopulateMixPresentation(kMixPresentationId, audio_objects,
+                                              loudness_metadata,
+                                              mix_presentation_metadata),
+              IsOk());
 
   return mix_presentation_metadata;
 }

@@ -20,7 +20,7 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
-const auto kBaseProfileVersion = iamf_tools_cli_proto::PROFILE_VERSION_BASE;
+constexpr auto kBaseProfileVersion = iamf_tools_cli_proto::PROFILE_VERSION_BASE;
 
 TEST(GenerateBaseProfileIaSequenceHeaderObuMetadata, GeneratesBaseProfile) {
   iamf_tools_cli_proto::IASequenceHeaderObuMetadata

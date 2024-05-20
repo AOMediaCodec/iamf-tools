@@ -17,12 +17,16 @@
 #include <sstream>
 #include <string>
 
+#include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
+
+using ::absl_testing::IsOk;
 
 constexpr int32_t kImportanceThreshold = 10;
 
@@ -68,7 +72,7 @@ void ValidateGetChunkInfo(const Bw64Reader& reader,
                           absl::string_view chunk_name, int32_t expected_size,
                           int32_t expected_offset) {
   const auto chunk_info = reader.GetChunkInfo(chunk_name);
-  ASSERT_TRUE(chunk_info.ok());
+  ASSERT_THAT(chunk_info, IsOk());
   EXPECT_EQ(chunk_info->size, expected_size);
   EXPECT_EQ(chunk_info->offset, expected_offset);
 }
@@ -83,7 +87,7 @@ TEST(BuildFromStream, PopulatesChunkInfo) {
   std::istringstream ss((std::string(kValidWav)));
 
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   // Chunk name | Size | Offset
   // -----------|------|-------
@@ -103,7 +107,7 @@ TEST(BuildFromStream, PopulatesFormatInfo) {
   std::istringstream ss((std::string(kValidWav)));
 
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   EXPECT_EQ(reader->format_info_.format_tag, kExpectedFormatTag);
   EXPECT_EQ(reader->format_info_.num_channels, kExpectedNumChannels);
@@ -117,7 +121,7 @@ TEST(BuildFromStream, PopulatesAudioObjects) {
   std::istringstream ss((std::string(kValidWav)));
 
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   EXPECT_EQ(reader->adm_.audio_objects.size(), kExpectedNumObjects);
 }
@@ -126,7 +130,7 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
   std::istringstream ss((std::string(kValidWav)));
 
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   // Returns error when Looking up an invalid chunk name returns an error.
   EXPECT_FALSE(reader->GetChunkInfo("INVALID_CHUNK").ok());
@@ -135,10 +139,10 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
 TEST(GetTotalSamplesPerChannel, ReturnsTotalSamplesPerChannel) {
   std::istringstream ss((std::string(kValidWav)));
   auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   const auto total_samples_per_channel = reader->GetTotalSamplesPerChannel();
-  ASSERT_TRUE(total_samples_per_channel.ok());
+  ASSERT_THAT(total_samples_per_channel, IsOk());
 
   EXPECT_EQ(*total_samples_per_channel, kExpectedTotalSamplesPerChannel);
 }
@@ -165,7 +169,7 @@ TEST(GetTotalSamplesPerChannel, ReturnsErrorWhenInvalidNumberOfChannels) {
 
   std::istringstream ss((std::string(kInvalidNumberOfChannels)));
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_TRUE(reader.ok());
+  ASSERT_THAT(reader, IsOk());
 
   EXPECT_FALSE(reader->GetTotalSamplesPerChannel().ok());
 }
