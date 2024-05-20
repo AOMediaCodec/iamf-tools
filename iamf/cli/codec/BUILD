@@ -3,9 +3,29 @@
 package(default_visibility = ["//iamf/cli:__subpackages__"])
 
 cc_library(
-    name = "aac_encoder_decoder",
-    srcs = ["aac_encoder_decoder.cc"],
-    hdrs = ["aac_encoder_decoder.h"],
+    name = "aac_decoder",
+    srcs = ["aac_decoder.cc"],
+    hdrs = ["aac_decoder.h"],
+    deps = [
+        ":decoder_base",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/common:macros",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:aac_decoder_config",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@fdk_aac//:aac_decoder_lib",
+        "@fdk_aac//:aac_encoder_lib",
+        "@fdk_aac//:fdk_sys_lib",
+    ],
+)
+
+cc_library(
+    name = "aac_encoder",
+    srcs = ["aac_encoder.cc"],
+    hdrs = ["aac_encoder.h"],
     deps = [
         ":decoder_base",
         ":encoder_base",
@@ -48,9 +68,9 @@ cc_library(
 )
 
 cc_library(
-    name = "flac_encoder_decoder",
-    srcs = ["flac_encoder_decoder.cc"],
-    hdrs = ["flac_encoder_decoder.h"],
+    name = "flac_encoder",
+    srcs = ["flac_encoder.cc"],
+    hdrs = ["flac_encoder.h"],
     deps = [
         ":encoder_base",
         "//iamf/cli:audio_frame_with_data",
@@ -103,9 +123,30 @@ cc_library(
 )
 
 cc_library(
-    name = "opus_encoder_decoder",
-    srcs = ["opus_encoder_decoder.cc"],
-    hdrs = ["opus_encoder_decoder.h"],
+    name = "opus_decoder",
+    srcs = ["opus_decoder.cc"],
+    hdrs = ["opus_decoder.h"],
+    deps = [
+        ":decoder_base",
+        ":encoder_base",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:opus_decoder_config",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/synchronization",
+        "@libopus",
+    ],
+)
+
+cc_library(
+    name = "opus_encoder",
+    srcs = ["opus_encoder.cc"],
+    hdrs = ["opus_encoder.h"],
     deps = [
         ":decoder_base",
         ":encoder_base",

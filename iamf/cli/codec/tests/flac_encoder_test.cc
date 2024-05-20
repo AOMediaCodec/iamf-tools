@@ -9,13 +9,14 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/codec/flac_encoder.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/codec/flac_encoder_decoder.h"
 #include "iamf/cli/codec/tests/encoder_test_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"

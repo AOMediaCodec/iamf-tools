@@ -20,7 +20,7 @@ cc_test(
     srcs = ["aac_encoder_test.cc"],
     deps = [
         ":encoder_test_base",
-        "//iamf/cli/codec:aac_encoder_decoder",
+        "//iamf/cli/codec:aac_encoder",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
@@ -60,7 +60,7 @@ cc_test(
     srcs = ["flac_encoder_test.cc"],
     deps = [
         ":encoder_test_base",
-        "//iamf/cli/codec:flac_encoder_decoder",
+        "//iamf/cli/codec:flac_encoder",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
@@ -105,7 +105,7 @@ cc_test(
     srcs = ["opus_encoder_test.cc"],
     deps = [
         ":encoder_test_base",
-        "//iamf/cli/codec:opus_encoder_decoder",
+        "//iamf/cli/codec:opus_encoder",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
