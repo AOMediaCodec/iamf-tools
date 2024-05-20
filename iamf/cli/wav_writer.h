@@ -27,7 +27,7 @@ class WavWriter {
   //                    constructor that leaves a "limbo" instance for
   //                    unrecoverable errors.
 
-  /*\!brief Initializes a WavWriter.
+  /*!\brief Initializes a WavWriter.
    *
    * Initializes a WavWriter that can be used to write a wav file without
    * knowing the number of samples in advance.
@@ -41,15 +41,15 @@ class WavWriter {
   WavWriter(const std::string& wav_filename, int num_channels,
             int sample_rate_hz, int bit_depth, bool write_header = true);
 
-  /*\!brief Moves the `WavWriter` without closing the underlying file.*/
+  /*!\brief Moves the `WavWriter` without closing the underlying file.*/
   WavWriter(WavWriter&& original);
 
-  /*\!brief Finalizes the wav header and closes the underlying file.*/
+  /*!\brief Finalizes the wav header and closes the underlying file.*/
   ~WavWriter();
 
   int bit_depth() const { return bit_depth_; }
 
-  /*\!brief Writes samples to the wav file.
+  /*!\brief Writes samples to the wav file.
    *
    * There must be an integer number of samples and the number of samples %
    * `num_channels()` must equal 0. The number of samples is implicitly
@@ -61,7 +61,7 @@ class WavWriter {
    */
   bool WriteSamples(const std::vector<uint8_t>& buffer);
 
-  /*\!brief Aborts the write process and deletes the wav file.*/
+  /*!\brief Aborts the write process and deletes the wav file.*/
   void Abort();
 
  private:

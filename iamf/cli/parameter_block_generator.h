@@ -34,7 +34,7 @@ namespace iamf_tools {
 
 // TODO(b/296815263): Add tests for this class.
 
-/*\!brief Generator of parameter blocks.
+/*!\brief Generator of parameter blocks.
  *
  * The use pattern of this class is:
  *
@@ -50,7 +50,7 @@ namespace iamf_tools {
  */
 class ParameterBlockGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param override_computed_recon_gains Whether to override recon gains
    *     with user provided values.
@@ -65,7 +65,7 @@ class ParameterBlockGenerator {
         additional_recon_gains_logging_(true),
         parameter_id_to_metadata_(parameter_id_to_metadata) {}
 
-  /*\!brief Initializes the class.
+  /*!\brief Initializes the class.
    *
    * Must be called before any `Generate*()` function, otherwise they will
    * be no-ops (not failing).
@@ -85,7 +85,7 @@ class ParameterBlockGenerator {
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
           param_definitions);
 
-  /*\!brief Adds one parameter block metadata.
+  /*!\brief Adds one parameter block metadata.
    *
    * \param parameter_block_metadata parameter block metadata to add.
    * \param duration Output duration of the corresponding parameter block; may
@@ -97,7 +97,7 @@ class ParameterBlockGenerator {
           parameter_block_metadata,
       uint32_t& duration);
 
-  /*\!brief Generates a list of demixing parameter blocks with data.
+  /*!\brief Generates a list of demixing parameter blocks with data.
    *
    * \param global_timing_module Global timing module to keep track of the
    *     timestamps of the generated parameter blocks.
@@ -108,7 +108,7 @@ class ParameterBlockGenerator {
       GlobalTimingModule& global_timing_module,
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
-  /*\!brief Generates a list of mix gain parameter blocks with data.
+  /*!\brief Generates a list of mix gain parameter blocks with data.
    *
    * \param global_timing_module Global timing module to keep track of the
    *     timestamps of the generated parameter blocks.
@@ -119,7 +119,7 @@ class ParameterBlockGenerator {
       GlobalTimingModule& global_timing_module,
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
-  /*\!brief Generates a list of recon gain parameter blocks with data.
+  /*!\brief Generates a list of recon gain parameter blocks with data.
    *
    * \param id_to_labeled_frame Data structure for samples.
    * \param id_to_labeled_decoded_frame Data structure for decoded samples.
@@ -135,7 +135,7 @@ class ParameterBlockGenerator {
       std::list<ParameterBlockWithData>& output_parameter_blocks);
 
  private:
-  /*\!brief Generates a list of parameter blocks with data.
+  /*!\brief Generates a list of parameter blocks with data.
    *
    * \param proto_metadata_list Input list of user-defined metadata about
    *     parameter blocks.

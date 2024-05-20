@@ -56,7 +56,7 @@ class ParamDefinition {
   friend bool operator==(const ParamDefinition& lhs,
                          const ParamDefinition& rhs);
 
-  /*\!brief Gets the number of subblocks.
+  /*!\brief Gets the number of subblocks.
    *
    * \return Number of subblocks.
    */
@@ -71,14 +71,14 @@ class ParamDefinition {
    */
   void InitializeSubblockDurations(DecodedUleb128 num_subblocks);
 
-  /*\!brief Gets the subblock duration.
+  /*!\brief Gets the subblock duration.
    *
    * \param subblock_index Index of the subblock to get the duration.
    * \return Duration of the subblock.
    */
   DecodedUleb128 GetSubblockDuration(int subblock_index) const;
 
-  /*\!brief Sets the subblock duration.
+  /*!\brief Sets the subblock duration.
    *
    * \param subblock_index Index of the subblock to set the duration.
    * \param duration Duration to set.
@@ -138,7 +138,7 @@ class ParamDefinition {
    */
   ParamDefinition(ParameterDefinitionType type) : type_(type) {}
 
-  /*\!brief Validates the specific `ParamDefinition`s are equivalent.
+  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
    *
    * \param other `ParamDefinition` to compare.
    * \return `true` if equivalent. `false` otherwise.
@@ -204,7 +204,7 @@ class MixGainParamDefinition : public ParamDefinition {
   int16_t default_mix_gain_;
 
  private:
-  /*\!brief Validates the specific `ParamDefinition`s are equivalent.
+  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
    *
    * \param other `ParamDefinition` to compare.
    * \return `true` if equivalent. `false` otherwise.
@@ -248,7 +248,7 @@ class DemixingParamDefinition : public ParamDefinition {
   DefaultDemixingInfoParameterData default_demixing_info_parameter_data_;
 
  private:
-  /*\!brief Validates the specific `ParamDefinition`s are equivalent.
+  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
    *
    * \param other `ParamDefinition` to compare.
    * \return `true` if equivalent. `false` otherwise.
@@ -300,7 +300,7 @@ class ReconGainParamDefinition : public ParamDefinition {
   const uint32_t audio_element_id_;
 
  private:
-  /*\!brief Validates the specific `ParamDefinition`s are equivalent.
+  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
    *
    * \param other `ParamDefinition` to compare.
    * \return `true` if equivalent. `false` otherwise.
@@ -348,7 +348,7 @@ class ExtendedParamDefinition : public ParamDefinition {
   std::vector<uint8_t> param_definition_bytes_ = {};
 
  private:
-  /*\!brief Validates the specific `ParamDefinition`s are equivalent.
+  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
    *
    * \param other `ParamDefinition` to compare.
    * \return `true` if equivalent. `false` otherwise.

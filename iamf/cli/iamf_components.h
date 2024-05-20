@@ -26,7 +26,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Creates an instance of `MixPresentationFinalizerBase`.
+/*!\brief Creates an instance of `MixPresentationFinalizerBase`.
  *
  * This is useful for binding different kinds of finalizers in an IAMF Encoder.
  *
@@ -42,7 +42,7 @@ std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
     std::optional<uint8_t> output_wav_file_bit_depth_override,
     bool validate_loudness);
 
-/*\!brief Creates instances of `ObuSequencerBase`.
+/*!\brief Creates instances of `ObuSequencerBase`.
  *
  * This is useful for binding different kinds of sequencers in an IAMF Encoder.
  *

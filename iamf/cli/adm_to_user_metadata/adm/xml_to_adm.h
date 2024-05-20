@@ -22,7 +22,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Parses the input XML to `ADM`.
+/*!\brief Parses the input XML to `ADM`.
  *
  * \param xml_data XML data to parse.
  * \param importance_threshold Threshold for to determine which audio objects to

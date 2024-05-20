@@ -23,7 +23,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Splices a wav file per object based on the input ADM stream.
+/*!\brief Splices a wav file per object based on the input ADM stream.
  *
  * \param output_file_path Path to output wav files to.
  * \param file_prefix File prefix to use when naming output wav files.

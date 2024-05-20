@@ -109,7 +109,7 @@ class FlacDecoderConfig {
                                 int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
 
-  /*\!brief Gets the output sample rate represented within the decoder config.
+  /*!\brief Gets the output sample rate represented within the decoder config.
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful.  `absl::InvalidArgumentError()`
@@ -132,7 +132,7 @@ class FlacDecoderConfig {
   absl::Status GetBitDepthToMeasureLoudness(
       uint8_t& bit_depth_to_measure_loudness) const;
 
-  /*\!brief Gets the `total_samples_in_stream` from a `FlacDecoderConfig`.
+  /*!\brief Gets the `total_samples_in_stream` from a `FlacDecoderConfig`.
    *
    * \param total_samples_in_stream Total samples in stream.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
@@ -141,7 +141,7 @@ class FlacDecoderConfig {
    */
   absl::Status GetTotalSamplesInStream(uint64_t& total_samples_in_stream) const;
 
-  /*\!brief Prints logging information about the decoder config.
+  /*!\brief Prints logging information about the decoder config.
    */
   void Print() const;
 

@@ -29,7 +29,7 @@ namespace iamf_tools {
 
 class WavSampleProvider {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param audio_frame_metadata Input audio frame metadata.
    */
@@ -42,7 +42,7 @@ class WavSampleProvider {
     }
   }
 
-  /*\!brief Initializes WAV readers that provide samples for the audio frames.
+  /*!\brief Initializes WAV readers that provide samples for the audio frames.
    *
    * \param input_wav_directory Directory containing the input WAV files.
    * \param audio_elements Input Audio Element OBUs with data.
@@ -53,7 +53,7 @@ class WavSampleProvider {
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 
-  /*\!brief Read frames from WAV files corresponding to an Audio Element.
+  /*!\brief Read frames from WAV files corresponding to an Audio Element.
    *
    * \param audio_element_id ID of the Audio Element whose corresponding frames
    *      are to be read from WAV files.

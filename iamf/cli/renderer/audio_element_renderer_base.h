@@ -21,7 +21,7 @@
 #include "iamf/cli/demixing_module.h"
 
 namespace iamf_tools {
-/*\!brief Abstract class to render a demixed audio element to a playback layout.
+/*!\brief Abstract class to render a demixed audio element to a playback layout.
  *
  * This class represents an abstract interface to render a single audio element
  * to a single layout according to IAMF Spec 7.3.2
@@ -40,10 +40,10 @@ namespace iamf_tools {
  */
 class AudioElementRendererBase {
  public:
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   virtual ~AudioElementRendererBase() = 0;
 
-  /*\!brief Accumulates samples to be rendered.
+  /*!\brief Accumulates samples to be rendered.
    *
    * \param labeled_frame Labeled frame to render.
    * \return Number of ticks which will be rendered. A specific status on
@@ -82,7 +82,7 @@ class AudioElementRendererBase {
   }
 
  protected:
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   AudioElementRendererBase() = default;
 
   // Mutex to guard simultaneous access to data members.

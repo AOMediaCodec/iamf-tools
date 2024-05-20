@@ -44,22 +44,22 @@ struct TemporalUnit {
   std::vector<const ParameterBlockWithData*> parameter_blocks;
 };
 
-/*\!brief Map of start timestamp -> OBUs in that temporal unit.*/
+/*!\brief Map of start timestamp -> OBUs in that temporal unit.*/
 typedef absl::btree_map<int32_t, TemporalUnit> TemporalUnitMap;
 
 class ObuSequencerBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param leb_generator Leb generator to use when writing OBUs.
    */
   ObuSequencerBase(const LebGenerator& leb_generator)
       : leb_generator_(leb_generator) {}
 
-  /*\!brief Destructor.*/
+  /*!\brief Destructor.*/
   virtual ~ObuSequencerBase() = default;
 
-  /*\!brief Generates a map of start timestamp -> OBUs in that temporal unit.
+  /*!\brief Generates a map of start timestamp -> OBUs in that temporal unit.
    *
    * \param audio_frames Data about Audio Frame OBUs to write.
    * \param parameter_blocks Data about Parameter Block OBUs to write.
@@ -73,7 +73,7 @@ class ObuSequencerBase {
       const std::list<ParameterBlockWithData>& parameter_blocks,
       TemporalUnitMap& temporal_unit_map);
 
-  /*\!brief Serializes and writes out a temporal unit.
+  /*!\brief Serializes and writes out a temporal unit.
    *
    * Write out the OBUs contained within the input arguments to the output write
    * buffer.
@@ -89,7 +89,7 @@ class ObuSequencerBase {
                                         const TemporalUnit& temporal_unit,
                                         WriteBitBuffer& wb, int& num_samples);
 
-  /*\!brief Writes the input descriptor OBUs.
+  /*!\brief Writes the input descriptor OBUs.
    *
    * Write out the OBUs contained within the input arguments to the output write
    * buffer.
@@ -109,7 +109,7 @@ class ObuSequencerBase {
       const std::list<MixPresentationObu>& mix_presentation_obus,
       const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb);
 
-  /*\!brief Pick and place OBUs and write to some output.
+  /*!\brief Pick and place OBUs and write to some output.
    *
    * \param ia_sequence_header_obu IA Sequence Header OBU to write.
    * \param codec_config_obus Codec Config OBUs to write.
@@ -135,7 +135,7 @@ class ObuSequencerBase {
 
 class ObuSequencerIamf : public ObuSequencerBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param iamf_filename Name of the output standalone .iamf file.
    * \param include_temporal_delimiters Whether the serialized data should
    *     include a temporal delimiter.
@@ -150,7 +150,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
 
   ~ObuSequencerIamf() override = default;
 
-  /*\!brief Pick and place OBUs and write to the standalone .iamf file.
+  /*!\brief Pick and place OBUs and write to the standalone .iamf file.
    *
    * \param ia_sequence_header_obu IA Sequence Header OBU to write.
    * \param codec_config_obus Codec Config OBUs to write.

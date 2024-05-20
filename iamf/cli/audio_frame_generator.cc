@@ -619,7 +619,7 @@ absl::Status DumpCodecSpecificHeader(const CodecConfigObu& codec_config_obu,
   return absl::OkStatus();
 }
 
-/*\!brief Opens up files based on the input map.
+/*!\brief Opens up files based on the input map.
  *
  * Opens a `std::fstream` for each filename in `key_to_filename`. Stores the
  * resulting file stream in output argument `key_to_file_stream`. The keys

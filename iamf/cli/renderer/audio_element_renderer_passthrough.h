@@ -22,7 +22,7 @@
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
-/*\!brief Passthrough demixed channels corresponding with output layout.
+/*!\brief Passthrough demixed channels corresponding with output layout.
  *
  * This class represents a renderer which is suitable for use when the
  * associated audio element has a layer which matches the playback layout
@@ -41,7 +41,7 @@ namespace iamf_tools {
  */
 class AudioElementRendererPassThrough : public AudioElementRendererBase {
  public:
-  /*\!brief Creates a passthrough renderer from a channel-based config.
+  /*!\brief Creates a passthrough renderer from a channel-based config.
    *
    * Creates a passthrough renderer if it is suitable for use according to IAMF
    * Spec 7.3.2.1. In particular when either of these conditions are true:
@@ -59,10 +59,10 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
       const ScalableChannelLayoutConfig& scalable_channel_layout_config,
       const Layout& playback_layout);
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   ~AudioElementRendererPassThrough() override = default;
 
-  /*\!brief Accumulates samples to be rendered.
+  /*!\brief Accumulates samples to be rendered.
    *
    * \param labeled_frame Labeled frame to render.
    * \return Number of ticks which will be rendered. A specific status on
@@ -72,7 +72,7 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
       const LabeledFrame& labeled_frame) override;
 
  private:
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   AudioElementRendererPassThrough(const std::vector<std::string>& channel_order)
       : channel_order_(channel_order) {}
 

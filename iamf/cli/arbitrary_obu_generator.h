@@ -23,7 +23,7 @@ namespace iamf_tools {
 
 class ArbitraryObuGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param arbitrary_obu_metadata Input arbitrary OBU metadata.
    */
   ArbitraryObuGenerator(
@@ -31,7 +31,7 @@ class ArbitraryObuGenerator {
           iamf_tools_cli_proto::ArbitraryObuMetadata>& arbitrary_obu_metadata)
       : arbitrary_obu_metadata_(arbitrary_obu_metadata) {}
 
-  /*\!brief Generates a list of arbitrary OBUs from the input metadata.
+  /*!\brief Generates a list of arbitrary OBUs from the input metadata.
    *
    * The generator only performs enough validation required to construct the
    * OBU; it validates that enumeration values are known. It does not validate

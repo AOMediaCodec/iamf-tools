@@ -20,7 +20,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Abstract class to create loudness calculators.
+/*!\brief Abstract class to create loudness calculators.
  *
  * This class will be used when calculating the loudness of a mix presentation
  * layout. The mix presentation finalizer will take in a factory (or factories)
@@ -31,7 +31,7 @@ namespace iamf_tools {
  */
 class LoudnessCalculatorFactoryBase {
  public:
-  /*\!brief Creates a loudness calculator.
+  /*!\brief Creates a loudness calculator.
    *
    * \param layout Layout to measure loudness on.
    * \param rendered_sample_rate Sample rate of the rendered audio.
@@ -42,13 +42,13 @@ class LoudnessCalculatorFactoryBase {
       const MixPresentationLayout& layout, int32_t rendered_sample_rate,
       int32_t rendered_bit_depth) const = 0;
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   virtual ~LoudnessCalculatorFactoryBase() = 0;
 };
 
 // TODO(b/302273947): Use this class to measure loudness when finalizing mix
 //                    presentations.
-/*\!brief Factory which always provides a fallback loudness calculator.
+/*!\brief Factory which always provides a fallback loudness calculator.
  *
  * This factory produces underlying loudness calculators which entirely ignore
  * all input samples. Those calculators are useful if the user does not wish to
@@ -65,7 +65,7 @@ class LoudnessCalculatorFactoryBase {
 class LoudnessCalculatorFactoryUserProvidedLoudness
     : public LoudnessCalculatorFactoryBase {
  public:
-  /*\!brief Creates a fallback loudness calculator.
+  /*!\brief Creates a fallback loudness calculator.
    *
    * \param layout Layout to use when echoing loudness back.
    * \param rendered_sample_rate Sample rate of the rendered audio to ignore.
@@ -76,7 +76,7 @@ class LoudnessCalculatorFactoryUserProvidedLoudness
       const MixPresentationLayout& layout, int32_t /*rendered_sample_rate*/,
       int32_t /*rendered_bit_depth*/) const override;
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   ~LoudnessCalculatorFactoryUserProvidedLoudness() override = default;
 };
 

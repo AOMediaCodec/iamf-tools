@@ -27,11 +27,11 @@ namespace iamf_tools {
 
 class GlobalTimingModule {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    */
   GlobalTimingModule() = default;
 
-  /*\!brief Initializes a Global Timing Module.
+  /*!\brief Initializes a Global Timing Module.
    *
    * Must be called before calling `GetNextAudioFrameTimestamps()` and
    * `GetNextParameterBlockTimestamps()`.
@@ -47,7 +47,7 @@ class GlobalTimingModule {
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
           param_definitions);
 
-  /*\!brief Gets the start and end timestamps of the next Audio Frame.
+  /*!\brief Gets the start and end timestamps of the next Audio Frame.
    *
    * \param audio_substream_id Substream ID of the Audio Frame.
    * \param duration Duration of this frame measured in ticks.
@@ -60,7 +60,7 @@ class GlobalTimingModule {
                                            int32_t& start_timestamp,
                                            int32_t& end_timestamp);
 
-  /*\!brief Gets the start and end timestamps of the next Parameter Block.
+  /*!\brief Gets the start and end timestamps of the next Parameter Block.
    *
    * \param parameter_id ID of the Parameter Block.
    * \param input_start_timestamp Start timestamp specified by the user. Will be
@@ -78,7 +78,7 @@ class GlobalTimingModule {
 
   // TODO(b/291732058): Bring back parameter block coverage validation.
 
-  /*\!brief Gets the global timestamp shared by all current Audio Frames.
+  /*!\brief Gets the global timestamp shared by all current Audio Frames.
    *
    * May fill in `std::nullopt` if some Audio Frames have different timestamps
    * (typically because the current temporal unit has not been processed fully).

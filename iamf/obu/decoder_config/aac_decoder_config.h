@@ -58,7 +58,7 @@ class AudioSpecificConfig {
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
-  /*\!brief Prints logging information about the audio specific config.
+  /*!\brief Prints logging information about the audio specific config.
    */
   void Print() const;
 
@@ -108,7 +108,7 @@ class AacDecoderConfig {
   absl::Status ValidateAndWrite(int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
 
-  /*\!brief Gets the output sample rate of the `AacDecoderConfig`.
+  /*!\brief Gets the output sample rate of the `AacDecoderConfig`.
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
@@ -126,7 +126,7 @@ class AacDecoderConfig {
    */
   static uint8_t GetBitDepthToMeasureLoudness();
 
-  /*\!brief Prints logging information about the decoder config.
+  /*!\brief Prints logging information about the decoder config.
    */
   void Print() const;
 

@@ -57,7 +57,7 @@ class OpusDecoderConfig {
   absl::Status ValidateAndRead(uint32_t num_samples_per_frame,
                                int16_t audio_roll_distance, ReadBitBuffer& rb);
 
-  /*\!brief Gets the output sample rate represented within the decoder config.
+  /*!\brief Gets the output sample rate represented within the decoder config.
    *
    * IAMF Spec requires the output to be 48,000 Hz.
    *
@@ -65,7 +65,7 @@ class OpusDecoderConfig {
    */
   uint32_t GetOutputSampleRate() const { return 48000; }
 
-  /*\!brief Gets the input sample rate represented within the decoder config.
+  /*!\brief Gets the input sample rate represented within the decoder config.
    *
    * Opus explicitly has this value in the Codec Config OBU.
    *
@@ -84,7 +84,7 @@ class OpusDecoderConfig {
    */
   static constexpr uint8_t GetBitDepthToMeasureLoudness() { return 32; }
 
-  /*\!brief Prints logging information about the decoder config.
+  /*!\brief Prints logging information about the decoder config.
    */
   void Print() const;
 

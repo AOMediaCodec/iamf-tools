@@ -33,7 +33,7 @@ namespace iamf_tools {
 
 class MixPresentationFinalizerBase {
  public:
-  /*\!brief Factory for a wav writer.
+  /*!\brief Factory for a wav writer.
    *
    * Used to control whether or not wav writers are created and control their
    * filenames.
@@ -58,14 +58,14 @@ class MixPresentationFinalizerBase {
       int num_channels, int sample_rate, int bit_depth) const>
       WavWriterFactory;
 
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   MixPresentationFinalizerBase() {}
 
-  /*\!brief Destructor.
+  /*!\brief Destructor.
    */
   virtual ~MixPresentationFinalizerBase() = default;
 
-  /*\!brief Finalizes the list of Mix Presentation OBUs.
+  /*!\brief Finalizes the list of Mix Presentation OBUs.
    *
    * Populates the loudness information for each Mix Presentation OBU.
    *
@@ -85,20 +85,20 @@ class MixPresentationFinalizerBase {
       std::list<MixPresentationObu>& mix_presentation_obus) = 0;
 };
 
-/*\!brief Finalizer that measures loudness or echoes user provided loudness. */
+/*!\brief Finalizer that measures loudness or echoes user provided loudness. */
 class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer
     : public MixPresentationFinalizerBase {
  public:
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer()
       : MixPresentationFinalizerBase() {}
 
-  /*\!brief Destructor.
+  /*!\brief Destructor.
    */
   ~MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer() override =
       default;
 
-  /*\!brief Finalizes the list of Mix Presentation OBUs.
+  /*!\brief Finalizes the list of Mix Presentation OBUs.
    *
    * Attempt to render the layouts associated with the mix presentation OBU and
    * populate the `LoudnessInfo` accurately. May fall back to simply copying

@@ -25,7 +25,7 @@ namespace iamf_tools {
 
 class CodecConfigGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param codec_config_metadata Input codec config metadata.
    */
   CodecConfigGenerator(
@@ -33,7 +33,7 @@ class CodecConfigGenerator {
           iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata)
       : codec_config_metadata_(codec_config_metadata) {}
 
-  /*\!brief Generates a map of Codec Config OBUs from the input metadata.
+  /*!\brief Generates a map of Codec Config OBUs from the input metadata.
    *
    * The generator only performs enough validation required to construct the
    * OBU; it validates that enumeration values are known and casting of fields

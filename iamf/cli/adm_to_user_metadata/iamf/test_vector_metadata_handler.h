@@ -19,7 +19,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Populates a `TestVectorMetadataHandler` proto.
+/*!\brief Populates a `TestVectorMetadataHandler` proto.
  *
  * \param file_name_prefix File name prefix.
  * \param test_vector_metadata Data to populate.

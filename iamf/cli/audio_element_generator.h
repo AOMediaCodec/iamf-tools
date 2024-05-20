@@ -30,7 +30,7 @@ namespace iamf_tools {
 
 class AudioElementGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param audio_element_metadata Input audio element metadata.
    */
   AudioElementGenerator(const ::google::protobuf::RepeatedPtrField<
@@ -38,7 +38,7 @@ class AudioElementGenerator {
                             audio_element_metadata)
       : audio_element_metadata_(audio_element_metadata) {}
 
-  /*\!brief Populates metadata about the layout config into the output params.
+  /*!\brief Populates metadata about the layout config into the output params.
    *
    * \param audio_element_obu Obu where the input config information lives.
    * \param substream_id_to_labels `audio_substream_id` to output label map.
@@ -53,7 +53,7 @@ class AudioElementGenerator {
       LabelGainMap* label_to_output_gain,
       std::vector<ChannelNumbers>* channel_numbers_for_layers);
 
-  /*\!brief Populates substream_id_to_labels for the ambisonics config.
+  /*!\brief Populates substream_id_to_labels for the ambisonics config.
    *
    * \param audio_element_obu Mono ambisonics config OBU to process.
    * \param substream_id_to_labels Output map of substream IDs to labels.
@@ -64,7 +64,7 @@ class AudioElementGenerator {
       const AudioElementObu& audio_element_obu,
       SubstreamIdLabelsMap& substream_id_to_labels);
 
-  /*\!brief Generates a list of Audio Element OBUs from the input metadata.
+  /*!\brief Generates a list of Audio Element OBUs from the input metadata.
    *
    * \param codec_conifgs Map of Codec Config IDs to Codec Config OBUs.
    * \param audio_elements Map of Audio Element IDs to generated OBUs with data.

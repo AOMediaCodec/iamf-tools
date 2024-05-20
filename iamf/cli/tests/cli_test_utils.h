@@ -27,7 +27,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
+/*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param sample_rate `sample_rate` of the OBU to create.
@@ -37,7 +37,7 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
-/*\!brief Adds a configurable Opus `CodecConfigObu` to the output argument.
+/*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param codec_config_obus Container to add OBU to.
@@ -46,7 +46,7 @@ void AddOpusCodecConfigWithId(
     uint32_t codec_config_id,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
-/*\!brief Adds a configurable ambisonics `AudioElementObu` to the output.
+/*!\brief Adds a configurable ambisonics `AudioElementObu` to the output.
  *
  * \param audio_element_id `audio_element_id` of the OBU to create.
  * \param codec_config_id `codec_config_id` of the OBU to create.
@@ -60,7 +60,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
 
-/*\!brief Adds a configurable scalable `AudioElementObu` to the output argument.
+/*!\brief Adds a configurable scalable `AudioElementObu` to the output argument.
  *
  * \param audio_element_id `audio_element_id` of the OBU to create.
  * \param codec_config_id `codec_config_id` of the OBU to create.
@@ -74,7 +74,7 @@ void AddScalableAudioElementWithSubstreamIds(
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
 
-/*\!brief Adds a configurable `MixPresentationObu` to the output argument.
+/*!\brief Adds a configurable `MixPresentationObu` to the output argument.
  *
  * \param mix_presentation_id `mix_presentation_id` of the OBU to create.
  * \param audio_element_id `audio_element_id` of the OBU to create.
@@ -89,7 +89,7 @@ void AddMixPresentationObuWithAudioElementIds(
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     std::list<MixPresentationObu>& mix_presentations);
 
-/*\!brief Adds a configurable generic `ParamDefinition` to the output argument.
+/*!\brief Adds a configurable generic `ParamDefinition` to the output argument.
  *
  * \param parameter_id `parameter_id` of the `ParamDefinition` to create.
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to create.
@@ -103,7 +103,7 @@ void AddParamDefinitionWithMode0AndOneSubblock(
     absl::flat_hash_map<DecodedUleb128, std::unique_ptr<ParamDefinition>>&
         param_definitions);
 
-/*\!brief Adds a demixing parameter definition to an Audio Element OBU.
+/*!\brief Adds a demixing parameter definition to an Audio Element OBU.
  *
  * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.

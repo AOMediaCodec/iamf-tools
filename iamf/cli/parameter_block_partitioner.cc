@@ -65,7 +65,7 @@ absl::Status InterpolateMixGainParameterData(
       start_time, end_time, target_time, target_mix_gain);
 }
 
-/*\!brief Partitions a `MixGainParameterData`
+/*!\brief Partitions a `MixGainParameterData`
  *
  * Partitions a `MixGainParameterData` including the nested fields that describe
  * animation.
@@ -156,7 +156,7 @@ absl::Status PartitionMixGain(
   }
 }
 
-/*\!brief Gets the subblocks that overlap with the input times.
+/*!\brief Gets the subblocks that overlap with the input times.
  *
  * Finds all subblocks in the input Parameter Block that overlap with
  * `partitioned_start_time` and `partitioned_end_time.

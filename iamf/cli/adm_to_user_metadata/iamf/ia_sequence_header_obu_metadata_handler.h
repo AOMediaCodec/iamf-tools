@@ -18,7 +18,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Populates a `IASequenceHeaderObuMetadata` proto for base profile.
+/*!\brief Populates a `IASequenceHeaderObuMetadata` proto for base profile.
  *
  * \param ia_sequence_header_obu_metadata Data to populate.
  */

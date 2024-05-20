@@ -42,7 +42,7 @@ class ArbitraryObu : public ObuBase {
         payload_(payload),
         insertion_hook_(insertion_hook) {}
 
-  /*\!brief Move constructor.*/
+  /*!\brief Move constructor.*/
   ArbitraryObu(ArbitraryObu&& other) = default;
 
   /*!\brief Destructor. */
@@ -51,7 +51,7 @@ class ArbitraryObu : public ObuBase {
   friend bool operator==(const ArbitraryObu& lhs,
                          const ArbitraryObu& rhs) = default;
 
-  /*\!brief Writes arbitrary OBUs with the specified hook.
+  /*!\brief Writes arbitrary OBUs with the specified hook.
    *
    * \param insertion_hook Hook of OBUs to write.
    * \param arbitrary_obus Arbitrary OBUs to write.
@@ -63,7 +63,7 @@ class ArbitraryObu : public ObuBase {
       InsertionHook insertion_hook,
       const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb);
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
   const std::vector<uint8_t> payload_;
@@ -72,7 +72,7 @@ class ArbitraryObu : public ObuBase {
   const InsertionHook insertion_hook_;
 
  private:
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
@@ -80,7 +80,7 @@ class ArbitraryObu : public ObuBase {
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

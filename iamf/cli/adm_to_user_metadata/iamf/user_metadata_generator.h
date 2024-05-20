@@ -28,7 +28,7 @@ namespace adm_to_user_metadata {
 
 class UserMetadataGenerator {
  public:
-  /*\!brief Writes a `UserMetadata` as a text proto to a file.
+  /*!\brief Writes a `UserMetadata` as a text proto to a file.
    *
    * \param write_binary_proto `true` to write a binary proto, `false` to write
    *     a text proto.
@@ -43,7 +43,7 @@ class UserMetadataGenerator {
       bool write_binary_proto, const std::filesystem::path& path,
       const iamf_tools_cli_proto::UserMetadata& user_metadata);
 
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param adm ADM to use.
    * \param format_info Format info chunk to use.
@@ -60,7 +60,7 @@ class UserMetadataGenerator {
         total_samples_per_channel_(total_samples_per_channel),
         max_frame_duration_(max_frame_duration) {};
 
-  /*\!brief Generates a `UserMetadata` proto.
+  /*!\brief Generates a `UserMetadata` proto.
    *
    * \param file_prefix File prefix to use when naming output wav files.
    * \return Proto based on the constructor arguments or a specific error code

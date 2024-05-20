@@ -26,7 +26,7 @@ namespace iamf_tools {
 
 class MixPresentationGenerator {
  public:
-  /*\!brief Copies the info type from the corresponding protocol buffer.
+  /*!\brief Copies the info type from the corresponding protocol buffer.
    *
    * \param input_loudness_info Input protocol buffer.
    * \param loudness_info_type Result.
@@ -36,7 +36,7 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& input_loudness_info,
       uint8_t& loudness_info_type);
 
-  /*\!brief Copies over user provided integrated loudness and peak values.
+  /*!\brief Copies over user provided integrated loudness and peak values.
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
@@ -47,7 +47,7 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
       LoudnessInfo& output_loudness);
 
-  /*\!brief Copies over user provided anchored loudness.
+  /*!\brief Copies over user provided anchored loudness.
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
@@ -58,7 +58,7 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
       LoudnessInfo& output_loudness);
 
-  /*\!brief Copies over user provided layout extension.
+  /*!\brief Copies over user provided layout extension.
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
@@ -69,7 +69,7 @@ class MixPresentationGenerator {
       const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
       LoudnessInfo& output_loudness);
 
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param mix_presentation_metadata Input mix presentation metadata.
    */
   MixPresentationGenerator(const ::google::protobuf::RepeatedPtrField<
@@ -77,7 +77,7 @@ class MixPresentationGenerator {
                                mix_presentation_metadata)
       : mix_presentation_metadata_(mix_presentation_metadata) {}
 
-  /*\!brief Generates a list of Mix Presentation OBUs from the input metadata.
+  /*!\brief Generates a list of Mix Presentation OBUs from the input metadata.
    *
    * Note that `finalize_mix_presentation_obus` must be called afterwards to
    * populate the loudness information for the OBUs.

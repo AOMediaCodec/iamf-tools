@@ -66,7 +66,7 @@ MixGainParameterData CreateBezierMixGainParameterData(
   return mix_gain_parameter_data;
 }
 
-/*\!brief Creates a minimal parameter block OBU metadata.
+/*!\brief Creates a minimal parameter block OBU metadata.
  *
  * \param subblock_durations Input subblock durations.
  * \param mix_gain_parameter_data Input mix gain parameter datas or an empty

@@ -49,7 +49,7 @@ struct DecodedAudioFrame {
   const AudioElementWithData* audio_element_with_data;
 };
 
-/*\!brief Decodes Audio Frame OBUs based on the associated codec.
+/*!\brief Decodes Audio Frame OBUs based on the associated codec.
  *
  * This class is related to the "Codec Decoder" as used in the IAMF
  * specification. "The Codec Decoder for each Audio Substream outputs the
@@ -69,7 +69,7 @@ struct DecodedAudioFrame {
  */
 class AudioFrameDecoder {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param output_wav_directory Directory to write debugging wav files to.
    * \param file_prefix File name prefix for debugging files.
@@ -79,7 +79,7 @@ class AudioFrameDecoder {
       : output_wav_directory_(output_wav_directory),
         file_prefix_(file_prefix) {}
 
-  /*\!brief Initialize codec decoders for each substream.
+  /*!\brief Initialize codec decoders for each substream.
    *
    * \param substream_id_to_labels Substreams and their associated labels to
    *     initialize. The number of channels is determined by the number of
@@ -91,7 +91,7 @@ class AudioFrameDecoder {
       const SubstreamIdLabelsMap& substream_id_to_labels,
       const CodecConfigObu& codec_config);
 
-  /*\!brief Decodes a list of Audio Frame OBUs.
+  /*!\brief Decodes a list of Audio Frame OBUs.
    *
    * \param encoded_audio_frames Input Audio Frame OBUs.
    * \param decoded_audio_frames Output decoded audio frames.

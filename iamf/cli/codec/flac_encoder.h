@@ -40,7 +40,7 @@ struct FlacFrame {
   unsigned int num_samples = 0;
 };
 
-/*\!brief Encodes FLAC frames `FlacEncoder` using `libflac`.
+/*!\brief Encodes FLAC frames `FlacEncoder` using `libflac`.
  *
  * The `libflac` encoder works asynchronously. `EncodeAudioFrame()` passes data
  * to `libflac` to start encoding a frame. `libflac` calls the callback

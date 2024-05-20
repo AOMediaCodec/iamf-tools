@@ -126,7 +126,7 @@ absl::Status DecodeAudioFrame(const AudioFrameWithData& encoded_frame,
   return absl::OkStatus();
 }
 
-/*\!brief Writes interlaced PCM samples into a WAV file.
+/*!\brief Writes interlaced PCM samples into a WAV file.
  *
  * \param samples Input frames arranged in (time, channel) axes.
  * \param samples_to_trim_at_start Samples to trim at the beginning.

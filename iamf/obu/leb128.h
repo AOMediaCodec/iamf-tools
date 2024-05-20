@@ -16,7 +16,7 @@
 
 namespace iamf_tools {
 
-/*\!brief IAMF spec requires a ULEB128 or a SLEB128 be encoded in <= 8 bytes.
+/*!\brief IAMF spec requires a ULEB128 or a SLEB128 be encoded in <= 8 bytes.
  */
 inline constexpr int kMaxLeb128Size = 8;
 

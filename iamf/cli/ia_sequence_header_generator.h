@@ -22,7 +22,7 @@ namespace iamf_tools {
 
 class IaSequenceHeaderGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    * \param user_metadata Input user metadata.
    */
   IaSequenceHeaderGenerator(
@@ -30,7 +30,7 @@ class IaSequenceHeaderGenerator {
           ia_sequence_header_metadata)
       : ia_sequence_header_metadata_(ia_sequence_header_metadata) {}
 
-  /*\!brief Generates an IA Sequence Header OBU from the input metadata.
+  /*!\brief Generates an IA Sequence Header OBU from the input metadata.
    *
    * The generator only performs enough validation required to construct the
    * OBU; it validates that enumeration values are known and casting of fields

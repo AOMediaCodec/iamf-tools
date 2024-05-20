@@ -27,24 +27,24 @@ namespace iamf_tools {
 
 class OpusDecoder : public DecoderBase {
  public:
-  /*\!brief Constructor
+  /*!\brief Constructor
    *
    * \param codec_config_obu Codec Config OBU with initialization settings.
    * \param num_channels Number of channels for this stream.
    */
   OpusDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
 
-  /*\!brief Destructor
+  /*!\brief Destructor
    */
   ~OpusDecoder() override;
 
-  /*\!brief Initializes the underlying decoder.
+  /*!\brief Initializes the underlying decoder.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize() override;
 
-  /*\!brief Decodes an Opus audio frame.
+  /*!\brief Decodes an Opus audio frame.
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)

@@ -77,7 +77,7 @@ absl::Status FloatToQ0_8(float value, uint8_t& result);
  */
 float Q0_8ToFloat(uint8_t value);
 
-/*\!brief Normalizes the input value to a `float` in the range [-1, +1].
+/*!\brief Normalizes the input value to a `float` in the range [-1, +1].
  *
  * Normalizes the input from [std::numeric_limits<int32_t>::min(),
  * std::numeric_limits<int32_t>::max() + 1] to [-1, +1].
@@ -87,7 +87,7 @@ float Q0_8ToFloat(uint8_t value);
  */
 float Int32ToNormalizedFloat(int32_t value);
 
-/*\!brief Converts normalized `float` input to an `int32_t`.
+/*!\brief Converts normalized `float` input to an `int32_t`.
  *
  * Transforms the input from the range of [-1, +1] to the range of
  * [std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() +
@@ -159,7 +159,7 @@ absl::Status BigEndianBytesToInt32(absl::Span<const uint8_t> bytes,
  */
 absl::Status ClipDoubleToInt32(double input, int32_t& output);
 
-/*\!brief Writes the input PCM sample to a buffer.
+/*!\brief Writes the input PCM sample to a buffer.
  *
  * Writes the most significant `sample_size` bits of `sample` starting at
  * `buffer[write_position]`. It is up to the user to ensure the buffer is valid.
@@ -178,14 +178,14 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* buffer,
                             int& write_position);
 
-/*\!brief Gets the native byte order of the runtime system.
+/*!\brief Gets the native byte order of the runtime system.
  *
  * \return `true` if the runtime system natively uses big endian, `false`
  *     otherwise.
  */
 bool IsNativeBigEndian();
 
-/*\!brief Returns an error if the size arguments are not equivalent.
+/*!\brief Returns an error if the size arguments are not equivalent.
  *
  * Intended to be used in OBUs to ensure the reported and actual size of vectors
  * are equivalent.
@@ -211,7 +211,7 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
   return absl::OkStatus();
 }
 
-/*\!brief Returns `absl::OkStatus()` if the arguments are equal.
+/*!\brief Returns `absl::OkStatus()` if the arguments are equal.
  *
  * \param left First value to compare.
  * \param right Second value to compare.
@@ -231,7 +231,7 @@ absl::Status ValidateEqual(const T& left, const T& right,
       "Invalid ", context, ". Expected ", left, " == ", right, "."));
 }
 
-/*\!brief Returns `absl::OkStatus()` if the arguments are not equal.
+/*!\brief Returns `absl::OkStatus()` if the arguments are not equal.
  *
  * \param left First value to compare.
  * \param right Second value to compare.
@@ -251,7 +251,7 @@ absl::Status ValidateNotEqual(const T& left, const T& right,
       "Invalid ", context, ". Expected ", left, " != ", right, "."));
 }
 
-/*\!brief Validates that all values in the range [first, last) are unique.
+/*!\brief Validates that all values in the range [first, last) are unique.
  *
  * \param first Iterator to start from.
  * \param last Iterator to stop before.
@@ -275,7 +275,7 @@ absl::Status ValidateUnique(InputIt first, InputIt last,
   return absl::OkStatus();
 }
 
-/*\!brief Gets the duration of a parameter subblock.
+/*!\brief Gets the duration of a parameter subblock.
  *
  * The Spec defines a complex logic of getting the final subblock duration from
  * multiple potential sources, including:

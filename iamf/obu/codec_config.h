@@ -81,7 +81,7 @@ class CodecConfigObu : public ObuBase {
   static absl::StatusOr<CodecConfigObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
 
-  /*\!brief Move constructor.*/
+  /*!\brief Move constructor.*/
   CodecConfigObu(CodecConfigObu&& other) = default;
 
   /*!\brief Destructor. */
@@ -90,7 +90,7 @@ class CodecConfigObu : public ObuBase {
   friend bool operator==(const CodecConfigObu& lhs,
                          const CodecConfigObu& rhs) = default;
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
   /*!\brief Initializes the OBU.
@@ -184,7 +184,7 @@ class CodecConfigObu : public ObuBase {
   // Tracks whether the OBU was initialized correctly.
   absl::Status init_status_ = absl::UnknownError("");
 
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
@@ -192,7 +192,7 @@ class CodecConfigObu : public ObuBase {
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

@@ -23,7 +23,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Generates user metadata and splices wav files from an ADM stream.
+/*!\brief Generates user metadata and splices wav files from an ADM stream.
  *
  * \param file_prefix File prefix to use when naming output wav files and in the
  *     output textproto.

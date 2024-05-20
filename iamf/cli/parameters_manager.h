@@ -38,7 +38,7 @@ namespace iamf_tools {
  */
 class ParametersManager {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param audio_elements Input Audio Element OBUs with data.
    * \param parameter_blocks Input Parameter Block OBUs with data.
@@ -47,13 +47,13 @@ class ParametersManager {
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 
-  /*\!brief Initializes some internal data.
+  /*!\brief Initializes some internal data.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize();
 
-  /*\!brief Checks if a `DemixingParamDefinition` exists for an audio element.
+  /*!\brief Checks if a `DemixingParamDefinition` exists for an audio element.
    *
    * \param audio_element_id ID of the audio element to query.
    * \return True if a `DemixingParamDefinition` is available for the audio
@@ -61,7 +61,7 @@ class ParametersManager {
    */
   bool DemixingParamDefinitionAvailable(DecodedUleb128 audio_element_id);
 
-  /*\!brief Gets current down-mixing parameters for an audio element.
+  /*!\brief Gets current down-mixing parameters for an audio element.
    *
    * \param audio_element_id ID of the audio element that the parameters are
    *     to be applied.
@@ -71,13 +71,13 @@ class ParametersManager {
   absl::Status GetDownMixingParameters(DecodedUleb128 audio_element_id,
                                        DownMixingParams& down_mixing_params);
 
-  /*\!brief Adds a new demixing parameter block.
+  /*!\brief Adds a new demixing parameter block.
    *
    * \param parameter_block Pointer to the new demixing parameter block to add.
    */
   void AddDemixingParameterBlock(const ParameterBlockWithData* parameter_block);
 
-  /*\!brief Updates the state of demixing parameters for an audio element.
+  /*!\brief Updates the state of demixing parameters for an audio element.
    *
    * Also validates the timestamp is as expected.
    *

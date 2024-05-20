@@ -49,7 +49,7 @@ namespace iamf_tools {
 
 namespace {
 
-/*\!brief Populates some parameter-related fields from an Audio Element OBU.
+/*!\brief Populates some parameter-related fields from an Audio Element OBU.
  *
  * \param audio_element_param `AudioElementParam` from an Audio Element OBU.
  * \param param_definition Output parameter definition.

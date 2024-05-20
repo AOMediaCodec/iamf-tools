@@ -30,7 +30,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Helps maintain consistency within an IAMF stream.
+/*!\brief Helps maintain consistency within an IAMF stream.
  *
  * This class holds the mapping between ADM objects and IAMF OBUs. It also holds
  * several handlers which help maintain consistency between particular types of
@@ -43,7 +43,7 @@ class IAMF {
     int32_t original_audio_programme_index;
   };
 
-  /*\!brief Creates an `IAMF` object.
+  /*!\brief Creates an `IAMF` object.
    *
    * \param file_prefix File prefix to use when naming output wav files.
    * \param adm ADM data to initialize with.
@@ -72,7 +72,7 @@ class IAMF {
   MixPresentationHandler mix_presentation_handler_;
 
  private:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param file_prefix File prefix to use when naming output wav files.
    * \param mix_presentation_id_to_audio_objects_and_metadata Map of mix

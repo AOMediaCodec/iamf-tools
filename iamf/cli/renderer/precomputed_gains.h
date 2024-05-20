@@ -24,7 +24,7 @@ typedef absl::flat_hash_map<
     absl::flat_hash_map<std::string, std::vector<std::vector<double>>>>
     PrecomputedGains;
 
-/*\!brief Fills precomputed gains matrices.
+/*!\brief Fills precomputed gains matrices.
  *
  * \return Map from input layout name to output layout name to precomputed
  *     gains.

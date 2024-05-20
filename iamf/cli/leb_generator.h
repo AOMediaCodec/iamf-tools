@@ -30,7 +30,7 @@ class LebGenerator {
     kFixedSize,
   };
 
-  /*\!brief Factory function to create a `LebGenerator`.
+  /*!\brief Factory function to create a `LebGenerator`.
    *
    * \param generation_mode Generation mode.
    * \param fixed_size Fixed size. When using `kGenerateLebFixedSize` mode it
@@ -42,7 +42,7 @@ class LebGenerator {
       GenerationMode generation_mode = GenerationMode::kMinimum,
       int8_t fixed_size = 0);
 
-  /*\!brief Factory function to create a `LebGenerator`.
+  /*!\brief Factory function to create a `LebGenerator`.
    *
    * \param user_metadata Input user metadata.
    * \return Unique pointer to `LebGenerator` on success. `nullptr` if the input
@@ -54,7 +54,7 @@ class LebGenerator {
   friend bool operator==(const LebGenerator& lhs,
                          const LebGenerator& rhs) = default;
 
-  /*\!brief Encodes a `DecodedUleb128` to a vector representing a ULEB128.
+  /*!\brief Encodes a `DecodedUleb128` to a vector representing a ULEB128.
    *
    * The behavior of the generator is controlled by `generation_mode_`. When
    * configured using `GenerationMode::kMinimum` values are generated using the
@@ -70,7 +70,7 @@ class LebGenerator {
   absl::Status Uleb128ToUint8Vector(DecodedUleb128 input,
                                     std::vector<uint8_t>& buffer) const;
 
-  /*\!brief Encodes a `DecodedSleb128` to a vector representing a SLEB128.
+  /*!\brief Encodes a `DecodedSleb128` to a vector representing a SLEB128.
    *
    * The behavior of the generator is controlled by `generation_mode_`. When
    * configured using `GenerationMode::kMinimum` values are generated using the
@@ -87,7 +87,7 @@ class LebGenerator {
                                     std::vector<uint8_t>& buffer) const;
 
  private:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param generation_mode Generation mode.
    * \param fixed_size Fixed size. When using `kGenerateLebFixedSize` mode it

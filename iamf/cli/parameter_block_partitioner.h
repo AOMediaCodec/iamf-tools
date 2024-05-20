@@ -25,11 +25,11 @@ namespace iamf_tools {
 
 class ParameterBlockPartitioner {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    */
   ParameterBlockPartitioner() = default;
 
-  /*\!brief Finds the `constant_subblock_duration` for the input durations.
+  /*!\brief Finds the `constant_subblock_duration` for the input durations.
    *
    * \param subblock_durations Vector of subblock durations.
    * \return `constant_subblock_duration` which results in the best bit-rate.
@@ -37,7 +37,7 @@ class ParameterBlockPartitioner {
   static uint32_t FindConstantSubblockDuration(
       const std::vector<uint32_t>& subblock_durations);
 
-  /*\!brief Finds the desired duration of partitioned parameter blocks.
+  /*!\brief Finds the desired duration of partitioned parameter blocks.
    *
    * \param primary_profile Input primary profile version.
    * \param codec_config_obu_metadata Input codec config OBU metadata.
@@ -49,7 +49,7 @@ class ParameterBlockPartitioner {
           codec_config_obu_metadata,
       uint32_t& partition_duration);
 
-  /*\!brief Partitions the input parameter block into a smaller one.
+  /*!\brief Partitions the input parameter block into a smaller one.
    *
    * \param full_parameter_block Input full parameter block OBU metadata.
    * \param partitioned_start_time Start time of the output partitioned
@@ -67,7 +67,7 @@ class ParameterBlockPartitioner {
       iamf_tools_cli_proto::ParameterBlockObuMetadata&
           partitioned_parameter_block) const;
 
-  /*\!brief Partitions the input parameter block into frame-aligned ones.
+  /*!\brief Partitions the input parameter block into frame-aligned ones.
    *
    * \param partition_duration Duration of each partitioned parameter block.
    * \param full_parameter_block Input full parameter block.

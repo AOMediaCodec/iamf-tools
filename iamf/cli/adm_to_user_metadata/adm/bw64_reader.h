@@ -26,7 +26,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Indexes and extracts ADM information from a BW64 WAV file.
+/*!\brief Indexes and extracts ADM information from a BW64 WAV file.
  *
  * This class processes Bw64 WAV files
  * (https://adm.ebu.io/reference/excursions/bw64_and_adm.html).

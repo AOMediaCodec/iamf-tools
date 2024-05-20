@@ -21,7 +21,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Abstract class for calculate loudness from an input audio stream.
+/*!\brief Abstract class for calculate loudness from an input audio stream.
  *
  * - Call the constructor with an input `MixPresentationLayout`.
  * - Call `AccumulateLoudnessForSamples()` to accumlate interleaved audio
@@ -31,10 +31,10 @@ namespace iamf_tools {
  */
 class LoudnessCalculatorBase {
  public:
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   virtual ~LoudnessCalculatorBase() = 0;
 
-  /*\!brief Accumulates samples to be measured.
+  /*!\brief Accumulates samples to be measured.
    *
    * \param rendered_samples Samples interleaved in IAMF canonical order to
    *     measure loudness on.
@@ -43,7 +43,7 @@ class LoudnessCalculatorBase {
   virtual absl::Status AccumulateLoudnessForSamples(
       const std::vector<int32_t>& rendered_samples) = 0;
 
-  /*\!brief Outputs the measured loudness.
+  /*!\brief Outputs the measured loudness.
    *
    * \param rendered_samples Samples interleaved in IAMF canonical order to
    *     measure loudness on.
@@ -52,15 +52,15 @@ class LoudnessCalculatorBase {
   virtual absl::StatusOr<LoudnessInfo> QueryLoudness() const = 0;
 
  protected:
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   LoudnessCalculatorBase() {}
 };
 
-/*\!brief Loudness calculator which always returns the user provided loudness.
+/*!\brief Loudness calculator which always returns the user provided loudness.
  */
 class LoudnessCalculatorUserProvidedLoudness : public LoudnessCalculatorBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param user_provided_loudness User provided loudness to echo back.
    */
@@ -68,10 +68,10 @@ class LoudnessCalculatorUserProvidedLoudness : public LoudnessCalculatorBase {
       const LoudnessInfo& user_provided_loudness)
       : user_provided_loudness_(user_provided_loudness) {}
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   ~LoudnessCalculatorUserProvidedLoudness() override = default;
 
-  /*\!brief Ignores the input samples.
+  /*!\brief Ignores the input samples.
    *
    * \param rendered_samples Samples to ignore.
    * \return `absl::OkStatus()` always.
@@ -81,7 +81,7 @@ class LoudnessCalculatorUserProvidedLoudness : public LoudnessCalculatorBase {
     return absl::OkStatus();
   }
 
-  /*\!brief Outputs the user provided loudness.
+  /*!\brief Outputs the user provided loudness.
    *
    * \return `LoudnessInfo` provided in the constructor.
    */

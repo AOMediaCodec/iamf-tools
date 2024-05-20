@@ -24,7 +24,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Helps create consistent audio frame metadatas for an IAMF stream.
+/*!\brief Helps create consistent audio frame metadatas for an IAMF stream.
  *
  * In `iamf-tools` this metadata is typically associated in a 1:1 mapping with
  * an audio element.
@@ -40,7 +40,7 @@ namespace adm_to_user_metadata {
  */
 class AudioFrameHandler {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param file_prefix Prefix for associated wav files.
    * \param num_samples_to_trim_at_end Common number of samples to trim at end
@@ -51,7 +51,7 @@ class AudioFrameHandler {
       : file_prefix_(file_prefix),
         num_samples_to_trim_at_end_(num_samples_to_trim_at_end) {};
 
-  /*\!brief Populates a `AudioFrameMetadata`.
+  /*!\brief Populates a `AudioFrameMetadata`.
    *
    * \param audio_element_id ID of the associated audio element.
    * \param input_layout Input layout of the associated audio element.

@@ -72,7 +72,7 @@ typedef absl::flat_hash_map<DecodedUleb128, TimeLabeledFrameMap>
 
 typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap*);
 
-/*\!brief Manages data and processing to down-mix and demix audio elements.
+/*!\brief Manages data and processing to down-mix and demix audio elements.
  *
  * This class relates to the "Element Reconstructor" as used in the IAMF
  * specifications. "An Element Reconstructor re-assembles the Audio Elements by
@@ -98,10 +98,10 @@ class DemixingModule {
     LabelGainMap label_to_output_gain;
   };
 
-  /*\!brief Constructor. */
+  /*!\brief Constructor. */
   DemixingModule() = default;
 
-  /*\!brief Initializes for down-mixing and demixing the input audio elements.
+  /*!\brief Initializes for down-mixing and demixing the input audio elements.
    *
    * Initializes metadata for each input audio element ID. The metadata includes
    * information about the channels and the specific down-mixers and demixers
@@ -117,7 +117,7 @@ class DemixingModule {
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 
-  /*\!brief Initializes for reconstruction (demixing) the input audio elements.
+  /*!\brief Initializes for reconstruction (demixing) the input audio elements.
    *
    * Initializes metadata for each input audio element ID. The metadata includes
    * information about the channels and the specific down-mixers and demixers
@@ -130,7 +130,7 @@ class DemixingModule {
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 
-  /*\!brief Searches the input map for the target samples or demixed samples.
+  /*!\brief Searches the input map for the target samples or demixed samples.
    *
    * \param label Label to directly search for or prefix with "D_" and search
    *     for.
@@ -143,7 +143,7 @@ class DemixingModule {
       const std::string& label, const LabelSamplesMap& label_to_samples,
       const std::vector<int32_t>** samples);
 
-  /*\!brief Down-mixes samples of input channels to substreams.
+  /*!\brief Down-mixes samples of input channels to substreams.
    *
    * \param audio_element_id Audio Element ID of these substreams.
    * \param down_mixing_params Down mixing parameters to use. Ignored when
@@ -161,7 +161,7 @@ class DemixingModule {
       absl::flat_hash_map<uint32_t, SubstreamData>&
           substream_id_to_substream_data) const;
 
-  /*\!brief Demix audio samples.
+  /*!\brief Demix audio samples.
    *
    * \param audio_frames Audio Frames.
    * \param decoded_audio_frames Decoded Audio Frames.
@@ -176,7 +176,7 @@ class DemixingModule {
       IdLabeledFrameMap& id_to_labeled_frame,
       IdLabeledFrameMap& id_to_labeled_decoded_frame) const;
 
-  /*\!brief Gets the down-mixers associated with an Audio Element ID.
+  /*!\brief Gets the down-mixers associated with an Audio Element ID.
    *
    * \param audio_element_id Audio Element ID
    * \param down_mixers Output pointer to the list of down-mixers.
@@ -185,7 +185,7 @@ class DemixingModule {
   absl::Status GetDownMixers(DecodedUleb128 audio_element_id,
                              const std::list<Demixer>*& down_mixers) const;
 
-  /*\!brief Gets the demixers associated with an Audio Element ID.
+  /*!\brief Gets the demixers associated with an Audio Element ID.
    *
    * \param audio_element_id Audio Element ID
    * \param demixers Output pointer to the list of demixers.

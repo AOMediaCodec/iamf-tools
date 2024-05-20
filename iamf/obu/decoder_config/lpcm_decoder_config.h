@@ -70,7 +70,7 @@ class LpcmDecoderConfig {
    */
   absl::Status ReadAndValidate(int16_t audio_roll_distance, ReadBitBuffer& rb);
 
-  /*\!brief Gets the output sample rate represented within the decoder config.
+  /*!\brief Gets the output sample rate represented within the decoder config.
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
@@ -91,7 +91,7 @@ class LpcmDecoderConfig {
   absl::Status GetBitDepthToMeasureLoudness(
       uint8_t& bit_depth_to_measure_loudness) const;
 
-  /*\!brief Prints logging information about the decoder config.
+  /*!\brief Prints logging information about the decoder config.
    */
   void Print() const;
 

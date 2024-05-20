@@ -30,7 +30,7 @@ namespace iamf_tools {
 
 namespace {
 
-/*\!brief A general struct to represent an LEB128.
+/*!\brief A general struct to represent an LEB128.
  *
  * When `is_signed` is false this represents a ULEB128. Otherwise this
  * represents an SLEB128. An LEB128 can be encoded in up to 8 bytes.
@@ -45,7 +45,7 @@ struct Leb128 {
   bool is_signed;
 };
 
-/*\!brief Serializes the LEB128 and returns a status based on the result.
+/*!\brief Serializes the LEB128 and returns a status based on the result.
  *
  * Serializes a leb128 and returns a status based on the result. Each byte of a
  * leb128 encodes 7 bits, the upper bit encodes whether it is the last byte in

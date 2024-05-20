@@ -22,7 +22,7 @@ namespace iamf_tools {
 
 class ReconGainGenerator {
  public:
-  /*\!brief Computes the recon gain for the input channel.
+  /*!\brief Computes the recon gain for the input channel.
    *
    * \param label Label of the channel to compute.
    * \param label_to_samples Mapping from channel labels to original samples.

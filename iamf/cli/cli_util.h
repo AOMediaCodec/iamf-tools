@@ -38,7 +38,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Copies param definitions from the corresponding protocol buffer.
+/*!\brief Copies param definitions from the corresponding protocol buffer.
  *
  * \param input_param_definition Input protocol buffer.
  * \param param_definition Pointer to the result.
@@ -48,7 +48,7 @@ absl::Status CopyParamDefinition(
     const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
     ParamDefinition* param_definition);
 
-/*\!brief Returns an `ObuHeader` based on the corresponding protocol buffer.
+/*!\brief Returns an `ObuHeader` based on the corresponding protocol buffer.
  *
  * \param input_obu_header Input protocol buffer.
  * \return Result.
@@ -56,7 +56,7 @@ absl::Status CopyParamDefinition(
 ObuHeader GetHeaderFromMetadata(
     const iamf_tools_cli_proto::ObuHeaderMetadata& input_obu_header);
 
-/*\!brief Copies `DemixingInfoParameterData` from the input protocol buffer.
+/*!\brief Copies `DemixingInfoParameterData` from the input protocol buffer.
  *
  * \param input_demixing_info_parameter_data Input protocol buffer.
  * \param obu_demixing_param_data Reference to the result.
@@ -67,7 +67,7 @@ absl::Status CopyDemixingInfoParameterData(
         input_demixing_info_parameter_data,
     DemixingInfoParameterData& obu_demixing_param_data);
 
-/*\!brief Checks whether temporal delimiters OBUs should be inserted.
+/*!\brief Checks whether temporal delimiters OBUs should be inserted.
  *
  * \param user_metadata User controlled metadata.
  * \param ia_sequence_header_obu IA Sequence Header OBU in the IA sequence.
@@ -81,7 +81,7 @@ absl::Status GetIncludeTemporalDelimiterObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     bool& include_temporal_delimiter_obus);
 
-/*\!brief Collects and validates the parameter definitions against the spec.
+/*!\brief Collects and validates the parameter definitions against the spec.
  *
  * When `param_definition_mode = 0`, `duration`, `num_subblocks`,
  * `constant_subblock_duration` and `subblock_duration` shall be same in all
@@ -100,7 +100,7 @@ absl::Status CollectAndValidateParamDefinitions(
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions);
 
-/*\!brief Validates that two timestamps are equal.
+/*!\brief Validates that two timestamps are equal.
  *
  * \param expected_timestamp Expected timestamp.
  * \param actual_timestamp Actual timestamp.
@@ -113,7 +113,7 @@ absl::Status CompareTimestamps(int32_t expected_timestamp,
                                int32_t actual_timestamp,
                                absl::string_view prompt = "");
 
-/*\!brief Writes interlaced PCM samples into the output buffer.
+/*!\brief Writes interlaced PCM samples into the output buffer.
  *
  * \param frame Input frames arranged in (time, channel) axes.
  * \param samples_to_trim_at_start Samples to trim at the beginning.
@@ -129,7 +129,7 @@ absl::Status WritePcmFrameToBuffer(
     uint32_t samples_to_trim_at_start, uint32_t samples_to_trim_at_end,
     uint8_t bit_depth, bool big_endian, std::vector<uint8_t>& buffer);
 
-/*\!brief Gets the common output sample rate and bit-deph of the input sets.
+/*!\brief Gets the common output sample rate and bit-deph of the input sets.
  *
  * \param sample_rates Sample rates to find the common output sample rate of.
  * \param bit_depths Bit-depths to find the common output bit-depth rate of.
@@ -148,7 +148,7 @@ absl::Status GetCommonSampleRateAndBitDepth(
     uint32_t& common_sample_rate, uint8_t& common_bit_depth,
     bool& requires_resampling);
 
-/*\!brief Gets the common samples per frame from all Codec Config OBUs
+/*!\brief Gets the common samples per frame from all Codec Config OBUs
  *
  * \param codec_config_obus Codec Config OBUs to get the common frame size of.
  * \param common_samples_per_frame The frame size of all Codec Config OBUs.
@@ -159,7 +159,7 @@ absl::Status GetCommonSamplesPerFrame(
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     uint32_t& common_samples_per_frame);
 
-/*\!brief Logs the channel numbers.
+/*!\brief Logs the channel numbers.
  *
  * \param name Name of the channel to log.
  * \param channel_numbers `ChannelNumbers` of the channel to log.

@@ -32,24 +32,24 @@ namespace iamf_tools {
 // TODO(b/277731089): Test all of `aac_encoder_decoder.h`.
 class AacDecoder : public DecoderBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param codec_config_obu Codec Config OBU with initialization settings.
    * \param num_channels Number of channels for this stream.
    */
   AacDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
 
-  /*\!brief Destructor.
+  /*!\brief Destructor.
    */
   ~AacDecoder() override;
 
-  /*\!brief Initializes the underlying decoder.
+  /*!\brief Initializes the underlying decoder.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize() override;
 
-  /*\!brief Decodes an AAC audio frame.
+  /*!\brief Decodes an AAC audio frame.
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)

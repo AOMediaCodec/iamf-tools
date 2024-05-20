@@ -69,7 +69,7 @@ struct SubMixAudioElement {
   friend bool operator==(const SubMixAudioElement& lhs,
                          const SubMixAudioElement& rhs) = default;
 
-  /*\!brief Reads and validates the SubMixAudioElement from the buffer.
+  /*!\brief Reads and validates the SubMixAudioElement from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
@@ -185,7 +185,7 @@ struct LoudspeakersSsConventionLayout {
   friend bool operator==(const LoudspeakersSsConventionLayout& lhs,
                          const LoudspeakersSsConventionLayout& rhs) = default;
 
-  /*\!brief Writes the layout to the buffer.
+  /*!\brief Writes the layout to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
@@ -193,7 +193,7 @@ struct LoudspeakersSsConventionLayout {
    */
   absl::Status Write(bool& found_stereo_layout, WriteBitBuffer& wb) const;
 
-  /*\!brief Reads the layout from the buffer.
+  /*!\brief Reads the layout from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
@@ -201,7 +201,7 @@ struct LoudspeakersSsConventionLayout {
    */
   absl::Status Read(ReadBitBuffer& rb);
 
-  /*\!brief Prints logging information about the layout. */
+  /*!\brief Prints logging information about the layout. */
   void Print() const;
 
   SoundSystem sound_system;
@@ -214,7 +214,7 @@ struct LoudspeakersReservedBinauralLayout {
                          const LoudspeakersReservedBinauralLayout& rhs) =
       default;
 
-  /*\!brief Writes the layout to the buffer.
+  /*!\brief Writes the layout to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
@@ -222,7 +222,7 @@ struct LoudspeakersReservedBinauralLayout {
    */
   absl::Status Write(WriteBitBuffer& wb) const;
 
-  /*\!brief Prints logging information about the layout. */
+  /*!\brief Prints logging information about the layout. */
   void Print() const;
 
   uint8_t reserved;  // 6 bits.
@@ -254,7 +254,7 @@ struct MixPresentationLayout {
   friend bool operator==(const MixPresentationLayout& lhs,
                          const MixPresentationLayout& rhs) = default;
 
-  /*\!brief Reads and validates the MixPresentationLayout from the buffer.
+  /*!\brief Reads and validates the MixPresentationLayout from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
@@ -296,7 +296,7 @@ struct MixPresentationSubMix {
   friend bool operator==(const MixPresentationSubMix& lhs,
                          const MixPresentationSubMix& rhs) = default;
 
-  /*\!brief Reads and validates the MixPresentationSubMix from the buffer.
+  /*!\brief Reads and validates the MixPresentationSubMix from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the sub-mix is valid. A specific status if
@@ -330,7 +330,7 @@ struct MixPresentationSubMix {
  */
 class MixPresentationObu : public ObuBase {
  public:
-  /*\!brief Writes the number of channels for a `Layout` to the output argument.
+  /*!\brief Writes the number of channels for a `Layout` to the output argument.
    *
    * \param loudness_layout `Layout` to process.
    * \param num_channels Number of channels for this layout if successful.
@@ -340,7 +340,7 @@ class MixPresentationObu : public ObuBase {
   static absl::Status GetNumChannelsFromLayout(const Layout& loudness_layout,
                                                int32_t& num_channels);
 
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * This class takes ownership of any allocated memory nested within
    * `MixGainParamDefinition`s.
@@ -397,7 +397,7 @@ class MixPresentationObu : public ObuBase {
   friend bool operator==(const MixPresentationObu& lhs,
                          const MixPresentationObu& rhs) = default;
 
-  /*\!brief Prints logging information about the OBU. */
+  /*!\brief Prints logging information about the OBU. */
   void PrintObu() const override;
 
   DecodedUleb128 GetMixPresentationId() const { return mix_presentation_id_; }
@@ -430,14 +430,14 @@ class MixPresentationObu : public ObuBase {
         language_labels_({}),
         mix_presentation_annotations_({}),
         num_sub_mixes_(DecodedUleb128()) {}
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if OBU is valid. A specific status on failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

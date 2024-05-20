@@ -54,7 +54,7 @@ class AudioFrameObu : public ObuBase {
       const ObuHeader& header, int64_t obu_payload_serialized_size,
       ReadBitBuffer& rb);
 
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
    * \param substream_id Substream ID.
@@ -62,19 +62,19 @@ class AudioFrameObu : public ObuBase {
   AudioFrameObu(const ObuHeader& header, DecodedUleb128 substream_id,
                 const std::vector<uint8_t>& audio_frame);
 
-  /*\!brief Move constructor.*/
+  /*!\brief Move constructor.*/
   AudioFrameObu(AudioFrameObu&& other) = default;
 
-  /*\!brief Destructor.*/
+  /*!\brief Destructor.*/
   ~AudioFrameObu() = default;
 
   friend bool operator==(const AudioFrameObu& lhs,
                          const AudioFrameObu& rhs) = default;
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
-  /*\!brief Gets the substream ID of the OBU.
+  /*!\brief Gets the substream ID of the OBU.
    * \return Substream ID.
    */
   DecodedUleb128 GetSubstreamId() const { return audio_substream_id_; }
@@ -93,7 +93,7 @@ class AudioFrameObu : public ObuBase {
       : ObuBase(header, header.obu_type),
         audio_frame_({}),
         audio_substream_id_(DecodedUleb128()) {}
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
@@ -101,7 +101,7 @@ class AudioFrameObu : public ObuBase {
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

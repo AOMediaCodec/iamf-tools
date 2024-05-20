@@ -36,7 +36,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Generator of audio frames.
+/*!\brief Generator of audio frames.
  *
  * The generation of audio frames can be done asynchronously, where
  * samples are added on one thread and completed frames are consumed on another.
@@ -58,7 +58,7 @@ namespace iamf_tools {
  */
 class AudioFrameGenerator {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param audio_frame_metadata Input audio frame metadata.
    * \param codec_config_metadata Input codec config metadata.
@@ -98,20 +98,20 @@ class AudioFrameGenerator {
     }
   }
 
-  /*\!brief Data structure to track the user requested trimming.
+  /*!\brief Data structure to track the user requested trimming.
    */
   struct TrimmingState {
     int64_t user_samples_left_to_trim_at_end;
     int64_t user_samples_left_to_trim_at_start;
   };
 
-  /*\!brief Initializes encoders and relevant data structures.
+  /*!\brief Initializes encoders and relevant data structures.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize();
 
-  /*\!brief Returns whether the generator is still taking audio samples.
+  /*!\brief Returns whether the generator is still taking audio samples.
    *
    * \return True if the generator is still taking audio samples.
    */
@@ -119,7 +119,7 @@ class AudioFrameGenerator {
     return !substream_id_to_substream_data_.empty();
   }
 
-  /*\!brief Adds samples for an Audio Element and a channel label.
+  /*!\brief Adds samples for an Audio Element and a channel label.
    *
    * Calling this function with empty input `samples` will signal the
    * underlying encoder that the a substream has ended. Eventually when all
@@ -134,7 +134,7 @@ class AudioFrameGenerator {
                           const std::string& label,
                           const std::vector<int32_t>& samples);
 
-  /*\!brief Finalizes the sample-adding process.
+  /*!\brief Finalizes the sample-adding process.
    *
    * This will signal all underlying encoders that there are no more samples
    * to come.
@@ -143,7 +143,7 @@ class AudioFrameGenerator {
    */
   absl::Status Finalize();
 
-  /*\!brief Returns whether there still are audio frames being generated.
+  /*!\brief Returns whether there still are audio frames being generated.
    *
    * \return True until all underlying encoders have finished encoding, and
    *         all audio frames have been generated.
@@ -153,7 +153,7 @@ class AudioFrameGenerator {
     return !substream_id_to_encoder_.empty();
   }
 
-  /*\!brief Outputs a list of generated Audio Frame OBUs (and associated data).
+  /*!\brief Outputs a list of generated Audio Frame OBUs (and associated data).
    *
    * The output frames all belong to the same temporal unit, sharing the same
    * start and end timestamps.

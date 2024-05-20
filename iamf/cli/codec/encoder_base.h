@@ -28,7 +28,7 @@ namespace iamf_tools {
 
 class EncoderBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * After constructing `Initialize()` MUST be called and return successfully
    * before using most functionality of the encoder.
@@ -57,7 +57,7 @@ class EncoderBase {
         input_pcm_bit_depth_(codec_config.GetBitDepthToMeasureLoudness()),
         num_channels_(num_channels) {}
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   virtual ~EncoderBase() = 0;
 
   /*!\brief Initializes `EncoderBase`.

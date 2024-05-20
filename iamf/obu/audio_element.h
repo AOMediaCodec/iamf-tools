@@ -247,7 +247,7 @@ class AudioElementObu : public ObuBase {
   static absl::StatusOr<AudioElementObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
 
-  /*\!brief Move constructor.*/
+  /*!\brief Move constructor.*/
   AudioElementObu(AudioElementObu&& other) = default;
 
   /*!\brief Destructor. */
@@ -256,20 +256,20 @@ class AudioElementObu : public ObuBase {
   friend bool operator==(const AudioElementObu& lhs,
                          const AudioElementObu& rhs) = default;
 
-  /*\!brief Initializes the `audio_substream_ids_` vector.
+  /*!\brief Initializes the `audio_substream_ids_` vector.
    *
    * \param num_substreams Number of substreams.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   void InitializeAudioSubstreams(uint32_t num_substreams);
 
-  /*\!brief Initializes the `audio_element_params_` vector.
+  /*!\brief Initializes the `audio_element_params_` vector.
    *
    * \param num_parameters Number of parameters.
    */
   void InitializeParams(uint32_t num_parameters);
 
-  /*\!brief Initializes a channel-based Audio Element OBU.
+  /*!\brief Initializes a channel-based Audio Element OBU.
    *
    * Must be called after `audio_element_type_` is initialized to
    * `kAudioElementChannelBased`.
@@ -281,7 +281,7 @@ class AudioElementObu : public ObuBase {
   absl::Status InitializeScalableChannelLayout(uint32_t num_layers,
                                                uint32_t reserved);
 
-  /*\!brief Initializes an Ambisonics Mono Audio Element OBU.
+  /*!\brief Initializes an Ambisonics Mono Audio Element OBU.
    *
    * Must be called if and only if
    * `audio_element_type_` == `kAudioElementSceneBased` and
@@ -294,7 +294,7 @@ class AudioElementObu : public ObuBase {
   absl::Status InitializeAmbisonicsMono(uint32_t output_channel_count,
                                         uint32_t substream_count);
 
-  /*\!brief Initializes an Ambisonics Projection Audio Element OBU.
+  /*!\brief Initializes an Ambisonics Projection Audio Element OBU.
    *
    * Must be called if and only if
    * `audio_element_type_` == `kAudioElementSceneBased` and
@@ -309,7 +309,7 @@ class AudioElementObu : public ObuBase {
                                               uint32_t substream_count,
                                               uint32_t coupled_substream_count);
 
-  /*\!brief Initializes an extended type of Audio Element OBU.
+  /*!\brief Initializes an extended type of Audio Element OBU.
    *
    * For future use when new `audio_element_type_` values are defined. Must be
    * called if and only if `audio_element_type_` is in the range of
@@ -320,7 +320,7 @@ class AudioElementObu : public ObuBase {
    */
   void InitializeExtensionConfig(uint32_t audio_element_config_size);
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
   AudioElementType GetAudioElementType() const { return audio_element_type_; }
@@ -355,7 +355,7 @@ class AudioElementObu : public ObuBase {
         audio_element_type_(kAudioElementBeginReserved),
         codec_config_id_(DecodedUleb128()) {}
 
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
@@ -363,7 +363,7 @@ class AudioElementObu : public ObuBase {
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

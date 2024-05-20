@@ -20,11 +20,11 @@
 
 namespace iamf_tools {
 
-/*\!brief A common interfaces for all decoders.
+/*!\brief A common interfaces for all decoders.
  */
 class DecoderBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * After constructing `Initialize` MUST be called and return successfully
    * before using most functionality of the decoder.
@@ -36,17 +36,17 @@ class DecoderBase {
       : num_channels_(num_channels),
         num_samples_per_channel_(num_samples_per_channel) {}
 
-  /*\!brief Destructor.
+  /*!\brief Destructor.
    */
   virtual ~DecoderBase() = default;
 
-  /*\!brief Initializes the underlying decoder.
+  /*!\brief Initializes the underlying decoder.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status Initialize() = 0;
 
-  /*\!brief Decodes an audio frame.
+  /*!\brief Decodes an audio frame.
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)

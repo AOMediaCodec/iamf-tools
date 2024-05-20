@@ -23,7 +23,7 @@
 
 namespace iamf_tools {
 
-/*\!brief Abstract class to create renderers.
+/*!\brief Abstract class to create renderers.
  *
  * This class will be used when rendering the loudness of a mix presentation
  * layout. The mix presentation finalizer will take in a factory and use them to
@@ -33,7 +33,7 @@ namespace iamf_tools {
  */
 class RendererFactoryBase {
  public:
-  /*\!brief Creates a renderer based on the audio element and layout.
+  /*!\brief Creates a renderer based on the audio element and layout.
    *
    * \param audio_substream_ids Audio susbtream IDs.
    * \param substream_id_to_labels Mapping of substream IDs to labels.
@@ -50,11 +50,11 @@ class RendererFactoryBase {
       const AudioElementObu::AudioElementConfig& config,
       const Layout& loudness_layout) const = 0;
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   virtual ~RendererFactoryBase() = 0;
 };
 
-/*\!brief Factory which creates a renderers.
+/*!\brief Factory which creates a renderers.
  *
  * This factory provides renderers in a best-effort manner according to the
  * recommendations in the IAMF specification. When a recommended renderer is not
@@ -63,7 +63,7 @@ class RendererFactoryBase {
  */
 class RendererFactory : public RendererFactoryBase {
  public:
-  /*\!brief Creates a renderer based on the audio element and layout.
+  /*!\brief Creates a renderer based on the audio element and layout.
    *
    * \param audio_substream_ids Audio susbtream IDs.
    * \param substream_id_to_labels Mapping of substream IDs to labels.
@@ -80,7 +80,7 @@ class RendererFactory : public RendererFactoryBase {
       const AudioElementObu::AudioElementConfig& config,
       const Layout& loudness_layout) const override;
 
-  /*\!brief Destructor. */
+  /*!\brief Destructor. */
   ~RendererFactory() override = default;
 };
 

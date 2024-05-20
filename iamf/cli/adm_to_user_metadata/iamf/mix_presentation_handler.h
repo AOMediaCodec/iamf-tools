@@ -25,7 +25,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Helps create consistent mix presentation metadatas for an IAMF stream.
+/*!\brief Helps create consistent mix presentation metadatas for an IAMF stream.
  *
  * This class stores information common between mix presentations in a single
  * IAMF stream.
@@ -36,7 +36,7 @@ namespace adm_to_user_metadata {
  */
 class MixPresentationHandler {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param common_parameter_rate Common parameter rate for all generated OBUs.
    * \param audio_object_id_to_audio_element_id Mapping of audio object
@@ -49,7 +49,7 @@ class MixPresentationHandler {
         audio_object_id_to_audio_element_id_(
             audio_object_id_to_audio_element_id) {};
 
-  /*\!brief Populates a `MixPresentationObuMetadata` proto.
+  /*!\brief Populates a `MixPresentationObuMetadata` proto.
    *
    * \param mix_presentation_id Mix presentation ID to generate.
    * \param audio_objects Audio objects for this mix presentation.

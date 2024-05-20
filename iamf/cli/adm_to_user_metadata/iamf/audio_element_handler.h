@@ -23,7 +23,7 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*\!brief Helps create consistent audio element metadata for an IAMF stream.
+/*!\brief Helps create consistent audio element metadata for an IAMF stream.
  *
  * This class stores state information to avoid conflicts between audio
  * elements in a single IAMF stream. It helps generate audio streams that may
@@ -38,7 +38,7 @@ class AudioElementHandler {
  public:
   AudioElementHandler() = default;
 
-  /*\!brief Populates an `AudioElementObuMetadata`.
+  /*!\brief Populates an `AudioElementObuMetadata`.
    *
    * \param audio_element_id Audio element ID.
    * \param input_layout Input layout of the audio element.

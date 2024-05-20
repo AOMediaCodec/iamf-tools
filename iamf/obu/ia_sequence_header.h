@@ -63,7 +63,7 @@ class IASequenceHeaderObu : public ObuBase {
   static absl::StatusOr<IASequenceHeaderObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
 
-  /*\!brief Copy constructor.*/
+  /*!\brief Copy constructor.*/
   IASequenceHeaderObu(const IASequenceHeaderObu& other) = default;
 
   /*!\brief Destructor. */
@@ -72,7 +72,7 @@ class IASequenceHeaderObu : public ObuBase {
   friend bool operator==(const IASequenceHeaderObu& lhs,
                          const IASequenceHeaderObu& rhs) = default;
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
   /*!\brief Validates the OBU.
@@ -105,14 +105,14 @@ class IASequenceHeaderObu : public ObuBase {
         primary_profile_(ProfileVersion::kIamfBaseProfile),
         additional_profile_(ProfileVersion::kIamfBaseProfile) {}
 
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if OBU is valid. A specific status on
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

@@ -43,13 +43,13 @@ class TemporalDelimiterObu : public ObuBase {
   explicit TemporalDelimiterObu(ObuHeader header)
       : ObuBase(header, kObuIaTemporalDelimiter) {}
 
-  /*\!brief Move constructor.*/
+  /*!\brief Move constructor.*/
   TemporalDelimiterObu(TemporalDelimiterObu&& other) = default;
 
   /*!\brief Destructor. */
   ~TemporalDelimiterObu() override = default;
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override {
     // There is nothing to print for a Temporal Delimiter OBU.
   };
@@ -57,7 +57,7 @@ class TemporalDelimiterObu : public ObuBase {
   // Temporal delimiter has no payload
 
  private:
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` always.
@@ -67,7 +67,7 @@ class TemporalDelimiterObu : public ObuBase {
     return absl::OkStatus();
   }
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` always.

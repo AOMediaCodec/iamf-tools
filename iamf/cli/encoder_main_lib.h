@@ -17,7 +17,7 @@
 #include "absl/status/status.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 
-/*\!brief Writes an IAMF bitstream and wav files to the output files.
+/*!\brief Writes an IAMF bitstream and wav files to the output files.
  *
  * \param user_metadata Input user metadata describing the IAMF stream.
  * \param input_wav_directory Directory which contains the input wav files.

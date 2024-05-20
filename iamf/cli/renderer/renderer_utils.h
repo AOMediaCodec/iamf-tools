@@ -25,7 +25,7 @@ namespace iamf_tools {
 
 namespace renderer_utils {
 
-/*\!brief Arranges the samples to be rendered in (time, channel) axes.
+/*!\brief Arranges the samples to be rendered in (time, channel) axes.
  *
  * \param labeled_frame Labeled frame determine which original or demixed
  *     samples to trim and render.
@@ -41,7 +41,7 @@ absl::Status ArrangeSamplesToRender(
     const std::vector<std::string>& ordered_labels,
     std::vector<std::vector<int32_t>>& samples_to_render);
 
-/*\!brief Gets the channel ordering to use for the associated input layout.
+/*!\brief Gets the channel ordering to use for the associated input layout.
  *
  * \param loudspeaker_layout Layout to get channel ordering from.
  * \return Channel ordering associated with the layout if known. Or a specific
@@ -51,7 +51,7 @@ absl::StatusOr<std::vector<std::string>>
 LookupInputChannelOrderFromScalableLoudspeakerLayout(
     const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout);
 
-/*\!brief Gets a key associated with the playback layout.
+/*!\brief Gets a key associated with the playback layout.
  *
  * The output key is the layout name of sound systems described in [ITU2051-3],
  * e.g. "0+2+0", "4+7+0".

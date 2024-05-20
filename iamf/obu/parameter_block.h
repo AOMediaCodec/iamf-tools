@@ -259,25 +259,25 @@ class ParameterBlockObu : public ObuBase {
       const MixGainParameterData& mix_gain_parameter_data, int32_t start_time,
       int32_t end_time, int32_t target_time, int16_t& target_mix_gain);
 
-  /*\!brief Gets the duration of the parameter block.
+  /*!\brief Gets the duration of the parameter block.
    *
    * \return Duration of the OBU.
    */
   DecodedUleb128 GetDuration() const;
 
-  /*\!brief Gest the constant subblock interval of the OBU.
+  /*!\brief Gest the constant subblock interval of the OBU.
    *
    * \return Constant subblock duration of the OBU.
    */
   DecodedUleb128 GetConstantSubblockDuration() const;
 
-  /*\!brief Gets the number of subblocks of the OBU.
+  /*!\brief Gets the number of subblocks of the OBU.
    *
    * \return Number of subblocks of the OBU.
    */
   DecodedUleb128 GetNumSubblocks() const;
 
-  /*\!brief Gets the duration of the subblock.
+  /*!\brief Gets the duration of the subblock.
    *
    * \param subblock_index Index of the subblock to get the duration of.
    * \return Duration of the subblock or `absl::InvalidArgumentError()` on
@@ -285,7 +285,7 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::StatusOr<DecodedUleb128> GetSubblockDuration(int subblock_index) const;
 
-  /*\!brief Sets the `duration` of a subblock in the output OBU or metadata.
+  /*!\brief Sets the `duration` of a subblock in the output OBU or metadata.
    *
    * May modify the metadata or the OBU as required by `param_definition_mode`.
    * The duration field within the subblock of a `ParameterBlockObu` only has
@@ -301,7 +301,7 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::Status SetSubblockDuration(int subblock_index, DecodedUleb128 duration);
 
-  /*\!brief Writes the mix gain at the target time to the output argument.
+  /*!\brief Writes the mix gain at the target time to the output argument.
    *
    * \param obu_relative_time Time relative to the start of the OBU to get the
    *     mix gain of.
@@ -311,7 +311,7 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::Status GetMixGain(int32_t obu_relative_time, int16_t& mix_gain) const;
 
-  /*\!brief Initialize the vector of subblocks.
+  /*!\brief Initialize the vector of subblocks.
    *
    * \param duration Duration of the parameter block.
    * \param constant_subblock_duration Constant subblock duration.
@@ -322,7 +322,7 @@ class ParameterBlockObu : public ObuBase {
                                    DecodedUleb128 constant_subblock_duration,
                                    DecodedUleb128 num_subblocks);
 
-  /*\!brief Initialize the vector of subblocks using existing information.
+  /*!\brief Initialize the vector of subblocks using existing information.
    *
    * This should only be called if the `param_definition_mode == 0`,
    * and the `duration`, `constant_subblock_duration`, and `num_subblocks`
@@ -348,7 +348,7 @@ class ParameterBlockObu : public ObuBase {
   }
 
  private:
-  /*\!brief Sets the `duration` of the output OBU or metadata.
+  /*!\brief Sets the `duration` of the output OBU or metadata.
    *
    * May modify the metadata or the OBU as required by `param_definition_mode`.
    *
@@ -356,7 +356,7 @@ class ParameterBlockObu : public ObuBase {
    */
   void SetDuration(DecodedUleb128 duration);
 
-  /*\!brief Sets the `constant_subblock_duration` of the output OBU or metadata.
+  /*!\brief Sets the `constant_subblock_duration` of the output OBU or metadata.
    *
    * May modify the metadata or the OBU as required by `param_definition_mode`.
    *
@@ -364,7 +364,7 @@ class ParameterBlockObu : public ObuBase {
    */
   void SetConstantSubblockDuration(DecodedUleb128 constant_subblock_duration);
 
-  /*\!brief Sets the `num_subblocks` of the output OBU or metadata.
+  /*!\brief Sets the `num_subblocks` of the output OBU or metadata.
    *
    * May modify the metadata or the OBU as required by `param_definition_mode`.
    *
@@ -372,7 +372,7 @@ class ParameterBlockObu : public ObuBase {
    */
   void SetNumSubblocks(DecodedUleb128 num_subblocks);
 
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
@@ -380,7 +380,7 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on

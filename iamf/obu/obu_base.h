@@ -24,7 +24,7 @@ namespace iamf_tools {
 
 class ObuBase {
  public:
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
    * \param obu_type `obu_type` of the OBU.
@@ -33,22 +33,22 @@ class ObuBase {
     header_.obu_type = obu_type;
   }
 
-  /*\!brief Constructor.
+  /*!\brief Constructor.
    *
    * \param obu_type `obu_type` of the OBU.
    */
   ObuBase(ObuType obu_type) : ObuBase(ObuHeader(), obu_type) {}
   ObuBase() = default;
 
-  /*\!brief Copy constructor.*/
+  /*!\brief Copy constructor.*/
   ObuBase(const ObuBase& other) = default;
 
-  /*\!brief Destructor.*/
+  /*!\brief Destructor.*/
   virtual ~ObuBase() = 0;
 
   friend bool operator==(const ObuBase& lhs, const ObuBase& rhs) = default;
 
-  /*\!brief Validates and writes an entire OBU to the buffer.
+  /*!\brief Validates and writes an entire OBU to the buffer.
    *
    * \param final_wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
@@ -56,13 +56,13 @@ class ObuBase {
    */
   absl::Status ValidateAndWriteObu(WriteBitBuffer& final_wb) const;
 
-  /*\!brief Prints logging information about the OBU.*/
+  /*!\brief Prints logging information about the OBU.*/
   virtual void PrintObu() const = 0;
 
   ObuHeader header_;
 
  protected:
-  /*\!brief Writes the OBU payload to the buffer.
+  /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
@@ -70,7 +70,7 @@ class ObuBase {
    */
   virtual absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const = 0;
 
-  /*\!brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the OBU payload from the buffer.
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
@@ -78,7 +78,7 @@ class ObuBase {
    */
   virtual absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) = 0;
 
-  /*\!brief Prints logging information about the OBU Header.
+  /*!\brief Prints logging information about the OBU Header.
    *
    * \param payload_size Payload size of the header.
    */
