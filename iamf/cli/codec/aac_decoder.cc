@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <string>
 #include <vector>
 
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
@@ -25,68 +24,18 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
+#include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "libAACdec/include/aacdecoder_lib.h"
-#include "libAACenc/include/aacenc_lib.h"
-#include "libSYS/include/FDK_audio.h"
 #include "libSYS/include/machine_type.h"
 
 namespace iamf_tools {
 
-// IAMF requires raw AAC frames with no ADTS header.
-const auto kAacTranportType = TT_MP4_RAW;
-
-// `libfdk_aac` has the bytes per sample fixed at compile time.
-const size_t kFdkAacBytesPerSample = sizeof(INT_PCM);
-const size_t kFdkAacBitDepth = kFdkAacBytesPerSample * 8;
-
 namespace {
-
-absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
-                                     const std::string& error_message) {
-  absl::StatusCode status_code;
-  switch (aac_error_code) {
-    case AACENC_OK:
-      return absl::OkStatus();
-    case AACENC_INVALID_HANDLE:
-      status_code = absl::StatusCode::kInvalidArgument;
-      break;
-    case AACENC_MEMORY_ERROR:
-      status_code = absl::StatusCode::kResourceExhausted;
-      break;
-    case AACENC_UNSUPPORTED_PARAMETER:
-      status_code = absl::StatusCode::kInvalidArgument;
-      break;
-    case AACENC_INVALID_CONFIG:
-      status_code = absl::StatusCode::kFailedPrecondition;
-      break;
-    case AACENC_INIT_ERROR:
-    case AACENC_INIT_AAC_ERROR:
-    case AACENC_INIT_SBR_ERROR:
-    case AACENC_INIT_TP_ERROR:
-    case AACENC_INIT_META_ERROR:
-    case AACENC_INIT_MPS_ERROR:
-      status_code = absl::StatusCode::kInternal;
-      break;
-    case AACENC_ENCODE_EOF:
-      status_code = absl::StatusCode::kOutOfRange;
-      break;
-    case AACENC_ENCODE_ERROR:
-    default:
-      status_code = absl::StatusCode::kUnknown;
-      break;
-  }
-
-  return absl::Status(
-      status_code,
-      absl::StrCat(error_message, " AACENC_ERROR= ", aac_error_code));
-}
 
 absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
                                  int num_channels,
@@ -140,7 +89,7 @@ AacDecoder::~AacDecoder() {
 
 absl::Status AacDecoder::Initialize() {
   // Initialize the decoder.
-  decoder_ = aacDecoder_Open(kAacTranportType, /*nrOfLayers=*/1);
+  decoder_ = aacDecoder_Open(GetAacTransportationType(), /*nrOfLayers=*/1);
 
   if (decoder_ == nullptr) {
     LOG(ERROR) << "Failed to initialize AAC decoder.";
@@ -197,7 +146,7 @@ absl::Status AacDecoder::DecodeAudioFrame(
     std::vector<int32_t> time_sample(num_channels_, 0);
     for (int j = 0; j < num_channels_; ++j) {
       time_sample[j] = static_cast<int32_t>(output_pcm[i + j])
-                       << (32 - kFdkAacBitDepth);
+                       << (32 - GetFdkAacBitDepth());
     }
     decoded_samples.push_back(time_sample);
   }

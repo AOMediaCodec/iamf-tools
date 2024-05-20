@@ -11,25 +11,17 @@
  */
 #include "iamf/cli/codec/aac_encoder.h"
 
-#include <algorithm>
-#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
-
-// This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
-#ifdef IS_LITTLE_ENDIAN
-#undef IS_LITTLE_ENDIAN
-#endif
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
@@ -39,55 +31,7 @@
 
 namespace iamf_tools {
 
-// IAMF requires raw AAC frames with no ADTS header.
-const auto kAacTranportType = TT_MP4_RAW;
-
-// `libfdk_aac` has the bytes per sample fixed at compile time.
-const size_t kFdkAacBytesPerSample = sizeof(INT_PCM);
-const size_t kFdkAacBitDepth = kFdkAacBytesPerSample * 8;
-
 namespace {
-
-absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
-                                     const std::string& error_message) {
-  absl::StatusCode status_code;
-  switch (aac_error_code) {
-    case AACENC_OK:
-      return absl::OkStatus();
-    case AACENC_INVALID_HANDLE:
-      status_code = absl::StatusCode::kInvalidArgument;
-      break;
-    case AACENC_MEMORY_ERROR:
-      status_code = absl::StatusCode::kResourceExhausted;
-      break;
-    case AACENC_UNSUPPORTED_PARAMETER:
-      status_code = absl::StatusCode::kInvalidArgument;
-      break;
-    case AACENC_INVALID_CONFIG:
-      status_code = absl::StatusCode::kFailedPrecondition;
-      break;
-    case AACENC_INIT_ERROR:
-    case AACENC_INIT_AAC_ERROR:
-    case AACENC_INIT_SBR_ERROR:
-    case AACENC_INIT_TP_ERROR:
-    case AACENC_INIT_META_ERROR:
-    case AACENC_INIT_MPS_ERROR:
-      status_code = absl::StatusCode::kInternal;
-      break;
-    case AACENC_ENCODE_EOF:
-      status_code = absl::StatusCode::kOutOfRange;
-      break;
-    case AACENC_ENCODE_ERROR:
-    default:
-      status_code = absl::StatusCode::kUnknown;
-      break;
-  }
-
-  return absl::Status(
-      status_code,
-      absl::StrCat(error_message, " AACENC_ERROR= ", aac_error_code));
-}
-
 absl::Status ConfigureAacEncoder(
     const iamf_tools_cli_proto::AacEncoderMetadata& encoder_metadata,
     int num_channels, uint32_t num_samples_per_frame,
@@ -98,7 +42,7 @@ absl::Status ConfigureAacEncoder(
       "Failed to configure encoder metadata mode."));
 
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
-      aacEncoder_SetParam(encoder, AACENC_TRANSMUX, kAacTranportType),
+      aacEncoder_SetParam(encoder, AACENC_TRANSMUX, GetAacTransportationType()),
       "Failed to configure encoder transport type."));
 
   // IAMF only supports AAC-LC.
@@ -233,8 +177,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
                                            "Failed to get encoder info."));
 
   // Convert input to the array that will be passed to `aacEncEncode`.
-  if (input_bit_depth != kFdkAacBitDepth) {
-    LOG(ERROR) << "Expected AAC to be " << kFdkAacBitDepth
+  if (input_bit_depth != GetFdkAacBitDepth()) {
+    LOG(ERROR) << "Expected AAC to be " << GetFdkAacBitDepth()
                << " bits, got "
                   "bit-depth: "
                << input_bit_depth;
@@ -262,8 +206,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
   void* in_buffers[1] = {encoder_input_pcm.data()};
   INT in_buffer_identifiers[1] = {IN_AUDIO_DATA};
   INT in_buffer_sizes[1] = {
-      static_cast<INT>(encoder_input_pcm.size() * kFdkAacBytesPerSample)};
-  INT in_buffer_element_sizes[1] = {kFdkAacBytesPerSample};
+      static_cast<INT>(encoder_input_pcm.size() * GetFdkAacBytesPerSample())};
+  INT in_buffer_element_sizes[1] = {GetFdkAacBytesPerSample()};
   AACENC_BufDesc inBufDesc = {.numBufs = 1,
                               .bufs = in_buffers,
                               .bufferIdentifiers = in_buffer_identifiers,
