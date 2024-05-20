@@ -65,10 +65,9 @@ bool IsTrimmingStatusFlagAllowed(ObuType type) {
 absl::Status Validate(const ObuHeader& header) {
   // Validate member fields are self-consistent.
   if (!header.obu_extension_flag && header.extension_header_size > 0) {
-    LOG(ERROR)
-        << "`obu_extension_flag_` implied there was no extension header, "
-           "but `extension_header_size_` indicates there is one.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "`obu_extension_flag_` implied there was no extension header, "
+        "but `extension_header_size_` indicates there is one.");
   }
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual("extension_header_bytes_",
@@ -77,18 +76,17 @@ absl::Status Validate(const ObuHeader& header) {
 
   // Validate IAMF imposed requirements.
   if (header.obu_redundant_copy && !IsRedundantCopyAllowed(header.obu_type)) {
-    LOG(ERROR)
-        << "The redundant copy flag is not allowed to be set for obu_type="
-        << static_cast<int>(header.obu_type) << ".";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The redundant copy flag is not allowed to be set for obu_type= ",
+        header.obu_type));
   }
 
   if (header.obu_trimming_status_flag &&
       !IsTrimmingStatusFlagAllowed(header.obu_type)) {
-    LOG(ERROR) << "The trimming status flag flag is not allowed to be set for "
-                  "obu_type="
-               << static_cast<int>(header.obu_type) << ".";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "The trimming status flag flag is not allowed to be set for "
+        "obu_type= ",
+        header.obu_type));
   }
 
   return absl::OkStatus();
@@ -155,10 +153,9 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
   // Validate to avoid issues with the `static_cast` below.
   if (0 > payload_serialized_size ||
       payload_serialized_size > std::numeric_limits<uint32_t>::max()) {
-    LOG(ERROR)
-        << "Payload size must fit into a `uint32_t`. payload_serialized_size="
-        << payload_serialized_size;
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Payload size must fit into a `uint32_t`. payload_serialized_size= ",
+        payload_serialized_size));
   }
 
   // Set `obu_size`. It depends on the size of all fields after `obu_size` and
@@ -170,11 +167,10 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
     if (!temp_wb_after_obu_size.IsByteAligned() ||
         temp_wb_after_obu_size.bit_buffer().size() >
             std::numeric_limits<uint32_t>::max()) {
-      LOG(ERROR)
-          << "Result from `WriteFieldsAfterObuSize()` was not byte-aligned "
-             "or it did not fit into a `uint32_t`. `bit_offset` is "
-          << temp_wb_after_obu_size.bit_offset();
-      return absl::UnknownError("");
+      return absl::UnknownError(absl::StrCat(
+          "Result from `WriteFieldsAfterObuSize()` was not byte-aligned ",
+          "or it did not fit into a `uint32_t`. `bit_offset` is ",
+          temp_wb_after_obu_size.bit_offset()));
     }
     // Get the size of fields after `obu_size`.
     const uint32_t fields_after_obu_size =
@@ -285,7 +281,7 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
   LOG(INFO) << "  obu_type= " << obu_type;
   LOG(INFO) << "  size_of(payload_) " << payload_serialized_size;
 
-  LOG(INFO) << "  obu_type= " << static_cast<int>(obu_type);
+  LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
   LOG(INFO) << "  obu_trimming_status_flag= " << obu_trimming_status_flag;
   LOG(INFO) << "  obu_extension_flag= " << obu_extension_flag;

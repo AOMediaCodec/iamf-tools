@@ -17,6 +17,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -231,7 +232,7 @@ void CodecConfigObu::PrintObu() const {
   LOG(INFO) << "  // input_sample_rate_= " << input_sample_rate_;
   LOG(INFO) << "  // output_sample_rate_= " << output_sample_rate_;
   LOG(INFO) << "  // bit_depth_to_measure_loudness_= "
-            << static_cast<int>(bit_depth_to_measure_loudness_);
+            << absl::StrCat(bit_depth_to_measure_loudness_);
 }
 
 absl::Status CodecConfigObu::Initialize() {

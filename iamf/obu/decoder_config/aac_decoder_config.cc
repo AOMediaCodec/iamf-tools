@@ -165,9 +165,8 @@ absl::Status AacDecoderConfig::GetOutputSampleRate(
   if (sample_frequency_index_iter ==
       kSampleFrequencyIndexToSampleFrequency->end()) {
     // Reject anything else not in the map.
-    LOG(ERROR) << "Unknown `sample_frequency_index`: "
-               << static_cast<int>(sample_frequency_index);
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unknown `sample_frequency_index`: ", sample_frequency_index));
   }
 
   // Accept the value from the map.
@@ -183,14 +182,14 @@ uint8_t AacDecoderConfig::GetBitDepthToMeasureLoudness() {
 
 void AudioSpecificConfig::Print() const {
   LOG(INFO) << "        audio_object_type= "
-            << static_cast<int>(audio_object_type_);
+            << absl::StrCat(audio_object_type_);
   LOG(INFO) << "        sample_frequency_index= "
-            << static_cast<int>(sample_frequency_index_);
+            << absl::StrCat(sample_frequency_index_);
   if (sample_frequency_index_ == kSampleFrequencyIndexEscapeValue) {
     LOG(INFO) << "        sampling_frequency= " << sampling_frequency_;
   }
   LOG(INFO) << "        channel_configuration= "
-            << static_cast<int>(channel_configuration_);
+            << absl::StrCat(channel_configuration_);
   LOG(INFO) << "      ga_specific_info(aac):";
   LOG(INFO) << "        frame_length_flag= "
             << ga_specific_config_.frame_length_flag;
@@ -202,8 +201,8 @@ void AudioSpecificConfig::Print() const {
 void AacDecoderConfig::Print() const {
   LOG(INFO) << "    decoder_config(aac):";
   LOG(INFO) << "      object_type_indication= "
-            << static_cast<int>(object_type_indication_);
-  LOG(INFO) << "      stream_type= " << static_cast<int>(stream_type_);
+            << absl::StrCat(object_type_indication_);
+  LOG(INFO) << "      stream_type= " << absl::StrCat(stream_type_);
   LOG(INFO) << "      upstream= " << upstream_;
   LOG(INFO) << "      reserved= " << reserved_;
   LOG(INFO) << "      buffer_size_db= " << buffer_size_db_;

@@ -479,11 +479,11 @@ absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
 
 void LoudspeakersSsConventionLayout::Print() const {
   LOG(INFO) << "        sound_system= " << sound_system;
-  LOG(INFO) << "        reserved= " << static_cast<int>(reserved);
+  LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
 void LoudspeakersReservedBinauralLayout::Print() const {
-  LOG(INFO) << "        reserved= " << static_cast<int>(reserved);
+  LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
 void MixPresentationObu::PrintObu() const {
@@ -562,8 +562,7 @@ void MixPresentationObu::PrintObu() const {
 
       const auto& loudness = layout.loudness;
       LOG(INFO) << "      loudness:";
-      LOG(INFO) << "        info_type= "
-                << static_cast<int>(loudness.info_type);
+      LOG(INFO) << "        info_type= " << absl::StrCat(loudness.info_type);
       LOG(INFO) << "        integrated_loudness= "
                 << loudness.integrated_loudness;
       LOG(INFO) << "        digital_peak= " << loudness.digital_peak;
@@ -575,7 +574,7 @@ void MixPresentationObu::PrintObu() const {
         const auto& anchored_loudness = loudness.anchored_loudness;
         LOG(INFO) << "        anchored_loudness: ";
         LOG(INFO) << "          num_anchored_loudness= "
-                  << static_cast<int>(anchored_loudness.num_anchored_loudness);
+                  << absl::StrCat(anchored_loudness.num_anchored_loudness);
         for (int i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
           LOG(INFO) << "          anchor_element[" << i << "]= "
                     << anchored_loudness.anchor_elements[i].anchor_element;

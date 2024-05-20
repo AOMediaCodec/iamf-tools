@@ -418,8 +418,8 @@ absl::Status GenerateReconGainSubblock(
         // Find all mismatches before returning an error.
         LOG(ERROR) << "Computed recon gain [" << i
                    << "] different from what user specified: "
-                   << static_cast<int>(computed_recon_gains[i]) << " vs "
-                   << static_cast<int>(user_recon_gains[i]);
+                   << absl::StrCat(computed_recon_gains[i]) << " vs "
+                   << absl::StrCat(user_recon_gains[i]);
         recon_gains_match = false;
       }
     }

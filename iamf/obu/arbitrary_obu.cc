@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -45,7 +46,7 @@ absl::Status ArbitraryObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
 
 void ArbitraryObu::PrintObu() const {
   LOG(INFO) << "Arbitrary OBU:";
-  LOG(INFO) << "  insertion_hook= " << static_cast<int>(insertion_hook_);
+  LOG(INFO) << "  insertion_hook= " << absl::StrCat(insertion_hook_);
 
   PrintHeader(static_cast<int64_t>(payload_.size()));
 

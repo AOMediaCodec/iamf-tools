@@ -607,10 +607,9 @@ absl::Status FillScalableChannelLayoutConfig(
   auto& config =
       std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
   if (config.num_layers != input_config.channel_audio_layer_configs_size()) {
-    LOG(ERROR) << "Expected " << static_cast<int>(config.num_layers)
-               << " layers in the metadata. Found "
-               << input_config.channel_audio_layer_configs_size() << " layers.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected ", config.num_layers, " layers in the metadata. Found ",
+        input_config.channel_audio_layer_configs_size(), " layers."));
   }
   for (int i = 0; i < config.num_layers; ++i) {
     ChannelAudioLayerConfig* const layer_config =
@@ -686,10 +685,10 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (audio_element_obu.num_substreams_ !=
       static_cast<uint32_t>(projection_config.substream_count)) {
-    LOG(ERROR) << "`num_substreams` different from `substream_count`: ("
-               << audio_element_obu.num_substreams_ << " vs "
-               << static_cast<int>(projection_config.substream_count) << ")";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("`num_substreams` different from `substream_count`: (",
+                     audio_element_obu.num_substreams_, " vs ",
+                     projection_config.substream_count, ")"));
   }
 
   // For projection mode, assume coupled substreams (using 2 channels) come

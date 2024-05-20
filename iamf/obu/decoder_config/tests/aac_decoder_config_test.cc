@@ -52,10 +52,10 @@ class AacTest : public testing::Test {
 
     EXPECT_EQ(aac_decoder_config_.decoder_specific_info_.audio_specific_config
                   .ValidateAndWrite(wb)
-                  .code(),
-              expected_write_status_code_);
+                  .ok(),
+              expected_write_is_ok_);
 
-    if (expected_write_status_code_ == absl::StatusCode::kOk) {
+    if (expected_write_is_ok_) {
       ValidateWriteResults(wb, expected_audio_specific_config_);
     }
   }
@@ -64,10 +64,10 @@ class AacTest : public testing::Test {
     WriteBitBuffer wb(expected_decoder_config_payload_.size());
 
     EXPECT_EQ(
-        aac_decoder_config_.ValidateAndWrite(audio_roll_distance_, wb).code(),
-        expected_write_status_code_);
+        aac_decoder_config_.ValidateAndWrite(audio_roll_distance_, wb).ok(),
+        expected_write_is_ok_);
 
-    if (expected_write_status_code_ == absl::StatusCode::kOk) {
+    if (expected_write_is_ok_) {
       ValidateWriteResults(wb, expected_decoder_config_payload_);
     }
   }
@@ -78,7 +78,7 @@ class AacTest : public testing::Test {
 
   AacDecoderConfig aac_decoder_config_;
 
-  absl::StatusCode expected_write_status_code_ = absl::StatusCode::kOk;
+  bool expected_write_is_ok_ = true;
   std::vector<uint8_t> expected_decoder_config_payload_;
   std::vector<uint8_t> expected_audio_specific_config_;
 };
@@ -186,31 +186,31 @@ TEST_F(AacTest, ExplicitSampleRateAudioSpecificConfig) {
 
 TEST_F(AacTest, IllegalAudioRollDistanceMustBeNegativeOne) {
   audio_roll_distance_ = 1;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalDecoderConfigDescriptorTag) {
   aac_decoder_config_.decoder_config_descriptor_tag_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalObjectTypeIndication) {
   aac_decoder_config_.object_type_indication_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalStreamType) {
   aac_decoder_config_.stream_type_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalUpstream) {
   aac_decoder_config_.upstream_ = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
@@ -249,48 +249,48 @@ TEST_F(AacTest, OverflowBufferSizeDbOver24Bits) {
   // field that is 32 bits. Any value that cannot be represented in 24 bits
   // should fail.
   aac_decoder_config_.buffer_size_db_ = (1 << 24);
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalDecoderSpecificInfoTag) {
   aac_decoder_config_.decoder_specific_info_.decoder_specific_info_tag = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalAudioObjectType) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .audio_object_type_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalChannelConfiguration) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .channel_configuration_ = 0;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalFrameLengthFlag) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .ga_specific_config_.frame_length_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalDependsOnCoreCoder) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .ga_specific_config_.depends_on_core_coder = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
 TEST_F(AacTest, IllegalExtensionFlag) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .ga_specific_config_.extension_flag = true;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
+  expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
 
@@ -334,10 +334,9 @@ TEST_F(AacTest, InvalidSampleFrequencyIndexIsFourBits) {
       static_cast<AudioSpecificConfig::SampleFrequencyIndex>(16);
 
   uint32_t undetermined_output_sample_rate;
-  EXPECT_EQ(
+  EXPECT_FALSE(
       aac_decoder_config_.GetOutputSampleRate(undetermined_output_sample_rate)
-          .code(),
-      absl::StatusCode::kUnknown);
+          .ok());
 }
 
 }  // namespace

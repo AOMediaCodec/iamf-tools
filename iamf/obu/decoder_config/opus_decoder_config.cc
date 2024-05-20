@@ -141,13 +141,13 @@ absl::Status OpusDecoderConfig::ValidateAndRead(uint32_t num_samples_per_frame,
 
 void OpusDecoderConfig::Print() const {
   LOG(INFO) << "    decoder_config(opus):";
-  LOG(INFO) << "      version= " << static_cast<int>(version_);
+  LOG(INFO) << "      version= " << absl::StrCat(version_);
   LOG(INFO) << "      output_channel_count= "
-            << static_cast<int>(output_channel_count_);
+            << absl::StrCat(output_channel_count_);
   LOG(INFO) << "      pre_skip= " << pre_skip_;
   LOG(INFO) << "      input_sample_rate= " << input_sample_rate_;
   LOG(INFO) << "      output_gain= " << output_gain_;
-  LOG(INFO) << "      mapping_family= " << static_cast<int>(mapping_family_);
+  LOG(INFO) << "      mapping_family= " << absl::StrCat(mapping_family_);
 }
 
 }  // namespace iamf_tools

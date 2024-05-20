@@ -18,6 +18,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
@@ -49,7 +50,7 @@ absl::Status LpcmEncoder::InitializeEncoder() {
   LOG_FIRST_N(INFO, 1) << "  Configured LPCM encoder for "
                        << num_samples_per_frame_ << " samples of "
                        << num_channels_ << " channels as "
-                       << static_cast<int>(decoder_config_.sample_size_)
+                       << absl::StrCat(decoder_config_.sample_size_)
                        << "-bit LPCM in "
                        << (decoder_config_.sample_format_flags_bitmask_ &
                                    LpcmDecoderConfig::kLpcmLittleEndian

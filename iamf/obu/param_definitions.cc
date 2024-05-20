@@ -190,8 +190,8 @@ void ParamDefinition::Print() const {
   LOG(INFO) << "  parameter_id= " << parameter_id_;
   LOG(INFO) << "  parameter_rate= " << parameter_rate_;
   LOG(INFO) << "  param_definition_mode= "
-            << static_cast<int>(param_definition_mode_);
-  LOG(INFO) << "  reserved= " << static_cast<int>(reserved_);
+            << absl::StrCat(param_definition_mode_);
+  LOG(INFO) << "  reserved= " << absl::StrCat(reserved_);
   if (param_definition_mode_ == 0) {
     LOG(INFO) << "  duration= " << duration_;
     LOG(INFO) << "  constant_subblock_duration= "

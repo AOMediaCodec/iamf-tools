@@ -36,7 +36,7 @@ namespace {
 void PrintMixGainParameterData(
     const MixGainParameterData& mix_gain_param_data) {
   LOG(INFO) << "     animation_type= "
-            << static_cast<DecodedUleb128>(mix_gain_param_data.animation_type);
+            << absl::StrCat(mix_gain_param_data.animation_type);
   switch (mix_gain_param_data.animation_type) {
     using enum MixGainParameterData::AnimationType;
     case kAnimateStep:
@@ -50,17 +50,15 @@ void PrintMixGainParameterData(
       break;
     default:
       LOG(ERROR) << "Unknown animation type: "
-                 << static_cast<DecodedUleb128>(
-                        mix_gain_param_data.animation_type);
+                 << absl::StrCat(mix_gain_param_data.animation_type);
   }
 }
 
 void PrintDemixingInfoParameterData(
     const DemixingInfoParameterData& demixing_param_data) {
   LOG(INFO) << "    dmixp_mode= "
-            << static_cast<int>(demixing_param_data.dmixp_mode);
-  LOG(INFO) << "    reserved= "
-            << static_cast<int>(demixing_param_data.reserved);
+            << absl::StrCat(demixing_param_data.dmixp_mode);
+  LOG(INFO) << "    reserved= " << absl::StrCat(demixing_param_data.reserved);
 }
 
 void PrintReconGainInfoParameterData(
@@ -74,7 +72,7 @@ void PrintReconGainInfoParameterData(
               << recon_gain_element.recon_gain_flag;
     for (int b = 0; b < recon_gain_element.recon_gain.size(); b++) {
       LOG(INFO) << "      recon_gain[" << b
-                << "]= " << static_cast<int>(recon_gain_element.recon_gain[b]);
+                << "]= " << absl::StrCat(recon_gain_element.recon_gain[b]);
     }
   }
 }
@@ -486,9 +484,7 @@ void ParameterBlockObu::PrintObu() const {
         break;
       default:
         LOG(ERROR) << "Unknown parameter definition type: "
-                   << static_cast<DecodedUleb128>(
-                          metadata_->param_definition_type)
-                   << ".";
+                   << absl::StrCat(metadata_->param_definition_type) << ".";
     }
   }
 }

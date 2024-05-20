@@ -54,9 +54,8 @@ absl::StatusOr<IASequenceHeaderObu> IASequenceHeaderObu::CreateFromBuffer(
 void IASequenceHeaderObu::PrintObu() const {
   LOG(INFO) << "IA Sequence Header OBU:";
   LOG(INFO) << "  ia_code= " << ia_code_;
-  LOG(INFO) << "  primary_profile= " << static_cast<int>(primary_profile_);
-  LOG(INFO) << "  additional_profile= "
-            << static_cast<int>(additional_profile_);
+  LOG(INFO) << "  primary_profile= " << absl::StrCat(primary_profile_);
+  LOG(INFO) << "  additional_profile= " << absl::StrCat(additional_profile_);
 }
 
 absl::Status IASequenceHeaderObu::ValidateAndWritePayload(

@@ -167,9 +167,9 @@ void PrintStreamInfo(const FlacMetaBlockStreamInfo& stream_info) {
   LOG(INFO) << "        maximum_frame_size= " << stream_info.maximum_frame_size;
   LOG(INFO) << "        sample_rate= " << stream_info.sample_rate;
   LOG(INFO) << "        number_of_channels= "
-            << static_cast<int>(stream_info.number_of_channels);
+            << absl::StrCat(stream_info.number_of_channels);
   LOG(INFO) << "        bits_per_sample= "
-            << static_cast<int>(stream_info.bits_per_sample);
+            << absl::StrCat(stream_info.bits_per_sample);
   LOG(INFO) << "        total_samples_in_stream= "
             << stream_info.total_samples_in_stream;
 }
@@ -252,7 +252,7 @@ void FlacDecoderConfig::Print() const {
     LOG(INFO) << "        last_metadata_block_flag= "
               << metadata_block.header.last_metadata_block_flag;
     LOG(INFO) << "        block_type= "
-              << static_cast<int>(metadata_block.header.block_type);
+              << absl::StrCat(metadata_block.header.block_type);
     LOG(INFO) << "        metadata_data_block_length= "
               << metadata_block.header.metadata_data_block_length;
     switch (metadata_block.header.block_type) {

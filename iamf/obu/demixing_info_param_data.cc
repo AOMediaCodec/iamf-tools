@@ -107,7 +107,7 @@ absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
 
 void DemixingInfoParameterData::Print() const {
   LOG(INFO) << "  dmixp_mode= " << dmixp_mode;
-  LOG(INFO) << "  reserved= " << static_cast<int>(reserved);
+  LOG(INFO) << "  reserved= " << absl::StrCat(reserved);
 }
 
 absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
@@ -121,8 +121,8 @@ absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
 
 void DefaultDemixingInfoParameterData::Print() const {
   DemixingInfoParameterData::Print();
-  LOG(INFO) << "  default_w= " << static_cast<int>(default_w);
-  LOG(INFO) << "  reserved_default= " << static_cast<int>(reserved_default);
+  LOG(INFO) << "  default_w= " << absl::StrCat(default_w);
+  LOG(INFO) << "  reserved_default= " << absl::StrCat(reserved_default);
 }
 
 }  // namespace iamf_tools

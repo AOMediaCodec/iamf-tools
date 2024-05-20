@@ -21,6 +21,7 @@
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/leb128.h"
@@ -141,7 +142,7 @@ std::unique_ptr<LebGenerator> LebGenerator::Create(
       }
     default:
       LOG(ERROR) << "Invalid generation mode: "
-                 << static_cast<int>(generation_mode);
+                 << absl::StrCat(generation_mode);
       return nullptr;
   }
 }
