@@ -138,6 +138,26 @@ cc_library(
     hdrs = ["opus_decoder.h"],
     deps = [
         ":decoder_base",
+        ":opus_utils",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:opus_decoder_config",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@libopus",
+    ],
+)
+
+cc_library(
+    name = "opus_encoder",
+    srcs = ["opus_encoder.cc"],
+    hdrs = ["opus_encoder.h"],
+    deps = [
+        ":encoder_base",
+        ":opus_utils",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common:macros",
@@ -153,21 +173,11 @@ cc_library(
 )
 
 cc_library(
-    name = "opus_encoder",
-    srcs = ["opus_encoder.cc"],
-    hdrs = ["opus_encoder.h"],
+    name = "opus_utils",
+    srcs = ["opus_utils.cc"],
+    hdrs = ["opus_utils.h"],
     deps = [
-        ":encoder_base",
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
         "@libopus",
     ],
 )
