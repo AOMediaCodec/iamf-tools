@@ -16,7 +16,9 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -26,6 +28,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(TemporalDelimiterConstructor, SetsObuType) {
   TemporalDelimiterObu obu({});
@@ -49,7 +53,7 @@ class TemporalDelimiterTestBase : public ObuTestBase {
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   std::unique_ptr<TemporalDelimiterObu> obu_;
@@ -115,7 +119,8 @@ TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
   std::vector<uint8_t> source_data = {};
   ReadBitBuffer buffer(1024, &source_data);
 
-  EXPECT_TRUE(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer).ok());
+  EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer),
+              IsOk());
 }
 
 TEST(CreateFromBuffer, SetsObuType) {
@@ -124,16 +129,17 @@ TEST(CreateFromBuffer, SetsObuType) {
 
   absl::StatusOr<TemporalDelimiterObu> obu =
       TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaTemporalDelimiter);
 }
 
 TEST(CreateFromBuffer, DoesNotConsumeBuffer) {
   std::vector<uint8_t> source_data = {99};
   ReadBitBuffer buffer(1024, &source_data);
-  EXPECT_TRUE(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer).ok());
+  EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), buffer),
+              IsOk());
   uint8_t next_byte;
-  EXPECT_TRUE(buffer.ReadUnsignedLiteral(8, next_byte).ok());
+  EXPECT_THAT(buffer.ReadUnsignedLiteral(8, next_byte), IsOk());
 
   EXPECT_EQ(next_byte, 99);
 }

@@ -18,7 +18,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -35,6 +37,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 const DecodedUleb128 kCodecConfigId = 200;
 
@@ -71,7 +75,7 @@ void InitExpectedObuForLpcm(
                               LpcmDecoderConfig::kLpcmLittleEndian,
                           .sample_size_ = 16,
                           .sample_rate_ = 16000}}));
-  ASSERT_TRUE(expected_obus.at(kCodecConfigId).Initialize().ok());
+  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
 }
 
 void InitMetadataForOpus(
@@ -112,7 +116,7 @@ void InitExpectedObuForOpus(
            .audio_roll_distance = -32,
            .decoder_config = OpusDecoderConfig{
                .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 48000}}));
-  ASSERT_TRUE(expected_obus.at(kCodecConfigId).Initialize().ok());
+  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
 }
 
 void InitMetadataForAac(
@@ -174,7 +178,7 @@ void InitExpectedObuForAac(
                        {.sample_frequency_index_ =
                             AudioSpecificConfig::kSampleFrequencyIndex48000}},
            }}));
-  ASSERT_TRUE(expected_obus.at(kCodecConfigId).Initialize().ok());
+  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
 }
 
 void InitMetadataForFlac(
@@ -234,7 +238,7 @@ void InitExpectedObuForFlac(
                      .sample_rate = 48000,
                      .bits_per_sample = 15,
                      .total_samples_in_stream = 24000}}}}}));
-  ASSERT_TRUE(expected_obus.at(kCodecConfigId).Initialize().ok());
+  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
 }
 
 class CodecConfigGeneratorTest : public testing::Test {
@@ -265,7 +269,7 @@ TEST_F(CodecConfigGeneratorTest, SucceedsGeneratingNoCodecConfigObus) {
   codec_config_metadata_.Clear();
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_TRUE(output_obus->empty());
 }
@@ -275,7 +279,7 @@ TEST_F(CodecConfigGeneratorTest, GeneratesObuForLpcm) {
   InitExpectedObuForLpcm(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -298,7 +302,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresRedundantCopy) {
       true);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(output_obus->at(kCodecConfigId).header_.obu_redundant_copy, true);
 }
@@ -315,7 +319,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresExtensionHeader) {
       codec_config_metadata_.at(0).mutable_obu_header()));
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(output_obus->at(kCodecConfigId).header_.obu_extension_flag, true);
   EXPECT_EQ(output_obus->at(kCodecConfigId).header_.extension_header_size, 5);
@@ -331,7 +335,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresLpcmBigEndian) {
       ->set_sample_format_flags(iamf_tools_cli_proto::LPCM_BIG_ENDIAN);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(std::get<LpcmDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -387,7 +391,7 @@ TEST_F(CodecConfigGeneratorTest, GeneratesObuForOpus) {
   InitExpectedObuForOpus(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -404,7 +408,7 @@ TEST_F(CodecConfigGeneratorTest, IamfOpusFixedFieldsMayBeOmitted) {
   InitExpectedObuForOpus(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -421,7 +425,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputChannelCount) {
       ->set_output_channel_count(kInvalidOutputChannelCount);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -441,7 +445,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputGain) {
       ->set_output_gain(kInvalidOutputGain);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -461,7 +465,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusChannelMapping) {
       ->set_mapping_family(kInvalidMappingFamily);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(std::get<OpusDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -485,7 +489,7 @@ TEST_F(CodecConfigGeneratorTest, GeneratesObuForAac) {
   InitExpectedObuForAac(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -524,7 +528,7 @@ TEST_F(CodecConfigGeneratorTest, IamfAacFixedFieldsMayBeOmitted) {
   InitExpectedObuForAac(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -555,7 +559,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacDecoderConfig) {
   decoder_config_aac->set_upstream(kInvalidUpstream);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
   const auto& decoder_config = std::get<AacDecoderConfig>(
       output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);
 
@@ -589,7 +593,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacAudioSpecificConfig) {
       ->set_channel_configuration(kInvalidChannelConfiguration);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
@@ -615,7 +619,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidDecoderSpecificInfo) {
           kInvalidDecoderSpecificInfoTag);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(std::get<AacDecoderConfig>(
                 output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -645,7 +649,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidAacGaSpecificConfig) {
   ga_specific_config->set_extension_flag(kExtensionFlag);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
   const auto& generated_ga_specific_config =
       std::get<AacDecoderConfig>(
           output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
@@ -685,7 +689,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithExplicitSamplingFrequency) {
       ->set_sampling_frequency(9876);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
@@ -712,7 +716,7 @@ TEST_F(CodecConfigGeneratorTest, GeneratesObuForFlac) {
   InitExpectedObuForFlac(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -731,7 +735,7 @@ TEST_F(CodecConfigGeneratorTest, IamfFlacFixedFieldsMayBeOmitted) {
   InitExpectedObuForFlac(expected_obus_);
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
 }
@@ -763,7 +767,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
                                           kInvalidMd5Signature.size());
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   const auto& stream_info = std::get<FlacMetaBlockStreamInfo>(
       std::get<FlacDecoderConfig>(
@@ -804,7 +808,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
       .payload = std::vector<uint8_t>({'a', 'b', 'c'})};
 
   const auto output_obus = InitAndGenerate();
-  ASSERT_TRUE(output_obus.ok());
+  ASSERT_THAT(output_obus, IsOk());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
       output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);

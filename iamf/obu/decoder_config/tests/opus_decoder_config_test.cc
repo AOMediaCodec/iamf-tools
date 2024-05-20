@@ -15,6 +15,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
@@ -22,6 +24,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class OpusTest : public testing::Test {
  public:
@@ -286,10 +290,9 @@ TEST(ValidateAndRead, VaryAllLegalFields) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 2);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 3);
@@ -313,10 +316,9 @@ TEST(ValidateAndRead, MaxAllLegalFields) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 15);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 0xffff);
@@ -340,10 +342,9 @@ TEST(ValidateAndRead, MinorVersion) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 2);
 }
@@ -457,10 +458,9 @@ TEST(ValidateAndRead, ReadPreSkip312) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.pre_skip_, 312);
@@ -483,10 +483,9 @@ TEST(ValidateAndRead, ReadSampleRate48kHz) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, 48000);
@@ -509,10 +508,9 @@ TEST(ValidateAndRead, ReadSampleRate192kHz) {
                                  // `mapping_family`.
                                  OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer read_buffer(1024, &source);
-  EXPECT_TRUE(opus_decoder_config
-                  .ValidateAndRead(num_samples_per_frame, audio_roll_distance,
-                                   read_buffer)
-                  .ok());
+  EXPECT_THAT(opus_decoder_config.ValidateAndRead(
+                  num_samples_per_frame, audio_roll_distance, read_buffer),
+              IsOk());
 
   EXPECT_EQ(opus_decoder_config.version_, 1);
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, 192000);

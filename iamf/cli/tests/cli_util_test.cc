@@ -19,6 +19,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -36,6 +38,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 struct IncludeTemporalDelimitersTestCase {
   ProfileVersion primary_profile;
@@ -109,10 +113,10 @@ TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
   const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
-                                    output_buffer)
-                  .ok());
+                                    output_buffer),
+              IsOk());
 
   EXPECT_EQ(output_buffer.size(), kExpectedSize);
 }
@@ -125,10 +129,10 @@ TEST(WritePcmFrameToBuffer, WritesBigEndian) {
   const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = true;
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
-                                    output_buffer)
-                  .ok());
+                                    output_buffer),
+              IsOk());
 
   const std::vector<uint8_t> kExpectedBytes = {
       0x7f, 0x00, 0x12, 0x7e, 0x00, 0x34, 0x7f, 0x00, 0x56, 0x7e, 0x00, 0x78};
@@ -143,10 +147,10 @@ TEST(WritePcmFrameToBuffer, WritesLittleEndian) {
   const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
-                                    output_buffer)
-                  .ok());
+                                    output_buffer),
+              IsOk());
 
   const std::vector<uint8_t> kExpectedBytes = {
       0x12, 0x00, 0x7f, 0x34, 0x00, 0x7e, 0x56, 0x00, 0x7f, 0x78, 0x00, 0x7e};
@@ -161,10 +165,10 @@ TEST(WritePcmFrameToBuffer, TrimsSamples) {
   const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
-                                    output_buffer)
-                  .ok());
+                                    output_buffer),
+              IsOk());
 
   const std::vector<uint8_t> kExpectedBytes = {0x56, 0x00, 0x7f,
                                                0x78, 0x00, 0x7e};
@@ -283,10 +287,10 @@ TEST(CopyDemixingInfoParameterData, Basic) {
       )pb",
       &demixing_info_parameter_data_metadata));
   DemixingInfoParameterData demixing_info_parameter_data;
-  EXPECT_TRUE(
+  EXPECT_THAT(
       CopyDemixingInfoParameterData(demixing_info_parameter_data_metadata,
-                                    demixing_info_parameter_data)
-          .ok());
+                                    demixing_info_parameter_data),
+      IsOk());
 
   EXPECT_EQ(demixing_info_parameter_data.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode3);
@@ -352,9 +356,9 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
                 .output_mix_config.output_mix_gain);
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
-  EXPECT_TRUE(CollectAndValidateParamDefinitions(audio_elements,
-                                                 mix_presentation_obus, result)
-                  .ok());
+  EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 mix_presentation_obus, result),
+              IsOk());
   // Validate there is one unique param definition.
   EXPECT_EQ(result.size(), 1);
 }

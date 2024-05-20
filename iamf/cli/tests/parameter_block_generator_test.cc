@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
@@ -42,6 +44,8 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr DecodedUleb128 kMixPresentationId = 1337;
@@ -60,28 +64,27 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     uint32_t unused_duration;
-    EXPECT_TRUE(generator.AddMetadata(metadata, unused_duration).ok());
+    EXPECT_THAT(generator.AddMetadata(metadata, unused_duration), IsOk());
   }
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
   GlobalTimingModule global_timing_module;
-  EXPECT_TRUE(
-      generator.GenerateDemixing(global_timing_module, output_parameter_blocks)
-          .ok());
+  EXPECT_THAT(
+      generator.GenerateDemixing(global_timing_module, output_parameter_blocks),
+      IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
-  EXPECT_TRUE(
-      generator.GenerateMixGain(global_timing_module, output_parameter_blocks)
-          .ok());
+  EXPECT_THAT(
+      generator.GenerateMixGain(global_timing_module, output_parameter_blocks),
+      IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
 
   IdLabeledFrameMap id_to_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_TRUE(
-      generator
-          .GenerateReconGain(id_to_labeled_frame, id_to_labeled_decoded_frame,
-                             global_timing_module, output_parameter_blocks)
-          .ok());
+  EXPECT_THAT(generator.GenerateReconGain(
+                  id_to_labeled_frame, id_to_labeled_decoded_frame,
+                  global_timing_module, output_parameter_blocks),
+              IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
 }
 
@@ -179,30 +182,29 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_TRUE(generator
-                  .Initialize(ia_sequence_header_obu, audio_elements,
-                              mix_presentation_obus, param_definitions)
-                  .ok());
+  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
+                                   mix_presentation_obus, param_definitions),
+              IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
-  ASSERT_TRUE(
-      global_timing_module.Initialize(audio_elements, param_definitions).ok());
+  ASSERT_THAT(
+      global_timing_module.Initialize(audio_elements, param_definitions),
+      IsOk());
 
   // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
     uint32_t duration = 0;
-    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
     EXPECT_EQ(duration, 8);
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-    EXPECT_TRUE(
-        generator
-            .GenerateDemixing(global_timing_module, parameter_blocks_for_frame)
-            .ok());
+    EXPECT_THAT(generator.GenerateDemixing(global_timing_module,
+                                           parameter_blocks_for_frame),
+                IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
     output_parameter_blocks.splice(output_parameter_blocks.end(),
                                    parameter_blocks_for_frame);
@@ -314,30 +316,29 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_TRUE(generator
-                  .Initialize(ia_sequence_header_obu, audio_elements,
-                              mix_presentation_obus, param_definitions)
-                  .ok());
+  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
+                                   mix_presentation_obus, param_definitions),
+              IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
-  ASSERT_TRUE(
-      global_timing_module.Initialize(audio_elements, param_definitions).ok());
+  ASSERT_THAT(
+      global_timing_module.Initialize(audio_elements, param_definitions),
+      IsOk());
 
   // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
     uint32_t duration = 0;
-    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
     EXPECT_EQ(duration, 8);
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-    EXPECT_TRUE(
-        generator
-            .GenerateMixGain(global_timing_module, parameter_blocks_for_frame)
-            .ok());
+    EXPECT_THAT(generator.GenerateMixGain(global_timing_module,
+                                          parameter_blocks_for_frame),
+                IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
     output_parameter_blocks.splice(output_parameter_blocks.end(),
                                    parameter_blocks_for_frame);
@@ -447,7 +448,7 @@ void PrepareAudioElementWithDataForReconGain(
   // To compute recon gains, we need at least two layers in the
   // `ScalableChannelLayoutConfig`.
   auto& audio_element_obu = audio_element_with_data.obu;
-  EXPECT_TRUE(audio_element_obu.InitializeScalableChannelLayout(2, 0).ok());
+  EXPECT_THAT(audio_element_obu.InitializeScalableChannelLayout(2, 0), IsOk());
   auto& layer_configs =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
           .channel_audio_layer_configs;
@@ -508,22 +509,22 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_TRUE(generator
-                  .Initialize(ia_sequence_header_obu, audio_elements,
-                              mix_presentation_obus, param_definitions)
-                  .ok());
+  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
+                                   mix_presentation_obus, param_definitions),
+              IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   GlobalTimingModule global_timing_module;
-  ASSERT_TRUE(
-      global_timing_module.Initialize(audio_elements, param_definitions).ok());
+  ASSERT_THAT(
+      global_timing_module.Initialize(audio_elements, param_definitions),
+      IsOk());
 
   // Loop to add all metadata and generate recon gain parameter blocks.
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
     uint32_t duration = 0;
-    EXPECT_TRUE(generator.AddMetadata(metadata, duration).ok());
+    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
     EXPECT_EQ(duration, 8);
 
     // Generate.
@@ -532,11 +533,10 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
     IdLabeledFrameMap id_to_labeled_frame = PrepareIdLabeledFrameMap();
     IdLabeledFrameMap id_to_labeled_decoded_frame = id_to_labeled_frame;
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-    EXPECT_TRUE(
-        generator
-            .GenerateReconGain(id_to_labeled_frame, id_to_labeled_decoded_frame,
-                               global_timing_module, parameter_blocks_for_frame)
-            .ok());
+    EXPECT_THAT(generator.GenerateReconGain(
+                    id_to_labeled_frame, id_to_labeled_decoded_frame,
+                    global_timing_module, parameter_blocks_for_frame),
+                IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
     output_parameter_blocks.splice(output_parameter_blocks.end(),
                                    parameter_blocks_for_frame);
@@ -567,10 +567,10 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
                                     parameter_id_to_metadata);
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       empty_param_definitions;
-  EXPECT_TRUE(generator
-                  .Initialize(ia_sequence_header_obu, audio_elements,
-                              mix_presentation_obus, empty_param_definitions)
-                  .ok());
+  EXPECT_THAT(
+      generator.Initialize(ia_sequence_header_obu, audio_elements,
+                           mix_presentation_obus, empty_param_definitions),
+      IsOk());
 
   // Try to add metadata, but since the param definitions are empty, these
   // will fail because the generator cannot find the corresponding param

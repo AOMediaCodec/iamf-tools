@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -33,6 +35,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // TODO(b/302470464): Add test coverage `ObuSequencer::WriteTemporalUnit()` and
 //                    `ObuSequencer::PickAndPlace()` configured with minimal and
@@ -90,9 +94,9 @@ TEST(GenerateTemporalUnitMap, SubstreamsOrderedByAudioElementIdSubstreamId) {
 
   // Generate the temporal unit map.
   TemporalUnitMap temporal_unit_map;
-  EXPECT_TRUE(ObuSequencerBase::GenerateTemporalUnitMap(audio_frames, {},
-                                                        temporal_unit_map)
-                  .ok());
+  EXPECT_THAT(ObuSequencerBase::GenerateTemporalUnitMap(audio_frames, {},
+                                                        temporal_unit_map),
+              IsOk());
 
   // The test is hard-coded with one temporal unit and four frames.
   ASSERT_EQ(temporal_unit_map.size(), 1);
@@ -145,15 +149,15 @@ class ObuSequencerTest : public ::testing::Test {
     WriteBitBuffer expected_wb(128);
     for (const auto* expected_obu : expected_sequence) {
       ASSERT_NE(expected_obu, nullptr);
-      EXPECT_TRUE(expected_obu->ValidateAndWriteObu(expected_wb).ok());
+      EXPECT_THAT(expected_obu->ValidateAndWriteObu(expected_wb), IsOk());
     }
 
     WriteBitBuffer result_wb(128);
-    EXPECT_TRUE(ObuSequencerBase::WriteDescriptorObus(
+    EXPECT_THAT(ObuSequencerBase::WriteDescriptorObus(
                     ia_sequence_header_obu_.value(), codec_config_obus_,
                     audio_elements_, mix_presentation_obus_, arbitrary_obus_,
-                    result_wb)
-                    .ok());
+                    result_wb),
+                IsOk());
 
     EXPECT_EQ(result_wb.bit_buffer(), expected_wb.bit_buffer());
   }

@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/bit_buffer_util.h"
@@ -29,6 +31,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class MixPresentationObuTest : public ObuTestBase, public testing::Test {
  public:
@@ -119,7 +123,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
   void InitExpectOk() override { InitMixPresentationObu(); }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   std::unique_ptr<MixPresentationObu> obu_;
@@ -158,9 +162,10 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
       ASSERT_EQ(audio_element_args.size(),
                 audio_element.element_mix_config.mix_gain.GetNumSubblocks());
       for (int k = 0; k < audio_element_args.size(); ++k) {
-        EXPECT_TRUE(audio_element.element_mix_config.mix_gain
-                        .SetSubblockDuration(k, audio_element_args[k])
-                        .ok());
+        EXPECT_THAT(
+            audio_element.element_mix_config.mix_gain.SetSubblockDuration(
+                k, audio_element_args[k]),
+            IsOk());
       }
     }
 
@@ -173,10 +178,9 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     ASSERT_EQ(sub_mix_args.output_mix_gain_subblocks.size(),
               sub_mix.output_mix_config.output_mix_gain.GetNumSubblocks());
     for (int j = 0; j < sub_mix_args.output_mix_gain_subblocks.size(); ++j) {
-      EXPECT_TRUE(
-          sub_mix.output_mix_config.output_mix_gain
-              .SetSubblockDuration(j, sub_mix_args.output_mix_gain_subblocks[j])
-              .ok());
+      EXPECT_THAT(sub_mix.output_mix_config.output_mix_gain.SetSubblockDuration(
+                      j, sub_mix_args.output_mix_gain_subblocks[j]),
+                  IsOk());
     }
   }
 
@@ -536,7 +540,7 @@ TEST_F(MixPresentationObuTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_TRUE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), IsOk());
 }
 
 TEST_F(MixPresentationObuTest,
@@ -770,8 +774,9 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystemMono) {
   const int32_t kExpectedMonoChannels = 1;
 
   int32_t num_channels;
-  EXPECT_TRUE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels).ok());
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
   EXPECT_EQ(num_channels, kExpectedMonoChannels);
 }
 
@@ -782,8 +787,9 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystemStereo) {
   const int32_t kExpectedStereoChannels = 2;
 
   int32_t num_channels;
-  EXPECT_TRUE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels).ok());
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
   EXPECT_EQ(num_channels, kExpectedStereoChannels);
 }
 
@@ -793,8 +799,9 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystem5_1) {
   const int32_t kExpected5_1Channels = 6;
 
   int32_t num_channels;
-  EXPECT_TRUE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels).ok());
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
   EXPECT_EQ(num_channels, kExpected5_1Channels);
 }
 
@@ -804,8 +811,9 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystem7_1_4) {
   const int32_t kExpected7_1_4Channels = 12;
 
   int32_t num_channels;
-  EXPECT_TRUE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels).ok());
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
   EXPECT_EQ(num_channels, kExpected7_1_4Channels);
 }
 
@@ -816,8 +824,9 @@ TEST_F(GetNumChannelsFromLayoutTest, LayoutTypeBinaural) {
   const int32_t kExpectedBinauralChannels = 2;
 
   int32_t num_channels;
-  EXPECT_TRUE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels).ok());
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
   EXPECT_EQ(num_channels, kExpectedBinauralChannels);
 }
 
@@ -937,7 +946,7 @@ TEST(CreateFromBufferTest, OneSubMix) {
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
   auto obu = MixPresentationObu::CreateFromBuffer(header, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
   EXPECT_EQ(
       obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
@@ -968,7 +977,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
   };
   ReadBitBuffer buffer(1024, &source);
   SubMixAudioElement audio_element;
-  EXPECT_TRUE(audio_element.ReadAndValidate(/*count_label=*/1, buffer).ok());
+  EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, buffer), IsOk());
 
   // Set up expected values.
   SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
@@ -1005,7 +1014,7 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
   };
   ReadBitBuffer buffer(1024, &source);
   MixPresentationLayout layout;
-  EXPECT_TRUE(layout.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(layout.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(layout.loudness_layout.layout_type,
             Layout::kLayoutTypeLoudspeakersSsConvention);
   EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
@@ -1041,7 +1050,7 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerDifferentSoundSystem) {
   };
   ReadBitBuffer buffer(1024, &source);
   MixPresentationLayout layout;
-  EXPECT_TRUE(layout.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(layout.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(layout.loudness_layout.layout_type,
             Layout::kLayoutTypeLoudspeakersSsConvention);
   EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
@@ -1074,7 +1083,7 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
   };
   ReadBitBuffer buffer(1024, &source);
   MixPresentationSubMix sub_mix;
-  EXPECT_TRUE(sub_mix.ReadAndValidate(/*count_label=*/1, buffer).ok());
+  EXPECT_THAT(sub_mix.ReadAndValidate(/*count_label=*/1, buffer), IsOk());
   EXPECT_EQ(sub_mix.audio_elements.size(), 1);
   EXPECT_EQ(sub_mix.layouts[0].loudness_layout.layout_type,
             Layout::kLayoutTypeLoudspeakersSsConvention);

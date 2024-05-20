@@ -21,6 +21,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
@@ -38,6 +40,8 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 constexpr DecodedUleb128 kAudioElementId = 137;
 const uint32_t kZeroSamplesToTrimAtEnd = 0;
 const uint32_t kZeroSamplesToTrimAtStart = 0;
@@ -54,9 +58,9 @@ TEST(FindSamplesOrDemixedSamples, FindsMatchingSamples) {
   const LabelSamplesMap kLabelToSamples = {{"L2", kSamplesToFind}};
 
   const std::vector<int32_t>* found_samples;
-  EXPECT_TRUE(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
-                                                          &found_samples)
-                  .ok());
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
+                                                          &found_samples),
+              IsOk());
   EXPECT_EQ(*found_samples, kSamplesToFind);
 }
 
@@ -65,9 +69,9 @@ TEST(FindSamplesOrDemixedSamples, FindsMatchingDemixedSamples) {
   const LabelSamplesMap kLabelToSamples = {{"D_L2", kSamplesToFind}};
 
   const std::vector<int32_t>* found_samples;
-  EXPECT_TRUE(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
-                                                          &found_samples)
-                  .ok());
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
+                                                          &found_samples),
+              IsOk());
   EXPECT_EQ(*found_samples, kSamplesToFind);
 }
 
@@ -78,9 +82,9 @@ TEST(FindSamplesOrDemixedSamples, RegularSamplesTakePrecedence) {
                                            {"D_L2", kDemixedSamplesToIgnore}};
 
   const std::vector<int32_t>* found_samples;
-  EXPECT_TRUE(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
-                                                          &found_samples)
-                  .ok());
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
+                                                          &found_samples),
+              IsOk());
   EXPECT_EQ(*found_samples, kSamplesToFind);
 }
 
@@ -110,8 +114,9 @@ void InitAudioElementWithLabelsAndLayers(
           .substream_id_to_labels = substream_id_to_labels,
       });
   auto& obu = iter->second.obu;
-  ASSERT_TRUE(
-      obu.InitializeScalableChannelLayout(loudspeaker_layouts.size(), 0).ok());
+  ASSERT_THAT(
+      obu.InitializeScalableChannelLayout(loudspeaker_layouts.size(), 0),
+      IsOk());
   auto& config = std::get<ScalableChannelLayoutConfig>(obu.config_);
   for (int i = 0; i < loudspeaker_layouts.size(); ++i) {
     config.channel_audio_layer_configs[i].loudspeaker_layout =
@@ -135,10 +140,9 @@ TEST(InitializeForDownMixingAndReconstruction,
                                       audio_elements);
 
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module
-                  .InitializeForDownMixingAndReconstruction(user_metadata,
-                                                            audio_elements)
-                  .ok());
+  EXPECT_THAT(demixing_module.InitializeForDownMixingAndReconstruction(
+                  user_metadata, audio_elements),
+              IsOk());
   // Each audio element can only be added once.
   EXPECT_FALSE(demixing_module
                    .InitializeForDownMixingAndReconstruction(user_metadata,
@@ -171,10 +175,12 @@ TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
                                        ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   const std::list<Demixer>* down_mixers = nullptr;
-  EXPECT_TRUE(demixing_module.GetDownMixers(kAudioElementId, down_mixers).ok());
+  EXPECT_THAT(demixing_module.GetDownMixers(kAudioElementId, down_mixers),
+              IsOk());
   EXPECT_TRUE(down_mixers->empty());
 }
 
@@ -184,7 +190,8 @@ TEST(InitializeForReconstruction, InvalidWhenCalledTwicePerAudioElement) {
                                       {ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   EXPECT_FALSE(
       demixing_module.InitializeForReconstruction(audio_elements).ok());
@@ -197,10 +204,11 @@ TEST(InitializeForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
                                        ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
-  EXPECT_TRUE(demixing_module.GetDemixers(kAudioElementId, demixer).ok());
+  EXPECT_THAT(demixing_module.GetDemixers(kAudioElementId, demixer), IsOk());
   EXPECT_EQ(demixer->size(), 1);
 }
 
@@ -221,10 +229,11 @@ TEST(InitializeForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
                                       {ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
-  EXPECT_TRUE(demixing_module.GetDemixers(kAudioElementId, demixer).ok());
+  EXPECT_THAT(demixing_module.GetDemixers(kAudioElementId, demixer), IsOk());
   EXPECT_TRUE(demixer->empty());
 }
 
@@ -237,10 +246,11 @@ TEST(InitializeForReconstruction, CreatesNoDemixersForAmbisonics) {
                                                 {0, 1, 2, 3}, codec_configs,
                                                 audio_elements);
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
-  EXPECT_TRUE(demixing_module.GetDemixers(kAudioElementId, demixer).ok());
+  EXPECT_THAT(demixing_module.GetDemixers(kAudioElementId, demixer), IsOk());
   EXPECT_TRUE(demixer->empty());
 }
 
@@ -269,13 +279,14 @@ TEST(DemixAudioSamples, OutputContainsOriginalAndDemixedSamples) {
                         .decoded_samples = {{0}},
                         .down_mixing_params = DownMixingParams()});
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
   IdLabeledFrameMap id_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_TRUE(demixing_module
-                  .DemixAudioSamples({}, decoded_audio_frames, id_labeled_frame,
-                                     id_to_labeled_decoded_frame)
-                  .ok());
+  EXPECT_THAT(demixing_module.DemixAudioSamples({}, decoded_audio_frames,
+                                                id_labeled_frame,
+                                                id_to_labeled_decoded_frame),
+              IsOk());
 
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
   EXPECT_TRUE(labeled_frame.label_to_samples.contains("L2"));
@@ -318,14 +329,14 @@ TEST(DemixAudioSamples, OutputEchoesTimingInformation) {
       .decoded_samples = {{0}},
       .down_mixing_params = DownMixingParams()});
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
   IdLabeledFrameMap unused_id_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_TRUE(demixing_module
-                  .DemixAudioSamples({}, decoded_audio_frames,
-                                     unused_id_labeled_frame,
-                                     id_to_labeled_decoded_frame)
-                  .ok());
+  EXPECT_THAT(demixing_module.DemixAudioSamples({}, decoded_audio_frames,
+                                                unused_id_labeled_frame,
+                                                id_to_labeled_decoded_frame),
+              IsOk());
 
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
   EXPECT_EQ(labeled_frame.end_timestamp, kExpectedEndTimestamp);
@@ -360,15 +371,15 @@ TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
                         .decoded_samples = {{9}, {10}, {11}},
                         .down_mixing_params = DownMixingParams()});
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   IdLabeledFrameMap unused_id_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_TRUE(demixing_module
-                  .DemixAudioSamples({}, decoded_audio_frames,
-                                     unused_id_labeled_frame,
-                                     id_to_labeled_decoded_frame)
-                  .ok());
+  EXPECT_THAT(demixing_module.DemixAudioSamples({}, decoded_audio_frames,
+                                                unused_id_labeled_frame,
+                                                id_to_labeled_decoded_frame),
+              IsOk());
 
   // Examine the demixed frame.
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
@@ -404,15 +415,15 @@ TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
                         .decoded_samples = {{1000}},
                         .down_mixing_params = DownMixingParams()});
   DemixingModule demixing_module;
-  EXPECT_TRUE(demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 
   IdLabeledFrameMap unused_id_time_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_TRUE(demixing_module
-                  .DemixAudioSamples({}, decoded_audio_frames,
-                                     unused_id_time_labeled_frame,
-                                     id_to_labeled_decoded_frame)
-                  .ok());
+  EXPECT_THAT(demixing_module.DemixAudioSamples({}, decoded_audio_frames,
+                                                unused_id_time_labeled_frame,
+                                                id_to_labeled_decoded_frame),
+              IsOk());
 
   // Examine the demixed frame.
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
@@ -440,17 +451,17 @@ class DemixingModuleTestBase {
             .substream_id_to_labels = substream_id_to_labels_,
         });
 
-    ASSERT_TRUE(demixing_module_
-                    .InitializeForDownMixingAndReconstruction(user_metadata,
-                                                              audio_elements_)
-                    .ok());
+    ASSERT_THAT(demixing_module_.InitializeForDownMixingAndReconstruction(
+                    user_metadata, audio_elements_),
+                IsOk());
 
     const std::list<Demixer>* down_mixers = nullptr;
     const std::list<Demixer>* demixers = nullptr;
 
-    ASSERT_TRUE(
-        demixing_module_.GetDownMixers(kAudioElementId, down_mixers).ok());
-    ASSERT_TRUE(demixing_module_.GetDemixers(kAudioElementId, demixers).ok());
+    ASSERT_THAT(demixing_module_.GetDownMixers(kAudioElementId, down_mixers),
+                IsOk());
+    ASSERT_THAT(demixing_module_.GetDemixers(kAudioElementId, demixers),
+                IsOk());
     EXPECT_EQ(down_mixers->size(), expected_number_of_down_mixers);
     EXPECT_EQ(demixers->size(), expected_number_of_down_mixers);
   }
@@ -474,12 +485,10 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
                       int expected_number_of_down_mixers) {
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
-    EXPECT_TRUE(demixing_module_
-                    .DownMixSamplesToSubstreams(kAudioElementId,
-                                                down_mixing_params,
-                                                input_label_to_samples_,
-                                                substream_id_to_substream_data_)
-                    .ok());
+    EXPECT_THAT(demixing_module_.DownMixSamplesToSubstreams(
+                    kAudioElementId, down_mixing_params,
+                    input_label_to_samples_, substream_id_to_substream_data_),
+                IsOk());
 
     for (const auto& [substream_id, substream_data] :
          substream_id_to_substream_data_) {
@@ -892,11 +901,10 @@ class DemixingModuleTest : public DemixingModuleTestBase,
 
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
-    EXPECT_TRUE(demixing_module_
-                    .DemixAudioSamples(audio_frames_, decoded_audio_frames_,
-                                       unused_id_to_labeled_frame,
-                                       id_to_labeled_decoded_frame)
-                    .ok());
+    EXPECT_THAT(demixing_module_.DemixAudioSamples(
+                    audio_frames_, decoded_audio_frames_,
+                    unused_id_to_labeled_frame, id_to_labeled_decoded_frame),
+                IsOk());
 
     // Check that the demixed samples have the correct values.
     EXPECT_EQ(id_to_labeled_decoded_frame[kAudioElementId].label_to_samples,
@@ -916,19 +924,17 @@ TEST_F(DemixingModuleTest, DemixingAudioSamplesSucceedsWithEmptyInputs) {
 
   // Clear the inputs.
   audio_elements_.clear();
-  ASSERT_TRUE(demixing_module_
-                  .InitializeForDownMixingAndReconstruction(user_metadata,
-                                                            audio_elements_)
-                  .ok());
+  ASSERT_THAT(demixing_module_.InitializeForDownMixingAndReconstruction(
+                  user_metadata, audio_elements_),
+              IsOk());
 
   // Call `DemixAudioSamples()`.
   IdLabeledFrameMap id_to_labeled_frame, id_to_labeled_decoded_frame;
-  EXPECT_TRUE(demixing_module_
-                  .DemixAudioSamples(
-                      /*audio_frames=*/{},
-                      /*decoded_audio_frames=*/{}, id_to_labeled_frame,
-                      id_to_labeled_decoded_frame)
-                  .ok());
+  EXPECT_THAT(demixing_module_.DemixAudioSamples(
+                  /*audio_frames=*/{},
+                  /*decoded_audio_frames=*/{}, id_to_labeled_frame,
+                  id_to_labeled_decoded_frame),
+              IsOk());
 
   // Expect empty outputs.
   EXPECT_TRUE(id_to_labeled_frame.empty());

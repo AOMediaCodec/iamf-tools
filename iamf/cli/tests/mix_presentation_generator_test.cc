@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -28,6 +30,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class MixPresentationGeneratorTest : public ::testing::Test {
  public:
@@ -99,13 +103,13 @@ class MixPresentationGeneratorTest : public ::testing::Test {
 
 TEST_F(MixPresentationGeneratorTest, EmptyUserMetadataGeneratesNoObus) {
   MixPresentationGenerator generator(/*mix_presentation_metadata=*/{});
-  EXPECT_TRUE(generator.Generate(generated_obus_).ok());
+  EXPECT_THAT(generator.Generate(generated_obus_), IsOk());
   EXPECT_EQ(generated_obus_, std::list<MixPresentationObu>());
 }
 
 TEST_F(MixPresentationGeneratorTest, SSConventionWithOneStereoAudioElement) {
   MixPresentationGenerator generator(mix_presentation_metadata_);
-  EXPECT_TRUE(generator.Generate(generated_obus_).ok());
+  EXPECT_THAT(generator.Generate(generated_obus_), IsOk());
   EXPECT_EQ(generated_obus_, expected_obus_);
 }
 
@@ -117,7 +121,7 @@ TEST_F(MixPresentationGeneratorTest, SupportsUtf8) {
       ->set_mix_presentation_friendly_label(kUtf8FourByteSequenceCode);
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
-  ASSERT_TRUE(generator.Generate(generated_obus_).ok());
+  ASSERT_THAT(generator.Generate(generated_obus_), IsOk());
   ASSERT_FALSE(generated_obus_.back().GetMixPresentationAnnotations().empty());
 
   EXPECT_EQ(generated_obus_.back()
@@ -171,7 +175,7 @@ TEST_F(MixPresentationGeneratorTest, CopiesUserLoudness) {
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
 
-  EXPECT_TRUE(generator.Generate(generated_obus_).ok());
+  EXPECT_THAT(generator.Generate(generated_obus_), IsOk());
 }
 
 TEST_F(MixPresentationGeneratorTest, InvalidLayoutType) {
@@ -208,7 +212,7 @@ TEST_F(MixPresentationGeneratorTest, ReservedLayoutWithOneStereoAudioElement) {
        .loudness = {.info_type = 0}}};
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
-  EXPECT_TRUE(generator.Generate(generated_obus_).ok());
+  EXPECT_THAT(generator.Generate(generated_obus_), IsOk());
   EXPECT_EQ(generated_obus_, expected_obus_);
 }
 
@@ -222,9 +226,9 @@ TEST(CopyInfoType, Zero) {
       &user_loudness_info));
 
   uint8_t output_info_type;
-  EXPECT_TRUE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
-                                                     output_info_type)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyInfoType(user_loudness_info,
+                                                     output_info_type),
+              IsOk());
   EXPECT_EQ(output_info_type, 0);
 }
 
@@ -243,9 +247,9 @@ TEST(CopyInfoType, SeveralLoudnessTypes) {
       &user_loudness_info));
 
   uint8_t output_info_type;
-  EXPECT_TRUE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
-                                                     output_info_type)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyInfoType(user_loudness_info,
+                                                     output_info_type),
+              IsOk());
   EXPECT_EQ(output_info_type, LoudnessInfo::kInfoTypeBitMask64 |
                                   LoudnessInfo::kAnchoredLoudness |
                                   LoudnessInfo::kTruePeak);
@@ -284,9 +288,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
   const LoudnessInfo expected_output_loudness = {
       .info_type = 0, .integrated_loudness = -99, .digital_peak = -100};
 
-  EXPECT_TRUE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                  user_loudness, output_loudness)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness),
+              IsOk());
   EXPECT_EQ(output_loudness, expected_output_loudness);
 }
 
@@ -313,9 +317,9 @@ TEST(CopyUserIntegratedLoudnessAndPeaks, WithTruePeak) {
       .digital_peak = -100,
       .true_peak = -101};
 
-  EXPECT_TRUE(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
-                  user_loudness, output_loudness)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
+                  user_loudness, output_loudness),
+              IsOk());
   EXPECT_EQ(output_loudness, expected_output_loudness);
 }
 
@@ -388,9 +392,9 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
           {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
            .anchored_loudness = 1001}}};
 
-  EXPECT_TRUE(MixPresentationGenerator::CopyUserAnchoredLoudness(
-                  user_loudness, output_loudness)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserAnchoredLoudness(
+                  user_loudness, output_loudness),
+              IsOk());
   EXPECT_EQ(output_loudness.anchored_loudness, expected_output_loudness);
 }
 
@@ -433,9 +437,9 @@ TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
       .info_type_size = 3,
       .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
 
-  EXPECT_TRUE(MixPresentationGenerator::CopyUserLayoutExtension(user_loudness,
-                                                                output_loudness)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
+                  user_loudness, output_loudness),
+              IsOk());
   EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
 }
 
@@ -457,9 +461,9 @@ TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
       .info_type_size = 3,
       .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
 
-  EXPECT_TRUE(MixPresentationGenerator::CopyUserLayoutExtension(user_loudness,
-                                                                output_loudness)
-                  .ok());
+  EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
+                  user_loudness, output_loudness),
+              IsOk());
   EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
 }
 

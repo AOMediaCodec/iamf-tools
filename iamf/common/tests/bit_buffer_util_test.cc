@@ -15,17 +15,21 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 using absl::StatusCode::kResourceExhausted;
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 TEST(CanWriteBits, EmptyBuffer) {
   std::vector<uint8_t> bit_buffer;
-  EXPECT_TRUE(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/2,
-                           /*bit_offset=*/0, bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/2,
+                           /*bit_offset=*/0, bit_buffer),
+              IsOk());
   // Requested to write 2 bits, which fit into one byte.
   EXPECT_EQ(bit_buffer.size(), 1);
 }
@@ -42,16 +46,16 @@ TEST(CanWriteBits, BufferHasSpace) {
   std::vector<uint8_t> bit_buffer;
   // Buffer can hold a byte.
   bit_buffer.resize(1);
-  EXPECT_TRUE(CanWriteBits(/*allow_resizing=*/false, /*num_bits=*/2,
-                           /*bit_offset=*/0, bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBits(/*allow_resizing=*/false, /*num_bits=*/2,
+                           /*bit_offset=*/0, bit_buffer),
+              IsOk());
 }
 
 TEST(CanWriteBytes, EmptyBuffer) {
   std::vector<uint8_t> bit_buffer;
-  EXPECT_TRUE(CanWriteBytes(/*allow_resizing=*/true, /*num_bytes=*/3,
-                            /*bit_offset=*/0, bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBytes(/*allow_resizing=*/true, /*num_bytes=*/3,
+                            /*bit_offset=*/0, bit_buffer),
+              IsOk());
   // Requested to write 3 bytes.
   EXPECT_EQ(bit_buffer.size(), 3);
 }
@@ -59,50 +63,50 @@ TEST(CanWriteBytes, EmptyBuffer) {
 TEST(CanWriteBytes, BufferHasSpace) {
   std::vector<uint8_t> bit_buffer;
   bit_buffer.resize(3);
-  EXPECT_TRUE(CanWriteBytes(/*allow_resizing=*/false, /*num_bytes=*/3,
-                            /*bit_offset=*/0, bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBytes(/*allow_resizing=*/false, /*num_bytes=*/3,
+                            /*bit_offset=*/0, bit_buffer),
+              IsOk());
 }
 
 TEST(WriteBit, WriteSeveralBits) {
   std::vector<uint8_t> bit_buffer;
   int64_t bit_offset = 0;
   // First bit to write.
-  EXPECT_TRUE(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/1, bit_offset,
-                           bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/1, bit_offset,
+                           bit_buffer),
+              IsOk());
   EXPECT_EQ(bit_buffer.size(), 1);
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
   EXPECT_EQ(bit_buffer[0], 128);  // {10000000}.
   EXPECT_EQ(bit_offset, 1);
 
   // Write several bits: this time request 3 bytes - 1 bit worth of space, for a
   // total of 3 bytes.
-  EXPECT_TRUE(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/23, bit_offset,
-                           bit_buffer)
-                  .ok());
+  EXPECT_THAT(CanWriteBits(/*allow_resizing=*/true, /*num_bits=*/23, bit_offset,
+                           bit_buffer),
+              IsOk());
   EXPECT_EQ(bit_buffer.size(), 3);
 
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
 
   // --- End writing first byte.
   EXPECT_EQ(bit_buffer[0], 253);  // {11111101}.
   EXPECT_EQ(bit_offset, 8);
 
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/0, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
-  EXPECT_TRUE(WriteBit(/*bit=*/1, bit_offset, bit_buffer).ok());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/0, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
+  EXPECT_THAT(WriteBit(/*bit=*/1, bit_offset, bit_buffer), IsOk());
 
   // --- End writing second byte
   EXPECT_EQ(bit_buffer[1], 19);  // {00010011}.

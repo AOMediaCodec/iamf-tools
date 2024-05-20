@@ -17,23 +17,27 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 TEST(AddUint32CheckOverflow, SmallInput) {
   uint32_t result;
-  EXPECT_TRUE(AddUint32CheckOverflow(1, 1, result).ok());
+  EXPECT_THAT(AddUint32CheckOverflow(1, 1, result), IsOk());
   EXPECT_EQ(result, 2);
 }
 
 TEST(AddUint32CheckOverflow, MaxOutput) {
   uint32_t result;
-  EXPECT_TRUE(AddUint32CheckOverflow(
-                  1, std::numeric_limits<uint32_t>::max() - 1, result)
-                  .ok());
+  EXPECT_THAT(AddUint32CheckOverflow(
+                  1, std::numeric_limits<uint32_t>::max() - 1, result),
+              IsOk());
   EXPECT_EQ(result, std::numeric_limits<uint32_t>::max());
 }
 
@@ -334,12 +338,12 @@ TEST_P(NormalizedFloatToInt32SymmetryTest, NormalizedFloatToInt32SymmetryTest) {
   ASSERT_EQ(GetParam().symmetric_val, -GetParam().test_val);
 
   int32_t test_val_result;
-  EXPECT_TRUE(
-      NormalizedFloatToInt32(GetParam().test_val, test_val_result).ok());
+  EXPECT_THAT(NormalizedFloatToInt32(GetParam().test_val, test_val_result),
+              IsOk());
   int32_t symmetric_val_result;
-  EXPECT_TRUE(
-      NormalizedFloatToInt32(GetParam().symmetric_val, symmetric_val_result)
-          .ok());
+  EXPECT_THAT(
+      NormalizedFloatToInt32(GetParam().symmetric_val, symmetric_val_result),
+      IsOk());
   EXPECT_EQ(test_val_result, -symmetric_val_result);
 }
 
@@ -373,7 +377,7 @@ using NormalizedFloatToInt32Test =
 
 TEST_P(NormalizedFloatToInt32Test, NormalizedFloatToInt32Test) {
   int32_t result;
-  EXPECT_TRUE(NormalizedFloatToInt32(GetParam().test_val, result).ok());
+  EXPECT_THAT(NormalizedFloatToInt32(GetParam().test_val, result), IsOk());
   EXPECT_EQ(result, GetParam().expected_val);
 }
 
@@ -546,7 +550,7 @@ TEST_P(LittleEndianBytesToInt32Format, TestLittleEndianBytesToInt32) {
   const LittleEndianBytesToInt32TestCase& test_case = GetParam();
 
   int32_t result;
-  EXPECT_TRUE(LittleEndianBytesToInt32(test_case.test_val, result).ok());
+  EXPECT_THAT(LittleEndianBytesToInt32(test_case.test_val, result), IsOk());
   EXPECT_EQ(result, test_case.expected_val);
 }
 
@@ -613,7 +617,7 @@ TEST_P(BigEndianBytesToInt32Format, TestBigEndianBytesToInt32) {
   const BigEndianBytesToInt32TestCase& test_case = GetParam();
 
   int32_t result;
-  EXPECT_TRUE(BigEndianBytesToInt32(test_case.test_val, result).ok());
+  EXPECT_THAT(BigEndianBytesToInt32(test_case.test_val, result), IsOk());
   EXPECT_EQ(result, test_case.expected_val);
 }
 
@@ -705,9 +709,9 @@ INSTANTIATE_TEST_SUITE_P(Invalid, ClipDoubleToInt32Test,
 TEST(WritePcmSample, LittleEndian32Bits) {
   std::vector<uint8_t> buffer(4, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12345678, 32, /*big_endian=*/false,
-                             buffer.data(), write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12345678, 32, /*big_endian=*/false,
+                             buffer.data(), write_position),
+              IsOk());
   EXPECT_EQ(write_position, 4);
   std::vector<uint8_t> expected_result = {0x78, 0x56, 0x34, 0x12};
   EXPECT_EQ(buffer, expected_result);
@@ -716,9 +720,9 @@ TEST(WritePcmSample, LittleEndian32Bits) {
 TEST(WritePcmSample, BigEndian32bits) {
   std::vector<uint8_t> buffer(4, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12345678, 32, /*big_endian=*/true, buffer.data(),
-                             write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12345678, 32, /*big_endian=*/true, buffer.data(),
+                             write_position),
+              IsOk());
   EXPECT_EQ(write_position, 4);
   std::vector<uint8_t> expected_result = {0x12, 0x34, 0x56, 0x78};
   EXPECT_EQ(buffer, expected_result);
@@ -727,9 +731,9 @@ TEST(WritePcmSample, BigEndian32bits) {
 TEST(WritePcmSample, LittleEndian24Bits) {
   std::vector<uint8_t> buffer(3, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12345600, 24, /*big_endian=*/false,
-                             buffer.data(), write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12345600, 24, /*big_endian=*/false,
+                             buffer.data(), write_position),
+              IsOk());
   EXPECT_EQ(write_position, 3);
   std::vector<uint8_t> expected_result = {0x56, 0x34, 0x12};
   EXPECT_EQ(buffer, expected_result);
@@ -738,9 +742,9 @@ TEST(WritePcmSample, LittleEndian24Bits) {
 TEST(WritePcmSample, BigEndian24Bits) {
   std::vector<uint8_t> buffer(3, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12345600, 24, /*big_endian=*/true, buffer.data(),
-                             write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12345600, 24, /*big_endian=*/true, buffer.data(),
+                             write_position),
+              IsOk());
   EXPECT_EQ(write_position, 3);
   std::vector<uint8_t> expected_result = {0x12, 0x34, 0x56};
   EXPECT_EQ(buffer, expected_result);
@@ -749,9 +753,9 @@ TEST(WritePcmSample, BigEndian24Bits) {
 TEST(WritePcmSample, LittleEndian16Bits) {
   std::vector<uint8_t> buffer(2, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12340000, 16, /*big_endian=*/false,
-                             buffer.data(), write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12340000, 16, /*big_endian=*/false,
+                             buffer.data(), write_position),
+              IsOk());
   EXPECT_EQ(write_position, 2);
   std::vector<uint8_t> expected_result = {0x34, 0x12};
   EXPECT_EQ(buffer, expected_result);
@@ -760,9 +764,9 @@ TEST(WritePcmSample, LittleEndian16Bits) {
 TEST(WritePcmSample, BigEndian16Bits) {
   std::vector<uint8_t> buffer(2, 0);
   int write_position = 0;
-  EXPECT_TRUE(WritePcmSample(0x12340000, 16, /*big_endian=*/true, buffer.data(),
-                             write_position)
-                  .ok());
+  EXPECT_THAT(WritePcmSample(0x12340000, 16, /*big_endian=*/true, buffer.data(),
+                             write_position),
+              IsOk());
   EXPECT_EQ(write_position, 2);
   std::vector<uint8_t> expected_result = {0x12, 0x34};
   EXPECT_EQ(buffer, expected_result);
@@ -780,7 +784,7 @@ TEST(WritePcmSample, InvalidOver32Bits) {
 TEST(ValidateEqual, OkIfArgsAreEqual) {
   const auto kLeftArg = 123;
   const auto kRightArg = 123;
-  EXPECT_TRUE(ValidateEqual(kLeftArg, kRightArg, "").ok());
+  EXPECT_THAT(ValidateEqual(kLeftArg, kRightArg, ""), IsOk());
 }
 
 TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
@@ -792,7 +796,7 @@ TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
 TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
   const auto kLeftArg = 123;
   const auto kRightArg = 124;
-  EXPECT_TRUE(ValidateNotEqual(kLeftArg, kRightArg, "").ok());
+  EXPECT_THAT(ValidateNotEqual(kLeftArg, kRightArg, ""), IsOk());
 }
 
 TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
@@ -804,9 +808,9 @@ TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
 TEST(ValidateUnique, OkIfArgsAreUnique) {
   const std::vector<int> kVectorWithUniqueValues = {1, 2, 3, 99};
 
-  EXPECT_TRUE(ValidateUnique(kVectorWithUniqueValues.begin(),
-                             kVectorWithUniqueValues.end(), "")
-                  .ok());
+  EXPECT_THAT(ValidateUnique(kVectorWithUniqueValues.begin(),
+                             kVectorWithUniqueValues.end(), ""),
+              IsOk());
 }
 
 TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {

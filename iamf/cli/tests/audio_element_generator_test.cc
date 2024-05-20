@@ -15,6 +15,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/proto/audio_element.pb.h"
@@ -32,6 +34,8 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 
@@ -45,7 +49,7 @@ class AudioElementGeneratorTest : public ::testing::Test {
   void InitAndTestGenerate() {
     AudioElementGenerator generator(audio_element_metadata_);
 
-    EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+    EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
     EXPECT_EQ(output_obus_, expected_obus_);
   }
@@ -325,7 +329,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -423,7 +427,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -462,7 +466,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -507,7 +511,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -556,7 +560,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -603,7 +607,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -650,7 +654,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -697,7 +701,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -752,7 +756,7 @@ TEST_F(AudioElementGeneratorTest,
 
   AudioElementGenerator generator(audio_element_metadata_);
 
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   EXPECT_EQ(output_obus_.at(kAudioElementId).substream_id_to_labels,
             kExpectedSubstreamIdToLabels);
@@ -811,7 +815,7 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
   // Generate and validate the parameter-related information matches expected
   // results.
   AudioElementGenerator generator(audio_element_metadata_);
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   const auto& obu = output_obus_.at(kAudioElementId).obu;
   EXPECT_EQ(obu.audio_element_params_.size(), 1);
@@ -894,7 +898,7 @@ TEST_F(AudioElementGeneratorTest, GeneratesReconGainParameterDefinition) {
   // Generate and validate the parameter-related information matches expected
   // results.
   AudioElementGenerator generator(audio_element_metadata_);
-  EXPECT_TRUE(generator.Generate(codec_config_obus_, output_obus_).ok());
+  EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
   const auto& obu = output_obus_.at(kAudioElementId).obu;
   EXPECT_EQ(obu.audio_element_params_.size(), 1);

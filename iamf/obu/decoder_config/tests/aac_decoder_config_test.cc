@@ -15,12 +15,16 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // A 7-bit mask representing `channel_configuration`, and all three fields in
 // the GA specific config.
@@ -300,7 +304,8 @@ TEST_F(AacTest, GetImplicitSampleRate) {
       AudioSpecificConfig::kSampleFrequencyIndex64000;
 
   uint32_t output_sample_rate;
-  EXPECT_TRUE(aac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(aac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+              IsOk());
 
   EXPECT_EQ(output_sample_rate, 64000);
 }
@@ -313,7 +318,8 @@ TEST_F(AacTest, GetExplicitSampleRate) {
       .sampling_frequency_ = 1234;
 
   uint32_t output_sample_rate;
-  EXPECT_TRUE(aac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(aac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+              IsOk());
   EXPECT_EQ(output_sample_rate, 1234);
 }
 

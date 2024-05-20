@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -25,6 +27,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(LebGeneratorFactory, EquivalentGenerateLebMinimumFactories) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
@@ -294,10 +298,9 @@ class LebGeneratorTestForUleb128MinSize
 
 TEST_P(LebGeneratorTestForUleb128MinSize, Uleb128ToUint8VectorOutputSize) {
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(
-      LebGenerator::Create()
-          ->Uleb128ToUint8Vector(GetParam().decoded_uleb128, output_buffer)
-          .ok());
+  EXPECT_THAT(LebGenerator::Create()->Uleb128ToUint8Vector(
+                  GetParam().decoded_uleb128, output_buffer),
+              IsOk());
   EXPECT_EQ(output_buffer.size(), GetParam().expected_size);
 }
 
@@ -331,10 +334,9 @@ class LebGeneratorTestForSleb128MinSize
 
 TEST_P(LebGeneratorTestForSleb128MinSize, Sleb128ToUint8VectorOutputSize) {
   std::vector<uint8_t> output_buffer;
-  EXPECT_TRUE(
-      LebGenerator::Create()
-          ->Sleb128ToUint8Vector(GetParam().decoded_sleb128, output_buffer)
-          .ok());
+  EXPECT_THAT(LebGenerator::Create()->Sleb128ToUint8Vector(
+                  GetParam().decoded_sleb128, output_buffer),
+              IsOk());
   EXPECT_EQ(output_buffer.size(), GetParam().expected_size);
 }
 

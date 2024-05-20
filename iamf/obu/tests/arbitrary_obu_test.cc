@@ -17,7 +17,8 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -26,6 +27,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(ArbitraryObuConstructor, SetsObuType) {
   const ObuType kExpectedObuType = kObuIaReserved25;
@@ -54,7 +57,7 @@ class ArbitraryObuTest : public ObuTestBase, public testing::Test {
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   std::unique_ptr<ArbitraryObu> obu_;
@@ -110,9 +113,9 @@ TEST_F(ArbitraryObuTest, ObuPayload) {
 
 TEST(WriteObusWithHook, NoObus) {
   WriteBitBuffer wb(1024);
-  EXPECT_TRUE(ArbitraryObu::WriteObusWithHook(
-                  ArbitraryObu::kInsertionHookBeforeDescriptors, {}, wb)
-                  .ok());
+  EXPECT_THAT(ArbitraryObu::WriteObusWithHook(
+                  ArbitraryObu::kInsertionHookBeforeDescriptors, {}, wb),
+              IsOk());
   ValidateWriteResults(wb, {});
 }
 
@@ -131,20 +134,20 @@ TEST(WriteObusWithHook, MultipleObusWithDifferentHooks) {
   // Check that the OBUs with ID 24 and 26 are written when using the
   // `ArbitraryObu::kInsertionHookBeforeDescriptors` hook.
   WriteBitBuffer wb(1024);
-  EXPECT_TRUE(
+  EXPECT_THAT(
       ArbitraryObu::WriteObusWithHook(
-          ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb)
-          .ok());
+          ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb),
+      IsOk());
   ValidateWriteResults(wb,
                        {kObuIaReserved24 << 3, 0, kObuIaReserved26 << 3, 0});
   wb.Reset();
 
   // Check that only the OBU with ID 25 is written when using the
   // `ArbitraryObu::kInsertionHookAfterDescriptors` hook.
-  EXPECT_TRUE(
+  EXPECT_THAT(
       ArbitraryObu::WriteObusWithHook(
-          ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb)
-          .ok());
+          ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb),
+      IsOk());
   ValidateWriteResults(wb, {kObuIaReserved25 << 3, 0});
 }
 

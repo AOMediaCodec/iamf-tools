@@ -16,6 +16,8 @@
 #include <string>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
@@ -25,6 +27,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -71,9 +75,9 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // will succeed.
   user_metadata.mutable_test_vector_metadata()
       ->set_partition_mix_gain_parameter_blocks(false);
-  EXPECT_TRUE(TestMain(user_metadata, "", "",
-                       std::filesystem::temp_directory_path().string())
-                  .ok());
+  EXPECT_THAT(TestMain(user_metadata, "", "",
+                       std::filesystem::temp_directory_path().string()),
+              IsOk());
 }
 
 TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
@@ -82,9 +86,9 @@ TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
   AddCodecConfig(user_metadata);
-  EXPECT_TRUE(TestMain(user_metadata, "", "",
-                       std::filesystem::temp_directory_path().string())
-                  .ok());
+  EXPECT_THAT(TestMain(user_metadata, "", "",
+                       std::filesystem::temp_directory_path().string()),
+              IsOk());
 }
 
 TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
@@ -98,9 +102,9 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(16);
 
-  EXPECT_TRUE(TestMain(user_metadata, "", "",
-                       std::filesystem::temp_directory_path().string())
-                  .ok());
+  EXPECT_THAT(TestMain(user_metadata, "", "",
+                       std::filesystem::temp_directory_path().string()),
+              IsOk());
 }
 
 TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
@@ -130,8 +134,8 @@ TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
 
   const auto output_iamf_directory = std::filesystem::temp_directory_path();
 
-  EXPECT_TRUE(
-      TestMain(user_metadata, "", "", output_iamf_directory.string()).ok());
+  EXPECT_THAT(TestMain(user_metadata, "", "", output_iamf_directory.string()),
+              IsOk());
 
   EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));
 }
@@ -159,8 +163,8 @@ TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
       test_directory_root / std::filesystem::path("EncoderMainLibTest") /
       std::filesystem::path("CreatesAndWritesToOutputIamfDirectory");
 
-  EXPECT_TRUE(
-      TestMain(user_metadata, "", "", output_iamf_directory.string()).ok());
+  EXPECT_THAT(TestMain(user_metadata, "", "", output_iamf_directory.string()),
+              IsOk());
 
   EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));
 }

@@ -20,12 +20,16 @@
 
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/audio_frame.h"
 
 namespace iamf_tools {
+
+using ::absl_testing::IsOk;
 
 class EncoderTestBase {
  public:
@@ -74,11 +78,11 @@ class EncoderTestBase {
   std::list<AudioFrameWithData> FinalizeAndValidateOrderOnly(
       int expected_num_frames) {
     std::list<AudioFrameWithData> output_audio_frames;
-    EXPECT_TRUE(encoder_->Finalize().ok());
+    EXPECT_THAT(encoder_->Finalize(), IsOk());
 
     // Pop all the frames.
     for (int i = 0; i < expected_num_frames; i++) {
-      EXPECT_TRUE(encoder_->Pop(output_audio_frames).ok());
+      EXPECT_THAT(encoder_->Pop(output_audio_frames), IsOk());
     }
     EXPECT_EQ(output_audio_frames.size(), expected_num_frames);
 

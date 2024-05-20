@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/obu/audio_element.h"
@@ -33,6 +35,8 @@
 #include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
+
+using ::absl_testing::IsOk;
 
 void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,
@@ -49,7 +53,7 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
            .sample_size_ = 16,
            .sample_rate_ = sample_rate}});
-  EXPECT_TRUE(obu.Initialize().ok());
+  EXPECT_THAT(obu.Initialize(), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }
 
@@ -66,7 +70,7 @@ void AddOpusCodecConfigWithId(
        .audio_roll_distance = -480,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
-  ASSERT_TRUE(obu.Initialize().ok());
+  ASSERT_THAT(obu.Initialize(), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }
 
@@ -93,12 +97,12 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
   // Initialize to n-th order ambisonics. Choose the lowest order that can fit
   // all `substream_ids`. This may result in mixed-order ambisonics.
   uint8_t next_valid_output_channel_count;
-  ASSERT_TRUE(AmbisonicsConfig::GetNextValidOutputChannelCount(
-                  substream_ids.size(), next_valid_output_channel_count)
-                  .ok());
-  EXPECT_TRUE(obu.InitializeAmbisonicsMono(next_valid_output_channel_count,
-                                           substream_ids.size())
-                  .ok());
+  ASSERT_THAT(AmbisonicsConfig::GetNextValidOutputChannelCount(
+                  substream_ids.size(), next_valid_output_channel_count),
+              IsOk());
+  EXPECT_THAT(obu.InitializeAmbisonicsMono(next_valid_output_channel_count,
+                                           substream_ids.size()),
+              IsOk());
 
   auto& channel_mapping =
       std::get<AmbisonicsMonoConfig>(
@@ -142,7 +146,7 @@ void AddScalableAudioElementWithSubstreamIds(
   obu.audio_substream_ids_ = substream_ids;
   obu.InitializeParams(0);
 
-  EXPECT_TRUE(obu.InitializeScalableChannelLayout(1, 0).ok());
+  EXPECT_THAT(obu.InitializeScalableChannelLayout(1, 0), IsOk());
 
   AudioElementWithData audio_element = {
       .obu = std::move(obu), .codec_config = &codec_config_iter->second};

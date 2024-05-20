@@ -17,7 +17,9 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -30,6 +32,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class CodecConfigTestBase : public ObuTestBase {
  public:
@@ -49,11 +53,11 @@ class CodecConfigTestBase : public ObuTestBase {
   void InitExpectOk() override {
     obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
                                             codec_config_);
-    EXPECT_TRUE(obu_->Initialize().ok());
+    EXPECT_THAT(obu_->Initialize(), IsOk());
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   void TestInputSampleRate() {
@@ -508,7 +512,7 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   ObuHeader header;
   absl::StatusOr<CodecConfigObu> obu =
       CodecConfigObu::CreateFromBuffer(header, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
 
   // Set up expected data
   DecodedUleb128 expected_codec_config_id = 123;
@@ -552,7 +556,7 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
   ObuHeader header;
   absl::StatusOr<CodecConfigObu> obu =
       CodecConfigObu::CreateFromBuffer(header, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
 }
 
 }  // namespace

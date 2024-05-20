@@ -14,11 +14,15 @@
 #include <cstdint>
 #include <limits>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 const LoudnessInfo kLoudnessInfo = {
     .info_type = LoudnessInfo::kTruePeak | LoudnessInfo::kAnchoredLoudness,
@@ -34,18 +38,17 @@ TEST(LoudnessCalculatorUserProvidedLoudness,
      AccumulateLoudnessForSamplesAlwaysReturnsOk) {
   LoudnessCalculatorUserProvidedLoudness calculator(kLoudnessInfo);
 
-  EXPECT_TRUE(calculator.AccumulateLoudnessForSamples({1, 2, 3, 4}).ok());
-  EXPECT_TRUE(calculator.AccumulateLoudnessForSamples({}).ok());
-  EXPECT_TRUE(
-      calculator
-          .AccumulateLoudnessForSamples({std::numeric_limits<int32_t>::max()})
-          .ok());
+  EXPECT_THAT(calculator.AccumulateLoudnessForSamples({1, 2, 3, 4}), IsOk());
+  EXPECT_THAT(calculator.AccumulateLoudnessForSamples({}), IsOk());
+  EXPECT_THAT(calculator.AccumulateLoudnessForSamples(
+                  {std::numeric_limits<int32_t>::max()}),
+              IsOk());
 }
 
 TEST(LoudnessCalculatorUserProvidedLoudness, QueryUserLoudnessAlwaysReturnsOk) {
   LoudnessCalculatorUserProvidedLoudness calculator(kLoudnessInfo);
 
-  EXPECT_EQ(calculator.QueryLoudness().ok(), true);
+  EXPECT_THAT(calculator.QueryLoudness(), IsOk());
 }
 
 TEST(LoudnessCalculatorUserProvidedLoudness,
@@ -58,8 +61,8 @@ TEST(LoudnessCalculatorUserProvidedLoudness,
 TEST(LoudnessCalculatorUserProvidedLoudness, IgnoresAccumulatedSamples) {
   LoudnessCalculatorUserProvidedLoudness calculator(kLoudnessInfo);
 
-  EXPECT_TRUE(calculator.AccumulateLoudnessForSamples({1, 2, 3, 4}).ok());
-  EXPECT_TRUE(calculator.AccumulateLoudnessForSamples({99999}).ok());
+  EXPECT_THAT(calculator.AccumulateLoudnessForSamples({1, 2, 3, 4}), IsOk());
+  EXPECT_THAT(calculator.AccumulateLoudnessForSamples({99999}), IsOk());
   EXPECT_EQ(*calculator.QueryLoudness(), kLoudnessInfo);
 }
 

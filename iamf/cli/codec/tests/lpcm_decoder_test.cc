@@ -35,7 +35,7 @@ TEST(LpcmDecoderTest, Construct) {
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
   CodecConfigObu codec_config_obu = CreateCodecConfigObu(lpcm_decoder_config);
-  ASSERT_TRUE(codec_config_obu.Initialize().ok());
+  ASSERT_THAT(codec_config_obu.Initialize(), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
   LpcmDecoder lpcm_decoder(codec_config_obu, number_of_channels);
@@ -51,7 +51,7 @@ TEST(LpcmDecoderTest, Initialize_InvalidConfigFails) {
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmBeginReserved;
   CodecConfigObu codec_config_obu = CreateCodecConfigObu(lpcm_decoder_config);
-  ASSERT_TRUE(codec_config_obu.Initialize().ok());
+  ASSERT_THAT(codec_config_obu.Initialize(), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
   LpcmDecoder lpcm_decoder(codec_config_obu, number_of_channels);

@@ -15,12 +15,16 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using iamf_tools_cli_proto::MixGainParameterData;
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
@@ -133,10 +137,10 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
 
   // Create the parameter block to partition.
   ParameterBlockObuMetadata full_parameter_block;
-  EXPECT_TRUE(CreateMinimalParameterBlockObuMetadata(
+  EXPECT_THAT(CreateMinimalParameterBlockObuMetadata(
                   test_case.input_subblock_durations, test_case.input_mix_gains,
-                  full_parameter_block)
-                  .ok());
+                  full_parameter_block),
+              IsOk());
 
   // Partition the parameter block.
   ParameterBlockObuMetadata partitioned_parameter_block;

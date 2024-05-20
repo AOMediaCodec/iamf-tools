@@ -17,8 +17,10 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -32,6 +34,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 constexpr DecodedUleb128 kCodecConfigId = 44;
 constexpr uint32_t kSampleRate = 16000;
@@ -47,7 +51,7 @@ TEST(Decode, SucceedsOnEmptyInput) {
   AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
 
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  EXPECT_TRUE(decoder.Decode({}, decoded_audio_frames).ok());
+  EXPECT_THAT(decoder.Decode({}, decoded_audio_frames), IsOk());
 
   EXPECT_TRUE(decoded_audio_frames.empty());
 }
@@ -89,12 +93,12 @@ TEST(Decode, RequiresSubstreamsAreInitialized) {
   EXPECT_FALSE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
   const auto& audio_element = audio_elements.at(kAudioElementId);
   // Decoding succeeds after substreams are initialized.
-  EXPECT_TRUE(
-      decoder
-          .InitDecodersForSubstreams(audio_element.substream_id_to_labels,
-                                     *audio_element.codec_config)
-          .ok());
-  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_THAT(
+      decoder.InitDecodersForSubstreams(audio_element.substream_id_to_labels,
+                                        *audio_element.codec_config),
+      IsOk());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frames, decoded_audio_frames),
+              IsOk());
 }
 
 TEST(InitDecodersForSubstreams,
@@ -105,18 +109,18 @@ TEST(InitDecodersForSubstreams,
 
   AudioFrameDecoder decoder(::testing::TempDir(), kWavFilePrefix);
   const SubstreamIdLabelsMap kLabelsForSubstreamZero = {{kSubstreamId, {"M"}}};
-  EXPECT_TRUE(
-      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config)
-          .ok());
+  EXPECT_THAT(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config),
+      IsOk());
   EXPECT_FALSE(
       decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config)
           .ok());
 
   const SubstreamIdLabelsMap kLabelsForSubstreamOne = {
       {kSubstreamId + 1, {"M"}}};
-  EXPECT_TRUE(
-      decoder.InitDecodersForSubstreams(kLabelsForSubstreamOne, codec_config)
-          .ok());
+  EXPECT_THAT(
+      decoder.InitDecodersForSubstreams(kLabelsForSubstreamOne, codec_config),
+      IsOk());
 }
 
 void InitAllAudioElements(
@@ -125,11 +129,10 @@ void InitAllAudioElements(
     AudioFrameDecoder& decoder) {
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
-    EXPECT_TRUE(decoder
-                    .InitDecodersForSubstreams(
-                        audio_element_with_data.substream_id_to_labels,
-                        *audio_element_with_data.codec_config)
-                    .ok());
+    EXPECT_THAT(decoder.InitDecodersForSubstreams(
+                    audio_element_with_data.substream_id_to_labels,
+                    *audio_element_with_data.codec_config),
+                IsOk());
   }
 }
 
@@ -143,9 +146,11 @@ TEST(Decode, AppendsToOutputList) {
   InitAllAudioElements(audio_elements, decoder);
 
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frames, decoded_audio_frames),
+              IsOk());
   EXPECT_EQ(decoded_audio_frames.size(), 1);
-  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frames, decoded_audio_frames),
+              IsOk());
   EXPECT_EQ(decoded_audio_frames.size(), 2);
 }
 
@@ -161,7 +166,8 @@ TEST(Decode, DecodesLpcmFrame) {
 
   // Decode.
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frames, decoded_audio_frames),
+              IsOk());
 
   // Validate.
   EXPECT_EQ(decoded_audio_frames.size(), 1);
@@ -213,7 +219,8 @@ void DecodeEightSampleAudioFrame(uint32_t num_samples_to_trim_at_end = 0,
       num_samples_to_trim_at_start;
   // Decode.
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  EXPECT_TRUE(decoder.Decode(encoded_audio_frames, decoded_audio_frames).ok());
+  EXPECT_THAT(decoder.Decode(encoded_audio_frames, decoded_audio_frames),
+              IsOk());
 }
 
 TEST(Decode, WritesDebuggingWavFileWithExpectedNumberOfSamples) {

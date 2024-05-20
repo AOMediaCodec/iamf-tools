@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -25,6 +27,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // Max value of a decoded ULEB128.
 constexpr uint32_t kMaxUlebDecoded = UINT32_MAX;
@@ -522,9 +526,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadIncludeAllConditionalFields) {
       // `extension_header_bytes`
       100, 101, 102};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId1);
@@ -554,9 +558,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadImplicitAudioFrameId17) {
       // `obu_size == 1024`
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId17);
@@ -582,9 +586,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderNoConditionalFields) {
       // `obu_size == 1024`
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaSequenceHeader);
@@ -610,9 +614,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderRedundantCopy) {
       // `obu_size == 1024`
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaSequenceHeader);
@@ -638,9 +642,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeOneByteLeb128) {
       // `obu_size == 127`
       0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
@@ -666,9 +670,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeTwoByteLeb128) {
       // `obu_size == 128`
       0x80, 0x01};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
@@ -694,9 +698,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeFourByteLeb128) {
       // `obu_size == 268435456 - 1`
       0xff, 0xff, 0xff, 0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
@@ -721,9 +725,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeFiveByteLeb128) {
       // `obu_size == 268435456`
       0x80, 0x80, 0x80, 0x80, 0x01};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
@@ -748,9 +752,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeFullPayload) {
       // `obu_size == 4294967295`
       0xff, 0xff, 0xff, 0xff, 0x0f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
@@ -779,9 +783,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeWithMinimalTrim) {
       // `num_samples_to_trim_at_start`.
       0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
@@ -829,9 +833,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtEnd) {
       // `num_samples_to_trim_at_start`.
       0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
@@ -861,9 +865,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtStart) {
       // `num_samples_to_trim_at_start`.
       0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
@@ -893,9 +897,9 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroBothTrims) {
       // `num_samples_to_trim_at_start`.
       0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_TRUE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
-          .ok());
+  EXPECT_THAT(
+      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      IsOk());
 
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);

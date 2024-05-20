@@ -11,6 +11,7 @@ cc_library(
         "//iamf/obu:audio_frame",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest",
     ],
 )
@@ -26,6 +27,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -51,6 +53,7 @@ cc_test(
         "//iamf/obu:leb128",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -66,6 +69,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:flac_decoder_config",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -96,6 +100,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -110,6 +115,7 @@ cc_test(
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:opus_decoder_config",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

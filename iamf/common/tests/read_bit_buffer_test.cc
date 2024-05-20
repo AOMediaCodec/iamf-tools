@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/bit_buffer_util.h"
@@ -27,6 +28,8 @@ using absl::StatusCode::kInvalidArgument;
 using absl::StatusCode::kResourceExhausted;
 using testing::ElementsAreArray;
 namespace {
+
+using ::absl_testing::IsOk;
 
 class ReadBitBufferTest : public ::testing::Test {
  public:
@@ -49,7 +52,7 @@ TEST_F(ReadBitBufferTest, LoadBitsByteAligned) {
   source_data_ = {0x09, 0x02, 0xab};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24).ok());
+  EXPECT_THAT(rb_->LoadBits(24), IsOk());
   EXPECT_THAT(rb_->bit_buffer(), ElementsAreArray(source_data_));
 }
 
@@ -57,7 +60,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAligned) {
   source_data_ = {0b10100001};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3, false).ok());
+  EXPECT_THAT(rb_->LoadBits(3, false), IsOk());
   // Only read the first 3 bits (101) - the rest of the bits in the byte are
   // zeroed out.
   std::vector<uint8_t> expected = {0b10100000};
@@ -65,7 +68,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAligned) {
   EXPECT_EQ(rb_->source_bit_offset(), 3);
   // Load bits again. This will clear the buffer while still reading from the
   // updated source offset.
-  EXPECT_TRUE(rb_->LoadBits(5, false).ok());
+  EXPECT_THAT(rb_->LoadBits(5, false), IsOk());
   expected = {
       0b00001000};  // {00001} these bits are loaded from the 5 remaining bits
                     // in the buffer - the rest of the bits are zeroed out.
@@ -77,7 +80,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
   source_data_ = {0b10100001, 0b00110011};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3, false).ok());
+  EXPECT_THAT(rb_->LoadBits(3, false), IsOk());
   // Only read the first 3 bits (101) - the rest of the bits in the byte are
   // zeroed out.
   std::vector<uint8_t> expected = {0b10100000};
@@ -86,7 +89,7 @@ TEST_F(ReadBitBufferTest, LoadBitsNotByteAlignedMultipleBytes) {
   EXPECT_EQ(rb_->buffer_size(), 3);
   // Load bits again. This will clear the buffer while still reading from the
   // updated source offset.
-  EXPECT_TRUE(rb_->LoadBits(12, false).ok());
+  EXPECT_THAT(rb_->LoadBits(12, false), IsOk());
   expected = {
       0b00001001,
       0b10010000};  // {00001} these bits are loaded from the 5 remaining bits
@@ -102,7 +105,7 @@ TEST_F(ReadBitBufferTest, LoadBitsAsManyAsPossibleLimitedSource) {
   source_data_ = {0b10100001, 0b00110011, 0b10001110};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3, true).ok());
+  EXPECT_THAT(rb_->LoadBits(3, true), IsOk());
   // Even though we only requested 3 bits, by default we will fill the buffer as
   // much as possible.
   std::vector<uint8_t> expected = {0b10100001, 0b00110011, 0b10001110};
@@ -116,7 +119,7 @@ TEST_F(ReadBitBufferTest, LoadBitsAsManyAsPossibleLimitedBufferCapacity) {
   // Capacity is specified in bytes.
   rb_capacity_ = 2;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(3, true).ok());
+  EXPECT_THAT(rb_->LoadBits(3, true), IsOk());
   // Even though we only requested 3 bits, by default we will fill the buffer as
   // much as possible.
   std::vector<uint8_t> expected = {0b10100001, 0b00110011};
@@ -138,11 +141,11 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedAllBits) {
   source_data_ = {0xab, 0xcd, 0xef};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24).ok());
+  EXPECT_THAT(rb_->LoadBits(24), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(24, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0xabcdef);
   EXPECT_EQ(rb_->buffer_bit_offset(), 24);
 }
@@ -151,16 +154,16 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedMultipleReads) {
   source_data_ = {0xab, 0xcd, 0xef, 0xff};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_THAT(rb_->LoadBits(32), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 4);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(24, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(24, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0xabcdef);
   EXPECT_EQ(rb_->buffer_bit_offset(), 24);
 
   // Second read to same output integer - will be overwritten.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(8, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0xff);
   EXPECT_EQ(rb_->buffer_bit_offset(), 32);
 }
@@ -169,13 +172,13 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedNotEnoughBitsInBuffer) {
   source_data_ = {0xab, 0xcd, 0xef, 0xff};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24, false).ok());
+  EXPECT_THAT(rb_->LoadBits(24, false), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
   // We request more bits than there are in the buffer. ReadUnsignedLiteral will
   // load more bits from source into the buffer & then return those bits.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(32, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(32, output_literal), IsOk());
   // Output value should be the same as if we had called loadbits(32) &
   // readunsignedliteral(32).
   EXPECT_EQ(output_literal, 0xabcdefff);
@@ -189,7 +192,7 @@ TEST_F(ReadBitBufferTest,
   source_data_ = {0xab, 0xcd, 0xef};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24).ok());
+  EXPECT_THAT(rb_->LoadBits(24), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
@@ -205,15 +208,15 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralNotByteAlignedMultipleReads) {
   source_data_ = {0b11000101, 0b10000010, 0b00000110};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(24).ok());
+  EXPECT_THAT(rb_->LoadBits(24), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 3);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(6, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b110001);
   EXPECT_EQ(rb_->buffer_bit_offset(), 6);
 
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(10, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b0110000010);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -224,7 +227,7 @@ TEST_F(ReadBitBufferTest,
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(6, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(6, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b110001);
   EXPECT_EQ(rb_->buffer_bit_offset(), 6);
   // By default,` ReadUnsignedLiteral` will call `LoadBits` with
@@ -232,7 +235,7 @@ TEST_F(ReadBitBufferTest,
   // we can from the source into the buffer.
   EXPECT_EQ(rb_->buffer_size(), 24);
 
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(10, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(10, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b0110000011);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
   EXPECT_EQ(rb_->buffer_size(), 24);
@@ -242,17 +245,17 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralBufferBitOffsetNotByteAligned) {
   source_data_ = {0b11000101, 0b10000010};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t output_literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(2, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b11);
   EXPECT_EQ(rb_->buffer_bit_offset(), 2);
 
   // Checks that bitwise reading is used when the num_bits requested is
   // byte-aligned but the buffer_bit_offset is not byte-aligned.
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output_literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(8, output_literal), IsOk());
   EXPECT_EQ(output_literal, 0b00010110);
   EXPECT_EQ(rb_->buffer_bit_offset(), 10);
 }
@@ -273,10 +276,10 @@ TEST_F(ReadBitBufferTest, ReadUleb128Read5Bytes) {
   source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb), IsOk());
   EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
   // Expect to read 40 bits.
   EXPECT_EQ(rb_->buffer_bit_offset(), 40);
@@ -286,11 +289,11 @@ TEST_F(ReadBitBufferTest, ReadUleb128Read5BytesAndStoreSize) {
   source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   int8_t encoded_leb_size = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb, encoded_leb_size).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb, encoded_leb_size), IsOk());
   EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
   EXPECT_EQ(encoded_leb_size, 5);
   // Expect to read 40 bits.
@@ -301,7 +304,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
   source_data_ = {0x81, 0x83, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(32, false).ok());
+  EXPECT_THAT(rb_->LoadBits(32, false), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   // Buffer has a one in the most significant position of each byte, which tells
@@ -309,7 +312,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBuffer) {
   // next byte, but there is no 5th byte in the buffer - however, there is in
   // the source, so we load the 5th byte from source into the buffer, which is
   // then output to the DecodedLeb128.
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb), IsOk());
   EXPECT_EQ(output_leb, 0b11110000011000000100000110000001);
   // Expect that the buffer_bit_offset was reset to 0 when LoadBits() was called
   // a second time; it is then incremented by 8 as we read the 5th byte.
@@ -320,10 +323,10 @@ TEST_F(ReadBitBufferTest, ReadUleb128TwoBytes) {
   source_data_ = {0x81, 0x03, 0x81, 0x83, 0x0f};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb), IsOk());
   // Expect the buffer to read only the first two bytes, since 0x03 does not
   // have a one in the most significant spot of the byte.
   EXPECT_EQ(output_leb, 0b00000110000001);
@@ -334,10 +337,10 @@ TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroes) {
   source_data_ = {0x81, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_THAT(rb_->LoadBits(64), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb), IsOk());
   // Expect the buffer to read every byte.
   EXPECT_EQ(output_leb, 0b1);
   EXPECT_EQ(rb_->buffer_bit_offset(), 64);
@@ -347,11 +350,11 @@ TEST_F(ReadBitBufferTest, ReadUleb128ExtraZeroesAndStoreSize) {
   source_data_ = {0x81, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_THAT(rb_->LoadBits(64), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   int8_t encoded_leb_size = 0;
-  EXPECT_TRUE(rb_->ReadULeb128(output_leb, encoded_leb_size).ok());
+  EXPECT_THAT(rb_->ReadULeb128(output_leb, encoded_leb_size), IsOk());
   // Expect the buffer to read every byte.
   EXPECT_EQ(output_leb, 0b1);
   EXPECT_EQ(encoded_leb_size, 8);
@@ -363,7 +366,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128Overflow) {
   source_data_ = {0x80, 0x80, 0x80, 0x80, 0x10};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
@@ -373,7 +376,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128TooManyBytes) {
   source_data_ = {0x80, 0x83, 0x81, 0x83, 0x80, 0x80, 0x80, 0x80};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(64).ok());
+  EXPECT_THAT(rb_->LoadBits(64), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   EXPECT_EQ(rb_->ReadULeb128(output_leb).code(), kInvalidArgument);
@@ -383,7 +386,7 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
   source_data_ = {0x80, 0x80, 0x80, 0x80};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_THAT(rb_->LoadBits(32), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   DecodedUleb128 output_leb = 0;
   // Buffer has a one in the most significant position of each byte, which tells
@@ -402,10 +405,10 @@ TEST_F(ReadBitBufferTest, ReadUint8VectorRead5Bytes) {
   source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   std::vector<uint8_t> output = {};
-  EXPECT_TRUE(rb_->ReadUint8Vector(5, output).ok());
+  EXPECT_THAT(rb_->ReadUint8Vector(5, output), IsOk());
   for (int i = 0; i < output.size(); ++i) {
     EXPECT_EQ(output[i], source_data_[i]);
   }
@@ -417,14 +420,14 @@ TEST_F(ReadBitBufferTest, ReadUint8VectorReadBytesMisalignedBuffer) {
   source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(40).ok());
+  EXPECT_THAT(rb_->LoadBits(40), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(2, literal), IsOk());
   // Bit buffer offset is now misaligned, but ReadUint8Vector should still work.
   EXPECT_EQ(rb_->buffer_bit_offset(), 2);
   std::vector<uint8_t> output = {};
-  EXPECT_TRUE(rb_->ReadUint8Vector(4, output).ok());
+  EXPECT_THAT(rb_->ReadUint8Vector(4, output), IsOk());
   // Expected output starts reading at bit 2 instead of at 0.
   std::vector<uint8_t> expected_output = {0b00000110, 0b00001110, 0b00000110,
                                           0b00001100};
@@ -440,7 +443,7 @@ TEST_F(ReadBitBufferTest, ReadUint8VectorNotEnoughDataInBufferOrSource) {
   source_data_ = {0x80, 0x80, 0x80, 0x80};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(32).ok());
+  EXPECT_THAT(rb_->LoadBits(32), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   std::vector<uint8_t> output = {};
   EXPECT_EQ(rb_->ReadUint8Vector(5, output).code(), kResourceExhausted);
@@ -456,13 +459,13 @@ TEST_F(ReadBitBufferTest, ReadBoolean8Bits) {
   source_data_ = {0b10011001};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(8).ok());
+  EXPECT_THAT(rb_->LoadBits(8), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   bool output = false;
   std::vector<bool> expected_output = {true, false, false, true,
                                        true, false, false, true};
   for (int i = 0; i < 8; ++i) {
-    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_THAT(rb_->ReadBoolean(output), IsOk());
     EXPECT_EQ(output, expected_output[i]);
   }
   // Expect to read 8 bits.
@@ -473,10 +476,10 @@ TEST_F(ReadBitBufferTest, ReadBooleanMisalignedBuffer) {
   source_data_ = {0b10000001, 0b01000000};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   uint64_t literal = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(2, literal).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(2, literal), IsOk());
   // Bit buffer offset is now misaligned, but ReadBoolean should still work.
   EXPECT_EQ(rb_->buffer_bit_offset(), 2);
   bool output = false;
@@ -484,7 +487,7 @@ TEST_F(ReadBitBufferTest, ReadBooleanMisalignedBuffer) {
   std::vector<bool> expected_output = {false, false, false, false,
                                        false, true,  false, true};
   for (int i = 0; i < 8; ++i) {
-    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_THAT(rb_->ReadBoolean(output), IsOk());
     EXPECT_EQ(output, expected_output[i]);
   }
   // Expect to read 8 bits + the 2 we initially read.
@@ -496,13 +499,13 @@ TEST_F(ReadBitBufferTest, ReadBooleanNotEnoughDataInBufferOrSource) {
   source_data_ = {0b10011001};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(8).ok());
+  EXPECT_THAT(rb_->LoadBits(8), IsOk());
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   bool output = false;
   std::vector<bool> expected_output = {true, false, false, true,
                                        true, false, false, true};
   for (int i = 0; i < 8; ++i) {
-    EXPECT_TRUE(rb_->ReadBoolean(output).ok());
+    EXPECT_THAT(rb_->ReadBoolean(output), IsOk());
     EXPECT_EQ(output, expected_output[i]);
   }
   EXPECT_EQ(rb_->ReadBoolean(output).code(), kResourceExhausted);
@@ -516,11 +519,11 @@ TEST_F(ReadBitBufferTest, Signed16Zero) {
   source_data_ = {0x00, 0x00};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   int16_t output = 0;
-  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_THAT(rb_->ReadSigned16(output), IsOk());
   EXPECT_EQ(output, 0);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -529,11 +532,11 @@ TEST_F(ReadBitBufferTest, Signed16MaxPositive) {
   source_data_ = {0x7f, 0xff};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   int16_t output = 0;
-  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_THAT(rb_->ReadSigned16(output), IsOk());
   EXPECT_EQ(output, 32767);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -542,11 +545,11 @@ TEST_F(ReadBitBufferTest, Signed16MinPositive) {
   source_data_ = {0x00, 0x01};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   int16_t output = 0;
-  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_THAT(rb_->ReadSigned16(output), IsOk());
   EXPECT_EQ(output, 1);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -555,11 +558,11 @@ TEST_F(ReadBitBufferTest, Signed16MinNegative) {
   source_data_ = {0x80, 0x00};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   int16_t output = 0;
-  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_THAT(rb_->ReadSigned16(output), IsOk());
   EXPECT_EQ(output, -32768);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -568,11 +571,11 @@ TEST_F(ReadBitBufferTest, Signed16MaxNegative) {
   source_data_ = {0xff, 0xff};
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_TRUE(rb_->LoadBits(16).ok());
+  EXPECT_THAT(rb_->LoadBits(16), IsOk());
   EXPECT_EQ(rb_->bit_buffer().size(), 2);
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
   int16_t output = 0;
-  EXPECT_TRUE(rb_->ReadSigned16(output).ok());
+  EXPECT_THAT(rb_->ReadSigned16(output), IsOk());
   EXPECT_EQ(output, -1);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -583,7 +586,7 @@ TEST_F(ReadBitBufferTest, IsDataAvailable) {
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   EXPECT_TRUE(rb_->IsDataAvailable());
   uint64_t output = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(16, output).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(16, output), IsOk());
   EXPECT_FALSE(rb_->IsDataAvailable());
 }
 
@@ -592,7 +595,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax32) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   uint32_t output = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(32, output).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(32, output), IsOk());
   EXPECT_EQ(output, 4294967295);
   EXPECT_EQ(rb_->buffer_bit_offset(), 32);
 }
@@ -611,7 +614,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax16) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   uint16_t output = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(16, output).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(16, output), IsOk());
   EXPECT_EQ(output, 65535);
   EXPECT_EQ(rb_->buffer_bit_offset(), 16);
 }
@@ -630,7 +633,7 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralMax8) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   uint8_t output = 0;
-  EXPECT_TRUE(rb_->ReadUnsignedLiteral(8, output).ok());
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(8, output), IsOk());
   EXPECT_EQ(output, 255);
   EXPECT_EQ(rb_->buffer_bit_offset(), 8);
 }
@@ -648,7 +651,7 @@ TEST_F(ReadBitBufferTest, StringOnlyNullCharacter) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   std::string output;
-  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_THAT(rb_->ReadString(output), IsOk());
   EXPECT_EQ(output, "");
 }
 
@@ -657,7 +660,7 @@ TEST_F(ReadBitBufferTest, StringAscii) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   std::string output;
-  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_THAT(rb_->ReadString(output), IsOk());
   EXPECT_EQ(output, "ABC");
 }
 
@@ -666,7 +669,7 @@ TEST_F(ReadBitBufferTest, StringOverrideOutputParam) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   std::string output = "xyz";
-  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_THAT(rb_->ReadString(output), IsOk());
   EXPECT_EQ(output, "ABC");
 }
 
@@ -677,7 +680,7 @@ TEST_F(ReadBitBufferTest, StringUtf8) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   std::string output;
-  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_THAT(rb_->ReadString(output), IsOk());
   EXPECT_EQ(output, "\303\263\360\235\205\237");
 }
 
@@ -687,7 +690,7 @@ TEST_F(ReadBitBufferTest, StringMaxLength) {
   rb_capacity_ = 1024;
   std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
   std::string output;
-  EXPECT_TRUE(rb_->ReadString(output).ok());
+  EXPECT_THAT(rb_->ReadString(output), IsOk());
   EXPECT_EQ(output, std::string(kIamfMaxStringSize - 1, 'a'));
 }
 

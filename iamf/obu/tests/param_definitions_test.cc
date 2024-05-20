@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -27,6 +29,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 void PopulateParameterDefinition(ParamDefinition* param_definition) {
   param_definition->parameter_id_ = 0;
@@ -44,9 +48,9 @@ class ParamDefinitionTestBase : public testing::Test {
     param_definition_->InitializeSubblockDurations(
         static_cast<DecodedUleb128>(subblock_durations_.size()));
     for (int i = 0; i < subblock_durations_.size(); ++i) {
-      EXPECT_TRUE(
-          param_definition_->SetSubblockDuration(i, subblock_durations_[i])
-              .ok());
+      EXPECT_THAT(
+          param_definition_->SetSubblockDuration(i, subblock_durations_[i]),
+          IsOk());
     }
   }
 
@@ -584,7 +588,7 @@ TEST(ReadParamDefinitionTest, Mode1) {
       // Param Definition Mode (upper bit), next 7 bits reserved.
       0x80};
   ReadBitBuffer buffer(1024, &source);
-  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
 }
 
 TEST(ReadParamDefinitionTest, Mode0NonZeroSubblockDuration) {
@@ -601,7 +605,7 @@ TEST(ReadParamDefinitionTest, Mode0NonZeroSubblockDuration) {
       // `constant_subblock_duration`.
       0xc0, 0x00};
   ReadBitBuffer buffer(1024, &source);
-  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
 }
 
 TEST(ReadParamDefinitionTest, Mode0SubblockArray) {
@@ -625,7 +629,7 @@ TEST(ReadParamDefinitionTest, Mode0SubblockArray) {
       // `subblock_duration`
       24};
   ReadBitBuffer buffer(1024, &source);
-  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
 }
 
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
@@ -640,7 +644,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
       // Default Mix Gain.
       0, 4};
   ReadBitBuffer buffer(1024, &source);
-  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(param_definition.GetType().value(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_, 4);
@@ -669,7 +673,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
       // Default Mix Gain.
       0, 3};
   ReadBitBuffer buffer(1024, &source);
-  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(param_definition.GetType().value(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_, 3);

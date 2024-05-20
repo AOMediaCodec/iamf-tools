@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/tests/encoder_test_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -25,6 +27,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class AacEncoderTest : public EncoderTestBase, public testing::Test {
  public:
@@ -48,7 +52,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
                               .decoder_config = aac_decoder_config_};
 
     CodecConfigObu codec_config(ObuHeader(), 0, temp);
-    ASSERT_TRUE(codec_config.Initialize().ok());
+    ASSERT_THAT(codec_config.Initialize(), IsOk());
 
     encoder_ = std::make_unique<AacEncoder>(aac_encoder_metadata_, codec_config,
                                             num_channels_);

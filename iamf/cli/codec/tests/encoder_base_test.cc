@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -28,6 +29,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using testing::Return;
 
@@ -56,7 +59,7 @@ TEST(EncoderBaseTest, InitializeSucceeds) {
   EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart())
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_TRUE(encoder.Initialize().ok());
+  EXPECT_THAT(encoder.Initialize(), IsOk());
 }
 
 TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
@@ -96,13 +99,13 @@ TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
       .audio_element_with_data = nullptr,
   });
 
-  EXPECT_TRUE(encoder.Finalize().ok());
+  EXPECT_THAT(encoder.Finalize(), IsOk());
 
   // Since nothing has been added, there are no frames available.
   EXPECT_FALSE(encoder.FramesAvailable());
 
   // `Pop()` still works, just adding nothing.
-  EXPECT_TRUE(encoder.Pop(audio_frames).ok());
+  EXPECT_THAT(encoder.Pop(audio_frames), IsOk());
 
   // Expect the `audio_frames` is unaltered.
   ASSERT_EQ(audio_frames.size(), 1);

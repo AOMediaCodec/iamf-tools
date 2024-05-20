@@ -12,6 +12,8 @@
 #include "iamf/obu/obu_base.h"
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
@@ -20,6 +22,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // An erroneous OBU with a constant payload with a length of 1 bit.
 class ImaginaryObuNonIntegerBytes : public ObuBase {
@@ -70,7 +74,7 @@ TEST(ObuBaseTest, OneByteObu) {
   const OneByteObu obu;
 
   WriteBitBuffer wb(1024);
-  EXPECT_TRUE(obu.ValidateAndWriteObu(wb).ok());
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
   ValidateObuWriteResults(wb,
                           {kObuIaReserved24 << 3,
                            // `obu_size`.
@@ -84,7 +88,7 @@ TEST(ObuBaseTest, OneByteObuExtensionHeader) {
                         .extension_header_bytes = {128}});
 
   WriteBitBuffer wb(1024);
-  EXPECT_TRUE(obu.ValidateAndWriteObu(wb).ok());
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
   ValidateObuWriteResults(wb,
                           {kObuIaReserved24 << 3 | 1,
                            // `obu_size`.

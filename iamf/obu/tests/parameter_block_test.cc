@@ -34,6 +34,8 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 using absl_testing::IsOkAndHolds;
 
 constexpr uint32_t kAudioElementId = 0;
@@ -51,7 +53,7 @@ TEST(AnimationStepInt16, ReadAndValidate) {
   ReadBitBuffer buffer(1024, &source_data);
 
   AnimationStepInt16 step_animation;
-  EXPECT_TRUE(step_animation.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(step_animation.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(step_animation.start_point_value, 0x0201);
 }
 
@@ -67,7 +69,7 @@ TEST(AnimationLinearInt16, ReadAndValidate) {
   ReadBitBuffer buffer(1024, &source_data);
 
   AnimationLinearInt16 linear_animation;
-  EXPECT_TRUE(linear_animation.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(linear_animation.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(linear_animation.start_point_value, 0x0403);
   EXPECT_EQ(linear_animation.end_point_value, 0x0201);
 }
@@ -84,7 +86,7 @@ TEST(AnimationBezierInt16, ReadAndValidate) {
   ReadBitBuffer buffer(1024, &source_data);
 
   AnimationBezierInt16 bezier_animation;
-  EXPECT_TRUE(bezier_animation.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(bezier_animation.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(bezier_animation.start_point_value, 0x0706);
   EXPECT_EQ(bezier_animation.end_point_value, 0x0504);
   EXPECT_EQ(bezier_animation.control_point_value, 0x0302);
@@ -102,7 +104,7 @@ TEST(MixGainParameterData, ReadAndValidateStep) {
   ReadBitBuffer buffer(1024, &source_data);
 
   MixGainParameterData mix_gain_param_data;
-  EXPECT_TRUE(mix_gain_param_data.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(mix_gain_param_data.animation_type,
             MixGainParameterData::kAnimateStep);
   EXPECT_TRUE(std::holds_alternative<AnimationStepInt16>(
@@ -123,7 +125,7 @@ TEST(MixGainParameterData, ReadAndValidateLinear) {
   ReadBitBuffer buffer(1024, &source_data);
 
   MixGainParameterData mix_gain_param_data;
-  EXPECT_TRUE(mix_gain_param_data.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(mix_gain_param_data.animation_type,
             MixGainParameterData::kAnimateLinear);
   EXPECT_TRUE(std::holds_alternative<AnimationLinearInt16>(
@@ -149,7 +151,7 @@ TEST(MixGainParameterData, ReadAndValidateBezier) {
   ReadBitBuffer buffer(1024, &source_data);
 
   MixGainParameterData mix_gain_param_data;
-  EXPECT_TRUE(mix_gain_param_data.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
   EXPECT_EQ(mix_gain_param_data.animation_type,
             MixGainParameterData::kAnimateBezier);
   EXPECT_TRUE(std::holds_alternative<AnimationBezierInt16>(
@@ -215,7 +217,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
-  EXPECT_TRUE(parameter_block.ok());
+  EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data.
   EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
@@ -228,11 +230,11 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
 
   int16_t mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_TRUE(parameter_block->GetMixGain(0, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(0, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_TRUE(parameter_block->GetMixGain(1, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(1, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_TRUE(parameter_block->GetMixGain(4, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(4, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0544);
 
   // Parameter blocks are open intervals.
@@ -275,12 +277,12 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   param_definition.duration_ = 10;
   param_definition.constant_subblock_duration_ = 0;
   param_definition.InitializeSubblockDurations(3);
-  ASSERT_TRUE(param_definition.SetSubblockDuration(0, 1).ok());
-  ASSERT_TRUE(param_definition.SetSubblockDuration(1, 3).ok());
-  ASSERT_TRUE(param_definition.SetSubblockDuration(2, 6).ok());
+  ASSERT_THAT(param_definition.SetSubblockDuration(0, 1), IsOk());
+  ASSERT_THAT(param_definition.SetSubblockDuration(1, 3), IsOk());
+  ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
-  EXPECT_TRUE(parameter_block.ok());
+  EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
   // based on the `param_definition` and not the data in the OBU.
@@ -294,11 +296,11 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
 
   int16_t mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_TRUE(parameter_block->GetMixGain(0, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(0, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_TRUE(parameter_block->GetMixGain(1, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(1, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_TRUE(parameter_block->GetMixGain(4, mix_gain).ok());
+  EXPECT_THAT(parameter_block->GetMixGain(4, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0544);
 
   // Parameter blocks are open intervals.
@@ -417,7 +419,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
   virtual void InitParameterBlockTypeSpecificFields() = 0;
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   std::unique_ptr<ParameterBlockObu> obu_;
@@ -470,11 +472,11 @@ class ParameterBlockObuTestBase : public ObuTestBase {
 
     obu_ =
         std::make_unique<ParameterBlockObu>(header_, parameter_id_, &metadata_);
-    EXPECT_TRUE(
+    EXPECT_THAT(
         obu_->InitializeSubblocks(duration_args_.duration,
                                   duration_args_.constant_subblock_duration,
-                                  duration_args_.num_subblocks)
-            .ok());
+                                  duration_args_.num_subblocks),
+        IsOk());
 
     // Initialize memory for the metadata. This would typically be the
     // responsibility of the OBU that this Parameter Block references.
@@ -484,9 +486,9 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // With all memory allocated set the subblock durations. This may write to
     // the `metadata` or `obu` depending on the mode.
     for (int i = 0; i < duration_args_.subblock_durations.size(); i++) {
-      EXPECT_TRUE(
-          obu_->SetSubblockDuration(i, duration_args_.subblock_durations[i])
-              .ok());
+      EXPECT_THAT(
+          obu_->SetSubblockDuration(i, duration_args_.subblock_durations[i]),
+          IsOk());
     }
   }
 };

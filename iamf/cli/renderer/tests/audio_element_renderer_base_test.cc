@@ -15,14 +15,17 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 const std::vector<int32_t> kSamplesToRender = {0, 1, 2, 3};
 
@@ -48,16 +51,16 @@ TEST(AudioElementRendererBase, IsFinalizedReturnsFalseBeforeFinalizeIsCalled) {
 
 TEST(AudioElementRendererBase, BaseImmediatelyAfterFinalizeIsFinalized) {
   MockAudioElementRenderer renderer;
-  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
 }
 
 TEST(AudioElementRendererBase, FinalizeAndFlushWithOutRenderingSucceeds) {
   MockAudioElementRenderer renderer;
-  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
   std::vector<int32_t> rendered_samples;
-  EXPECT_TRUE(renderer.Flush(rendered_samples).ok());
+  EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
   EXPECT_TRUE(rendered_samples.empty());
 }
 
@@ -65,16 +68,16 @@ TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
   MockAudioElementRenderer renderer;
   std::vector<int32_t> vector_to_collect_rendered_samples;
 
-  EXPECT_TRUE(renderer.RenderLabeledFrame({}).ok());
-  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_THAT(renderer.RenderLabeledFrame({}), IsOk());
+  EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
 
-  EXPECT_TRUE(renderer.Flush(vector_to_collect_rendered_samples).ok());
+  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
   EXPECT_FALSE(vector_to_collect_rendered_samples.empty());
   vector_to_collect_rendered_samples.clear();
 
   // Samples are already flushed. Flushing again is OK, but it does nothing.
-  EXPECT_TRUE(renderer.Flush(vector_to_collect_rendered_samples).ok());
+  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
   EXPECT_TRUE(vector_to_collect_rendered_samples.empty());
 }
 
@@ -86,11 +89,11 @@ TEST(AudioElementRendererBase, AppendsWhenFlushing) {
   expected_samples.insert(expected_samples.end(), kSamplesToRender.begin(),
                           kSamplesToRender.end());
 
-  EXPECT_TRUE(renderer.RenderLabeledFrame({}).ok());
-  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_THAT(renderer.RenderLabeledFrame({}), IsOk());
+  EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
 
-  EXPECT_TRUE(renderer.Flush(vector_to_collect_rendered_samples).ok());
+  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
   EXPECT_EQ(vector_to_collect_rendered_samples, expected_samples);
 }
 

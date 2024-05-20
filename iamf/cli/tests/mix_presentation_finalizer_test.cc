@@ -16,7 +16,8 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_writer.h"
@@ -25,6 +26,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 std::unique_ptr<WavWriter> ProduceNoWavWriters(DecodedUleb128, int, int,
                                                const Layout&,
@@ -48,9 +51,9 @@ class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest
     MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer finalizer;
 
     // `Finalize()` ignores most of the arguments.
-    EXPECT_TRUE(
-        finalizer.Finalize({}, {}, {}, ProduceNoWavWriters, obus_to_finalize_)
-            .ok());
+    EXPECT_THAT(
+        finalizer.Finalize({}, {}, {}, ProduceNoWavWriters, obus_to_finalize_),
+        IsOk());
   }
 
  protected:

@@ -25,7 +25,7 @@ cc_test(
         "//iamf/common/tests:test_utils",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -45,6 +45,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -62,6 +63,7 @@ cc_test(
         "//iamf/obu:leb128",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -81,6 +83,7 @@ cc_test(
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
@@ -94,6 +97,7 @@ cc_test(
         "//iamf/common/tests:test_utils",
         "//iamf/obu:demixing_info_param_data",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -110,6 +114,7 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
@@ -130,6 +135,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -144,6 +150,7 @@ cc_test(
         "//iamf/obu:obu_base",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -159,6 +166,7 @@ cc_test(
         "//iamf/common/tests:test_utils",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -176,6 +184,7 @@ cc_test(
         "//iamf/obu:leb128",
         "//iamf/obu:param_definitions",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -213,6 +222,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:temporal_delimiter",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],

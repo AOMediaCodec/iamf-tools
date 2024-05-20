@@ -15,12 +15,16 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 void TestOneChannelLrs7(const std::vector<int32_t>& original_channel,
                         const std::vector<int32_t>& mixed_channel,
@@ -31,10 +35,10 @@ void TestOneChannelLrs7(const std::vector<int32_t>& original_channel,
   const LabelSamplesMap label_to_decoded_samples{{"D_Lrs7", demixed_channel}};
 
   double recon_gain;
-  EXPECT_TRUE(ReconGainGenerator::ComputeReconGain(
+  EXPECT_THAT(ReconGainGenerator::ComputeReconGain(
                   "D_Lrs7", label_to_samples, label_to_decoded_samples,
-                  /*additional_logging=*/true, recon_gain)
-                  .ok());
+                  /*additional_logging=*/true, recon_gain),
+              IsOk());
   EXPECT_NEAR(recon_gain, expected_recon_gain, 0.0001);
 }
 

@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -32,6 +34,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // TODO(b/272003291): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
@@ -104,7 +108,7 @@ class AudioElementObuTestBase : public ObuTestBase {
   virtual void InitAudioElementTypeSpecificFields() = 0;
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   std::unique_ptr<AudioElementObu> obu_;
@@ -202,11 +206,11 @@ class AudioElementScalableChannelTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() override {
-    EXPECT_TRUE(
+    EXPECT_THAT(
         obu_->InitializeScalableChannelLayout(
-                scalable_channel_arguments_.num_layers,
-                scalable_channel_arguments_.scalable_channel_config_reserved)
-            .ok());
+            scalable_channel_arguments_.num_layers,
+            scalable_channel_arguments_.scalable_channel_config_reserved),
+        IsOk());
 
     auto& config = std::get<ScalableChannelLayoutConfig>(obu_->config_);
     for (int i = 0; i < config.num_layers; ++i) {
@@ -485,8 +489,8 @@ const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
 const DecodedUleb128 kTwoLayerStereoSubstreamCount = 2;
 
 TEST(ScalableChannelLayoutConfigValidate, IsOkWithMultipleLayers) {
-  EXPECT_TRUE(
-      kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount).ok());
+  EXPECT_THAT(kTwoLayerStereoConfig.Validate(kTwoLayerStereoSubstreamCount),
+              IsOk());
 }
 
 TEST(ScalableChannelLayoutConfigValidate,
@@ -528,7 +532,7 @@ TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
       .num_layers = 1,
       .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural}};
 
-  EXPECT_TRUE(kBinauralConfig.Validate(1).ok());
+  EXPECT_THAT(kBinauralConfig.Validate(1), IsOk());
 }
 
 TEST(ScalableChannelLayoutConfigValidate,
@@ -673,10 +677,10 @@ class AudioElementMonoAmbisonicsTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() override {
-    EXPECT_TRUE(obu_->InitializeAmbisonicsMono(
-                        ambisonics_mono_arguments_.config.output_channel_count,
-                        ambisonics_mono_arguments_.config.substream_count)
-                    .ok());
+    EXPECT_THAT(obu_->InitializeAmbisonicsMono(
+                    ambisonics_mono_arguments_.config.output_channel_count,
+                    ambisonics_mono_arguments_.config.substream_count),
+                IsOk());
     std::get<AmbisonicsMonoConfig>(
         std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =
         ambisonics_mono_arguments_.config;
@@ -841,12 +845,11 @@ class AudioElementProjAmbisonicsTest : public AudioElementObuTestBase,
   }
 
   void InitAudioElementTypeSpecificFields() {
-    EXPECT_TRUE(
-        obu_->InitializeAmbisonicsProjection(
-                ambisonics_proj_arguments_.config.output_channel_count,
-                ambisonics_proj_arguments_.config.substream_count,
-                ambisonics_proj_arguments_.config.coupled_substream_count)
-            .ok());
+    EXPECT_THAT(obu_->InitializeAmbisonicsProjection(
+                    ambisonics_proj_arguments_.config.output_channel_count,
+                    ambisonics_proj_arguments_.config.substream_count,
+                    ambisonics_proj_arguments_.config.coupled_substream_count),
+                IsOk());
 
     std::get<AmbisonicsProjectionConfig>(
         std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =
@@ -1036,7 +1039,7 @@ TEST(TestValidateAmbisonicsMono, MappingInAscendingOrder) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/0, /*A1=*/1, /*A2=*/2, /*A3=*/3}};
-  EXPECT_TRUE(ambisonics_mono.Validate(4).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(4), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono, MappingInArbitraryOrder) {
@@ -1045,7 +1048,7 @@ TEST(TestValidateAmbisonicsMono, MappingInArbitraryOrder) {
       .output_channel_count = 4,
       .substream_count = 4,
       .channel_mapping = {/*A0=*/3, /*A1=*/1, /*A2=*/0, /*A3=*/2}};
-  EXPECT_TRUE(ambisonics_mono.Validate(4).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(4), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono, MixedOrderAmbisonics) {
@@ -1055,7 +1058,7 @@ TEST(TestValidateAmbisonicsMono, MixedOrderAmbisonics) {
       .output_channel_count = 4,
       .substream_count = 2,
       .channel_mapping = {/*A0=*/255, /*A1=*/1, /*A2=*/0, /*A3=*/255}};
-  EXPECT_TRUE(ambisonics_mono.Validate(2).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(2), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -1066,7 +1069,7 @@ TEST(TestValidateAmbisonicsMono,
       .output_channel_count = 4,
       .substream_count = 1,
       .channel_mapping = {/*A0=*/0, /*A1=*/0, /*A2=*/0, /*A3=*/0}};
-  EXPECT_TRUE(ambisonics_mono.Validate(1).ok());
+  EXPECT_THAT(ambisonics_mono.Validate(1), IsOk());
 }
 
 TEST(TestValidateAmbisonicsMono,
@@ -1129,7 +1132,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithMainDiagonalMatrix) {
                           /* Substream 1: */ 0, 1, 0, 0,
                           /* Substream 2: */ 0, 0, 1, 0,
                           /* Substream 3: */ 0, 0, 0, 1}};
-  EXPECT_TRUE(ambisonics_projection.Validate(4).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(4), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithArbitraryMatrix) {
@@ -1145,7 +1148,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithArbitraryMatrix) {
                           /* Substream 1: */ 2, 3, 4, 5,
                           /* Substream 2: */ 3, 4, 5, 6,
                           /* Substream 3: */ 4, 5, 6, 7}};
-  EXPECT_TRUE(ambisonics_projection.Validate(4).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(4), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, ZerothOrderAmbisonics) {
@@ -1156,7 +1159,7 @@ TEST(TestValidateAmbisonicsProjection, ZerothOrderAmbisonics) {
       .demixing_matrix = {
           /*                                             ACN#: 0, */
           /* Substream 0: */ std::numeric_limits<int16_t>::max()}};
-  EXPECT_TRUE(ambisonics_projection.Validate(1).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(1), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAWithOnlyA2) {
@@ -1167,7 +1170,7 @@ TEST(TestValidateAmbisonicsProjection, FOAWithOnlyA2) {
       .coupled_substream_count = 0,
       .demixing_matrix = {/*           ACN#: 0, 1, 2, 3 */
                           /* Substream 0: */ 0, 0, 1, 0}};
-  EXPECT_TRUE(ambisonics_projection.Validate(1).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(1), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FOAOneCoupledStream) {
@@ -1183,7 +1186,7 @@ TEST(TestValidateAmbisonicsProjection, FOAOneCoupledStream) {
                           /* Substream 0_b: */ 0, 1, 0, 0,
                           /* Substream   1: */ 0, 0, 1, 0,
                           /* Substream   2: */ 0, 0, 0, 1}};
-  EXPECT_TRUE(ambisonics_projection.Validate(3).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(3), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, FourteenthOrderAmbisonicsIsSupported) {
@@ -1192,7 +1195,7 @@ TEST(TestValidateAmbisonicsProjection, FourteenthOrderAmbisonicsIsSupported) {
       .substream_count = 225,
       .coupled_substream_count = 0,
       .demixing_matrix = std::vector<int16_t>(225 * 225, 1)};
-  EXPECT_TRUE(ambisonics_projection.Validate(225).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(225), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection,
@@ -1202,7 +1205,7 @@ TEST(TestValidateAmbisonicsProjection,
       .substream_count = 113,
       .coupled_substream_count = 112,
       .demixing_matrix = std::vector<int16_t>((113 + 112) * 225, 1)};
-  EXPECT_TRUE(ambisonics_projection.Validate(113).ok());
+  EXPECT_THAT(ambisonics_projection.Validate(113), IsOk());
 }
 
 TEST(TestValidateAmbisonicsProjection, InvalidOutputChannelCountMaxValue) {
@@ -1270,25 +1273,25 @@ TEST(TestValidateAmbisonicsProjection,
 
 TEST(TestGetNextValidCount, ReturnsNextHighestCount) {
   uint8_t next_valid_count;
-  EXPECT_TRUE(
-      AmbisonicsConfig::GetNextValidOutputChannelCount(0, next_valid_count)
-          .ok());
+  EXPECT_THAT(
+      AmbisonicsConfig::GetNextValidOutputChannelCount(0, next_valid_count),
+      IsOk());
   EXPECT_EQ(next_valid_count, 1);
 }
 
 TEST(TestGetNextValidCount, SupportsFirstOrderAmbisonics) {
   uint8_t next_valid_count;
-  EXPECT_TRUE(
-      AmbisonicsConfig::GetNextValidOutputChannelCount(4, next_valid_count)
-          .ok());
+  EXPECT_THAT(
+      AmbisonicsConfig::GetNextValidOutputChannelCount(4, next_valid_count),
+      IsOk());
   EXPECT_EQ(next_valid_count, 4);
 }
 
 TEST(TestGetNextValidCount, SupportsFourteenthOrderAmbisonics) {
   uint8_t next_valid_count;
-  EXPECT_TRUE(
-      AmbisonicsConfig::GetNextValidOutputChannelCount(225, next_valid_count)
-          .ok());
+  EXPECT_THAT(
+      AmbisonicsConfig::GetNextValidOutputChannelCount(225, next_valid_count),
+      IsOk());
   EXPECT_EQ(next_valid_count, 225);
 }
 
@@ -1354,7 +1357,7 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
   auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
 
   // Validate
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu.value().GetAudioElementId(), 1);
   EXPECT_EQ(obu.value().GetAudioElementType(),
             AudioElementObu::kAudioElementChannelBased);
@@ -1459,7 +1462,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
   auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
 
   // Validate
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu.value().GetAudioElementType(),
             AudioElementObu::kAudioElementSceneBased);
   EXPECT_EQ(obu.value().num_substreams_, 4);
@@ -1506,7 +1509,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
   auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
 
   // Validate
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu.value().GetAudioElementType(),
             AudioElementObu::kAudioElementSceneBased);
   EXPECT_EQ(obu.value().num_substreams_, 4);

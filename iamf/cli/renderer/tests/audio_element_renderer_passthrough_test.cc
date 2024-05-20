@@ -18,12 +18,16 @@
 #include <thread>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 using enum LoudspeakersSsConventionLayout::SoundSystem;
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
@@ -136,13 +140,13 @@ TEST(RenderLabeledFrame, RendersPassThroughStereo) {
           kStereoScalableChannelLayoutConfig, kStereoLayout);
   EXPECT_NE(stereo_pass_through_renderer, nullptr);
 
-  EXPECT_TRUE(
-      stereo_pass_through_renderer->RenderLabeledFrame(kLabeledFrameWithL2AndR2)
-          .ok());
-  EXPECT_TRUE(stereo_pass_through_renderer->Finalize().ok());
+  EXPECT_THAT(stereo_pass_through_renderer->RenderLabeledFrame(
+                  kLabeledFrameWithL2AndR2),
+              IsOk());
+  EXPECT_THAT(stereo_pass_through_renderer->Finalize(), IsOk());
   EXPECT_TRUE(stereo_pass_through_renderer->IsFinalized());
   std::vector<int32_t> rendered_samples;
-  EXPECT_TRUE(stereo_pass_through_renderer->Flush(rendered_samples).ok());
+  EXPECT_THAT(stereo_pass_through_renderer->Flush(rendered_samples), IsOk());
   EXPECT_EQ(rendered_samples, std::vector<int32_t>({1, 2, 3, 4, 5, 6, 7, 8}));
 }
 
@@ -152,13 +156,13 @@ TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
           kBinauralScalableChannelLayoutConfig, kBinauralLayout);
   EXPECT_NE(binaural_pass_through_renderer, nullptr);
 
-  EXPECT_TRUE(binaural_pass_through_renderer
-                  ->RenderLabeledFrame(kLabeledFrameWithL2AndR2)
-                  .ok());
-  EXPECT_TRUE(binaural_pass_through_renderer->Finalize().ok());
+  EXPECT_THAT(binaural_pass_through_renderer->RenderLabeledFrame(
+                  kLabeledFrameWithL2AndR2),
+              IsOk());
+  EXPECT_THAT(binaural_pass_through_renderer->Finalize(), IsOk());
   EXPECT_TRUE(binaural_pass_through_renderer->IsFinalized());
   std::vector<int32_t> rendered_samples;
-  EXPECT_TRUE(binaural_pass_through_renderer->Flush(rendered_samples).ok());
+  EXPECT_THAT(binaural_pass_through_renderer->Flush(rendered_samples), IsOk());
   EXPECT_EQ(rendered_samples, std::vector<int32_t>({1, 2, 3, 4, 5, 6, 7, 8}));
 }
 
@@ -183,12 +187,12 @@ TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
           k7_1_4ScalableChannelLayoutConfig, k7_1_4Layout);
   EXPECT_NE(pass_through_renderer, nullptr);
 
-  EXPECT_TRUE(
-      pass_through_renderer->RenderLabeledFrame(k7_1_4LabeledFrame).ok());
-  EXPECT_TRUE(pass_through_renderer->Finalize().ok());
+  EXPECT_THAT(pass_through_renderer->RenderLabeledFrame(k7_1_4LabeledFrame),
+              IsOk());
+  EXPECT_THAT(pass_through_renderer->Finalize(), IsOk());
   EXPECT_TRUE(pass_through_renderer->IsFinalized());
   std::vector<int32_t> rendered_samples;
-  EXPECT_TRUE(pass_through_renderer->Flush(rendered_samples).ok());
+  EXPECT_THAT(pass_through_renderer->Flush(rendered_samples), IsOk());
   EXPECT_EQ(rendered_samples,
             std::vector<int32_t>({0,   1,   2,   3,   4,   5,   6,   7,
                                   8,   9,   10,  11,  100, 101, 102, 103,
@@ -204,12 +208,12 @@ TEST(RenderLabeledFrame, RendersDemixedSamples) {
           kStereoChannelConfigWithTwoLayers, kStereoLayout);
   EXPECT_NE(demixed_stereo_renderer, nullptr);
 
-  EXPECT_TRUE(
-      demixed_stereo_renderer->RenderLabeledFrame(kTwoLayerStereo).ok());
-  EXPECT_TRUE(demixed_stereo_renderer->Finalize().ok());
+  EXPECT_THAT(demixed_stereo_renderer->RenderLabeledFrame(kTwoLayerStereo),
+              IsOk());
+  EXPECT_THAT(demixed_stereo_renderer->Finalize(), IsOk());
   EXPECT_TRUE(demixed_stereo_renderer->IsFinalized());
   std::vector<int32_t> rendered_samples;
-  EXPECT_TRUE(demixed_stereo_renderer->Flush(rendered_samples).ok());
+  EXPECT_THAT(demixed_stereo_renderer->Flush(rendered_samples), IsOk());
   EXPECT_EQ(rendered_samples, std::vector<int32_t>({1, 2}));
 }
 
@@ -224,7 +228,7 @@ TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
           kStereoScalableChannelLayoutConfig, kStereoLayout);
   const auto result = stereo_pass_through_renderer->RenderLabeledFrame(
       kStereoFrameWithTwoRenderedTicks);
-  EXPECT_TRUE(result.ok());
+  EXPECT_THAT(result, IsOk());
   EXPECT_EQ(*result, 2);
 }
 
@@ -236,7 +240,7 @@ TEST(RenderLabeledFrame, EdgeCaseWithAllSamplesTrimmedReturnsZero) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kMonoScalableChannelLayoutConfig, kMonoLayout);
   const auto result = mono_pass_through_renderer->RenderLabeledFrame(kMono);
-  EXPECT_TRUE(result.ok());
+  EXPECT_THAT(result, IsOk());
   EXPECT_EQ(*result, 0);
 }
 
@@ -250,11 +254,11 @@ void RenderMonoSequence(int num_frames, int samples_per_frame,
     std::iota(samples.begin(), samples.end(), sample);
     sample += samples_per_frame;
 
-    EXPECT_TRUE(
-        renderer.RenderLabeledFrame({.label_to_samples = {{"M", samples}}})
-            .ok());
+    EXPECT_THAT(
+        renderer.RenderLabeledFrame({.label_to_samples = {{"M", samples}}}),
+        IsOk());
   }
-  EXPECT_TRUE(renderer.Finalize().ok());
+  EXPECT_THAT(renderer.Finalize(), IsOk());
 }
 
 // Collects all of the rendered samples from `renderer` into `rendered_samples`.
@@ -264,9 +268,9 @@ void CollectRenderedSamples(AudioElementRendererPassThrough& renderer,
   while (!renderer.IsFinalized()) {
     // In practice threads would be better off sleeping between calls. But
     // calling it very often is more likely to detect a problem.
-    EXPECT_TRUE(renderer.Flush(rendered_samples).ok());
+    EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
   }
-  EXPECT_TRUE(renderer.Flush(rendered_samples).ok());
+  EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
 }
 
 TEST(RenderLabeledFrame, IsThreadSafe) {

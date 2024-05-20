@@ -18,6 +18,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -28,6 +30,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(AudioFrameConstructor, SetsImplicitObuType0) {
   AudioFrameObu obu({}, /*audio_substream_id=*/0, {});
@@ -62,7 +66,7 @@ class AudioFrameObuTest : public ObuTestBase, public testing::Test {
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   DecodedUleb128 audio_substream_id_;
@@ -296,7 +300,7 @@ TEST(CreateFromBuffer, ValidAudioFrameWithExplicitId) {
   ObuHeader header = {.obu_type = kObuIaAudioFrame};
   const int64_t obu_payload_size = 6;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetSubstreamId(), 18);
   EXPECT_EQ(obu->audio_frame_, std::vector<uint8_t>({8, 6, 24, 55, 11}));
 }
@@ -308,7 +312,7 @@ TEST(CreateFromBuffer, ValidAudioFrameWithImplicitId) {
   ObuHeader header = {.obu_type = kObuIaAudioFrameId0};
   int64_t obu_payload_size = 5;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   // audio_substream_id is set implicitly to the value of `obu_type`
   AudioFrameObu expected_obu =
       AudioFrameObu(header, /*audio_substream_id=*/0,

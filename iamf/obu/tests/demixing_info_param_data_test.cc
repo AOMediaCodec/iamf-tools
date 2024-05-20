@@ -14,6 +14,8 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -21,14 +23,16 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
 TEST(DMixPModeToDownMixingParams, DMixPMode1) {
   DownMixingParams output_down_mix_args;
-  EXPECT_TRUE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+  EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
                   DemixingInfoParameterData::kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kNormal, output_down_mix_args)
-                  .ok());
+                  DemixingInfoParameterData::kNormal, output_down_mix_args),
+              IsOk());
 
   // When `previous_w_idx = 6` and `w_idx_update_rule = kNormal`, the current
   // `w_idx` will be `previous_w_idx + w_idx_offset = 6 - 1 = 5`, and the
@@ -45,12 +49,12 @@ TEST(DMixPModeToDownMixingParams, DMixPMode1) {
 
 TEST(DMixPModeToDownMixingParams, FirstFrameWAlwaysEqualTo0) {
   DownMixingParams output_down_mix_args;
-  EXPECT_TRUE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+  EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
                   DemixingInfoParameterData::kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kFirstFrame, output_down_mix_args)
-                  .ok());
+                  DemixingInfoParameterData::kFirstFrame, output_down_mix_args),
+              IsOk());
 
   // When `w_idx_update_rule = kFirstFrame`, the `w_idx` is forced to be 0,
   // and the corresponding `w` will be 0 too (instead of 0.25 normally).
@@ -66,12 +70,12 @@ TEST(DMixPModeToDownMixingParams, FirstFrameWAlwaysEqualTo0) {
 
 TEST(DMixPModeToDownMixingParams, DefaultWDirectlyUsed) {
   DownMixingParams output_down_mix_args;
-  EXPECT_TRUE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+  EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
                   DemixingInfoParameterData::kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kDefault, output_down_mix_args)
-                  .ok());
+                  DemixingInfoParameterData::kDefault, output_down_mix_args),
+              IsOk());
 
   // When `w_idx_update_rule = kDefault`, the `w_idx` is directly equal to
   // the `previous_w_idx` passed in, and the corresponding `w` will be
@@ -114,7 +118,7 @@ TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
   data.reserved = 0;
 
   WriteBitBuffer wb(1);
-  EXPECT_TRUE(data.Write(wb).ok());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(
       wb, {DemixingInfoParameterData::kDMixPMode1 << kDMixPModeBitShift});
 }
@@ -125,7 +129,7 @@ TEST(WriteDemixingInfoParameterData, WriteDMixPMode3) {
   data.reserved = 0;
 
   WriteBitBuffer wb(1);
-  EXPECT_TRUE(data.Write(wb).ok());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(
       wb, {DemixingInfoParameterData::kDMixPMode3 << kDMixPModeBitShift});
 }
@@ -138,7 +142,7 @@ TEST(WriteDemixingInfoParameterData, WriteReservedMax) {
   data.reserved = kReservedMax;
 
   WriteBitBuffer wb(1);
-  EXPECT_TRUE(data.Write(wb).ok());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(
       wb, {DemixingInfoParameterData::kDMixPMode1 << kDMixPModeBitShift |
            kReservedMax});

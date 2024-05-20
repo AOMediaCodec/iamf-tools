@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/audio_element.h"
@@ -25,9 +27,11 @@ namespace iamf_tools {
 namespace renderer_utils {
 namespace {
 
+using ::absl_testing::IsOk;
+
 TEST(ArrangeSamplesToRender, SucceedsOnEmptyFrame) {
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender({}, {}, samples).ok());
+  EXPECT_THAT(ArrangeSamplesToRender({}, {}, samples), IsOk());
   EXPECT_TRUE(samples.empty());
 }
 
@@ -37,9 +41,9 @@ TEST(ArrangeSamplesToRender, ArrangesSamplesInTimeChannelAxes) {
   const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(
-      ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement, samples)
-          .ok());
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement, samples),
+      IsOk());
 
   EXPECT_EQ(samples,
             std::vector<std::vector<int32_t>>({{0, 10}, {1, 11}, {2, 12}}));
@@ -51,9 +55,9 @@ TEST(ArrangeSamplesToRender, FindsDemixedLabels) {
   const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender(kDemixedTwoLayerStereoFrame,
-                                     kStereoArrangement, samples)
-                  .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kDemixedTwoLayerStereoFrame,
+                                     kStereoArrangement, samples),
+              IsOk());
 
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{50, 100}}));
 }
@@ -64,9 +68,9 @@ TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
   const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender(kStereoLabeledFrameWithExtraLabel,
-                                     kStereoArrangement, samples)
-                  .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrameWithExtraLabel,
+                                     kStereoArrangement, samples),
+              IsOk());
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{0, 10}}));
 }
 
@@ -78,10 +82,10 @@ TEST(ArrangeSamplesToRender, LeavesEmptyLabelsZero) {
       "A0", "", "A2", "A3"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender(kMixedFirstOrderAmbisonicsFrame,
-                                     kMixedFirstOrderAmbisonicsArrangement,
-                                     samples)
-                  .ok());
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kMixedFirstOrderAmbisonicsFrame,
+                             kMixedFirstOrderAmbisonicsArrangement, samples),
+      IsOk());
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>(
                          {{1, 0, 201, 301}, {2, 0, 202, 302}}));
 }
@@ -94,9 +98,9 @@ TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
   const std::vector<std::string> kMonoArrangement = {"M"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
-                                     kMonoArrangement, samples)
-                  .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
+                                     kMonoArrangement, samples),
+              IsOk());
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{100}}));
 }
 
@@ -105,9 +109,9 @@ TEST(ArrangeSamplesToRender, ClearsInputVector) {
   const std::vector<std::string> kMonoArrangement = {"M"};
 
   std::vector<std::vector<int32_t>> samples = {{999, 999}};
-  EXPECT_TRUE(
-      ArrangeSamplesToRender(kMonoLabeledFrame, kMonoArrangement, samples)
-          .ok());
+  EXPECT_THAT(
+      ArrangeSamplesToRender(kMonoLabeledFrame, kMonoArrangement, samples),
+      IsOk());
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{1}, {2}}));
 }
 
@@ -119,9 +123,9 @@ TEST(ArrangeSamplesToRender, TrimmingAllFramesFromStartIsResultsInEmptyOutput) {
   const std::vector<std::string> kMonoArrangement = {"M"};
 
   std::vector<std::vector<int32_t>> samples;
-  EXPECT_TRUE(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
-                                     kMonoArrangement, samples)
-                  .ok());
+  EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
+                                     kMonoArrangement, samples),
+              IsOk());
   EXPECT_TRUE(samples.empty());
 }
 
@@ -163,9 +167,9 @@ TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
 
 TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
      SucceedsForChannelBasedLayout) {
-  EXPECT_TRUE(LookupInputChannelOrderFromScalableLoudspeakerLayout(
-                  ChannelAudioLayerConfig::kLayoutMono)
-                  .ok());
+  EXPECT_THAT(LookupInputChannelOrderFromScalableLoudspeakerLayout(
+                  ChannelAudioLayerConfig::kLayoutMono),
+              IsOk());
 }
 
 TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
@@ -176,14 +180,14 @@ TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
-  EXPECT_TRUE(
+  EXPECT_THAT(
       LookupOutputKeyFromPlaybackLayout(
           {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
            .specific_layout =
                LoudspeakersSsConventionLayout{
                    .sound_system =
-                       LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}})
-          .ok());
+                       LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}}),
+      IsOk());
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnBinauralBasedLayout) {

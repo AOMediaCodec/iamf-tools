@@ -16,7 +16,9 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -26,6 +28,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 TEST(IaSequenceHeaderConstructor, SetsObuType) {
   IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
@@ -68,7 +72,7 @@ class IASequenceHeaderObuTestBase : public ObuTestBase {
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_TRUE(obu_->ValidateAndWriteObu(wb).ok());
+    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
   IASequenceHeaderInitArgs init_args_;
@@ -233,7 +237,7 @@ TEST(CreateFromBuffer, SimpleAndBaseProfile) {
   ObuHeader header;
   absl::StatusOr<IASequenceHeaderObu> obu =
       IASequenceHeaderObu::CreateFromBuffer(header, buffer);
-  EXPECT_TRUE(obu.ok());
+  EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu.value().GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
   EXPECT_EQ(obu.value().GetAdditionalProfile(),

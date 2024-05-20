@@ -8,6 +8,7 @@ cc_test(
     deps = [
         "//iamf/common:bit_buffer_util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -19,6 +20,7 @@ cc_test(
     deps = [
         "//iamf/common:obu_util",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
@@ -32,6 +34,7 @@ cc_test(
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -63,6 +66,7 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],

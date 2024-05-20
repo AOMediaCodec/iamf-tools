@@ -18,6 +18,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_generator.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -38,6 +40,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 // TODO(b/301490667): Add more tests. Include tests with samples trimmed at
 //                    the start and tests with multiple substreams. Include
@@ -92,13 +96,14 @@ void GenerateAudioFrameWithEightSamples(
   CodecConfigGenerator codec_config_generator(
       user_metadata.codec_config_metadata());
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  ASSERT_TRUE(codec_config_generator.Generate(codec_config_obus).ok());
+  ASSERT_THAT(codec_config_generator.Generate(codec_config_obus), IsOk());
 
   AudioElementGenerator audio_element_generator(
       user_metadata.audio_element_metadata());
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  ASSERT_TRUE(
-      audio_element_generator.Generate(codec_config_obus, audio_elements).ok());
+  ASSERT_THAT(
+      audio_element_generator.Generate(codec_config_obus, audio_elements),
+      IsOk());
 
   // For simplicity this function does not use parameters. Pass in empty
   // containers.
@@ -107,15 +112,15 @@ void GenerateAudioFrameWithEightSamples(
   const std::string output_wav_directory = "/dev/null";
 
   DemixingModule demixing_module;
-  ASSERT_TRUE(demixing_module
-                  .InitializeForDownMixingAndReconstruction(user_metadata,
-                                                            audio_elements)
-                  .ok());
+  ASSERT_THAT(demixing_module.InitializeForDownMixingAndReconstruction(
+                  user_metadata, audio_elements),
+              IsOk());
   GlobalTimingModule global_timing_module;
-  ASSERT_TRUE(
-      global_timing_module.Initialize(audio_elements, param_definitions).ok());
+  ASSERT_THAT(
+      global_timing_module.Initialize(audio_elements, param_definitions),
+      IsOk());
   ParametersManager parameters_manager(audio_elements);
-  ASSERT_TRUE(parameters_manager.Initialize().ok());
+  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
 
   // Generate the audio frames.
   AudioFrameGenerator audio_frame_generator(
@@ -145,10 +150,10 @@ void GenerateAudioFrameWithEightSamples(
   while (audio_frame_generator.TakingSamples()) {
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
-      EXPECT_TRUE(audio_frame_generator
-                      .AddSamples(audio_frame_metadata.audio_element_id(), "L2",
-                                  frame_count == 0 ? frame_0_l2 : empty_frame)
-                      .ok());
+      EXPECT_THAT(audio_frame_generator.AddSamples(
+                      audio_frame_metadata.audio_element_id(), "L2",
+                      frame_count == 0 ? frame_0_l2 : empty_frame),
+                  IsOk());
 
       // `AddSamples()` will trigger encoding once all samples for an
       // audio element have been added and thus may return a non-OK status.
@@ -162,7 +167,7 @@ void GenerateAudioFrameWithEightSamples(
     }
     frame_count++;
   }
-  EXPECT_TRUE(audio_frame_generator.Finalize().ok());
+  EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
 
   bool output_frames_all_ok = true;
   while (audio_frame_generator.GeneratingFrames()) {

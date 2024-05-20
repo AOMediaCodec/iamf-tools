@@ -17,12 +17,16 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class FlacTest : public testing::Test {
  public:
@@ -556,8 +560,8 @@ TEST_F(FlacTest, GetOutputSampleRateMin) {
       FlacMetaBlockStreamInfo::kMinSampleRate;
 
   uint32_t output_sample_rate;
-  EXPECT_TRUE(
-      flac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+              IsOk());
   EXPECT_EQ(output_sample_rate, FlacMetaBlockStreamInfo::kMinSampleRate);
 }
 
@@ -566,8 +570,8 @@ TEST_F(FlacTest, GetOutputSampleRateMax) {
       FlacMetaBlockStreamInfo::kMaxSampleRate;
 
   uint32_t output_sample_rate;
-  EXPECT_TRUE(
-      flac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+              IsOk());
   EXPECT_EQ(output_sample_rate, FlacMetaBlockStreamInfo::kMaxSampleRate);
 }
 
@@ -605,8 +609,9 @@ TEST_F(FlacTest, GetBitsPerSampleMin) {
       FlacMetaBlockStreamInfo::kMinBitsPerSample;
 
   uint8_t output_bit_depth;
-  EXPECT_TRUE(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth).ok());
+  EXPECT_THAT(
+      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
+      IsOk());
   EXPECT_EQ(output_bit_depth, FlacMetaBlockStreamInfo::kMinBitsPerSample + 1);
 }
 
@@ -615,8 +620,9 @@ TEST_F(FlacTest, GetBitsPerSampleMax) {
       FlacMetaBlockStreamInfo::kMaxBitsPerSample;
 
   uint8_t output_bit_depth;
-  EXPECT_TRUE(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth).ok());
+  EXPECT_THAT(
+      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
+      IsOk());
   EXPECT_EQ(output_bit_depth, FlacMetaBlockStreamInfo::kMaxBitsPerSample + 1);
 }
 
@@ -656,9 +662,9 @@ TEST_F(FlacTest, GetTotalNumSamplesInStreamMin) {
       FlacMetaBlockStreamInfo::kMinTotalSamplesInStream;
 
   uint64_t output_total_samples_in_stream;
-  EXPECT_TRUE(flac_decoder_config_
-                  .GetTotalSamplesInStream(output_total_samples_in_stream)
-                  .ok());
+  EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
+                  output_total_samples_in_stream),
+              IsOk());
   EXPECT_EQ(output_total_samples_in_stream,
             FlacMetaBlockStreamInfo::kMinTotalSamplesInStream);
 }
@@ -668,9 +674,9 @@ TEST_F(FlacTest, GetTotalNumSamplesInStreamMax) {
       FlacMetaBlockStreamInfo::kMaxTotalSamplesInStream;
 
   uint64_t output_total_samples_in_stream;
-  EXPECT_TRUE(flac_decoder_config_
-                  .GetTotalSamplesInStream(output_total_samples_in_stream)
-                  .ok());
+  EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
+                  output_total_samples_in_stream),
+              IsOk());
   EXPECT_EQ(output_total_samples_in_stream,
             FlacMetaBlockStreamInfo::kMaxTotalSamplesInStream);
 }

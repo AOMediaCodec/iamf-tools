@@ -18,6 +18,7 @@
 
 // Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -30,6 +31,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 static constexpr DecodedUleb128 kAudioElementId = 300;
 static constexpr DecodedUleb128 kCodecConfigId = 200;
@@ -72,8 +75,8 @@ TEST(WavSampleProviderTest, InitializeSucceeds) {
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
-  EXPECT_TRUE(
-      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+  EXPECT_THAT(wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
+              IsOk());
 }
 
 TEST(WavSampleProviderTest, MismatchingChannelIdsAndLabels) {
@@ -125,12 +128,12 @@ TEST(WavSampleProviderTest, ReadFrameSucceeds) {
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
-  ASSERT_TRUE(
-      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+  ASSERT_THAT(wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
+              IsOk());
 
   LabelSamplesMap labeled_samples;
-  EXPECT_TRUE(
-      wav_sample_provider.ReadFrames(kAudioElementId, labeled_samples).ok());
+  EXPECT_THAT(wav_sample_provider.ReadFrames(kAudioElementId, labeled_samples),
+              IsOk());
 
   // Validate samples read from the WAV file.
   const std::vector<int32_t> expected_samples_l2 = {
@@ -148,8 +151,8 @@ TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
 
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
-  ASSERT_TRUE(
-      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+  ASSERT_THAT(wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
+              IsOk());
 
   // Try to read frames using a wrong Audio Element ID.
   const auto kWrongAudioElementId = kAudioElementId + 99;
@@ -167,8 +170,9 @@ TEST(WavSampleProviderTest, ReadFrameFailsWithoutCallingInitialize) {
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
 
   // Miss the following call to `Initialize()`:
-  // ASSERT_TRUE(
-  //     wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+  // ASSERT_THAT(
+  //     wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
+  //     IsOk());
 
   LabelSamplesMap labeled_samples;
   EXPECT_FALSE(
