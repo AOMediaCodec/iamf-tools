@@ -39,7 +39,6 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
@@ -48,32 +47,6 @@
 namespace iamf_tools {
 
 namespace {
-
-/*!\brief Populates some parameter-related fields from an Audio Element OBU.
- *
- * \param audio_element_param `AudioElementParam` from an Audio Element OBU.
- * \param param_definition Output parameter definition.
- * \param param_definition_type Output parameter definition type.
- * \param parameter_id Output parameter ID.
- *
- * \return `absl::OkStatus()` on success. A specific status on failure.
- */
-absl::Status GetParamFieldsFromAudioElementParam(
-    const AudioElementParam& audio_element_param,
-    const ParamDefinition** param_definition,
-    ParamDefinition::ParameterDefinitionType& param_definition_type,
-    DecodedUleb128& parameter_id) {
-  param_definition_type = audio_element_param.param_definition_type;
-  if (param_definition_type != ParamDefinition::kParameterDefinitionDemixing &&
-      param_definition_type != ParamDefinition::kParameterDefinitionReconGain) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Param definition type: ", param_definition_type,
-                     " not allowed in an audio element"));
-  }
-  *param_definition = audio_element_param.param_definition.get();
-  parameter_id = (*param_definition)->parameter_id_;
-  return absl::OkStatus();
-}
 
 absl::Status GetPerIdMetadata(
     const DecodedUleb128 target_parameter_id,
@@ -91,7 +64,7 @@ absl::Status GetPerIdMetadata(
         "Found a stray parameter block with id: ", target_parameter_id, "."));
   }
 
-  const auto [parameter_id, param_definition] = *iter;
+  const auto& [parameter_id, param_definition] = *iter;
   per_id_metadata.param_definition = *param_definition;
   if (!param_definition->GetType().has_value()) {
     return absl::InvalidArgumentError(
@@ -539,7 +512,6 @@ absl::Status PopulateSubblocks(
     const bool additional_recon_gains_logging,
     const IdLabeledFrameMap* id_to_labeled_frame,
     const IdLabeledFrameMap* id_to_labeled_decoded_frame,
-    const ProfileVersion primary_profile,
     PerIdParameterMetadata& per_id_metadata,
     ParameterBlockWithData& output_parameter_block) {
   auto& parameter_block_obu = *output_parameter_block.obu;
@@ -592,17 +564,11 @@ absl::Status LogParameterBlockObus(
 }  // namespace
 
 absl::Status ParameterBlockGenerator::Initialize(
-    const std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
     const std::list<MixPresentationObu>& mix_presentation_obus,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
-  if (!ia_sequence_header_obu.has_value()) {
-    return absl::InvalidArgumentError("IA Sequence Header OBU is not present");
-  }
-  primary_profile_ = ia_sequence_header_obu->GetPrimaryProfile();
-
   for (const auto [parameter_id, unused_param_definition] : param_definitions) {
     auto [iter, inserted] = parameter_id_to_metadata_.insert(
         {parameter_id, PerIdParameterMetadata()});
@@ -707,8 +673,7 @@ absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
     RETURN_IF_NOT_OK(PopulateSubblocks(
         parameter_block_metadata, override_computed_recon_gains_,
         additional_recon_gains_logging_, id_to_labeled_frame,
-        id_to_labeled_decoded_frame, primary_profile_, per_id_metadata,
-        output_parameter_block));
+        id_to_labeled_decoded_frame, per_id_metadata, output_parameter_block));
 
     // Disable some verbose logging after the first recon gain block is
     // produced.

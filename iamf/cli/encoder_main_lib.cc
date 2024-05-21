@@ -308,8 +308,7 @@ absl::Status GenerateObus(
       user_metadata.test_vector_metadata().override_computed_recon_gains(),
       parameter_id_to_metadata);
   RETURN_IF_NOT_OK(parameter_block_generator.Initialize(
-      ia_sequence_header_obu, audio_elements, mix_presentation_obus,
-      param_definitions));
+      audio_elements, mix_presentation_obus, param_definitions));
 
   // Put generated parameter blocks in a manager that supports easier queries.
   ParametersManager parameters_manager(audio_elements);

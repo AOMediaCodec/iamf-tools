@@ -443,7 +443,6 @@ cc_library(
         "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:ia_sequence_header",
         "//iamf/obu:leb128",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:param_definitions",

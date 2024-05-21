@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <list>
-#include <optional>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -24,7 +23,6 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
@@ -70,7 +68,6 @@ class ParameterBlockGenerator {
    * Must be called before any `Generate*()` function, otherwise they will
    * be no-ops (not failing).
    *
-   * \param ia_sequence_header_obu IA Sequence Header OBU.
    * \param audio_elements Input Audio Element OBUs with data.
    * \param mix_presentation_obus Input Mix Presentation OBUs with all
    *     `ParamDefinitions` filled in.
@@ -78,7 +75,6 @@ class ParameterBlockGenerator {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize(
-      const std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
       const std::list<MixPresentationObu>& mix_presentation_obus,
@@ -158,8 +154,6 @@ class ParameterBlockGenerator {
   // Mapping from parameter IDs to parameter metadata.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
       parameter_id_to_metadata_;
-
-  ProfileVersion primary_profile_;
 
   // User metadata about Parameter Block OBUs categorized based on
   // the parameter definition type.

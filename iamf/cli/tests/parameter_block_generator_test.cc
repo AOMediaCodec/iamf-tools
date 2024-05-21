@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -33,10 +32,8 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "src/google/protobuf/text_format.h"
@@ -115,13 +112,9 @@ void ConfigureDemixingParameterBlocks(
 
 void InitializePrerequisiteObus(
     const std::vector<DecodedUleb128>& substream_ids,
-    std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus) {
-  ia_sequence_header_obu.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                                 ProfileVersion::kIamfSimpleProfile,
-                                 ProfileVersion::kIamfSimpleProfile);
   constexpr uint32_t kSampleRate = 48000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
@@ -165,13 +158,11 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   ConfigureDemixingParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializePrerequisiteObus(/*substream_ids=*/{0}, ia_sequence_header_obu,
-                             codec_config_obus, audio_elements,
-                             mix_presentation_obus);
+  InitializePrerequisiteObus(/*substream_ids=*/{0}, codec_config_obus,
+                             audio_elements, mix_presentation_obus);
 
   // Add a demixing parameter definition inside the Audio Element OBU.
   absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
@@ -182,8 +173,8 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
-                                   mix_presentation_obus, param_definitions),
+  EXPECT_THAT(generator.Initialize(audio_elements, mix_presentation_obus,
+                                   param_definitions),
               IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
@@ -289,13 +280,11 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   ConfigureMixGainParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializePrerequisiteObus(/*substream_ids=*/{0}, ia_sequence_header_obu,
-                             codec_config_obus, audio_elements,
-                             mix_presentation_obus);
+  InitializePrerequisiteObus(/*substream_ids=*/{0}, codec_config_obus,
+                             audio_elements, mix_presentation_obus);
 
   // Add output and element mix gain definitions inside the Mix Presentation
   // OBU.
@@ -316,8 +305,8 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
-                                   mix_presentation_obus, param_definitions),
+  EXPECT_THAT(generator.Initialize(audio_elements, mix_presentation_obus,
+                                   param_definitions),
               IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
@@ -490,12 +479,10 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   ConfigureReconGainParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3},
-                             ia_sequence_header_obu, codec_config_obus,
+  InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3}, codec_config_obus,
                              audio_elements, mix_presentation_obus);
 
   // Extra data needed to compute recon gain.
@@ -509,8 +496,8 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(ia_sequence_header_obu, audio_elements,
-                                   mix_presentation_obus, param_definitions),
+  EXPECT_THAT(generator.Initialize(audio_elements, mix_presentation_obus,
+                                   param_definitions),
               IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
@@ -554,12 +541,10 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
       parameter_id_to_metadata;
   // Initialize pre-requisite OBUs.
   ConfigureDemixingParameterBlocks(user_metadata);
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3},
-                             ia_sequence_header_obu, codec_config_obus,
+  InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3}, codec_config_obus,
                              audio_elements, mix_presentation_obus);
 
   // Construct and initialize.
@@ -567,10 +552,9 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
                                     parameter_id_to_metadata);
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       empty_param_definitions;
-  EXPECT_THAT(
-      generator.Initialize(ia_sequence_header_obu, audio_elements,
-                           mix_presentation_obus, empty_param_definitions),
-      IsOk());
+  EXPECT_THAT(generator.Initialize(audio_elements, mix_presentation_obus,
+                                   empty_param_definitions),
+              IsOk());
 
   // Try to add metadata, but since the param definitions are empty, these
   // will fail because the generator cannot find the corresponding param
