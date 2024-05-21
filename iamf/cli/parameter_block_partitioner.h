@@ -71,9 +71,8 @@ class ParameterBlockPartitioner {
    *
    * \param partition_duration Duration of each partitioned parameter block.
    * \param full_parameter_block Input full parameter block.
-   * \param per_id_metadata Per-ID parameter metadata.
-   * \param parameter_blocks Output list to append partitioned parameter
-   *     blocks to. Any parameter blocks added must be destroyed later.
+   * \param partitioned_parameter_blocks Output list to append partitioned
+   *     parameter blocks to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PartitionFrameAligned(
@@ -81,7 +80,7 @@ class ParameterBlockPartitioner {
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
           full_parameter_block,
       std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-          partitioned_parameter_block_metadata) const;
+          partitioned_parameter_blocks) const;
 };
 
 }  // namespace iamf_tools
