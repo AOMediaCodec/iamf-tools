@@ -32,11 +32,11 @@ namespace {
 
 using ::absl_testing::IsOk;
 
-void PopulateParameterDefinition(ParamDefinition* param_definition) {
-  param_definition->parameter_id_ = 0;
-  param_definition->parameter_rate_ = 1;
-  param_definition->param_definition_mode_ = 1;
-  param_definition->reserved_ = 0;
+void PopulateParameterDefinition(ParamDefinition& param_definition) {
+  param_definition.parameter_id_ = 0;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 1;
+  param_definition.reserved_ = 0;
 }
 
 class ParamDefinitionTestBase : public testing::Test {
@@ -83,7 +83,7 @@ class MixGainParamDefinitionTest : public ParamDefinitionTestBase {
   MixGainParamDefinitionTest() {
     auto mix_gain = std::make_unique<MixGainParamDefinition>();
     mix_gain_ = mix_gain.get();
-    PopulateParameterDefinition(mix_gain.get());
+    PopulateParameterDefinition(*mix_gain_);
     mix_gain->default_mix_gain_ = 0;
     param_definition_ = std::move(mix_gain);
   }
@@ -252,7 +252,7 @@ class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
   DemixingParamDefinitionTest() {
     auto demixing = std::make_unique<DemixingParamDefinition>();
     demixing_ = demixing.get();
-    PopulateParameterDefinition(demixing.get());
+    PopulateParameterDefinition(*demixing_);
     demixing->param_definition_mode_ = 0;
     demixing->duration_ = 64;
     demixing->constant_subblock_duration_ = 64;
@@ -406,7 +406,7 @@ class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
  public:
   ReconGainParamDefinitionTest() {
     auto recon_gain = std::make_unique<ReconGainParamDefinition>(0);
-    PopulateParameterDefinition(recon_gain.get());
+    PopulateParameterDefinition(*recon_gain);
     recon_gain->param_definition_mode_ = 0;
     recon_gain->reserved_ = 0;
     recon_gain->duration_ = 64;
@@ -530,7 +530,7 @@ class ExtendedParamDefinitionTest : public ParamDefinitionTestBase {
     auto extended_param_definition =
         std::make_unique<ExtendedParamDefinition>(param_definition_type);
     extended_param_definition_ = extended_param_definition.get();
-    PopulateParameterDefinition(extended_param_definition.get());
+    PopulateParameterDefinition(*extended_param_definition);
     param_definition_ = std::move(extended_param_definition);
     ParamDefinitionTestBase::Init();
   }

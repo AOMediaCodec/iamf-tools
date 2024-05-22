@@ -70,7 +70,7 @@ typedef absl::btree_map<int32_t, LabeledFrame> TimeLabeledFrameMap;
 typedef absl::flat_hash_map<DecodedUleb128, TimeLabeledFrameMap>
     IdTimeLabeledFrameMap;
 
-typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap*);
+typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap&);
 
 /*!\brief Manages data and processing to down-mix and demix audio elements.
  *

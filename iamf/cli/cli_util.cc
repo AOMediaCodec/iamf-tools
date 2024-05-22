@@ -47,16 +47,16 @@ namespace iamf_tools {
 
 absl::Status CopyParamDefinition(
     const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
-    ParamDefinition* param_definition) {
-  param_definition->parameter_id_ = input_param_definition.parameter_id();
-  param_definition->parameter_rate_ = input_param_definition.parameter_rate();
+    ParamDefinition& param_definition) {
+  param_definition.parameter_id_ = input_param_definition.parameter_id();
+  param_definition.parameter_rate_ = input_param_definition.parameter_rate();
 
-  param_definition->param_definition_mode_ =
+  param_definition.param_definition_mode_ =
       input_param_definition.param_definition_mode();
   RETURN_IF_NOT_OK(Uint32ToUint8(input_param_definition.reserved(),
-                                 param_definition->reserved_));
-  param_definition->duration_ = input_param_definition.duration();
-  param_definition->constant_subblock_duration_ =
+                                 param_definition.reserved_));
+  param_definition.duration_ = input_param_definition.duration();
+  param_definition.constant_subblock_duration_ =
       input_param_definition.constant_subblock_duration();
 
   if (input_param_definition.constant_subblock_duration() != 0) {
@@ -72,10 +72,10 @@ absl::Status CopyParamDefinition(
     return absl::InvalidArgumentError("");
   }
 
-  param_definition->InitializeSubblockDurations(
+  param_definition.InitializeSubblockDurations(
       static_cast<DecodedUleb128>(input_param_definition.num_subblocks()));
   for (int i = 0; i < input_param_definition.num_subblocks(); ++i) {
-    RETURN_IF_NOT_OK(param_definition->SetSubblockDuration(
+    RETURN_IF_NOT_OK(param_definition.SetSubblockDuration(
         i, input_param_definition.subblock_durations(i)));
   }
 

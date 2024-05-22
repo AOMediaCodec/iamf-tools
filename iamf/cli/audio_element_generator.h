@@ -49,9 +49,9 @@ class AudioElementGenerator {
    */
   static absl::Status FinalizeScalableChannelLayoutConfig(
       const AudioElementObu& audio_element_obu,
-      SubstreamIdLabelsMap* substream_id_to_labels,
-      LabelGainMap* label_to_output_gain,
-      std::vector<ChannelNumbers>* channel_numbers_for_layers);
+      SubstreamIdLabelsMap& substream_id_to_labels,
+      LabelGainMap& label_to_output_gain,
+      std::vector<ChannelNumbers>& channel_numbers_for_layers);
 
   /*!\brief Populates substream_id_to_labels for the ambisonics config.
    *

@@ -471,7 +471,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
         metadata_args_.recon_gain_is_present_flags;
 
     obu_ =
-        std::make_unique<ParameterBlockObu>(header_, parameter_id_, &metadata_);
+        std::make_unique<ParameterBlockObu>(header_, parameter_id_, metadata_);
     EXPECT_THAT(
         obu_->InitializeSubblocks(duration_args_.duration,
                                   duration_args_.constant_subblock_duration,

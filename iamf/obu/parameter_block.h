@@ -241,7 +241,7 @@ class ParameterBlockObu : public ObuBase {
    * \param metadata Per-ID parameter metadata.
    */
   ParameterBlockObu(const ObuHeader& header, DecodedUleb128 parameter_id,
-                    PerIdParameterMetadata* metadata);
+                    PerIdParameterMetadata& metadata);
 
   /*!\brief Destructor. */
   ~ParameterBlockObu() override = default;
@@ -340,13 +340,6 @@ class ParameterBlockObu : public ObuBase {
   // Length `num_subblocks_`.
   std::vector<ParameterSubblock> subblocks_;
 
-  absl::StatusOr<PerIdParameterMetadata> GetPerIdParameterMetadata() const {
-    if (metadata_ == nullptr) {
-      return absl::NotFoundError("No metadata found.");
-    }
-    return *metadata_;
-  }
-
  private:
   /*!\brief Sets the `duration` of the output OBU or metadata.
    *
@@ -398,7 +391,7 @@ class ParameterBlockObu : public ObuBase {
   DecodedUleb128 num_subblocks_;
 
   // Per-ID parameter metadata.
-  PerIdParameterMetadata* metadata_;
+  PerIdParameterMetadata& metadata_;
 
   // Tracks whether the OBU was initialized correctly.
   absl::Status init_status_ = absl::UnknownError("");

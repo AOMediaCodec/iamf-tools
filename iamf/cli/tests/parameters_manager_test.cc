@@ -45,9 +45,9 @@ constexpr DemixingInfoParameterData::DMixPMode kDMixPMode =
 
 absl::Status AddOneDemixingParameterBlock(
     const ParamDefinition& param_definition, int32_t start_timestamp,
-    PerIdParameterMetadata* per_id_metadata,
+    PerIdParameterMetadata& per_id_metadata,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
-  *per_id_metadata = {
+  per_id_metadata = {
       .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = param_definition,
   };
@@ -83,7 +83,7 @@ class ParametersManagerTest : public testing::Test {
     EXPECT_THAT(
         AddOneDemixingParameterBlock(
             *audio_element_obu.audio_element_params_[0].param_definition,
-            /*start_timestamp=*/0, &per_id_metadata_, parameter_blocks_),
+            /*start_timestamp=*/0, per_id_metadata_, parameter_blocks_),
         IsOk());
   }
 
@@ -210,13 +210,12 @@ TEST_F(ParametersManagerTest, ParameterIdNotFoundReturnsDefault) {
 
 TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceDifferentW) {
   // Add another parameter block, so we can get down-mix parameters twice.
-  ASSERT_THAT(
-      AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
-                                        .obu.audio_element_params_[0]
-                                        .param_definition,
-                                   /*start_timestamp=*/kDuration,
-                                   &per_id_metadata_, parameter_blocks_),
-      IsOk());
+  ASSERT_THAT(AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
+                                                .obu.audio_element_params_[0]
+                                                .param_definition,
+                                           /*start_timestamp=*/kDuration,
+                                           per_id_metadata_, parameter_blocks_),
+              IsOk());
 
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
@@ -259,13 +258,12 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceDifferentW) {
 TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceWithoutUpdateSameW) {
   // Add another parameter block, so it is possible to get down-mix parameters
   // twice.
-  ASSERT_THAT(
-      AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
-                                        .obu.audio_element_params_[0]
-                                        .param_definition,
-                                   /*start_timestamp=*/kDuration,
-                                   &per_id_metadata_, parameter_blocks_),
-      IsOk());
+  ASSERT_THAT(AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
+                                                .obu.audio_element_params_[0]
+                                                .param_definition,
+                                           /*start_timestamp=*/kDuration,
+                                           per_id_metadata_, parameter_blocks_),
+              IsOk());
 
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
@@ -301,13 +299,12 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceWithoutUpdateSameW) {
 TEST_F(ParametersManagerTest,
        TwoAudioElementGettingParameterBlocksWithDifferentTimestampsFails) {
   // Add another parameter block, so we can get down-mix parameters twice.
-  ASSERT_THAT(
-      AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
-                                        .obu.audio_element_params_[0]
-                                        .param_definition,
-                                   /*start_timestamp=*/kDuration,
-                                   &per_id_metadata_, parameter_blocks_),
-      IsOk());
+  ASSERT_THAT(AddOneDemixingParameterBlock(*audio_elements_.at(kAudioElementId)
+                                                .obu.audio_element_params_[0]
+                                                .param_definition,
+                                           /*start_timestamp=*/kDuration,
+                                           per_id_metadata_, parameter_blocks_),
+              IsOk());
 
   // Add a second audio element sharing the same demixing parameter.
   constexpr DecodedUleb128 kAudioElementId2 = kAudioElementId + 1;

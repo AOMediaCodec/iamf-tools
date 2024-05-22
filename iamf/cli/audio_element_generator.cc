@@ -125,7 +125,7 @@ absl::Status GenerateParameterDefinitions(
             std::make_unique<DemixingParamDefinition>();
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.demixing_param().param_definition(),
-            demixing_param_definition.get()));
+            *demixing_param_definition));
         // Copy the `DemixingInfoParameterData` in the IAMF spec.
         RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
             user_data_parameter.demixing_param()
@@ -160,7 +160,7 @@ absl::Status GenerateParameterDefinitions(
                 audio_element_obu.GetAudioElementId());
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.recon_gain_param().param_definition(),
-            recon_gain_param_definition.get()));
+            *recon_gain_param_definition));
         if (recon_gain_param_definition->duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           LOG(ERROR) << "Recon gain parameter duration= "
@@ -184,38 +184,38 @@ absl::Status GenerateParameterDefinitions(
 
 absl::Status LoudspeakerLayoutToChannels(
     const ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
-    ChannelNumbers* channels) {
+    ChannelNumbers& channels) {
   switch (loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::LoudspeakerLayout;
     case kLayoutMono:
-      *channels = {1, 0, 0};
+      channels = {1, 0, 0};
       break;
     case kLayoutStereo:
-      *channels = {2, 0, 0};
+      channels = {2, 0, 0};
       break;
     case kLayout5_1_ch:
-      *channels = {5, 1, 0};
+      channels = {5, 1, 0};
       break;
     case kLayout5_1_2_ch:
-      *channels = {5, 1, 2};
+      channels = {5, 1, 2};
       break;
     case kLayout5_1_4_ch:
-      *channels = {5, 1, 4};
+      channels = {5, 1, 4};
       break;
     case kLayout7_1_ch:
-      *channels = {7, 1, 0};
+      channels = {7, 1, 0};
       break;
     case kLayout7_1_2_ch:
-      *channels = {7, 1, 2};
+      channels = {7, 1, 2};
       break;
     case kLayout7_1_4_ch:
-      *channels = {7, 1, 4};
+      channels = {7, 1, 4};
       break;
     case kLayout3_1_2_ch:
-      *channels = {3, 1, 2};
+      channels = {3, 1, 2};
       break;
     case kLayoutBinaural:
-      *channels = {2, 0, 0};
+      channels = {2, 0, 0};
       break;
     default:
       return absl::InvalidArgumentError(
@@ -392,12 +392,12 @@ void AddSubstreamLabels(
     const std::list<std::string>& coupled_substream_labels,
     const std::list<std::string>& non_coupled_substream_labels,
     const std::vector<DecodedUleb128>& substream_ids,
-    SubstreamIdLabelsMap* substream_id_to_labels, int* substream_index) {
+    SubstreamIdLabelsMap& substream_id_to_labels, int& substream_index) {
   // First add coupled substream labels, two at a time.
   for (auto iter = coupled_substream_labels.begin();
        iter != coupled_substream_labels.end();) {
-    const auto substream_id = substream_ids[(*substream_index)++];
-    auto& labels_for_substream_id = (*substream_id_to_labels)[substream_id];
+    const auto substream_id = substream_ids[substream_index++];
+    auto& labels_for_substream_id = substream_id_to_labels[substream_id];
     labels_for_substream_id.push_back(*iter++);
     std::string concatenated_labels = labels_for_substream_id.back();
     labels_for_substream_id.push_back(*iter++);
@@ -409,10 +409,10 @@ void AddSubstreamLabels(
   // Then add non-coupled substream labels.
   for (auto iter = non_coupled_substream_labels.begin();
        iter != non_coupled_substream_labels.end();) {
-    const auto substream_id = substream_ids[(*substream_index)++];
-    (*substream_id_to_labels)[substream_id].push_back(*iter++);
+    const auto substream_id = substream_ids[substream_index++];
+    substream_id_to_labels[substream_id].push_back(*iter++);
     LOG(INFO) << "  substream_id_to_labels[" << substream_id
-              << "]: " << (*substream_id_to_labels)[substream_id].back();
+              << "]: " << substream_id_to_labels[substream_id].back();
   }
 }
 
@@ -647,9 +647,9 @@ absl::Status FillScalableChannelLayoutConfig(
       ValidateReconGainDefined(codec_config_obu, audio_element.obu));
 
   return AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-      audio_element.obu, &audio_element.substream_id_to_labels,
-      &audio_element.label_to_output_gain,
-      &audio_element.channel_numbers_for_layers);
+      audio_element.obu, audio_element.substream_id_to_labels,
+      audio_element.label_to_output_gain,
+      audio_element.channel_numbers_for_layers);
 }
 
 absl::Status FinalizeAmbisonicsMonoConfig(
@@ -847,16 +847,16 @@ void LogAudioElements(
 // TODO(b/338134145): Add tests for this function.
 absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     const AudioElementObu& audio_element_obu,
-    SubstreamIdLabelsMap* substream_id_to_labels,
-    LabelGainMap* label_to_output_gain,
-    std::vector<ChannelNumbers>* channel_numbers_for_layers) {
+    SubstreamIdLabelsMap& substream_id_to_labels,
+    LabelGainMap& label_to_output_gain,
+    std::vector<ChannelNumbers>& channel_numbers_for_layers) {
   const auto& config =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_);
 
   // Starting from no channel at all.
   ChannelNumbers accumulated_channels = {0, 0, 0};
   int substream_index = 0;
-  channel_numbers_for_layers->reserve(config.num_layers);
+  channel_numbers_for_layers.reserve(config.num_layers);
   for (int i = 0; i < config.num_layers; ++i) {
     const int previous_layer_substream_index = substream_index;
 
@@ -865,7 +865,7 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     const auto& layer_config = config.channel_audio_layer_configs[i];
     ChannelNumbers layer_channels;
     RETURN_IF_NOT_OK(LoudspeakerLayoutToChannels(
-        layer_config.loudspeaker_layout, &layer_channels));
+        layer_config.loudspeaker_layout, layer_channels));
 
     // Channel number in each group can only grow or stay the same.
     if (layer_channels.surround < accumulated_channels.surround ||
@@ -877,7 +877,7 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
       return absl::InvalidArgumentError("");
     }
 
-    channel_numbers_for_layers->push_back(layer_channels);
+    channel_numbers_for_layers.push_back(layer_channels);
     LOG(INFO) << "Layer[" << i << "]:";
     LogChannelNumbers("  layer_channels", layer_channels);
     LogChannelNumbers("  accumulated_channels", accumulated_channels);
@@ -895,7 +895,7 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     }
     AddSubstreamLabels(coupled_substream_labels, non_coupled_substream_labels,
                        audio_element_obu.audio_substream_ids_,
-                       substream_id_to_labels, &substream_index);
+                       substream_id_to_labels, substream_index);
     RETURN_IF_NOT_OK(ValidateSubstreamCounts(
         coupled_substream_labels, non_coupled_substream_labels, layer_config));
 
@@ -908,12 +908,11 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
         const auto substream_id = audio_element_obu.audio_substream_ids_[i];
 
         LOG(INFO) << "Output gain for substream ID: " << substream_id << ":";
-        for (const auto& label : substream_id_to_labels->at(substream_id)) {
+        for (const auto& label : substream_id_to_labels.at(substream_id)) {
           if (OutputGainApplies(layer_config.output_gain_flag, label)) {
-            (*label_to_output_gain)[label] =
-                Q7_8ToFloat(layer_config.output_gain);
+            label_to_output_gain[label] = Q7_8ToFloat(layer_config.output_gain);
             LOG(INFO) << "  " << label << ": Q7.8= " << layer_config.output_gain
-                      << "; dB= " << (*label_to_output_gain)[label];
+                      << "; dB= " << label_to_output_gain[label];
           } else {
             LOG(INFO) << "  " << label << ": (not found)";
           }

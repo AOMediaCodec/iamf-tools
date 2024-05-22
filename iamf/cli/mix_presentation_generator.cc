@@ -126,7 +126,7 @@ absl::Status FillMixConfig(
     const iamf_tools_cli_proto::MixGainParamDefinition& input_mix_gain,
     MixGainParamDefinition& mix_gain) {
   RETURN_IF_NOT_OK(
-      CopyParamDefinition(input_mix_gain.param_definition(), &mix_gain));
+      CopyParamDefinition(input_mix_gain.param_definition(), mix_gain));
   RETURN_IF_NOT_OK(Int32ToInt16(input_mix_gain.default_mix_gain(),
                                 mix_gain.default_mix_gain_));
 

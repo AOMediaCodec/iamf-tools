@@ -214,10 +214,10 @@ absl::Status FindDemixedChannels(
 absl::Status ConvertReconGainsAndFlags(
     const bool additional_logging,
     const absl::flat_hash_map<std::string, double>& label_to_recon_gain,
-    std::vector<uint8_t>* const computed_recon_gains,
-    DecodedUleb128* const computed_recon_gain_flag) {
-  computed_recon_gains->resize(12, 0);
-  *computed_recon_gain_flag = 0;
+    std::vector<uint8_t>& computed_recon_gains,
+    DecodedUleb128& computed_recon_gain_flag) {
+  computed_recon_gains.resize(12, 0);
+  computed_recon_gain_flag = 0;
   for (const auto& [label, recon_gain] : label_to_recon_gain) {
     LOG_IF(INFO, additional_logging)
         << "Recon Gain[" << label << "]= " << recon_gain;
@@ -251,8 +251,8 @@ absl::Status ConvertReconGainsAndFlags(
     } else {
       LOG(ERROR) << "Unrecognized demixed channel label: " << label;
     }
-    *computed_recon_gain_flag |= 1 << bit_position;
-    (*computed_recon_gains)[bit_position] =
+    computed_recon_gain_flag |= 1 << bit_position;
+    computed_recon_gains[bit_position] =
         static_cast<uint8_t>(recon_gain * 255.0);
   }
   return absl::OkStatus();
@@ -294,8 +294,8 @@ absl::Status ComputeReconGains(
   }
 
   RETURN_IF_NOT_OK(ConvertReconGainsAndFlags(
-      /*additional_logging=*/true, label_to_recon_gain, &computed_recon_gains,
-      &computed_recon_gain_flag));
+      /*additional_logging=*/true, label_to_recon_gain, computed_recon_gains,
+      computed_recon_gain_flag));
 
   return absl::OkStatus();
 }
@@ -311,7 +311,7 @@ absl::Status GenerateReconGainSubblock(
     const iamf_tools_cli_proto::ReconGainInfoParameterData&
         metadata_recon_gain_info_parameter_data,
     const DecodedUleb128 audio_element_id,
-    ReconGainInfoParameterData* obu_recon_gain_info_param_data) {
+    ReconGainInfoParameterData& obu_recon_gain_info_param_data) {
   const auto& user_recon_gains_layers =
       metadata_recon_gain_info_parameter_data.recon_gains_for_layer();
   if (num_layers > 1 &&
@@ -321,7 +321,7 @@ absl::Status GenerateReconGainSubblock(
                      "audio element, but the user only specifies ",
                      user_recon_gains_layers.size(), " layers."));
   }
-  obu_recon_gain_info_param_data->recon_gain_elements.resize(num_layers);
+  obu_recon_gain_info_param_data.recon_gain_elements.resize(num_layers);
 
   ChannelNumbers accumulated_channels = {0, 0, 0};
   for (int layer_index = 0; layer_index < num_layers; layer_index++) {
@@ -339,7 +339,7 @@ absl::Status GenerateReconGainSubblock(
     // match the computed recon gains or are used as an override. Write to
     // output.
     auto& output_recon_gain_element =
-        obu_recon_gain_info_param_data->recon_gain_elements[layer_index];
+        obu_recon_gain_info_param_data.recon_gain_elements[layer_index];
     for (const auto& [bit_position, user_recon_gain] :
          user_recon_gains_layers[layer_index].recon_gain()) {
       output_recon_gain_element.recon_gain[bit_position] =
@@ -452,7 +452,7 @@ absl::Status GenerateParameterBlockSubblock(
           per_id_metadata.recon_gain_is_present_flags,
           per_id_metadata.channel_numbers_for_layers,
           metadata_subblock.recon_gain_info_parameter_data(),
-          per_id_metadata.audio_element_id, &param_data));
+          per_id_metadata.audio_element_id, param_data));
       obu_subblock.param_data = param_data;
       break;
     }
@@ -490,7 +490,7 @@ absl::Status PopulateCommonFields(
   const DecodedUleb128 parameter_id = parameter_block_metadata.parameter_id();
   parameter_block_with_data.obu = std::make_unique<ParameterBlockObu>(
       GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-      parameter_id, &per_id_metadata);
+      parameter_id, per_id_metadata);
 
   // Several fields are dependent on `param_definition_mode`.
   if (per_id_metadata.param_definition.param_definition_mode_ == 1) {
