@@ -15,7 +15,8 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/tests/encoder_test_base.h"
 #include "iamf/obu/codec_config.h"
@@ -24,6 +25,8 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
 
 class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
  public:
@@ -39,7 +42,7 @@ class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
                               .audio_roll_distance = 0,
                               .decoder_config = lpcm_decoder_config_};
     CodecConfigObu codec_config(ObuHeader(), 0, temp);
-    EXPECT_EQ(codec_config.Initialize().code(), expected_init_status_code_);
+    EXPECT_THAT(codec_config.Initialize(), IsOk());
 
     encoder_ = std::make_unique<LpcmEncoder>(codec_config, num_channels_);
   }
@@ -51,7 +54,7 @@ class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
 };  // namespace iamf_tools
 
 TEST_F(LpcmEncoderTest, LittleEndian32bit) {
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x01234567}});
   expected_audio_frames_.push_back({0x67, 0x45, 0x23, 0x01});
@@ -61,7 +64,7 @@ TEST_F(LpcmEncoderTest, LittleEndian32bit) {
 TEST_F(LpcmEncoderTest, BigEndian32bit) {
   lpcm_decoder_config_.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::kLpcmBigEndian;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x01234567}});
   expected_audio_frames_.push_back({0x01, 0x23, 0x45, 0x67});
@@ -69,7 +72,7 @@ TEST_F(LpcmEncoderTest, BigEndian32bit) {
 }
 
 TEST_F(LpcmEncoderTest, MultipleFrames) {
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x01234567}});
   expected_audio_frames_.push_back({0x67, 0x45, 0x23, 0x01});
@@ -81,7 +84,7 @@ TEST_F(LpcmEncoderTest, MultipleFrames) {
 TEST_F(LpcmEncoderTest, LittleEndian16bit) {
   lpcm_decoder_config_.sample_size_ = 16;
   input_sample_size_ = 16;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x12340000}});
   expected_audio_frames_.push_back({0x34, 0x12});
@@ -94,7 +97,7 @@ TEST_F(LpcmEncoderTest, BigEndian16bit) {
       LpcmDecoderConfig::kLpcmBigEndian;
 
   input_sample_size_ = 16;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x12340000}});
   expected_audio_frames_.push_back({0x12, 0x34});
@@ -104,7 +107,7 @@ TEST_F(LpcmEncoderTest, BigEndian16bit) {
 TEST_F(LpcmEncoderTest, LittleEndian24bit) {
   lpcm_decoder_config_.sample_size_ = 24;
   input_sample_size_ = 24;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x12345600}});
   expected_audio_frames_.push_back({0x56, 0x34, 0x12});
@@ -116,7 +119,7 @@ TEST_F(LpcmEncoderTest, BigEndian24bit) {
   lpcm_decoder_config_.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::kLpcmBigEndian;
   input_sample_size_ = 24;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x12345600}});
   expected_audio_frames_.push_back({0x12, 0x34, 0x56});
@@ -125,7 +128,7 @@ TEST_F(LpcmEncoderTest, BigEndian24bit) {
 
 TEST_F(LpcmEncoderTest, MultipleSamplesPerFrame) {
   num_samples_per_frame_ = 3;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x11111111}, {0x22222222}, {0x33333333}});
   expected_audio_frames_.push_back(
@@ -133,16 +136,17 @@ TEST_F(LpcmEncoderTest, MultipleSamplesPerFrame) {
   FinalizeAndValidate();
 }
 
-TEST_F(LpcmEncoderTest, InvalidEmptySamples) {
-  Init();
+TEST_F(LpcmEncoderTest, EncodeAudioFrameFailsWhenThereAreNoSamples) {
+  InitExpectOk();
+  const std::vector<std::vector<int32_t>> kInputFrameWithNoSamples = {};
 
-  expected_encode_frame_status_code_ = absl::StatusCode::kInvalidArgument;
-  EncodeAudioFrame({});
+  EncodeAudioFrame(kInputFrameWithNoSamples,
+                   /*expected_encode_frame_is_ok=*/false);
 }
 
 TEST_F(LpcmEncoderTest, SupportsPartialFrames) {
   num_samples_per_frame_ = 3;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x11111111}, {0x22222222}});
   expected_audio_frames_.push_back(
@@ -152,7 +156,7 @@ TEST_F(LpcmEncoderTest, SupportsPartialFrames) {
 
 TEST_F(LpcmEncoderTest, TwoChannels) {
   num_channels_ = 2;
-  Init();
+  InitExpectOk();
 
   EncodeAudioFrame({{0x11111111, 0x22222222}});
   expected_audio_frames_.push_back(
@@ -160,16 +164,19 @@ TEST_F(LpcmEncoderTest, TwoChannels) {
   FinalizeAndValidate();
 }
 
-TEST_F(LpcmEncoderTest, InconsistentNumberOfChannels) {
+TEST_F(LpcmEncoderTest,
+       EncodeAudioFrameFailsWhenNumChannelsIsInconsitentWithInputFrame) {
   num_channels_ = 1;
-  Init();
+  const std::vector<std::vector<int32_t>> kInputFrameWithTwoChannels = {
+      {0x11111111, 0x22222222}};
+  InitExpectOk();
 
-  expected_encode_frame_status_code_ = absl::StatusCode::kInvalidArgument;
-  EncodeAudioFrame({{0x11111111, 0x22222222}});
+  EncodeAudioFrame(kInputFrameWithTwoChannels,
+                   /*expected_encode_frame_is_ok=*/false);
 }
 
 TEST_F(LpcmEncoderTest, FramesAreInOrder) {
-  Init();
+  InitExpectOk();
 
   // Encode several frames and ensure the correct number of frames are output in
   // the same order as the input.

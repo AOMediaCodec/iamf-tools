@@ -72,7 +72,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
 };  // namespace iamf_tools
 
 TEST_F(AacEncoderTest, FramesAreInOrder) {
-  Init();
+  InitExpectOk();
 
   // Encode several frames and ensure the correct number of frames are output in
   // the same order as the input.
@@ -86,29 +86,31 @@ TEST_F(AacEncoderTest, FramesAreInOrder) {
 
 TEST_F(AacEncoderTest, InitSucceedsWithDefaultAacEncoderMetadata) {
   aac_encoder_metadata_ = {};
-  Init();
+  InitExpectOk();
 }
 
 TEST_F(AacEncoderTest, InitSucceedsWithAfterburnerEnabled) {
   aac_encoder_metadata_.set_enable_afterburner(true);
-  Init();
+  InitExpectOk();
 }
 
 TEST_F(AacEncoderTest, InitSucceedsWithAfterburnerDisabled) {
   aac_encoder_metadata_.set_enable_afterburner(false);
-  Init();
+  InitExpectOk();
 }
 
 TEST_F(AacEncoderTest, InitFailsWithInvalidBitrateMode) {
   aac_encoder_metadata_.set_bitrate_mode(-1);
-  expected_init_status_code_ = absl::StatusCode::kFailedPrecondition;
-  Init();
+  ConstructEncoder();
+
+  EXPECT_FALSE(encoder_->Initialize().ok());
 }
 
 TEST_F(AacEncoderTest, InitFailsWithInvalidSignalingMode) {
   aac_encoder_metadata_.set_signaling_mode(-1);
-  expected_init_status_code_ = absl::StatusCode::kFailedPrecondition;
-  Init();
+  ConstructEncoder();
+
+  EXPECT_FALSE(encoder_->Initialize().ok());
 }
 
 }  // namespace

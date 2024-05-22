@@ -99,7 +99,6 @@ cc_test(
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],

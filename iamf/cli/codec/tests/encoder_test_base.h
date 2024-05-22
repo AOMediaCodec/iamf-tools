@@ -39,12 +39,13 @@ class EncoderTestBase {
  protected:
   virtual void ConstructEncoder() = 0;
 
-  void Init() {
+  void InitExpectOk() {
     ConstructEncoder();
-    EXPECT_EQ(encoder_->Initialize().code(), expected_init_status_code_);
+    EXPECT_THAT(encoder_->Initialize(), IsOk());
   }
 
-  void EncodeAudioFrame(const std::vector<std::vector<int32_t>>& raw_samples) {
+  void EncodeAudioFrame(const std::vector<std::vector<int32_t>>& raw_samples,
+                        bool expected_encode_frame_is_ok = true) {
     // `EncodeAudioFrame` only passes on most of the data in the input
     // `AudioFrameWithData`. Simulate the timestamp to ensure frames are
     // returned in the correct order, but most other fields do not matter.
@@ -68,8 +69,8 @@ class EncoderTestBase {
     EXPECT_EQ(encoder_
                   ->EncodeAudioFrame(input_sample_size_, raw_samples,
                                      std::move(partial_audio_frame_with_data))
-                  .code(),
-              expected_encode_frame_status_code_);
+                  .ok(),
+              expected_encode_frame_is_ok);
   }
 
   // Finalizes the encoder and only validates the number and order of output
@@ -115,8 +116,6 @@ class EncoderTestBase {
   int8_t input_sample_size_ = 16;
   std::unique_ptr<EncoderBase> encoder_;
 
-  absl::StatusCode expected_init_status_code_ = absl::StatusCode::kOk;
-  absl::StatusCode expected_encode_frame_status_code_ = absl::StatusCode::kOk;
   std::list<std::vector<uint8_t>> expected_audio_frames_ = {};
 
  private:
