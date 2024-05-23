@@ -423,7 +423,7 @@ class MixPresentationObu : public ObuBase {
 
   // Used only by the factory create function.
   explicit MixPresentationObu(const ObuHeader& header)
-      : ObuBase(header, kObuIaAudioElement),
+      : ObuBase(header, kObuIaMixPresentation),
         sub_mixes_({}),
         mix_presentation_id_(DecodedUleb128()),
         count_label_(DecodedUleb128()),

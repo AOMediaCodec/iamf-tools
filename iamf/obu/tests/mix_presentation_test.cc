@@ -947,6 +947,7 @@ TEST(CreateFromBufferTest, OneSubMix) {
   ObuHeader header;
   auto obu = MixPresentationObu::CreateFromBuffer(header, buffer);
   EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
   EXPECT_EQ(
       obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
