@@ -12,19 +12,18 @@
 
 #include "iamf/cli/adm_to_user_metadata/adm/wav_file_splicer.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
+#include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -171,15 +170,14 @@ constexpr absl::string_view kExpectedOutputForMonoObject(
 
 void ValidateFileContents(std::filesystem::path file_path,
                           absl::string_view expected_contents) {
-  ASSERT_TRUE(std::filesystem::exists(file_path));
-
   // Read back in the output wav file and compare it to the expected output.
-  std::ifstream ifs(file_path);
-  std::string actual_contents;
-  std::copy(std::istreambuf_iterator<char>(ifs),
-            std::istreambuf_iterator<char>(),
-            std::back_inserter(actual_contents));
-  EXPECT_EQ(actual_contents, expected_contents);
+  std::vector<uint8_t> actual_contents;
+  EXPECT_THAT(ReadFileToBytes(file_path, actual_contents), IsOk());
+  absl::string_view actual_contents_view(
+      reinterpret_cast<const char*>(actual_contents.data()),
+      actual_contents.size());
+
+  EXPECT_EQ(actual_contents_view, expected_contents);
 }
 
 TEST(SpliceWavFilesFromAdm, CreatesWavFiles) {

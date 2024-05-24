@@ -19,6 +19,7 @@ cc_test(
     srcs = ["obu_util_test.cc"],
     deps = [
         "//iamf/common:obu_util",
+        "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",

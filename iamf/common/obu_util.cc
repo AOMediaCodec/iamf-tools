@@ -16,6 +16,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -188,6 +190,23 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
     buffer[write_position++] = byte;
   }
 
+  return absl::OkStatus();
+}
+
+absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
+                             std::vector<uint8_t>& buffer) {
+  if (!std::filesystem::exists(file_path)) {
+    return absl::NotFoundError("File not found.");
+  }
+  std::ifstream ifs(file_path);
+
+  // Increase the size of the buffer. Write to the original end (before
+  // resizing).
+  const auto file_size = std::filesystem::file_size(file_path);
+  const auto original_buffer_size = buffer.size();
+  buffer.resize(original_buffer_size + file_size);
+  ifs.read(reinterpret_cast<char*>(buffer.data() + original_buffer_size),
+           file_size);
   return absl::OkStatus();
 }
 
