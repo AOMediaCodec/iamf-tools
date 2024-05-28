@@ -40,6 +40,13 @@ struct AudioElementParam {
     return *lhs.param_definition == *rhs.param_definition;
   }
 
+  /*!\brief Reads from a buffer and validates the resulting output.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
+
   // Serialized to a ULEB128.
   ParamDefinition::ParameterDefinitionType param_definition_type;
 

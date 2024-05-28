@@ -384,6 +384,36 @@ absl::Status ReadAndValidateAmbisonicsConfig(AmbisonicsConfig& config,
 
 }  // namespace
 
+absl::Status AudioElementParam::ReadAndValidate(ReadBitBuffer& rb) {
+  // Reads the main portion of the `AudioElementParam`.
+  DecodedUleb128 param_definition_type_uleb;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type_uleb));
+  param_definition_type = static_cast<ParamDefinition::ParameterDefinitionType>(
+      param_definition_type_uleb);
+
+  switch (param_definition_type) {
+    case ParamDefinition::kParameterDefinitionMixGain: {
+      return absl::InvalidArgumentError(
+          "Mix Gain parameter type is explicitly forbidden for Audio Element "
+          "OBUs.");
+    }
+    case ParamDefinition::kParameterDefinitionReconGain: {
+      auto recon_gain_param_definition = ParamDefinition();
+      RETURN_IF_NOT_OK(recon_gain_param_definition.ReadAndValidate(rb));
+      param_definition =
+          std::make_unique<ParamDefinition>(recon_gain_param_definition);
+      return absl::OkStatus();
+    }
+    case ParamDefinition::kParameterDefinitionDemixing: {
+      return absl::UnimplementedError(
+          "Demixing parameter type is not yet implemented.");
+    }
+    default:
+      // TODO(b/335708497): Read in extended param definitions.
+      return absl::UnimplementedError("Unknown parameter type.");
+  }
+}
+
 absl::Status ScalableChannelLayoutConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {
   if (num_layers == 0 || num_layers > 6) {
@@ -738,7 +768,7 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   // Loop to read the parameter portion of the obu.
   for (int i = 0; i < num_parameters_; ++i) {
     AudioElementParam audio_element_param;
-    RETURN_IF_NOT_OK(ValidateAndReadAudioElementParam(audio_element_param, rb));
+    RETURN_IF_NOT_OK(audio_element_param.ReadAndValidate(rb));
     audio_element_params_.push_back(std::move(audio_element_param));
   }
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
@@ -772,7 +802,7 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
       return absl::OkStatus();
     }
   }
-
+  RETURN_IF_NOT_OK(ValidateUniqueParamDefinitionType(audio_element_params_));
   return absl::OkStatus();
 }
 

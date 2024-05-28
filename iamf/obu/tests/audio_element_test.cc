@@ -35,7 +35,7 @@
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
+using absl_testing::IsOk;
 
 // TODO(b/272003291): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
@@ -1300,6 +1300,61 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
   EXPECT_FALSE(AmbisonicsConfig::GetNextValidOutputChannelCount(
                    226, unused_next_valid_count)
                    .ok());
+}
+
+TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
+  std::vector<uint8_t> bitstream = {
+      ParamDefinition::kParameterDefinitionReconGain,
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      0x01,
+      // Parameter Definition Mode (upper bit).
+      0x00,
+      // Duration.
+      64,
+      // Constant Subblock Duration.
+      64};
+
+  ReadBitBuffer buffer(1024, &bitstream);
+  AudioElementParam param;
+  EXPECT_THAT(param.ReadAndValidate(buffer), IsOk());
+}
+
+TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
+  std::vector<uint8_t> bitstream = {
+      ParamDefinition::kParameterDefinitionMixGain,
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      0x01,
+      // Parameter Definition Mode (upper bit).
+      0x00,
+      // Duration.
+      64,
+      // Constant Subblock Duration.
+      64};
+  ReadBitBuffer buffer(1024, &bitstream);
+  AudioElementParam param;
+  EXPECT_FALSE(param.ReadAndValidate(buffer).ok());
+}
+
+TEST(ReadAudioElementParamTest, RejectDemixingParamDefinition) {
+  std::vector<uint8_t> bitstream = {
+      ParamDefinition::kParameterDefinitionDemixing,
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      0x01,
+      // Parameter Definition Mode (upper bit).
+      0x00,
+      // Duration.
+      64,
+      // Constant Subblock Duration.
+      64};
+  ReadBitBuffer buffer(1024, &bitstream);
+  AudioElementParam param;
+  EXPECT_FALSE(param.ReadAndValidate(buffer).ok());
 }
 
 // --- Begin CreateFromBuffer tests ---
