@@ -317,6 +317,15 @@ absl::Status ReconGainParamDefinition::ValidateAndWrite(
   return absl::OkStatus();
 }
 
+absl::Status ReconGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
+  // The common part.
+  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
+
+  // No sub-class specific part for Recon Gain Parameter Definition.
+
+  return absl::OkStatus();
+}
+
 void ReconGainParamDefinition::Print() const {
   LOG(INFO) << "ReconGainParamDefinition:";
   ParamDefinition::Print();

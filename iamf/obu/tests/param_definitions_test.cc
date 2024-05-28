@@ -679,5 +679,23 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
   EXPECT_EQ(param_definition.default_mix_gain_, 3);
 }
 
+TEST(ReadReconGainParamDefinitionTest, Default) {
+  std::vector<uint8_t> bitstream = {// Parameter ID.
+                                    0x00,
+                                    // Parameter Rate.
+                                    0x01,
+                                    // Parameter Definition Mode (upper bit).
+                                    0x00,
+                                    // Duration.
+                                    64,
+                                    // Constant Subblock Duration.
+                                    64};
+  ReadBitBuffer buffer(1024, &bitstream);
+  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
+  EXPECT_EQ(param_definition.GetType().value(),
+            ParamDefinition::kParameterDefinitionReconGain);
+}
+
 }  // namespace
 }  // namespace iamf_tools
