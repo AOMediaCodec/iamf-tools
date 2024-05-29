@@ -40,7 +40,6 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 
@@ -566,7 +565,6 @@ absl::Status LogParameterBlockObus(
 absl::Status ParameterBlockGenerator::Initialize(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
   for (const auto [parameter_id, unused_param_definition] : param_definitions) {

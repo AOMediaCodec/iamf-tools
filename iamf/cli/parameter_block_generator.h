@@ -24,7 +24,6 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/obu/leb128.h"
-#include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 
@@ -69,15 +68,12 @@ class ParameterBlockGenerator {
    * be no-ops (not failing).
    *
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param mix_presentation_obus Input Mix Presentation OBUs with all
-   *     `ParamDefinitions` filled in.
    * \param param_definitions Mapping from parameter IDs to param definitions.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
-      const std::list<MixPresentationObu>& mix_presentation_obus,
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
           param_definitions);
 
