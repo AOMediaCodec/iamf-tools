@@ -328,9 +328,7 @@ absl::Status GenerateObus(
 
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements,
-      output_wav_directory,
-      user_metadata.test_vector_metadata().file_name_prefix(), demixing_module,
+      user_metadata.codec_config_metadata(), audio_elements, demixing_module,
       parameters_manager, global_timing_module);
   RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
 

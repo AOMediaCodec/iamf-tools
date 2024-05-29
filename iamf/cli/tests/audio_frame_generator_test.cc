@@ -125,10 +125,8 @@ void GenerateAudioFrameWithEightSamples(
   // Generate the audio frames.
   AudioFrameGenerator audio_frame_generator(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements,
-      output_wav_directory,
-      /*file_name_prefix=*/"test", demixing_module, parameters_manager,
-      global_timing_module);
+      user_metadata.codec_config_metadata(), audio_elements, demixing_module,
+      parameters_manager, global_timing_module);
 
   // Initialize, iteratively add samples, generate frames, and finalize.
   EXPECT_EQ(expected_initialize_is_ok, audio_frame_generator.Initialize().ok());

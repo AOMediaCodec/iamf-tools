@@ -63,8 +63,6 @@ class AudioFrameGenerator {
    * \param audio_frame_metadata Input audio frame metadata.
    * \param codec_config_metadata Input codec config metadata.
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param output_wav_directory Directory to write the output wav files.
-   * \param file_name_prefix Prefix of output wav file names.
    * \param demixing_module Demixng module.
    * \param parameters_manager Manager of parameters.
    * \param global_timing_module Global Timing Module.
@@ -76,14 +74,10 @@ class AudioFrameGenerator {
           iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
-      const std::string& output_wav_directory,
-      const std::string& file_name_prefix,
       const DemixingModule& demixing_module,
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module)
       : audio_elements_(audio_elements),
-        output_wav_directory_(output_wav_directory),
-        file_name_prefix_(file_name_prefix),
         demixing_module_(demixing_module),
         parameters_manager_(parameters_manager),
         global_timing_module_(global_timing_module) {
@@ -177,8 +171,6 @@ class AudioFrameGenerator {
   // to configure encoders.
   absl::flat_hash_map<DecodedUleb128, iamf_tools_cli_proto::CodecConfig>
       codec_config_metadata_;
-  const std::string output_wav_directory_;
-  const std::string file_name_prefix_;
 
   // Mapping from audio substream IDs to encoders.
   absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
