@@ -17,8 +17,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <deque>
-#include <filesystem>
-#include <fstream>
 #include <list>
 #include <memory>
 #include <optional>
@@ -47,7 +45,6 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
@@ -585,149 +582,6 @@ absl::Status ValidateAndApplyUserTrimming(
         trimming_state.user_samples_left_to_trim_at_end,
         audio_frame.obu.header_.num_samples_to_trim_at_end,
         audio_frame.obu.header_.obu_trimming_status_flag));
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status DumpCodecSpecificHeader(const CodecConfigObu& codec_config_obu,
-                                     WriteBitBuffer& wb,
-                                     std::fstream& output_file) {
-  // Flush the write buffer.
-  wb.Reset();
-
-  // Write a codec-specific header to make some files easier to debug.
-  switch (codec_config_obu.GetCodecConfig().codec_id) {
-    using enum CodecConfig::CodecId;
-    case kCodecIdFlac:
-      // Stamp on the "fLaC" header and `decoder_config_` to make a valid FLAC
-      // stream.
-      RETURN_IF_NOT_OK(wb.WriteUint8Vector({'f', 'L', 'a', 'C'}));
-      RETURN_IF_NOT_OK(codec_config_obu.ValidateAndWriteDecoderConfig(wb));
-      break;
-    case kCodecIdAacLc:
-      // Stamp on `decoder_config` to make a valid AAC stream.
-      RETURN_IF_NOT_OK(codec_config_obu.ValidateAndWriteDecoderConfig(wb));
-      break;
-    default:
-      return absl::OkStatus();
-  }
-
-  // Dump the write buffer to a file.
-  RETURN_IF_NOT_OK(wb.FlushAndWriteToFile(output_file));
-
-  return absl::OkStatus();
-}
-
-/*!\brief Opens up files based on the input map.
- *
- * Opens a `std::fstream` for each filename in `key_to_filename`. Stores the
- * resulting file stream in output argument `key_to_file_stream`. The keys
- * can be any unique ID.
- *
- * \param key_to_filename Map of key to the full path of the output file.
- * \param key_to_file_stream Map of key to opened `std::fstream`.
- * \return `absl::OkStatus()` on success. `absl::UnknownError()` if opening any
- *     file stream fails.
- */
-absl::Status InitializeFileStreamMap(
-    const absl::flat_hash_map<uint32_t, std::string>& key_to_filename,
-    absl::flat_hash_map<uint32_t, std::fstream>& key_to_file_stream) {
-  // Open a file based on the filename at each index of `key_to_filename`.
-  for (const auto& [map_index, filename] : key_to_filename) {
-    if (key_to_file_stream.find(map_index) != key_to_file_stream.end()) {
-      continue;
-    }
-    key_to_file_stream[map_index].open(
-        filename, std::fstream::out | std::fstream::binary);
-
-    if (!key_to_file_stream[map_index]) {
-      LOG(ERROR) << "Failed to open file: " << filename;
-      return absl::UnknownError("");
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-// TODO(b/329415225): Move dumping of raw audio frames out of
-//                    `AudioFrameGenerator`.
-// Dumps the Audio Frames without trimming applied to a file per substream. For
-// LPCM streams the output is raw PCM. For Opus the output is the raw audio
-// frames. For FLAC the output is the "fLaC", followed by the `decoder_config`
-// and the raw FLAC frames. For AAC the output is the `decoder_config` followed
-// by the raw AAC frames.
-absl::Status DumpRawAudioFrames(
-    const std::string& output_wav_directory, const std::string& file_prefix,
-    const std::list<AudioFrameWithData>& audio_frames) {
-  // A temporary resizable buffer to use when processing.
-  const size_t kBufferSize = 1024;
-  WriteBitBuffer wb(kBufferSize);
-
-  absl::flat_hash_map<uint32_t, std::string> substream_ids_to_filename;
-  absl::flat_hash_map<uint32_t, const CodecConfigObu*>
-      substream_ids_to_codec_config;
-  for (const auto& audio_frame : audio_frames) {
-    const uint32_t substream_id = audio_frame.obu.GetSubstreamId();
-    if (substream_ids_to_filename.find(substream_id) !=
-        substream_ids_to_filename.end()) {
-      // Skip if this substream ID was already processed.
-      continue;
-    }
-
-    substream_ids_to_codec_config[substream_id] =
-        audio_frame.audio_element_with_data->codec_config;
-
-    // Pick a reasonable extension based on the type of data.
-    std::string file_extension = ".bin";
-    const uint32_t codec_id =
-        audio_frame.audio_element_with_data->codec_config->GetCodecConfig()
-            .codec_id;
-    if (codec_id == CodecConfig::kCodecIdFlac) {
-      file_extension = ".flac";
-    } else if (codec_id == CodecConfig::kCodecIdLpcm) {
-      file_extension = ".pcm";
-    } else if (codec_id == CodecConfig::kCodecIdAacLc) {
-      file_extension = ".aac";
-    } else if (codec_id == CodecConfig::kCodecIdOpus) {
-      // The output is raw Opus frames, but usually Opus would be within ogg.
-      // Although it would be possible to encapsulate this in ogg - for now just
-      // label the data as binary.
-      file_extension = ".bin";
-    }
-
-    const std::filesystem::path file_directory(output_wav_directory);
-    const std::filesystem::path file_name(
-        absl::StrCat(file_prefix, "_raw_audio_frame_",
-                     audio_frame.obu.GetSubstreamId(), file_extension));
-    // Write directly to special files (e.g. `/dev/null`). Otherwise append the
-    // filename.
-    substream_ids_to_filename[substream_id] =
-        std::filesystem::is_character_file(file_directory)
-            ? file_directory
-            : file_directory / file_name;
-  }
-
-  // Map of substream ID to file stream.
-  absl::flat_hash_map<uint32_t, std::fstream> substream_id_to_file_stream;
-  // Open all files.
-  RETURN_IF_NOT_OK(InitializeFileStreamMap(substream_ids_to_filename,
-                                           substream_id_to_file_stream));
-
-  // Apply a codec-specific header to assist in debugging.
-  for (const auto& [substream_id, codec_config_obu] :
-       substream_ids_to_codec_config) {
-    RETURN_IF_NOT_OK(DumpCodecSpecificHeader(
-        *codec_config_obu, wb, substream_id_to_file_stream[substream_id]));
-  }
-
-  // Write out all of the raw audio frames.
-  for (const auto& audio_frame : audio_frames) {
-    const uint32_t substream_id = audio_frame.obu.GetSubstreamId();
-
-    RETURN_IF_NOT_OK(wb.WriteUint8Vector(audio_frame.obu.audio_frame_));
-    RETURN_IF_NOT_OK(
-        wb.FlushAndWriteToFile(substream_id_to_file_stream[substream_id]));
   }
 
   return absl::OkStatus();

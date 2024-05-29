@@ -111,7 +111,6 @@ cc_library(
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common:macros",
-        "//iamf/common:write_bit_buffer",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
