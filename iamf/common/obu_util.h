@@ -135,7 +135,9 @@ absl::Status Int32ToInt16(int32_t input, int16_t& output);
 /*!\brief Creates a 32-bit signed integer from the [1, 4] input `bytes`.
  *
  * \param bytes Bytes to convert.
- * \param output Converted value if successful.
+ * \param output Converted value if successful. The result is left-justified;
+ *     the upper `bytes.size()` bytes are set based on the input and the
+ *     remaining lower bytes are 0.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
  *     the number of bytes is not in the range of [1, 4].
  */
@@ -145,7 +147,9 @@ absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
 /*!\brief Creates a 32-bit signed integer from the [1, 4] input `bytes`.
  *
  * \param bytes Bytes to convert.
- * \param output Converted value if successful.
+ * \param output Converted value if successful. The result is left-justified;
+ *     the upper `bytes.size()` bytes are set based on the input and the
+ *     remaining lower bytes are 0.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
  *     the number of bytes is not in the range of [1, 4].
  */

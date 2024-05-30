@@ -560,37 +560,39 @@ TEST_P(LittleEndianBytesToInt32Format, TestLittleEndianBytesToInt32) {
 INSTANTIATE_TEST_SUITE_P(OneByte, LittleEndianBytesToInt32Format,
                          ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
                              {{0b00000000}, 0},
-                             {{0b01111111}, 127},
-                             {{0b11111111}, -1},
-                             {{0b10000000}, -128},
+                             {{0x7f}, 0x7f000000},
+                             {{0xff}, static_cast<int32_t>(0xff000000)},
+                             {{0x80}, static_cast<int32_t>(0x80000000)},
                          }));
 
 INSTANTIATE_TEST_SUITE_P(TwoBytes, LittleEndianBytesToInt32Format,
                          ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
                              {{0x00, 0x00}, 0},
-                             {{0x01, 0x00}, 1},
-                             {{0xff, 0x7f}, 32767},
-                             {{0xff, 0xff}, -1},
-                             {{0x00, 0x80}, -32768},
+                             {{0x01, 0x02}, 0x02010000},
+                             {{0xff, 0x7f}, static_cast<int32_t>(0x7fff0000)},
+                             {{0xff, 0xff}, static_cast<int32_t>(0xffff0000)},
+                             {{0x00, 0x80}, static_cast<int32_t>(0x80000000)},
                          }));
 
-INSTANTIATE_TEST_SUITE_P(ThreeBytes, LittleEndianBytesToInt32Format,
-                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
-                             {{0x00, 0x00, 0x00}, 0},
-                             {{0x01, 0x00, 0x00}, 1},
-                             {{0xff, 0xff, 0x7f}, 8388607},
-                             {{0xff, 0xff, 0xff}, -1},
-                             {{0x00, 0x00, 0x80}, -8388608},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    ThreeBytes, LittleEndianBytesToInt32Format,
+    ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+        {{0x00, 0x00, 0x00}, 0},
+        {{0x01, 0x02, 0x03}, 0x03020100},
+        {{0xff, 0xff, 0x7f}, static_cast<int32_t>(0x7fffff00)},
+        {{0xff, 0xff, 0xff}, static_cast<int32_t>(0xffffff00)},
+        {{0x00, 0x00, 0x80}, static_cast<int32_t>(0x80000000)},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(FourBytes, LittleEndianBytesToInt32Format,
-                         ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
-                             {{0x00, 0x00, 0x00, 0x00}, 0},
-                             {{0x01, 0x00, 0x00, 0x00}, 1},
-                             {{0xff, 0xff, 0xff, 0x7f}, 2147483647},
-                             {{0xff, 0xff, 0xff, 0xff}, -1},
-                             {{0x00, 0x00, 0x00, 0x80}, -2147483648},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    FourBytes, LittleEndianBytesToInt32Format,
+    ::testing::ValuesIn<LittleEndianBytesToInt32TestCase>({
+        {{0x00, 0x00, 0x00, 0x00}, 0},
+        {{0x01, 0x02, 0x03, 0x04}, 0x04030201},
+        {{0xff, 0xff, 0xff, 0x7f}, static_cast<int32_t>(0x7fffffff)},
+        {{0xff, 0xff, 0xff, 0xff}, static_cast<int32_t>(0xffffffff)},
+        {{0x00, 0x00, 0x00, 0x80}, static_cast<int32_t>(0x80000000)},
+    }));
 
 TEST(BigEndianBytesToInt32Test, InvalidTooManyBytes) {
   int32_t unused_result = 0;
@@ -627,37 +629,39 @@ TEST_P(BigEndianBytesToInt32Format, TestBigEndianBytesToInt32) {
 INSTANTIATE_TEST_SUITE_P(OneByte, BigEndianBytesToInt32Format,
                          ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
                              {{0b00000000}, 0},
-                             {{0b01111111}, 127},
-                             {{0b11111111}, -1},
-                             {{0b10000000}, -128},
+                             {{0x7f}, 0x7f000000},
+                             {{0xff}, static_cast<int32_t>(0xff000000)},
+                             {{0x80}, static_cast<int32_t>(0x80000000)},
                          }));
 
 INSTANTIATE_TEST_SUITE_P(TwoBytes, BigEndianBytesToInt32Format,
                          ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
                              {{0x00, 0x00}, 0},
-                             {{0x00, 0x01}, 1},
-                             {{0x7f, 0xff}, 32767},
-                             {{0xff, 0xff}, -1},
-                             {{0x80, 0x00}, -32768},
+                             {{0x02, 0x01}, 0x02010000},
+                             {{0x7f, 0xff}, 0x7fff0000},
+                             {{0xff, 0xff}, static_cast<int32_t>(0xffff0000)},
+                             {{0x80, 0x00}, static_cast<int32_t>(0x80000000)},
                          }));
 
-INSTANTIATE_TEST_SUITE_P(ThreeBytes, BigEndianBytesToInt32Format,
-                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
-                             {{0x00, 0x00, 0x00}, 0},
-                             {{0x00, 0x00, 0x01}, 1},
-                             {{0x7f, 0xff, 0xff}, 8388607},
-                             {{0xff, 0xff, 0xff}, -1},
-                             {{0x80, 0x00, 0x00}, -8388608},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    ThreeBytes, BigEndianBytesToInt32Format,
+    ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+        {{0x00, 0x00, 0x00}, 0},
+        {{0x03, 0x02, 0x01}, 0x03020100},
+        {{0x7f, 0xff, 0xff}, 0x7fffff00},
+        {{0xff, 0xff, 0xff}, static_cast<int32_t>(0xffffff00)},
+        {{0x80, 0x00, 0x00}, static_cast<int32_t>(0x80000000)},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(FourBytes, BigEndianBytesToInt32Format,
-                         ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
-                             {{0x00, 0x00, 0x00, 0x00}, 0},
-                             {{0x0, 0x00, 0x00, 0x01}, 1},
-                             {{0x7f, 0xff, 0xff, 0xff}, 2147483647},
-                             {{0xff, 0xff, 0xff, 0xff}, -1},
-                             {{0x80, 0x00, 0x00, 0x00}, -2147483648},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    FourBytes, BigEndianBytesToInt32Format,
+    ::testing::ValuesIn<BigEndianBytesToInt32TestCase>({
+        {{0x00, 0x00, 0x00, 0x00}, 0},
+        {{0x04, 0x03, 0x02, 0x01}, 0x04030201},
+        {{0x7f, 0xff, 0xff, 0xff}, 0x7fffffff},
+        {{0xff, 0xff, 0xff, 0xff}, static_cast<int32_t>(0xffffffff)},
+        {{0x80, 0x00, 0x00, 0x00}, static_cast<int32_t>(0x80000000)},
+    }));
 
 struct ClipDoubleToInt32TestCase {
   double test_val;

@@ -103,10 +103,10 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
   EXPECT_EQ(decoded_samples.size(), 2);
   EXPECT_EQ(decoded_samples[0].size(), 2);
   EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 1);
+  EXPECT_EQ(decoded_samples[0][1], 0x00010000);
   EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0], 256);
-  EXPECT_EQ(decoded_samples[1][1], -128);
+  EXPECT_EQ(decoded_samples[1][0], 0x01000000);
+  EXPECT_EQ(decoded_samples[1][1], 0xff800000);
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
@@ -132,13 +132,13 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
   EXPECT_EQ(decoded_samples.size(), 3);
   EXPECT_EQ(decoded_samples[0].size(), 2);
   EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 1);
+  EXPECT_EQ(decoded_samples[0][1], 0x00000100);
   EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0], 3);
-  EXPECT_EQ(decoded_samples[1][1], 4);
+  EXPECT_EQ(decoded_samples[1][0], 0x00000300);
+  EXPECT_EQ(decoded_samples[1][1], 0x00000400);
   EXPECT_EQ(decoded_samples[2].size(), 2);
-  EXPECT_EQ(decoded_samples[2][0], 8388607);
-  EXPECT_EQ(decoded_samples[2][1], -8388608);
+  EXPECT_EQ(decoded_samples[2][0], 0x7fffff00);
+  EXPECT_EQ(decoded_samples[2][1], 0x80000000);
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {

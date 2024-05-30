@@ -134,12 +134,9 @@ absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
   }
   int32_t result = 0;
   for (int i = 0; i < bytes.size(); ++i) {
-    result |= static_cast<int32_t>(bytes[i]) << (i * 8);
+    const auto shift = 8 * ((4 - num_bytes) + i);
+    result |= static_cast<int32_t>(bytes[i]) << shift;
   }
-  // If we had less than 4 input bytes, we need to fill the upper bits with the
-  // sign bit to get the correct result.
-  const int shift = 8 * (4 - num_bytes);
-  result = (result << shift) >> shift;
   output = result;
   return absl::OkStatus();
 }
