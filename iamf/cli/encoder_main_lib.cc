@@ -334,9 +334,7 @@ absl::Status GenerateObus(
 
   // Initialize the audio frame decoder. It is needed to determine the recon
   // gain parameters and measure the loudness of the mixes.
-  AudioFrameDecoder audio_frame_decoder(
-      output_wav_directory,
-      user_metadata.test_vector_metadata().file_name_prefix());
+  AudioFrameDecoder audio_frame_decoder;
   RETURN_IF_NOT_OK(InitAudioFrameDecoderForAllAudioElements(
       audio_elements, audio_frame_decoder));
 

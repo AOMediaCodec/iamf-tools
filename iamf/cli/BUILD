@@ -76,8 +76,6 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
-        ":cli_util",
-        ":wav_writer",
         "//iamf/cli/codec:aac_decoder",
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:lpcm_decoder",

@@ -15,16 +15,13 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
-#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/cli/wav_writer.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
 
@@ -69,15 +66,8 @@ struct DecodedAudioFrame {
  */
 class AudioFrameDecoder {
  public:
-  /*!\brief Constructor.
-   *
-   * \param output_wav_directory Directory to write debugging wav files to.
-   * \param file_prefix File name prefix for debugging files.
-   */
-  AudioFrameDecoder(absl::string_view output_wav_directory,
-                    absl::string_view file_prefix)
-      : output_wav_directory_(output_wav_directory),
-        file_prefix_(file_prefix) {}
+  /*!\brief Constructor. */
+  AudioFrameDecoder() = default;
 
   /*!\brief Initialize codec decoders for each substream.
    *
@@ -101,16 +91,10 @@ class AudioFrameDecoder {
                       std::list<DecodedAudioFrame>& decoded_audio_frames);
 
  private:
-  const std::string output_wav_directory_;
-  const std::string file_prefix_;
-
   // A map of substream IDs to the relevant decoder and codec config. This is
   // necessary to process streams with stateful decoders correctly.
   absl::node_hash_map<uint32_t, std::unique_ptr<DecoderBase>>
       substream_id_to_decoder_;
-
-  // A map of substream IDs to the relevant wav writer.
-  absl::node_hash_map<uint32_t, WavWriter> substream_id_to_wav_writer_;
 };
 
 }  // namespace iamf_tools
