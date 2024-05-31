@@ -254,6 +254,13 @@ class AudioElementObu : public ObuBase {
   static absl::StatusOr<AudioElementObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
 
+  /*!\brief Deep clones an `AudioElementObu`.
+   *
+   * \param other `AudioElementObu` to clone.
+   * \return A deep clone of `other`.
+   */
+  static AudioElementObu Clone(const AudioElementObu& other);
+
   /*!\brief Move constructor.*/
   AudioElementObu(AudioElementObu&& other) = default;
 

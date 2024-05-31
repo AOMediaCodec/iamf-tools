@@ -1584,5 +1584,39 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
             expected_ambisonics_config);
 }
 
+TEST(Clone, IsDeepCopy) {
+  constexpr ObuHeader kExpectedHeader{.obu_type = kObuIaAudioElement,
+                                      .obu_redundant_copy = true};
+  constexpr DecodedUleb128 kExpectedAudioElementId = 1;
+  constexpr AudioElementObu::AudioElementType kExpectedAudioElementType =
+      AudioElementObu::kAudioElementSceneBased;
+  constexpr uint8_t kReserved = 13;
+  constexpr DecodedUleb128 kExpectedCodecConfigId = 99;
+  AudioElementObu original(kExpectedHeader, kExpectedAudioElementId,
+                           kExpectedAudioElementType, kReserved,
+                           kExpectedCodecConfigId);
+  constexpr uint32_t kExpectedNumSubstreams = 1;
+  const std::vector<DecodedUleb128> kExpectedAudioSubstreamIds = {1};
+  original.InitializeAudioSubstreams(kExpectedNumSubstreams);
+  original.audio_substream_ids_ = kExpectedAudioSubstreamIds;
+  constexpr uint32_t kExpectedNumParameters = 1;
+  original.InitializeParams(kExpectedNumParameters);
+  constexpr ParamDefinition::ParameterDefinitionType
+      kExpectedFirstParamDefinitionType =
+          ParamDefinition::kParameterDefinitionReservedStart;
+  original.audio_element_params_[0].param_definition_type =
+      kExpectedFirstParamDefinitionType;
+  original.audio_element_params_[0].param_definition =
+      std::make_unique<ExtendedParamDefinition>(
+          kExpectedFirstParamDefinitionType);
+  ASSERT_THAT(original.InitializeAmbisonicsMono(kExpectedNumSubstreams,
+                                                kExpectedNumSubstreams),
+              IsOk());
+
+  const auto clone = AudioElementObu::Clone(original);
+
+  EXPECT_EQ(clone, original);
+}
+
 }  // namespace
 }  // namespace iamf_tools

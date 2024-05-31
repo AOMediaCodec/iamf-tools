@@ -577,6 +577,25 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
   return audio_element_obu;
 }
 
+AudioElementObu AudioElementObu::Clone(const AudioElementObu& other) {
+  AudioElementObu new_obu(other.header_, other.audio_element_id_,
+                          other.audio_element_type_, other.reserved_,
+                          other.codec_config_id_);
+  new_obu.InitializeAudioSubstreams(other.num_substreams_);
+  new_obu.audio_substream_ids_ = other.audio_substream_ids_;
+  new_obu.InitializeParams(other.num_parameters_);
+  for (int i = 0; i < other.audio_element_params_.size(); ++i) {
+    new_obu.audio_element_params_[i].param_definition_type =
+        other.audio_element_params_[i].param_definition_type;
+    new_obu.audio_element_params_[i].param_definition =
+        std::make_unique<ParamDefinition>(
+            *other.audio_element_params_[i].param_definition);
+  }
+  new_obu.config_ = other.config_;
+
+  return new_obu;
+}
+
 void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
   num_substreams_ = num_substreams;
   audio_substream_ids_.resize(static_cast<size_t>(num_substreams));
