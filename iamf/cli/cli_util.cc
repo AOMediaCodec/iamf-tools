@@ -26,6 +26,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
@@ -321,6 +322,85 @@ absl::Status GetCommonSamplesPerFrame(
              "number of samples per frame yet.";
       return absl::UnknownError("");
     }
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status ValidateAndGetCommonTrim(
+    uint32_t common_samples_per_frame,
+    const std::list<AudioFrameWithData>& audio_frames,
+    uint32_t& common_samples_to_trim_at_end,
+    uint32_t& common_samples_to_trim_at_start) {
+  struct TrimState {
+    bool done_trimming_from_start = false;
+    uint32_t cumulative_num_samples_to_trim_at_start = 0;
+    uint32_t cumulative_num_samples_to_trim_at_end = 0;
+  };
+  absl::flat_hash_map<DecodedUleb128, TrimState> substream_id_to_trim_state;
+  for (const auto& audio_frame : audio_frames) {
+    auto& trim_state =
+        substream_id_to_trim_state[audio_frame.obu.GetSubstreamId()];
+
+    if (trim_state.cumulative_num_samples_to_trim_at_end > 0) {
+      return absl::InvalidArgumentError(
+          "Only one frame may have trim at the end.");
+    }
+    const auto& obu_trim_at_end =
+        audio_frame.obu.header_.num_samples_to_trim_at_end;
+    const auto& obu_trim_at_start =
+        audio_frame.obu.header_.num_samples_to_trim_at_start;
+
+    if (trim_state.done_trimming_from_start && obu_trim_at_start > 0) {
+      return absl::InvalidArgumentError(
+          "Samples trimmed from start must be consecutive.");
+    }
+
+    const uint64_t total_samples_to_trim_in_this_frame =
+        obu_trim_at_end + obu_trim_at_start;
+    if (total_samples_to_trim_in_this_frame > common_samples_per_frame) {
+      return absl::InvalidArgumentError(
+          "More samples trimmed than possible in a frame.");
+    }
+    const auto remaining_samples =
+        common_samples_per_frame - total_samples_to_trim_in_this_frame;
+    if (remaining_samples == 0 && obu_trim_at_end > 0) {
+      return absl::InvalidArgumentError(
+          "It is forbidden to fully trim samples from the end.");
+    }
+
+    if (obu_trim_at_start < common_samples_per_frame) {
+      trim_state.done_trimming_from_start = true;
+    }
+    trim_state.cumulative_num_samples_to_trim_at_start += obu_trim_at_start;
+    trim_state.cumulative_num_samples_to_trim_at_end += obu_trim_at_end;
+  }
+
+  if (substream_id_to_trim_state.empty()) {
+    // Consider this OK. Maybe the end-user wants to prepare descriptor OBUs
+    // separately from audio frames.
+    common_samples_to_trim_at_end = 0;
+    common_samples_to_trim_at_start = 0;
+    return absl::OkStatus();
+  }
+  common_samples_to_trim_at_end =
+      substream_id_to_trim_state.begin()
+          ->second.cumulative_num_samples_to_trim_at_end;
+  common_samples_to_trim_at_start =
+      substream_id_to_trim_state.begin()
+          ->second.cumulative_num_samples_to_trim_at_start;
+  for (const auto& [substream_id, trim_state] : substream_id_to_trim_state) {
+    RETURN_IF_NOT_OK(ValidateEqual(
+        common_samples_to_trim_at_end,
+        trim_state.cumulative_num_samples_to_trim_at_end,
+        absl::StrCat("common_samples_to_trim_at_end vs. substream_id= ",
+                     substream_id, "`cumulative_num_samples_to_trim_at_end`")));
+    RETURN_IF_NOT_OK(ValidateEqual(
+        common_samples_to_trim_at_start,
+        trim_state.cumulative_num_samples_to_trim_at_start,
+        absl::StrCat(
+            "common_samples_to_trim_at_start vs. substream_id= ", substream_id,
+            "`cumulative_num_samples_to_trim_at_start`")));
   }
 
   return absl::OkStatus();

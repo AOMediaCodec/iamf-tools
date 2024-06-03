@@ -141,6 +141,7 @@ cc_library(
     hdrs = ["cli_util.h"],
     deps = [
         ":audio_element_with_data",
+        ":audio_frame_with_data",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",

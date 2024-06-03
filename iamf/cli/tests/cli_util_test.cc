@@ -23,11 +23,13 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
@@ -276,6 +278,177 @@ TEST_F(GetCommonSampleRateAndBitDepthTest, LargeCommonSampleRatesAndBitDepths) {
   expected_bit_depth_ = 32;
 
   Test();
+}
+
+TEST(ValidateAndGetCommonTrim, ValidForEmptyAudioFrames) {
+  constexpr uint32_t kNumSamplesPerFrame = 0;
+  const std::list<AudioFrameWithData> kNoAudioFrames = {};
+
+  uint32_t num_samples_to_trim_at_end = 99;
+  uint32_t num_samples_to_trim_at_start = 99;
+  EXPECT_THAT(ValidateAndGetCommonTrim(kNumSamplesPerFrame, kNoAudioFrames,
+                                       num_samples_to_trim_at_end,
+                                       num_samples_to_trim_at_start),
+              IsOk());
+  EXPECT_EQ(num_samples_to_trim_at_end, 0);
+  EXPECT_EQ(num_samples_to_trim_at_start, 0);
+}
+
+const DecodedUleb128 kFourSamplesPerFrame = 4;
+const DecodedUleb128 kFirstSubstreamId = 1;
+const uint32_t kZeroSamplesToTrimAtEnd = 0;
+const uint32_t kZeroSamplesToTrimAtStart = 0;
+void AddAudioFrameWithIdAndTrim(int32_t num_samples_per_frame,
+                                DecodedUleb128 audio_frame_id,
+                                uint32_t num_samples_to_trim_at_end,
+                                uint32_t num_samples_to_trim_at_start,
+                                std::list<AudioFrameWithData>& audio_frames) {
+  const std::vector<uint8_t> kEmptyAudioFrameData({});
+
+  audio_frames.emplace_back(AudioFrameWithData{
+      .obu = AudioFrameObu(
+          ObuHeader{
+              .num_samples_to_trim_at_end = num_samples_to_trim_at_end,
+              .num_samples_to_trim_at_start = num_samples_to_trim_at_start},
+          audio_frame_id, kEmptyAudioFrameData),
+      .start_timestamp = 0,
+      .end_timestamp = num_samples_per_frame,
+      .audio_element_with_data = nullptr});
+}
+
+TEST(ValidateAndGetCommonTrim,
+     AccumulatesSamplesToTrimAtStartForFullyTrimmedFrames) {
+  std::list<AudioFrameWithData> audio_frames;
+  const uint32_t kFirstFrameSamplesToTrimAtStart = kFourSamplesPerFrame;
+  const uint32_t kSecondFrameSamplesToTrimAtStart = 1;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kZeroSamplesToTrimAtEnd,
+                             kFirstFrameSamplesToTrimAtStart, audio_frames);
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kZeroSamplesToTrimAtEnd,
+                             kSecondFrameSamplesToTrimAtStart, audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_THAT(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                       num_samples_to_trim_at_end,
+                                       num_samples_to_trim_at_start),
+              IsOk());
+  EXPECT_EQ(num_samples_to_trim_at_end, kZeroSamplesToTrimAtEnd);
+  EXPECT_EQ(num_samples_to_trim_at_start,
+            kFirstFrameSamplesToTrimAtStart + kSecondFrameSamplesToTrimAtStart);
+}
+
+TEST(ValidateAndGetCommonTrim, FindsCommonTrimBetweenMultipleSubstreams) {
+  const DecodedUleb128 kCommonTrimFromStart = 2;
+  const DecodedUleb128 kCommonTrimFromEnd = 1;
+  const DecodedUleb128 kSecondSubstreamId = 2;
+  std::list<AudioFrameWithData> audio_frames;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kCommonTrimFromEnd, kCommonTrimFromStart,
+                             audio_frames);
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kSecondSubstreamId,
+                             kCommonTrimFromEnd, kCommonTrimFromStart,
+                             audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_TRUE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                       num_samples_to_trim_at_end,
+                                       num_samples_to_trim_at_start)
+                  .ok());
+  EXPECT_EQ(num_samples_to_trim_at_end, kCommonTrimFromEnd);
+  EXPECT_EQ(num_samples_to_trim_at_start, kCommonTrimFromStart);
+}
+
+TEST(ValidateAndGetCommonTrim, InvalidWhenSubstreamsHaveNoCommonTrim) {
+  const DecodedUleb128 kFirstSubstreamTrim = 0;
+  const DecodedUleb128 kMismatchingSecondSubstreamTrim = 1;
+  const DecodedUleb128 kSecondSubstreamId = 2;
+  std::list<AudioFrameWithData> audio_frames;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kZeroSamplesToTrimAtEnd, kFirstSubstreamTrim,
+                             audio_frames);
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kSecondSubstreamId,
+                             kZeroSamplesToTrimAtEnd,
+                             kMismatchingSecondSubstreamTrim, audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_FALSE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                        num_samples_to_trim_at_end,
+                                        num_samples_to_trim_at_start)
+                   .ok());
+}
+
+TEST(ValidateAndGetCommonTrim,
+     InvalidWithConsecutivePartialFramesTrimmedFromStart) {
+  const DecodedUleb128 kPartiallyTrimmedFrameSamplesToTrimAtStart = 1;
+  std::list<AudioFrameWithData> audio_frames;
+  AddAudioFrameWithIdAndTrim(
+      kFourSamplesPerFrame, kFirstSubstreamId, kZeroSamplesToTrimAtEnd,
+      kPartiallyTrimmedFrameSamplesToTrimAtStart, audio_frames);
+  AddAudioFrameWithIdAndTrim(
+      kFourSamplesPerFrame, kFirstSubstreamId, kZeroSamplesToTrimAtEnd,
+      kPartiallyTrimmedFrameSamplesToTrimAtStart, audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_FALSE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                        num_samples_to_trim_at_end,
+                                        num_samples_to_trim_at_start)
+                   .ok());
+}
+
+TEST(ValidateAndGetCommonTrim,
+     InvalidWhenFramesOccurAfterSamplesTrimmedFromEnd) {
+  const uint32_t kFirstFramePartialTrimFromEnd = 1;
+  std::list<AudioFrameWithData> audio_frames;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kFirstFramePartialTrimFromEnd,
+                             kZeroSamplesToTrimAtStart, audio_frames);
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kZeroSamplesToTrimAtEnd, kZeroSamplesToTrimAtStart,
+                             audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_FALSE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                        num_samples_to_trim_at_end,
+                                        num_samples_to_trim_at_start)
+                   .ok());
+}
+
+TEST(ValidateAndGetCommonTrim,
+     InvalidWhenCumulativeTrimIsGreaterThanNumSamplesPerFrame) {
+  std::list<AudioFrameWithData> audio_frames;
+  const uint32_t kNumSamplesToTrimAtEnd = kFourSamplesPerFrame - 1;
+  const uint32_t kNumSamplesToTrimAtStart = 2;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kNumSamplesToTrimAtEnd, kNumSamplesToTrimAtStart,
+                             audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_FALSE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                        num_samples_to_trim_at_end,
+                                        num_samples_to_trim_at_start)
+                   .ok());
+}
+
+TEST(ValidateAndGetCommonTrim, InvalidWithFullyTrimmedSamplesFromEnd) {
+  const uint32_t kFullyTrimmedSamplesFromEnd = kFourSamplesPerFrame;
+  std::list<AudioFrameWithData> audio_frames;
+  AddAudioFrameWithIdAndTrim(kFourSamplesPerFrame, kFirstSubstreamId,
+                             kFullyTrimmedSamplesFromEnd,
+                             kZeroSamplesToTrimAtStart, audio_frames);
+
+  uint32_t num_samples_to_trim_at_end;
+  uint32_t num_samples_to_trim_at_start;
+  EXPECT_FALSE(ValidateAndGetCommonTrim(kFourSamplesPerFrame, audio_frames,
+                                        num_samples_to_trim_at_end,
+                                        num_samples_to_trim_at_start)
+                   .ok());
 }
 
 TEST(CopyDemixingInfoParameterData, Basic) {

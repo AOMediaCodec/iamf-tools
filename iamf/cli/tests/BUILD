@@ -113,11 +113,13 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:cli_util",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:audio_frame",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:leb128",

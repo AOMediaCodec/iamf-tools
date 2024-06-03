@@ -24,6 +24,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -158,6 +159,23 @@ absl::Status GetCommonSampleRateAndBitDepth(
 absl::Status GetCommonSamplesPerFrame(
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     uint32_t& common_samples_per_frame);
+
+/*!\brief Gets the common trim values from Audio Frame OBUs.
+ *
+ * \param common_samples_per_frame Common samples per frame.
+ * \param audio_frames Audio frames too get the common trim values of.
+ * \param num_samples_to_trim_at_end Common samples to trim at end for all audio
+ *     frames.
+ * \param num_samples_to_trim_at_start Cumulative common samples to trim at
+ *     start for all audio frames.
+ * \return `absl::OkStatus()` on success. A specific error code if IAMF trimming
+ *     rules are violated.
+ */
+absl::Status ValidateAndGetCommonTrim(
+    uint32_t common_samples_per_frame,
+    const std::list<AudioFrameWithData>& audio_frames,
+    uint32_t& common_samples_to_trim_at_end,
+    uint32_t& common_samples_to_trim_at_start);
 
 /*!\brief Logs the channel numbers.
  *
