@@ -1609,6 +1609,15 @@ TEST(Clone, IsDeepCopy) {
   original.audio_element_params_[0].param_definition =
       std::make_unique<ExtendedParamDefinition>(
           kExpectedFirstParamDefinitionType);
+  constexpr DecodedUleb128 kExpectedParameterId = 1;
+  constexpr DecodedUleb128 kExpectedParameterRate = 48000;
+  constexpr uint8_t kExpectedParameterDefinitionMode = 1;
+  original.audio_element_params_[0].param_definition->parameter_id_ =
+      kExpectedParameterId;
+  original.audio_element_params_[0].param_definition->parameter_rate_ =
+      kExpectedParameterRate;
+  original.audio_element_params_[0].param_definition->param_definition_mode_ =
+      kExpectedParameterDefinitionMode;
   ASSERT_THAT(original.InitializeAmbisonicsMono(kExpectedNumSubstreams,
                                                 kExpectedNumSubstreams),
               IsOk());
