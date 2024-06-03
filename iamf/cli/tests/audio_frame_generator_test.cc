@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <list>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -32,8 +33,11 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "src/google/protobuf/text_format.h"
@@ -42,12 +46,163 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 
+constexpr DecodedUleb128 kCodecConfigId = 99;
+constexpr uint32_t kSampleRate = 48000;
 // TODO(b/301490667): Add more tests. Include tests with samples trimmed at
 //                    the start and tests with multiple substreams. Include
 //                    tests to ensure the `*EncoderMetadata` are configured in
 //                    the encoder. Test encoders work as expected with multiple
 //                    Codec Config OBUs.
+
+TEST(GetNumberOfSamplesToDelayAtStart, ReturnsZeroForLpcm) {
+  iamf_tools_cli_proto::CodecConfig kUnusedCodecConfigMetadata = {};
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  EXPECT_THAT(
+      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+          kUnusedCodecConfigMetadata, codec_config_obus.at(kCodecConfigId)),
+      IsOkAndHolds(0));
+}
+
+constexpr uint16_t kApplicationAudioPreSkip = 312;
+constexpr uint16_t kLowdelayPreskip = 120;
+void AddOpusCodecConfigWithIdAndPreSkip(
+    uint32_t codec_config_id, uint16_t pre_skip,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+  // Initialize the Codec Config OBU.
+  ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
+
+  CodecConfigObu obu(
+      ObuHeader(), codec_config_id,
+      {.codec_id = CodecConfig::kCodecIdOpus,
+       .num_samples_per_frame = 960,
+       .audio_roll_distance = -4,
+       .decoder_config = OpusDecoderConfig{.version_ = 1,
+                                           .pre_skip_ = pre_skip,
+                                           .input_sample_rate_ = kSampleRate}});
+  ASSERT_THAT(obu.Initialize(), IsOk());
+  codec_config_obus.emplace(codec_config_id, std::move(obu));
+}
+
+TEST(GetNumberOfSamplesToDelayAtStart,
+     ReturnsErrorWhenCodecConfigObuIsConfiguredIncorrectly) {
+  const uint16_t kInvalidPreSkip = 1000;
+  iamf_tools_cli_proto::CodecConfig codec_config_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        decoder_config_opus {
+          opus_encoder_metadata {
+            target_bitrate_per_channel: 48000
+            application: APPLICATION_AUDIO
+          }
+        }
+      )pb",
+      &codec_config_metadata));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithIdAndPreSkip(kCodecConfigId, kInvalidPreSkip,
+                                     codec_config_obus);
+
+  EXPECT_FALSE(AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+                   codec_config_metadata, codec_config_obus.at(kCodecConfigId))
+                   .ok());
+}
+
+TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForOpus) {
+  iamf_tools_cli_proto::CodecConfig codec_config_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        decoder_config_opus {
+          opus_encoder_metadata {
+            target_bitrate_per_channel: 48000
+            application: APPLICATION_AUDIO
+          }
+        }
+      )pb",
+      &codec_config_metadata));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithIdAndPreSkip(kCodecConfigId, kApplicationAudioPreSkip,
+                                     codec_config_obus);
+
+  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+      codec_config_metadata, codec_config_obus.at(kCodecConfigId));
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_NE(*result, 0);
+}
+
+TEST(GetNumberOfSamplesToDelayAtStart, ResultMayVaryWithEncoderMetadata) {
+  const DecodedUleb128 kApplicationAudioCodecConfigId = 1;
+  const DecodedUleb128 kApplicationRestrictedLowdelayCodecConfigId = 2;
+  iamf_tools_cli_proto::CodecConfig application_audio_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        decoder_config_opus {
+          opus_encoder_metadata {
+            target_bitrate_per_channel: 48000
+            application: APPLICATION_AUDIO
+          }
+        }
+      )pb",
+      &application_audio_metadata));
+  iamf_tools_cli_proto::CodecConfig application_restricted_lowdelay_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        decoder_config_opus {
+          opus_encoder_metadata {
+            target_bitrate_per_channel: 48000
+            application: APPLICATION_RESTRICTED_LOWDELAY
+          }
+        }
+      )pb",
+      &application_restricted_lowdelay_metadata));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithIdAndPreSkip(kApplicationAudioCodecConfigId,
+                                     kApplicationAudioPreSkip,
+                                     codec_config_obus);
+  AddOpusCodecConfigWithIdAndPreSkip(
+      kApplicationRestrictedLowdelayCodecConfigId, kLowdelayPreskip,
+      codec_config_obus);
+
+  const auto application_audio_result =
+      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+          application_audio_metadata,
+          codec_config_obus.at(kApplicationAudioCodecConfigId));
+  const auto low_delay_result =
+      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+          application_restricted_lowdelay_metadata,
+          codec_config_obus.at(kApplicationRestrictedLowdelayCodecConfigId));
+
+  ASSERT_THAT(application_audio_result, IsOk());
+  ASSERT_THAT(low_delay_result, IsOk());
+  EXPECT_NE(*application_audio_result, *low_delay_result);
+}
+
+TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForAac) {
+  iamf_tools_cli_proto::CodecConfig codec_config_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        decoder_config_aac: {
+          aac_encoder_metadata {
+            bitrate_mode: 0  #  Constant bit rate mode.
+            enable_afterburner: true
+            signaling_mode: 2  # Explicit hierarchical signaling.
+          }
+        }
+      )pb",
+      &codec_config_metadata));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddAacCodecConfigWithId(kCodecConfigId, codec_config_obus);
+
+  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+      codec_config_metadata, codec_config_obus.at(kCodecConfigId));
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_NE(*result, 0);
+}
 
 void ValidateAudioFrames(
     const std::list<AudioFrameWithData>& output_audio_frames,

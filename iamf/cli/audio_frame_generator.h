@@ -22,6 +22,7 @@
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -31,6 +32,7 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -58,6 +60,13 @@ namespace iamf_tools {
  */
 class AudioFrameGenerator {
  public:
+  /*!\brief Data structure to track the user requested trimming.
+   */
+  struct TrimmingState {
+    int64_t user_samples_left_to_trim_at_end;
+    int64_t user_samples_left_to_trim_at_start;
+  };
+
   /*!\brief Constructor.
    *
    * \param audio_frame_metadata Input audio frame metadata.
@@ -92,12 +101,16 @@ class AudioFrameGenerator {
     }
   }
 
-  /*!\brief Data structure to track the user requested trimming.
+  /*!\brief Returns the number of samples to delay based on the codec config.
+   *
+   * \param codec_config_metadata Codec config metadata.
+   * \param codec_config Codec config.
+   * \return Number of samples to delay at start on success. A specific status
+   *     on failure.
    */
-  struct TrimmingState {
-    int64_t user_samples_left_to_trim_at_end;
-    int64_t user_samples_left_to_trim_at_start;
-  };
+  static absl::StatusOr<uint32_t> GetNumberOfSamplesToDelayAtStart(
+      const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
+      const CodecConfigObu& codec_config);
 
   /*!\brief Initializes encoders and relevant data structures.
    *

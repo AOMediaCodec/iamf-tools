@@ -115,17 +115,12 @@ absl::Status ValidateEncoderInfo(int num_channels,
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(aacEncInfo(encoder, &enc_info),
                                            "Failed to get encoder info."));
 
-  if (enc_info.inputChannels != num_channels) {
-    LOG(ERROR) << "Incorrect number of input channels: "
-               << enc_info.inputChannels << " vs " << num_channels;
-    return absl::UnknownError("");
-  }
-
-  if (enc_info.frameLength != num_samples_per_frame) {
-    LOG(ERROR) << "Incorrect frame length: " << enc_info.frameLength << " vs "
-               << num_samples_per_frame;
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(
+      ValidateEqual(num_channels, static_cast<int>(enc_info.inputChannels),
+                    "user requested vs libFDK required `num_channels`"));
+  RETURN_IF_NOT_OK(ValidateEqual(
+      num_samples_per_frame, static_cast<uint32_t>(enc_info.frameLength),
+      "user requested vs libFDK required `num_samples_per_frame`"));
 
   return absl::OkStatus();
 }

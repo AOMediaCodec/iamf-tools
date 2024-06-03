@@ -112,13 +112,13 @@ absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart() {
   // `lookahead`.
   required_samples_to_delay_at_start_ = static_cast<uint32_t>(lookahead);
 
-  // Validate this matches the data from the associated Codec Config OBU.
+  // TODO(b/309480119): Find a way to configure the OBU correctly before failing
+  //                    this check.
   if (static_cast<uint32_t>(decoder_config_.pre_skip_) !=
       required_samples_to_delay_at_start_) {
-    LOG(ERROR) << "Opus required `pre_skip` to be: "
-               << required_samples_to_delay_at_start_
-               << " but it was configured to: " << decoder_config_.pre_skip_;
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Opus required `pre_skip` to be: ", required_samples_to_delay_at_start_,
+        " but it was configured to: ", decoder_config_.pre_skip_));
   }
 
   return absl::OkStatus();

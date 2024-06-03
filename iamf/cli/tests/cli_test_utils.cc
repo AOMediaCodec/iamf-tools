@@ -26,6 +26,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
@@ -70,6 +71,21 @@ void AddOpusCodecConfigWithId(
        .audio_roll_distance = -480,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
+  ASSERT_THAT(obu.Initialize(), IsOk());
+  codec_config_obus.emplace(codec_config_id, std::move(obu));
+}
+
+void AddAacCodecConfigWithId(
+    uint32_t codec_config_id,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+  // Initialize the Codec Config OBU.
+  ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
+
+  CodecConfigObu obu(ObuHeader(), codec_config_id,
+                     {.codec_id = CodecConfig::kCodecIdAacLc,
+                      .num_samples_per_frame = 1024,
+                      .audio_roll_distance = -1,
+                      .decoder_config = AacDecoderConfig{}});
   ASSERT_THAT(obu.Initialize(), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }

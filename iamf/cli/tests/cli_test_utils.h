@@ -31,7 +31,7 @@ namespace iamf_tools {
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param sample_rate `sample_rate` of the OBU to create.
- * \param codec_config_obus Container to add OBU to.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
 void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,
@@ -40,9 +40,18 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
 /*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
- * \param codec_config_obus Container to add OBU to.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
 void AddOpusCodecConfigWithId(
+    uint32_t codec_config_id,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
+/*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddAacCodecConfigWithId(
     uint32_t codec_config_id,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
@@ -52,7 +61,7 @@ void AddOpusCodecConfigWithId(
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param substream_ids `substream_ids` of the OBU to create.
  * \param codec_config_obus Codec Config OBUs containing the associated OBU.
- * \param audio_elements Container to add OBU to.
+ * \param audio_elements Map to add the OBU to keyed by `audio_element_id`.
  */
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
@@ -66,7 +75,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param substream_ids `substream_ids` of the OBU to create.
  * \param codec_config_obus Codec Config OBUs containing the associated OBU.
- * \param audio_elements Container to add OBU to.
+ * \param audio_elements Map to add the OBU to keyed by `audio_element_id`.
  */
 void AddScalableAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
@@ -82,7 +91,7 @@ void AddScalableAudioElementWithSubstreamIds(
  *     created OBU.
  * \param common_parameter_rate `parameter_rate` of all parameters within the
  *     created OBU.
- * \param mix_presentations Container to add OBU to.
+ * \param mix_presentations List to add OBU to.
  */
 void AddMixPresentationObuWithAudioElementIds(
     DecodedUleb128 mix_presentation_id, DecodedUleb128 audio_element_id,
@@ -95,7 +104,8 @@ void AddMixPresentationObuWithAudioElementIds(
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to create.
  * \param duration `duration` and `constant_subblock_duration` of the
  *     `ParamDefinition` to create.
- * \param param_definitions Container to add the `ParamDefinition` to.
+ * \param param_definitions Map to add the `ParamDefinition` to keyed by
+ *     `parameter_id`.
  */
 void AddParamDefinitionWithMode0AndOneSubblock(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
@@ -110,8 +120,8 @@ void AddParamDefinitionWithMode0AndOneSubblock(
  * \param duration `duration` and `constant_subblock_duration` of the
  *     `ParamDefinition` to add.
  * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
- * \param param_definitions Output pointer to the container to the mapping
- *     from `parameter_id` to the pointer to the added `ParamDefinition`.
+ * \param param_definitions Output pointer to the map to add the
+ *     `ParamDefinition*` to keyed by `parameter_id`.
  */
 void AddDemixingParamDefinition(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,

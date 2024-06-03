@@ -589,6 +589,17 @@ absl::Status ValidateAndApplyUserTrimming(
 
 }  // namespace
 
+absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+    const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
+    const CodecConfigObu& codec_config) {
+  std::unique_ptr<EncoderBase> encoder;
+  RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata, codec_config,
+                                     /*num_channels=*/1, encoder));
+  if (encoder == nullptr) {
+    return absl::InvalidArgumentError("Failed to initialize encoder");
+  }
+  return encoder->GetNumberOfSamplesToDelayAtStart();
+}
 absl::Status AudioFrameGenerator::Initialize() {
   int64_t common_samples_to_trim_at_start = -1;
   int64_t common_samples_to_trim_at_end = -1;
