@@ -101,6 +101,24 @@ absl::Status CollectAndValidateParamDefinitions(
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions);
 
+/*!\brief Generates a mapping of parameter ids to associated metadata.
+ *
+ * Metadata stored depends on the parameter definition type associated with a
+ * given parameter id.
+ *
+ * \param param_definitions Map from parameter IDs to parameter
+ *    definitions.
+ * \param audio_elements Map of Audio Element OBUs with data.
+ * \return Mapping of parameter ids to associated metadata if successful. A
+ *    specific status on failure.
+ */
+absl::StatusOr<absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>
+GenerateParamIdToMetadataMap(
+    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
+        param_definitions,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements);
+
 /*!\brief Validates that two timestamps are equal.
  *
  * \param expected_timestamp Expected timestamp.

@@ -234,6 +234,47 @@ absl::Status CollectAndValidateParamDefinitions(
   return absl::OkStatus();
 }
 
+absl::StatusOr<absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>
+GenerateParamIdToMetadataMap(
+    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
+        param_definitions,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      parameter_id_to_metadata;
+  for (const auto& [parameter_id, param_definition] : param_definitions) {
+    PerIdParameterMetadata metadata;
+    metadata.param_definition_type = param_definition->GetType().value();
+    metadata.param_definition = *param_definition;
+    if (metadata.param_definition_type ==
+        ParamDefinition::kParameterDefinitionReconGain) {
+      metadata.audio_element_id =
+          static_cast<const ReconGainParamDefinition&>(*param_definition)
+              .audio_element_id_;
+      auto audio_element_iter = audio_elements.find(metadata.audio_element_id);
+      if (audio_element_iter == audio_elements.end()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Audio Element ID: ", metadata.audio_element_id,
+            " associated with the recon gain parameter of ID: ", parameter_id,
+            " not found"));
+      }
+      const auto& channel_config = std::get<ScalableChannelLayoutConfig>(
+          audio_element_iter->second.obu.config_);
+      metadata.num_layers = channel_config.num_layers;
+      metadata.recon_gain_is_present_flags.resize(metadata.num_layers);
+      for (int l = 0; l < metadata.num_layers; l++) {
+        metadata.recon_gain_is_present_flags[l] =
+            (channel_config.channel_audio_layer_configs[l]
+                 .recon_gain_is_present_flag == 1);
+      }
+      metadata.channel_numbers_for_layers =
+          audio_element_iter->second.channel_numbers_for_layers;
+    }
+    parameter_id_to_metadata.insert({parameter_id, metadata});
+  }
+  return parameter_id_to_metadata;
+}
+
 absl::Status CompareTimestamps(int32_t expected_timestamp,
                                int32_t actual_timestamp,
                                absl::string_view prompt) {

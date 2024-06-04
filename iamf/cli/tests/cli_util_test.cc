@@ -1,3 +1,4 @@
+#include "iamf/cli/audio_element_generator.h"
 /*
  * Copyright (c) 2023, Alliance for Open Media. All rights reserved
  *
@@ -9,11 +10,10 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/cli_util.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -24,18 +24,22 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
+#include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -567,6 +571,122 @@ TEST(CollectAndValidateParamDefinitions,
                                                mix_presentation_obus, result)
                 .code(),
             absl::StatusCode::kInvalidArgument);
+}
+
+TEST(GenerateParamIdToMetadataMapTest, MixGainParamDefinition) {
+  // Initialize prerequisites.
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data = {};
+  constexpr DecodedUleb128 kParameterId = 01;
+  auto param_definition = MixGainParamDefinition();
+  param_definition.parameter_id_ = kParameterId;
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  param_definitions[kParameterId] = &param_definition;
+  auto param_id_to_metadata_map =
+      GenerateParamIdToMetadataMap(param_definitions, audio_elements_with_data);
+  EXPECT_THAT(param_id_to_metadata_map, IsOk());
+  EXPECT_EQ(param_id_to_metadata_map->size(), 1);
+  auto iter = param_id_to_metadata_map->find(kParameterId);
+  EXPECT_NE(iter, param_id_to_metadata_map->end());
+  EXPECT_EQ(iter->second.param_definition_type,
+            ParamDefinition::kParameterDefinitionMixGain);
+  EXPECT_EQ(iter->second.param_definition, param_definition);
+}
+
+TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
+  constexpr DecodedUleb128 kParameterId = 01;
+  constexpr DecodedUleb128 kAudioElementId = 11;
+  constexpr DecodedUleb128 kCodecConfigId = 21;
+  constexpr DecodedUleb128 kSubstreamId = 31;
+  constexpr DecodedUleb128 kSecondSubstreamId = 32;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AudioElementObu obu(ObuHeader(), kAudioElementId,
+                      AudioElementObu::kAudioElementChannelBased, 0,
+                      kCodecConfigId);
+  obu.audio_substream_ids_ = {kSubstreamId, kSecondSubstreamId};
+  obu.num_substreams_ = 2;
+  obu.InitializeParams(0);
+  EXPECT_THAT(obu.InitializeScalableChannelLayout(2, 0), IsOk());
+
+  auto& config = std::get<ScalableChannelLayoutConfig>(obu.config_);
+  ChannelAudioLayerConfig layer_config_0 = {
+      .loudspeaker_layout =
+          ChannelAudioLayerConfig::LoudspeakerLayout::kLayoutStereo,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = true,
+      .substream_count = 1,
+      .coupled_substream_count = 1};
+  config.channel_audio_layer_configs.clear();
+  config.channel_audio_layer_configs.push_back(layer_config_0);
+  ChannelAudioLayerConfig layer_config_1 = {
+      .loudspeaker_layout =
+          ChannelAudioLayerConfig::LoudspeakerLayout::kLayoutStereo,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = true,
+      .substream_count = 0,
+      .coupled_substream_count = 0};
+  config.channel_audio_layer_configs.push_back(layer_config_1);
+  SubstreamIdLabelsMap substream_id_labels_map;
+  LabelGainMap label_gain_map;
+  std::vector<ChannelNumbers> channel_numbers;
+  ASSERT_OK(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+      obu, substream_id_labels_map, label_gain_map, channel_numbers));
+
+  auto iter = input_codec_configs.find(kCodecConfigId);
+  audio_elements_with_data.insert(
+      {kAudioElementId, AudioElementWithData(std::move(obu), &iter->second,
+                                             substream_id_labels_map,
+                                             label_gain_map, channel_numbers)});
+
+  auto param_definition = ReconGainParamDefinition(kAudioElementId);
+  param_definition.parameter_id_ = kParameterId;
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  param_definitions[kParameterId] = &param_definition;
+  auto param_id_to_metadata_map =
+      GenerateParamIdToMetadataMap(param_definitions, audio_elements_with_data);
+  EXPECT_THAT(param_id_to_metadata_map, IsOk());
+  EXPECT_EQ(param_id_to_metadata_map->size(), 1);
+  auto param_iter = param_id_to_metadata_map->find(kParameterId);
+  EXPECT_NE(param_iter, param_id_to_metadata_map->end());
+  EXPECT_EQ(param_iter->second.param_definition_type,
+            ParamDefinition::kParameterDefinitionReconGain);
+  EXPECT_EQ(param_iter->second.param_definition, param_definition);
+  EXPECT_EQ(param_iter->second.audio_element_id, kAudioElementId);
+  EXPECT_EQ(param_iter->second.num_layers, 2);
+  ChannelNumbers expected_channel_numbers = {.surround = 2};
+  EXPECT_EQ(param_iter->second.channel_numbers_for_layers[0],
+            expected_channel_numbers);
+  EXPECT_EQ(param_iter->second.channel_numbers_for_layers[1],
+            expected_channel_numbers);
+  EXPECT_EQ(param_iter->second.recon_gain_is_present_flags[0], true);
+  EXPECT_EQ(param_iter->second.recon_gain_is_present_flags[1], true);
+}
+
+TEST(GenerateParamIdToMetadataMapTest,
+     RejectReconGainParamDefinitionNotInAudioElement) {
+  constexpr DecodedUleb128 kParameterId = 01;
+  constexpr DecodedUleb128 kAudioElementId = 11;
+  constexpr DecodedUleb128 kOtherAudioElementId = 12;
+  constexpr DecodedUleb128 kCodecConfigId = 21;
+  constexpr DecodedUleb128 kSubstreamId = 31;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
+                                          {kSubstreamId}, input_codec_configs,
+                                          audio_elements_with_data);
+
+  auto param_definition = ReconGainParamDefinition(kOtherAudioElementId);
+  param_definition.parameter_id_ = kParameterId;
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  param_definitions[kParameterId] = &param_definition;
+  auto param_id_to_metadata_map =
+      GenerateParamIdToMetadataMap(param_definitions, audio_elements_with_data);
+  EXPECT_FALSE(param_id_to_metadata_map.ok());
 }
 
 }  // namespace
