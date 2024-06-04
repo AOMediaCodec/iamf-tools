@@ -61,6 +61,22 @@ absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
 
 absl::Status ValidateAudioRollDistance(uint32_t num_samples_per_frame,
                                        int16_t audio_roll_distance) {
+  const auto expected_roll_distance =
+      OpusDecoderConfig::GetRequiredAudioRollDistance(num_samples_per_frame);
+  if (!expected_roll_distance.ok()) {
+    return expected_roll_distance.status();
+  }
+
+  return ValidateEqual(
+      audio_roll_distance, *expected_roll_distance,
+      absl::StrCat("actual vs expected for `num_samples_per_frame= ",
+                   num_samples_per_frame));
+}
+
+}  // namespace
+
+absl::StatusOr<int16_t> OpusDecoderConfig::GetRequiredAudioRollDistance(
+    uint32_t num_samples_per_frame) {
   // Constant used to calculate legal audio roll distance for Opus.
   static constexpr int kOpusAudioRollDividend = 3840;
 
@@ -79,16 +95,8 @@ absl::Status ValidateAudioRollDistance(uint32_t num_samples_per_frame,
     expected_r += 1;
   }
 
-  if (audio_roll_distance != -expected_r) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance,
-                     ". expected= ", -expected_r));
-  }
-
-  return absl::OkStatus();
+  return -1 * expected_r;
 }
-
-}  // namespace
 
 absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
                                                  int16_t audio_roll_distance,

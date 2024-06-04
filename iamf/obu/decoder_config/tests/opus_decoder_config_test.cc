@@ -26,6 +26,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 
 class OpusTest : public testing::Test {
  public:
@@ -516,59 +517,59 @@ TEST(ValidateAndRead, ReadSampleRate192kHz) {
   EXPECT_EQ(opus_decoder_config.input_sample_rate_, 192000);
 }
 
-struct AudioRollDistanceTestCase {
-  int16_t audio_roll_distance;
+struct GetRequiredAudioRollDistanceTestCase {
   uint32_t num_samples_per_frame;
-  absl::StatusCode expected_status_code;
+  int16_t expected_audio_roll_distance;
 };
 
-class OpusDecoderConfigTestForAudioRollDistance
-    : public testing::TestWithParam<AudioRollDistanceTestCase> {
- protected:
-  // A decoder config with reasonable default values. They are not relevant to
-  // the test.
-  const OpusDecoderConfig opus_decoder_config_ = {
-      .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0};
-};
+class GetRequiredAudioRollDistanceTest
+    : public testing::TestWithParam<GetRequiredAudioRollDistanceTestCase> {};
 
-TEST_P(OpusDecoderConfigTestForAudioRollDistance, TestOpusDecoderConfig) {
-  WriteBitBuffer ignored_wb(128);
-
-  EXPECT_EQ(opus_decoder_config_
-                .ValidateAndWrite(GetParam().num_samples_per_frame,
-                                  GetParam().audio_roll_distance, ignored_wb)
-                .code(),
-            GetParam().expected_status_code);
+TEST_P(GetRequiredAudioRollDistanceTest, ValidAudioRollDistance) {
+  EXPECT_THAT(OpusDecoderConfig::GetRequiredAudioRollDistance(
+                  GetParam().num_samples_per_frame),
+              IsOkAndHolds(GetParam().expected_audio_roll_distance));
 }
 
-INSTANTIATE_TEST_SUITE_P(Legal, OpusDecoderConfigTestForAudioRollDistance,
-                         testing::ValuesIn<AudioRollDistanceTestCase>({
-                             {-3840, 1, absl::StatusCode::kOk},
-                             {-1920, 2, absl::StatusCode::kOk},
-                             {-1280, 3, absl::StatusCode::kOk},
-                             {-549, 7, absl::StatusCode::kOk},
-                             {-16, 240, absl::StatusCode::kOk},
-                             {-5, 959, absl::StatusCode::kOk},
-                             {-4, 960, absl::StatusCode::kOk},
-                             {-3, 1280, absl::StatusCode::kOk},
-                             {-2, 1920, absl::StatusCode::kOk},
-                             {-1, 3840, absl::StatusCode::kOk},
-                             {-1, 0xffffffff, absl::StatusCode::kOk},
-                         }));
-
 INSTANTIATE_TEST_SUITE_P(
-    Illegal, OpusDecoderConfigTestForAudioRollDistance,
-    testing::ValuesIn<AudioRollDistanceTestCase>({
-        {0, 0, absl::StatusCode::kInvalidArgument},
-        {0, 1, absl::StatusCode::kInvalidArgument},
-        {1, 0, absl::StatusCode::kInvalidArgument},
-        {-5, 960, absl::StatusCode::kInvalidArgument},
-        {4, 960, absl::StatusCode::kInvalidArgument},
-        {4, 960, absl::StatusCode::kInvalidArgument},
-        {-3, 960, absl::StatusCode::kInvalidArgument},
-        {-32768, 0xffffffff, absl::StatusCode::kInvalidArgument},
-        {32767, 0xffffffff, absl::StatusCode::kInvalidArgument},
+    Legal, GetRequiredAudioRollDistanceTest,
+    testing::ValuesIn<GetRequiredAudioRollDistanceTestCase>({
+        {1, -3840},
+        {2, -1920},
+        {3, -1280},
+        {7, -549},
+        {240, -16},
+        {959, -5},
+        {960, -4},
+        {1280, -3},
+        {1920, -2},
+        {3840, -1},
+        {0xffffffff, -1},
     }));
+
+TEST(GetRequiredAudioRollDistance, IsInvalidWhenNumSamplesPerFrameIsZero) {
+  constexpr uint32_t kInvalidNumSamplesPerFrame = 0;
+  EXPECT_FALSE(OpusDecoderConfig::GetRequiredAudioRollDistance(
+                   kInvalidNumSamplesPerFrame)
+                   .ok());
+}
+
+TEST(ValidateAndWrite, ValidatesAudioRollDistance) {
+  constexpr OpusDecoderConfig opus_decoder_config_ = {
+      .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0};
+  constexpr uint32_t kNumSamplesPerFrame = 960;
+  constexpr int16_t kAudioRollDistance = -4;
+  constexpr int16_t kInvalidAudioRollDistance = -5;
+  WriteBitBuffer ignored_wb(128);
+
+  EXPECT_THAT(opus_decoder_config_.ValidateAndWrite(
+                  kNumSamplesPerFrame, kAudioRollDistance, ignored_wb),
+              IsOk());
+  EXPECT_FALSE(opus_decoder_config_
+                   .ValidateAndWrite(kNumSamplesPerFrame,
+                                     kInvalidAudioRollDistance, ignored_wb)
+                   .ok());
+}
 
 }  // namespace
 }  // namespace iamf_tools

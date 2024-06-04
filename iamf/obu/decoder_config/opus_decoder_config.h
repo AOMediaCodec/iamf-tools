@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -29,6 +30,16 @@ class OpusDecoderConfig {
 
   friend bool operator==(const OpusDecoderConfig& lhs,
                          const OpusDecoderConfig& rhs) = default;
+
+  /*!\brief Returns the required audio roll distance.
+   *
+   * \param num_samples_per_frame `num_samples_per_frame` in the associated
+   *     Codec Config OBU.
+   * \return Required audio roll distance, or an error if there would be a
+   *     divide by zero.
+   */
+  static absl::StatusOr<int16_t> GetRequiredAudioRollDistance(
+      uint32_t num_samples_per_frame);
 
   /*!\brief Validates and writes the `OpusDecoderConfig` to a buffer.
    *
