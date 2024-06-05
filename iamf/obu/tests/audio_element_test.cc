@@ -1585,8 +1585,8 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
 }
 
 TEST(Clone, IsDeepCopy) {
-  constexpr ObuHeader kExpectedHeader{.obu_type = kObuIaAudioElement,
-                                      .obu_redundant_copy = true};
+  const ObuHeader kExpectedHeader{.obu_type = kObuIaAudioElement,
+                                  .obu_redundant_copy = true};
   constexpr DecodedUleb128 kExpectedAudioElementId = 1;
   constexpr AudioElementObu::AudioElementType kExpectedAudioElementType =
       AudioElementObu::kAudioElementSceneBased;
