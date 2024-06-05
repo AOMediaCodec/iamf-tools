@@ -156,6 +156,16 @@ struct ReconGainElement {
 struct ReconGainInfoParameterData {
   // vector of length `num_layers` in the Audio associated Audio Element OBU.
   std::vector<ReconGainElement> recon_gain_elements;
+
+  /*!\brief Reads and validates the `ReconGainInfoParameterData` from a buffer.
+   *
+   * \param recon_gain_is_present_flags Specifies if recon gain should be
+   *    applied for a given layer.
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()`. A specific error code on failure.
+   */
+  absl::Status ReadAndValidate(
+      const std::vector<bool>& recon_gain_is_present_flags, ReadBitBuffer& rb);
 };
 
 struct ExtensionParameterData {

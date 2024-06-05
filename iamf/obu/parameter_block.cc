@@ -220,6 +220,36 @@ absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   }
 }
 
+absl::Status ReconGainInfoParameterData::ReadAndValidate(
+    const std::vector<bool>& recon_gain_is_present_flags, ReadBitBuffer& rb) {
+  for (int i = 0; i < recon_gain_is_present_flags.size(); i++) {
+    // Each layer depends on the `recon_gain_is_present_flags` within the
+    // associated Audio Element OBU. The size of `recon_gain_is_present_flags`
+    // is equal to the number of layers.
+    if (!recon_gain_is_present_flags[i]) continue;
+
+    ReconGainElement element;
+    RETURN_IF_NOT_OK(rb.ReadULeb128(element.recon_gain_flag));
+
+    const DecodedUleb128 recon_gain_flag = element.recon_gain_flag;
+    DecodedUleb128 mask = 1;
+
+    // Apply bitmask to examine each bit in the flag. Only read elements with
+    // the flag implying they should be read.
+    for (int j = 0; j < element.recon_gain.size(); j++) {
+      if (recon_gain_flag & mask) {
+        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, element.recon_gain[j]));
+      } else {
+        element.recon_gain[j] = 0;
+      }
+      mask <<= 1;
+    }
+    recon_gain_elements.push_back(element);
+  }
+
+  return absl::OkStatus();
+}
+
 absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
     const ObuHeader& header,
     absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
@@ -643,6 +673,12 @@ absl::Status ParameterBlockObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
       MixGainParameterData mix_gain_param_data;
       RETURN_IF_NOT_OK(mix_gain_param_data.ReadAndValidate(rb));
       subblocks_[i].param_data = mix_gain_param_data;
+    } else if (*param_definition_type ==
+               ParamDefinition::kParameterDefinitionReconGain) {
+      ReconGainInfoParameterData recon_gain_info_param_data;
+      RETURN_IF_NOT_OK(recon_gain_info_param_data.ReadAndValidate(
+          metadata_.recon_gain_is_present_flags, rb));
+      subblocks_[i].param_data = recon_gain_info_param_data;
     } else {
       return absl::UnimplementedError("Unsupported parameter definition type.");
     }
