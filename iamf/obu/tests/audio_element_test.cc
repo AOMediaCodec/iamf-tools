@@ -1303,6 +1303,7 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
 }
 
 TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
+  const uint32_t kAudioElementId = 1;
   std::vector<uint8_t> bitstream = {
       ParamDefinition::kParameterDefinitionReconGain,
       // Parameter ID.
@@ -1318,10 +1319,11 @@ TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
 
   ReadBitBuffer buffer(1024, &bitstream);
   AudioElementParam param;
-  EXPECT_THAT(param.ReadAndValidate(buffer), IsOk());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
 }
 
 TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
+  const uint32_t kAudioElementId = 1;
   std::vector<uint8_t> bitstream = {
       ParamDefinition::kParameterDefinitionMixGain,
       // Parameter ID.
@@ -1336,10 +1338,11 @@ TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
       64};
   ReadBitBuffer buffer(1024, &bitstream);
   AudioElementParam param;
-  EXPECT_FALSE(param.ReadAndValidate(buffer).ok());
+  EXPECT_FALSE(param.ReadAndValidate(kAudioElementId, buffer).ok());
 }
 
-TEST(ReadAudioElementParamTest, RejectDemixingParamDefinition) {
+TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
+  const uint32_t kAudioElementId = 1;
   std::vector<uint8_t> bitstream = {
       ParamDefinition::kParameterDefinitionDemixing,
       // Parameter ID.
@@ -1351,10 +1354,20 @@ TEST(ReadAudioElementParamTest, RejectDemixingParamDefinition) {
       // Duration.
       64,
       // Constant Subblock Duration.
-      64};
+      64,
+      // `dmixp_mode`.
+      DemixingInfoParameterData::kDMixPMode2 << 5,
+      // `default_w`.
+      0};
   ReadBitBuffer buffer(1024, &bitstream);
   AudioElementParam param;
-  EXPECT_FALSE(param.ReadAndValidate(buffer).ok());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
+  EXPECT_NE(param.param_definition.get(), nullptr);
+  DemixingParamDefinition* param_definition =
+      dynamic_cast<DemixingParamDefinition*>(param.param_definition.get());
+  EXPECT_NE(param_definition, nullptr);
+  EXPECT_EQ(param_definition->default_demixing_info_parameter_data_.dmixp_mode,
+            DemixingInfoParameterData::kDMixPMode2);
 }
 
 // --- Begin CreateFromBuffer tests ---

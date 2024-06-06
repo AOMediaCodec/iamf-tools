@@ -181,14 +181,6 @@ absl::Status ValidateAndWriteAudioElementParam(const AudioElementParam& param,
   return absl::OkStatus();
 }
 
-// Reads an element of the `audio_element_params` array of a scalable channel
-// `AudioElementObu`.
-absl::Status ValidateAndReadAudioElementParam(AudioElementParam& param,
-                                              ReadBitBuffer& rb) {
-  return absl::UnimplementedError(
-      "Reading audio element param is not implemented.");
-}
-
 // Writes the `ScalableChannelLayoutConfig` of an `AudioElementObu`.
 absl::Status ValidateAndWriteScalableChannelLayout(
     const ScalableChannelLayoutConfig& layout,
@@ -384,7 +376,8 @@ absl::Status ReadAndValidateAmbisonicsConfig(AmbisonicsConfig& config,
 
 }  // namespace
 
-absl::Status AudioElementParam::ReadAndValidate(ReadBitBuffer& rb) {
+absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
+                                                ReadBitBuffer& rb) {
   // Reads the main portion of the `AudioElementParam`.
   DecodedUleb128 param_definition_type_uleb;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type_uleb));
@@ -398,15 +391,18 @@ absl::Status AudioElementParam::ReadAndValidate(ReadBitBuffer& rb) {
           "OBUs.");
     }
     case ParamDefinition::kParameterDefinitionReconGain: {
-      auto recon_gain_param_definition = ParamDefinition();
-      RETURN_IF_NOT_OK(recon_gain_param_definition.ReadAndValidate(rb));
-      param_definition =
-          std::make_unique<ParamDefinition>(recon_gain_param_definition);
+      auto recon_gain_param_definition =
+          std::make_unique<ReconGainParamDefinition>(audio_element_id);
+      RETURN_IF_NOT_OK(recon_gain_param_definition->ReadAndValidate(rb));
+      param_definition = std::move(recon_gain_param_definition);
       return absl::OkStatus();
     }
     case ParamDefinition::kParameterDefinitionDemixing: {
-      return absl::UnimplementedError(
-          "Demixing parameter type is not yet implemented.");
+      auto demixing_param_definition =
+          std::make_unique<DemixingParamDefinition>();
+      RETURN_IF_NOT_OK(demixing_param_definition->ReadAndValidate(rb));
+      param_definition = std::move(demixing_param_definition);
+      return absl::OkStatus();
     }
     default:
       // TODO(b/335708497): Read in extended param definitions.
@@ -787,7 +783,8 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   // Loop to read the parameter portion of the obu.
   for (int i = 0; i < num_parameters_; ++i) {
     AudioElementParam audio_element_param;
-    RETURN_IF_NOT_OK(audio_element_param.ReadAndValidate(rb));
+    RETURN_IF_NOT_OK(
+        audio_element_param.ReadAndValidate(audio_element_id_, rb));
     audio_element_params_.push_back(std::move(audio_element_param));
   }
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
