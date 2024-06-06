@@ -388,6 +388,45 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
                    .ok());
 }
 
+TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
+  const DecodedUleb128 kParameterId = 0x07;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID.
+      kParameterId,
+      // `dmixp_mode`.
+      DemixingInfoParameterData::kDMixPMode2 << 5};
+  ReadBitBuffer buffer(1024, &source_data);
+  // Usually metadata would live in the descriptor OBUs.
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
+      .param_definition = DemixingParamDefinition(),
+  };
+  auto& param_definition = per_param_metadata[kParameterId].param_definition;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.duration_ = 10;
+  param_definition.constant_subblock_duration_ = 10;
+  param_definition.InitializeSubblockDurations(1);
+  auto parameter_block = ParameterBlockObu::CreateFromBuffer(
+      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+  EXPECT_THAT(parameter_block, IsOk());
+
+  // Validate all the getters match the input data. Note the getters return data
+  // based on the `param_definition` and not the data in the OBU.
+  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
+  EXPECT_EQ(parameter_block->GetDuration(), 10);
+  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 10);
+  EXPECT_EQ(parameter_block->GetNumSubblocks(), 1);
+
+  auto demixing_info = std::get<DemixingInfoParameterData>(
+      parameter_block->subblocks_[0].param_data);
+
+  EXPECT_EQ(demixing_info.dmixp_mode, DemixingInfoParameterData::kDMixPMode2);
+}
+
 class ParameterBlockObuTestBase : public ObuTestBase {
  public:
   ParameterBlockObuTestBase(ParamDefinition param_definition)

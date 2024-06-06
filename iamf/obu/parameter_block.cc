@@ -679,6 +679,11 @@ absl::Status ParameterBlockObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
       RETURN_IF_NOT_OK(recon_gain_info_param_data.ReadAndValidate(
           metadata_.recon_gain_is_present_flags, rb));
       subblocks_[i].param_data = recon_gain_info_param_data;
+    } else if (*param_definition_type ==
+               ParamDefinition::kParameterDefinitionDemixing) {
+      DemixingInfoParameterData demixing_info_param_data;
+      RETURN_IF_NOT_OK(demixing_info_param_data.Read(rb));
+      subblocks_[i].param_data = demixing_info_param_data;
     } else {
       return absl::UnimplementedError("Unsupported parameter definition type.");
     }
