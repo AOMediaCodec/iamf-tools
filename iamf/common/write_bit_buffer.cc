@@ -12,7 +12,6 @@
 #include "iamf/common/write_bit_buffer.h"
 
 #include <algorithm>
-#include <bit>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -180,7 +179,7 @@ absl::Status WriteBitBuffer::WriteString(const std::string& data) {
   for (int i = 0; i < kIamfMaxStringSize; i++) {
     // Note that some systems have `char` as signed and others unsigned. Write
     // the same raw byte value regardless.
-    const uint8_t byte = std::bit_cast<uint8_t>(data[i]);
+    const uint8_t byte = static_cast<uint8_t>(data[i]);
     RETURN_IF_NOT_OK(WriteUnsignedLiteral(byte, 8));
 
     // Exit successfully after last byte was written.

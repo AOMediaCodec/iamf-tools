@@ -5,3 +5,6 @@ build --cxxopt=-Wno-sign-compare
 # build.
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_bzlmod=false
+
+# Platform specific configuration.
+build:macos --macos_minimum_os=12.0
