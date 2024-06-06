@@ -301,6 +301,16 @@ absl::Status DemixingParamDefinition::ValidateAndWrite(
   return absl::OkStatus();
 }
 
+absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
+  // The common part.
+  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
+
+  // The sub-class specific part.
+  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.Read(rb));
+
+  return absl::OkStatus();
+}
+
 void DemixingParamDefinition::Print() const {
   LOG(INFO) << "DemixingParamDefinition:";
   ParamDefinition::Print();

@@ -697,5 +697,57 @@ TEST(ReadReconGainParamDefinitionTest, Default) {
             ParamDefinition::kParameterDefinitionReconGain);
 }
 
+TEST(ReadDemixingParamDefinitionTest, DefaultDmixPMode) {
+  std::vector<uint8_t> bitstream = {// Parameter ID.
+                                    0x00,
+                                    // Parameter Rate.
+                                    0x01,
+                                    // Parameter Definition Mode (upper bit).
+                                    0x00,
+                                    // Duration.
+                                    64,
+                                    // Constant Subblock Duration.
+                                    64,
+                                    // `dmixp_mode`.
+                                    DemixingInfoParameterData::kDMixPMode2 << 5,
+                                    // `default_w`.
+                                    0};
+
+  ReadBitBuffer buffer(1024, &bitstream);
+  DemixingParamDefinition param_definition = DemixingParamDefinition();
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
+  EXPECT_EQ(param_definition.GetType().value(),
+            ParamDefinition::kParameterDefinitionDemixing);
+  EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
+            DemixingInfoParameterData::kDMixPMode2);
+}
+
+TEST(ReadDemixingParamDefinitionTest, DefaultW) {
+  std::vector<uint8_t> bitstream = {// Parameter ID.
+                                    0x00,
+                                    // Parameter Rate.
+                                    0x01,
+                                    // Parameter Definition Mode (upper bit).
+                                    0x00,
+                                    // Duration.
+                                    64,
+                                    // Constant Subblock Duration.
+                                    64,
+                                    // `dmixp_mode`.
+                                    DemixingInfoParameterData::kDMixPMode1 << 5,
+                                    // `default_w`.
+                                    1 << 4};
+
+  ReadBitBuffer buffer(1024, &bitstream);
+  DemixingParamDefinition param_definition = DemixingParamDefinition();
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
+  EXPECT_EQ(param_definition.GetType().value(),
+            ParamDefinition::kParameterDefinitionDemixing);
+  EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
+            DemixingInfoParameterData::kDMixPMode1);
+  EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.default_w,
+            1);
+}
+
 }  // namespace
 }  // namespace iamf_tools
