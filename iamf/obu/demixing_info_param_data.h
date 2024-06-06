@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -86,6 +87,13 @@ struct DemixingInfoParameterData {
    */
   virtual absl::Status Write(WriteBitBuffer& wb) const;
 
+  /*!\brief Reads and validates a `DemixingInfoParameterData` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  virtual absl::Status Read(ReadBitBuffer& rb);
+
   /*!\brief Prints the demixing info parameter data.
    */
   virtual void Print() const;
@@ -108,6 +116,13 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status Write(WriteBitBuffer& wb) const override;
+
+  /*!\brief Reads and validates a `DefaultDemixingInfoParameterData`.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Read(ReadBitBuffer& rb) override;
 
   /*!\brief Prints the default demixing info parameter data.
    */

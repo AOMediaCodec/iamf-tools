@@ -12,11 +12,13 @@
 #include "iamf/obu/demixing_info_param_data.h"
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -156,6 +158,38 @@ TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
   WriteBitBuffer undetermined_wb(1);
   EXPECT_EQ(data.Write(undetermined_wb).code(),
             absl::StatusCode::kUnimplemented);
+}
+
+TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
+  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode1
+                                      << kDMixPModeBitShift};
+  ReadBitBuffer rb(1024, &source_data);
+  DemixingInfoParameterData data;
+  EXPECT_THAT(data.Read(rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode1);
+  EXPECT_EQ(data.reserved, 0);
+}
+
+TEST(ReadDemixingInfoParameterData, ReadDMixPMode3) {
+  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode3
+                                      << kDMixPModeBitShift};
+  ReadBitBuffer rb(1024, &source_data);
+  DemixingInfoParameterData data;
+  EXPECT_THAT(data.Read(rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode3);
+  EXPECT_EQ(data.reserved, 0);
+}
+
+TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
+  const uint32_t kReservedMax = 31;
+  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode1
+                                          << kDMixPModeBitShift |
+                                      kReservedMax};
+  ReadBitBuffer rb(1024, &source_data);
+  DemixingInfoParameterData data;
+  EXPECT_THAT(data.Read(rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode1);
+  EXPECT_EQ(data.reserved, 31);
 }
 
 }  // namespace

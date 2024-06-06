@@ -93,6 +93,7 @@ cc_test(
     name = "demixing_info_param_data_test",
     srcs = ["demixing_info_param_data_test.cc"],
     deps = [
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
         "//iamf/obu:demixing_info_param_data",

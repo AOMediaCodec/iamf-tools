@@ -12,6 +12,7 @@
 #include "iamf/obu/demixing_info_param_data.h"
 
 #include <algorithm>
+#include <cstdint>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -19,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -105,6 +107,27 @@ absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
   }
 }
 
+absl::Status DemixingInfoParameterData::Read(ReadBitBuffer& rb) {
+  uint8_t dmixp_mode_int;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, dmixp_mode_int));
+  dmixp_mode = static_cast<DMixPMode>(dmixp_mode_int);
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved));
+
+  // Validate that no reserved enums are used.
+  switch (dmixp_mode) {
+    case kDMixPMode1:
+    case kDMixPMode2:
+    case kDMixPMode3:
+    case kDMixPMode1_n:
+    case kDMixPMode2_n:
+    case kDMixPMode3_n:
+      return absl::OkStatus();
+    default:
+      return absl::UnimplementedError(
+          absl::StrCat("Unsupported dmixp_mode= ", dmixp_mode));
+  }
+}
+
 void DemixingInfoParameterData::Print() const {
   LOG(INFO) << "  dmixp_mode= " << dmixp_mode;
   LOG(INFO) << "  reserved= " << absl::StrCat(reserved);
@@ -115,6 +138,15 @@ absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(default_w, 4));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved, 4));
+
+  return absl::OkStatus();
+}
+
+absl::Status DefaultDemixingInfoParameterData::Read(ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(DemixingInfoParameterData::Read(rb));
+
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, default_w));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved));
 
   return absl::OkStatus();
 }
