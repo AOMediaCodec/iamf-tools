@@ -639,9 +639,9 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
 
   auto iter = input_codec_configs.find(kCodecConfigId);
   audio_elements_with_data.insert(
-      {kAudioElementId, AudioElementWithData(std::move(obu), &iter->second,
+      {kAudioElementId, AudioElementWithData{std::move(obu), &iter->second,
                                              substream_id_labels_map,
-                                             label_gain_map, channel_numbers)});
+                                             label_gain_map, channel_numbers}});
 
   auto param_definition = ReconGainParamDefinition(kAudioElementId);
   param_definition.parameter_id_ = kParameterId;
