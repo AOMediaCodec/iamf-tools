@@ -13,8 +13,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Placeholder for get runfiles header.
@@ -166,6 +168,38 @@ TEST(WavReader, OneFrame32BitLittleEndian) {
       {214748364}, {198401618}, {151850024}, {82180641},
   };
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
+}
+
+TEST(WavReader, IsSafeToCallReadFrameAfterMove) {
+  const size_t kNumSamplesPerFrame = 1;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame);
+  auto wav_reader_moved = std::move(wav_reader);
+
+  EXPECT_EQ(wav_reader_moved.ReadFrame(), 2);
+  const std::vector<std::vector<int32_t>> kExpectedFrame = {
+      {0x00010000, static_cast<int32_t>(0xffff0000)}};
+  EXPECT_EQ(wav_reader_moved.buffers_, kExpectedFrame);
+}
+
+template <typename T>
+std::vector<uint8_t> GetRawBytes(const T& object) {
+  std::vector<uint8_t> raw_object(sizeof(object));
+  std::memcpy(raw_object.data(), static_cast<const void*>(&object),
+              raw_object.size());
+  return raw_object;
+}
+
+TEST(WavReader, IsByteEquivalentAfterMoving) {
+  const size_t kNumSamplesPerFrame = 1;
+  auto wav_reader =
+      InitAndValidate("stereo_8_samples_48khz_s16le.wav", kNumSamplesPerFrame);
+  const auto raw_wav_reader_before_move = GetRawBytes(wav_reader);
+
+  const auto wav_reader_moved = std::move(wav_reader);
+  const auto raw_wav_reader_after_move = GetRawBytes(wav_reader_moved);
+
+  EXPECT_EQ(raw_wav_reader_before_move, raw_wav_reader_after_move);
 }
 
 }  // namespace

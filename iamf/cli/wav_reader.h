@@ -32,6 +32,9 @@ class WavReader {
    */
   WavReader(const std::string& wav_filename, size_t num_samples_per_frame);
 
+  /*!\brief Moves the `WavReader` without closing the underlying file.*/
+  WavReader(WavReader&& original);
+
   /*!\brief Destructor. */
   ~WavReader();
 

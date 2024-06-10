@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/log/check.h"
@@ -52,6 +53,16 @@ WavReader::WavReader(const std::string& wav_filename,
   for (auto& buffer : buffers_) {
     buffer.resize(info_.num_channels);
   }
+}
+
+WavReader::WavReader(WavReader&& original)
+    : buffers_(std::move(original.buffers_)),
+      num_samples_per_frame_(original.num_samples_per_frame_),
+      file_(original.file_),
+      info_(original.info_) {
+  // Invalidate the file pointer on the original copy to prevent it from being
+  // closed on destruction.
+  original.file_ = nullptr;
 }
 
 WavReader::~WavReader() {
