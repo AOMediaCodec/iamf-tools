@@ -47,6 +47,15 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr DecodedUleb128 kCodecConfigId = 21;
+constexpr DecodedUleb128 kAudioElementId = 100;
+constexpr DecodedUleb128 kSecondAudioElementId = 101;
+constexpr DecodedUleb128 kMixPresentationId = 100;
+constexpr DecodedUleb128 kParameterId = 99999;
+constexpr DecodedUleb128 kParameterRate = 48000;
+constexpr DecodedUleb128 kFirstSubstreamId = 31;
+constexpr DecodedUleb128 kSecondSubstreamId = 32;
+
 struct IncludeTemporalDelimitersTestCase {
   ProfileVersion primary_profile;
   ProfileVersion additional_profile;
@@ -299,7 +308,6 @@ TEST(ValidateAndGetCommonTrim, ValidForEmptyAudioFrames) {
 }
 
 const DecodedUleb128 kFourSamplesPerFrame = 4;
-const DecodedUleb128 kFirstSubstreamId = 1;
 const uint32_t kZeroSamplesToTrimAtEnd = 0;
 const uint32_t kZeroSamplesToTrimAtStart = 0;
 void AddAudioFrameWithIdAndTrim(int32_t num_samples_per_frame,
@@ -511,18 +519,14 @@ TEST(CopyObuHeader, MostValuesModified) {
 
 TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
   // Initialize prerequisites.
-  const DecodedUleb128 kAudioElemenetId = 100;
-  const DecodedUleb128 kMixPresentationId = 100;
-  const DecodedUleb128 kCommonParameterId = 99999;
-  const DecodedUleb128 kCommonParameterRate = 48000;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
   // Create a mix presentation OBU. It will have a `element_mix_config` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(
-      kMixPresentationId, kAudioElemenetId, kCommonParameterId,
-      kCommonParameterRate, mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId, kAudioElementId,
+                                           kParameterId, kParameterRate,
+                                           mix_presentation_obus);
   // Assert that the new mix presentation OBU has identical param definitions.
   ASSERT_EQ(mix_presentation_obus.back()
                 .sub_mixes_[0]
@@ -543,18 +547,14 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
 TEST(CollectAndValidateParamDefinitions,
      InvalidParametersWithSameIdHaveDifferentDefaultValues) {
   // Initialize prerequisites.
-  const DecodedUleb128 kAudioElemenetId = 100;
-  const DecodedUleb128 kMixPresentationId = 100;
-  const DecodedUleb128 kCommonParameterId = 99999;
-  const DecodedUleb128 kCommonParameterRate = 48000;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
   // Create a mix presentation OBU. It will have a `element_mix_config` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(
-      kMixPresentationId, kAudioElemenetId, kCommonParameterId,
-      kCommonParameterRate, mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(kMixPresentationId, kAudioElementId,
+                                           kParameterId, kParameterRate,
+                                           mix_presentation_obus);
   auto& output_mix_gain = mix_presentation_obus.back()
                               .sub_mixes_[0]
                               .output_mix_config.output_mix_gain;
@@ -577,9 +577,10 @@ TEST(GenerateParamIdToMetadataMapTest, MixGainParamDefinition) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data = {};
-  constexpr DecodedUleb128 kParameterId = 01;
   auto param_definition = MixGainParamDefinition();
   param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = kParameterRate;
+  param_definition.param_definition_mode_ = 1;
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   param_definitions[kParameterId] = &param_definition;
   auto param_id_to_metadata_map =
@@ -594,11 +595,6 @@ TEST(GenerateParamIdToMetadataMapTest, MixGainParamDefinition) {
 }
 
 TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
-  constexpr DecodedUleb128 kParameterId = 01;
-  constexpr DecodedUleb128 kAudioElementId = 11;
-  constexpr DecodedUleb128 kCodecConfigId = 21;
-  constexpr DecodedUleb128 kSubstreamId = 31;
-  constexpr DecodedUleb128 kSecondSubstreamId = 32;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -606,7 +602,7 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   AudioElementObu obu(ObuHeader(), kAudioElementId,
                       AudioElementObu::kAudioElementChannelBased, 0,
                       kCodecConfigId);
-  obu.audio_substream_ids_ = {kSubstreamId, kSecondSubstreamId};
+  obu.audio_substream_ids_ = {kFirstSubstreamId, kSecondSubstreamId};
   obu.num_substreams_ = 2;
   obu.InitializeParams(0);
   EXPECT_THAT(obu.InitializeScalableChannelLayout(2, 0), IsOk());
@@ -645,6 +641,10 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
 
   auto param_definition = ReconGainParamDefinition(kAudioElementId);
   param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = kParameterRate;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.duration_ = 1;
+  param_definition.constant_subblock_duration_ = 0;
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   param_definitions[kParameterId] = &param_definition;
   auto param_id_to_metadata_map =
@@ -669,20 +669,15 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
 
 TEST(GenerateParamIdToMetadataMapTest,
      RejectReconGainParamDefinitionNotInAudioElement) {
-  constexpr DecodedUleb128 kParameterId = 01;
-  constexpr DecodedUleb128 kAudioElementId = 11;
-  constexpr DecodedUleb128 kOtherAudioElementId = 12;
-  constexpr DecodedUleb128 kCodecConfigId = 21;
-  constexpr DecodedUleb128 kSubstreamId = 31;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
-  AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          {kSubstreamId}, input_codec_configs,
-                                          audio_elements_with_data);
+  AddScalableAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
+      audio_elements_with_data);
 
-  auto param_definition = ReconGainParamDefinition(kOtherAudioElementId);
+  auto param_definition = ReconGainParamDefinition(kSecondAudioElementId);
   param_definition.parameter_id_ = kParameterId;
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   param_definitions[kParameterId] = &param_definition;
