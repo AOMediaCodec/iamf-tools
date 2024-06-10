@@ -15,25 +15,78 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
 
 // Placeholder for get runfiles header.
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
+
+constexpr size_t kArbitraryNumSamplesPerFrame = 1;
+
+TEST(CreateFromFile, SucceedsOnValidWavFile) {
+  const auto input_wav_file = std::filesystem::current_path() /
+                              std::string("iamf/cli/testdata/") /
+                              "stereo_8_samples_48khz_s16le.wav";
+  ASSERT_TRUE(std::filesystem::exists(input_wav_file));
+
+  EXPECT_THAT(
+      WavReader::CreateFromFile(input_wav_file, kArbitraryNumSamplesPerFrame),
+      IsOk());
+}
+
+TEST(CreateFromFile, FailsWhenNumSamplesPerFrameIsZero) {
+  const size_t kInvalidNumSamplesPerFrame = 0;
+  const auto input_wav_file = std::filesystem::current_path() /
+                              std::string("iamf/cli/testdata/") /
+                              "stereo_8_samples_48khz_s16le.wav";
+  ASSERT_TRUE(std::filesystem::exists(input_wav_file));
+
+  EXPECT_FALSE(
+      WavReader::CreateFromFile(input_wav_file, kInvalidNumSamplesPerFrame)
+          .ok());
+}
+
+TEST(CreateFromFile, FailsOnMissingFile) {
+  const std::string non_existent_file =
+      std::filesystem::path(::testing::TempDir()) / "non_existent_file.wav";
+  ASSERT_FALSE(std::filesystem::exists(non_existent_file));
+
+  EXPECT_FALSE(
+      WavReader::CreateFromFile(non_existent_file, kArbitraryNumSamplesPerFrame)
+          .ok());
+}
+
+TEST(CreateFromFile, FailsOnNonWavFile) {
+  const std::string non_wav_file =
+      std::filesystem::path(::testing::TempDir()) / "non_wav_file.txt";
+  std::ofstream(non_wav_file) << "This is not a wav file.";
+  ASSERT_TRUE(std::filesystem::exists(non_wav_file));
+
+  EXPECT_FALSE(
+      WavReader::CreateFromFile(non_wav_file, kArbitraryNumSamplesPerFrame)
+          .ok());
+}
+
 WavReader InitAndValidate(const std::filesystem::path& filename,
                           const size_t num_samples_per_frame) {
   const auto input_wav_file = std::filesystem::current_path() /
                               std::string("iamf/cli/testdata/") / filename;
-  WavReader wav_reader(input_wav_file.c_str(), num_samples_per_frame);
+  auto wav_reader =
+      WavReader::CreateFromFile(input_wav_file, num_samples_per_frame);
+  EXPECT_THAT(wav_reader, IsOk());
 
   // Validate `wav_reader` sees the expected properties from the wav header.
-  EXPECT_EQ(wav_reader.num_samples_per_frame_, num_samples_per_frame);
-  return wav_reader;
+  EXPECT_EQ(wav_reader->num_samples_per_frame_, num_samples_per_frame);
+  return std::move(*wav_reader);
 }
 
 TEST(WavReader, GetNumChannelsMatchesWavFile) {

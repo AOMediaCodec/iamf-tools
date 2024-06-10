@@ -15,10 +15,12 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
@@ -128,6 +130,16 @@ void AddDemixingParamDefinition(
     DecodedUleb128 duration, AudioElementObu& audio_element_obu,
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
         param_definitions);
+
+/*!\brief Calls `CreateWavReader` and unwraps the `StatusOr`.
+ *
+ * \param filename Filename to forward to `CreateWavReader`.
+ * \param num_samples_per_frame Number of samples per frame to forward to
+ *     `CreateWavReader`.
+ * \return Unwrapped `WavReader` created by `CreateWavReader`.
+ */
+WavReader CreateWavReaderExpectOk(const std::string& filename,
+                                  int num_samples_per_frame = 1);
 
 }  // namespace iamf_tools
 

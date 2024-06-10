@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_reader.h"
 
 namespace iamf_tools {
@@ -171,7 +172,6 @@ TEST(WavWriterTest, OutputFileHasCorrectSizeWithoutHeader) {
   EXPECT_FALSE(error_code);
 }
 
-const int kArbitraryNumSamplesPerFrame = 1;
 TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples16Bit) {
   const int kInputBytes = 12;
   {
@@ -183,7 +183,7 @@ TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples16Bit) {
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
   EXPECT_EQ(wav_reader.remaining_samples(), 6);
 }
 
@@ -198,7 +198,7 @@ TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples24Bit) {
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
   EXPECT_EQ(wav_reader.remaining_samples(), 4);
 }
 
@@ -213,7 +213,7 @@ TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples32Bit) {
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
   EXPECT_EQ(wav_reader.remaining_samples(), 3);
 }
 
@@ -225,7 +225,7 @@ TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {
                          kBitDepth32);
   }
 
-  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
   EXPECT_EQ(wav_reader.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_reader.num_channels(), kNumChannels);
   EXPECT_EQ(wav_reader.bit_depth(), kBitDepth32);
@@ -240,7 +240,7 @@ TEST(WavWriterTest, OutputWavFileHasCorrectPropertiesAfterMoving) {
     WavWriter new_wav_writer = std::move(wav_writer);
   }
 
-  WavReader wav_reader(GetTestWavPath(), kArbitraryNumSamplesPerFrame);
+  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
   EXPECT_EQ(wav_reader.sample_rate_hz(), kSampleRateHz);
   EXPECT_EQ(wav_reader.num_channels(), kNumChannels);
   EXPECT_EQ(wav_reader.bit_depth(), kBitDepth32);

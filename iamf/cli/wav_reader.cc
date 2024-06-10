@@ -12,48 +12,73 @@
 
 #include "iamf/cli/wav_reader.h"
 
+#include <cerrno>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "src/dsp/read_wav_file.h"
+#include "src/dsp/read_wav_info.h"
 
 namespace iamf_tools {
 
-WavReader::WavReader(const std::string& wav_filename,
-                     const size_t num_samples_per_frame)
-    : num_samples_per_frame_(num_samples_per_frame) {
-  LOG(INFO) << "Reading \"" << wav_filename << "\"";
-  file_ = std::fopen(wav_filename.c_str(), "rb");
-  CHECK_NE(ReadWavHeader(file_, &info_), 0)
-      << "Error reading header of file \"" << wav_filename << "\"";
+namespace {
+const int kAudioToTactileFailure = 0;
+}
 
-  // Overwrite `info_.destination_alignment_bytes` to 4 to always
-  // store results in 4 bytes (32 bits), so we can handle 16-, 24-, and 32-bit
-  // PCMs.
-  info_.destination_alignment_bytes = 4;
+absl::StatusOr<WavReader> WavReader::CreateFromFile(
+    const std::string& wav_filename, const size_t num_samples_per_frame) {
+  if (num_samples_per_frame == 0) {
+    return absl::InvalidArgumentError("num_samples_per_frame must be > 0");
+  }
+  LOG(INFO) << "Reading \"" << wav_filename << "\"";
+  FILE* file = std::fopen(wav_filename.c_str(), "rb");
+  if (file == nullptr) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("Failed to open file: \"", wav_filename,
+                     "\" with error: ", std::strerror(errno), "."));
+  }
+
+  ReadWavInfo info;
+  if (ReadWavHeader(file, &info) == kAudioToTactileFailure) {
+    return absl::FailedPreconditionError(
+        absl::StrCat("Failed to read header of file: \"", wav_filename,
+                     "\". Maybe it is not a valid RIFF WAV."));
+  }
+
+  // Overwrite `info_.destination_alignment_bytes` to 4 to always store results
+  // in 4 bytes (32 bits), so we can handle 16-, 24-, and 32-bit PCMs.
+  info.destination_alignment_bytes = 4;
 
   // Log the header info.
   LOG(INFO) << "WAV header info:";
-  LOG(INFO) << "  num_channels= " << info_.num_channels;
-  LOG(INFO) << "  sample_rate_hz= " << info_.sample_rate_hz;
-  LOG(INFO) << "  remaining_samples= " << info_.remaining_samples;
-  LOG(INFO) << "  bit_depth= " << info_.bit_depth;
+  LOG(INFO) << "  num_channels= " << info.num_channels;
+  LOG(INFO) << "  sample_rate_hz= " << info.sample_rate_hz;
+  LOG(INFO) << "  remaining_samples= " << info.remaining_samples;
+  LOG(INFO) << "  bit_depth= " << info.bit_depth;
   LOG(INFO) << "  destination_alignment_bytes= "
-            << info_.destination_alignment_bytes;
-  LOG(INFO) << "  encoding= " << info_.encoding;
-  LOG(INFO) << "  sample_format= " << info_.sample_format;
+            << info.destination_alignment_bytes;
+  LOG(INFO) << "  encoding= " << info.encoding;
+  LOG(INFO) << "  sample_format= " << info.sample_format;
 
-  // Initialize the buffers.
-  buffers_.resize(num_samples_per_frame_);
-  for (auto& buffer : buffers_) {
-    buffer.resize(info_.num_channels);
-  }
+  return WavReader(num_samples_per_frame, file, info);
 }
+
+WavReader::WavReader(const size_t num_samples_per_frame, FILE* file,
+                     const ReadWavInfo& info)
+    : buffers_(num_samples_per_frame,
+               std::vector<int32_t>(info.num_channels, 0)),
+      num_samples_per_frame_(num_samples_per_frame),
+      file_(file),
+      info_(info) {}
 
 WavReader::WavReader(WavReader&& original)
     : buffers_(std::move(original.buffers_)),

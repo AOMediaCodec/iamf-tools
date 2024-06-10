@@ -15,8 +15,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
@@ -52,31 +52,32 @@ absl::Status WavSampleProvider::Initialize(
     const auto& wav_filename = std::filesystem::path(input_wav_directory) /
                                audio_frame_metadata.wav_filename();
 
-    auto [wav_reader_iter, emplaced] = wav_readers_.emplace(
-        audio_element_id,
-        std::make_unique<WavReader>(
-            wav_filename.c_str(),
-            static_cast<size_t>(codec_config.GetNumSamplesPerFrame())));
-    const auto& wav_reader = *wav_reader_iter->second;
+    auto wav_reader = WavReader::CreateFromFile(
+        wav_filename,
+        static_cast<size_t>(codec_config.GetNumSamplesPerFrame()));
+    if (!wav_reader.ok()) {
+      return wav_reader.status();
+    }
 
     const int encoder_input_pcm_bit_depth =
         static_cast<int>(codec_config.GetBitDepthToMeasureLoudness());
-    if (wav_reader.bit_depth() > encoder_input_pcm_bit_depth) {
+    if (wav_reader->bit_depth() > encoder_input_pcm_bit_depth) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Refusing to lower bit-depth of WAV (", wav_filename.string(),
-          ") with bit_depth= ", wav_reader.bit_depth(),
+          ") with bit_depth= ", wav_reader->bit_depth(),
           " to bit_depth=", encoder_input_pcm_bit_depth));
     }
 
     const uint32_t encoder_input_sample_rate =
         codec_config.GetInputSampleRate();
-    if (wav_reader.sample_rate_hz() != encoder_input_sample_rate) {
+    if (wav_reader->sample_rate_hz() != encoder_input_sample_rate) {
       // TODO(b/277899855): Support resampling the input wav file to match the
       //                    input sample rate.
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Sample rate read from ", wav_filename.string(),
-          " inconsistent with the user metadata: (",
-          wav_reader.sample_rate_hz(), " vs ", encoder_input_sample_rate, ")"));
+      return absl::InvalidArgumentError(
+          absl::StrCat("Sample rate read from ", wav_filename.string(),
+                       " inconsistent with the user metadata: (",
+                       wav_reader->sample_rate_hz(), " vs ",
+                       encoder_input_sample_rate, ")"));
     }
 
     const uint32_t decoder_output_sample_rate =
@@ -86,6 +87,8 @@ absl::Status WavSampleProvider::Initialize(
           "Input and output sample rates differ: (", encoder_input_sample_rate,
           " vs ", decoder_output_sample_rate, ")"));
     }
+
+    wav_readers_.emplace(audio_element_id, std::move(*wav_reader));
   }
 
   return absl::OkStatus();
@@ -95,11 +98,10 @@ absl::Status WavSampleProvider::ReadFrames(
     const DecodedUleb128 audio_element_id, LabelSamplesMap& labeled_samples) {
   auto wav_reader_iter = wav_readers_.find(audio_element_id);
   if (wav_reader_iter == wav_readers_.end()) {
-    LOG(ERROR) << "No WAV reader found for Audio Element ID= "
-               << audio_element_id;
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "No WAV reader found for Audio Element ID= ", audio_element_id));
   }
-  auto& wav_reader = *wav_reader_iter->second;
+  auto& wav_reader = wav_reader_iter->second;
   const size_t samples_read = wav_reader.ReadFrame();
   LOG_FIRST_N(INFO, 1) << samples_read << " samples read";
 

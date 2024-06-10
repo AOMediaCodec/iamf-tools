@@ -8,6 +8,7 @@ cc_library(
     visibility = ["//iamf/cli:__subpackages__"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:wav_reader",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
@@ -479,9 +480,9 @@ cc_test(
     name = "wav_writer_test",
     srcs = ["wav_writer_test.cc"],
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:wav_reader",
         "//iamf/cli:wav_writer",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

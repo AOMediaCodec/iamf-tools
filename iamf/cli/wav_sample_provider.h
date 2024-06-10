@@ -13,7 +13,6 @@
 #ifndef CLI_WAV_SAMPLE_PROVIDER_H_
 #define CLI_WAV_SAMPLE_PROVIDER_H_
 
-#include <memory>
 #include <string>
 
 #include "absl/container/flat_hash_map.h"
@@ -65,7 +64,7 @@ class WavSampleProvider {
 
  private:
   // Mapping from Audio Element ID to `WavReader`.
-  absl::flat_hash_map<DecodedUleb128, std::unique_ptr<WavReader>> wav_readers_;
+  absl::flat_hash_map<DecodedUleb128, WavReader> wav_readers_;
 
   // Mapping from Audio Element ID to audio frame metadata.
   absl::flat_hash_map<DecodedUleb128,

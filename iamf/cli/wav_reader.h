@@ -19,18 +19,22 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "src/dsp/read_wav_info.h"
 
 namespace iamf_tools {
 
 class WavReader {
  public:
-  /*!\brief Constructor.
+  /*!\brief Factory function.
    *
    * \param wav_filename Filename of file to read.
    * \param num_samples_per_frame Maximum number of samples per frame to read.
+   * \param `WavReader` on success. A specific error code if the file could not
+   *     be opened or was not detected to be a valid WAV file.
    */
-  WavReader(const std::string& wav_filename, size_t num_samples_per_frame);
+  static absl::StatusOr<WavReader> CreateFromFile(
+      const std::string& wav_filename, size_t num_samples_per_frame);
 
   /*!\brief Moves the `WavReader` without closing the underlying file.*/
   WavReader(WavReader&& original);
@@ -82,6 +86,12 @@ class WavReader {
   const size_t num_samples_per_frame_;
 
  private:
+  /*!\brief Private constructor.
+   *
+   *  Used by factory function.
+   */
+  WavReader(size_t num_samples_per_frame, FILE* file, const ReadWavInfo& info);
+
   FILE* file_;
   ReadWavInfo info_;
 };

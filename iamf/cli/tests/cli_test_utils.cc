@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -24,6 +25,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -256,6 +258,13 @@ void AddDemixingParamDefinition(
   audio_element_obu.audio_element_params_.back() = AudioElementParam{
       .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = std::move(param_definition)};
+}
+
+WavReader CreateWavReaderExpectOk(const std::string& filename,
+                                  int num_samples_per_frame) {
+  auto wav_reader = WavReader::CreateFromFile(filename, num_samples_per_frame);
+  EXPECT_THAT(wav_reader, IsOk());
+  return std::move(*wav_reader);
 }
 
 }  // namespace iamf_tools
