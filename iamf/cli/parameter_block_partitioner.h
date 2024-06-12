@@ -23,12 +23,18 @@
 
 namespace iamf_tools {
 
+/*!\brief Static functions to partition `ParameterBlockObuMetadata`.
+ *
+ * Useful when the `ParameterBlockObuMetadata` are specified as "virtual"
+ * parameter blocks which do not necessarily have durations and alignment that
+ * comply with the IAMF specification.
+ *
+ * This class provides functions to assist splitting
+ * `ParameterBlockObuMetadata`s which can be used to ensure they obey IAMF
+ * requirements (e.g. frame alignment, number of subblocks, etc.).
+ */
 class ParameterBlockPartitioner {
  public:
-  /*!\brief Constructor.
-   */
-  ParameterBlockPartitioner() = default;
-
   /*!\brief Finds the `constant_subblock_duration` for the input durations.
    *
    * \param subblock_durations Vector of subblock durations.
@@ -60,12 +66,12 @@ class ParameterBlockPartitioner {
    *     metadata.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PartitionParameterBlock(
+  static absl::Status PartitionParameterBlock(
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
           full_parameter_block,
       int32_t partitioned_start_time, int32_t partitioned_end_time,
       iamf_tools_cli_proto::ParameterBlockObuMetadata&
-          partitioned_parameter_block) const;
+          partitioned_parameter_block);
 
   /*!\brief Partitions the input parameter block into frame-aligned ones.
    *
@@ -75,12 +81,12 @@ class ParameterBlockPartitioner {
    *     parameter blocks to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PartitionFrameAligned(
+  static absl::Status PartitionFrameAligned(
       uint32_t partition_duration,
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
           full_parameter_block,
       std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-          partitioned_parameter_blocks) const;
+          partitioned_parameter_blocks);
 };
 
 }  // namespace iamf_tools

@@ -76,12 +76,11 @@ std::unique_ptr<WavWriter> ProduceAllWavWriters(
 
 absl::Status PartitionParameterMetadata(
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
-  ParameterBlockPartitioner parameter_block_partitioner;
   uint32_t partition_duration = 0;
   if (user_metadata.ia_sequence_header_metadata().empty() ||
       user_metadata.codec_config_metadata().empty()) {
     return absl::InvalidArgumentError(
-        "Parameter block partitioner requires at least one "
+        "Determining the partition duration requires at least one "
         "`ia_sequence_header_metadata` and one `codec_config_metadata`");
   }
   std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>
@@ -91,7 +90,7 @@ absl::Status PartitionParameterMetadata(
       user_metadata.codec_config_metadata(0), partition_duration));
   for (const auto& parameter_block_metadata :
        user_metadata.parameter_block_metadata()) {
-    RETURN_IF_NOT_OK(parameter_block_partitioner.PartitionFrameAligned(
+    RETURN_IF_NOT_OK(ParameterBlockPartitioner::PartitionFrameAligned(
         partition_duration, parameter_block_metadata,
         partitioned_parameter_blocks));
   }

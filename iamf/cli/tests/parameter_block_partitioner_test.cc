@@ -145,11 +145,9 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
   // Partition the parameter block.
   ParameterBlockObuMetadata partitioned_parameter_block;
 
-  ParameterBlockPartitioner partitioner;
-  EXPECT_EQ(partitioner
-                .PartitionParameterBlock(
-                    full_parameter_block, test_case.partition_start,
-                    test_case.partition_end, partitioned_parameter_block)
+  EXPECT_EQ(ParameterBlockPartitioner::PartitionParameterBlock(
+                full_parameter_block, test_case.partition_start,
+                test_case.partition_end, partitioned_parameter_block)
                 .ok(),
             test_case.status_ok);
 

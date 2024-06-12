@@ -341,7 +341,7 @@ absl::Status ParameterBlockPartitioner::FindPartitionDuration(
 absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
     const ParameterBlockObuMetadata& full_parameter_block,
     int32_t partitioned_start_time, int32_t partitioned_end_time,
-    ParameterBlockObuMetadata& partitioned) const {
+    ParameterBlockObuMetadata& partitioned) {
   if (partitioned_start_time >= partitioned_end_time) {
     LOG(ERROR) << "Cannot partition a parameter block starting at "
                << partitioned_start_time << " and ending at "
@@ -376,7 +376,7 @@ absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
 absl::Status ParameterBlockPartitioner::PartitionFrameAligned(
     uint32_t partition_duration,
     const ParameterBlockObuMetadata& full_parameter_block,
-    std::list<ParameterBlockObuMetadata>& partitioned_parameter_blocks) const {
+    std::list<ParameterBlockObuMetadata>& partitioned_parameter_blocks) {
   // Partition this parameter block into several blocks with the same duration.
   const int32_t end_timestamp =
       full_parameter_block.start_timestamp() + full_parameter_block.duration();
