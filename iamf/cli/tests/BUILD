@@ -5,7 +5,9 @@ cc_library(
     testonly = True,
     srcs = ["cli_test_utils.cc"],
     hdrs = ["cli_test_utils.h"],
-    visibility = ["//iamf/cli:__subpackages__"],
+    visibility = [
+        "//iamf:__subpackages__",
+    ],
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:wav_reader",
@@ -35,7 +37,6 @@ cc_test(
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -238,7 +239,6 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -251,7 +251,6 @@ cc_test(
         "//iamf/cli:iamf_components",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -282,7 +281,6 @@ cc_test(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -434,7 +432,6 @@ cc_test(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
