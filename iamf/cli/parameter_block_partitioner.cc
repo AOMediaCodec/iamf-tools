@@ -240,21 +240,21 @@ absl::Status GetPartitionedSubblocks(
           subblock_end_time, partitioned_subblock_start,
           partitioned_subblock_end, partitioned_subblock));
     } else if (subblock_i.has_demixing_info_parameter_data()) {
-      if (i > 1) {
-        LOG(ERROR) << "There should only be one subblock for demixing info.";
-        return absl::InvalidArgumentError("");
+      if (!partitioned_subblocks.empty()) {
+        return absl::InvalidArgumentError(
+            "There should only be one subblock for demixing info.");
       }
       *partitioned_subblock.mutable_demixing_info_parameter_data() =
           subblock_i.demixing_info_parameter_data();
     } else if (subblock_i.has_recon_gain_info_parameter_data()) {
-      if (i > 1) {
-        LOG(ERROR) << "There should only be one subblock for recon gain info.";
-        return absl::InvalidArgumentError("");
+      if (!partitioned_subblocks.empty()) {
+        return absl::InvalidArgumentError(
+            "There should only be one subblock for recon gain info.");
       }
       *partitioned_subblock.mutable_recon_gain_info_parameter_data() =
           subblock_i.recon_gain_info_parameter_data();
     } else {
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError("Unknown subblock type.");
     }
     partitioned_subblocks.push_back(partitioned_subblock);
 
@@ -343,10 +343,11 @@ absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
     int32_t partitioned_start_time, int32_t partitioned_end_time,
     ParameterBlockObuMetadata& partitioned) {
   if (partitioned_start_time >= partitioned_end_time) {
-    LOG(ERROR) << "Cannot partition a parameter block starting at "
-               << partitioned_start_time << " and ending at "
-               << partitioned_end_time;
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Cannot partition a parameter block with < 1 duration. "
+                     "(partitioned_start_time= ",
+                     partitioned_start_time,
+                     " partitioned_end_time=", partitioned_end_time));
   }
 
   // Find the subblocks that overlap this partition.

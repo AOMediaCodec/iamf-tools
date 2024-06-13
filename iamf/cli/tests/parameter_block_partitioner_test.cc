@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/parameter_block_partitioner.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -20,6 +21,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
@@ -311,6 +313,192 @@ INSTANTIATE_TEST_SUITE_P(
          4000,
          true},
     }));
+
+TEST(PartitionParameterBlock, InvalidForUnknownOrMissingParameterData) {
+  ParameterBlockObuMetadata full_parameter_block;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        start_timestamp: 0
+        duration: 4000
+        num_subblocks: 1
+        constant_subblock_duration: 4000
+        subblocks {
+          # Parameter data is missing.
+        }
+      )pb",
+      &full_parameter_block);
+
+  ParameterBlockObuMetadata unused_parameter_block;
+  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
+                   full_parameter_block, /*partitioned_start_time=*/0,
+                   /*partitioned_end_time=*/4000, unused_parameter_block)
+                   .ok());
+}
+
+void ExpectHasOneSubblockWithDMixPMode(
+    const ParameterBlockObuMetadata& parameter_block_metadata,
+    const iamf_tools_cli_proto::DMixPMode& expected_dmixp_mode) {
+  EXPECT_EQ(parameter_block_metadata.subblocks().size(), 1);
+  ASSERT_TRUE(
+      parameter_block_metadata.subblocks(0).has_demixing_info_parameter_data());
+  EXPECT_EQ(parameter_block_metadata.subblocks(0)
+                .demixing_info_parameter_data()
+                .dmixp_mode(),
+            expected_dmixp_mode);
+}
+
+TEST(PartitionParameterBlock,
+     IsEquivalentWhenSubblockBoundaryIsNotCrossedForDemixing) {
+  ParameterBlockObuMetadata full_parameter_block;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        start_timestamp: 0
+        duration: 12000
+        num_subblocks: 3
+        constant_subblock_duration: 4000
+        # t = [0, 4000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_1 } }
+        # t = [4000, 8000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_3 } }
+        # t = [8000, 12000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_2 } }
+      )pb",
+      &full_parameter_block);
+
+  // OK if it spans the whole (semi-open) range.
+  ParameterBlockObuMetadata partition_from_first_subblock;
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, /*partitioned_start_time=*/0,
+                  /*partitioned_end_time=*/4000, partition_from_first_subblock),
+              IsOk());
+  ExpectHasOneSubblockWithDMixPMode(partition_from_first_subblock,
+                                    iamf_tools_cli_proto::DMIXP_MODE_1);
+  // OK if the new duration is shorter than the original subblock duration.
+  ParameterBlockObuMetadata partition_from_third_subblock;
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, /*partitioned_start_time=*/9000,
+                  /*partitioned_end_time=*/9001, partition_from_third_subblock),
+              IsOk());
+  ExpectHasOneSubblockWithDMixPMode(partition_from_third_subblock,
+                                    iamf_tools_cli_proto::DMIXP_MODE_2);
+}
+
+TEST(PartitionParameterBlock, InvalidWhenSubblockBoundaryIsCrossedForDemixing) {
+  ParameterBlockObuMetadata full_parameter_block;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        start_timestamp: 0
+        duration: 12000
+        num_subblocks: 3
+        constant_subblock_duration: 4000
+        # t = [0, 4000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_1 } }
+        # t = [4000, 8000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_3 } }
+        # t = [8000, 12000).
+        subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_2 } }
+      )pb",
+      &full_parameter_block);
+
+  ParameterBlockObuMetadata unused_partitioned_parameter_block;
+  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
+                   full_parameter_block, /*partitioned_start_time=*/3950,
+                   /*partitioned_end_time=*/4500,
+                   unused_partitioned_parameter_block)
+                   .ok());
+  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
+                   full_parameter_block, /*partitioned_start_time=*/3999,
+                   /*partitioned_end_time=*/4001,
+                   unused_partitioned_parameter_block)
+                   .ok());
+}
+
+TEST(PartitionParameterBlock,
+     IsEquivalentWhenSubblockBoundaryIsNotCrossedForReconGain) {
+  const int32_t kStartDuration = 0;
+  const int32_t kEndDuration = 4000;
+  const int32_t kExpectedDuration = kEndDuration - kStartDuration;
+  ParameterBlockObuMetadata full_parameter_block;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        start_timestamp: 0
+        duration: 8000
+        num_subblocks: 1
+        constant_subblock_duration: 8000
+        subblocks {
+          recon_gain_info_parameter_data {
+            recon_gains_for_layer {}
+            recon_gains_for_layer { recon_gain { key: 2 value: 200 } }
+          }
+        }
+      )pb",
+      &full_parameter_block);
+  const size_t kNumLayers = 2;
+  const size_t kNumReconGainsForSecondLayer = 1;
+  const size_t kSecondLayerReconGainValueForKey2 = 200;
+
+  ParameterBlockObuMetadata partitioned_parameter_block;
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, kStartDuration, kEndDuration,
+                  partitioned_parameter_block),
+              IsOk());
+
+  EXPECT_EQ(partitioned_parameter_block.duration(), kExpectedDuration);
+  EXPECT_EQ(partitioned_parameter_block.subblocks().size(), 1);
+  ASSERT_TRUE(partitioned_parameter_block.subblocks(0)
+                  .has_recon_gain_info_parameter_data());
+  const auto& recon_gain_info_parameter_data =
+      partitioned_parameter_block.subblocks(0).recon_gain_info_parameter_data();
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gains_for_layer().size(),
+            kNumLayers);
+  EXPECT_TRUE(recon_gain_info_parameter_data.recon_gains_for_layer(0)
+                  .recon_gain()
+                  .empty());
+  const auto& second_layer_recon_gains =
+      recon_gain_info_parameter_data.recon_gains_for_layer(1);
+  EXPECT_EQ(second_layer_recon_gains.recon_gain().size(),
+            kNumReconGainsForSecondLayer);
+  EXPECT_EQ(second_layer_recon_gains.recon_gain().at(2),
+            kSecondLayerReconGainValueForKey2);
+}
+
+TEST(PartitionParameterBlock,
+     InvalidWhenSubblockBoundaryIsCrossedForReconGain) {
+  ParameterBlockObuMetadata full_parameter_block;
+  google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_id: 100
+        start_timestamp: 0
+        duration: 8000
+        num_subblocks: 2
+        constant_subblock_duration: 4000
+        # t = [0, 4000).
+        subblocks {
+          recon_gain_info_parameter_data {
+            recon_gains_for_layer {}
+            recon_gains_for_layer { recon_gain { key: 2 value: 200 } }
+          }
+        }
+        # t = [4000, 8000).
+        subblocks {
+          recon_gain_info_parameter_data {
+            recon_gains_for_layer {}
+            recon_gains_for_layer { recon_gain { key: 2 value: 100 } }
+          }
+        }
+      )pb",
+      &full_parameter_block);
+
+  ParameterBlockObuMetadata partitioned_parameter_block;
+  EXPECT_FALSE(ParameterBlockPartitioner::PartitionParameterBlock(
+                   full_parameter_block, /*partitioned_start_time=*/3999,
+                   /*partitioned_end_time=*/4001, partitioned_parameter_block)
+                   .ok());
+}
 
 struct FindConstantSubblockDurationTestCase {
   std::vector<uint32_t> input_subblock_durations;
