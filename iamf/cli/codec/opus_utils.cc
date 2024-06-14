@@ -1,30 +1,44 @@
 #include "iamf/cli/codec/opus_utils.h"
 
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "include/opus_defines.h"
 
 namespace iamf_tools {
 
-absl::StatusCode OpusErrorCodeToAbslStatusCode(int opus_error_code) {
+absl::Status OpusErrorCodeToAbslStatus(int opus_error_code,
+                                       absl::string_view error_message) {
+  absl::StatusCode status_code;
   switch (opus_error_code) {
     case OPUS_OK:
-      return absl::StatusCode::kOk;
+      return absl::OkStatus();
     case OPUS_BAD_ARG:
-      return absl::StatusCode::kInvalidArgument;
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
     case OPUS_BUFFER_TOO_SMALL:
     case OPUS_INVALID_STATE:
-      return absl::StatusCode::kFailedPrecondition;
+      status_code = absl::StatusCode::kFailedPrecondition;
+      break;
     case OPUS_INTERNAL_ERROR:
-      return absl::StatusCode::kInternal;
+      status_code = absl::StatusCode::kInternal;
+      break;
     case OPUS_INVALID_PACKET:
-      return absl::StatusCode::kDataLoss;
+      status_code = absl::StatusCode::kDataLoss;
+      break;
     case OPUS_UNIMPLEMENTED:
-      return absl::StatusCode::kUnimplemented;
+      status_code = absl::StatusCode::kUnimplemented;
+      break;
     case OPUS_ALLOC_FAIL:
-      return absl::StatusCode::kResourceExhausted;
+      status_code = absl::StatusCode::kResourceExhausted;
+      break;
     default:
-      return absl::StatusCode::kUnknown;
+      status_code = absl::StatusCode::kUnknown;
+      break;
   }
+  return absl::Status(
+      status_code,
+      absl::StrCat(error_message, " opus_error_code= ", opus_error_code));
 }
 
 }  // namespace iamf_tools

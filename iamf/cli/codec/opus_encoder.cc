@@ -140,22 +140,15 @@ absl::Status OpusEncoder::InitializeEncoder() {
       application = OPUS_APPLICATION_RESTRICTED_LOWDELAY;
       break;
     default:
-      LOG(ERROR) << "Unrecognized application: "
-                 << encoder_metadata_.application();
-      return absl::UnknownError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unrecognized application.", encoder_metadata_.application()));
   }
 
   int opus_error_code;
   encoder_ = opus_encoder_create(input_sample_rate_, num_channels_, application,
                                  &opus_error_code);
-
-  const auto status_code = OpusErrorCodeToAbslStatusCode(opus_error_code);
-  if (status_code != absl::StatusCode::kOk) {
-    return absl::Status(
-        status_code,
-        absl::StrCat("Failed to initialize Opus encoder: opus_error_code= ",
-                     opus_error_code));
-  }
+  RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
+      opus_error_code, "Failed to initialize Opus encoder."));
 
   // `OPUS_SET_BITRATE` treats this as the bit-rate for the entire substream.
   // Configure `libopus` so coupled substreams and mono substreams have the same
@@ -193,12 +186,9 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   }
 
   if (*encoded_length_bytes < 0) {
-    // When `encoded_length_bytes` is negative, it is an Opus error code.
-    return absl::Status(
-        OpusErrorCodeToAbslStatusCode(*encoded_length_bytes),
-        absl::StrCat(
-            "Failed to initialize Opus decoder: encoded_length_bytes= ",
-            *encoded_length_bytes));
+    // When `encoded_length_bytes` is negative, it is a non-OK Opus error code.
+    return OpusErrorCodeToAbslStatus(*encoded_length_bytes,
+                                     "Failed to encode samples.");
   }
 
   // Shrink output vector to actual size.

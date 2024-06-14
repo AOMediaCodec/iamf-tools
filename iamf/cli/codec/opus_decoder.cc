@@ -73,15 +73,8 @@ absl::Status OpusDecoder::Initialize() {
   int opus_error_code;
   decoder_ = opus_decoder_create(static_cast<opus_int32>(output_sample_rate_),
                                  num_channels_, &opus_error_code);
-
-  const auto status_code = OpusErrorCodeToAbslStatusCode(opus_error_code);
-  if (status_code != absl::StatusCode::kOk) {
-    decoder_ = nullptr;
-    return absl::Status(
-        status_code,
-        absl::StrCat("Failed to initialize Opus decoder: opus_error_code= ",
-                     opus_error_code));
-  }
+  RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
+      opus_error_code, "Failed to initialize Opus decoder."));
 
   return absl::OkStatus();
 }
@@ -107,11 +100,9 @@ absl::Status OpusDecoder::DecodeAudioFrame(
       /*frame_size=*/num_samples_per_channel_,
       /*decode_fec=*/0);
   if (num_output_samples < 0) {
-    // When `num_output_samples` is negative, it is an Opus error code.
-    return absl::Status(
-        OpusErrorCodeToAbslStatusCode(num_output_samples),
-        absl::StrCat("Failed to initialize Opus decoder: num_output_samples= ",
-                     num_output_samples));
+    // When `num_output_samples` is negative, it is a non-OK Opus error code.
+    return OpusErrorCodeToAbslStatus(num_output_samples,
+                                     "Failed to decode Opus frame.");
   }
   output_pcm_float.resize(num_output_samples * num_channels_);
   LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
