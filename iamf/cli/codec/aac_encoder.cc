@@ -19,6 +19,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/aac_utils.h"
@@ -32,6 +33,48 @@
 namespace iamf_tools {
 
 namespace {
+
+// Converts an AACENC_ERROR to an absl::Status.
+absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
+                                     const absl::string_view error_message) {
+  absl::StatusCode status_code;
+  switch (aac_error_code) {
+    case AACENC_OK:
+      return absl::OkStatus();
+    case AACENC_INVALID_HANDLE:
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
+    case AACENC_MEMORY_ERROR:
+      status_code = absl::StatusCode::kResourceExhausted;
+      break;
+    case AACENC_UNSUPPORTED_PARAMETER:
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
+    case AACENC_INVALID_CONFIG:
+      status_code = absl::StatusCode::kFailedPrecondition;
+      break;
+    case AACENC_INIT_ERROR:
+    case AACENC_INIT_AAC_ERROR:
+    case AACENC_INIT_SBR_ERROR:
+    case AACENC_INIT_TP_ERROR:
+    case AACENC_INIT_META_ERROR:
+    case AACENC_INIT_MPS_ERROR:
+      status_code = absl::StatusCode::kInternal;
+      break;
+    case AACENC_ENCODE_EOF:
+      status_code = absl::StatusCode::kOutOfRange;
+      break;
+    case AACENC_ENCODE_ERROR:
+    default:
+      status_code = absl::StatusCode::kUnknown;
+      break;
+  }
+
+  return absl::Status(
+      status_code,
+      absl::StrCat(error_message, " AACENC_ERROR= ", aac_error_code));
+}
+
 absl::Status ConfigureAacEncoder(
     const iamf_tools_cli_proto::AacEncoderMetadata& encoder_metadata,
     int num_channels, uint32_t num_samples_per_frame,

@@ -47,13 +47,10 @@ cc_library(
 
 cc_library(
     name = "aac_utils",
-    srcs = ["aac_utils.cc"],
+    srcs = [],
     hdrs = ["aac_utils.h"],
     deps = [
-        "//iamf/cli/proto:codec_config_cc_proto",
         "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
         "@fdk_aac//:aac_encoder_lib",
         "@fdk_aac//:fdk_sys_lib",
     ],
