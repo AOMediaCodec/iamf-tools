@@ -24,10 +24,13 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "libAACdec/include/aacdecoder_lib.h"
@@ -36,6 +39,63 @@
 namespace iamf_tools {
 
 namespace {
+
+// Converts an AAC_DECODER_ERROR to an absl::Status.
+absl::Status AacDecoderErrorToAbslStatus(AAC_DECODER_ERROR aac_error_code,
+                                         absl::string_view error_message) {
+  absl::StatusCode status_code;
+  switch (aac_error_code) {
+    case AAC_DEC_OK:
+      return absl::OkStatus();
+    case AAC_DEC_OUT_OF_MEMORY:
+      status_code = absl::StatusCode::kResourceExhausted;
+      break;
+    case AAC_DEC_TRANSPORT_SYNC_ERROR:
+    case AAC_DEC_NOT_ENOUGH_BITS:
+    case AAC_DEC_INVALID_HANDLE:
+    case AAC_DEC_UNSUPPORTED_AOT:
+    case AAC_DEC_UNSUPPORTED_FORMAT:
+    case AAC_DEC_UNSUPPORTED_ER_FORMAT:
+    case AAC_DEC_UNSUPPORTED_EPCONFIG:
+    case AAC_DEC_UNSUPPORTED_MULTILAYER:
+    case AAC_DEC_UNSUPPORTED_CHANNELCONFIG:
+    case AAC_DEC_UNSUPPORTED_SAMPLINGRATE:
+    case AAC_DEC_INVALID_SBR_CONFIG:
+    case AAC_DEC_SET_PARAM_FAIL:
+    case AAC_DEC_OUTPUT_BUFFER_TOO_SMALL:
+    case AAC_DEC_UNSUPPORTED_EXTENSION_PAYLOAD:
+    case AAC_DEC_UNSUPPORTED_SBA:
+    case AAC_DEC_ANC_DATA_ERROR:
+    case AAC_DEC_TOO_SMALL_ANC_BUFFER:
+    case AAC_DEC_TOO_MANY_ANC_ELEMENTS:
+      status_code = absl::StatusCode::kInvalidArgument;
+      break;
+    case AAC_DEC_NEED_TO_RESTART:
+      status_code = absl::StatusCode::kFailedPrecondition;
+      break;
+    // Several error codes usually imply that the bitstream is corrupt.
+    case AAC_DEC_TRANSPORT_ERROR:
+    case AAC_DEC_PARSE_ERROR:
+    case AAC_DEC_DECODE_FRAME_ERROR:
+    case AAC_DEC_INVALID_CODE_BOOK:
+    case AAC_DEC_UNSUPPORTED_PREDICTION:
+    case AAC_DEC_UNSUPPORTED_CCE:
+    case AAC_DEC_UNSUPPORTED_LFE:
+    case AAC_DEC_UNSUPPORTED_GAIN_CONTROL_DATA:
+    case AAC_DEC_CRC_ERROR:
+    case AAC_DEC_RVLC_ERROR:
+    case AAC_DEC_TNS_READ_ERROR:
+      status_code = absl::StatusCode::kDataLoss;
+      break;
+    default:
+      status_code = absl::StatusCode::kUnknown;
+      break;
+  }
+
+  return absl::Status(
+      status_code,
+      absl::StrCat(error_message, " AAC_DECODER_ERROR= ", aac_error_code));
+}
 
 absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
                                  int num_channels,
@@ -117,23 +177,23 @@ absl::Status AacDecoder::DecodeAudioFrame(
   UCHAR* in_buffer[] = {input_data.data()};
   const UINT buffer_size[] = {static_cast<UINT>(encoded_frame.size())};
   UINT bytes_valid = static_cast<UINT>(encoded_frame.size());
-  aacDecoder_Fill(decoder_, in_buffer, buffer_size, &bytes_valid);
+  RETURN_IF_NOT_OK(AacDecoderErrorToAbslStatus(
+      aacDecoder_Fill(decoder_, in_buffer, buffer_size, &bytes_valid),
+      "Failed on `aacDecoder_Fill`: "));
   if (bytes_valid != 0) {
-    LOG(ERROR) << "The input frame failed to decode. It may not have been a "
-                  "complete AAC frame.";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError(
+        "The input frame failed to decode. It may not have been a "
+        "complete AAC frame.");
   }
 
   // Retrieve the decoded frame. `fdk_aac` decodes to INT_PCM (usually 16-bits)
   // samples with channels interlaced.
   std::vector<INT_PCM> output_pcm;
   output_pcm.resize(num_samples_per_channel_ * num_channels_);
-  auto aac_error_code = aacDecoder_DecodeFrame(decoder_, output_pcm.data(),
-                                               output_pcm.size(), /*flags=*/0);
-  if (aac_error_code != AAC_DEC_OK) {
-    LOG(ERROR) << "AAC failed to decode: " << aac_error_code;
-    return absl::UnknownError("");
-  }
+  RETURN_IF_NOT_OK(AacDecoderErrorToAbslStatus(
+      aacDecoder_DecodeFrame(decoder_, output_pcm.data(), output_pcm.size(),
+                             /*flags=*/0),
+      "Failed on `aacDecoder_DecodeFrame`: "));
 
   // Transform the data to channels arranged in (time, channel) axes with
   // samples stored in the upper bytes of an `int32_t`. There can only be one or
