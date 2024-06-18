@@ -54,9 +54,8 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
       //                    equivalent.
       break;
     default:
-      LOG(ERROR) << "Unrecognized `codec_id`= "
-                 << codec_config.GetCodecConfig().codec_id;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unrecognized codec_id= ", codec_config.GetCodecConfig().codec_id));
   }
 
   if (decoder) {

@@ -206,10 +206,10 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
     }
 
     if (expected_end != wb.bit_offset()) {
-      LOG(ERROR) << "`FlacDecoderConfig` was expected to be using "
-                 << metadata_block.header.metadata_data_block_length
-                 << " bytes, but it was not.";
-      return absl::UnknownError("");
+      return absl::UnknownError(
+          absl::StrCat("`FlacDecoderConfig` was expected to be using ",
+                       metadata_block.header.metadata_data_block_length,
+                       " bytes, but it was not."));
     }
   }
 

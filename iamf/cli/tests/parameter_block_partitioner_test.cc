@@ -81,7 +81,7 @@ absl::Status CreateMinimalParameterBlockObuMetadata(
     const std::vector<MixGainParameterData>& mix_gain_parameter_data,
     ParameterBlockObuMetadata& full_parameter_block) {
   if (subblock_durations.empty()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Subblock durations cannot be empty.");
   }
   std::vector<MixGainParameterData> mix_gains;
   if (mix_gain_parameter_data.empty()) {

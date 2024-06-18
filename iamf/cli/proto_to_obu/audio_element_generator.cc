@@ -38,14 +38,16 @@
 
 namespace iamf_tools {
 
-namespace {
+using absl::InvalidArgumentError;
+using absl::StrCat;
 
+namespace {
 // Copies the `ParameterDefinitionType` based on the input data.
 absl::Status CopyAudioElementParamDefinitionType(
     iamf_tools_cli_proto::AudioElementParam user_data_parameter,
     ParamDefinition::ParameterDefinitionType& output_param_definition_type) {
   if (user_data_parameter.has_deprecated_param_definition_type()) {
-    return absl::InvalidArgumentError(
+    return InvalidArgumentError(
         "Please upgrade the `deprecated_param_definition_type` "
         "field to the new `param_definition_type` field."
         "\nSuggested upgrades:\n"
@@ -55,7 +57,7 @@ absl::Status CopyAudioElementParamDefinitionType(
         "PARAM_DEFINITION_TYPE_RECON_GAIN`\n");
   }
   if (!user_data_parameter.has_param_definition_type()) {
-    return absl::InvalidArgumentError("Missing `param_definition_type` field.");
+    return InvalidArgumentError("Missing `param_definition_type` field.");
   }
 
   switch (user_data_parameter.param_definition_type()) {
@@ -69,9 +71,9 @@ absl::Status CopyAudioElementParamDefinitionType(
       return absl::OkStatus();
     default:
       // TODO(b/289541186): Allow the extension types through here.
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown or invalid param_definition_type= ",
-                       user_data_parameter.param_definition_type()));
+      return InvalidArgumentError(
+          StrCat("Unknown or invalid param_definition_type= ",
+                 user_data_parameter.param_definition_type()));
   }
 }
 
@@ -80,11 +82,10 @@ absl::Status GenerateAudioSubstreams(
     AudioElementObu& audio_element_obu) {
   if (audio_element_metadata.num_substreams() !=
       audio_element_metadata.audio_substream_ids_size()) {
-    LOG(ERROR) << "User data has inconsistent `audio_element_ids`. Found: "
-               << audio_element_metadata.audio_substream_ids_size()
-               << " substreams, expected: "
-               << audio_element_metadata.num_substreams();
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "User data has inconsistent `audio_element_ids`. Found: ",
+        audio_element_metadata.audio_substream_ids_size(),
+        " substreams, expected: ", audio_element_metadata.num_substreams()));
   }
 
   audio_element_obu.InitializeAudioSubstreams(
@@ -102,11 +103,10 @@ absl::Status GenerateParameterDefinitions(
     AudioElementObu& audio_element_obu) {
   if (audio_element_metadata.num_parameters() !=
       audio_element_metadata.audio_element_params_size()) {
-    LOG(ERROR) << "User data has inconsistent `num_parameters`. Found: "
-               << audio_element_metadata.audio_element_params_size()
-               << " parameters, expected: "
-               << audio_element_metadata.num_parameters();
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "User data has inconsistent `num_parameters`. Found: ",
+        audio_element_metadata.audio_element_params_size(),
+        " parameters, expected: ", audio_element_metadata.num_parameters()));
   }
 
   audio_element_obu.InitializeParams(audio_element_metadata.num_parameters());
@@ -143,11 +143,11 @@ absl::Status GenerateParameterDefinitions(
                 .reserved_default));
         if (demixing_param_definition->duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
-          LOG(ERROR) << "Demixing parameter duration= "
-                     << demixing_param_definition->duration_
-                     << " is inconsistent with num_samples_per_frame="
-                     << codec_config_obu.GetCodecConfig().num_samples_per_frame;
-          return absl::InvalidArgumentError("");
+          return InvalidArgumentError(
+              StrCat("Demixing parameter duration= ",
+                     demixing_param_definition->duration_,
+                     " is inconsistent with num_samples_per_frame=",
+                     codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
 
         audio_element_param.param_definition =
@@ -163,11 +163,11 @@ absl::Status GenerateParameterDefinitions(
             *recon_gain_param_definition));
         if (recon_gain_param_definition->duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
-          LOG(ERROR) << "Recon gain parameter duration= "
-                     << recon_gain_param_definition->duration_
-                     << " is inconsistent with num_samples_per_frame="
-                     << codec_config_obu.GetCodecConfig().num_samples_per_frame;
-          return absl::InvalidArgumentError("");
+          return InvalidArgumentError(
+              StrCat("Recon gain parameter duration= ",
+                     recon_gain_param_definition->duration_,
+                     " is inconsistent with num_samples_per_frame=",
+                     codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
         audio_element_param.param_definition =
             std::move(recon_gain_param_definition);
@@ -175,7 +175,9 @@ absl::Status GenerateParameterDefinitions(
       }
       default:
         // TODO(b/289541186): Support the extension fields here.
-        return absl::InvalidArgumentError("");
+        return InvalidArgumentError(
+            StrCat("Unknown or invalid param_definition_type= ",
+                   audio_element_param.param_definition_type));
     }
   }
 
@@ -218,8 +220,8 @@ absl::Status LoudspeakerLayoutToChannels(
       channels = {2, 0, 0};
       break;
     default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown loudspeaker_layout= ", loudspeaker_layout));
+      return InvalidArgumentError(
+          StrCat("Unknown loudspeaker_layout= ", loudspeaker_layout));
   }
   return absl::OkStatus();
 }
@@ -260,7 +262,9 @@ absl::Status CollectBcgLabels(
     default:
       LOG(ERROR) << "Unsupported number of surround channels: "
                  << layer_channels.surround;
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("Unsupported number of surround channels: ",
+                 layer_channels.surround));
   }
   switch (layer_channels.height) {
     case 0:
@@ -284,7 +288,8 @@ absl::Status CollectBcgLabels(
     default:
       LOG(ERROR) << "Unsupported number of height channels: "
                  << layer_channels.height;
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(StrCat(
+          "Unsupported number of height channels: ", layer_channels.height));
   }
   switch (layer_channels.lfe) {
     case 0:
@@ -294,9 +299,8 @@ absl::Status CollectBcgLabels(
       non_coupled_substream_labels->push_back("LFE");
       break;
     default:
-      LOG(ERROR) << "Unsupported number of LFE channels: "
-                 << layer_channels.lfe;
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("Unsupported number of LFE channels: ", layer_channels.lfe));
   }
 
   return absl::OkStatus();
@@ -317,8 +321,8 @@ absl::Status CollectDcgLabels(
         // (https://aomediacodec.github.io/iamf/#syntax-scalable-channel-layout-config):
         // "Center channel comes first and followed by LFE and followed by the
         // other one."
-        // "L2" is categorized as "the other one", so we save pushing "L2" till
-        // the end.
+        // "L2" is categorized as "the other one", so we save pushing "L2"
+        // till the end.
         push_l2_in_the_end = true;
         break;
       case 3:
@@ -334,8 +338,8 @@ absl::Status CollectDcgLabels(
         break;
       default:
         if (surround > 7) {
-          LOG(ERROR) << "Unsupported number of surround channels: " << surround;
-          return absl::InvalidArgumentError("");
+          return InvalidArgumentError(
+              StrCat("Unsupported number of surround channels: ", surround));
         }
         break;
     }
@@ -357,9 +361,8 @@ absl::Status CollectDcgLabels(
           coupled_substream_labels->push_back("Rtf2");
         }
       } else {
-        LOG(ERROR) << "Unsupported number of height channels: "
-                   << layer_channels.height;
-        return absl::InvalidArgumentError("");
+        return InvalidArgumentError(StrCat(
+            "Unsupported number of height channels: ", layer_channels.height));
       }
     } else if (accumulated_channels.height == 2) {
       coupled_substream_labels->push_back("Ltf4");
@@ -367,7 +370,7 @@ absl::Status CollectDcgLabels(
     } else {
       LOG(ERROR) << "Unsupported number of height channels: "
                  << accumulated_channels.height;
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError("");
     }
   }
 
@@ -375,9 +378,8 @@ absl::Status CollectDcgLabels(
     if (layer_channels.lfe == 1) {
       non_coupled_substream_labels->push_back("LFE");
     } else {
-      LOG(ERROR) << "Unsupported number of LFE channels: "
-                 << layer_channels.lfe;
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("Unsupported number of LFE channels: ", layer_channels.lfe));
     }
   }
 
@@ -434,21 +436,19 @@ absl::Status ValidateSubstreamCounts(
   const auto substream_count_in_obu =
       static_cast<uint32_t>(layer_config.substream_count);
   if (coupled_substream_count_in_obu != num_required_coupled_channels) {
-    LOG(ERROR) << "Coupled substream count different from the required number: "
-               << coupled_substream_count_in_obu << " vs "
-               << num_required_coupled_channels;
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "Coupled substream count different from the required number: ",
+        coupled_substream_count_in_obu, " vs ", num_required_coupled_channels));
   }
 
   // The sum of coupled and non-coupled channels must be the same as
   // the `substream_count` recorded in the OBU.
   if (substream_count_in_obu !=
       (num_required_non_coupled_channels + num_required_coupled_channels)) {
-    LOG(INFO) << "Substream count different from the #non-coupled substreams "
-              << " + #coupled substreams: " << substream_count_in_obu << " vs "
-              << num_required_non_coupled_channels +
-                     num_required_coupled_channels;
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "Substream count different from the #non-coupled substreams ",
+        substream_count_in_obu, " vs ",
+        num_required_non_coupled_channels + num_required_coupled_channels));
   }
 
   return absl::OkStatus();
@@ -495,12 +495,10 @@ absl::Status ValidateReconGainDefined(
     }
     if (channel_audio_layer_configs[i].recon_gain_is_present_flag !=
         expected_recon_gain_is_present_flag) {
-      LOG(ERROR)
-          << "`recon_gain_is_present_flag` for layer " << i << " should be "
-          << absl::StrCat(expected_recon_gain_is_present_flag) << " but is "
-          << absl::StrCat(
-                 channel_audio_layer_configs[i].recon_gain_is_present_flag);
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("`recon_gain_is_present_flag` for layer ", i, " should be ",
+                 expected_recon_gain_is_present_flag, " but is ",
+                 channel_audio_layer_configs[i].recon_gain_is_present_flag));
     }
   }
 
@@ -516,11 +514,11 @@ absl::Status ValidateReconGainDefined(
   }
 
   if (recon_gain_defined != recon_gain_required) {
-    LOG(ERROR) << "Recon gain is " << (recon_gain_required ? "" : "not ")
-               << "required but is " << (recon_gain_defined ? "" : "not ")
-               << "defined in Audio Element OBU ID= "
-               << audio_element_obu.GetAudioElementId();
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(
+        StrCat("Recon gain is ", (recon_gain_required ? "" : "not "),
+               "required but is ", (recon_gain_defined ? "" : "not "),
+               "defined in Audio Element OBU ID= ",
+               audio_element_obu.GetAudioElementId()));
   }
 
   return absl::OkStatus();
@@ -531,7 +529,7 @@ absl::Status CopyLoudspeakerLayout(
     const iamf_tools_cli_proto::ChannelAudioLayerConfig& input_layer_config,
     ChannelAudioLayerConfig::LoudspeakerLayout& output_loudspeaker_layout) {
   if (input_layer_config.has_deprecated_loudspeaker_layout()) {
-    return absl::InvalidArgumentError(
+    return InvalidArgumentError(
         "Please upgrade the `deprecated_loudspeaker_layout` field to the new "
         "`loudspeaker_layout` field.\n"
         "Suggested upgrades:\n"
@@ -581,9 +579,9 @@ absl::Status CopyLoudspeakerLayout(
                    input_layer_config.loudspeaker_layout(),
                    output_loudspeaker_layout)
            .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown loudspeaker_layout= ",
-                     input_layer_config.loudspeaker_layout()));
+    return InvalidArgumentError(
+        StrCat("Unknown loudspeaker_layout= ",
+               input_layer_config.loudspeaker_layout()));
   }
   return absl::OkStatus();
 }
@@ -593,11 +591,10 @@ absl::Status FillScalableChannelLayoutConfig(
     const CodecConfigObu& codec_config_obu,
     AudioElementWithData& audio_element) {
   if (!audio_element_metadata.has_scalable_channel_layout_config()) {
-    LOG(ERROR) << "Audio Element Metadata ["
-               << audio_element_metadata.audio_element_id()
-               << " is of type AUDIO_ELEMENT_CHANNEL_BASED but does not have"
-               << " the `scalable_channel_layout_config` field.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
+        " is of type AUDIO_ELEMENT_CHANNEL_BASED but does not have",
+        " the `scalable_channel_layout_config` field."));
   }
 
   const auto& input_config =
@@ -607,7 +604,7 @@ absl::Status FillScalableChannelLayoutConfig(
   auto& config =
       std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
   if (config.num_layers != input_config.channel_audio_layer_configs_size()) {
-    return absl::InvalidArgumentError(absl::StrCat(
+    return InvalidArgumentError(StrCat(
         "Expected ", config.num_layers, " layers in the metadata. Found ",
         input_config.channel_audio_layer_configs_size(), " layers."));
   }
@@ -674,7 +671,7 @@ absl::Status FinalizeAmbisonicsMonoConfig(
 
     // Add the associated ACN to the labels associated with that substream.
     substream_id_to_labels[substream_id].push_back(
-        {absl::StrCat("A", ambisonics_channel_number)});
+        {StrCat("A", ambisonics_channel_number)});
   }
   return absl::OkStatus();
 }
@@ -685,10 +682,10 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (audio_element_obu.num_substreams_ !=
       static_cast<uint32_t>(projection_config.substream_count)) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("`num_substreams` different from `substream_count`: (",
-                     audio_element_obu.num_substreams_, " vs ",
-                     projection_config.substream_count, ")"));
+    return InvalidArgumentError(
+        StrCat("`num_substreams` different from `substream_count`: (",
+               audio_element_obu.num_substreams_, " vs ",
+               projection_config.substream_count, ")"));
   }
 
   // For projection mode, assume coupled substreams (using 2 channels) come
@@ -696,9 +693,9 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
   for (int i = 0; i < audio_element_obu.num_substreams_; ++i) {
     substream_id_to_labels[audio_element_obu.audio_substream_ids_[i]] =
         (i < projection_config.coupled_substream_count
-             ? std::list<std::string>{absl::StrCat("A", 2 * i),
-                                      absl::StrCat("A", 2 * i + 1)}
-             : std::list<std::string>{absl::StrCat(
+             ? std::list<std::string>{StrCat("A", 2 * i),
+                                      StrCat("A", 2 * i + 1)}
+             : std::list<std::string>{StrCat(
                    "A", 2 * projection_config.coupled_substream_count + i)});
   }
 
@@ -710,10 +707,10 @@ absl::Status FillAmbisonicsMonoConfig(
     const DecodedUleb128 audio_element_id, AudioElementObu& audio_element_obu,
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (!input_config.has_ambisonics_mono_config()) {
-    LOG(ERROR) << "Audio Element Metadata [" << audio_element_id
-               << " is of mode AMBISONICS_MODE_MONO but does not have"
-               << " the `ambisonics_mono_config` field.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(
+        StrCat("Audio Element Metadata [", audio_element_id,
+               " is of mode AMBISONICS_MODE_MONO but does not have the "
+               "`ambisonics_mono_config` field."));
   }
   const auto& input_mono_config = input_config.ambisonics_mono_config();
   RETURN_IF_NOT_OK(audio_element_obu.InitializeAmbisonicsMono(
@@ -723,12 +720,11 @@ absl::Status FillAmbisonicsMonoConfig(
       std::get<AmbisonicsConfig>(audio_element_obu.config_).ambisonics_config);
   if (input_mono_config.channel_mapping_size() !=
       input_mono_config.output_channel_count()) {
-    LOG(ERROR) << "Audio Element Metadata [" << audio_element_id
-               << " has output_channel_count= "
-               << input_mono_config.output_channel_count()
-               << ", but `channel_mapping` has "
-               << input_mono_config.channel_mapping_size() << " elements.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "Audio Element Metadata [", audio_element_id,
+        " has output_channel_count= ", input_mono_config.output_channel_count(),
+        ", but `channel_mapping` has ",
+        input_mono_config.channel_mapping_size(), " elements."));
   }
 
   for (int i = 0; i < input_mono_config.channel_mapping_size(); ++i) {
@@ -750,10 +746,10 @@ absl::Status FillAmbisonicsProjectionConfig(
     const DecodedUleb128 audio_element_id, AudioElementObu& audio_element_obu,
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (!input_config.has_ambisonics_projection_config()) {
-    LOG(ERROR) << "Audio Element Metadata [" << audio_element_id
-               << " is of mode AMBISONICS_MODE_PROJECTION but does not have"
-               << " the `AMBISONICS_MODE_PROJECTION` field.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(
+        StrCat("Audio Element Metadata [", audio_element_id,
+               " is of mode AMBISONICS_MODE_PROJECTION but does not have"
+               " the `AMBISONICS_MODE_PROJECTION` field."));
   }
   const auto& input_projection_config =
       input_config.ambisonics_projection_config();
@@ -769,13 +765,11 @@ absl::Status FillAmbisonicsProjectionConfig(
       input_projection_config.output_channel_count();
   if (input_projection_config.demixing_matrix_size() !=
       expected_demixing_matrix_size) {
-    LOG(ERROR) << "Audio Element Metadata [" << audio_element_id
-               << " expects demixing_matrix_size= "
-               << expected_demixing_matrix_size
-               << ", but `demixing_matrix` has "
-               << input_projection_config.demixing_matrix_size()
-               << " elements.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(
+        StrCat("Audio Element Metadata [", audio_element_id,
+               " expects demixing_matrix_size= ", expected_demixing_matrix_size,
+               ", but `demixing_matrix` has ",
+               input_projection_config.demixing_matrix_size(), " elements."));
   }
 
   for (int i = 0; i < input_projection_config.demixing_matrix_size(); ++i) {
@@ -795,7 +789,10 @@ absl::Status FillAmbisonicsConfig(
                << audio_element_metadata.audio_element_id()
                << " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
                << " the `ambisonics_config` field.";
-    return absl::InvalidArgumentError("");
+    return InvalidArgumentError(StrCat(
+        "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
+        " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
+        " the `ambisonics_config` field."));
   }
 
   const auto& input_config = audio_element_metadata.ambisonics_config();
@@ -818,7 +815,8 @@ absl::Status FillAmbisonicsConfig(
     default:
       LOG(ERROR) << "Unrecognized ambisonics_mode: "
                  << input_config.ambisonics_mode();
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(StrCat("Unrecognized ambisonics_mode: ",
+                                         input_config.ambisonics_mode()));
   }
   std::get<AmbisonicsConfig>(audio_element.obu.config_).ambisonics_mode =
       ambisonics_mode;
@@ -871,10 +869,11 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     if (layer_channels.surround < accumulated_channels.surround ||
         layer_channels.lfe < accumulated_channels.lfe ||
         layer_channels.height < accumulated_channels.height) {
-      LOG(ERROR) << "Decreasing channel number:";
       LogChannelNumbers("From", accumulated_channels);
       LogChannelNumbers("To", layer_channels);
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("At least one channel number decreased from "
+                 "accumulated_channels to layer_channels"));
     }
 
     channel_numbers_for_layers.push_back(layer_channels);
@@ -931,7 +930,7 @@ absl::Status AudioElementGenerator::FinalizeAmbisonicsConfig(
     SubstreamIdLabelsMap& substream_id_to_labels) {
   if (audio_element_obu.GetAudioElementType() !=
       AudioElementObu::AudioElementType::kAudioElementSceneBased) {
-    return absl::InvalidArgumentError(
+    return InvalidArgumentError(
         "Cannot finalize AmbisonicsMonoConfig for a non-scene-based Audio "
         "Element OBU.");
   }
@@ -951,8 +950,8 @@ absl::Status AudioElementGenerator::FinalizeAmbisonicsConfig(
           substream_id_to_labels);
     default:
       return absl::UnimplementedError(
-          absl::StrCat("Unimplemented Ambisonics mode: ",
-                       ambisonics_config.ambisonics_mode));
+          StrCat("Unimplemented Ambisonics mode: ",
+                 ambisonics_config.ambisonics_mode));
   }
 }
 
@@ -974,7 +973,9 @@ absl::Status AudioElementGenerator::Generate(
         audio_element_type = kAudioElementSceneBased;
         break;
       default:
-        return absl::InvalidArgumentError("");
+        return InvalidArgumentError(
+            StrCat("Unrecognized audio_element_type= ",
+                   audio_element_metadata.audio_element_type()));
     }
     uint8_t reserved;
     RETURN_IF_NOT_OK(
@@ -991,9 +992,9 @@ absl::Status AudioElementGenerator::Generate(
 
     // Parameter definitions.
     if (!codec_configs.contains(audio_element_metadata.codec_config_id())) {
-      LOG(ERROR) << "Failed to find matching codec_config_id="
-                 << audio_element_metadata.codec_config_id();
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(
+          StrCat("Failed to find matching codec_config_id=",
+                 audio_element_metadata.codec_config_id()));
     }
     const auto& codec_config_obu =
         codec_configs.at(audio_element_metadata.codec_config_id());
@@ -1009,11 +1010,10 @@ absl::Status AudioElementGenerator::Generate(
                               .codec_config = &codec_config_obu,
                           });
     if (!inserted) {
-      LOG(ERROR) << "Inserting Audio Element with ID "
-                 << audio_element_metadata.audio_element_id()
-                 << " failed because there is a duplicated element with the "
-                 << "same ID";
-      return absl::InvalidArgumentError("");
+      return InvalidArgumentError(StrCat(
+          "Inserting Audio Element with ID ",
+          audio_element_metadata.audio_element_id(),
+          " failed because there is a duplicated element with the same ID"));
     }
 
     switch (new_audio_element_iter->second.obu.GetAudioElementType()) {
@@ -1029,7 +1029,9 @@ absl::Status AudioElementGenerator::Generate(
         break;
       default:
         // TODO(b/289541186): Support the extension fields here.
-        return absl::InvalidArgumentError("");
+        return InvalidArgumentError(
+            StrCat("Unrecognized audio_element_type= ",
+                   new_audio_element_iter->second.obu.GetAudioElementType()));
     }
   }
 

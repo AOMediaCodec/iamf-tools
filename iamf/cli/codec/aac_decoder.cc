@@ -152,8 +152,7 @@ absl::Status AacDecoder::Initialize() {
   decoder_ = aacDecoder_Open(GetAacTransportationType(), /*nrOfLayers=*/1);
 
   if (decoder_ == nullptr) {
-    LOG(ERROR) << "Failed to initialize AAC decoder.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Failed to initialize AAC decoder.");
   }
 
   RETURN_IF_NOT_OK(

@@ -40,11 +40,11 @@ absl::Status ValidateDecoderConfig(
   // function if they were ever supported.
   if (opus_decoder_config.output_gain_ != 0 ||
       opus_decoder_config.mapping_family_ != 0) {
-    LOG(ERROR) << "IAMF V1 expects output_gain: "
-               << opus_decoder_config.output_gain_ << " and mapping_family: "
-               << absl::StrCat(opus_decoder_config.mapping_family_)
-               << " to be 0.";
-    return absl::InvalidArgumentError("");
+    const auto error_message = absl::StrCat(
+        "IAMF V1 expects output_gain: ", opus_decoder_config.output_gain_,
+        " and mapping_family: ", opus_decoder_config.mapping_family_,
+        " to be 0.");
+    return absl::InvalidArgumentError(error_message);
   }
 
   return absl::OkStatus();

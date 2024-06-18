@@ -84,20 +84,25 @@ absl::Status InternalWriteUnsigned(int max_bits, uint64_t data, int num_bits,
                                    std::vector<uint8_t>& bit_buffer) {
   // The `uint64` input limits this function to only write 64 bits at a time.
   if (max_bits > 64) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("max_bits cannot be greater than 64.");
   }
 
   // Check the calling function's limitation to guard against unexpected
   // behavior.
   if (num_bits > max_bits) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("num_bits= ", num_bits,
+                     " cannot be greater than max_bits= ", max_bits, "."));
   }
 
   // Check if there would be any non-zero bits left after writing. Avoid
   // shifting by 64 which results in undefined behavior. This is not possible
   // when writing out 64 bits.
-  if (num_bits < 64 && (data >> num_bits) != 0) {
-    return absl::InvalidArgumentError("");
+  if (num_bits != 64 && (data >> num_bits) != 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("There is more bits of data in the provided uint64 "
+                     "than requested for writing.  num_bits= ",
+                     num_bits, " data= ", data));
   }
 
   // Expand the buffer and pad the input data with zeroes.
@@ -124,15 +129,13 @@ absl::Status InternalWriteUnsigned(int max_bits, uint64_t data, int num_bits,
 absl::Status WriteBufferToFile(const std::vector<uint8_t>& buffer,
                                std::fstream& output_file) {
   if (!output_file.is_open()) {
-    LOG(ERROR) << "Expected file to be opened.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Expected file to be opened.");
   }
   output_file.write(reinterpret_cast<const char*>(buffer.data()),
                     buffer.size());
 
   if (output_file.bad()) {
-    LOG(ERROR) << "Writing to file failed.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Writing to file failed.");
   }
 
   return absl::OkStatus();
@@ -225,8 +228,7 @@ absl::Status WriteBitBuffer::WriteUint8Vector(
 
 absl::Status WriteBitBuffer::FlushAndWriteToFile(std::fstream& output_file) {
   if (!IsByteAligned()) {
-    LOG(INFO) << "Write buffer not byte-aligned";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Write buffer not byte-aligned");
   }
 
   bit_buffer_.resize(bit_offset_ / 8);
