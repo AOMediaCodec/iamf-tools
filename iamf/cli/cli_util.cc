@@ -323,7 +323,8 @@ absl::Status GetCommonSampleRateAndBitDepth(
     bool& requires_resampling) {
   requires_resampling = false;
   if (sample_rates.empty() || bit_depths.empty()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Expected at least one sample rate and bit depth.");
   }
 
   if (sample_rates.size() == 1) {

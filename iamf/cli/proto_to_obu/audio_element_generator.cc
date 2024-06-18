@@ -368,9 +368,9 @@ absl::Status CollectDcgLabels(
       coupled_substream_labels->push_back("Ltf4");
       coupled_substream_labels->push_back("Rtf4");
     } else {
-      LOG(ERROR) << "Unsupported number of height channels: "
-                 << accumulated_channels.height;
-      return InvalidArgumentError("");
+      return InvalidArgumentError(
+          absl::StrCat("Unsupported number of height channels: ",
+                       accumulated_channels.height));
     }
   }
 

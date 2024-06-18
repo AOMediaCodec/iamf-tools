@@ -217,9 +217,8 @@ absl::Status ParamDefinition::Validate() const {
 
   absl::Status status = absl::OkStatus();
   if (parameter_rate_ == 0) {
-    LOG(ERROR) << "Parameter rate should not be zero. Parameter ID= "
-               << parameter_id;
-    status = absl::InvalidArgumentError("");
+    status = absl::InvalidArgumentError(absl::StrCat(
+        "Parameter rate should not be zero. Parameter ID= ", parameter_id));
   }
 
   // Fields below are conditional on `param_definition_mode == 1`. Otherwise

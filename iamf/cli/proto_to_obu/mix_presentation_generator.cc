@@ -355,9 +355,9 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
         obu_anchor_element = kAnchorElementAlbum;
         break;
       default:
-        LOG(ERROR) << "Unknown anchor_element: "
-                   << metadata_anchor_element.anchor_element();
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            absl::StrCat("Unknown anchor_element= ",
+                         metadata_anchor_element.anchor_element()));
     }
 
     int16_t obu_anchored_loudness;
