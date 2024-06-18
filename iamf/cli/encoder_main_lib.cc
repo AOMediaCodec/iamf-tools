@@ -228,8 +228,8 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
 
   std::error_code error_code;
   if (!std::filesystem::create_directories(output_directory, error_code)) {
-    LOG(ERROR) << "Failed to create output directory: " << output_directory;
-    return absl::UnknownError("");
+    return absl::UnknownError(
+        absl::StrCat("Failed to create output directory = ", output_directory));
   }
 
   return absl::OkStatus();
@@ -267,8 +267,8 @@ absl::Status GenerateObus(
     std::list<ArbitraryObu>& arbitrary_obus) {
   // IA Sequence Header OBU. Only one is allowed.
   if (user_metadata.ia_sequence_header_metadata_size() != 1) {
-    LOG(ERROR) << "Only one IA Sequence Header allowed in an IA Sequence.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Only one IA Sequence Header allowed in an IA Sequence.");
   }
   IaSequenceHeaderGenerator ia_sequence_header_generator(
       user_metadata.ia_sequence_header_metadata(0));

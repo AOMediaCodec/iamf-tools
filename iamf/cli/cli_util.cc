@@ -67,10 +67,10 @@ absl::Status CopyParamDefinition(
 
   if (input_param_definition.num_subblocks() <
       input_param_definition.subblock_durations_size()) {
-    LOG(ERROR) << "Expected at least " << input_param_definition.num_subblocks()
-               << "subblock durations for parameter id: "
-               << input_param_definition.parameter_id();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected at least ", input_param_definition.num_subblocks(),
+        "subblock durations for parameter id = ",
+        input_param_definition.parameter_id()));
   }
 
   param_definition.InitializeSubblockDurations(
@@ -137,7 +137,9 @@ absl::Status CopyDemixingInfoParameterData(
       dmixp_mode = kDMixPModeReserved2;
       break;
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown dmixp_mode = ",
+                       input_demixing_info_parameter_data.dmixp_mode()));
   }
   RETURN_IF_NOT_OK(Uint32ToUint8(input_demixing_info_parameter_data.reserved(),
                                  obu_demixing_param_data.reserved));
@@ -172,9 +174,9 @@ absl::Status GetIncludeTemporalDelimiterObus(
            ia_sequence_header_obu.GetPrimaryProfile()) &&
        !ProfileSupportsTemporalDelimiterObus(
            ia_sequence_header_obu.GetAdditionalProfile()))) {
-    LOG(ERROR) << "Temporal Delimiter OBUs need either `primary_profile` or "
-                  "`additional_profile` to support them.";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Temporal Delimiter OBUs need either `primary_profile` or "
+        "`additional_profile` to support them.");
   }
   include_temporal_delimiter = input_include_temporal_delimiter;
   return absl::OkStatus();
@@ -192,9 +194,8 @@ absl::Status CollectAndValidateParamDefinitions(
     const auto [iter, inserted] =
         param_definitions.insert({parameter_id, param_definition});
     if (!inserted && *iter->second != *param_definition) {
-      LOG(ERROR) << "Inequivalent `param_definition_mode` for id= "
-                 << parameter_id;
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Inequivalent `param_definition_mode` for id = ", parameter_id));
     }
 
     return absl::OkStatus();
@@ -211,9 +212,9 @@ absl::Status CollectAndValidateParamDefinitions(
               ParamDefinition::kParameterDefinitionDemixing &&
           param_definition_type !=
               ParamDefinition::kParameterDefinitionReconGain) {
-        LOG(ERROR) << "Param definition type: " << param_definition_type
-                   << " not allowed in an audio element";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            absl::StrCat("Param definition type = ", param_definition_type,
+                         " not allowed in an audio element"));
       }
       RETURN_IF_NOT_OK(insert_and_check_equivalence(
           audio_element_param.param_definition.get()));
@@ -358,10 +359,9 @@ absl::Status GetCommonSamplesPerFrame(
     }
 
     if (common_samples_per_frame != codec_config_obu.GetNumSamplesPerFrame()) {
-      LOG(ERROR)
-          << "The encoder does not support Codec Config OBUs with a different "
-             "number of samples per frame yet.";
-      return absl::UnknownError("");
+      return absl::UnknownError(
+          "The encoder does not support Codec Config OBUs with a different "
+          "number of samples per frame yet.");
     }
   }
 

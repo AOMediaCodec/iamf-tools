@@ -182,7 +182,8 @@ class CodecConfigObu : public ObuBase {
   uint8_t bit_depth_to_measure_loudness_ = 0;
 
   // Tracks whether the OBU was initialized correctly.
-  absl::Status init_status_ = absl::UnknownError("");
+  absl::Status init_status_ =
+      absl::UnknownError("Codec Config OBU was not initialized correctly.");
 
   /*!\brief Writes the OBU payload to the buffer.
    *

@@ -404,7 +404,8 @@ class ParameterBlockObu : public ObuBase {
   PerIdParameterMetadata& metadata_;
 
   // Tracks whether the OBU was initialized correctly.
-  absl::Status init_status_ = absl::UnknownError("");
+  absl::Status init_status_ =
+      absl::UnknownError("Parameter Block OBU was not initialized correctly");
 };
 
 }  // namespace iamf_tools

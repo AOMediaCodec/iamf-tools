@@ -159,7 +159,8 @@ absl::Status ValidateOutputChannelCount(const uint8_t channel_count) {
     return absl::OkStatus();
   }
 
-  return absl::InvalidArgumentError("");
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Invalid Ambisonics output channel_count = ", channel_count));
 }
 
 // Writes an element of the `audio_element_params` array of a scalable channel

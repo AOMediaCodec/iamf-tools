@@ -145,14 +145,14 @@ absl::Status PartitionMixGain(
       }
       // TODO(b/279581032): Carefully split the bezier curve. Be careful with
       //                    Q7.8 format.
-      LOG(ERROR) << "The encoder does not fully support partitioning bezier "
-                    "parameters yet.";
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(absl::StrCat(
+          "The encoder does not fully support partitioning bezier ",
+          "parameters yet."));
     }
     default:
-      LOG(ERROR) << "Unrecognized animation type: "
-                 << subblock_mix_gain.animation_type();
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unrecognized animation type = ",
+                       subblock_mix_gain.animation_type()));
   }
 }
 

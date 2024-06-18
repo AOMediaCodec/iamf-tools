@@ -44,9 +44,9 @@ absl::Status ParametersManager::Initialize() {
       }
 
       if (demixing_param_definition != nullptr) {
-        LOG(ERROR) << "Not allowed to have multiple demixing parameters in a "
-                      "single Audio Element.";
-        return absl::InvalidArgumentError("");
+        return absl::InvalidArgumentError(
+            "Not allowed to have multiple demixing parameters in a "
+            "single Audio Element.");
       }
 
       demixing_param_definition =

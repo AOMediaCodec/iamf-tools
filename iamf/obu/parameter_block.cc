@@ -376,7 +376,9 @@ absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
                                                     DecodedUleb128 duration) {
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
   if (subblock_index > num_subblocks) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Setting subblock duration for subblock_index = ", subblock_index,
+        " but there are only num_subblocks = ", num_subblocks));
   }
   const DecodedUleb128 constant_subblock_duration =
       GetConstantSubblockDuration();
@@ -429,7 +431,10 @@ absl::Status ParameterBlockObu::GetMixGain(int32_t obu_relative_time,
   }
 
   if (target_subblock_index == -1) {
-    return absl::UnknownError("");
+    return absl::UnknownError(
+        absl::StrCat("Trying to get mix gain for target_subblock_index = -1, "
+                     "with num_subblocks = ",
+                     num_subblocks));
   }
 
   RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
@@ -456,10 +461,10 @@ absl::Status ParameterBlockObu::InitializeSubblocks(
 
 absl::Status ParameterBlockObu::InitializeSubblocks() {
   if (metadata_.param_definition.param_definition_mode_ != 0) {
-    LOG(ERROR) << "InitializeSubblocks() without input arguments should only "
-               << "be called when `param_definition_mode_ == 0`";
-    init_status_ = absl::InvalidArgumentError("");
-    return absl::InvalidArgumentError("");
+    init_status_ = absl::InvalidArgumentError(
+        "InitializeSubblocks() without input arguments should only "
+        "be called when `param_definition_mode_ == 0`");
+    return init_status_;
   }
   subblocks_.resize(static_cast<size_t>(GetNumSubblocks()));
   init_status_ = absl::OkStatus();
@@ -629,7 +634,9 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   // Check total duration matches expected duration.
   if (validate_total_subblock_durations &&
       total_subblock_durations != duration_) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected total_subblock_durations = ", total_subblock_durations,
+        " to match the expected duration_ = ", duration_));
   }
 
   return absl::OkStatus();

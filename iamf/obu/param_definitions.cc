@@ -120,10 +120,9 @@ DecodedUleb128 ParamDefinition::GetSubblockDuration(int subblock_index) const {
 absl::Status ParamDefinition::SetSubblockDuration(int subblock_index,
                                                   DecodedUleb128 duration) {
   if (subblock_index > subblock_durations_.size()) {
-    LOG(ERROR) << "Subblock index " << subblock_index
-               << " greater than `subblock_durations_.size()`= "
-               << subblock_durations_.size();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Subblock index greater than `subblock_durations_.size()`= ",
+        subblock_durations_.size()));
   }
 
   subblock_durations_[subblock_index] = duration;
@@ -227,9 +226,8 @@ absl::Status ParamDefinition::Validate() const {
   // these are defined directly in the Parameter Block OBU.
   if (param_definition_mode_ == 0) {
     if (duration_ == 0) {
-      LOG(ERROR) << "Duration should not be zero. Parameter ID= "
-                 << parameter_id;
-      status = absl::InvalidArgumentError("");
+      status = absl::InvalidArgumentError(absl::StrCat(
+          "Duration should not be zero. Parameter ID = ", parameter_id));
     }
 
     // Check if the `subblock_durations` is included.
@@ -241,9 +239,9 @@ absl::Status ParamDefinition::Validate() const {
       uint32_t total_subblock_durations = 0;
       for (int i = 0; i < num_subblocks_; i++) {
         if (subblock_durations_[i] == 0) {
-          LOG(ERROR) << "Illegal zero duration for subblock[" << i << "]. "
-                     << "Parameter ID= " << parameter_id;
-          status = absl::InvalidArgumentError("");
+          status = absl::InvalidArgumentError(
+              absl::StrCat("Illegal zero duration for subblock[", i, "]. ",
+                           "Parameter ID = ", parameter_id));
         }
 
         RETURN_IF_NOT_OK(AddUint32CheckOverflow(total_subblock_durations,
@@ -253,9 +251,9 @@ absl::Status ParamDefinition::Validate() const {
 
       // Check total duration matches expected duration.
       if (total_subblock_durations != duration_) {
-        LOG(ERROR) << "Inconsistent total duration and the cumulative "
-                   << "durations of subblocks. Parameter ID= " << parameter_id;
-        status = absl::InvalidArgumentError("");
+        status = absl::InvalidArgumentError(absl::StrCat(
+            "Inconsistent total duration and the cumulative durations of ",
+            "subblocks. Parameter ID = ", parameter_id));
       }
     }
   }

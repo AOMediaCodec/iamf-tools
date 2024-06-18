@@ -220,7 +220,8 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
                          U& value) {
   auto iter = map.find(key);
   if (iter == map.end()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Key = ", key, " not found in the map."));
   }
   value = iter->second;
   return absl::OkStatus();
@@ -390,7 +391,9 @@ absl::Status InterpolateMixGainValue(
     int16_t& target_mix_gain) {
   if (target_time < start_time || target_time > end_time ||
       start_time > end_time) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Cannot interpolate mix gain value with start time = ", start_time,
+        ", target_time = ", target_time, " and end_time = ", end_time));
   }
 
   // Shift times so start_time=0 to simplify calculations.
@@ -434,7 +437,8 @@ absl::Status InterpolateMixGainValue(
         (1 - a) * (1 - a) * p_0 + 2 * (1 - a) * a * p_1 + a * a * p_2;
     RETURN_IF_NOT_OK(FloatToQ7_8(target_mix_gain_float, target_mix_gain));
   } else {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        absl::StrCat("Unknown animation_type = ", animation_type));
   }
 
   return absl::OkStatus();
