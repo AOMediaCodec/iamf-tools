@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_ARBITRARY_OBU_GENERATOR_H_
-#define CLI_ARBITRARY_OBU_GENERATOR_H_
+#ifndef CLI_PROTO_TO_OBU_ARBITRARY_OBU_GENERATOR_H_
+#define CLI_PROTO_TO_OBU_ARBITRARY_OBU_GENERATOR_H_
 
 #include <list>
 
@@ -56,4 +56,4 @@ class ArbitraryObuGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_ARBITRARY_OBU_GENERATOR_H_
+#endif  // CLI_PROTO_TO_OBU_ARBITRARY_OBU_GENERATOR_H_

@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/parameter_block_generator.h"
+#include "iamf/cli/proto_to_obu/parameter_block_generator.h"
 
 #include <cstdint>
 #include <list>

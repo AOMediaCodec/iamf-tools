@@ -29,40 +29,6 @@ cc_library(
 )
 
 cc_test(
-    name = "arbitrary_obu_generator_test",
-    srcs = ["arbitrary_obu_generator_test.cc"],
-    deps = [
-        "//iamf/cli:arbitrary_obu_generator",
-        "//iamf/cli/proto:arbitrary_obu_cc_proto",
-        "//iamf/obu:arbitrary_obu",
-        "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "audio_element_generator_test",
-    srcs = ["audio_element_generator_test.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:audio_element_generator",
-        "//iamf/cli:audio_element_with_data",
-        "//iamf/cli/proto:audio_element_cc_proto",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:leb128",
-        "//iamf/obu:param_definitions",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
     name = "audio_frame_decoder_test",
     srcs = ["audio_frame_decoder_test.cc"],
     deps = [
@@ -82,43 +48,11 @@ cc_test(
 )
 
 cc_test(
-    name = "audio_frame_generator_test",
-    srcs = ["audio_frame_generator_test.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:audio_element_generator",
-        "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:audio_frame_generator",
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:codec_config_generator",
-        "//iamf/cli:demixing_module",
-        "//iamf/cli:global_timing_module",
-        "//iamf/cli:parameters_manager",
-        "//iamf/cli/proto:audio_element_cc_proto",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/obu:audio_frame",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:leb128",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
     name = "cli_util_test",
     size = "small",
     srcs = ["cli_util_test.cc"],
     deps = [
         ":cli_test_utils",
-        "//iamf/cli:audio_element_generator",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:cli_util",
@@ -126,6 +60,7 @@ cc_test(
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_to_obu:audio_element_generator",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
@@ -140,30 +75,6 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
-    name = "codec_config_generator_test",
-    srcs = ["codec_config_generator_test.cc"],
-    deps = [
-        "//iamf/cli:codec_config_generator",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/cli/proto:obu_header_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:leb128",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:aac_decoder_config",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -225,22 +136,6 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "ia_sequence_header_generator_test",
-    srcs = ["ia_sequence_header_generator_test.cc"],
-    deps = [
-        "//iamf/cli:ia_sequence_header_generator",
-        "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "//iamf/cli/proto:obu_header_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/obu:ia_sequence_header",
-        "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -311,20 +206,6 @@ cc_test(
 )
 
 cc_test(
-    name = "mix_presentation_generator_test",
-    srcs = ["mix_presentation_generator_test.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:mix_presentation_generator",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
     name = "obu_sequencer_test",
     srcs = ["obu_sequencer_test.cc"],
     deps = [
@@ -344,32 +225,6 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "parameter_block_generator_test",
-    size = "small",
-    srcs = ["parameter_block_generator_test.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:demixing_module",
-        "//iamf/cli:global_timing_module",
-        "//iamf/cli:parameter_block_generator",
-        "//iamf/cli:parameter_block_with_data",
-        "//iamf/cli/proto:parameter_block_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:leb128",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 

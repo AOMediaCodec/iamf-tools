@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_PARAMETER_BLOCK_GENERATOR_H_
-#define CLI_PARAMETER_BLOCK_GENERATOR_H_
+#ifndef CLI_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
+#define CLI_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
 
 #include <cstdint>
 #include <list>
@@ -161,4 +161,4 @@ class ParameterBlockGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_PARAMETER_BLOCK_GENERATOR_H_
+#endif  // PROTO_TO_OBU_CLI_PARAMETER_BLOCK_GENERATOR_H_

@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/audio_frame_generator.h"
+#include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
 #include <algorithm>
 #include <cstdint>

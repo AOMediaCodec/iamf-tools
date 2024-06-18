@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/audio_frame_generator.h"
+#include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
 #include <cstdint>
 #include <list>
@@ -22,10 +22,8 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_generator.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/codec_config_generator.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
@@ -33,6 +31,8 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"

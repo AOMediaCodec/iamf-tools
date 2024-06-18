@@ -12,52 +12,6 @@ exports_files(
 )
 
 cc_library(
-    name = "arbitrary_obu_generator",
-    srcs = ["arbitrary_obu_generator.cc"],
-    hdrs = ["arbitrary_obu_generator.h"],
-    deps = [
-        ":cli_util",
-        "//iamf/cli/proto:arbitrary_obu_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:arbitrary_obu",
-        "//iamf/obu:obu_header",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
-    name = "audio_element_generator",
-    srcs = ["audio_element_generator.cc"],
-    hdrs = ["audio_element_generator.h"],
-    deps = [
-        ":audio_element_with_data",
-        ":cli_util",
-        "//iamf/cli/proto:audio_element_cc_proto",
-        "//iamf/cli/proto:param_definitions_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:leb128",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "audio_element_with_data",
     hdrs = ["audio_element_with_data.h"],
     deps = [
@@ -87,42 +41,6 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "audio_frame_generator",
-    srcs = ["audio_frame_generator.cc"],
-    hdrs = ["audio_frame_generator.h"],
-    deps = [
-        ":audio_element_with_data",
-        ":audio_frame_with_data",
-        ":demixing_module",
-        ":global_timing_module",
-        ":parameters_manager",
-        "//iamf/cli/codec:aac_encoder",
-        "//iamf/cli/codec:encoder_base",
-        "//iamf/cli/codec:flac_encoder",
-        "//iamf/cli/codec:lpcm_encoder",
-        "//iamf/cli/codec:opus_encoder",
-        "//iamf/cli/proto:audio_frame_cc_proto",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/obu:audio_frame",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:leb128",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/memory",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/synchronization",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
@@ -169,29 +87,6 @@ cc_library(
 )
 
 cc_library(
-    name = "codec_config_generator",
-    srcs = ["codec_config_generator.cc"],
-    hdrs = ["codec_config_generator.h"],
-    deps = [
-        ":cli_util",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:aac_decoder_config",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "//iamf/obu/decoder_config:opus_decoder_config",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "demixing_module",
     srcs = ["demixing_module.cc"],
     hdrs = ["demixing_module.h"],
@@ -225,21 +120,14 @@ cc_library(
     srcs = ["encoder_main_lib.cc"],
     hdrs = ["encoder_main_lib.h"],
     deps = [
-        ":arbitrary_obu_generator",
-        ":audio_element_generator",
         ":audio_element_with_data",
         ":audio_frame_decoder",
-        ":audio_frame_generator",
         ":audio_frame_with_data",
         ":cli_util",
-        ":codec_config_generator",
         ":demixing_module",
         ":global_timing_module",
-        ":ia_sequence_header_generator",
         ":iamf_components",
-        ":mix_presentation_generator",
         ":obu_sequencer",
-        ":parameter_block_generator",
         ":parameter_block_partitioner",
         ":parameter_block_with_data",
         ":parameters_manager",
@@ -247,6 +135,13 @@ cc_library(
         ":wav_writer",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_to_obu:arbitrary_obu_generator",
+        "//iamf/cli/proto_to_obu:audio_element_generator",
+        "//iamf/cli/proto_to_obu:audio_frame_generator",
+        "//iamf/cli/proto_to_obu:codec_config_generator",
+        "//iamf/cli/proto_to_obu:ia_sequence_header_generator",
+        "//iamf/cli/proto_to_obu:mix_presentation_generator",
+        "//iamf/cli/proto_to_obu:parameter_block_generator",
         "//iamf/common:macros",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:codec_config",
@@ -281,21 +176,6 @@ cc_library(
         "//iamf/obu:param_definitions",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "ia_sequence_header_generator",
-    srcs = ["ia_sequence_header_generator.cc"],
-    hdrs = ["ia_sequence_header_generator.h"],
-    deps = [
-        ":cli_util",
-        "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -375,29 +255,6 @@ cc_library(
 )
 
 cc_library(
-    name = "mix_presentation_generator",
-    srcs = ["mix_presentation_generator.cc"],
-    hdrs = ["mix_presentation_generator.h"],
-    deps = [
-        ":cli_util",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/cli/proto:param_definitions_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:leb128",
-        "//iamf/obu:mix_presentation",
-        "//iamf/obu:param_definitions",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_library(
     name = "obu_sequencer",
     srcs = ["obu_sequencer.cc"],
     hdrs = ["obu_sequencer.h"],
@@ -421,35 +278,6 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-    ],
-)
-
-cc_library(
-    name = "parameter_block_generator",
-    srcs = ["parameter_block_generator.cc"],
-    hdrs = ["parameter_block_generator.h"],
-    deps = [
-        ":audio_element_with_data",
-        ":cli_util",
-        ":demixing_module",
-        ":global_timing_module",
-        ":parameter_block_with_data",
-        ":recon_gain_generator",
-        "//iamf/cli/proto:parameter_block_cc_proto",
-        "//iamf/cli/proto:parameter_data_cc_proto",
-        "//iamf/common:macros",
-        "//iamf/common:obu_util",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:demixing_info_param_data",
-        "//iamf/obu:leb128",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
     ],
 )
 

@@ -1,4 +1,3 @@
-#include "iamf/cli/audio_element_generator.h"
 /*
  * Copyright (c) 2023, Alliance for Open Media. All rights reserved
  *
@@ -10,6 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/cli_util.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <list>
@@ -24,11 +25,11 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"

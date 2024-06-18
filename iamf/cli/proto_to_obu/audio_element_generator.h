@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_AUDIO_ELEMENT_GENERATOR_H_
-#define CLI_AUDIO_ELEMENT_GENERATOR_H_
+#ifndef CLI_PROTO_TO_OBU_AUDIO_ELEMENT_GENERATOR_H_
+#define CLI_PROTO_TO_OBU_AUDIO_ELEMENT_GENERATOR_H_
 
 #include <cstdint>
 #include <vector>
@@ -83,4 +83,4 @@ class AudioElementGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_AUDIO_ELEMENT_GENERATOR_H_
+#endif  // CLI_PROTO_TO_OBU_AUDIO_ELEMENT_GENERATOR_H_

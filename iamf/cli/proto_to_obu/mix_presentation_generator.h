@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_MIX_PRESENTATION_GENERATOR_H_
-#define CLI_MIX_PRESENTATION_GENERATOR_H_
+#ifndef CLI_PROTO_TO_OBU_MIX_PRESENTATION_GENERATOR_H_
+#define CLI_PROTO_TO_OBU_MIX_PRESENTATION_GENERATOR_H_
 
 #include <cstdint>
 #include <list>
@@ -95,4 +95,4 @@ class MixPresentationGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // CLI_MIX_PRESENTATION_GENERATOR_H_
+#endif  // PROTO_TO_OBU_CLI_MIX_PRESENTATION_GENERATOR_H_

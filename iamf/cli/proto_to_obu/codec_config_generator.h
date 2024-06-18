@@ -9,28 +9,31 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_IA_SEQUENCE_HEADER_GENERATOR_H_
-#define CLI_IA_SEQUENCE_HEADER_GENERATOR_H_
 
-#include <optional>
+#ifndef CLI_PROTO_TO_OBU_CODEC_CONFIG_GENERATOR_H_
+#define CLI_PROTO_TO_OBU_CODEC_CONFIG_GENERATOR_H_
 
+#include <cstdint>
+
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/obu/codec_config.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
-class IaSequenceHeaderGenerator {
+class CodecConfigGenerator {
  public:
   /*!\brief Constructor.
-   * \param user_metadata Input user metadata.
+   * \param codec_config_metadata Input codec config metadata.
    */
-  IaSequenceHeaderGenerator(
-      const iamf_tools_cli_proto::IASequenceHeaderObuMetadata&
-          ia_sequence_header_metadata)
-      : ia_sequence_header_metadata_(ia_sequence_header_metadata) {}
+  CodecConfigGenerator(
+      const ::google::protobuf::RepeatedPtrField<
+          iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata)
+      : codec_config_metadata_(codec_config_metadata) {}
 
-  /*!\brief Generates an IA Sequence Header OBU from the input metadata.
+  /*!\brief Generates a map of Codec Config OBUs from the input metadata.
    *
    * The generator only performs enough validation required to construct the
    * OBU; it validates that enumeration values are known and casting of fields
@@ -42,18 +45,22 @@ class IaSequenceHeaderGenerator {
    * IAMF to be generated. These can be used to create illegal streams for
    * debugging purposes.
    *
-   * \param ia_sequence_header_obu Output OBU.
+   * \param codec_config_obus Map of Codec Config ID to generated Codec Config
+   *     OBUs.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     invalid values of enumerations are used.
+   *     invalid values of enumerations are used or if casting input fields
+   *     would result in lost information. `kIamfInvalidBitstream` if `codec_id`
+   *     is unrecognized.
    */
   absl::Status Generate(
-      std::optional<IASequenceHeaderObu>& ia_sequence_header_obu);
+      absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
  private:
-  const iamf_tools_cli_proto::IASequenceHeaderObuMetadata
-      ia_sequence_header_metadata_;
+  const ::google::protobuf::RepeatedPtrField<
+      iamf_tools_cli_proto::CodecConfigObuMetadata>
+      codec_config_metadata_;
 };
 
 }  // namespace iamf_tools
 
-#endif  // CLI_IA_SEQUENCE_HEADER_GENERATOR_H_
+#endif  // CLI_PROTO_TO_OBU_CODEC_CONFIG_GENERATOR_H_

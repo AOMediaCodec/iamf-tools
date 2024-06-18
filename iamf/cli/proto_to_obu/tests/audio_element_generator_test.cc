@@ -9,7 +9,7 @@
  * Open Media Patent License 1.0 was not distributed with this source code
  * in the PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#include "iamf/cli/audio_element_generator.h"
+#include "iamf/cli/proto_to_obu/audio_element_generator.h"
 
 #include <memory>
 #include <vector>
