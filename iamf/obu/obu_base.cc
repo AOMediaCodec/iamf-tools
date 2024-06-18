@@ -17,6 +17,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -36,9 +37,8 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
   RETURN_IF_NOT_OK(ValidateAndWritePayload(temp_wb));
   if (!temp_wb.IsByteAligned()) {
     // The header stores the size of the OBU in bytes.
-    LOG(ERROR) << "Expected the OBU payload to be byte-aligned: "
-               << temp_wb.bit_offset();
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected the OBU payload to be byte-aligned: ", temp_wb.bit_offset()));
   }
 
   // Write the header now that the payload size is known.
@@ -55,7 +55,9 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
   // Validate the write buffer is at the expected location expected after
   // writing the payload.
   if (expected_end_payload != final_wb.bit_offset()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected end_payload: ", expected_end_payload,
+        " to be equal to write buffer bit offset: ", final_wb.bit_offset()));
   }
 
   return absl::OkStatus();

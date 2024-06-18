@@ -110,12 +110,12 @@ absl::Status Leb128ToUint8Vector(const Leb128& val, bool min_size_encoding,
   buffer.back() &= 0x7f;
 
   if (!status.ok() && !min_size_encoding) {
-    LOG(ERROR) << (val.is_signed ? std::get<DecodedSleb128>(val.decoded_val)
-                                 : std::get<DecodedUleb128>(val.decoded_val))
-               << " requires at least " << buffer.size()
-               << " bytes. The caller requested it have a fixed size of "
-               << val.coded_size;
-    status = absl::InvalidArgumentError("");
+    auto error_message = absl::StrCat(
+        (val.is_signed ? std::get<DecodedSleb128>(val.decoded_val)
+                       : std::get<DecodedUleb128>(val.decoded_val)),
+        " requires at least ", buffer.size(), " bytes. The caller requested it",
+        " have a fixed size of ", val.coded_size);
+    status = absl::InvalidArgumentError(error_message);
   }
 
   return status;

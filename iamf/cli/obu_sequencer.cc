@@ -66,9 +66,8 @@ absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
     if (!temporal_unit_audio_frames.empty() &&
         temporal_unit_audio_frames.back()->end_timestamp !=
             audio_frame.end_timestamp) {
-      LOG(ERROR)
-          << "Temporal units must have the same start time and duration.";
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          "Temporal units must have the same start time and duration.");
     }
     temporal_unit_audio_frames.push_back(&audio_frame);
   }
@@ -103,8 +102,7 @@ absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
     for (auto& temporal_unit : temporal_unit_map) {
       const int32_t temporal_unit_start = temporal_unit.first;
       if (temporal_unit.second.audio_frames.empty()) {
-        // This should never happen.
-        return absl::UnknownError("");
+        return absl::InvalidArgumentError("Temporal unit has no audio frames.");
       }
       const int32_t temporal_unit_end =
           temporal_unit.second.audio_frames[0]->end_timestamp;
@@ -138,8 +136,8 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
     bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
     WriteBitBuffer& wb, int& num_samples) {
   if (temporal_unit.audio_frames.empty()) {
-    LOG(ERROR) << "Every temporal unit must have an audio frame.";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError(
+        "Every temporal unit must have an audio frame.");
   }
 
   num_samples +=
@@ -168,8 +166,7 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
   }
 
   if (!wb.IsByteAligned()) {
-    LOG(INFO) << "Write buffer not byte-aligned";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Write buffer not byte-aligned");
   }
 
   return absl::OkStatus();

@@ -172,8 +172,8 @@ absl::Status ValidateEncoderInfo(int num_channels,
 
 absl::Status AacEncoder::InitializeEncoder() {
   if (encoder_) {
-    LOG(ERROR) << "Expected `encoder_` to not be initialized yet.";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError(
+        "Expected `encoder_` to not be initialized yet.");
   }
 
   // Open the encoder.
@@ -216,11 +216,10 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // Convert input to the array that will be passed to `aacEncEncode`.
   if (input_bit_depth != GetFdkAacBitDepth()) {
-    LOG(ERROR) << "Expected AAC to be " << GetFdkAacBitDepth()
-               << " bits, got "
-                  "bit-depth: "
-               << input_bit_depth;
-    return absl::UnknownError("");
+    auto error_message =
+        absl::StrCat("Expected AAC to be ", GetFdkAacBitDepth(), " bits, got ",
+                     input_bit_depth);
+    return absl::InvalidArgumentError(error_message);
   }
 
   // `fdk_aac` requires the native system endianness as input.
@@ -281,8 +280,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
       "Failed on call to `aacEncEncode`."));
 
   if (num_samples_per_channel * num_channels_ != out_args.numInSamples) {
-    LOG(ERROR) << "Failed to encode an entire frame.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Failed to encode an entire frame.");
   }
 
   // Resize the buffer to the actual size and finalize it.

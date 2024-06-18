@@ -59,8 +59,7 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
       label_to_samples.find("Lrs7") == label_to_samples.end() ||
       label_to_samples.find("Rss7") == label_to_samples.end() ||
       label_to_samples.find("Rrs7") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError("Missing some input channels");
   }
 
   const auto& l7_samples = label_to_samples["L7"];
@@ -175,8 +174,7 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
       label_to_samples.find("Ls5") == label_to_samples.end() ||
       label_to_samples.find("R5") == label_to_samples.end() ||
       label_to_samples.find("Rs5") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError("Missing some input channels");
   }
 
   const auto& l5_samples = label_to_samples["L5"];
@@ -263,8 +261,7 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
   if (label_to_samples.find("L3") == label_to_samples.end() ||
       label_to_samples.find("R3") == label_to_samples.end() ||
       label_to_samples.find("C") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::InvalidArgumentError("Missing some input channels");
   }
 
   const auto& l3_samples = label_to_samples["L3"];
@@ -342,8 +339,7 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find("L2") == label_to_samples.end() ||
       label_to_samples.find("R2") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::UnknownError("Missing some input channels");
   }
 
   const auto& l2_samples = label_to_samples["L2"];
@@ -407,8 +403,7 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
       label_to_samples.find("Ltb4") == label_to_samples.end() ||
       label_to_samples.find("Rtf4") == label_to_samples.end() ||
       label_to_samples.find("Rtb4") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::UnknownError("Missing some input channels");
   }
 
   const auto& ltf4_samples = label_to_samples["Ltf4"];
@@ -501,8 +496,7 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
       label_to_samples.find("Ls5") == label_to_samples.end() ||
       label_to_samples.find("Rtf2") == label_to_samples.end() ||
       label_to_samples.find("Rs5") == label_to_samples.end()) {
-    LOG(ERROR) << "Missing some input channels";
-    return absl::UnknownError("");
+    return absl::UnknownError("Missing some input channels");
   }
 
   const auto& ltf2_samples = label_to_samples["Ltf2"];
@@ -600,9 +594,9 @@ absl::Status FillRequiredDemixingMetadata(
   auto& demixers = demixing_metadata.demixers;
 
   if (!down_mixers.empty() || !demixers.empty()) {
-    LOG(ERROR) << "`FillRequiredDemixingMetadata()` should only be called once "
-               << "per Audio Element ID";
-    return absl::UnknownError("");
+    return absl::UnknownError(
+        "`FillRequiredDemixingMetadata()` should only be called once per Audio "
+        "Element ID");
   }
   demixing_metadata.substream_id_to_labels =
       audio_element_with_data.substream_id_to_labels;
@@ -938,9 +932,9 @@ absl::Status DemixingModule::FindSamplesOrDemixedSamples(
     *samples = &label_to_samples.at(absl::StrCat("D_", label));
     return absl::OkStatus();
   } else {
-    LOG(ERROR) << "Channel " << label << " or D_" << label << " not found";
     *samples = nullptr;
-    return absl::UnknownError("");
+    return absl::UnknownError(
+        absl::StrCat("Channel ", label, " or D_", label, " not found"));
   }
 }
 
@@ -1021,9 +1015,8 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     for (const std::string& output_channel_label : output_channel_labels) {
       auto iter = input_label_to_samples.find(output_channel_label);
       if (iter == input_label_to_samples.end()) {
-        LOG(ERROR) << "Samples do not exist for channel: "
-                   << output_channel_label;
-        return absl::UnknownError("");
+        return absl::UnknownError(absl::StrCat(
+            "Samples do not exist for channel: ", output_channel_label));
       }
       for (int t = 0; t < num_time_ticks; t++) {
         substream_samples[t][channel_index] = iter->second[t];
@@ -1045,9 +1038,8 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     auto substream_data_iter =
         substream_id_to_substream_data.find(substream_id);
     if (substream_data_iter == substream_id_to_substream_data.end()) {
-      LOG(ERROR) << "Failed to find subtream data for substream ID= "
-                 << substream_id;
-      return absl::UnknownError("");
+      return absl::UnknownError(absl::StrCat(
+          "Failed to find substream data for substream ID= ", substream_id));
     }
     auto& substream_data = substream_data_iter->second;
 

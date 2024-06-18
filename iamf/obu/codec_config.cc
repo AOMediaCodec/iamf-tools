@@ -35,7 +35,8 @@ namespace {
 
 absl::Status ValidateNumSamplesPerFrame(uint32_t num_samples_per_frame) {
   if (num_samples_per_frame == 0) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError(
+        "Number of samples per frame must be non-zero.");
   }
   return absl::OkStatus();
 }
@@ -89,7 +90,8 @@ absl::Status SetSampleRatesAndBitDepths(
       return absl::OkStatus();
     }
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown codec_id: ", codec_id));
   }
 }
 
@@ -135,7 +137,8 @@ absl::Status CodecConfigObu::ValidateAndWriteDecoderConfig(
       return std::get<FlacDecoderConfig>(codec_config_.decoder_config)
           .ValidateAndWrite(num_samples_per_frame, audio_roll_distance, wb);
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown codec_id: ", codec_config_.codec_id));
   }
 }
 
@@ -178,7 +181,8 @@ absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
     case kCodecIdFlac:
       return absl::UnimplementedError("Flac is not supported.");
     default:
-      return absl::InvalidArgumentError("");
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown codec_id: ", codec_config_.codec_id));
   }
   return absl::OkStatus();
 }

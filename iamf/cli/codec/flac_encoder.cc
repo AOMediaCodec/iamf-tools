@@ -21,6 +21,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -67,8 +68,7 @@ absl::Status Configure(
   ok &= FLAC__stream_encoder_set_verify(encoder, true);
 
   if (!ok) {
-    LOG(ERROR) << "Failed to configure Flac encoder.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Failed to configure Flac encoder.");
   }
 
   return absl::OkStatus();
@@ -191,8 +191,7 @@ absl::Status FlacEncoder::EncodeAudioFrame(
 
   if (!FLAC__stream_encoder_process_interleaved(
           encoder_, encoder_input_pcm.data(), num_samples_per_channel)) {
-    LOG(ERROR) << "Flac failed to encode.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Flac failed to encode.");
   }
 
   absl::MutexLock lock(&mutex_);
@@ -206,8 +205,7 @@ absl::Status FlacEncoder::EncodeAudioFrame(
 absl::Status FlacEncoder::Finalize() {
   // Signal to `libflac` the encoder is finished.
   if (!FLAC__stream_encoder_finish(encoder_)) {
-    LOG(ERROR) << "Failed to finalize Flac encoder.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Failed to finalize Flac encoder.");
   }
 
   return absl::OkStatus();
@@ -217,8 +215,7 @@ absl::Status FlacEncoder::InitializeEncoder() {
   // Initialize the encoder.
   encoder_ = FLAC__stream_encoder_new();
   if (encoder_ == nullptr) {
-    LOG(ERROR) << "Failed to initialize Flac encoder.";
-    return absl::UnknownError("");
+    return absl::UnknownError("Failed to initialize Flac encoder.");
   }
 
   // Configure the FLAC encoder based on user input data.
@@ -233,8 +230,8 @@ absl::Status FlacEncoder::InitializeEncoder() {
       static_cast<void*>(this));
 
   if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
-    LOG(ERROR) << "Failed to initialize Flac stream: " << init_status;
-    return absl::UnknownError("");
+    return absl::UnknownError(
+        absl::StrCat("Failed to initialize Flac stream: ", init_status));
   }
 
   return absl::OkStatus();

@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 
 namespace iamf_tools {
@@ -34,16 +35,19 @@ absl::Status EncoderBase::Initialize() {
 absl::Status EncoderBase::ValidateInputSamples(
     const std::vector<std::vector<int32_t>>& samples) const {
   if (!supports_partial_frames_ && samples.size() != num_samples_per_frame_) {
-    LOG(ERROR) << "Found " << samples.size()
-               << " samples per channels. Expected " << num_samples_per_frame_
-               << ".";
-    return absl::InvalidArgumentError("");
+    auto error_message = absl::StrCat("Found ", samples.size(),
+                                      " samples per channels. Expected ",
+                                      num_samples_per_frame_, ".");
+    return absl::InvalidArgumentError(error_message);
   }
   if (samples.empty()) {
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("samples cannot be empty.");
   }
   if (samples[0].size() != num_channels_) {
-    return absl::InvalidArgumentError("");
+    auto error_message =
+        absl::StrCat("Found ", samples[0].size(), " channels. Expected ",
+                     num_channels_, ".");
+    return absl::InvalidArgumentError(error_message);
   }
 
   return absl::OkStatus();

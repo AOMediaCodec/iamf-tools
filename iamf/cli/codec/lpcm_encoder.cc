@@ -30,10 +30,11 @@ namespace iamf_tools {
 absl::Status LpcmEncoder::InitializeEncoder() {
   if (decoder_config_.sample_size_ % 8 != 0) {
     // `EncodeAudioFrame` assume the `bit_depth` is a multiple of 8.
-    LOG(ERROR) << "Expected lpcm_decoder_config->sample_size to be a "
-                  "multiple of 8: "
-               << decoder_config_.sample_size_;
-    return absl::UnknownError("");
+    auto error_message = absl::StrCat(
+        "Expected lpcm_decoder_config->sample_size to be a multiple of 8, but "
+        "is instead: ",
+        decoder_config_.sample_size_);
+    return absl::InvalidArgumentError(error_message);
   }
 
   // `EncodeAudioFrame` assume there are only 2 possible values of
@@ -43,8 +44,7 @@ absl::Status LpcmEncoder::InitializeEncoder() {
           LpcmDecoderConfig::kLpcmBigEndian &&
       decoder_config_.sample_format_flags_bitmask_ !=
           LpcmDecoderConfig::kLpcmLittleEndian) {
-    LOG(ERROR) << "Unrecognized sample_format_flags";
-    return absl::InvalidArgumentError("");
+    return absl::InvalidArgumentError("Unrecognized sample_format_flags");
   }
 
   LOG_FIRST_N(INFO, 1) << "  Configured LPCM encoder for "
