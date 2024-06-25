@@ -289,10 +289,15 @@ absl::Status GetNextFrameSubstreamData(
         substream_id_to_substream_data,
     DownMixingParams& down_mixing_params) {
   const bool no_sample_added =
-      (label_to_samples.empty() || label_to_samples.begin()->second.empty());
+      (label_to_samples.empty() ||
+       std::all_of(label_to_samples.begin(), label_to_samples.end(),
+                   [](const auto& entry) { return entry.second.empty(); }));
   if (no_sample_added &&
       (substream_id_to_substream_data.empty() ||
-       substream_id_to_substream_data.begin()->second.samples_obu.empty())) {
+       std::all_of(substream_id_to_substream_data.begin(),
+                   substream_id_to_substream_data.end(), [](const auto& entry) {
+                     return entry.second.samples_obu.empty();
+                   }))) {
     return absl::OkStatus();
   }
 
@@ -392,96 +397,118 @@ absl::Status EncodeFramesForAudioElement(
   }
 
   DownMixingParams down_mixing_params;
-  RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
-      audio_element_id, demixing_module, num_samples_per_frame,
-      audio_element_with_data.substream_id_to_labels,
-      substream_id_to_user_samples_trim_end, label_to_samples,
-      parameters_manager, substream_id_to_substream_data, down_mixing_params));
+
+  // Save a dummy label-to-empty samples map. This is used when automatically
+  // padding zero samples at the end of a frame.
+  LabelSamplesMap label_to_empty_samples;
+  for (const auto& [label, unused_samples] : label_to_samples) {
+    label_to_empty_samples[label] = {};
+  }
 
   std::optional<int32_t> encoded_timestamp;
-  for (const auto& [substream_id, unused_labels] :
-       audio_element_with_data.substream_id_to_labels) {
-    auto substream_data_iter =
-        substream_id_to_substream_data.find(substream_id);
-    if (substream_data_iter == substream_id_to_substream_data.end()) {
-      continue;
+  bool more_samples_to_encode = false;
+  do {
+    RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
+        audio_element_id, demixing_module, num_samples_per_frame,
+        audio_element_with_data.substream_id_to_labels,
+        substream_id_to_user_samples_trim_end, label_to_samples,
+        parameters_manager, substream_id_to_substream_data,
+        down_mixing_params));
+
+    more_samples_to_encode = false;
+    for (const auto& [substream_id, labels] :
+         audio_element_with_data.substream_id_to_labels) {
+      auto substream_data_iter =
+          substream_id_to_substream_data.find(substream_id);
+      if (substream_data_iter == substream_id_to_substream_data.end()) {
+        if (more_samples_to_encode) {
+          return absl::InvalidArgumentError(
+              absl::StrCat("Within Audio Element ID= ", audio_element_id,
+                           ", substream #", substream_id, " has ended but ",
+                           " some other substreams have more samples to come"));
+        }
+        continue;
+      }
+      more_samples_to_encode = true;
+
+      auto& substream_data = substream_data_iter->second;
+      // Encode.
+      auto& encoder = substream_id_to_encoder.at(substream_id);
+      if (substream_data.samples_encode.size() < num_samples_per_frame &&
+          !encoder->supports_partial_frames_) {
+        // To support negative test-cases technically some encoders (such as
+        // LPCM) can encode partial frames. For other encoders wait until there
+        // is a whole frame of samples to encode.
+
+        // All frames corresponding to the same Audio Element should be skipped.
+        CHECK(!encoded_timestamp.has_value());
+
+        LOG(INFO) << "Skipping partial frames; samples_obu.size()="
+                  << substream_data.samples_obu.size()
+                  << " samples_encode.size()= "
+                  << substream_data.samples_encode.size();
+        continue;
+      }
+
+      // Pop samples from the queues and arrange in (time, channel) axes.
+      // Take the minimum because some encoders support partial frames.
+      const size_t num_samples_to_encode =
+          std::min(static_cast<size_t>(num_samples_per_frame),
+                   substream_data.samples_encode.size());
+      std::vector<std::vector<int32_t>> samples_encode(num_samples_to_encode);
+      std::vector<std::vector<int32_t>> samples_obu(num_samples_to_encode);
+
+      MoveSamples(num_samples_to_encode, substream_data.samples_obu,
+                  samples_obu);
+      MoveSamples(num_samples_to_encode, substream_data.samples_encode,
+                  samples_encode);
+      const auto [frame_samples_to_trim_at_start,
+                  frame_samples_to_trim_at_end] =
+          GetNumSamplesToTrimForFrame(
+              num_samples_to_encode,
+              substream_data.num_samples_to_trim_at_start,
+              substream_data.num_samples_to_trim_at_end);
+
+      // Both timestamps cover trimmed and regular samples.
+      int32_t start_timestamp;
+      int32_t end_timestamp;
+      RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
+          substream_id, samples_obu.size(), start_timestamp, end_timestamp));
+
+      if (encoded_timestamp.has_value()) {
+        // All frames corresponding to the same Audio Element should have
+        // the same start timestamp.
+        CHECK_EQ(*encoded_timestamp, start_timestamp);
+      }
+
+      auto partial_audio_frame_with_data =
+          absl::WrapUnique(new AudioFrameWithData{
+              .obu = AudioFrameObu(
+                  {
+                      .obu_trimming_status_flag =
+                          (frame_samples_to_trim_at_end != 0 ||
+                           frame_samples_to_trim_at_start != 0),
+                      .num_samples_to_trim_at_end =
+                          frame_samples_to_trim_at_end,
+                      .num_samples_to_trim_at_start =
+                          frame_samples_to_trim_at_start,
+                  },
+                  substream_id, {}),
+              .start_timestamp = start_timestamp,
+              .end_timestamp = end_timestamp,
+              .raw_samples = samples_obu,
+              .down_mixing_params = down_mixing_params,
+              .audio_element_with_data = &audio_element_with_data});
+
+      RETURN_IF_NOT_OK(
+          encoder->EncodeAudioFrame(encoder_input_pcm_bit_depth, samples_encode,
+                                    std::move(partial_audio_frame_with_data)));
+      encoded_timestamp = start_timestamp;
     }
 
-    auto& substream_data = substream_data_iter->second;
-    if (substream_data.samples_obu.empty()) {
-      substream_id_to_substream_data.erase(substream_data_iter);
-      continue;
-    }
-
-    // Encode.
-    auto& encoder = substream_id_to_encoder.at(substream_id);
-    if (substream_data.samples_encode.size() < num_samples_per_frame &&
-        !encoder->supports_partial_frames_) {
-      // To support negative test-cases technically some encoders (such as
-      // LPCM) can encode partial frames. For other encoders wait until there
-      // is a whole frame of samples to encode.
-
-      // All frames corresponding to the same Audio Element should be skipped.
-      CHECK(!encoded_timestamp.has_value());
-
-      LOG(INFO) << "Skipping partial frames; samples_obu.size()="
-                << substream_data.samples_obu.size()
-                << " samples_encode.size()= "
-                << substream_data.samples_encode.size();
-      continue;
-    }
-
-    // Pop samples from the queues and arrange in (time, channel) axes.
-    // Take the minimum because some encoders support partial frames.
-    const size_t num_samples_to_encode =
-        std::min(static_cast<size_t>(num_samples_per_frame),
-                 substream_data.samples_encode.size());
-    std::vector<std::vector<int32_t>> samples_encode(num_samples_to_encode);
-    std::vector<std::vector<int32_t>> samples_obu(num_samples_to_encode);
-
-    MoveSamples(num_samples_to_encode, substream_data.samples_obu, samples_obu);
-    MoveSamples(num_samples_to_encode, substream_data.samples_encode,
-                samples_encode);
-    const auto [frame_samples_to_trim_at_start, frame_samples_to_trim_at_end] =
-        GetNumSamplesToTrimForFrame(num_samples_to_encode,
-                                    substream_data.num_samples_to_trim_at_start,
-                                    substream_data.num_samples_to_trim_at_end);
-
-    // Both timestamps cover trimmed and regular samples.
-    int32_t start_timestamp;
-    int32_t end_timestamp;
-    RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
-        substream_id, samples_obu.size(), start_timestamp, end_timestamp));
-
-    if (encoded_timestamp.has_value()) {
-      // All frames corresponding to the same Audio Element should have
-      // the same start timestamp.
-      CHECK_EQ(*encoded_timestamp, start_timestamp);
-    }
-
-    auto partial_audio_frame_with_data =
-        absl::WrapUnique(new AudioFrameWithData{
-            .obu = AudioFrameObu(
-                {
-                    .obu_trimming_status_flag =
-                        (frame_samples_to_trim_at_end != 0 ||
-                         frame_samples_to_trim_at_start != 0),
-                    .num_samples_to_trim_at_end = frame_samples_to_trim_at_end,
-                    .num_samples_to_trim_at_start =
-                        frame_samples_to_trim_at_start,
-                },
-                substream_id, {}),
-            .start_timestamp = start_timestamp,
-            .end_timestamp = end_timestamp,
-            .raw_samples = samples_obu,
-            .down_mixing_params = down_mixing_params,
-            .audio_element_with_data = &audio_element_with_data});
-
-    RETURN_IF_NOT_OK(
-        encoder->EncodeAudioFrame(encoder_input_pcm_bit_depth, samples_encode,
-                                  std::move(partial_audio_frame_with_data)));
-    encoded_timestamp = start_timestamp;
-  }
+    // Clears the samples for the next iteration.
+    label_to_samples = label_to_empty_samples;
+  } while (!encoded_timestamp.has_value() && more_samples_to_encode);
 
   if (encoded_timestamp.has_value()) {
     // An audio frame has been encoded, update the parameter manager to use
@@ -568,7 +595,8 @@ absl::Status ApplyUserTrimForFrame(const bool from_start,
 // consecutive OBUs from the end without modifying the underlying data.
 absl::Status ValidateAndApplyUserTrimming(
     const uint32_t substream_id,  // For logging purposes only.
-    const bool last_frame, AudioFrameGenerator::TrimmingState& trimming_state,
+    const bool is_last_frame,
+    AudioFrameGenerator::TrimmingState& trimming_state,
     AudioFrameWithData& audio_frame) {
   RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
       /*from_start=*/true, audio_frame.raw_samples.size(),
@@ -576,7 +604,7 @@ absl::Status ValidateAndApplyUserTrimming(
       audio_frame.obu.header_.num_samples_to_trim_at_start,
       audio_frame.obu.header_.obu_trimming_status_flag));
 
-  if (last_frame) {
+  if (is_last_frame) {
     RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
         /*from_start=*/false, audio_frame.raw_samples.size(),
         trimming_state.user_samples_left_to_trim_at_end,
@@ -600,6 +628,7 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
   }
   return encoder->GetNumberOfSamplesToDelayAtStart();
 }
+
 absl::Status AudioFrameGenerator::Initialize() {
   int64_t common_samples_to_trim_at_start = -1;
   int64_t common_samples_to_trim_at_end = -1;
@@ -661,6 +690,10 @@ absl::Status AudioFrameGenerator::Initialize() {
   return absl::OkStatus();
 }
 
+bool AudioFrameGenerator::TakingSamples() const {
+  return !substream_id_to_substream_data_.empty();
+}
+
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, const std::string& label,
     const std::vector<int32_t>& samples) {
@@ -671,6 +704,7 @@ absl::Status AudioFrameGenerator::AddSamples(
         absl::StrCat("No audio frame metadata found for Audio Element ID= ",
                      audio_element_id));
   }
+
   auto& labeled_samples = id_to_labeled_samples_[audio_element_id];
   labeled_samples[label] = samples;
 
@@ -697,6 +731,31 @@ absl::Status AudioFrameGenerator::AddSamples(
   return absl::OkStatus();
 }
 
+absl::Status AudioFrameGenerator::Finalize() {
+  absl::MutexLock lock(&mutex_);
+  for (auto& [substream_id, encoder] : substream_id_to_encoder_) {
+    auto substream_data_iter =
+        substream_id_to_substream_data_.find(substream_id);
+    if (substream_data_iter == substream_id_to_substream_data_.end()) {
+      continue;
+    }
+
+    // Remove the substream data when there is no more sample to come, and the
+    // encoder can be finalized.
+    if (substream_data_iter->second.samples_obu.empty()) {
+      RETURN_IF_NOT_OK(encoder->Finalize());
+      substream_id_to_substream_data_.erase(substream_data_iter);
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+bool AudioFrameGenerator::GeneratingFrames() const {
+  absl::MutexLock lock(&mutex_);
+  return !substream_id_to_encoder_.empty();
+}
+
 absl::Status AudioFrameGenerator::OutputFrames(
     std::list<AudioFrameWithData>& audio_frames) {
   absl::MutexLock lock(&mutex_);
@@ -707,7 +766,7 @@ absl::Status AudioFrameGenerator::OutputFrames(
     if (encoder->FramesAvailable()) {
       RETURN_IF_NOT_OK(encoder->Pop(audio_frames));
       RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(
-          substream_id, encoder->Finished(),
+          substream_id, /*is_last_frame=*/encoder->Finished(),
           substream_id_to_trimming_state_.at(substream_id),
           audio_frames.back()));
     }
@@ -718,16 +777,6 @@ absl::Status AudioFrameGenerator::OutputFrames(
     } else {
       ++substream_id_to_encoder_iter;
     }
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status AudioFrameGenerator::Finalize() {
-  absl::MutexLock lock(&mutex_);
-  for (auto& [unused_substream_id, encoder] : substream_id_to_encoder_) {
-    // Signal all encoders that there are no more samples to come.
-    RETURN_IF_NOT_OK(encoder->Finalize());
   }
 
   return absl::OkStatus();

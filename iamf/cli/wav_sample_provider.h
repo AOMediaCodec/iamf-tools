@@ -57,10 +57,12 @@ class WavSampleProvider {
    * \param audio_element_id ID of the Audio Element whose corresponding frames
    *      are to be read from WAV files.
    * \param labeled_samples Output samples organized by their channel labels.
+   * \param finished_reading Whether the reading is finished.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status ReadFrames(DecodedUleb128 audio_element_id,
-                          LabelSamplesMap& labeled_samples);
+                          LabelSamplesMap& labeled_samples,
+                          bool& finished_reading);
 
  private:
   // Mapping from Audio Element ID to `WavReader`.

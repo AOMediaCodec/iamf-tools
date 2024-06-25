@@ -303,24 +303,24 @@ void GenerateAudioFrameWithEightSamples(
   while (audio_frame_generator.TakingSamples()) {
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
+      const auto audio_element_id = audio_frame_metadata.audio_element_id();
       EXPECT_THAT(audio_frame_generator.AddSamples(
-                      audio_frame_metadata.audio_element_id(), "L2",
+                      audio_element_id, "L2",
                       frame_count == 0 ? frame_0_l2 : empty_frame),
                   IsOk());
 
       // `AddSamples()` will trigger encoding once all samples for an
       // audio element have been added and thus may return a non-OK status.
       const auto add_samples_status = audio_frame_generator.AddSamples(
-          audio_frame_metadata.audio_element_id(), "R2",
-          frame_count == 0 ? frame_0_r2 : empty_frame);
+          audio_element_id, "R2", frame_count == 0 ? frame_0_r2 : empty_frame);
       EXPECT_EQ(expected_add_samples_is_ok, add_samples_status.ok());
       if (!expected_add_samples_is_ok) {
         return;
       }
     }
+    EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
     frame_count++;
   }
-  EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
 
   bool output_frames_all_ok = true;
   while (audio_frame_generator.GeneratingFrames()) {

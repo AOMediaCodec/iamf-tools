@@ -95,7 +95,8 @@ absl::Status WavSampleProvider::Initialize(
 }
 
 absl::Status WavSampleProvider::ReadFrames(
-    const DecodedUleb128 audio_element_id, LabelSamplesMap& labeled_samples) {
+    const DecodedUleb128 audio_element_id, LabelSamplesMap& labeled_samples,
+    bool& finished_reading) {
   auto wav_reader_iter = wav_readers_.find(audio_element_id);
   if (wav_reader_iter == wav_readers_.end()) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -120,6 +121,7 @@ absl::Status WavSampleProvider::ReadFrames(
       samples[t] = wav_reader.buffers_[t][channel_ids[c]];
     }
   }
+  finished_reading = (wav_reader.remaining_samples() == 0);
 
   return absl::OkStatus();
 }

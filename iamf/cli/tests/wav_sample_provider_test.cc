@@ -132,8 +132,11 @@ TEST(WavSampleProviderTest, ReadFrameSucceeds) {
               IsOk());
 
   LabelSamplesMap labeled_samples;
-  EXPECT_THAT(wav_sample_provider.ReadFrames(kAudioElementId, labeled_samples),
+  bool finished_reading = false;
+  EXPECT_THAT(wav_sample_provider.ReadFrames(kAudioElementId, labeled_samples,
+                                             finished_reading),
               IsOk());
+  EXPECT_TRUE(finished_reading);
 
   // Validate samples read from the WAV file.
   const std::vector<int32_t> expected_samples_l2 = {
@@ -157,8 +160,10 @@ TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {
   // Try to read frames using a wrong Audio Element ID.
   const auto kWrongAudioElementId = kAudioElementId + 99;
   LabelSamplesMap labeled_samples;
+  bool finished_reading = false;
   EXPECT_FALSE(
-      wav_sample_provider.ReadFrames(kWrongAudioElementId, labeled_samples)
+      wav_sample_provider
+          .ReadFrames(kWrongAudioElementId, labeled_samples, finished_reading)
           .ok());
 }
 
@@ -175,8 +180,11 @@ TEST(WavSampleProviderTest, ReadFrameFailsWithoutCallingInitialize) {
   //     IsOk());
 
   LabelSamplesMap labeled_samples;
+  bool finished_reading = false;
   EXPECT_FALSE(
-      wav_sample_provider.ReadFrames(kAudioElementId, labeled_samples).ok());
+      wav_sample_provider
+          .ReadFrames(kAudioElementId, labeled_samples, finished_reading)
+          .ok());
 }
 
 }  // namespace

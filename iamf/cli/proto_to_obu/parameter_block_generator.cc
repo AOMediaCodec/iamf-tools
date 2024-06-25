@@ -48,22 +48,14 @@ namespace iamf_tools {
 namespace {
 
 absl::Status GetPerIdMetadata(
-    const DecodedUleb128 target_parameter_id,
+    const DecodedUleb128 parameter_id,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions,
+    const ParamDefinition* param_definition,
     PerIdParameterMetadata& per_id_metadata) {
   // Initialize some fields that may not be set later.
   per_id_metadata.num_layers = 0;
 
-  auto iter = param_definitions.find(target_parameter_id);
-  if (iter == param_definitions.end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Found a stray parameter block with id: ", target_parameter_id, "."));
-  }
-
-  const auto& [parameter_id, param_definition] = *iter;
   per_id_metadata.param_definition = *param_definition;
   if (!param_definition->GetType().has_value()) {
     return absl::InvalidArgumentError(
@@ -567,14 +559,14 @@ absl::Status ParameterBlockGenerator::Initialize(
         audio_elements,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
-  for (const auto [parameter_id, unused_param_definition] : param_definitions) {
+  for (const auto [parameter_id, param_definition] : param_definitions) {
     auto [iter, inserted] = parameter_id_to_metadata_.insert(
         {parameter_id, PerIdParameterMetadata()});
     if (inserted) {
       // Create a new entry.
       auto& per_id_metadata = iter->second;
       RETURN_IF_NOT_OK(GetPerIdMetadata(parameter_id, audio_elements,
-                                        param_definitions, per_id_metadata));
+                                        param_definition, per_id_metadata));
     }
 
     const auto param_definition_type = iter->second.param_definition_type;

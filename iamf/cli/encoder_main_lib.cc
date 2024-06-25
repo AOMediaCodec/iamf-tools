@@ -349,21 +349,26 @@ absl::Status GenerateObus(
         current_timestamp, demixing_parameter_blocks,
         mix_gain_parameter_blocks));
 
+    bool no_more_real_samples = true;
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
       const auto audio_element_id = audio_frame_metadata.audio_element_id();
       LabelSamplesMap labeled_samples;
 
-      RETURN_IF_NOT_OK(
-          wav_sample_provider.ReadFrames(audio_element_id, labeled_samples));
-
+      bool no_more_real_samples_for_audio_element = false;
+      RETURN_IF_NOT_OK(wav_sample_provider.ReadFrames(
+          audio_element_id, labeled_samples,
+          no_more_real_samples_for_audio_element));
+      no_more_real_samples &= no_more_real_samples_for_audio_element;
       for (const auto& [channel_label, samples] : labeled_samples) {
         RETURN_IF_NOT_OK(audio_frame_generator.AddSamples(
             audio_element_id, channel_label, samples));
       }
     }
+    if (no_more_real_samples) {
+      RETURN_IF_NOT_OK(audio_frame_generator.Finalize());
+    }
   }
-  RETURN_IF_NOT_OK(audio_frame_generator.Finalize());
 
   // TODO(b/329375123): This should be on Thread 2.
   IdTimeLabeledFrameMap id_to_time_to_labeled_frame;

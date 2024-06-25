@@ -122,9 +122,7 @@ class AudioFrameGenerator {
    *
    * \return True if the generator is still taking audio samples.
    */
-  bool TakingSamples() const {
-    return !substream_id_to_substream_data_.empty();
-  }
+  bool TakingSamples() const;
 
   /*!\brief Adds samples for an Audio Element and a channel label.
    *
@@ -155,10 +153,7 @@ class AudioFrameGenerator {
    * \return True until all underlying encoders have finished encoding, and
    *         all audio frames have been generated.
    */
-  bool GeneratingFrames() const {
-    absl::MutexLock lock(&mutex_);
-    return !substream_id_to_encoder_.empty();
-  }
+  bool GeneratingFrames() const;
 
   /*!\brief Outputs a list of generated Audio Frame OBUs (and associated data).
    *
@@ -214,4 +209,4 @@ class AudioFrameGenerator {
 
 }  // namespace iamf_tools
 
-#endif  // PROTO_TO_OBU_CLI_AUDIO_FRAME_GENERATOR_H_
+#endif  // CLI_PROTO_TO_OBU_AUDIO_FRAME_GENERATOR_H_
