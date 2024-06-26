@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -33,6 +34,11 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+
+// Bit shifts for the `layout_type` and `sound_system` fields which are stored
+// in the same byte.
+constexpr int kLayoutTypeBitShift = 6;
+constexpr int kSoundSystemBitShift = 2;
 
 class MixPresentationObuTest : public ObuTestBase, public testing::Test {
  public:
@@ -1037,29 +1043,45 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
       21);
 }
 
-TEST(ReadMixPresentationLayoutTest, LoudSpeakerDifferentSoundSystem) {
+TEST(LoudspeakersSsConventionLayoutRead, ReadsSsConventionLayout) {
+  // SS Convention layout is only 6-bits. Ensure the data to be read is in the
+  // upper 6-bits of the buffer.
+  const int kSsConventionBitShift = 2;
+  constexpr auto kSoundSystem =
+      LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0;
+  constexpr uint8_t kArbitraryTwoBitReservedField = 3;
   std::vector<uint8_t> source = {
-      // Start Layout.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
-          (LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0 << 2),
-      0,
-      0,
-      31,
-      0,
-      32,
-      // End Layout.
-  };
+      (kSoundSystem << kSoundSystemBitShift | kArbitraryTwoBitReservedField)
+      << kSsConventionBitShift};
   ReadBitBuffer buffer(1024, &source);
-  MixPresentationLayout layout;
-  EXPECT_THAT(layout.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(layout.loudness_layout.layout_type,
+  LoudspeakersSsConventionLayout ss_convention_layout;
+
+  EXPECT_THAT(ss_convention_layout.Read(buffer), IsOk());
+
+  EXPECT_EQ(ss_convention_layout.sound_system, kSoundSystem);
+  EXPECT_EQ(ss_convention_layout.reserved, kArbitraryTwoBitReservedField);
+}
+
+TEST(LayoutReadAndValidate, ReadsLoudspeakersSsConventionLayout) {
+  constexpr auto kSoundSystem =
+      LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0;
+  constexpr uint8_t kArbitraryTwoBitReservedField = 3;
+  std::vector<uint8_t> source = {
+      (Layout::kLayoutTypeLoudspeakersSsConvention << kLayoutTypeBitShift) |
+      (kSoundSystem << kSoundSystemBitShift | kArbitraryTwoBitReservedField)};
+  ReadBitBuffer buffer(1024, &source);
+  Layout loudness_layout;
+
+  EXPECT_THAT(loudness_layout.ReadAndValidate(buffer), IsOk());
+
+  EXPECT_EQ(loudness_layout.layout_type,
             Layout::kLayoutTypeLoudspeakersSsConvention);
-  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
-                layout.loudness_layout.specific_layout)
-                .sound_system,
-            LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0);
-  EXPECT_EQ(layout.loudness.integrated_loudness, 31);
-  EXPECT_EQ(layout.loudness.digital_peak, 32);
+  ASSERT_TRUE(std::holds_alternative<LoudspeakersSsConventionLayout>(
+      loudness_layout.specific_layout));
+  const auto& ss_convention_layout =
+      std::get<LoudspeakersSsConventionLayout>(loudness_layout.specific_layout);
+  EXPECT_EQ(ss_convention_layout.sound_system, kSoundSystem);
+  EXPECT_EQ(ss_convention_layout.reserved, kArbitraryTwoBitReservedField);
 }
 
 TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {

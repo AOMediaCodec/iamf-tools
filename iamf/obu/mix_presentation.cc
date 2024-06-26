@@ -205,21 +205,16 @@ absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
 
 }  // namespace
 
-absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
-  // Read the `loudness_layout` portion of a `MixPresentationLayout`.
-  uint8_t layout_type;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layout_type));
-  loudness_layout.layout_type = static_cast<Layout::LayoutType>(layout_type);
+absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {
+  uint8_t layout_type_uint;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layout_type_uint));
+  layout_type = static_cast<Layout::LayoutType>(layout_type_uint);
 
   // Read the specific type of `Layout` dependent on `layout_type`.
-  switch (loudness_layout.layout_type) {
+  switch (layout_type) {
     using enum Layout::LayoutType;
-    case kLayoutTypeLoudspeakersSsConvention: {
-      RETURN_IF_NOT_OK(std::get<LoudspeakersSsConventionLayout>(
-                           loudness_layout.specific_layout)
-                           .Read(rb));
-      break;
-    }
+    case kLayoutTypeLoudspeakersSsConvention:
+      return std::get<LoudspeakersSsConventionLayout>(specific_layout).Read(rb);
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
       return absl::InvalidArgumentError("Layout is not supported.");
@@ -227,6 +222,15 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
       return absl::UnimplementedError("Binaural layout is not supported.");
       break;
   }
+
+  return absl::InternalError(absl::StrCat(
+      "Unexpected value for 2-bit Layout::LayoutType = ", layout_type));
+}
+
+absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
+  // Read the `loudness_layout` portion of a `MixPresentationLayout`.
+  RETURN_IF_NOT_OK(loudness_layout.ReadAndValidate(rb));
+
   // Read the `loudness` portion of a `MixPresentationLayout`.
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, loudness.info_type));
   RETURN_IF_NOT_OK(rb.ReadSigned16(loudness.integrated_loudness));

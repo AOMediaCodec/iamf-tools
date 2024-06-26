@@ -229,6 +229,9 @@ struct LoudspeakersReservedBinauralLayout {
 };
 
 /*!\brief Specifies either a binaural system or physical loudspeaker positions.
+ *
+ * Implements syntax and utility functions related to the `Layout` defined in
+ * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout.
  */
 struct Layout {
   /*!\brief A 2-bit enum for the type of layout. */
@@ -240,6 +243,14 @@ struct Layout {
   };
 
   friend bool operator==(const Layout& lhs, const Layout& rhs) = default;
+
+  /*!\brief Reads and validates the Layout from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the layout is valid. A specific status if the
+   *     read fails.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
   LayoutType layout_type;  // 2 bits.
 
