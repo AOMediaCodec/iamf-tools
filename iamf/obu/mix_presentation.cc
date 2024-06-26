@@ -111,7 +111,7 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
     case kLayoutTypeBinaural:
-      RETURN_IF_NOT_OK(std::get<LoudspeakersReservedBinauralLayout>(
+      RETURN_IF_NOT_OK(std::get<LoudspeakersReservedOrBinauralLayout>(
                            layout.loudness_layout.specific_layout)
                            .Write(wb));
       break;
@@ -214,13 +214,16 @@ absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {
   switch (layout_type) {
     using enum Layout::LayoutType;
     case kLayoutTypeLoudspeakersSsConvention:
+      specific_layout = LoudspeakersSsConventionLayout();
       return std::get<LoudspeakersSsConventionLayout>(specific_layout).Read(rb);
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
-      return absl::InvalidArgumentError("Layout is not supported.");
+    // Reserved layouts are identical to binaural layouts as of IAMF
+    // v1.0-errata aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout.
     case kLayoutTypeBinaural:
-      return absl::UnimplementedError("Binaural layout is not supported.");
-      break;
+      specific_layout = LoudspeakersReservedOrBinauralLayout();
+      return std::get<LoudspeakersReservedOrBinauralLayout>(specific_layout)
+          .Read(rb);
   }
 
   return absl::InternalError(absl::StrCat(
@@ -347,10 +350,14 @@ absl::Status LoudspeakersSsConventionLayout::Read(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-absl::Status LoudspeakersReservedBinauralLayout::Write(
+absl::Status LoudspeakersReservedOrBinauralLayout::Write(
     WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved, 6));
   return absl::OkStatus();
+}
+
+absl::Status LoudspeakersReservedOrBinauralLayout::Read(ReadBitBuffer& rb) {
+  return rb.ReadUnsignedLiteral(6, reserved);
 }
 
 absl::Status MixPresentationObu::GetNumChannelsFromLayout(
@@ -486,7 +493,7 @@ void LoudspeakersSsConventionLayout::Print() const {
   LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
-void LoudspeakersReservedBinauralLayout::Print() const {
+void LoudspeakersReservedOrBinauralLayout::Print() const {
   LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
@@ -559,7 +566,7 @@ void MixPresentationObu::PrintObu() const {
         case kLayoutTypeReserved0:
         case kLayoutTypeReserved1:
         case kLayoutTypeBinaural:
-          std::get<LoudspeakersReservedBinauralLayout>(
+          std::get<LoudspeakersReservedOrBinauralLayout>(
               layout.loudness_layout.specific_layout)
               .Print();
       }

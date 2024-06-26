@@ -171,7 +171,7 @@ absl::Status CopyReservedOrBinauralLayout(
         reserved_or_binaural_layout,
     Layout& obu_layout) {
   obu_layout.layout_type = layout;
-  LoudspeakersReservedBinauralLayout obu_reserved_or_binaural_layout;
+  LoudspeakersReservedOrBinauralLayout obu_reserved_or_binaural_layout;
   RETURN_IF_NOT_OK(Uint32ToUint8(reserved_or_binaural_layout.reserved(),
                                  obu_reserved_or_binaural_layout.reserved));
 

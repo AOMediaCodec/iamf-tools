@@ -109,7 +109,7 @@ TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportIfNoLayerMatches) {
 TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportReservedLayout) {
   const Layout kReservedLayout = {
       .layout_type = Layout::kLayoutTypeReserved0,
-      .specific_layout = LoudspeakersReservedBinauralLayout{.reserved = 0}};
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
 
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(

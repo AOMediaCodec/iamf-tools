@@ -158,7 +158,12 @@ struct LoudnessInfo {
   LayoutExtension layout_extension;
 };
 
-/*!\brief Layout is defined using the sound system convention of ITU2051-3. */
+/*!\brief Layout is defined using the sound system convention of ITU2051-3.
+ *
+ * Implements syntax and utility functions when the `Layout` defined in
+ * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout is
+ * `LOUDSPEAKERS_SS_CONVENTION`.
+ */
 struct LoudspeakersSsConventionLayout {
   /*!\brief A 4-bit enum for loudspeaker layout.
    *
@@ -208,10 +213,15 @@ struct LoudspeakersSsConventionLayout {
   uint8_t reserved;  // 2 bits.
 };
 
-/*!\brief Layout is binaural or reserved. */
-struct LoudspeakersReservedBinauralLayout {
-  friend bool operator==(const LoudspeakersReservedBinauralLayout& lhs,
-                         const LoudspeakersReservedBinauralLayout& rhs) =
+/*!\brief Layout is binaural or reserved.
+ *
+ * Implements syntax and utility functions when the `Layout` defined in
+ * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout is
+ * `BINAURAL` or `RESERVED`.
+ */
+struct LoudspeakersReservedOrBinauralLayout {
+  friend bool operator==(const LoudspeakersReservedOrBinauralLayout& lhs,
+                         const LoudspeakersReservedOrBinauralLayout& rhs) =
       default;
 
   /*!\brief Writes the layout to the buffer.
@@ -221,6 +231,14 @@ struct LoudspeakersReservedBinauralLayout {
    *     write fails.
    */
   absl::Status Write(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads the layout from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the layout is valid. A specific status if the
+   *     read fails.
+   */
+  absl::Status Read(ReadBitBuffer& rb);
 
   /*!\brief Prints logging information about the layout. */
   void Print() const;
@@ -256,7 +274,7 @@ struct Layout {
 
   // The active field depends on `layout_type`.
   std::variant<LoudspeakersSsConventionLayout,
-               LoudspeakersReservedBinauralLayout>
+               LoudspeakersReservedOrBinauralLayout>
       specific_layout;
 };
 

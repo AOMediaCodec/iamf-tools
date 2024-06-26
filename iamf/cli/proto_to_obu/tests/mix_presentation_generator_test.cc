@@ -207,8 +207,8 @@ TEST_F(MixPresentationGeneratorTest, ReservedLayoutWithOneStereoAudioElement) {
   expected_obus_.back().sub_mixes_[0].layouts = {
       {.loudness_layout = {.layout_type = Layout::kLayoutTypeReserved1,
                            .specific_layout =
-                               LoudspeakersReservedBinauralLayout{.reserved =
-                                                                      0}},
+                               LoudspeakersReservedOrBinauralLayout{.reserved =
+                                                                        0}},
        .loudness = {.info_type = 0}}};
 
   MixPresentationGenerator generator(mix_presentation_metadata_);

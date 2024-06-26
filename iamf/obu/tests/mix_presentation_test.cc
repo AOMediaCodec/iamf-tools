@@ -667,7 +667,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
        .layouts = {
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeReserved0,
                                 .specific_layout =
-                                    LoudspeakersReservedBinauralLayout{
+                                    LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
             .loudness = {.info_type = LoudnessInfo::kTruePeak,
                          .integrated_loudness = 28,
@@ -688,7 +688,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
 
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeBinaural,
                                 .specific_layout =
-                                    LoudspeakersReservedBinauralLayout{
+                                    LoudspeakersReservedOrBinauralLayout{
                                         .reserved = 0}},
             .loudness = {.info_type = LoudnessInfo::kTruePeak,
                          .integrated_loudness = 34,
@@ -754,7 +754,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
 TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidMissingStero) {
   sub_mixes_[0].layouts[0].loudness_layout = {
       .layout_type = Layout::kLayoutTypeBinaural,
-      .specific_layout = LoudspeakersReservedBinauralLayout{.reserved = 0}};
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -826,7 +826,7 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystem7_1_4) {
 TEST_F(GetNumChannelsFromLayoutTest, LayoutTypeBinaural) {
   layout_ = {
       .layout_type = Layout::kLayoutTypeBinaural,
-      .specific_layout = LoudspeakersReservedBinauralLayout{.reserved = 0}};
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
   const int32_t kExpectedBinauralChannels = 2;
 
   int32_t num_channels;
@@ -839,7 +839,7 @@ TEST_F(GetNumChannelsFromLayoutTest, LayoutTypeBinaural) {
 TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedLayoutType) {
   layout_ = {
       .layout_type = Layout::kLayoutTypeReserved0,
-      .specific_layout = LoudspeakersReservedBinauralLayout{.reserved = 0}};
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
 
   int32_t unused_num_channels;
   EXPECT_FALSE(
@@ -1062,6 +1062,21 @@ TEST(LoudspeakersSsConventionLayoutRead, ReadsSsConventionLayout) {
   EXPECT_EQ(ss_convention_layout.reserved, kArbitraryTwoBitReservedField);
 }
 
+TEST(LoudspeakersReservedOrBinauralLayoutRead, ReadsReservedField) {
+  // Binaural layout is only 6-bits. Ensure the data to be read is in the
+  // upper 6-bits of the buffer.
+  const int kBinauralLayoutBitShift = 2;
+  constexpr uint8_t kArbitrarySixBitReservedField = 63;
+  std::vector<uint8_t> source = {kArbitrarySixBitReservedField
+                                 << kBinauralLayoutBitShift};
+  ReadBitBuffer buffer(1024, &source);
+  LoudspeakersReservedOrBinauralLayout reserved_binaural_layout;
+
+  EXPECT_THAT(reserved_binaural_layout.Read(buffer), IsOk());
+
+  EXPECT_EQ(reserved_binaural_layout.reserved, kArbitrarySixBitReservedField);
+}
+
 TEST(LayoutReadAndValidate, ReadsLoudspeakersSsConventionLayout) {
   constexpr auto kSoundSystem =
       LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0;
@@ -1082,6 +1097,44 @@ TEST(LayoutReadAndValidate, ReadsLoudspeakersSsConventionLayout) {
       std::get<LoudspeakersSsConventionLayout>(loudness_layout.specific_layout);
   EXPECT_EQ(ss_convention_layout.sound_system, kSoundSystem);
   EXPECT_EQ(ss_convention_layout.reserved, kArbitraryTwoBitReservedField);
+}
+
+TEST(LayoutReadAndValidate, ReadsReservedLayout) {
+  const auto kReservedLayout = Layout::kLayoutTypeReserved0;
+  constexpr uint8_t kArbitrarySixBitReservedField = 63;
+  std::vector<uint8_t> source = {(kReservedLayout << kLayoutTypeBitShift) |
+                                 (kArbitrarySixBitReservedField)};
+  ReadBitBuffer buffer(1024, &source);
+  Layout loudness_layout;
+
+  EXPECT_THAT(loudness_layout.ReadAndValidate(buffer), IsOk());
+
+  EXPECT_EQ(loudness_layout.layout_type, kReservedLayout);
+  ASSERT_TRUE(std::holds_alternative<LoudspeakersReservedOrBinauralLayout>(
+      loudness_layout.specific_layout));
+  EXPECT_EQ(std::get<LoudspeakersReservedOrBinauralLayout>(
+                loudness_layout.specific_layout)
+                .reserved,
+            kArbitrarySixBitReservedField);
+}
+
+TEST(LayoutReadAndValidate, ReadsBinauralLayout) {
+  const auto kBinauralLayout = Layout::kLayoutTypeBinaural;
+  constexpr uint8_t kArbitrarySixBitReservedField = 33;
+  std::vector<uint8_t> source = {(kBinauralLayout << kLayoutTypeBitShift) |
+                                 (kArbitrarySixBitReservedField)};
+  ReadBitBuffer buffer(1024, &source);
+  Layout loudness_layout;
+
+  EXPECT_THAT(loudness_layout.ReadAndValidate(buffer), IsOk());
+
+  EXPECT_EQ(loudness_layout.layout_type, kBinauralLayout);
+  ASSERT_TRUE(std::holds_alternative<LoudspeakersReservedOrBinauralLayout>(
+      loudness_layout.specific_layout));
+  EXPECT_EQ(std::get<LoudspeakersReservedOrBinauralLayout>(
+                loudness_layout.specific_layout)
+                .reserved,
+            kArbitrarySixBitReservedField);
 }
 
 TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {

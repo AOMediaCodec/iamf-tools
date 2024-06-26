@@ -193,14 +193,14 @@ TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnBinauralBasedLayout) {
   EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
                    {.layout_type = Layout::kLayoutTypeBinaural,
-                    .specific_layout = LoudspeakersReservedBinauralLayout{}})
+                    .specific_layout = LoudspeakersReservedOrBinauralLayout{}})
                    .ok());
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnReservedLayout) {
   EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
                    {.layout_type = Layout::kLayoutTypeReserved0,
-                    .specific_layout = LoudspeakersReservedBinauralLayout{}})
+                    .specific_layout = LoudspeakersReservedOrBinauralLayout{}})
                    .ok());
 }
 
