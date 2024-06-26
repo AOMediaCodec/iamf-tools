@@ -152,6 +152,34 @@ cc_test(
 )
 
 cc_test(
+    name = "iamf_encoder_test",
+    srcs = ["iamf_encoder_test.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli:iamf_encoder",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli/proto:audio_element_cc_proto",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:mix_presentation_cc_proto",
+        "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:leb128",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
     name = "leb_generator_test",
     srcs = ["leb_generator_test.cc"],
     deps = [

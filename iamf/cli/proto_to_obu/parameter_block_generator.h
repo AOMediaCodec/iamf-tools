@@ -13,7 +13,6 @@
 #ifndef CLI_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
 #define CLI_PROTO_TO_OBU_PARAMETER_BLOCK_GENERATOR_H_
 
-#include <cstdint>
 #include <list>
 
 #include "absl/container/flat_hash_map.h"
@@ -80,14 +79,11 @@ class ParameterBlockGenerator {
   /*!\brief Adds one parameter block metadata.
    *
    * \param parameter_block_metadata parameter block metadata to add.
-   * \param duration Output duration of the corresponding parameter block; may
-   *      come from the added metadata or its param definition.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status AddMetadata(
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-          parameter_block_metadata,
-      uint32_t& duration);
+          parameter_block_metadata);
 
   /*!\brief Generates a list of demixing parameter blocks with data.
    *

@@ -21,14 +21,12 @@
  *
  * \param user_metadata Input user metadata describing the IAMF stream.
  * \param input_wav_directory Directory which contains the input wav files.
- * \param output_wav_directory Directory to output wav files to.
  * \param output_iamf_directory Directory to output IAMF files to.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 namespace iamf_tools {
 absl::Status TestMain(const iamf_tools_cli_proto::UserMetadata& user_metadata,
                       const std::string& input_wav_directory,
-                      const std::string& output_wav_directory,
                       const std::string& output_iamf_directory);
 }
 

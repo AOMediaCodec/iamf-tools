@@ -59,8 +59,7 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   // Add metadata.
   iamf_tools_cli_proto::UserMetadata user_metadata;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
-    uint32_t unused_duration;
-    EXPECT_THAT(generator.AddMetadata(metadata, unused_duration), IsOk());
+    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
   }
 
   // Generate.
@@ -178,9 +177,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    uint32_t duration = 0;
-    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
-    EXPECT_EQ(duration, 8);
+    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
@@ -298,9 +295,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    uint32_t duration = 0;
-    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
-    EXPECT_EQ(duration, 8);
+    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
@@ -486,9 +481,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   std::list<ParameterBlockWithData> output_parameter_blocks;
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
     // Add metadata.
-    uint32_t duration = 0;
-    EXPECT_THAT(generator.AddMetadata(metadata, duration), IsOk());
-    EXPECT_EQ(duration, 8);
+    EXPECT_THAT(generator.AddMetadata(metadata), IsOk());
 
     // Generate.
     // Set the decoded frames identical to the original frames, so that recon
@@ -534,8 +527,7 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   // will fail because the generator cannot find the corresponding param
   // definitions for the parameter (i.e. they are "stray").
   for (const auto& metadata : user_metadata.parameter_block_metadata()) {
-    uint32_t unused_duration = 0;
-    EXPECT_FALSE(generator.AddMetadata(metadata, unused_duration).ok());
+    EXPECT_FALSE(generator.AddMetadata(metadata).ok());
   }
 }
 

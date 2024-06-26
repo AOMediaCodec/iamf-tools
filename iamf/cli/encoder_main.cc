@@ -51,10 +51,9 @@ ABSL_FLAG(int32_t, adm_frame_duration_ms, 10,
           "may vary slightly. Used only if --adm_filename is provided.");
 
 // Flags to control output directory for either type of input.
-ABSL_FLAG(std::string, output_wav_directory, "",
-          "Output directory for wav files");
 ABSL_FLAG(std::string, output_iamf_directory, "",
           "Output directory for iamf files");
+// TODO(b/349504599): Add support to write output WAV files.
 
 namespace {
 
@@ -147,20 +146,14 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << user_metadata;
 
-  // Get the directory for the output wav files.
-  const auto& output_wav_directory =
-      absl::GetFlag(FLAGS_output_wav_directory).empty()
-          ? std::filesystem::temp_directory_path()
-          : std::filesystem::path(absl::GetFlag(FLAGS_output_wav_directory));
-
+  // Get the directory for the output .iamf files.
   const auto& output_iamf_directory =
       absl::GetFlag(FLAGS_output_iamf_directory).empty()
           ? std::filesystem::temp_directory_path()
           : std::filesystem::path(absl::GetFlag(FLAGS_output_iamf_directory));
 
-  absl::Status status =
-      iamf_tools::TestMain(*user_metadata, input_wav_directory,
-                           output_wav_directory, output_iamf_directory);
+  absl::Status status = iamf_tools::TestMain(
+      *user_metadata, input_wav_directory, output_iamf_directory);
 
   // Log success or failure. Success is defined as a valid test vector returning
   // `absl::OkStatus()` or an invalid test vector returning a different status.

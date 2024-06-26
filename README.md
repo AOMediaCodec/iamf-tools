@@ -76,7 +76,6 @@ Optional flags:
 -   `--input_wav_directory` controls the directory wav files are read from
     (default iamf/cli/testdata/).
 -   `--output_iamf_directory` controls the output directory of the IAMF files.
--   `--output_wav_directory` controls the output directory of wav files.
 
 Using the encoder:
 
@@ -96,7 +95,6 @@ the conversion.
 Optional flags:
 
 -   `--output_iamf_directory` controls the output directory of the IAMF files.
--   `--output_wav_directory` controls the output directory of wav files.
 -   `--adm_importance_threshold` controls the threshold below which ADM
     `audioObject`s are omitted (default 0).
 -   `--adm_frame_duration_ms` controls the frame size of the output IAMF in ms

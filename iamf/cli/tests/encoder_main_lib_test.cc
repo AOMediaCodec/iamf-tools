@@ -58,7 +58,7 @@ void AddCodecConfig(iamf_tools_cli_proto::UserMetadata& user_metadata) {
 }
 
 TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {
-  EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "", "").ok());
+  EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "").ok());
 }
 
 TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
@@ -67,7 +67,7 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // `partition_mix_gain_parameter_blocks` is left true (the default value).
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
-  EXPECT_FALSE(TestMain(user_metadata, "", "",
+  EXPECT_FALSE(TestMain(user_metadata, "",
                         std::filesystem::temp_directory_path().string())
                    .ok());
 
@@ -75,7 +75,7 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // will succeed.
   user_metadata.mutable_test_vector_metadata()
       ->set_partition_mix_gain_parameter_blocks(false);
-  EXPECT_THAT(TestMain(user_metadata, "", "",
+  EXPECT_THAT(TestMain(user_metadata, "",
                        std::filesystem::temp_directory_path().string()),
               IsOk());
 }
@@ -86,7 +86,7 @@ TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
   AddCodecConfig(user_metadata);
-  EXPECT_THAT(TestMain(user_metadata, "", "",
+  EXPECT_THAT(TestMain(user_metadata, "",
                        std::filesystem::temp_directory_path().string()),
               IsOk());
 }
@@ -102,7 +102,7 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(16);
 
-  EXPECT_THAT(TestMain(user_metadata, "", "",
+  EXPECT_THAT(TestMain(user_metadata, "",
                        std::filesystem::temp_directory_path().string()),
               IsOk());
 }
@@ -118,7 +118,7 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(kBitDepthTooHigh);
 
-  EXPECT_FALSE(TestMain(user_metadata, "", "",
+  EXPECT_FALSE(TestMain(user_metadata, "",
                         std::filesystem::temp_directory_path().string())
                    .ok());
 }
@@ -134,7 +134,7 @@ TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
 
   const auto output_iamf_directory = std::filesystem::temp_directory_path();
 
-  EXPECT_THAT(TestMain(user_metadata, "", "", output_iamf_directory.string()),
+  EXPECT_THAT(TestMain(user_metadata, "", output_iamf_directory.string()),
               IsOk());
 
   EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));
@@ -163,7 +163,7 @@ TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
       test_directory_root / std::filesystem::path("EncoderMainLibTest") /
       std::filesystem::path("CreatesAndWritesToOutputIamfDirectory");
 
-  EXPECT_THAT(TestMain(user_metadata, "", "", output_iamf_directory.string()),
+  EXPECT_THAT(TestMain(user_metadata, "", output_iamf_directory.string()),
               IsOk());
 
   EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));

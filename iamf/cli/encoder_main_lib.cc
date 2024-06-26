@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/encoder_main_lib.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
@@ -25,28 +24,18 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/time/clock.h"
-#include "absl/time/time.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/iamf_components.h"
+#include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/arbitrary_obu_generator.h"
-#include "iamf/cli/proto_to_obu/audio_element_generator.h"
-#include "iamf/cli/proto_to_obu/audio_frame_generator.h"
-#include "iamf/cli/proto_to_obu/codec_config_generator.h"
-#include "iamf/cli/proto_to_obu/ia_sequence_header_generator.h"
-#include "iamf/cli/proto_to_obu/mix_presentation_generator.h"
-#include "iamf/cli/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
@@ -55,13 +44,14 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
 namespace {
+
+using iamf_tools_cli_proto::ParameterBlockObuMetadata;
+using iamf_tools_cli_proto::UserMetadata;
 
 std::unique_ptr<WavWriter> ProduceAllWavWriters(
     DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
@@ -74,8 +64,7 @@ std::unique_ptr<WavWriter> ProduceAllWavWriters(
                                      bit_depth);
 }
 
-absl::Status PartitionParameterMetadata(
-    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
   uint32_t partition_duration = 0;
   if (user_metadata.ia_sequence_header_metadata().empty() ||
       user_metadata.codec_config_metadata().empty()) {
@@ -83,8 +72,7 @@ absl::Status PartitionParameterMetadata(
         "Determining the partition duration requires at least one "
         "`ia_sequence_header_metadata` and one `codec_config_metadata`");
   }
-  std::list<iamf_tools_cli_proto::ParameterBlockObuMetadata>
-      partitioned_parameter_blocks;
+  std::list<ParameterBlockObuMetadata> partitioned_parameter_blocks;
   RETURN_IF_NOT_OK(ParameterBlockPartitioner::FindPartitionDuration(
       user_metadata.ia_sequence_header_metadata(0).primary_profile(),
       user_metadata.codec_config_metadata(0), partition_duration));
@@ -104,99 +92,32 @@ absl::Status PartitionParameterMetadata(
   return absl::OkStatus();
 }
 
-// TODO(b/306319126): Remove when parameter block metadata are taken one frame
-//                    at a time.
-absl::Status AddAllParameterBlockMetadataForCurrentTimestamp(
-    const google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::ParameterBlockObuMetadata>&
+// Mapping from the start timestamps to lists of parameter block metadata.
+typedef absl::flat_hash_map<int32_t, std::list<ParameterBlockObuMetadata>>
+    TimeParameterBlockMetadataMap;
+absl::Status OrganizeParameterBlockMetadata(
+    const google::protobuf::RepeatedPtrField<ParameterBlockObuMetadata>&
         parameter_block_metadata,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions,
-    const ParamDefinition::ParameterDefinitionType type_to_add,
-    ParameterBlockGenerator& parameter_block_generator,
-    int32_t& current_timestamp) {
-  int32_t next_timestamp = current_timestamp;
+    TimeParameterBlockMetadataMap& time_parameter_block_metadata) {
   for (const auto& metadata : parameter_block_metadata) {
-    auto param_definition_iter = param_definitions.find(
-        static_cast<DecodedUleb128>(metadata.parameter_id()));
-    if (param_definition_iter == param_definitions.end()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "No param definition found for param ID= ", metadata.parameter_id()));
-    }
-    if (param_definition_iter->second->GetType() != type_to_add) {
-      continue;
-    }
-
-    if (metadata.start_timestamp() == current_timestamp) {
-      uint32_t duration;
-      RETURN_IF_NOT_OK(
-          parameter_block_generator.AddMetadata(metadata, duration));
-      const int32_t end_timestamp = current_timestamp + duration;
-      if (next_timestamp == current_timestamp) {
-        next_timestamp = end_timestamp;
-      } else if (next_timestamp != end_timestamp) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Inconsistent end timestamp: expecting ",
-                         next_timestamp, " but got ", end_timestamp));
-      }
-    }
+    time_parameter_block_metadata[metadata.start_timestamp()].push_back(
+        metadata);
   }
 
-  current_timestamp = next_timestamp;
   return absl::OkStatus();
 }
 
-absl::Status MaybeGenerateDemixingAndMixGainParameterBlocks(
-    const google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::ParameterBlockObuMetadata>&
-        parameter_block_metadata,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions,
-    ParametersManager& parameters_manager,
-    ParameterBlockGenerator& parameter_block_generator,
-    GlobalTimingModule& global_timing_module, int32_t& current_timestamp,
-    std::list<ParameterBlockWithData>& demixing_parameter_blocks,
-    std::list<ParameterBlockWithData>& mix_gain_parameter_blocks) {
-  std::optional<int32_t> global_audio_frame_timestamp;
-  RETURN_IF_NOT_OK(global_timing_module.GetGlobalAudioFrameTimestamp(
-      global_audio_frame_timestamp));
-
-  // Only generate parameter blocks when all audio frames corresponding to
-  // the same temporal units are ready.
-  if (global_audio_frame_timestamp == current_timestamp) {
-    int32_t current_timestamp_for_demixing = current_timestamp;
-    int32_t current_timestamp_for_mix_gain = current_timestamp;
-    RETURN_IF_NOT_OK(AddAllParameterBlockMetadataForCurrentTimestamp(
-        parameter_block_metadata, param_definitions,
-        ParamDefinition::kParameterDefinitionDemixing,
-        parameter_block_generator, current_timestamp_for_demixing));
-    RETURN_IF_NOT_OK(AddAllParameterBlockMetadataForCurrentTimestamp(
-        parameter_block_metadata, param_definitions,
-        ParamDefinition::kParameterDefinitionMixGain, parameter_block_generator,
-        current_timestamp_for_mix_gain));
-    current_timestamp = std::max(current_timestamp_for_demixing,
-                                 current_timestamp_for_mix_gain);
-
-    std::list<ParameterBlockWithData> mix_gain_parameter_blocks_for_frame;
-    std::list<ParameterBlockWithData> demixing_parameter_blocks_for_frame;
-    RETURN_IF_NOT_OK(parameter_block_generator.GenerateDemixing(
-        global_timing_module, demixing_parameter_blocks_for_frame));
-    RETURN_IF_NOT_OK(parameter_block_generator.GenerateMixGain(
-        global_timing_module, mix_gain_parameter_blocks_for_frame));
-
-    // Add the newly generated demixing parameter blocks to the parameters
-    // manager so they can be easily queried by the audio frame genrator.
-    for (const auto& demixing_parameter_block :
-         demixing_parameter_blocks_for_frame) {
-      parameters_manager.AddDemixingParameterBlock(&demixing_parameter_block);
-    }
-
-    demixing_parameter_blocks.splice(demixing_parameter_blocks.end(),
-                                     demixing_parameter_blocks_for_frame);
-    mix_gain_parameter_blocks.splice(mix_gain_parameter_blocks.end(),
-                                     mix_gain_parameter_blocks_for_frame);
+absl::Status CollectLabeledSamplesForAudioElements(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    WavSampleProvider& wav_sample_provider,
+    absl::flat_hash_map<DecodedUleb128, LabelSamplesMap>& id_to_labeled_samples,
+    bool& no_more_real_samples) {
+  for (const auto& [audio_element_id, unused_audio_element] : audio_elements) {
+    RETURN_IF_NOT_OK(wav_sample_provider.ReadFrames(
+        audio_element_id, id_to_labeled_samples[audio_element_id],
+        no_more_real_samples));
   }
-
   return absl::OkStatus();
 }
 
@@ -235,196 +156,101 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   return absl::OkStatus();
 }
 
-absl::Status InitAudioFrameDecoderForAllAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    AudioFrameDecoder& audio_frame_decoder) {
-  for (const auto& [unused_audio_element_id, audio_element] : audio_elements) {
-    if (audio_element.codec_config == nullptr) {
-      // Skip stray audio elements. We won't know how to decode their
-      // substreams.
-      continue;
-    }
-
-    RETURN_IF_NOT_OK(audio_frame_decoder.InitDecodersForSubstreams(
-        audio_element.substream_id_to_labels, *audio_element.codec_config));
-  }
-  return absl::OkStatus();
-}
-
 absl::Status GenerateObus(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const std::string& input_wav_directory,
-    const std::string& output_wav_directory,
+    const UserMetadata& user_metadata, const std::string& input_wav_directory,
+    IamfEncoder& iamf_encoder,
     std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus,
     std::list<AudioFrameWithData>& audio_frames,
     std::list<ParameterBlockWithData>& parameter_blocks,
-    absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-        parameter_id_to_metadata,
     std::list<ArbitraryObu>& arbitrary_obus) {
-  // IA Sequence Header OBU. Only one is allowed.
-  if (user_metadata.ia_sequence_header_metadata_size() != 1) {
-    return absl::InvalidArgumentError(
-        "Only one IA Sequence Header allowed in an IA Sequence.");
-  }
-  IaSequenceHeaderGenerator ia_sequence_header_generator(
-      user_metadata.ia_sequence_header_metadata(0));
-  RETURN_IF_NOT_OK(
-      ia_sequence_header_generator.Generate(ia_sequence_header_obu));
+  RETURN_IF_NOT_OK(iamf_encoder.GenerateDescriptorObus(
+      ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus));
 
-  // Codec Config OBUs.
-  CodecConfigGenerator codec_config_generator(
-      user_metadata.codec_config_metadata());
-  RETURN_IF_NOT_OK(codec_config_generator.Generate(codec_config_obus));
-
-  // Audio Element OBUs.
-  AudioElementGenerator audio_element_generator(
-      user_metadata.audio_element_metadata());
-  RETURN_IF_NOT_OK(
-      audio_element_generator.Generate(codec_config_obus, audio_elements));
-
-  // Generate the majority of Mix Presentation OBUs - loudness will be
-  // calculated later.
-  MixPresentationGenerator mix_presentation_generator(
-      user_metadata.mix_presentation_metadata());
-  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(mix_presentation_obus));
-
-  // Collect and validate consistency of all `ParamDefinition`s in all
-  // Audio Element and Mix Presentation OBUs.
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
-  RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
-      audio_elements, mix_presentation_obus, param_definitions));
-
-  // Global timing module.
-  GlobalTimingModule global_timing_module;
-  RETURN_IF_NOT_OK(
-      global_timing_module.Initialize(audio_elements, param_definitions));
-
-  ParameterBlockGenerator parameter_block_generator(
-      user_metadata.test_vector_metadata().override_computed_recon_gains(),
-      parameter_id_to_metadata);
-  RETURN_IF_NOT_OK(
-      parameter_block_generator.Initialize(audio_elements, param_definitions));
-
-  // Put generated parameter blocks in a manager that supports easier queries.
-  ParametersManager parameters_manager(audio_elements);
-  RETURN_IF_NOT_OK(parameters_manager.Initialize());
-
-  // Audio frames.
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
   RETURN_IF_NOT_OK(
       wav_sample_provider.Initialize(input_wav_directory, audio_elements));
 
-  // Down-mix the audio samples and then demix audio samples while decoding
-  // them. This is useful to create multi-layer audio elements and to determine
-  // the recon gain parameters and to measuring loudness.
-  DemixingModule demixing_module;
-  RETURN_IF_NOT_OK(demixing_module.InitializeForDownMixingAndReconstruction(
-      user_metadata, audio_elements));
+  // Parameter blocks.
+  TimeParameterBlockMetadataMap time_parameter_block_metadata;
+  RETURN_IF_NOT_OK(OrganizeParameterBlockMetadata(
+      user_metadata.parameter_block_metadata(), time_parameter_block_metadata));
 
-  AudioFrameGenerator audio_frame_generator(
-      user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements, demixing_module,
-      parameters_manager, global_timing_module);
-  RETURN_IF_NOT_OK(audio_frame_generator.Initialize());
+  // TODO(b/329375123): Make two while loops that run on two threads: one for
+  //                    adding samples and parameter block metadata, and one for
+  //                    outputing OBUs.
+  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
+  int data_obus_iteration = 0;  // Just for logging purposes.
+  while (iamf_encoder.GeneratingDataObus()) {
+    LOG(INFO) << "\n\n============================= Generating Data OBUs Iter #"
+              << data_obus_iteration++ << " =============================\n";
 
-  // Initialize the audio frame decoder. It is needed to determine the recon
-  // gain parameters and measure the loudness of the mixes.
-  AudioFrameDecoder audio_frame_decoder;
-  RETURN_IF_NOT_OK(InitAudioFrameDecoderForAllAudioElements(
-      audio_elements, audio_frame_decoder));
+    int32_t input_timestamp = 0;
+    RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));
 
-  // TODO(b/329375123): Make these two while loops run on two threads. The
-  //                    one below should be on Thread 1.
-  std::list<ParameterBlockWithData> demixing_parameter_blocks;
-  std::list<ParameterBlockWithData> mix_gain_parameter_blocks;
-  int32_t current_timestamp = 0;
-  while (audio_frame_generator.TakingSamples()) {
-    RETURN_IF_NOT_OK(MaybeGenerateDemixingAndMixGainParameterBlocks(
-        user_metadata.parameter_block_metadata(), param_definitions,
-        parameters_manager, parameter_block_generator, global_timing_module,
-        current_timestamp, demixing_parameter_blocks,
-        mix_gain_parameter_blocks));
+    // Add audio samples.
+    absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples;
+    bool no_more_real_samples = false;
+    RETURN_IF_NOT_OK(CollectLabeledSamplesForAudioElements(
+        audio_elements, wav_sample_provider, id_to_labeled_samples,
+        no_more_real_samples));
 
-    bool no_more_real_samples = true;
-    for (const auto& audio_frame_metadata :
-         user_metadata.audio_frame_metadata()) {
-      const auto audio_element_id = audio_frame_metadata.audio_element_id();
-      LabelSamplesMap labeled_samples;
-
-      bool no_more_real_samples_for_audio_element = false;
-      RETURN_IF_NOT_OK(wav_sample_provider.ReadFrames(
-          audio_element_id, labeled_samples,
-          no_more_real_samples_for_audio_element));
-      no_more_real_samples &= no_more_real_samples_for_audio_element;
+    for (const auto& [audio_element_id, labeled_samples] :
+         id_to_labeled_samples) {
       for (const auto& [channel_label, samples] : labeled_samples) {
-        RETURN_IF_NOT_OK(audio_frame_generator.AddSamples(
-            audio_element_id, channel_label, samples));
+        iamf_encoder.AddSamples(audio_element_id, channel_label, samples);
       }
     }
-    if (no_more_real_samples) {
-      RETURN_IF_NOT_OK(audio_frame_generator.Finalize());
-    }
-  }
 
-  // TODO(b/329375123): This should be on Thread 2.
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
-  IdTimeLabeledFrameMap id_to_time_to_labeled_decoded_frame;
-  std::list<ParameterBlockWithData> recon_gain_parameter_blocks;
-  while (audio_frame_generator.GeneratingFrames()) {
+    // In this program we always use up all samples from a WAV file, so we
+    // call `IamfEncoder::FinalizeAddSamples()` only when there is no more
+    // real samples. In other applications, the user may decide to stop adding
+    // audio samples based on other criteria.
+    if (no_more_real_samples) {
+      iamf_encoder.FinalizeAddSamples();
+    }
+
+    // Add parameter block metadata.
+    for (const auto& metadata :
+         time_parameter_block_metadata[input_timestamp]) {
+      RETURN_IF_NOT_OK(iamf_encoder.AddParameterBlockMetadata(metadata));
+    }
+
     std::list<AudioFrameWithData> temp_audio_frames;
-    RETURN_IF_NOT_OK(audio_frame_generator.OutputFrames(temp_audio_frames));
+    std::list<ParameterBlockWithData> temp_parameter_blocks;
+    IdLabeledFrameMap id_to_labeled_frame;
+    int32_t output_timestamp = 0;
+    RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(
+        temp_audio_frames, temp_parameter_blocks, id_to_labeled_frame,
+        output_timestamp));
+
     if (temp_audio_frames.empty()) {
-      absl::SleepFor(absl::Milliseconds(50));
+      // Some audio codec will only output an encoded frame after the next
+      // frame "pushes" the old one out. So we wait till the next iteration to
+      // retrieve it.
+      LOG(INFO) << "No audio frame generated in this iteration; continue.";
       continue;
     }
 
-    // Decode the audio frames. They are required to determine the demixed
-    // frames.
-    std::list<DecodedAudioFrame> temp_decoded_audio_frames;
-    RETURN_IF_NOT_OK(audio_frame_decoder.Decode(temp_audio_frames,
-                                                temp_decoded_audio_frames));
-
-    // Demix the audio frames.
-    IdLabeledFrameMap id_to_labeled_frame;
-    IdLabeledFrameMap id_to_labeled_decoded_frame;
-    RETURN_IF_NOT_OK(demixing_module.DemixAudioSamples(
-        temp_audio_frames, temp_decoded_audio_frames, id_to_labeled_frame,
-        id_to_labeled_decoded_frame));
-
-    // Add recon gain parameter blocks' metadata.
-    const auto start_timestamp = temp_audio_frames.front().start_timestamp;
-    int32_t unused_current_timestamp = start_timestamp;
-    RETURN_IF_NOT_OK(AddAllParameterBlockMetadataForCurrentTimestamp(
-        user_metadata.parameter_block_metadata(), param_definitions,
-        ParamDefinition::kParameterDefinitionReconGain,
-        parameter_block_generator, unused_current_timestamp));
-
-    // Recon gain parameter blocks are generated based on the original and
-    // demixed audio frames.
-    std::list<ParameterBlockWithData> temp_recon_gain_parameter_blocks;
-    RETURN_IF_NOT_OK(parameter_block_generator.GenerateReconGain(
-        id_to_labeled_frame, id_to_labeled_decoded_frame, global_timing_module,
-        temp_recon_gain_parameter_blocks));
-    recon_gain_parameter_blocks.splice(recon_gain_parameter_blocks.end(),
-                                       temp_recon_gain_parameter_blocks);
-
+    // TODO(b/349271713): Move `id_to_time_to_labeled_frame` inside
+    //                    `IamfEncoder` once the mix presentation finalizer is
+    //                    inside too.
     // Collect and organize generated audio frames in time.
     for (const auto& [id, labeled_frame] : id_to_labeled_frame) {
-      id_to_time_to_labeled_frame[id][start_timestamp] = labeled_frame;
+      id_to_time_to_labeled_frame[id][output_timestamp] = labeled_frame;
     }
-    for (const auto& [id, labeled_decoded_frame] :
-         id_to_labeled_decoded_frame) {
-      id_to_time_to_labeled_decoded_frame[id][start_timestamp] =
-          labeled_decoded_frame;
-    }
+
     audio_frames.splice(audio_frames.end(), temp_audio_frames);
+    parameter_blocks.splice(parameter_blocks.end(), temp_parameter_blocks);
   }
+  LOG(INFO) << "\n============================= END of Generating Data OBUs"
+            << " =============================\n\n";
   PrintAudioFrames(audio_frames);
 
+  // TODO(b/349271508): Move the arbitrary obu generator inside `IamfEncoder`.
   ArbitraryObuGenerator arbitrary_obu_generator(
       user_metadata.arbitrary_obu_metadata());
   RETURN_IF_NOT_OK(arbitrary_obu_generator.Generate(arbitrary_obus));
@@ -448,24 +274,21 @@ absl::Status GenerateObus(
                                  .output_wav_file_bit_depth_override());
   }
 
+  // TODO(b/349271713): Move the mix presentation finalizer inside
+  //                    `IamfEncoder`.
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
       user_metadata.test_vector_metadata().file_name_prefix(),
       output_wav_file_bit_depth_override,
       user_metadata.test_vector_metadata().validate_user_loudness());
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
-      audio_elements, id_to_time_to_labeled_frame, mix_gain_parameter_blocks,
+      audio_elements, id_to_time_to_labeled_frame, parameter_blocks,
       ProduceAllWavWriters, mix_presentation_obus));
-
-  parameter_blocks.splice(parameter_blocks.end(), demixing_parameter_blocks);
-  parameter_blocks.splice(parameter_blocks.end(), mix_gain_parameter_blocks);
-  parameter_blocks.splice(parameter_blocks.end(), recon_gain_parameter_blocks);
 
   return absl::OkStatus();
 }
 
 absl::Status WriteObus(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const std::string& output_iamf_directory,
+    const UserMetadata& user_metadata, const std::string& output_iamf_directory,
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
@@ -477,6 +300,7 @@ absl::Status WriteObus(
   RETURN_IF_NOT_OK(GetIncludeTemporalDelimiterObus(
       user_metadata, ia_sequence_header_obu, include_temporal_delimiters));
 
+  // TODO(b/349271859): Move the OBU sequencer inside `IamfEncoder`.
   auto obu_sequencers = CreateObuSequencers(
       user_metadata, output_iamf_directory, include_temporal_delimiters);
   for (auto& obu_sequencer : obu_sequencers) {
@@ -490,13 +314,11 @@ absl::Status WriteObus(
 
 }  // namespace
 
-absl::Status TestMain(
-    const iamf_tools_cli_proto::UserMetadata& input_user_metadata,
-    const std::string& input_wav_directory,
-    const std::string& output_wav_directory,
-    const std::string& output_iamf_directory) {
+absl::Status TestMain(const UserMetadata& input_user_metadata,
+                      const std::string& input_wav_directory,
+                      const std::string& output_iamf_directory) {
   // Make a copy before modifying.
-  iamf_tools_cli_proto::UserMetadata user_metadata(input_user_metadata);
+  UserMetadata user_metadata(input_user_metadata);
 
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -505,11 +327,8 @@ absl::Status TestMain(
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<ArbitraryObu> arbitrary_obus;
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
 
   // Create output directories.
-  RETURN_IF_NOT_OK(CreateOutputDirectory(output_wav_directory));
   RETURN_IF_NOT_OK(CreateOutputDirectory(output_iamf_directory));
 
   // Partition parameter block metadata if necessary. This will overwrite
@@ -519,11 +338,11 @@ absl::Status TestMain(
     RETURN_IF_NOT_OK(PartitionParameterMetadata(user_metadata));
   }
 
-  RETURN_IF_NOT_OK(
-      GenerateObus(user_metadata, input_wav_directory, output_wav_directory,
-                   ia_sequence_header_obu, codec_config_obus, audio_elements,
-                   mix_presentation_obus, audio_frames, parameter_blocks,
-                   parameter_id_to_metadata, arbitrary_obus));
+  IamfEncoder iamf_encoder(user_metadata);
+  RETURN_IF_NOT_OK(GenerateObus(
+      user_metadata, input_wav_directory, iamf_encoder, ia_sequence_header_obu,
+      codec_config_obus, audio_elements, mix_presentation_obus, audio_frames,
+      parameter_blocks, arbitrary_obus));
 
   RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
                              ia_sequence_header_obu.value(), codec_config_obus,

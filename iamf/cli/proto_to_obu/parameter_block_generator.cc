@@ -585,8 +585,7 @@ absl::Status ParameterBlockGenerator::Initialize(
 
 absl::Status ParameterBlockGenerator::AddMetadata(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-        parameter_block_metadata,
-    uint32_t& duration) {
+        parameter_block_metadata) {
   const auto& per_id_metadata_iter =
       parameter_id_to_metadata_.find(parameter_block_metadata.parameter_id());
   if (per_id_metadata_iter == parameter_id_to_metadata_.end()) {
@@ -596,10 +595,6 @@ absl::Status ParameterBlockGenerator::AddMetadata(
   }
   auto& per_id_metadata =
       parameter_id_to_metadata_.at(parameter_block_metadata.parameter_id());
-
-  duration = per_id_metadata.param_definition.param_definition_mode_ == 0
-                 ? per_id_metadata.param_definition.duration_
-                 : parameter_block_metadata.duration();
 
   typed_proto_metadata_[per_id_metadata.param_definition_type].push_back(
       parameter_block_metadata);
