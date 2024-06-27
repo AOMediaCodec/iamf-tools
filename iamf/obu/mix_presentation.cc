@@ -532,7 +532,16 @@ void MixPresentationObu::PrintObu() const {
                          .audio_element_friendly_label
                   << "\"";
       }
-      LOG(INFO) << "        // rendering_config has no payload.";
+      LOG(INFO) << "        rendering_config:";
+      LOG(INFO) << "          headphones_rendering_mode= "
+                << absl::StrCat(audio_element.rendering_config
+                                    .headphones_rendering_mode);
+      LOG(INFO) << "          reserved= "
+                << absl::StrCat(audio_element.rendering_config.reserved);
+      LOG(INFO)
+          << "          rendering_config_extension_size= "
+          << audio_element.rendering_config.rendering_config_extension_size;
+      LOG(INFO) << "          rendering_config_extension_bytes omitted.";
       LOG(INFO) << "        element_mix_config:";
       LOG(INFO) << "          mix_gain:";
       audio_element.element_mix_config.mix_gain.Print();
