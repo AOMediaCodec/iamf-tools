@@ -8,6 +8,7 @@ cc_binary(
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/flags:usage",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:flags",
     ],
 )
 
