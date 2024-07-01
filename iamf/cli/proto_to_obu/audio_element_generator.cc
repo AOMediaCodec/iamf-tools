@@ -82,10 +82,12 @@ absl::Status GenerateAudioSubstreams(
     AudioElementObu& audio_element_obu) {
   if (audio_element_metadata.num_substreams() !=
       audio_element_metadata.audio_substream_ids_size()) {
-    return InvalidArgumentError(StrCat(
-        "User data has inconsistent `audio_element_ids`. Found: ",
-        audio_element_metadata.audio_substream_ids_size(),
-        " substreams, expected: ", audio_element_metadata.num_substreams()));
+    return InvalidArgumentError(
+        StrCat("User data has inconsistent `num_substreams` and "
+               "`audio_substream_ids`. User provided ",
+               audio_element_metadata.audio_substream_ids_size(),
+               " substreams in `audio_substream_ids`, and `num_substreams`= ",
+               audio_element_metadata.num_substreams()));
   }
 
   audio_element_obu.InitializeAudioSubstreams(
