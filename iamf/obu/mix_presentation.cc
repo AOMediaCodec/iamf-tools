@@ -489,7 +489,7 @@ absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
 }
 
 void LoudspeakersSsConventionLayout::Print() const {
-  LOG(INFO) << "        sound_system= " << sound_system;
+  LOG(INFO) << "        sound_system= " << absl::StrCat(sound_system);
   LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
@@ -597,7 +597,8 @@ void MixPresentationObu::PrintObu() const {
                   << absl::StrCat(anchored_loudness.num_anchored_loudness);
         for (int i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
           LOG(INFO) << "          anchor_element[" << i << "]= "
-                    << anchored_loudness.anchor_elements[i].anchor_element;
+                    << absl::StrCat(
+                           anchored_loudness.anchor_elements[i].anchor_element);
           LOG(INFO) << "          anchored_loudness[" << i << "]= "
                     << anchored_loudness.anchor_elements[i].anchored_loudness;
         }

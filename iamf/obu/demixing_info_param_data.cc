@@ -129,7 +129,7 @@ absl::Status DemixingInfoParameterData::Read(ReadBitBuffer& rb) {
 }
 
 void DemixingInfoParameterData::Print() const {
-  LOG(INFO) << "  dmixp_mode= " << dmixp_mode;
+  LOG(INFO) << "  dmixp_mode= " << absl::StrCat(dmixp_mode);
   LOG(INFO) << "  reserved= " << absl::StrCat(reserved);
 }
 
