@@ -25,6 +25,8 @@ format. These tools can be used as a complement to the `libiamf`
         *   `codec/` - Files that encode or decode substreams with
             codec-specific libraries.
             *   `tests/` - Unit tests for files under `codec/`.
+        *   `obu_to_proto/` - Components to convert classes under `iamf/obu` to
+            protocol buffers.
         *   `proto/` - [Protocol buffers](https://protobuf.dev/) defining the
             data scheme for the input files under `iamf/cli/testdata/` or
             user-created ones.
