@@ -1,7 +1,5 @@
 # Tests for the IAMF software.
 
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_library(
     name = "obu_test_base",
     testonly = True,
