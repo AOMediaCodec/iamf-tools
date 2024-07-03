@@ -62,12 +62,21 @@ TEST(Validate, SucceedsWithDifferentProfiles) {
   EXPECT_THAT(obu_with_different_profiles.Validate(), IsOk());
 }
 
-TEST(Validate, FailsWithUnsupportedPrimaryProfile2) {
-  const IASequenceHeaderObu profile_2_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode, static_cast<ProfileVersion>(2),
+TEST(Validate, SucceedsWithBaseEnhancedProfile) {
+  const IASequenceHeaderObu base_enhanced_profile_obu(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfBaseEnhancedProfile,
       ProfileVersion::kIamfSimpleProfile);
 
-  EXPECT_FALSE(profile_2_obu.Validate().ok());
+  EXPECT_THAT(base_enhanced_profile_obu.Validate(), IsOk());
+}
+
+TEST(Validate, FailsWithUnsupportedPrimaryProfile3) {
+  const IASequenceHeaderObu profile_3_obu(
+      ObuHeader(), IASequenceHeaderObu::kIaCode, static_cast<ProfileVersion>(3),
+      ProfileVersion::kIamfSimpleProfile);
+
+  EXPECT_FALSE(profile_3_obu.Validate().ok());
 }
 
 TEST(Validate, FailsWithUnsupportedPrimaryProfile255) {
@@ -141,12 +150,32 @@ TEST(CreateFromBuffer, SimpleAndBaseProfile) {
   EXPECT_EQ(obu->GetAdditionalProfile(), ProfileVersion::kIamfBaseProfile);
 }
 
-TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs2) {
+TEST(CreateFromBuffer, BaseEnhancedProfile) {
   std::vector<uint8_t> source = {
       // `ia_code`.
       0x69, 0x61, 0x6d, 0x66,
       // `primary_profile`.
-      2,
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile),
+      // `additional_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile)};
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+
+  absl::StatusOr<IASequenceHeaderObu> obu =
+      IASequenceHeaderObu::CreateFromBuffer(header, buffer);
+
+  EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseEnhancedProfile);
+  EXPECT_EQ(obu->GetAdditionalProfile(),
+            ProfileVersion::kIamfBaseEnhancedProfile);
+}
+
+TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs3) {
+  std::vector<uint8_t> source = {
+      // `ia_code`.
+      0x69, 0x61, 0x6d, 0x66,
+      // `primary_profile`.
+      3,
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   ReadBitBuffer buffer(1024, &source);
@@ -266,14 +295,32 @@ TEST_F(IaSequenceHeaderObuTest, BaseProfileBackwardsCompatible) {
   InitAndTestWrite();
 }
 
-TEST_F(IaSequenceHeaderObuTest, UnknownProfileBackwardsCompatible2) {
-  init_args_.additional_profile = static_cast<ProfileVersion>(2);
-  expected_payload_ = {// `ia_code`.
-                       0x69, 0x61, 0x6d, 0x66,
-                       // `primary_profile`.
-                       static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
-                       // `additional_profile`.
-                       2};
+TEST_F(IaSequenceHeaderObuTest, BaseEnhancedForBothProfiles) {
+  init_args_.primary_profile = ProfileVersion::kIamfBaseEnhancedProfile;
+  init_args_.additional_profile = ProfileVersion::kIamfBaseEnhancedProfile;
+  expected_payload_ = {
+      // `ia_code`.
+      0x69,
+      0x61,
+      0x6d,
+      0x66,
+      // `primary_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile),
+      // `additional_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile),
+  };
+  InitAndTestWrite();
+}
+
+TEST_F(IaSequenceHeaderObuTest, BaseEnhancedProfileBackwardsCompatible2) {
+  init_args_.additional_profile = ProfileVersion::kIamfBaseEnhancedProfile;
+  expected_payload_ = {
+      // `ia_code`.
+      0x69, 0x61, 0x6d, 0x66,
+      // `primary_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
+      // `additional_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile)};
   InitAndTestWrite();
 }
 

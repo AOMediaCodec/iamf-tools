@@ -133,6 +133,20 @@ TEST(Generate, SetsPrimaryProfileBase) {
   EXPECT_EQ(output_obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseProfile);
 }
 
+TEST(Generate, SetsPrimaryProfileBaseEnhanced) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_primary_profile(
+      iamf_tools_cli_proto::PROFILE_VERSION_BASE_ENHANCED);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->GetPrimaryProfile(),
+            ProfileVersion::kIamfBaseEnhancedProfile);
+}
+
 TEST(Generate, SetsAdditionalProfileBase) {
   auto metadata = GetSimpleProfileMetadata();
   metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
@@ -144,6 +158,20 @@ TEST(Generate, SetsAdditionalProfileBase) {
 
   EXPECT_EQ(output_obu->GetAdditionalProfile(),
             ProfileVersion::kIamfBaseProfile);
+}
+
+TEST(Generate, SetsAdditionalProfileBaseEnhanced) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_additional_profile(
+      iamf_tools_cli_proto::PROFILE_VERSION_BASE_ENHANCED);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->GetAdditionalProfile(),
+            ProfileVersion::kIamfBaseEnhancedProfile);
 }
 
 TEST(Generate, InvalidWhenEnumIsInvalid) {

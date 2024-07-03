@@ -29,11 +29,18 @@ absl::Status CopyProfileVersion(
     ProfileVersion& obu_profile_version) {
   switch (metadata_profile_version) {
     using enum iamf_tools_cli_proto::ProfileVersion;
+    using enum ProfileVersion;
     case PROFILE_VERSION_SIMPLE:
-      obu_profile_version = ProfileVersion::kIamfSimpleProfile;
+      obu_profile_version = kIamfSimpleProfile;
       return absl::OkStatus();
     case PROFILE_VERSION_BASE:
-      obu_profile_version = ProfileVersion::kIamfBaseProfile;
+      obu_profile_version = kIamfBaseProfile;
+      return absl::OkStatus();
+    case PROFILE_VERSION_BASE_ENHANCED:
+      // TODO(b/350763115): Remove the warning once the profile is fully
+      //                    supported.
+      LOG(WARNING) << "Base Enhanced profile has limited support.";
+      obu_profile_version = kIamfBaseEnhancedProfile;
       return absl::OkStatus();
     default:
       return absl::InvalidArgumentError(

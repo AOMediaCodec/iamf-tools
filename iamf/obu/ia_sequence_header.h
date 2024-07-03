@@ -27,6 +27,7 @@ namespace iamf_tools {
 enum class ProfileVersion : uint8_t {
   kIamfSimpleProfile = 0,
   kIamfBaseProfile = 1,
+  kIamfBaseEnhancedProfile = 2,
 };
 
 class IASequenceHeaderObu : public ObuBase {
