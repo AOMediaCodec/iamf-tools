@@ -24,6 +24,8 @@
 
 namespace iamf_tools {
 
+namespace {
+
 absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
   switch (profile_version) {
     case ProfileVersion::kIamfSimpleProfile:
@@ -34,6 +36,8 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
           absl::StrCat("Unexpected profile_version=", profile_version));
   }
 }
+
+}  // namespace
 
 absl::Status IASequenceHeaderObu::Validate() const {
   // If the IA Code is any other value then the data may not actually be an IA

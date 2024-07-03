@@ -13,8 +13,11 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -26,112 +29,141 @@
 namespace iamf_tools {
 namespace {
 
-class IaSequenceHeaderGeneratorTest : public testing::Test {
- public:
-  IaSequenceHeaderGeneratorTest() {
-    ia_sequence_header_metadata_.set_ia_code(IASequenceHeaderObu::kIaCode);
-    ia_sequence_header_metadata_.set_primary_profile(
-        iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
-    ia_sequence_header_metadata_.set_additional_profile(
-        iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
-  }
+using ::absl_testing::IsOk;
 
-  void InitAndTestGenerate() {
-    // Generate the OBUs.
-    std::optional<IASequenceHeaderObu> output_obu;
-    IaSequenceHeaderGenerator generator(ia_sequence_header_metadata_);
-    EXPECT_EQ(generator.Generate(output_obu).code(),
-              expected_generate_status_code_);
-    EXPECT_EQ(output_obu, expected_obu_);
-  }
+using iamf_tools_cli_proto::IASequenceHeaderObuMetadata;
 
- protected:
-  iamf_tools_cli_proto::IASequenceHeaderObuMetadata
-      ia_sequence_header_metadata_;
-
-  absl::StatusCode expected_generate_status_code_ = absl::StatusCode::kOk;
-  std::optional<IASequenceHeaderObu> expected_obu_;
-};
-
-TEST_F(IaSequenceHeaderGeneratorTest, DefaultSimpleProfile) {
-  expected_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                        ProfileVersion::kIamfSimpleProfile,
-                        ProfileVersion::kIamfSimpleProfile);
-  InitAndTestGenerate();
+IASequenceHeaderObuMetadata GetSimpleProfileMetadata() {
+  IASequenceHeaderObuMetadata metadata;
+  metadata.set_ia_code(IASequenceHeaderObu::kIaCode);
+  metadata.set_primary_profile(iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
+  metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
+  return metadata;
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, IaCodeMayBeOmitted) {
-  ia_sequence_header_metadata_.clear_ia_code();
-  expected_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                        ProfileVersion::kIamfSimpleProfile,
-                        ProfileVersion::kIamfSimpleProfile);
-  InitAndTestGenerate();
+TEST(Generate, GeneratesSimpleProfile) {
+  auto metadata = GetSimpleProfileMetadata();
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->GetPrimaryProfile(),
+            ProfileVersion::kIamfSimpleProfile);
+  EXPECT_EQ(output_obu->GetAdditionalProfile(),
+            ProfileVersion::kIamfSimpleProfile);
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, RedundantCopy) {
-  ia_sequence_header_metadata_.mutable_obu_header()->set_obu_redundant_copy(
-      true);
+TEST(Generate, GeneratesValidObu) {
+  auto metadata = GetSimpleProfileMetadata();
 
-  expected_obu_.emplace(
-      ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
-  InitAndTestGenerate();
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_THAT(output_obu->Validate(), IsOk());
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, ExtensionHeader) {
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        obu_extension_flag: true
-        extension_header_size: 5
-        extension_header_bytes: "extra"
-      )pb",
-      ia_sequence_header_metadata_.mutable_obu_header()));
+TEST(Generate, GeneratesValidObuWithDefaultIaCode) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.clear_ia_code();
 
-  expected_obu_.emplace(
-      ObuHeader{.obu_extension_flag = true,
-                .extension_header_size = 5,
-                .extension_header_bytes = {'e', 'x', 't', 'r', 'a'}},
-      IASequenceHeaderObu::kIaCode, ProfileVersion::kIamfSimpleProfile,
-      ProfileVersion::kIamfSimpleProfile);
-  InitAndTestGenerate();
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_THAT(output_obu->Validate(), IsOk());
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, NoIaSequenceHeaderObus) {
-  ia_sequence_header_metadata_.Clear();
-  InitAndTestGenerate();
+TEST(Generate, SetsObuRedundantCopy) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.mutable_obu_header()->set_obu_redundant_copy(true);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->header_.obu_redundant_copy, true);
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, BaseProfile) {
-  ia_sequence_header_metadata_.set_primary_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE);
-  ia_sequence_header_metadata_.set_additional_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE);
+TEST(Generate, SetsExtensionHeader) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.mutable_obu_header()->set_obu_extension_flag(true);
+  metadata.mutable_obu_header()->set_extension_header_size(5);
+  metadata.mutable_obu_header()->set_extension_header_bytes("extra");
 
-  expected_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                        ProfileVersion::kIamfBaseProfile,
-                        ProfileVersion::kIamfBaseProfile);
-  InitAndTestGenerate();
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->header_.obu_extension_flag, true);
+  EXPECT_EQ(output_obu->header_.extension_header_size, 5);
+  EXPECT_EQ(output_obu->header_.extension_header_bytes,
+            std::vector<uint8_t>({'e', 'x', 't', 'r', 'a'}));
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, ObeysInvalidIaCode) {
+TEST(Generate, SetsInvalidIaCode) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_ia_code(0x12345678);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+
   // IAMF requires `ia_code == IASequenceHeaderObu::kIaCode`. But the generator
   // does not validate OBU requirements.
-  const uint32_t kInvalidIaCode = 0;
-  ASSERT_NE(kInvalidIaCode, IASequenceHeaderObu::kIaCode);
-  ia_sequence_header_metadata_.set_ia_code(kInvalidIaCode);
-
-  expected_obu_.emplace(ObuHeader(), kInvalidIaCode,
-                        ProfileVersion::kIamfSimpleProfile,
-                        ProfileVersion::kIamfSimpleProfile);
-  InitAndTestGenerate();
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+  EXPECT_FALSE(output_obu->Validate().ok());
 }
 
-TEST_F(IaSequenceHeaderGeneratorTest, InvalidProfileVersionEnum) {
-  ia_sequence_header_metadata_.set_primary_profile(
+TEST(Generate, SetsPrimaryProfileBase) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_primary_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseProfile);
+}
+
+TEST(Generate, SetsAdditionalProfileBase) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+  ASSERT_TRUE(output_obu.has_value());
+
+  EXPECT_EQ(output_obu->GetAdditionalProfile(),
+            ProfileVersion::kIamfBaseProfile);
+}
+
+TEST(Generate, InvalidWhenEnumIsInvalid) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_additional_profile(
       iamf_tools_cli_proto::PROFILE_VERSION_INVALID);
 
-  expected_generate_status_code_ = absl::StatusCode::kInvalidArgument;
-  InitAndTestGenerate();
+  std::optional<IASequenceHeaderObu> unused_output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+  EXPECT_FALSE(generator.Generate(unused_output_obu).ok());
+}
+
+TEST(Generate, NoIaSequenceHeaderObus) {
+  IASequenceHeaderObuMetadata metadata_with_no_obus;
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata_with_no_obus);
+  EXPECT_THAT(generator.Generate(output_obu), IsOk());
+
+  EXPECT_FALSE(output_obu.has_value());
 }
 
 }  // namespace

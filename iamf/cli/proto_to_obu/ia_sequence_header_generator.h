@@ -47,7 +47,7 @@ class IaSequenceHeaderGenerator {
    *     invalid values of enumerations are used.
    */
   absl::Status Generate(
-      std::optional<IASequenceHeaderObu>& ia_sequence_header_obu);
+      std::optional<IASequenceHeaderObu>& ia_sequence_header_obu) const;
 
  private:
   const iamf_tools_cli_proto::IASequenceHeaderObuMetadata

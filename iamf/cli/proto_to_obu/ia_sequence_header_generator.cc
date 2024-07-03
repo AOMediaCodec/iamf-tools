@@ -44,7 +44,7 @@ absl::Status CopyProfileVersion(
 }  // namespace
 
 absl::Status IaSequenceHeaderGenerator::Generate(
-    std::optional<IASequenceHeaderObu>& ia_sequence_header_obu) {
+    std::optional<IASequenceHeaderObu>& ia_sequence_header_obu) const {
   // Skip generation if the `ia_sequence_header_metadata_` is not initialized.
   if (!ia_sequence_header_metadata_.has_primary_profile() ||
       !ia_sequence_header_metadata_.has_additional_profile()) {
