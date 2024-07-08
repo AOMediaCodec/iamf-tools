@@ -29,6 +29,11 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr DecodedUleb128 kMixPresentationId = 42;
+constexpr DecodedUleb128 kAudioElementId = 300;
+constexpr DecodedUleb128 kCommonParameterId = 999;
+constexpr DecodedUleb128 kCommonParameterRate = 16000;
+
 std::unique_ptr<WavWriter> ProduceNoWavWriters(DecodedUleb128, int, int,
                                                const Layout&,
                                                const std::filesystem::path&,
@@ -42,9 +47,8 @@ class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest
   MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest() {
     // Initialize the input OBUs which will have loudness finalized.
     AddMixPresentationObuWithAudioElementIds(
-        /*mix_presentation_id=*/42, /*audio_element_id=*/300,
-        /*common_parameter_id=*/999,
-        /*common_parameter_rate=*/16000, obus_to_finalize_);
+        kMixPresentationId, {kAudioElementId}, kCommonParameterId,
+        kCommonParameterRate, obus_to_finalize_);
   }
 
   void FinalizeExpectOk() {
@@ -139,9 +143,8 @@ TEST_F(MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizerTest,
   // Initialize two user OBUs and the corresponding OBUs.
   for (int i = 0; i < 2; i++) {
     AddMixPresentationObuWithAudioElementIds(
-        /*mix_presentation_id=*/42, /*audio_element_id=*/300,
-        /*common_parameter_id=*/999,
-        /*common_parameter_rate=*/16000, obus_to_finalize_);
+        kMixPresentationId, {kAudioElementId}, kCommonParameterId,
+        kCommonParameterRate, obus_to_finalize_);
     obus_to_finalize_.back().sub_mixes_[0].layouts[0].loudness = kLoudnessInfo;
   }
   FinalizeExpectOk();

@@ -525,9 +525,9 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
   // Create a mix presentation OBU. It will have a `element_mix_config` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(kMixPresentationId, kAudioElementId,
-                                           kParameterId, kParameterRate,
-                                           mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
+      mix_presentation_obus);
   // Assert that the new mix presentation OBU has identical param definitions.
   ASSERT_EQ(mix_presentation_obus.back()
                 .sub_mixes_[0]
@@ -553,9 +553,9 @@ TEST(CollectAndValidateParamDefinitions,
   // Create a mix presentation OBU. It will have a `element_mix_config` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(kMixPresentationId, kAudioElementId,
-                                           kParameterId, kParameterRate,
-                                           mix_presentation_obus);
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
+      mix_presentation_obus);
   auto& output_mix_gain = mix_presentation_obus.back()
                               .sub_mixes_[0]
                               .output_mix_config.output_mix_gain;

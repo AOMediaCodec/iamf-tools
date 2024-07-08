@@ -113,6 +113,7 @@ cc_test(
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto_to_obu:mix_presentation_generator",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:leb128",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

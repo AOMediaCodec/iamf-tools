@@ -173,7 +173,8 @@ void AddScalableAudioElementWithSubstreamIds(
 }
 
 void AddMixPresentationObuWithAudioElementIds(
-    DecodedUleb128 mix_presentation_id, DecodedUleb128 audio_element_id,
+    DecodedUleb128 mix_presentation_id,
+    const std::vector<DecodedUleb128>& audio_element_ids,
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     std::list<MixPresentationObu>& mix_presentations) {
   MixGainParamDefinition common_mix_gain_param_definition;
@@ -185,18 +186,8 @@ void AddMixPresentationObuWithAudioElementIds(
   // Configure one of the simplest mix presentation. Mix presentations REQUIRE
   // at least one sub-mix and a stereo layout.
   std::vector<MixPresentationSubMix> sub_mixes = {
-      {.num_audio_elements = 1,
-       .audio_elements = {{
-           .audio_element_id = audio_element_id,
-           .mix_presentation_element_annotations = {},
-           .rendering_config =
-               {.headphones_rendering_mode =
-                    RenderingConfig::kHeadphonesRenderingModeStereo,
-                .reserved = 0,
-                .rendering_config_extension_size = 0,
-                .rendering_config_extension_bytes = {}},
-           .element_mix_config = {common_mix_gain_param_definition},
-       }},
+      {.num_audio_elements =
+           static_cast<DecodedUleb128>(audio_element_ids.size()),
        .output_mix_config = {common_mix_gain_param_definition},
        .num_layouts = 1,
        .layouts = {
@@ -210,11 +201,23 @@ void AddMixPresentationObuWithAudioElementIds(
             .loudness = {.info_type = 0,
                          .integrated_loudness = 0,
                          .digital_peak = 0}}}}};
+  for (const auto& audio_element_id : audio_element_ids) {
+    sub_mixes[0].audio_elements.push_back({
+        .audio_element_id = audio_element_id,
+        .mix_presentation_element_annotations = {},
+        .rendering_config =
+            {.headphones_rendering_mode =
+                 RenderingConfig::kHeadphonesRenderingModeStereo,
+             .reserved = 0,
+             .rendering_config_extension_size = 0,
+             .rendering_config_extension_bytes = {}},
+        .element_mix_config = {common_mix_gain_param_definition},
+    });
+  }
 
-  mix_presentations.push_back(
-      MixPresentationObu(ObuHeader(), mix_presentation_id,
-                         /*count_label=*/0, {}, {},
-                         /*num_sub_mixes=*/1, sub_mixes));
+  mix_presentations.push_back(MixPresentationObu(
+      ObuHeader(), mix_presentation_id,
+      /*count_label=*/0, {}, {}, sub_mixes.size(), sub_mixes));
 }
 
 void AddParamDefinitionWithMode0AndOneSubblock(

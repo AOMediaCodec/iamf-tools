@@ -88,7 +88,7 @@ void AddScalableAudioElementWithSubstreamIds(
 /*!\brief Adds a configurable `MixPresentationObu` to the output argument.
  *
  * \param mix_presentation_id `mix_presentation_id` of the OBU to create.
- * \param audio_element_id `audio_element_id` of the OBU to create.
+ * \param audio_element_ids `audio_element_id`s of the OBU to create.
  * \param common_parameter_id `parameter_id` of all parameters within the
  *     created OBU.
  * \param common_parameter_rate `parameter_rate` of all parameters within the
@@ -96,7 +96,8 @@ void AddScalableAudioElementWithSubstreamIds(
  * \param mix_presentations List to add OBU to.
  */
 void AddMixPresentationObuWithAudioElementIds(
-    DecodedUleb128 mix_presentation_id, DecodedUleb128 audio_element_id,
+    DecodedUleb128 mix_presentation_id,
+    const std::vector<DecodedUleb128>& audio_element_id,
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     std::list<MixPresentationObu>& mix_presentations);
 

@@ -135,7 +135,7 @@ class ObuSequencerTest : public ::testing::Test {
         kAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus_,
         audio_elements_);
     AddMixPresentationObuWithAudioElementIds(
-        kMixPresentationId, kAudioElementId, kCommonMixGainParameterId,
+        kMixPresentationId, {kAudioElementId}, kCommonMixGainParameterId,
         kCommonMixGainParameterRate, mix_presentation_obus_);
 
     ASSERT_TRUE(ia_sequence_header_obu_.has_value());
@@ -248,7 +248,7 @@ TEST_F(ObuSequencerTest, MixPresentationsAreAscendingOrderByDefault) {
   // Initialize a second Mix Presentation OBU.
   const DecodedUleb128 kFirstMixPresentationId = 99;
   AddMixPresentationObuWithAudioElementIds(
-      kFirstMixPresentationId, kAudioElementId, kCommonMixGainParameterId,
+      kFirstMixPresentationId, {kAudioElementId}, kCommonMixGainParameterId,
       kCommonMixGainParameterRate, mix_presentation_obus_);
 
   // IAMF makes no recommendation for the ordering between multiple descriptor

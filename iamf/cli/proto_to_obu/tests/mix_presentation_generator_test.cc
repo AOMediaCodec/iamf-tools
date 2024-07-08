@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
@@ -32,6 +33,11 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+
+constexpr DecodedUleb128 kMixPresentationId = 42;
+constexpr DecodedUleb128 kAudioElementId = 300;
+constexpr DecodedUleb128 kCommonParameterId = 999;
+constexpr DecodedUleb128 kCommonParameterRate = 16000;
 
 class MixPresentationGeneratorTest : public ::testing::Test {
  public:
@@ -88,9 +94,8 @@ class MixPresentationGeneratorTest : public ::testing::Test {
         mix_presentation_metadata_.Add()));
 
     AddMixPresentationObuWithAudioElementIds(
-        /*mix_presentation_id=*/42, /*audio_element_id=*/300,
-        /*common_parameter_id=*/999,
-        /*common_parameter_rate=*/16000, expected_obus_);
+        kMixPresentationId, {kAudioElementId}, kCommonParameterId,
+        kCommonParameterRate, expected_obus_);
   }
 
  protected:
