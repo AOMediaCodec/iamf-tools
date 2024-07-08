@@ -286,6 +286,7 @@ cc_library(
         ":audio_frame_with_data",
         ":leb_generator",
         ":parameter_block_with_data",
+        ":profile_filter",
         "//iamf/common:macros",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:arbitrary_obu",
@@ -299,6 +300,7 @@ cc_library(
         "//iamf/obu:temporal_delimiter",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
     ],
@@ -344,6 +346,23 @@ cc_library(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "profile_filter",
+    srcs = ["profile_filter.cc"],
+    hdrs = ["profile_filter.h"],
+    deps = [
+        ":audio_element_with_data",
+        "//iamf/common:macros",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 

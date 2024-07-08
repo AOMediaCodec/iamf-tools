@@ -20,11 +20,13 @@
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/profile_filter.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -213,6 +215,14 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
         return obu_1.GetMixPresentationId() < obu_2.GetMixPresentationId();
       });
   for (const auto& mix_presentation_obu : sorted_mix_presentation_obus) {
+    // Make sure the mix presentation is valid for at least one of the profiles
+    // in the sequence header before writing it.
+    absl::flat_hash_set<ProfileVersion> profile_version = {
+        ia_sequence_header_obu.GetPrimaryProfile(),
+        ia_sequence_header_obu.GetAdditionalProfile()};
+    RETURN_IF_NOT_OK(ProfileFilter::FilterProfilesForMixPresentation(
+        audio_elements, mix_presentation_obu, profile_version));
+
     RETURN_IF_NOT_OK(mix_presentation_obu.ValidateAndWriteObu(wb));
     LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
               << " after Mix Presentation";

@@ -294,6 +294,28 @@ cc_test(
 )
 
 cc_test(
+    name = "profile_filter_test",
+    srcs = ["profile_filter_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:profile_filter",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:leb128",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "recon_gain_generator_test",
     srcs = ["recon_gain_generator_test.cc"],
     deps = [

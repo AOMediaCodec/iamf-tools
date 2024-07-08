@@ -38,6 +38,16 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr DecodedUleb128 kCodecConfigId = 1;
+const uint32_t kSampleRate = 48000;
+constexpr DecodedUleb128 kFirstAudioElementId = 1;
+constexpr DecodedUleb128 kSecondAudioElementId = 2;
+constexpr DecodedUleb128 kFirstSubstreamId = 1;
+constexpr DecodedUleb128 kSecondSubstreamId = 2;
+constexpr DecodedUleb128 kFirstMixPresentationId = 100;
+constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
+const uint32_t kCommonMixGainParameterRate = kSampleRate;
+
 // TODO(b/302470464): Add test coverage `ObuSequencer::WriteTemporalUnit()` and
 //                    `ObuSequencer::PickAndPlace()` configured with minimal and
 //                    fixed-size leb generators.
@@ -115,14 +125,6 @@ TEST(GenerateTemporalUnitMap, SubstreamsOrderedByAudioElementIdSubstreamId) {
   }
 }
 
-const DecodedUleb128 kCodecConfigId = 100;
-const DecodedUleb128 kAudioElementId = 100;
-const DecodedUleb128 kSubstreamId = 0;
-const DecodedUleb128 kMixPresentationId = 100;
-const DecodedUleb128 kCommonMixGainParameterId = 100;
-const uint32_t kSampleRate = 48000;
-const uint32_t kCommonMixGainParameterRate = kSampleRate;
-
 class ObuSequencerTest : public ::testing::Test {
  public:
   void InitializeDescriptorObus() {
@@ -132,15 +134,16 @@ class ObuSequencerTest : public ::testing::Test {
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_config_obus_);
     AddAmbisonicsMonoAudioElementWithSubstreamIds(
-        kAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus_,
-        audio_elements_);
+        kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+        codec_config_obus_, audio_elements_);
     AddMixPresentationObuWithAudioElementIds(
-        kMixPresentationId, {kAudioElementId}, kCommonMixGainParameterId,
-        kCommonMixGainParameterRate, mix_presentation_obus_);
+        kFirstMixPresentationId, {kFirstAudioElementId},
+        kCommonMixGainParameterId, kCommonMixGainParameterRate,
+        mix_presentation_obus_);
 
     ASSERT_TRUE(ia_sequence_header_obu_.has_value());
     ASSERT_TRUE(codec_config_obus_.contains(kCodecConfigId));
-    ASSERT_TRUE(audio_elements_.contains(kAudioElementId));
+    ASSERT_TRUE(audio_elements_.contains(kFirstAudioElementId));
     ASSERT_FALSE(mix_presentation_obus_.empty());
   }
 
@@ -177,7 +180,8 @@ TEST_F(ObuSequencerTest, OrdersByAParticularObuType) {
   // Presentation).
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
-      &audio_elements_.at(kAudioElementId).obu, &mix_presentation_obus_.back()};
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back()};
 
   ValidateWriteDescriptorObuSequence(expected_sequence);
 }
@@ -193,7 +197,7 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterIaSequenceHeader) {
       &ia_sequence_header_obu_.value(),
       &arbitrary_obus_.back(),
       &codec_config_obus_.at(kCodecConfigId),
-      &audio_elements_.at(kAudioElementId).obu,
+      &audio_elements_.at(kFirstAudioElementId).obu,
       &mix_presentation_obus_.back(),
   };
 
@@ -215,7 +219,8 @@ TEST_F(ObuSequencerTest, CodecConfigAreAscendingOrderByDefault) {
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
       &codec_config_obus_.at(kSecondCodecConfigId),
-      &audio_elements_.at(kAudioElementId).obu, &mix_presentation_obus_.back()};
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back()};
 
   ValidateWriteDescriptorObuSequence(expected_sequence);
 }
@@ -226,16 +231,16 @@ TEST_F(ObuSequencerTest, AudioElementAreAscendingOrderByDefault) {
   // Initialize a second Audio Element OBU.
   const DecodedUleb128 kSecondAudioElementId = 101;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kSecondAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus_,
-      audio_elements_);
+      kSecondAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus_, audio_elements_);
 
   // IAMF makes no recommendation for the ordering between multiple descriptor
   // OBUs of the same type. By default `WriteDescriptorObus` orders them in
   // ascending order.
-  ASSERT_LT(kAudioElementId, kSecondAudioElementId);
+  ASSERT_LT(kFirstAudioElementId, kSecondAudioElementId);
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
-      &audio_elements_.at(kAudioElementId).obu,
+      &audio_elements_.at(kFirstAudioElementId).obu,
       &audio_elements_.at(kSecondAudioElementId).obu,
       &mix_presentation_obus_.back()};
 
@@ -246,25 +251,80 @@ TEST_F(ObuSequencerTest, MixPresentationsAreAscendingOrderByDefault) {
   InitializeDescriptorObus();
 
   // Initialize a second Mix Presentation OBU.
-  const DecodedUleb128 kFirstMixPresentationId = 99;
+  const DecodedUleb128 kSecondMixPresentationId = 99;
   AddMixPresentationObuWithAudioElementIds(
-      kFirstMixPresentationId, {kAudioElementId}, kCommonMixGainParameterId,
-      kCommonMixGainParameterRate, mix_presentation_obus_);
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus_);
 
   // IAMF makes no recommendation for the ordering between multiple descriptor
   // OBUs of the same type. By default `WriteDescriptorObus` orders them in
   // ascending order regardless of their order in the input list.
-  ASSERT_LT(kFirstMixPresentationId, kMixPresentationId);
+  ASSERT_LT(kSecondMixPresentationId, kFirstMixPresentationId);
   ASSERT_EQ(mix_presentation_obus_.back().GetMixPresentationId(),
-            kFirstMixPresentationId);
+            kSecondMixPresentationId);
   ASSERT_EQ(mix_presentation_obus_.front().GetMixPresentationId(),
-            kMixPresentationId);
+            kFirstMixPresentationId);
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
-      &audio_elements_.at(kAudioElementId).obu, &mix_presentation_obus_.back(),
-      &mix_presentation_obus_.front()};
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back(), &mix_presentation_obus_.front()};
 
   ValidateWriteDescriptorObuSequence(expected_sequence);
+}
+
+void InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
+    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
+    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus, audio_elements);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
+      codec_config_obus, audio_elements);
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus);
+}
+
+TEST(WriteDescriptorObus,
+     InvalidWhenMixPresentationDoesNotComplyWithIaSequenceHeader) {
+  IASequenceHeaderObu ia_sequence_header_obu(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(ObuSequencerBase::WriteDescriptorObus(
+                   ia_sequence_header_obu, codec_config_obus, audio_elements,
+                   mix_presentation_obus, /*arbitrary_obus=*/{}, unused_wb)
+                   .ok());
+}
+
+TEST(WriteDescriptorObus,
+     ValidWhenMixPresentationCompliesWithIaSequenceHeader) {
+  IASequenceHeaderObu ia_sequence_header_obu(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+
+  WriteBitBuffer unused_wb(0);
+  EXPECT_THAT(ObuSequencerBase::WriteDescriptorObus(
+                  ia_sequence_header_obu, codec_config_obus, audio_elements,
+                  mix_presentation_obus, /*arbitrary_obus=*/{}, unused_wb),
+              IsOk());
 }
 
 }  // namespace
