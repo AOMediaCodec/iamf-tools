@@ -55,10 +55,6 @@ cc_library(
         "ia_sequence_header_obu_metadata_handler.cc",
     ],
     hdrs = ["ia_sequence_header_obu_metadata_handler.h"],
-    visibility = [
-        "//iamf/cli/adm_to_user_metadata/app:__pkg__",
-        "//iamf/cli/adm_to_user_metadata/iamf:__subpackages__",
-    ],
     deps = [
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/obu:ia_sequence_header",
@@ -71,10 +67,7 @@ cc_library(
         "iamf.cc",
     ],
     hdrs = ["iamf.h"],
-    visibility = [
-        "//iamf/cli/adm_to_user_metadata/app:__pkg__",
-        "//iamf/cli/adm_to_user_metadata/iamf/tests:__pkg__",
-    ],
+    visibility = ["//iamf/cli/adm_to_user_metadata/iamf/tests:__pkg__"],
     deps = [
         ":audio_element_handler",
         ":audio_frame_handler",
