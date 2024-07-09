@@ -307,6 +307,8 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:leb128",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status",

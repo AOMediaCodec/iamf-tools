@@ -32,6 +32,8 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
 namespace {
@@ -128,6 +130,87 @@ void InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       mix_presentation_obus);
 }
 
+void InitializeDescriptorObusWithTwoSubmixes(
+    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
+    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus, audio_elements);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
+      codec_config_obus, audio_elements);
+  MixGainParamDefinition common_mix_gain_param_definition;
+  common_mix_gain_param_definition.parameter_id_ = kCommonMixGainParameterId;
+  common_mix_gain_param_definition.parameter_rate_ =
+      kCommonMixGainParameterRate;
+  common_mix_gain_param_definition.param_definition_mode_ = true;
+  common_mix_gain_param_definition.default_mix_gain_ = 0;
+  constexpr DecodedUleb128 kNumAudioElementsPerSubmix = 1;
+  const RenderingConfig kRenderingConfig = {
+      .headphones_rendering_mode =
+          RenderingConfig::kHeadphonesRenderingModeStereo,
+      .reserved = 0,
+      .rendering_config_extension_size = 0,
+      .rendering_config_extension_bytes = {}};
+  const MixPresentationLayout kStereoLayout = {
+      .loudness_layout =
+          {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+           .specific_layout =
+               LoudspeakersSsConventionLayout{
+                   .sound_system =
+                       LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+                   .reserved = 0}},
+      .loudness = {
+          .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}};
+  std::vector<MixPresentationSubMix> sub_mixes;
+  sub_mixes.push_back(
+      {.num_audio_elements = kNumAudioElementsPerSubmix,
+       .audio_elements = {{
+           .audio_element_id = kFirstAudioElementId,
+           .mix_presentation_element_annotations = {},
+           .rendering_config = kRenderingConfig,
+           .element_mix_config = {common_mix_gain_param_definition},
+       }},
+       .output_mix_config = {common_mix_gain_param_definition},
+       .num_layouts = 1,
+       .layouts = {kStereoLayout}});
+  sub_mixes.push_back(
+      {.num_audio_elements = kNumAudioElementsPerSubmix,
+       .audio_elements = {{
+           .audio_element_id = kSecondAudioElementId,
+           .mix_presentation_element_annotations = {},
+           .rendering_config = kRenderingConfig,
+           .element_mix_config = {common_mix_gain_param_definition},
+       }},
+       .output_mix_config = {common_mix_gain_param_definition},
+       .num_layouts = 1,
+       .layouts = {kStereoLayout}});
+
+  mix_presentation_obus.push_back(MixPresentationObu(
+      ObuHeader(), kFirstMixPresentationId,
+      /*count_label=*/0, {}, {}, sub_mixes.size(), sub_mixes));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesSimpleProfileWhenThereAreTwoSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
+                                          mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), simple_profile)
+          .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
 TEST(FilterProfilesForMixPresentation,
      KeepsSimpleProfileWhenThereIsOnlyOneAudioElement) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -178,6 +261,22 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
+     RemovesBaseProfileWhenThereAreTwoSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
+                                          mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
+                   audio_elements, mix_presentation_obus.front(), base_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
      KeepsBaseProfileWhenThereIsOnlyOneAudioElement) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -206,6 +305,24 @@ TEST(FilterProfilesForMixPresentation,
                    audio_elements, mix_presentation_obus.front(), base_profile)
                    .ok());
   EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseEnhancedProfileWhenThereAreTwoSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
+                                          mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
+          .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
 }
 
 TEST(FilterProfilesForMixPresentation,

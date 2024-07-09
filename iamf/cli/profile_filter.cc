@@ -36,6 +36,26 @@ constexpr int kSimpleProfileMaxChannels = 16;
 constexpr int kBaseProfileMaxChannels = 18;
 constexpr int kBaseEnhancedProfileMaxChannels = 28;
 
+absl::Status FilterProfileForNumSubmixes(
+    absl::string_view mix_presentation_id_for_debugging,
+    int num_submixes_in_mix_presentation,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  if (num_submixes_in_mix_presentation > 1) {
+    profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+    profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+    profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+  }
+
+  if (profile_versions.empty()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat(mix_presentation_id_for_debugging, " has ",
+                     num_submixes_in_mix_presentation,
+                     " sub mixes, but the requested profiles "
+                     "do not support this number of sub-mixes."));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status ClearAndReturnError(
     absl::string_view context,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
@@ -139,6 +159,9 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
   const std::string mix_presentation_id_for_debugging =
       absl::StrCat("Mix presentation with ID= ",
                    mix_presentation_obu.GetMixPresentationId());
+  RETURN_IF_NOT_OK(FilterProfileForNumSubmixes(
+      mix_presentation_id_for_debugging, mix_presentation_obu.GetNumSubMixes(),
+      profile_versions));
 
   int num_audio_elements_in_mix_presentation;
   int num_channels_in_mix_presentation;
