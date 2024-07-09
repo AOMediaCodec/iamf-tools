@@ -1,5 +1,3 @@
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_test(
     name = "adm_to_user_metadata_main_lib_test",
     srcs = ["adm_to_user_metadata_main_lib_test.cc"],
