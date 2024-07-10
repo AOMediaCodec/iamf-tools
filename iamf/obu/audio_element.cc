@@ -406,8 +406,11 @@ absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
       return absl::OkStatus();
     }
     default:
-      // TODO(b/335708497): Read in extended param definitions.
-      return absl::UnimplementedError("Unknown parameter type.");
+      auto extended_param_definition =
+          std::make_unique<ExtendedParamDefinition>(param_definition_type);
+      RETURN_IF_NOT_OK(extended_param_definition->ReadAndValidate(rb));
+      param_definition = std::move(extended_param_definition);
+      return absl::OkStatus();
   }
 }
 

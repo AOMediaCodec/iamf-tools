@@ -95,7 +95,7 @@ class MixGainParamDefinitionTest : public ParamDefinitionTestBase {
 
 TEST_F(MixGainParamDefinitionTest, GetTypeHasCorrectValue) {
   ASSERT_TRUE(mix_gain_->GetType().has_value());
-  EXPECT_EQ(mix_gain_->GetType().value(),
+  EXPECT_EQ(*mix_gain_->GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
 }
 
@@ -271,7 +271,7 @@ class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
 
 TEST_F(DemixingParamDefinitionTest, GetTypeHasCorrectValue) {
   EXPECT_TRUE(demixing_->GetType().has_value());
-  EXPECT_EQ(demixing_->GetType().value(),
+  EXPECT_EQ(*demixing_->GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
 }
 
@@ -417,7 +417,7 @@ class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
 
 TEST_F(ReconGainParamDefinitionTest, GetTypeHasCorrectValue) {
   EXPECT_TRUE(param_definition_->GetType().has_value());
-  EXPECT_EQ(param_definition_->GetType().value(),
+  EXPECT_EQ(*param_definition_->GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
 }
 
@@ -544,7 +544,7 @@ TEST_F(ExtendedParamDefinitionTest, GetTypeHasCorrectValue) {
   Init(ParamDefinition::kParameterDefinitionReservedEnd);
 
   EXPECT_TRUE(param_definition_->GetType().has_value());
-  EXPECT_EQ(param_definition_->GetType().value(),
+  EXPECT_EQ(*param_definition_->GetType(),
             ParamDefinition::kParameterDefinitionReservedEnd);
 }
 
@@ -645,7 +645,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
       0, 4};
   ReadBitBuffer buffer(1024, &source);
   EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(param_definition.GetType().value(),
+  EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_, 4);
 }
@@ -674,7 +674,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
       0, 3};
   ReadBitBuffer buffer(1024, &source);
   EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(param_definition.GetType().value(),
+  EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(param_definition.default_mix_gain_, 3);
 }
@@ -693,7 +693,7 @@ TEST(ReadReconGainParamDefinitionTest, Default) {
   ReadBitBuffer buffer(1024, &bitstream);
   ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
   EXPECT_TRUE(param_definition.ReadAndValidate(buffer).ok());
-  EXPECT_EQ(param_definition.GetType().value(),
+  EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
 }
 
@@ -716,7 +716,7 @@ TEST(ReadDemixingParamDefinitionTest, DefaultDmixPMode) {
   ReadBitBuffer buffer(1024, &bitstream);
   DemixingParamDefinition param_definition = DemixingParamDefinition();
   EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(param_definition.GetType().value(),
+  EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
   EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode2);
@@ -741,12 +741,49 @@ TEST(ReadDemixingParamDefinitionTest, DefaultW) {
   ReadBitBuffer buffer(1024, &bitstream);
   DemixingParamDefinition param_definition = DemixingParamDefinition();
   EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(param_definition.GetType().value(),
+  EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionDemixing);
   EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode1);
   EXPECT_EQ(param_definition.default_demixing_info_parameter_data_.default_w,
             1);
+}
+
+constexpr auto kExtensiontype =
+    ParamDefinition::kParameterDefinitionReservedStart;
+TEST(ExtendedParamDefinition, ReadAndValidateWithZeroSize) {
+  std::vector<uint8_t> bitstream = {// param_definition_size.
+                                    0x00};
+
+  ReadBitBuffer buffer(1024, &bitstream);
+  ExtendedParamDefinition param_definition =
+      ExtendedParamDefinition(kExtensiontype);
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
+
+  EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
+  EXPECT_EQ(param_definition.param_definition_size_, 0);
+  EXPECT_TRUE(param_definition.param_definition_bytes_.empty());
+}
+
+TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
+  const DecodedUleb128 kExpectedParamDefinitionSize = 5;
+  const std::vector<uint8_t> kExpectedParamDefinitionBytes = {'e', 'x', 't',
+                                                              'r', 'a'};
+  std::vector<uint8_t> bitstream = {// param_definition_size.
+                                    0x05,
+                                    // param_definition_bytes.
+                                    'e', 'x', 't', 'r', 'a'};
+
+  ReadBitBuffer buffer(1024, &bitstream);
+  ExtendedParamDefinition param_definition =
+      ExtendedParamDefinition(kExtensiontype);
+  EXPECT_THAT(param_definition.ReadAndValidate(buffer), IsOk());
+
+  EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
+  EXPECT_EQ(param_definition.param_definition_size_,
+            kExpectedParamDefinitionSize);
+  EXPECT_EQ(param_definition.param_definition_bytes_,
+            kExpectedParamDefinitionBytes);
 }
 
 }  // namespace

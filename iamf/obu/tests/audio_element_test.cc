@@ -1362,12 +1362,42 @@ TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
   ReadBitBuffer buffer(1024, &bitstream);
   AudioElementParam param;
   EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
-  EXPECT_NE(param.param_definition.get(), nullptr);
+  EXPECT_NE(param.param_definition, nullptr);
+  ASSERT_TRUE(param.param_definition->GetType().has_value());
+
+  EXPECT_EQ(*param.param_definition->GetType(),
+            ParamDefinition::kParameterDefinitionDemixing);
   DemixingParamDefinition* param_definition =
       dynamic_cast<DemixingParamDefinition*>(param.param_definition.get());
-  EXPECT_NE(param_definition, nullptr);
   EXPECT_EQ(param_definition->default_demixing_info_parameter_data_.dmixp_mode,
             DemixingInfoParameterData::kDMixPMode2);
+}
+
+TEST(AudioElementParam, ValidateAndReadReadsReservedParamDefinition3) {
+  constexpr uint32_t kAudioElementId = 1;
+  constexpr auto kExpectedParamDefinitionType =
+      ParamDefinition::kParameterDefinitionReservedStart;
+  constexpr DecodedUleb128 kExpectedParamDefinitionSize = 1;
+  const std::vector<uint8_t> kExpectedParamDefinitionBytes = {99};
+  std::vector<uint8_t> bitstream = {
+      ParamDefinition::kParameterDefinitionReservedStart,
+      // param_definition_size.
+      0x01,
+      // param_definition_bytes.
+      99};
+  ReadBitBuffer buffer(1024, &bitstream);
+  AudioElementParam param;
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
+  ASSERT_NE(param.param_definition, nullptr);
+  ASSERT_TRUE(param.param_definition->GetType().has_value());
+
+  EXPECT_EQ(param.param_definition->GetType(), kExpectedParamDefinitionType);
+  ExtendedParamDefinition* param_definition =
+      dynamic_cast<ExtendedParamDefinition*>(param.param_definition.get());
+  EXPECT_EQ(param_definition->param_definition_size_,
+            kExpectedParamDefinitionSize);
+  EXPECT_EQ(param_definition->param_definition_bytes_,
+            kExpectedParamDefinitionBytes);
 }
 
 // --- Begin CreateFromBuffer tests ---

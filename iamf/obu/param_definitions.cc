@@ -351,6 +351,16 @@ absl::Status ExtendedParamDefinition::ValidateAndWrite(
   return absl::OkStatus();
 }
 
+absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
+  // This class does not read the base class's data, i.e. it doesn't call
+  // `ParamDefinition::ReadAndWrite(wb)`.
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size_));
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Vector(param_definition_size_, param_definition_bytes_));
+
+  return absl::OkStatus();
+}
+
 void ExtendedParamDefinition::Print() const {
   LOG(INFO) << "ExtendedParamDefinition:";
   ParamDefinition::Print();

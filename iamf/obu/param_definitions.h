@@ -353,6 +353,13 @@ class ExtendedParamDefinition : public ParamDefinition {
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const override;
 
+  /*!\brief Reads from a buffer and validates the resulting output.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
   /*!\brief Prints the parameter definition.
    */
   void Print() const override;
