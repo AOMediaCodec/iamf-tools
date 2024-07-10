@@ -43,6 +43,23 @@ using absl_testing::IsOk;
 constexpr uint8_t kParameterDefinitionDemixingAsUint8 =
     static_cast<uint8_t>(ParamDefinition::kParameterDefinitionDemixing);
 
+void FillDemixingInfoParamDefinition(
+    DemixingParamDefinition& param_definition,
+    DemixingInfoParameterData::DMixPMode dmixp_mode) {
+  param_definition.parameter_id_ = 4;
+  param_definition.parameter_rate_ = 5;
+  param_definition.param_definition_mode_ = false;
+  param_definition.reserved_ = 0;
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 64;
+  param_definition.default_demixing_info_parameter_data_.dmixp_mode =
+      dmixp_mode;
+  param_definition.default_demixing_info_parameter_data_.default_w = 0;
+  param_definition.default_demixing_info_parameter_data_.reserved = 0;
+  param_definition.default_demixing_info_parameter_data_.reserved_default = 0;
+  param_definition.InitializeSubblockDurations(1);
+}
+
 class AudioElementObuTestBase : public ObuTestBase {
  public:
   struct RequiredAudioElementArgs {
@@ -79,18 +96,8 @@ class AudioElementObuTestBase : public ObuTestBase {
             .audio_element_params = {},
         }) {
     auto param_definition = std::make_unique<DemixingParamDefinition>();
-    param_definition->parameter_id_ = 4;
-    param_definition->parameter_rate_ = 5;
-    param_definition->param_definition_mode_ = false;
-    param_definition->reserved_ = 0;
-    param_definition->duration_ = 64;
-    param_definition->constant_subblock_duration_ = 64;
-    param_definition->default_demixing_info_parameter_data_.dmixp_mode =
-        DemixingInfoParameterData::kDMixPMode1;
-    param_definition->default_demixing_info_parameter_data_.reserved = 0;
-    param_definition->default_demixing_info_parameter_data_.default_w = 0;
-    param_definition->default_demixing_info_parameter_data_.reserved_default =
-        0;
+    FillDemixingInfoParamDefinition(*param_definition,
+                                    DemixingInfoParameterData::kDMixPMode1);
 
     required_args_.audio_element_params.push_back(
         AudioElementParam{ParamDefinition::kParameterDefinitionDemixing,
@@ -607,18 +614,8 @@ TEST_F(AudioElementScalableChannelTest,
 TEST_F(AudioElementScalableChannelTest,
        ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesDemixing) {
   DemixingParamDefinition demixing_param_definition;
-  demixing_param_definition.parameter_id_ = 4;
-  demixing_param_definition.parameter_rate_ = 5;
-  demixing_param_definition.param_definition_mode_ = false;
-  demixing_param_definition.reserved_ = 0;
-  demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 64;
-  demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
-      DemixingInfoParameterData::kDMixPMode1;
-  demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
-  demixing_param_definition.default_demixing_info_parameter_data_.default_w = 0;
-  demixing_param_definition.default_demixing_info_parameter_data_
-      .reserved_default = 0;
+  FillDemixingInfoParamDefinition(demixing_param_definition,
+                                  DemixingInfoParameterData::kDMixPMode1);
 
   required_args_.num_parameters = 2;
 
@@ -1302,6 +1299,43 @@ TEST(TestGetNextValidCount, InvalidInputTooLarge) {
                    .ok());
 }
 
+TEST(AudioElementParamEqualOperator, EqualDemixingParamDefinition) {
+  auto lhs_param_definition = std::make_unique<DemixingParamDefinition>();
+  FillDemixingInfoParamDefinition(*lhs_param_definition,
+                                  DemixingInfoParameterData::kDMixPMode2);
+  auto rhs_param_definition = std::make_unique<DemixingParamDefinition>();
+  FillDemixingInfoParamDefinition(*rhs_param_definition,
+                                  DemixingInfoParameterData::kDMixPMode2);
+  AudioElementParam lhs_a = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
+      .param_definition = std::move(lhs_param_definition)};
+  AudioElementParam rhs_a = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
+      .param_definition = std::move(rhs_param_definition)};
+
+  EXPECT_EQ(lhs_a, lhs_a);
+}
+
+TEST(AudioElementParamEqualOperator, NotEqualDemixingParamDefinition) {
+  const auto kLhsDemixingInfoParamData = DemixingInfoParameterData::kDMixPMode2;
+  const auto kRhsDemixingInfoParamData =
+      DemixingInfoParameterData::kDMixPMode2_n;
+  auto lhs_param_definition = std::make_unique<DemixingParamDefinition>();
+  FillDemixingInfoParamDefinition(*lhs_param_definition,
+                                  kLhsDemixingInfoParamData);
+  auto rhs_param_definition = std::make_unique<DemixingParamDefinition>();
+  FillDemixingInfoParamDefinition(*rhs_param_definition,
+                                  kRhsDemixingInfoParamData);
+  AudioElementParam lhs_a = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
+      .param_definition = std::move(lhs_param_definition)};
+  AudioElementParam rhs_a = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
+      .param_definition = std::move(rhs_param_definition)};
+
+  EXPECT_NE(lhs_a, rhs_a);
+}
+
 TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
   const uint32_t kAudioElementId = 1;
   std::vector<uint8_t> bitstream = {
@@ -1627,7 +1661,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
             expected_ambisonics_config);
 }
 
-TEST(Clone, IsDeepCopy) {
+TEST(Clone, IsDeepCopyForDemixingParamDefinition) {
   const ObuHeader kExpectedHeader{.obu_type = kObuIaAudioElement,
                                   .obu_redundant_copy = true};
   constexpr DecodedUleb128 kExpectedAudioElementId = 1;
@@ -1646,12 +1680,52 @@ TEST(Clone, IsDeepCopy) {
   original.InitializeParams(kExpectedNumParameters);
   constexpr ParamDefinition::ParameterDefinitionType
       kExpectedFirstParamDefinitionType =
+          ParamDefinition::kParameterDefinitionDemixing;
+  original.audio_element_params_[0].param_definition_type =
+      kExpectedFirstParamDefinitionType;
+  auto param_definition = std::make_unique<DemixingParamDefinition>();
+  FillDemixingInfoParamDefinition(*param_definition,
+                                  DemixingInfoParameterData::kDMixPMode1);
+  original.audio_element_params_[0].param_definition =
+      std::move(param_definition);
+  ASSERT_THAT(original.InitializeAmbisonicsMono(kExpectedNumSubstreams,
+                                                kExpectedNumSubstreams),
+              IsOk());
+
+  const auto clone = AudioElementObu::Clone(original);
+
+  EXPECT_EQ(clone, original);
+}
+
+TEST(Clone, IsDeepCopyForExtendedParamDefinition) {
+  const ObuHeader kExpectedHeader{.obu_type = kObuIaAudioElement,
+                                  .obu_redundant_copy = true};
+  constexpr DecodedUleb128 kExpectedAudioElementId = 1;
+  constexpr AudioElementObu::AudioElementType kExpectedAudioElementType =
+      AudioElementObu::kAudioElementSceneBased;
+  constexpr uint8_t kReserved = 13;
+  constexpr DecodedUleb128 kExpectedCodecConfigId = 99;
+  AudioElementObu original(kExpectedHeader, kExpectedAudioElementId,
+                           kExpectedAudioElementType, kReserved,
+                           kExpectedCodecConfigId);
+  constexpr uint32_t kExpectedNumSubstreams = 4;
+  const std::vector<DecodedUleb128> kExpectedAudioSubstreamIds = {'d', 'a', 't',
+                                                                  'a'};
+  original.InitializeAudioSubstreams(kExpectedNumSubstreams);
+  original.audio_substream_ids_ = kExpectedAudioSubstreamIds;
+  constexpr uint32_t kExpectedNumParameters = 1;
+  original.InitializeParams(kExpectedNumParameters);
+  constexpr ParamDefinition::ParameterDefinitionType
+      kExpectedFirstParamDefinitionType =
           ParamDefinition::kParameterDefinitionReservedStart;
   original.audio_element_params_[0].param_definition_type =
       kExpectedFirstParamDefinitionType;
+  auto expected_param_definition = std::make_unique<ExtendedParamDefinition>(
+      kExpectedFirstParamDefinitionType);
+  expected_param_definition->param_definition_size_ = 1;
+  expected_param_definition->param_definition_bytes_ = {1};
   original.audio_element_params_[0].param_definition =
-      std::make_unique<ExtendedParamDefinition>(
-          kExpectedFirstParamDefinitionType);
+      std::move(expected_param_definition);
   constexpr DecodedUleb128 kExpectedParameterId = 1;
   constexpr DecodedUleb128 kExpectedParameterRate = 48000;
   constexpr uint8_t kExpectedParameterDefinitionMode = 1;

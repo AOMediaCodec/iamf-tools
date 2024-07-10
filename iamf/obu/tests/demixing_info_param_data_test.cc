@@ -27,6 +27,9 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+const int kDMixPModeBitShift = 5;
+const int kDefaultWBitShift = 4;
+
 TEST(DMixPModeToDownMixingParams, DMixPMode1) {
   DownMixingParams output_down_mix_args;
   EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
@@ -112,8 +115,6 @@ TEST(DMixPModeToDownMixingParams, InvalidWOffsetOver10) {
             absl::StatusCode::kInvalidArgument);
 }
 
-const int kDMixPModeBitShift = 5;
-
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
   DemixingInfoParameterData data;
   data.dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
@@ -160,6 +161,25 @@ TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
             absl::StatusCode::kUnimplemented);
 }
 
+TEST(WriteDefaultDemixingInfoParameterData, Writes) {
+  constexpr auto kExpectedDMixPMode = DemixingInfoParameterData::kDMixPMode1;
+  constexpr auto kExpectedReserved = 31;
+  constexpr auto kExpectedDefaultW = 5;
+  constexpr auto kExpectedReservedDefault = 15;
+  DefaultDemixingInfoParameterData data;
+  data.dmixp_mode = kExpectedDMixPMode;
+  data.reserved = kExpectedReserved;
+  data.default_w = kExpectedDefaultW;
+  data.reserved_default = kExpectedReservedDefault;
+
+  WriteBitBuffer wb(1);
+  EXPECT_THAT(data.Write(wb), IsOk());
+
+  ValidateWriteResults(
+      wb, {kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
+           kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault});
+}
+
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
   std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode1
                                       << kDMixPModeBitShift};
@@ -190,6 +210,25 @@ TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
   EXPECT_THAT(data.Read(rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode1);
   EXPECT_EQ(data.reserved, 31);
+}
+
+TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
+  constexpr auto kExpectedDMixPMode = DemixingInfoParameterData::kDMixPMode1_n;
+  constexpr auto kExpectedReserved = 25;
+  constexpr auto kExpectedDefaultW = 9;
+  constexpr auto kExpectedReservedDefault = 12;
+  std::vector<uint8_t> source_data = {
+      kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
+      kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault};
+  ReadBitBuffer rb(1024, &source_data);
+  DefaultDemixingInfoParameterData data;
+
+  EXPECT_THAT(data.Read(rb), IsOk());
+
+  EXPECT_EQ(data.dmixp_mode, kExpectedDMixPMode);
+  EXPECT_EQ(data.reserved, kExpectedReserved);
+  EXPECT_EQ(data.default_w, kExpectedDefaultW);
+  EXPECT_EQ(data.reserved_default, kExpectedReservedDefault);
 }
 
 }  // namespace

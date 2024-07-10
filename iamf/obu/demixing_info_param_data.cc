@@ -137,7 +137,7 @@ absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(DemixingInfoParameterData::Write(wb));
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(default_w, 4));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved, 4));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_default, 4));
 
   return absl::OkStatus();
 }
@@ -146,7 +146,7 @@ absl::Status DefaultDemixingInfoParameterData::Read(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(DemixingInfoParameterData::Read(rb));
 
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, default_w));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved_default));
 
   return absl::OkStatus();
 }

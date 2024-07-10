@@ -37,7 +37,36 @@ struct AudioElementParam {
       return false;
     }
     // Compare the underlying `ParamDefinition` data by value.
-    return *lhs.param_definition == *rhs.param_definition;
+    switch (lhs.param_definition_type) {
+      using enum ParamDefinition::ParameterDefinitionType;
+      case kParameterDefinitionDemixing: {
+        auto lhs_def =
+            dynamic_cast<DemixingParamDefinition*>(lhs.param_definition.get());
+        auto rhs_def =
+            dynamic_cast<DemixingParamDefinition*>(rhs.param_definition.get());
+        return *lhs_def == *rhs_def;
+      }
+      case kParameterDefinitionMixGain: {
+        auto lhs_def =
+            dynamic_cast<MixGainParamDefinition*>(lhs.param_definition.get());
+        auto rhs_def =
+            dynamic_cast<MixGainParamDefinition*>(rhs.param_definition.get());
+        return *lhs_def == *rhs_def;
+      }
+      case kParameterDefinitionReconGain: {
+        auto lhs_def =
+            dynamic_cast<ReconGainParamDefinition*>(lhs.param_definition.get());
+        auto rhs_def =
+            dynamic_cast<ReconGainParamDefinition*>(rhs.param_definition.get());
+        return *lhs_def == *rhs_def;
+      }
+      default:
+        auto lhs_def =
+            dynamic_cast<ExtendedParamDefinition*>(lhs.param_definition.get());
+        auto rhs_def =
+            dynamic_cast<ExtendedParamDefinition*>(rhs.param_definition.get());
+        return *lhs_def == *rhs_def;
+    }
   }
 
   /*!\brief Reads from a buffer and validates the resulting output.

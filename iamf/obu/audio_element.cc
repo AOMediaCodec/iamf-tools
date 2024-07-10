@@ -587,9 +587,33 @@ AudioElementObu AudioElementObu::Clone(const AudioElementObu& other) {
   for (int i = 0; i < other.audio_element_params_.size(); ++i) {
     new_obu.audio_element_params_[i].param_definition_type =
         other.audio_element_params_[i].param_definition_type;
-    new_obu.audio_element_params_[i].param_definition =
-        std::make_unique<ParamDefinition>(
-            *other.audio_element_params_[i].param_definition);
+
+    // Copy in the underlying specific parameter definition.
+    ParamDefinition* other_definition =
+        other.audio_element_params_[i].param_definition.get();
+    switch (new_obu.audio_element_params_[i].param_definition_type) {
+      using enum ParamDefinition::ParameterDefinitionType;
+      case kParameterDefinitionDemixing:
+        new_obu.audio_element_params_[i].param_definition =
+            std::make_unique<DemixingParamDefinition>(
+                *dynamic_cast<DemixingParamDefinition*>(other_definition));
+        break;
+      case kParameterDefinitionReconGain:
+        new_obu.audio_element_params_[i].param_definition =
+            std::make_unique<ReconGainParamDefinition>(
+                *dynamic_cast<ReconGainParamDefinition*>(other_definition));
+        break;
+      case kParameterDefinitionMixGain:
+        new_obu.audio_element_params_[i].param_definition =
+            std::make_unique<MixGainParamDefinition>(
+                *dynamic_cast<MixGainParamDefinition*>(other_definition));
+        break;
+      default:
+        new_obu.audio_element_params_[i].param_definition =
+            std::make_unique<ExtendedParamDefinition>(
+                *dynamic_cast<ExtendedParamDefinition*>(other_definition));
+        break;
+    }
   }
   new_obu.config_ = other.config_;
 
