@@ -69,8 +69,13 @@ absl::Status CopyAudioElementParamDefinitionType(
     case PARAM_DEFINITION_TYPE_RECON_GAIN:
       output_param_definition_type = kParameterDefinitionReconGain;
       return absl::OkStatus();
+    case PARAM_DEFINITION_TYPE_MIX_GAIN:
+      return InvalidArgumentError(absl::StrCat(
+          "Mix gain parameters are not permitted in audio elements"));
+    case PARAM_DEFINITION_TYPE_RESERVED_3:
+      output_param_definition_type = kParameterDefinitionReservedStart;
+      return absl::OkStatus();
     default:
-      // TODO(b/289541186): Allow the extension types through here.
       return InvalidArgumentError(
           StrCat("Unknown or invalid param_definition_type= ",
                  user_data_parameter.param_definition_type()));
@@ -175,11 +180,31 @@ absl::Status GenerateParameterDefinitions(
             std::move(recon_gain_param_definition);
         break;
       }
-      default:
-        // TODO(b/289541186): Support the extension fields here.
+      case kParameterDefinitionMixGain:
         return InvalidArgumentError(
-            StrCat("Unknown or invalid param_definition_type= ",
-                   audio_element_param.param_definition_type));
+            "Mix gain parameters are not permitted in audio elements.");
+      default: {
+        auto extended_param_definition =
+            std::make_unique<ExtendedParamDefinition>(
+                audio_element_param.param_definition_type);
+        extended_param_definition->param_definition_size_ =
+            user_data_parameter.param_definition_extension()
+                .param_definition_size();
+
+        auto& metadata_extension_bytes =
+            user_data_parameter.param_definition_extension()
+                .param_definition_bytes();
+
+        extended_param_definition->param_definition_bytes_.reserve(
+            metadata_extension_bytes.size());
+        for (const char& c : metadata_extension_bytes) {
+          extended_param_definition->param_definition_bytes_.push_back(
+              static_cast<uint8_t>(c));
+        }
+
+        audio_element_param.param_definition =
+            std::move(extended_param_definition);
+      } break;
     }
   }
 

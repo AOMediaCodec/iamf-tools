@@ -43,8 +43,8 @@ struct RenderingConfig {
   enum HeadphonesRenderingMode : uint8_t {
     kHeadphonesRenderingModeStereo = 0,
     kHeadphonesRenderingModeBinaural = 1,
-    kHeadphonesRenderingModeReservedA = 2,
-    kHeadphonesRenderingModeReservedB = 3,
+    kHeadphonesRenderingModeReserved2 = 2,
+    kHeadphonesRenderingModeReserved3 = 3,
   };
 
   friend bool operator==(const RenderingConfig& lhs,

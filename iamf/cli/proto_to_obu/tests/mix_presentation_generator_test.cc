@@ -33,41 +33,34 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+typedef ::google::protobuf::RepeatedPtrField<
+    iamf_tools_cli_proto::MixPresentationObuMetadata>
+    MixPresentationObuMetadatas;
 
 constexpr DecodedUleb128 kMixPresentationId = 42;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr DecodedUleb128 kCommonParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = 16000;
 
-class MixPresentationGeneratorTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-        R"pb(
-          mix_presentation_id: 42
-          count_label: 0
-          num_sub_mixes: 1
-          sub_mixes {
-            num_audio_elements: 1
-            audio_elements {
-              audio_element_id: 300
-              rendering_config {
-                headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
-              }
-              element_mix_config {
-                mix_gain {
-                  param_definition {
-                    parameter_id: 999
-                    parameter_rate: 16000
-                    param_definition_mode: 1
-                    reserved: 0
-                  }
-                  default_mix_gain: 0
-                }
-              }
+// Fills `mix_presentation_metadata` with a single submix that contains a single
+// stereo audio element.
+void FillMixPresentationMetadata(
+    iamf_tools_cli_proto::MixPresentationObuMetadata*
+        mix_presentation_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        mix_presentation_id: 42
+        count_label: 0
+        num_sub_mixes: 1
+        sub_mixes {
+          num_audio_elements: 1
+          audio_elements {
+            audio_element_id: 300
+            rendering_config {
+              headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
             }
-            output_mix_config {
-              output_mix_gain {
+            element_mix_config {
+              mix_gain {
                 param_definition {
                   parameter_id: 999
                   parameter_rate: 16000
@@ -77,21 +70,85 @@ class MixPresentationGeneratorTest : public ::testing::Test {
                 default_mix_gain: 0
               }
             }
-            num_layouts: 1
-            layouts {
-              loudness_layout {
-                layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
-                ss_layout { sound_system: SOUND_SYSTEM_A_0_2_0 reserved: 0 }
+          }
+          output_mix_config {
+            output_mix_gain {
+              param_definition {
+                parameter_id: 999
+                parameter_rate: 16000
+                param_definition_mode: 1
+                reserved: 0
               }
-              loudness {
-                info_type_bit_masks: []
-                integrated_loudness: 0
-                digital_peak: 0
-              }
+              default_mix_gain: 0
             }
           }
-        )pb",
-        mix_presentation_metadata_.Add()));
+          num_layouts: 1
+          layouts {
+            loudness_layout {
+              layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
+              ss_layout { sound_system: SOUND_SYSTEM_A_0_2_0 reserved: 0 }
+            }
+            loudness {
+              info_type_bit_masks: []
+              integrated_loudness: 0
+              digital_peak: 0
+            }
+          }
+        }
+      )pb",
+      mix_presentation_metadata));
+}
+
+TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
+  const auto kExpectedHeadphonesRenderingMode2 =
+      RenderingConfig::kHeadphonesRenderingModeReserved2;
+  MixPresentationObuMetadatas mix_presentation_metadata = {};
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(
+          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_RESERVED_2);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .rendering_config.headphones_rendering_mode,
+            kExpectedHeadphonesRenderingMode2);
+}
+
+TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {
+  const auto kExpectedHeadphonesRenderingMode3 =
+      RenderingConfig::kHeadphonesRenderingModeReserved3;
+  MixPresentationObuMetadatas mix_presentation_metadata = {};
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(
+          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_RESERVED_3);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .rendering_config.headphones_rendering_mode,
+            kExpectedHeadphonesRenderingMode3);
+}
+
+class MixPresentationGeneratorTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    FillMixPresentationMetadata(mix_presentation_metadata_.Add());
 
     AddMixPresentationObuWithAudioElementIds(
         kMixPresentationId, {kAudioElementId}, kCommonParameterId,
@@ -99,9 +156,7 @@ class MixPresentationGeneratorTest : public ::testing::Test {
   }
 
  protected:
-  ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::MixPresentationObuMetadata>
-      mix_presentation_metadata_;
+  MixPresentationObuMetadatas mix_presentation_metadata_;
   std::list<MixPresentationObu> generated_obus_;
   std::list<MixPresentationObu> expected_obus_;
 };

@@ -99,6 +99,14 @@ absl::Status FillRenderingConfig(
       rendering_config.headphones_rendering_mode =
           kHeadphonesRenderingModeBinaural;
       break;
+    case HEADPHONES_RENDERING_MODE_RESERVED_2:
+      rendering_config.headphones_rendering_mode =
+          kHeadphonesRenderingModeReserved2;
+      break;
+    case HEADPHONES_RENDERING_MODE_RESERVED_3:
+      rendering_config.headphones_rendering_mode =
+          kHeadphonesRenderingModeReserved3;
+      break;
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown headphones_rendering_mode= ",

@@ -261,6 +261,50 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
+     RemovesSimpleProfileWithReservedHeadphonesRenderingMode2) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved2;
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), simple_profile)
+          .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesSimpleProfileWithReservedHeadphonesRenderingMode3) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved3;
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), simple_profile)
+          .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
      RemovesBaseProfileWhenThereAreTwoSubmixes) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -304,6 +348,48 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
                    audio_elements, mix_presentation_obus.front(), base_profile)
                    .ok());
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseProfileWithReservedHeadphonesRenderingMode2) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved2;
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
+                   audio_elements, mix_presentation_obus.front(), base_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseProfileWithReservedHeadphonesRenderingMode3) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved3;
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
+                   audio_elements, mix_presentation_obus.front(), base_profile)
+                   .ok());
+
   EXPECT_TRUE(base_profile.empty());
 }
 
@@ -360,7 +446,7 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     KeepsBaseEnhancedProfileWhenWithAFourthOrderAmbisonicsAudioElement) {
+     KeepsBaseEnhancedProfileWithAFourthOrderAmbisonicsAudioElement) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -378,7 +464,7 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     KeepsBaseEnhancedProfileWhenWhenThereAreTwentyEightOrFewerAudioElements) {
+     KeepsBaseEnhancedProfileWhenThereAreTwentyEightOrFewerAudioElements) {
   const int kNumAudioElements = 28;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -397,9 +483,8 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_TRUE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
 }
 
-TEST(
-    FilterProfilesForMixPresentation,
-    RemoveBaseEnhancedProfileWhenWhenThereAreMoreThanTwentyEightAudioElements) {
+TEST(FilterProfilesForMixPresentation,
+     RemoveBaseEnhancedProfileWhenThereAreMoreThanTwentyEightAudioElements) {
   const int kNumAudioElements = 29;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -416,6 +501,52 @@ TEST(
           .ok());
 
   EXPECT_FALSE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingMode2) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved2;
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
+          .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingMode3) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeReserved3;
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), base_enhanced_profile)
+          .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
 }
 
 TEST(FilterProfilesForMixPresentation,

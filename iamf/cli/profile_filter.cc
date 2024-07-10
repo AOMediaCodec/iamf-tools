@@ -56,6 +56,39 @@ absl::Status FilterProfileForNumSubmixes(
   return absl::OkStatus();
 }
 
+absl::Status FilterProfileForHeadphonesRenderingMode(
+    absl::string_view mix_presentation_id_for_debugging,
+    const MixPresentationObu& mix_presentation_obu,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
+    for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
+      switch (
+          sub_mix_audio_element.rendering_config.headphones_rendering_mode) {
+        using enum RenderingConfig::HeadphonesRenderingMode;
+        case kHeadphonesRenderingModeReserved2:
+        case kHeadphonesRenderingModeReserved3:
+          profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+          profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+          profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+          break;
+        default:
+          break;
+      }
+
+      if (profile_versions.empty()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            mix_presentation_id_for_debugging,
+            " has an audio element with headphones rendering mode= ",
+            sub_mix_audio_element.rendering_config.headphones_rendering_mode,
+            " sub mixes, but the requested profiles do support not this "
+            "mode."));
+      }
+    }
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status ClearAndReturnError(
     absl::string_view context,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
@@ -161,6 +194,10 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
                    mix_presentation_obu.GetMixPresentationId());
   RETURN_IF_NOT_OK(FilterProfileForNumSubmixes(
       mix_presentation_id_for_debugging, mix_presentation_obu.GetNumSubMixes(),
+      profile_versions));
+
+  RETURN_IF_NOT_OK(FilterProfileForHeadphonesRenderingMode(
+      mix_presentation_id_for_debugging, mix_presentation_obu,
       profile_versions));
 
   int num_audio_elements_in_mix_presentation;
