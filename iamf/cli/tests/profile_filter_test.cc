@@ -51,6 +51,7 @@ constexpr DecodedUleb128 kFirstMixPresentationId = 1;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 const uint32_t kCommonMixGainParameterRate = kSampleRate;
 const uint8_t kAudioElementReserved = 0;
+const int kOneLayer = 1;
 
 const std::vector<DecodedUleb128> kSubstreamIdsForFourthOrderAmbisonics = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
@@ -67,11 +68,65 @@ TEST(FilterProfilesForAudioElement,
                                     AudioElementObu::kAudioElementChannelBased,
                                     kAudioElementReserved, kCodecConfigId);
   audio_element_obu.InitializeAudioSubstreams(1);
-  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(1, 1), IsOk());
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
   auto& first_layer =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
           .channel_audio_layer_configs[0];
   first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo;
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_EQ(all_known_profiles, kAllKnownProfileVersions);
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesAllKnownProfilesWhenFirstLayerIsLoudspeakerLayout10) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout =
+      ChannelAudioLayerConfig::kLayoutReservedBegin;
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, all_known_profiles)
+                   .ok());
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     KeepsChannelBasedAudioElementWhenSubsequentLayersAreReserved) {
+  const int kNumSubstreams = 2;
+  const int kNumLayers = 2;
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(kNumSubstreams);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kNumLayers, kAudioElementReserved),
+              IsOk());
+  std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+      .channel_audio_layer_configs[0]
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo;
+  std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+      .channel_audio_layer_configs[1]
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedBegin;
+
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;
 
@@ -118,6 +173,28 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
+     RemovesSimpleProfileWhenFirstLayerIsLoudspeakerLayout15) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedEnd;
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, simple_profile)
+                   .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
      RemovesSimpleProfileForReservedAudioElementType) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementBeginReserved,
@@ -148,6 +225,28 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
+     RemovesBaseProfileWhenFirstLayerIsLoudspeakerLayout15) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedEnd;
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
      RemovesBaseProfileForReservedAudioElementType) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementBeginReserved,
@@ -175,6 +274,29 @@ TEST(FilterProfilesForAudioElement,
                    .ok());
 
   EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     KeepsBaseEnhancedProfileWhenFirstLayerIsLoudspeakerLayout15) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedEnd;
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", audio_element_obu, base_enhanced_profile),
+              IsOk());
+
+  EXPECT_FALSE(base_enhanced_profile.empty());
 }
 
 TEST(FilterProfilesForAudioElement,

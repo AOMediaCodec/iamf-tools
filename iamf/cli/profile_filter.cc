@@ -69,10 +69,63 @@ absl::Status FilterAudioElementType(
 }
 
 absl::Status FilterChannelBasedConfig(
-    absl::string_view /*debugging_context*/,
-    const AudioElementObu& /*audio_element_obu*/,
-    absl::flat_hash_set<ProfileVersion>& /*profile_versions*/) {
-  // TODO(b/350765228): Filter out profiles that do not support the first layer.
+    absl::string_view debugging_context,
+    const AudioElementObu& audio_element_obu,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  if (!std::holds_alternative<ScalableChannelLayoutConfig>(
+          audio_element_obu.config_)) {
+    return ClearAndReturnError(
+        absl::StrCat(
+            debugging_context,
+            "signals that it is a channel-based audio element, but it does not "
+            "hold an `ScalableChannelLayoutConfig`."),
+        profile_versions);
+  }
+  const auto& scalable_channel_layout_config =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_);
+  if (scalable_channel_layout_config.channel_audio_layer_configs.empty()) {
+    return ClearAndReturnError(
+        absl::StrCat(debugging_context, ". Expected at least one layer."),
+        profile_versions);
+  }
+
+  const auto& first_loudspeaker_layout =
+      scalable_channel_layout_config.channel_audio_layer_configs[0]
+          .loudspeaker_layout;
+
+  switch (first_loudspeaker_layout) {
+    using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+    case kLayoutMono:
+    case kLayoutStereo:
+    case kLayout5_1_ch:
+    case kLayout5_1_2_ch:
+    case kLayout5_1_4_ch:
+    case kLayout7_1_ch:
+    case kLayout7_1_2_ch:
+    case kLayout7_1_4_ch:
+    case kLayout3_1_2_ch:
+    case kLayoutBinaural:
+      break;
+    case kLayoutReservedEnd:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      // TODO(b/350765228): Filter out any `expanded_loudspeaker_layout` which
+      //                    are invalid under Base-enhnaced profile.
+      break;
+    default:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      break;
+  }
+
+  if (profile_versions.empty()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        debugging_context,
+        "has the first loudspeaker_layout= ", first_loudspeaker_layout,
+        ". But the requested profiles do support not support this type."));
+  }
+
   return absl::OkStatus();
 }
 

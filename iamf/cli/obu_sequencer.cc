@@ -261,6 +261,9 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
       [](const MixPresentationObu& obu_1, const MixPresentationObu& obu_2) {
         return obu_1.GetMixPresentationId() < obu_2.GetMixPresentationId();
       });
+  // TODO(b/350765228): Ensure at least one the profiles in the IA Sequence
+  //                    Header supports all of the layers for scalable audio
+  //                    elements.
   for (const auto& mix_presentation_obu : sorted_mix_presentation_obus) {
     // Make sure the mix presentation is valid for at least one of the profiles
     // in the sequence header before writing it.
