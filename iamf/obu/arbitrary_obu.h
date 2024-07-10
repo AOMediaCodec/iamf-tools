@@ -24,7 +24,14 @@
 
 namespace iamf_tools {
 
-/*!\brief An arbitrary OBU. */
+/*!\brief An arbitrary OBU.
+ *
+ * This class is useful to create edge-cases, invalid streams, or to allow
+ * encoding features that are not otherwise directly supported.
+ *
+ * Usually this class is used in a way that means any side effects of the OBU
+ * are not taken into account.
+ */
 class ArbitraryObu : public ObuBase {
  public:
   /*!\brief A hook describing how the OBU will be put into the bitstream. */
@@ -37,13 +44,22 @@ class ArbitraryObu : public ObuBase {
     kInsertionHookAfterMixPresentations,
   };
 
-  /*!\brief Constructor. */
+  /*!\brief Constructor.
+   *
+   * \param obu_type Type of the OBU.
+   * \param header Header of the OBU.
+   * \param payload Payload of the OBU.
+   * \param insertion_hook Hook describing when to insert the OBU.
+   * \param invalidates_bitstream Whether writing the OBU invalidates the
+   *     bitstream.
+   */
   ArbitraryObu(ObuType obu_type, const ObuHeader& header,
                const std::vector<uint8_t>& payload,
-               InsertionHook insertion_hook)
+               InsertionHook insertion_hook, bool invalidates_bitstream = false)
       : ObuBase(header, obu_type),
         payload_(payload),
-        insertion_hook_(insertion_hook) {}
+        insertion_hook_(insertion_hook),
+        invalidates_bitstream_(invalidates_bitstream) {}
 
   /*!\brief Move constructor.*/
   ArbitraryObu(ArbitraryObu&& other) = default;
@@ -73,13 +89,14 @@ class ArbitraryObu : public ObuBase {
 
   // Metadata.
   const InsertionHook insertion_hook_;
+  const bool invalidates_bitstream_;
 
  private:
   /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
-   * \return `absl::OkStatus()` if the OBU is valid. A specific status on
-   *     failure.
+   * \return `absl::OkStatus()` if the OBU is valid. A specific error if
+   * `    invalidates_bitstream_` is true. Other specific statuses on failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 

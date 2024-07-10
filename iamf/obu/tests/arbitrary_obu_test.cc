@@ -30,10 +30,14 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kInvalidatesBitstream = true;
+constexpr bool kDoesNotInvalidateBitstream = false;
+
 TEST(ArbitraryObuConstructor, SetsObuType) {
   const ObuType kExpectedObuType = kObuIaReserved25;
   ArbitraryObu obu(kExpectedObuType, {}, {},
-                   ArbitraryObu::kInsertionHookBeforeDescriptors);
+                   ArbitraryObu::kInsertionHookBeforeDescriptors,
+                   kDoesNotInvalidateBitstream);
 
   EXPECT_EQ(obu.header_.obu_type, kExpectedObuType);
 }
@@ -42,9 +46,49 @@ TEST(ArbitraryObuConstructor, SetsInsertionHook) {
   const ObuType kArbitraryObuType = kObuIaReserved25;
   const auto kExpectedInsertionHook =
       ArbitraryObu::kInsertionHookAfterCodecConfigs;
-  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook);
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
+                   kDoesNotInvalidateBitstream);
 
   EXPECT_EQ(obu.insertion_hook_, kExpectedInsertionHook);
+}
+
+TEST(ArbitraryObuConstructor, SetsInvalidatesBitstreamFalse) {
+  const ObuType kArbitraryObuType = kObuIaReserved25;
+  const auto kExpectedInsertionHook =
+      ArbitraryObu::kInsertionHookAfterCodecConfigs;
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
+                   kDoesNotInvalidateBitstream);
+
+  EXPECT_EQ(obu.invalidates_bitstream_, kDoesNotInvalidateBitstream);
+}
+
+TEST(ArbitraryObuConstructor, SetsInvalidatesBitstreamTrue) {
+  const ObuType kArbitraryObuType = kObuIaReserved25;
+  const auto kExpectedInsertionHook =
+      ArbitraryObu::kInsertionHookAfterCodecConfigs;
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
+                   kInvalidatesBitstream);
+
+  EXPECT_EQ(obu.invalidates_bitstream_, kInvalidatesBitstream);
+}
+
+TEST(ValidateAndWrite, FailsWhenInvalidatesBitstreamIsTrue) {
+  const ObuType kArbitraryObuType = kObuIaReserved25;
+  const auto kExpectedInsertionHook =
+      ArbitraryObu::kInsertionHookAfterCodecConfigs;
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
+                   kInvalidatesBitstream);
+
+  WriteBitBuffer unused_wb(0);
+  EXPECT_FALSE(obu.ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST(ArbitraryObuConstructor, DefaultsToInvalidatesBitstreamFalse) {
+  const ObuType kExpectedObuType = kObuIaReserved25;
+  ArbitraryObu obu(kExpectedObuType, {}, {},
+                   ArbitraryObu::kInsertionHookBeforeDescriptors);
+
+  EXPECT_EQ(obu.invalidates_bitstream_, kDoesNotInvalidateBitstream);
 }
 
 class ArbitraryObuTest : public ObuTestBase, public testing::Test {
@@ -62,7 +106,8 @@ class ArbitraryObuTest : public ObuTestBase, public testing::Test {
  protected:
   void InitExpectOk() override {
     obu_ = std::make_unique<ArbitraryObu>(obu_type_, header_, payload_,
-                                          insertion_hook_);
+                                          insertion_hook_,
+                                          kDoesNotInvalidateBitstream);
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
@@ -132,13 +177,16 @@ TEST(WriteObusWithHook, MultipleObusWithDifferentHooks) {
   std::list<ArbitraryObu> arbitrary_obus;
   arbitrary_obus.emplace_back(
       ArbitraryObu(kObuIaReserved24, ObuHeader(), {},
-                   ArbitraryObu::kInsertionHookBeforeDescriptors));
+                   ArbitraryObu::kInsertionHookBeforeDescriptors,
+                   kDoesNotInvalidateBitstream));
   arbitrary_obus.emplace_back(
       ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
-                   ArbitraryObu::kInsertionHookAfterDescriptors));
+                   ArbitraryObu::kInsertionHookAfterDescriptors,
+                   kDoesNotInvalidateBitstream));
   arbitrary_obus.emplace_back(
       ArbitraryObu(kObuIaReserved26, ObuHeader(), {},
-                   ArbitraryObu::kInsertionHookBeforeDescriptors));
+                   ArbitraryObu::kInsertionHookBeforeDescriptors,
+                   kDoesNotInvalidateBitstream));
 
   // Check that the OBUs with ID 24 and 26 are written when using the
   // `ArbitraryObu::kInsertionHookBeforeDescriptors` hook.

@@ -125,7 +125,8 @@ absl::Status ArbitraryObuGenerator::Generate(
 
     arbitrary_obus.emplace_back(
         obu_type, GetHeaderFromMetadata(arbitrary_obu_metadata.obu_header()),
-        payload, insertion_hook);
+        payload, insertion_hook,
+        arbitrary_obu_metadata.invalidates_bitstream());
   }
 
   // Examine arbitrary OBUs.

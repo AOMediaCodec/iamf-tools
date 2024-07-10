@@ -105,6 +105,30 @@ TEST(Generate, FailsOnInvalidInsertionHook) {
   EXPECT_TRUE(arbitrary_obus.empty());
 }
 
+TEST(Generate, CopiesInvalidatesBitstreamFalse) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_invalidates_bitstream(false);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().invalidates_bitstream_, false);
+}
+
+TEST(Generate, CopiesInvalidatesBitstreamTrue) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_invalidates_bitstream(true);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().invalidates_bitstream_, true);
+}
+
 TEST(Generate, GeneratesEmptyListForEmptyInput) {
   ArbitraryObuMetadatas arbitrary_obu_metadatas = {};
 

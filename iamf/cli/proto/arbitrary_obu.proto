@@ -65,4 +65,6 @@ message ArbitraryObuMetadata {
   optional ArbitraryObuType obu_type = 4;
   optional ObuHeaderMetadata obu_header = 2;
   optional bytes payload = 3;
+  // Used to force the bitstream to be invalid when this OBU is inserted.
+  optional bool invalidates_bitstream = 5;
 }

@@ -36,7 +36,11 @@ absl::Status ArbitraryObu::WriteObusWithHook(
 
 absl::Status ArbitraryObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(payload_));
-  return absl::OkStatus();
+  return invalidates_bitstream_
+             ? absl::InvalidArgumentError(absl::StrCat(
+                   "Bitstream invalidated by an arbitrary OBU with obu_type= ",
+                   header_.obu_type))
+             : absl::OkStatus();
 }
 
 absl::Status ArbitraryObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
