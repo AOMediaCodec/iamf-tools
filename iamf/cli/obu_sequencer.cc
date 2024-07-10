@@ -197,6 +197,9 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
     LOG(INFO) << "wb.bit_offset= " << wb.bit_offset() << " after Codec Config";
   }
 
+  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
+      ArbitraryObu::kInsertionHookAfterCodecConfigs, arbitrary_obus, wb));
+
   // Write Audio Element OBUs in ascending order of Audio Element IDs.
   // TODO(b/332956880): Support customizing the ordering.
   const std::vector<uint32_t> audio_element_ids =
@@ -205,6 +208,9 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
     RETURN_IF_NOT_OK(audio_elements.at(id).obu.ValidateAndWriteObu(wb));
     LOG(INFO) << "wb.bit_offset= " << wb.bit_offset() << " after Audio Element";
   }
+
+  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
+      ArbitraryObu::kInsertionHookAfterAudioElements, arbitrary_obus, wb));
 
   // Write Mix Presentation OBUs in ascending order of Mix Presentation IDs.
   // TODO(b/332956880): Support customizing the ordering.
@@ -227,6 +233,8 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
     LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
               << " after Mix Presentation";
   }
+  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
+      ArbitraryObu::kInsertionHookAfterMixPresentations, arbitrary_obus, wb));
 
   // TODO(b/274065471): Check that the number of descriptor OBUs is allowed by
   //                    the current profile version.

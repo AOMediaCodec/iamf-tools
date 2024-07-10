@@ -32,6 +32,9 @@ class ArbitraryObu : public ObuBase {
     kInsertionHookBeforeDescriptors,
     kInsertionHookAfterDescriptors,
     kInsertionHookAfterIaSequenceHeader,
+    kInsertionHookAfterCodecConfigs,
+    kInsertionHookAfterAudioElements,
+    kInsertionHookAfterMixPresentations,
   };
 
   /*!\brief Constructor. */

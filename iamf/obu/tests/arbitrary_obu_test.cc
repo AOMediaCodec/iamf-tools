@@ -38,6 +38,15 @@ TEST(ArbitraryObuConstructor, SetsObuType) {
   EXPECT_EQ(obu.header_.obu_type, kExpectedObuType);
 }
 
+TEST(ArbitraryObuConstructor, SetsInsertionHook) {
+  const ObuType kArbitraryObuType = kObuIaReserved25;
+  const auto kExpectedInsertionHook =
+      ArbitraryObu::kInsertionHookAfterCodecConfigs;
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook);
+
+  EXPECT_EQ(obu.insertion_hook_, kExpectedInsertionHook);
+}
+
 class ArbitraryObuTest : public ObuTestBase, public testing::Test {
  public:
   ArbitraryObuTest()

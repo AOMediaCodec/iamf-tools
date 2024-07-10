@@ -103,6 +103,15 @@ absl::Status ArbitraryObuGenerator::Generate(
       case INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER:
         insertion_hook = kInsertionHookAfterIaSequenceHeader;
         break;
+      case INSERTION_HOOK_AFTER_CODEC_CONFIGS:
+        insertion_hook = kInsertionHookAfterCodecConfigs;
+        break;
+      case INSERTION_HOOK_AFTER_AUDIO_ELEMENTS:
+        insertion_hook = kInsertionHookAfterAudioElements;
+        break;
+      case INSERTION_HOOK_AFTER_MIX_PRESENTATIONS:
+        insertion_hook = kInsertionHookAfterMixPresentations;
+        break;
       default:
         return absl::InvalidArgumentError(
             absl::StrCat("Unknown insertion hook= ",

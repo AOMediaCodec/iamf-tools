@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -25,6 +27,93 @@
 
 namespace iamf_tools {
 namespace {
+
+using ::absl_testing::IsOk;
+
+typedef ::google::protobuf::RepeatedPtrField<
+    iamf_tools_cli_proto::ArbitraryObuMetadata>
+    ArbitraryObuMetadatas;
+
+void FillArbitraryObu(
+    iamf_tools_cli_proto::ArbitraryObuMetadata* arbitrary_obu_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        insertion_hook: INSERTION_HOOK_BEFORE_DESCRIPTORS
+        obu_type: OBU_IA_RESERVED_24
+        obu_header {
+          obu_redundant_copy: false
+          obu_trimming_status_flag: false
+          obu_extension_flag: false
+        }
+        payload: ""
+      )pb",
+      arbitrary_obu_metadata));
+}
+
+TEST(Generate, CopiesInsertionHookBeforeDescriptors) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_BEFORE_DESCRIPTORS);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookBeforeDescriptors);
+}
+
+TEST(Generate, CopiesInsertionHookAfterDescriptors) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_AFTER_DESCRIPTORS);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookAfterDescriptors);
+}
+
+TEST(Generate, CopiesInsertionHookAfterCodecConfigs) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_AFTER_CODEC_CONFIGS);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookAfterCodecConfigs);
+}
+
+TEST(Generate, FailsOnInvalidInsertionHook) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_INVALID);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+
+  EXPECT_FALSE(generator.Generate(arbitrary_obus).ok());
+  EXPECT_TRUE(arbitrary_obus.empty());
+}
+
+TEST(Generate, GeneratesEmptyListForEmptyInput) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas = {};
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_TRUE(arbitrary_obus.empty());
+}
 
 class ArbitraryObuGeneratorTest : public testing::Test {
  public:
@@ -40,19 +129,12 @@ class ArbitraryObuGeneratorTest : public testing::Test {
   }
 
  protected:
-  ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::ArbitraryObuMetadata>
-      arbitrary_obu_metadata_;
+  ArbitraryObuMetadatas arbitrary_obu_metadata_;
 
   absl::StatusCode expected_generate_status_code_ = absl::StatusCode::kOk;
 
   std::list<ArbitraryObu> expected_obus_;
 };
-
-TEST_F(ArbitraryObuGeneratorTest, NoArbitraryObuObus) {
-  arbitrary_obu_metadata_.Clear();
-  InitAndTestGenerate();
-}
 
 TEST_F(ArbitraryObuGeneratorTest, ReservedObu) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -71,20 +153,6 @@ TEST_F(ArbitraryObuGeneratorTest, ReservedObu) {
   expected_obus_.emplace_back(kObuIaReserved24, ObuHeader(),
                               std::vector<uint8_t>({'a', 'b', 'c'}),
                               ArbitraryObu::kInsertionHookBeforeDescriptors);
-  InitAndTestGenerate();
-}
-
-TEST_F(ArbitraryObuGeneratorTest, InsertionHookAfterIaSequenceHeader) {
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
-        obu_type: OBU_IA_RESERVED_24
-      )pb",
-      arbitrary_obu_metadata_.Add()));
-
-  expected_obus_.emplace_back(
-      kObuIaReserved24, ObuHeader(), std::vector<uint8_t>{},
-      ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
   InitAndTestGenerate();
 }
 
@@ -111,24 +179,6 @@ TEST_F(ArbitraryObuGeneratorTest, ObuWithExtensionHeader) {
                 .extension_header_bytes = {'e', 'x', 't', 'r', 'a'}},
       std::vector<uint8_t>({'i', 'a', 'm', 'f', '\0', '\0'}),
       ArbitraryObu::kInsertionHookAfterDescriptors);
-  InitAndTestGenerate();
-}
-
-TEST_F(ArbitraryObuGeneratorTest, InvalidInsertionHook) {
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        insertion_hook: INSERTION_HOOK_INVALID
-        obu_type: OBU_IA_RESERVED_24
-        obu_header {
-          obu_redundant_copy: false
-          obu_trimming_status_flag: false
-          obu_extension_flag: false
-        }
-        payload: ""
-      )pb",
-      arbitrary_obu_metadata_.Add()));
-  expected_generate_status_code_ = absl::StatusCode::kInvalidArgument;
-
   InitAndTestGenerate();
 }
 

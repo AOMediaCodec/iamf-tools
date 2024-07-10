@@ -204,6 +204,79 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterIaSequenceHeader) {
   ValidateWriteDescriptorObuSequence(expected_sequence);
 }
 
+TEST_F(ObuSequencerTest, ArbitraryObuAfterCodecConfigs) {
+  InitializeDescriptorObus();
+
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterCodecConfigs));
+
+  const std::list<const ObuBase*> expected_sequence = {
+      &ia_sequence_header_obu_.value(),
+      &codec_config_obus_.at(kCodecConfigId),
+      &arbitrary_obus_.back(),
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back(),
+  };
+
+  ValidateWriteDescriptorObuSequence(expected_sequence);
+}
+
+TEST_F(ObuSequencerTest, ArbitraryObuAfterAudioElements) {
+  InitializeDescriptorObus();
+
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterAudioElements));
+
+  const std::list<const ObuBase*> expected_sequence = {
+      &ia_sequence_header_obu_.value(),
+      &codec_config_obus_.at(kCodecConfigId),
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &arbitrary_obus_.back(),
+      &mix_presentation_obus_.back(),
+  };
+
+  ValidateWriteDescriptorObuSequence(expected_sequence);
+}
+
+TEST_F(ObuSequencerTest, ArbitraryObuAfterMixPresentations) {
+  InitializeDescriptorObus();
+
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterMixPresentations));
+
+  const std::list<const ObuBase*> expected_sequence = {
+      &ia_sequence_header_obu_.value(),
+      &codec_config_obus_.at(kCodecConfigId),
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back(),
+      &arbitrary_obus_.back(),
+  };
+
+  ValidateWriteDescriptorObuSequence(expected_sequence);
+}
+
+// This behavior helps ensure that "after descriptors" are not written in the
+// "IACB" box in MP4.
+TEST_F(ObuSequencerTest, DoesNotWriteArbitraryObuAfterDescriptors) {
+  InitializeDescriptorObus();
+
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterDescriptors));
+
+  const std::list<const ObuBase*> expected_sequence = {
+      &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
+      &audio_elements_.at(kFirstAudioElementId).obu,
+      &mix_presentation_obus_.back(),
+      // &arbitrary_obus_.back(),
+  };
+
+  ValidateWriteDescriptorObuSequence(expected_sequence);
+}
+
 TEST_F(ObuSequencerTest, CodecConfigAreAscendingOrderByDefault) {
   InitializeDescriptorObus();
 
