@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -42,6 +43,9 @@ class ArbitraryObu : public ObuBase {
     kInsertionHookAfterCodecConfigs,
     kInsertionHookAfterAudioElements,
     kInsertionHookAfterMixPresentations,
+    kInsertionHookBeforeParameterBlocksAtTick,
+    kInsertionHookAfterParameterBlocksAtTick,
+    kInsertionHookAfterAudioFramesAtTick,
   };
 
   /*!\brief Constructor.
@@ -50,15 +54,19 @@ class ArbitraryObu : public ObuBase {
    * \param header Header of the OBU.
    * \param payload Payload of the OBU.
    * \param insertion_hook Hook describing when to insert the OBU.
+   * \param insertion_tick Optional hook to describe the tick to insert the OBU.
    * \param invalidates_bitstream Whether writing the OBU invalidates the
    *     bitstream.
    */
   ArbitraryObu(ObuType obu_type, const ObuHeader& header,
                const std::vector<uint8_t>& payload,
-               InsertionHook insertion_hook, bool invalidates_bitstream = false)
+               InsertionHook insertion_hook,
+               const std::optional<int64_t>& insertion_tick = std::nullopt,
+               bool invalidates_bitstream = false)
       : ObuBase(header, obu_type),
         payload_(payload),
         insertion_hook_(insertion_hook),
+        insertion_tick_(insertion_tick),
         invalidates_bitstream_(invalidates_bitstream) {}
 
   /*!\brief Move constructor.*/
@@ -89,6 +97,7 @@ class ArbitraryObu : public ObuBase {
 
   // Metadata.
   const InsertionHook insertion_hook_;
+  const std::optional<int64_t> insertion_tick_;
   const bool invalidates_bitstream_;
 
  private:

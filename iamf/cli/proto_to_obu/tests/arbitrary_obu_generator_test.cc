@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -33,6 +34,8 @@ using ::absl_testing::IsOk;
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::ArbitraryObuMetadata>
     ArbitraryObuMetadatas;
+
+constexpr int64_t kInsertionTick = 123;
 
 void FillArbitraryObu(
     iamf_tools_cli_proto::ArbitraryObuMetadata* arbitrary_obu_metadata) {
@@ -62,6 +65,7 @@ TEST(Generate, CopiesInsertionHookBeforeDescriptors) {
 
   EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
             ArbitraryObu::kInsertionHookBeforeDescriptors);
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, std::nullopt);
 }
 
 TEST(Generate, CopiesInsertionHookAfterDescriptors) {
@@ -76,6 +80,7 @@ TEST(Generate, CopiesInsertionHookAfterDescriptors) {
 
   EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
             ArbitraryObu::kInsertionHookAfterDescriptors);
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, std::nullopt);
 }
 
 TEST(Generate, CopiesInsertionHookAfterCodecConfigs) {
@@ -90,6 +95,74 @@ TEST(Generate, CopiesInsertionHookAfterCodecConfigs) {
 
   EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
             ArbitraryObu::kInsertionHookAfterCodecConfigs);
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, std::nullopt);
+}
+
+TEST(Generate, InsertionTickDefaultsToZeroForTimeBasedInsertionHooks) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_BEFORE_PARAMETER_BLOCKS_AT_TICK);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick);
+  ASSERT_TRUE(arbitrary_obus.front().insertion_tick_.has_value());
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, 0);
+}
+
+TEST(Generate, CopiesInsertionTickForTimeBasedInsertionHooks) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_BEFORE_PARAMETER_BLOCKS_AT_TICK);
+  arbitrary_obu_metadatas.at(0).set_insertion_tick(kInsertionTick);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick);
+  ASSERT_TRUE(arbitrary_obus.front().insertion_tick_.has_value());
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, kInsertionTick);
+}
+
+TEST(Generate, CopiesInsertionHookAfterParameterBlocksAtTime) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK);
+  arbitrary_obu_metadatas.at(0).set_insertion_tick(kInsertionTick);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick);
+  ASSERT_TRUE(arbitrary_obus.front().insertion_tick_.has_value());
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, kInsertionTick);
+}
+
+TEST(Generate, CopiesInsertionHookAfterAudioFramesAtTime) {
+  ArbitraryObuMetadatas arbitrary_obu_metadatas;
+  FillArbitraryObu(arbitrary_obu_metadatas.Add());
+  arbitrary_obu_metadatas.at(0).set_insertion_hook(
+      iamf_tools_cli_proto::INSERTION_HOOK_AFTER_AUDIO_FRAMES_AT_TICK);
+  arbitrary_obu_metadatas.at(0).set_insertion_tick(kInsertionTick);
+
+  ArbitraryObuGenerator generator(arbitrary_obu_metadatas);
+  std::list<ArbitraryObu> arbitrary_obus;
+  EXPECT_THAT(generator.Generate(arbitrary_obus), IsOk());
+
+  EXPECT_EQ(arbitrary_obus.front().insertion_hook_,
+            ArbitraryObu::kInsertionHookAfterAudioFramesAtTick);
+  ASSERT_TRUE(arbitrary_obus.front().insertion_tick_.has_value());
+  EXPECT_EQ(arbitrary_obus.front().insertion_tick_, kInsertionTick);
 }
 
 TEST(Generate, FailsOnInvalidInsertionHook) {

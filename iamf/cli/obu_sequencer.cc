@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <list>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -60,6 +61,7 @@ std::vector<uint32_t> SortedKeys(const KeyValueMap& map,
 absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
+    const std::list<ArbitraryObu>& arbitrary_obus,
     TemporalUnitMap& temporal_unit_map) {
   // Put all audio frames into the map based on their start time.
   for (auto& audio_frame : audio_frames) {
@@ -131,6 +133,25 @@ absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
               temporal_unit.parameter_blocks.end(), compare_parameter_id);
   }
 
+  for (const auto& arbitrary_obu : arbitrary_obus) {
+    if (arbitrary_obu.insertion_tick_ == std::nullopt) {
+      continue;
+    }
+    temporal_unit_map[*arbitrary_obu.insertion_tick_].arbitrary_obus.push_back(
+        &arbitrary_obu);
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status WriteObusWithHook(
+    ArbitraryObu::InsertionHook insertion_hook,
+    const std::list<const ArbitraryObu*>& arbitrary_obus, WriteBitBuffer& wb) {
+  for (const auto& arbitrary_obu : arbitrary_obus) {
+    if (arbitrary_obu->insertion_hook_ == insertion_hook) {
+      RETURN_IF_NOT_OK(arbitrary_obu->ValidateAndWriteObu(wb));
+    }
+  }
   return absl::OkStatus();
 }
 
@@ -154,11 +175,19 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
     RETURN_IF_NOT_OK(obu.ValidateAndWriteObu(wb));
   }
 
+  RETURN_IF_NOT_OK(
+      WriteObusWithHook(ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick,
+                        temporal_unit.arbitrary_obus, wb));
+
   // Write the Parameter Block OBUs.
   for (const auto& parameter_blocks : temporal_unit.parameter_blocks) {
     const auto& parameter_block = parameter_blocks;
     RETURN_IF_NOT_OK(parameter_block->obu->ValidateAndWriteObu(wb));
   }
+
+  RETURN_IF_NOT_OK(
+      WriteObusWithHook(ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                        temporal_unit.arbitrary_obus, wb));
 
   // Write Audio Frame OBUs.
   for (const auto& audio_frame : temporal_unit.audio_frames) {
@@ -166,6 +195,10 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
     LOG_FIRST_N(INFO, 10) << "wb.bit_offset= " << wb.bit_offset()
                           << " after Audio Frame";
   }
+
+  RETURN_IF_NOT_OK(
+      WriteObusWithHook(ArbitraryObu::kInsertionHookAfterAudioFramesAtTick,
+                        temporal_unit.arbitrary_obus, wb));
 
   if (!wb.IsByteAligned()) {
     return absl::InvalidArgumentError("Write buffer not byte-aligned");
@@ -268,7 +301,7 @@ absl::Status ObuSequencerIamf::PickAndPlace(
   // timestamp (which is the key).
   TemporalUnitMap temporal_unit_map;
   RETURN_IF_NOT_OK(ObuSequencerBase::GenerateTemporalUnitMap(
-      audio_frames, parameter_blocks, temporal_unit_map));
+      audio_frames, parameter_blocks, arbitrary_obus, temporal_unit_map));
 
   // Write all Audio Frame and Parameter Block OBUs ordered by temporal unit.
   int num_samples = 0;

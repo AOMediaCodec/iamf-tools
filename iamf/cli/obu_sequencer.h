@@ -42,6 +42,7 @@ namespace iamf_tools {
 struct TemporalUnit {
   std::vector<const AudioFrameWithData*> audio_frames;
   std::vector<const ParameterBlockWithData*> parameter_blocks;
+  std::list<const ArbitraryObu*> arbitrary_obus;
 };
 
 /*!\brief Map of start timestamp -> OBUs in that temporal unit.*/
@@ -63,6 +64,7 @@ class ObuSequencerBase {
    *
    * \param audio_frames Data about Audio Frame OBUs to write.
    * \param parameter_blocks Data about Parameter Block OBUs to write.
+   * \param arbitrary_obus Arbitrary OBUs to write.
    * \param temporal_unit_map Output map of start timestamp -> `TemporalUnit`.
    *     The `TemporalUnit` has the `audio_frames` vector with all audio
    *     frames starting at that timestamp.
@@ -71,6 +73,7 @@ class ObuSequencerBase {
   static absl::Status GenerateTemporalUnitMap(
       const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks,
+      const std::list<ArbitraryObu>& arbitrary_obus,
       TemporalUnitMap& temporal_unit_map);
 
   /*!\brief Serializes and writes out a temporal unit.

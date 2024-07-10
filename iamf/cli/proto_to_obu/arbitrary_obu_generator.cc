@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -91,6 +92,7 @@ absl::Status ArbitraryObuGenerator::Generate(
         CopyArbitraryObuType(arbitrary_obu_metadata.obu_type(), obu_type));
 
     ArbitraryObu::InsertionHook insertion_hook;
+    std::optional<int64_t> insertion_tick = std::nullopt;
     switch (arbitrary_obu_metadata.insertion_hook()) {
       using enum iamf_tools_cli_proto::InsertionHook;
       using enum ArbitraryObu::InsertionHook;
@@ -112,6 +114,18 @@ absl::Status ArbitraryObuGenerator::Generate(
       case INSERTION_HOOK_AFTER_MIX_PRESENTATIONS:
         insertion_hook = kInsertionHookAfterMixPresentations;
         break;
+      case INSERTION_HOOK_BEFORE_PARAMETER_BLOCKS_AT_TICK:
+        insertion_hook = kInsertionHookBeforeParameterBlocksAtTick;
+        insertion_tick = arbitrary_obu_metadata.insertion_tick();
+        break;
+      case INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK:
+        insertion_hook = kInsertionHookAfterParameterBlocksAtTick;
+        insertion_tick = arbitrary_obu_metadata.insertion_tick();
+        break;
+      case INSERTION_HOOK_AFTER_AUDIO_FRAMES_AT_TICK:
+        insertion_hook = kInsertionHookAfterAudioFramesAtTick;
+        insertion_tick = arbitrary_obu_metadata.insertion_tick();
+        break;
       default:
         return absl::InvalidArgumentError(
             absl::StrCat("Unknown insertion hook= ",
@@ -125,7 +139,7 @@ absl::Status ArbitraryObuGenerator::Generate(
 
     arbitrary_obus.emplace_back(
         obu_type, GetHeaderFromMetadata(arbitrary_obu_metadata.obu_header()),
-        payload, insertion_hook,
+        payload, insertion_hook, insertion_tick,
         arbitrary_obu_metadata.invalidates_bitstream());
   }
 

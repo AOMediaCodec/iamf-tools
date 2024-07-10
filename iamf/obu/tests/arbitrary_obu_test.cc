@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -30,6 +31,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr std::optional<int64_t> kNoInsertionTick = std::nullopt;
+constexpr int64_t kInsertionTick = 500;
 constexpr bool kInvalidatesBitstream = true;
 constexpr bool kDoesNotInvalidateBitstream = false;
 
@@ -37,7 +40,7 @@ TEST(ArbitraryObuConstructor, SetsObuType) {
   const ObuType kExpectedObuType = kObuIaReserved25;
   ArbitraryObu obu(kExpectedObuType, {}, {},
                    ArbitraryObu::kInsertionHookBeforeDescriptors,
-                   kDoesNotInvalidateBitstream);
+                   kNoInsertionTick, kDoesNotInvalidateBitstream);
 
   EXPECT_EQ(obu.header_.obu_type, kExpectedObuType);
 }
@@ -47,9 +50,19 @@ TEST(ArbitraryObuConstructor, SetsInsertionHook) {
   const auto kExpectedInsertionHook =
       ArbitraryObu::kInsertionHookAfterCodecConfigs;
   ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
-                   kDoesNotInvalidateBitstream);
+                   kNoInsertionTick, kDoesNotInvalidateBitstream);
 
   EXPECT_EQ(obu.insertion_hook_, kExpectedInsertionHook);
+}
+
+TEST(ArbitraryObuConstructor, SetsInsertionTick) {
+  const ObuType kArbitraryObuType = kObuIaReserved25;
+  const auto kExpectedInsertionHook =
+      ArbitraryObu::kInsertionHookAfterAudioFramesAtTick;
+  ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
+                   kInsertionTick, kDoesNotInvalidateBitstream);
+
+  EXPECT_EQ(obu.insertion_tick_, kInsertionTick);
 }
 
 TEST(ArbitraryObuConstructor, SetsInvalidatesBitstreamFalse) {
@@ -57,7 +70,7 @@ TEST(ArbitraryObuConstructor, SetsInvalidatesBitstreamFalse) {
   const auto kExpectedInsertionHook =
       ArbitraryObu::kInsertionHookAfterCodecConfigs;
   ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
-                   kDoesNotInvalidateBitstream);
+                   kNoInsertionTick, kDoesNotInvalidateBitstream);
 
   EXPECT_EQ(obu.invalidates_bitstream_, kDoesNotInvalidateBitstream);
 }
@@ -67,7 +80,7 @@ TEST(ArbitraryObuConstructor, SetsInvalidatesBitstreamTrue) {
   const auto kExpectedInsertionHook =
       ArbitraryObu::kInsertionHookAfterCodecConfigs;
   ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
-                   kInvalidatesBitstream);
+                   kNoInsertionTick, kInvalidatesBitstream);
 
   EXPECT_EQ(obu.invalidates_bitstream_, kInvalidatesBitstream);
 }
@@ -77,16 +90,25 @@ TEST(ValidateAndWrite, FailsWhenInvalidatesBitstreamIsTrue) {
   const auto kExpectedInsertionHook =
       ArbitraryObu::kInsertionHookAfterCodecConfigs;
   ArbitraryObu obu(kArbitraryObuType, {}, {}, kExpectedInsertionHook,
-                   kInvalidatesBitstream);
+                   kNoInsertionTick, kInvalidatesBitstream);
 
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu.ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST(ArbitraryObuConstructor, DefaultsToInvalidatesBitstreamFalse) {
+TEST(ArbitraryObuConstructor, DefaultsToNoInsertionTick) {
   const ObuType kExpectedObuType = kObuIaReserved25;
   ArbitraryObu obu(kExpectedObuType, {}, {},
                    ArbitraryObu::kInsertionHookBeforeDescriptors);
+
+  EXPECT_EQ(obu.insertion_tick_, std::nullopt);
+}
+
+TEST(ArbitraryObuConstructor, DefaultsToInvalidatesBitstreamFalse) {
+  const ObuType kExpectedObuType = kObuIaReserved25;
+  ArbitraryObu obu(kExpectedObuType, {}, {},
+                   ArbitraryObu::kInsertionHookBeforeDescriptors,
+                   kNoInsertionTick);
 
   EXPECT_EQ(obu.invalidates_bitstream_, kDoesNotInvalidateBitstream);
 }
