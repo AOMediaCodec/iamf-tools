@@ -183,7 +183,8 @@ struct LoudspeakersSsConventionLayout {
     kSoundSystem10_2_7_0 = 10,
     kSoundSystem11_2_3_0 = 11,
     kSoundSystem12_0_1_0 = 12,
-    kSoundSystemBeginReserved = 13,
+    kSoundSystem13_6_9_0 = 13,
+    kSoundSystemBeginReserved = 14,
     kSoundSystemEndReserved = 15,
   };
 

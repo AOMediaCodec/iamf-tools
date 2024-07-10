@@ -823,6 +823,18 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystem7_1_4) {
   EXPECT_EQ(num_channels, kExpected7_1_4Channels);
 }
 
+TEST_F(GetNumChannelsFromLayoutTest, SoundSystem9_1_6) {
+  std::get<LoudspeakersSsConventionLayout>(layout_.specific_layout)
+      .sound_system = LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0;
+  const int32_t kExpected9_1_6Channels = 16;
+
+  int32_t num_channels;
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
+  EXPECT_EQ(num_channels, kExpected9_1_6Channels);
+}
+
 TEST_F(GetNumChannelsFromLayoutTest, LayoutTypeBinaural) {
   layout_ = {
       .layout_type = Layout::kLayoutTypeBinaural,

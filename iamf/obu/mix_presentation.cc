@@ -385,6 +385,7 @@ absl::Status MixPresentationObu::GetNumChannelsFromLayout(
               {kSoundSystem10_2_7_0, 10},
               {kSoundSystem11_2_3_0, 6},
               {kSoundSystem12_0_1_0, 1},
+              {kSoundSystem13_6_9_0, 16},
           });
 
       const auto sound_system = std::get<LoudspeakersSsConventionLayout>(

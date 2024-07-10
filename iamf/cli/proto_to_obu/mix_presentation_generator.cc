@@ -149,20 +149,22 @@ absl::Status CopySoundSystem(
   static const absl::NoDestructor<
       absl::flat_hash_map<iamf_tools_cli_proto::SoundSystem,
                           LoudspeakersSsConventionLayout::SoundSystem>>
-      kInputSoundSystemToOutputSoundSystem(
-          {{SOUND_SYSTEM_A_0_2_0, kSoundSystemA_0_2_0},
-           {SOUND_SYSTEM_B_0_5_0, kSoundSystemB_0_5_0},
-           {SOUND_SYSTEM_C_2_5_0, kSoundSystemC_2_5_0},
-           {SOUND_SYSTEM_D_4_5_0, kSoundSystemD_4_5_0},
-           {SOUND_SYSTEM_E_4_5_1, kSoundSystemE_4_5_1},
-           {SOUND_SYSTEM_F_3_7_0, kSoundSystemF_3_7_0},
-           {SOUND_SYSTEM_G_4_9_0, kSoundSystemG_4_9_0},
-           {SOUND_SYSTEM_H_9_10_3, kSoundSystemH_9_10_3},
-           {SOUND_SYSTEM_I_0_7_0, kSoundSystemI_0_7_0},
-           {SOUND_SYSTEM_J_4_7_0, kSoundSystemJ_4_7_0},
-           {SOUND_SYSTEM_10_2_7_0, kSoundSystem10_2_7_0},
-           {SOUND_SYSTEM_11_2_3_0, kSoundSystem11_2_3_0},
-           {SOUND_SYSTEM_12_0_1_0, kSoundSystem12_0_1_0}});
+      kInputSoundSystemToOutputSoundSystem({
+          {SOUND_SYSTEM_A_0_2_0, kSoundSystemA_0_2_0},
+          {SOUND_SYSTEM_B_0_5_0, kSoundSystemB_0_5_0},
+          {SOUND_SYSTEM_C_2_5_0, kSoundSystemC_2_5_0},
+          {SOUND_SYSTEM_D_4_5_0, kSoundSystemD_4_5_0},
+          {SOUND_SYSTEM_E_4_5_1, kSoundSystemE_4_5_1},
+          {SOUND_SYSTEM_F_3_7_0, kSoundSystemF_3_7_0},
+          {SOUND_SYSTEM_G_4_9_0, kSoundSystemG_4_9_0},
+          {SOUND_SYSTEM_H_9_10_3, kSoundSystemH_9_10_3},
+          {SOUND_SYSTEM_I_0_7_0, kSoundSystemI_0_7_0},
+          {SOUND_SYSTEM_J_4_7_0, kSoundSystemJ_4_7_0},
+          {SOUND_SYSTEM_10_2_7_0, kSoundSystem10_2_7_0},
+          {SOUND_SYSTEM_11_2_3_0, kSoundSystem11_2_3_0},
+          {SOUND_SYSTEM_12_0_1_0, kSoundSystem12_0_1_0},
+          {SOUND_SYSTEM_13_6_9_0, kSoundSystem13_6_9_0},
+      });
 
   if (!LookupInMap(*kInputSoundSystemToOutputSoundSystem, input_sound_system,
                    output_sound_system)
