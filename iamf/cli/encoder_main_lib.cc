@@ -158,7 +158,7 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
 
 absl::Status GenerateObus(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
-    IamfEncoder& iamf_encoder,
+    const std::string& output_iamf_directory, IamfEncoder& iamf_encoder,
     std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
@@ -276,9 +276,14 @@ absl::Status GenerateObus(
 
   // TODO(b/349271713): Move the mix presentation finalizer inside
   //                    `IamfEncoder`.
+  // Write the output audio streams which were used to measure loudness to the
+  // same directory as the IAMF file.
+  const std::string output_wav_file_prefix =
+      std::filesystem::path(output_iamf_directory) /
+      user_metadata.test_vector_metadata().file_name_prefix();
+  LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
-      user_metadata.test_vector_metadata().file_name_prefix(),
-      output_wav_file_bit_depth_override,
+      output_wav_file_prefix, output_wav_file_bit_depth_override,
       user_metadata.test_vector_metadata().validate_user_loudness());
   RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
       audio_elements, id_to_time_to_labeled_frame, parameter_blocks,
@@ -340,9 +345,9 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
 
   IamfEncoder iamf_encoder(user_metadata);
   RETURN_IF_NOT_OK(GenerateObus(
-      user_metadata, input_wav_directory, iamf_encoder, ia_sequence_header_obu,
-      codec_config_obus, audio_elements, mix_presentation_obus, audio_frames,
-      parameter_blocks, arbitrary_obus));
+      user_metadata, input_wav_directory, output_iamf_directory, iamf_encoder,
+      ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, audio_frames, parameter_blocks, arbitrary_obus));
 
   RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
                              ia_sequence_header_obu.value(), codec_config_obus,
