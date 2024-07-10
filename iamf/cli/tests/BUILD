@@ -308,6 +308,7 @@ cc_test(
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:leb128",

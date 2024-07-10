@@ -28,6 +28,7 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/leb128.h"
@@ -49,6 +50,7 @@ constexpr DecodedUleb128 kSecondSubstreamId = 2;
 constexpr DecodedUleb128 kFirstMixPresentationId = 1;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 const uint32_t kCommonMixGainParameterRate = kSampleRate;
+const uint8_t kAudioElementReserved = 0;
 
 const std::vector<DecodedUleb128> kSubstreamIdsForFourthOrderAmbisonics = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
@@ -58,6 +60,154 @@ using enum ProfileVersion;
 
 const absl::flat_hash_set<ProfileVersion> kAllKnownProfileVersions = {
     kIamfSimpleProfile, kIamfBaseProfile, kIamfBaseEnhancedProfile};
+
+TEST(FilterProfilesForAudioElement,
+     KeepsChannelBasedAudioElementForAllKnownProfiles) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(1, 1), IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo;
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_EQ(all_known_profiles, kAllKnownProfileVersions);
+}
+
+TEST(FilterProfilesForAudioElement,
+     KeepsSceneBasedMonoAudioElementForAllKnownProfiles) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementSceneBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeAmbisonicsMono(1, 1), IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_EQ(all_known_profiles, kAllKnownProfileVersions);
+}
+
+TEST(FilterProfilesForAudioElement,
+     KeepsSceneBasedProjectionAudioElementForAllKnownProfiles) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementSceneBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeAmbisonicsProjection(1, 1, 0),
+              IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_EQ(all_known_profiles, kAllKnownProfileVersions);
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesSimpleProfileForReservedAudioElementType) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementBeginReserved,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, simple_profile)
+                   .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesSimpleProfileForReservedAmbisonicsMode) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementSceneBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, simple_profile)
+                   .ok());
+
+  EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseProfileForReservedAudioElementType) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementBeginReserved,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseProfileForReservedAmbisonicsMode) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementSceneBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileForReservedAudioElementType) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementBeginReserved,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileForReservedAmbisonicsMode) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementSceneBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeExtensionConfig(0);
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
 
 void InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,

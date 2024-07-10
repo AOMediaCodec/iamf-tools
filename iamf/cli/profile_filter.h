@@ -17,7 +17,9 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 
@@ -31,6 +33,20 @@ namespace iamf_tools {
  */
 class ProfileFilter {
  public:
+  /*!\brief Filter out profiles that should ignore the audio element.
+   *
+   * \param debugging_context Context to use for error messages.
+   * \param audio_element_obu Audio element to filter based on.
+   * \param profile_versions Profiles to filter. Unsupported profiles will be
+   *     removed from the set.
+   * \return `absl::OkStatus` if the audio element is supported by at least one
+   *     of the input profile. A specific error otherwise.
+   */
+  static absl::Status FilterProfilesForAudioElement(
+      absl::string_view debugging_context,
+      const AudioElementObu& audio_element_obu,
+      absl::flat_hash_set<ProfileVersion>& profile_versions);
+
   /*!\brief Filter out profiles that should ignore the mix presentation.
    *
    * \param audio_elements Audio elements in the IA sequence.

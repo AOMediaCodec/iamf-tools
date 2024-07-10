@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <string>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -21,6 +22,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/common/macros.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 
@@ -35,6 +37,79 @@ constexpr int kBaseEnhancedProfileMaxAudioElements = 28;
 constexpr int kSimpleProfileMaxChannels = 16;
 constexpr int kBaseProfileMaxChannels = 18;
 constexpr int kBaseEnhancedProfileMaxChannels = 28;
+
+absl::Status ClearAndReturnError(
+    absl::string_view context,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  profile_versions.clear();
+  return absl::InvalidArgumentError(context);
+}
+
+absl::Status FilterAudioElementType(
+    absl::string_view debugging_context,
+    AudioElementObu::AudioElementType audio_element_type,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  switch (audio_element_type) {
+    using enum AudioElementObu::AudioElementType;
+    case AudioElementObu::kAudioElementChannelBased:
+    case AudioElementObu::kAudioElementSceneBased:
+      break;
+    default:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+  }
+
+  if (profile_versions.empty()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        debugging_context, "has audio element type= ", audio_element_type,
+        ". But the requested profiles do support not support this type."));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status FilterChannelBasedConfig(
+    absl::string_view /*debugging_context*/,
+    const AudioElementObu& /*audio_element_obu*/,
+    absl::flat_hash_set<ProfileVersion>& /*profile_versions*/) {
+  // TODO(b/350765228): Filter out profiles that do not support the first layer.
+  return absl::OkStatus();
+}
+
+absl::Status FilterAmbisonicsConfig(
+    absl::string_view debugging_context,
+    const AudioElementObu& audio_element_obu,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  if (!std::holds_alternative<AmbisonicsConfig>(audio_element_obu.config_)) {
+    return ClearAndReturnError(
+        absl::StrCat(
+            debugging_context,
+            "signals that it is a scene-based audio element, but it does not "
+            "hold an `AmbisonicsConfig`."),
+        profile_versions);
+  }
+
+  auto ambisonics_mode =
+      std::get<AmbisonicsConfig>(audio_element_obu.config_).ambisonics_mode;
+  switch (ambisonics_mode) {
+    using enum AmbisonicsConfig::AmbisonicsMode;
+    case AmbisonicsConfig::kAmbisonicsModeMono:
+    case AmbisonicsConfig::kAmbisonicsModeProjection:
+      break;
+    default:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      break;
+  }
+
+  if (profile_versions.empty()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        debugging_context, "has ambisonics_mode= ", ambisonics_mode,
+        ". But the requested profiles do support not support this mode."));
+  }
+  return absl::OkStatus();
+}
 
 absl::Status FilterProfileForNumSubmixes(
     absl::string_view mix_presentation_id_for_debugging,
@@ -89,13 +164,6 @@ absl::Status FilterProfileForHeadphonesRenderingMode(
   return absl::OkStatus();
 }
 
-absl::Status ClearAndReturnError(
-    absl::string_view context,
-    absl::flat_hash_set<ProfileVersion>& profile_versions) {
-  profile_versions.clear();
-  return absl::InvalidArgumentError(context);
-}
-
 int GetNumberOfChannels(const AudioElementWithData& audio_element) {
   int num_channels = 0;
   for (const auto& [substream_id, labels] :
@@ -105,7 +173,7 @@ int GetNumberOfChannels(const AudioElementWithData& audio_element) {
   return num_channels;
 }
 
-absl::Status GetNumberOfAudioElementsAndChannels(
+absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
     absl::string_view mix_presentation_id_for_debugging,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
@@ -126,6 +194,10 @@ absl::Status GetNumberOfAudioElementsAndChannels(
                          " , but there is no Audio Element with that ID."),
             profile_versions);
       }
+      RETURN_IF_NOT_OK(ProfileFilter::FilterProfilesForAudioElement(
+          mix_presentation_id_for_debugging, iter->second.obu,
+          profile_versions));
+
       num_channels_in_mix_presentation += GetNumberOfChannels(iter->second);
     }
   }
@@ -185,6 +257,37 @@ absl::Status FilterProfilesForNumChannels(
 
 }  // namespace
 
+absl::Status ProfileFilter::FilterProfilesForAudioElement(
+    absl::string_view debugging_context,
+    const AudioElementObu& audio_element_obu,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  const std::string context_and_audio_element_id_for_debugging = absl::StrCat(
+      debugging_context,
+      " Audio element ID= ", audio_element_obu.GetAudioElementId(), " ");
+
+  RETURN_IF_NOT_OK(FilterAudioElementType(
+      context_and_audio_element_id_for_debugging,
+      audio_element_obu.GetAudioElementType(), profile_versions));
+  // Filter any type-specific properties.
+  switch (audio_element_obu.GetAudioElementType()) {
+    using enum AudioElementObu::AudioElementType;
+    case AudioElementObu::kAudioElementChannelBased:
+      RETURN_IF_NOT_OK(
+          FilterChannelBasedConfig(context_and_audio_element_id_for_debugging,
+                                   audio_element_obu, profile_versions));
+      break;
+    case AudioElementObu::kAudioElementSceneBased:
+      RETURN_IF_NOT_OK(
+          FilterAmbisonicsConfig(context_and_audio_element_id_for_debugging,
+                                 audio_element_obu, profile_versions));
+      break;
+    default:
+      break;
+  }
+
+  return absl::OkStatus();
+}
+
 absl::Status ProfileFilter::FilterProfilesForMixPresentation(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const MixPresentationObu& mix_presentation_obu,
@@ -202,7 +305,7 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
 
   int num_audio_elements_in_mix_presentation;
   int num_channels_in_mix_presentation;
-  RETURN_IF_NOT_OK(GetNumberOfAudioElementsAndChannels(
+  RETURN_IF_NOT_OK(FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
       mix_presentation_id_for_debugging, audio_elements, mix_presentation_obu,
       profile_versions, num_audio_elements_in_mix_presentation,
       num_channels_in_mix_presentation));
@@ -216,4 +319,5 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
 
   return absl::OkStatus();
 }
+
 }  // namespace iamf_tools
