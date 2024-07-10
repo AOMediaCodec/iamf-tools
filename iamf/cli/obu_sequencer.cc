@@ -155,10 +155,10 @@ absl::Status WriteObusWithHook(
   return absl::OkStatus();
 }
 
-absl::Status ObuSequencerBase::WriteTemporalUnit(
-    bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
-    WriteBitBuffer& wb, int& num_samples) {
+absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
+                                  int& num_samples) {
   if (temporal_unit.audio_frames.empty()) {
+    // Exit early even when `NO_CHECK_ERROR` is set.
     return absl::InvalidArgumentError(
         "Every temporal unit must have an audio frame.");
   }
@@ -168,6 +168,14 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
        (temporal_unit.audio_frames[0]
             ->obu.header_.num_samples_to_trim_at_start +
         temporal_unit.audio_frames[0]->obu.header_.num_samples_to_trim_at_end));
+
+  return absl::OkStatus();
+}
+
+absl::Status ObuSequencerBase::WriteTemporalUnit(
+    bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
+    WriteBitBuffer& wb, int& num_samples) {
+  RETURN_IF_NOT_OK(AccumulateNumSamples(temporal_unit, num_samples));
 
   if (include_temporal_delimiters) {
     // Temporal delimiter has no payload.

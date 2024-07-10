@@ -418,7 +418,7 @@ absl::Status ScalableChannelLayoutConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {
   if (num_layers == 0 || num_layers > 6) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Expected `num_layers` in [0, 6]; got ", num_layers));
+        absl::StrCat("Expected `num_layers` in [1, 6]; got ", num_layers));
   }
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual("channel_audio_layer_configs",
                                            num_layers,
