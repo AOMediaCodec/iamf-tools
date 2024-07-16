@@ -16,7 +16,7 @@ test_vector_metadata {
   human_readable_description:
     "A first-order ambisonics IAMF stream it contains a loudness layout which "
     "is reserved in simple profile, but permitted in base-enhanced profile."
-  file_name_prefix: "test_000126"
+  file_name_prefix: "test_000131"
   is_valid: true
 validate_user_loudness: true
   mp4_fixed_timestamp: "2024-07-09 00:00:00"
