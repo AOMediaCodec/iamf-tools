@@ -346,10 +346,9 @@ absl::Status CollectDcgLabels(
         // This is the special case where layer 1 is Mono and layer 2 is
         // Stereo. According to the Spec 3.7.2
         // (https://aomediacodec.github.io/iamf/#syntax-scalable-channel-layout-config):
-        // "Center channel comes first and followed by LFE and followed by the
-        // other one."
-        // "L2" is categorized as "the other one", so we save pushing "L2"
-        // till the end.
+        // "The Centre (or Front Centre) channel comes first and is followed by
+        // the LFE (or LFE1) channel, and then the L channel.". Save pushing
+        // "L2" till the end.
         push_l2_in_the_end = true;
         break;
       case 3:

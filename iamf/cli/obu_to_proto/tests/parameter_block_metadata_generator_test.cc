@@ -198,11 +198,11 @@ TEST(GenerateParameterSubblockMetadata, GeneratesExtensionParameterSubblocks) {
 }
 
 TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
-  constexpr uint8_t kCenterReconGain = 100;
+  constexpr uint8_t kCentreReconGain = 100;
   constexpr uint8_t kRightReconGain = 200;
   constexpr size_t kExpectedNumLayers = 2;
-  constexpr uint32_t kExpectedCenterReconGainLayer = 0;
-  constexpr uint32_t kExpectedCenterReconGainIndex = 1;
+  constexpr uint32_t kExpectedCentreReconGainLayer = 0;
+  constexpr uint32_t kExpectedCentreReconGainIndex = 1;
   constexpr uint32_t kExpectedRightReconGainLayer = 1;
   constexpr uint32_t kExpectedRightReconGainIndex = 2;
   const ParameterSubblock kReconGainSubblock{
@@ -210,7 +210,7 @@ TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
       .param_data = ReconGainInfoParameterData{
           .recon_gain_elements = {
               {.recon_gain_flag = ReconGainElement::kReconGainFlagC,
-               .recon_gain = {0, kCenterReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+               .recon_gain = {0, kCentreReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                               0}},
               {.recon_gain_flag = ReconGainElement::kReconGainFlagR,
                .recon_gain = {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -227,10 +227,10 @@ TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
                 .recon_gains_for_layer_size(),
             kExpectedNumLayers);
   EXPECT_EQ(subblock_metadata->recon_gain_info_parameter_data()
-                .recon_gains_for_layer(kExpectedCenterReconGainLayer)
+                .recon_gains_for_layer(kExpectedCentreReconGainLayer)
                 .recon_gain()
-                .at(kExpectedCenterReconGainIndex),
-            kCenterReconGain);
+                .at(kExpectedCentreReconGainIndex),
+            kCentreReconGain);
   EXPECT_EQ(subblock_metadata->recon_gain_info_parameter_data()
                 .recon_gains_for_layer(kExpectedRightReconGainLayer)
                 .recon_gain()
