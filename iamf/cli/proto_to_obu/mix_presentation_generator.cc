@@ -35,24 +35,25 @@ namespace iamf_tools {
 
 namespace {
 
-void FillLanguageLabelsAndAnnotations(
+void FillAnnotationsLanguageAndAnnotations(
     const iamf_tools_cli_proto::MixPresentationObuMetadata&
         mix_presentation_metadata,
-    DecodedUleb128& count_label, std::vector<std::string>& language_labels,
-    std::vector<MixPresentationAnnotations>& mix_presentation_annotations) {
+    DecodedUleb128& count_label, std::vector<std::string>& annotations_language,
+    std::vector<std::string>& localized_presentation_annotations) {
   count_label = mix_presentation_metadata.count_label();
 
-  language_labels.reserve(mix_presentation_metadata.count_label());
+  annotations_language.reserve(mix_presentation_metadata.count_label());
   for (const auto& language_label :
        mix_presentation_metadata.language_labels()) {
-    language_labels.push_back(language_label);
+    annotations_language.push_back(language_label);
   }
 
-  mix_presentation_annotations.reserve(mix_presentation_metadata.count_label());
+  localized_presentation_annotations.reserve(
+      mix_presentation_metadata.count_label());
   for (const auto& mix_presentation_annotation :
        mix_presentation_metadata.mix_presentation_annotations_array()) {
-    mix_presentation_annotations.push_back(
-        {mix_presentation_annotation.mix_presentation_friendly_label()});
+    localized_presentation_annotations.push_back(
+        mix_presentation_annotation.mix_presentation_friendly_label());
   }
 }
 
@@ -72,14 +73,14 @@ void FillSubMixNumAudioElements(
   sub_mix.audio_elements.reserve(input_sub_mix.num_audio_elements());
 }
 
-absl::Status FillMixPresentationElementAnnotations(
+absl::Status FillLocalizedElementAnnotations(
     const iamf_tools_cli_proto::SubMixAudioElement& input_sub_mix_audio_element,
     SubMixAudioElement& sub_mix_audio_element) {
   for (const auto& input_audio_element_friendly_label :
        input_sub_mix_audio_element
            .mix_presentation_element_annotations_array()) {
-    sub_mix_audio_element.mix_presentation_element_annotations.push_back(
-        {input_audio_element_friendly_label.audio_element_friendly_label()});
+    sub_mix_audio_element.localized_element_annotations.push_back(
+        input_audio_element_friendly_label.audio_element_friendly_label());
   }
 
   return absl::OkStatus();
@@ -405,9 +406,9 @@ absl::Status MixPresentationGenerator::Generate(
     struct {
       DecodedUleb128 mix_presentation_id;
       DecodedUleb128 count_label;
-      std::vector<std::string> language_labels;
+      std::vector<std::string> annotations_language;
       // Length `count_label`.
-      std::vector<MixPresentationAnnotations> mix_presentation_annotations;
+      std::vector<std::string> localized_presentation_annotations;
 
       DecodedUleb128 num_sub_mixes;
       // Length `num_sub_mixes`.
@@ -417,9 +418,10 @@ absl::Status MixPresentationGenerator::Generate(
     obu_args.mix_presentation_id =
         mix_presentation_metadata.mix_presentation_id();
 
-    FillLanguageLabelsAndAnnotations(
+    FillAnnotationsLanguageAndAnnotations(
         mix_presentation_metadata, obu_args.count_label,
-        obu_args.language_labels, obu_args.mix_presentation_annotations);
+        obu_args.annotations_language,
+        obu_args.localized_presentation_annotations);
 
     FillNumSubMixes(mix_presentation_metadata, obu_args.num_sub_mixes,
                     obu_args.sub_mixes);
@@ -433,7 +435,7 @@ absl::Status MixPresentationGenerator::Generate(
         sub_mix_audio_element.audio_element_id =
             input_sub_mix_audio_element.audio_element_id();
 
-        RETURN_IF_NOT_OK(FillMixPresentationElementAnnotations(
+        RETURN_IF_NOT_OK(FillLocalizedElementAnnotations(
             input_sub_mix_audio_element, sub_mix_audio_element));
 
         RETURN_IF_NOT_OK(
@@ -442,13 +444,13 @@ absl::Status MixPresentationGenerator::Generate(
 
         RETURN_IF_NOT_OK(FillMixConfig(
             input_sub_mix_audio_element.element_mix_config().mix_gain(),
-            sub_mix_audio_element.element_mix_config.mix_gain));
+            sub_mix_audio_element.element_mix_gain));
         sub_mix.audio_elements.push_back(sub_mix_audio_element);
       }
 
       RETURN_IF_NOT_OK(
           FillMixConfig(input_sub_mix.output_mix_config().output_mix_gain(),
-                        sub_mix.output_mix_config.output_mix_gain));
+                        sub_mix.output_mix_gain));
 
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));
@@ -457,8 +459,9 @@ absl::Status MixPresentationGenerator::Generate(
     mix_presentation_obus.emplace_back(
         GetHeaderFromMetadata(mix_presentation_metadata.obu_header()),
         obu_args.mix_presentation_id, obu_args.count_label,
-        obu_args.language_labels, obu_args.mix_presentation_annotations,
-        obu_args.num_sub_mixes, obu_args.sub_mixes);
+        obu_args.annotations_language,
+        obu_args.localized_presentation_annotations, obu_args.num_sub_mixes,
+        obu_args.sub_mixes);
   }
   return absl::OkStatus();
 }

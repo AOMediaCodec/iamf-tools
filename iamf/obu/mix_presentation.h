@@ -29,15 +29,6 @@
 
 namespace iamf_tools {
 
-/*!\brief A human-friendly label to describe the audio element in a sub-mix. */
-struct MixPresentationElementAnnotations {
-  friend bool operator==(const MixPresentationElementAnnotations& lhs,
-                         const MixPresentationElementAnnotations& rhs) =
-      default;
-
-  std::string audio_element_friendly_label;
-};
-
 struct RenderingConfig {
   /*!\brief A 2-bit enum describing how to render the content to headphones. */
   enum HeadphonesRenderingMode : uint8_t {
@@ -56,14 +47,6 @@ struct RenderingConfig {
   std::vector<uint8_t> rendering_config_extension_bytes;
 };
 
-/*!\brief The gain value to be applied to the rendered audio element signal. */
-struct ElementMixConfig {
-  friend bool operator==(const ElementMixConfig& lhs,
-                         const ElementMixConfig& rhs) = default;
-
-  MixGainParamDefinition mix_gain;
-};
-
 /*!\brief One of the audio elements within a sub-mix. */
 struct SubMixAudioElement {
   friend bool operator==(const SubMixAudioElement& lhs,
@@ -80,10 +63,10 @@ struct SubMixAudioElement {
   // The ID of the associated Audio Element OBU.
   DecodedUleb128 audio_element_id;
   // Length `count_labels`.
-  std::vector<MixPresentationElementAnnotations>
-      mix_presentation_element_annotations;
+  std::vector<std::string> localized_element_annotations;
   RenderingConfig rendering_config;
-  ElementMixConfig element_mix_config;
+  // The gain value to be applied to the rendered audio element signal.
+  MixGainParamDefinition element_mix_gain;
 };
 
 struct AnchoredLoudnessElement {
@@ -296,31 +279,6 @@ struct MixPresentationLayout {
   LoudnessInfo loudness;
 };
 
-/*!\brief Informational metadata about a Mix Presentation OBU.
- *
- * The informational metadata that an IA parser should refer to when
- * selecting the mix presentation to use. May be used by the playback system to
- * display information to the user, but is not used in the rendering or mixing
- * process to generate the final output audio signal.
- */
-struct MixPresentationAnnotations {
-  friend bool operator==(const MixPresentationAnnotations& lhs,
-                         const MixPresentationAnnotations& rhs) = default;
-
-  std::string mix_presentation_friendly_label;
-};
-
-/*!\brief Metadata required for post-processing the mixed audio signal.
- *
- * The gain value to be applied in  post-processing the mixed audio signal to
- * generate the audio signal for playback.
- */
-struct OutputMixConfig {
-  friend bool operator==(const OutputMixConfig& lhs,
-                         const OutputMixConfig& rhs) = default;
-  MixGainParamDefinition output_mix_gain;
-};
-
 /*!\brief One of the sub-mixes within a Mix Presentation Obu. */
 struct MixPresentationSubMix {
   friend bool operator==(const MixPresentationSubMix& lhs,
@@ -338,7 +296,9 @@ struct MixPresentationSubMix {
   // Length `num_audio_elements`.
   std::vector<SubMixAudioElement> audio_elements;
 
-  OutputMixConfig output_mix_config;
+  // The gain value to be applied in post-processing the mixed audio signal to
+  // generate the audio signal for playback.
+  MixGainParamDefinition output_mix_gain;
 
   DecodedUleb128 num_layouts;
   // Length `num_layouts`.
@@ -378,27 +338,26 @@ class MixPresentationObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param mix_presentation_id `mix_presentation_id` in the OBU.
    * \param count_label `count_label` in the OBU.
-   * \param language_labels Vector representing all of the `language_label`s in
-   *     the OBU.
-   * \param mix_presentation_annotations Vector representing all of the
-   *     `mix_presentation_annotations`s in the OBU.
+   * \param annotations_language Vector representing all of the
+   *     `annotations_language`s in the OBU.
+   * \param localized_presentation_annotations Vector representing all of the
+   *     `localized_presentation_annotations`s in the OBU.
    * \param num_sub_mixes `num_sub_mixes` in the OBU.
    * \param sub_mixes Vector representing all of the sub mixes in the OBU.
    */
-  MixPresentationObu(const ObuHeader& header,
-                     DecodedUleb128 mix_presentation_id,
-                     DecodedUleb128 count_label,
-                     const std::vector<std::string>& language_labels,
-                     const std::vector<MixPresentationAnnotations>&
-                         mix_presentation_annotations,
-                     DecodedUleb128 num_sub_mixes,
-                     std::vector<MixPresentationSubMix>& sub_mixes)
+  MixPresentationObu(
+      const ObuHeader& header, DecodedUleb128 mix_presentation_id,
+      DecodedUleb128 count_label,
+      const std::vector<std::string>& annotations_language,
+      const std::vector<std::string>& localized_presentation_annotations,
+      DecodedUleb128 num_sub_mixes,
+      std::vector<MixPresentationSubMix>& sub_mixes)
       : ObuBase(header, kObuIaMixPresentation),
         sub_mixes_(std::move(sub_mixes)),
         mix_presentation_id_(mix_presentation_id),
         count_label_(count_label),
-        language_labels_(language_labels),
-        mix_presentation_annotations_(mix_presentation_annotations),
+        annotations_language_(annotations_language),
+        localized_presentation_annotations_(localized_presentation_annotations),
         num_sub_mixes_(num_sub_mixes) {}
 
   /*!\brief Creates a `MixPresentationObu` from a `ReadBitBuffer`.
@@ -432,9 +391,8 @@ class MixPresentationObu : public ObuBase {
 
   DecodedUleb128 GetMixPresentationId() const { return mix_presentation_id_; }
 
-  std::vector<MixPresentationAnnotations> GetMixPresentationAnnotations()
-      const {
-    return mix_presentation_annotations_;
+  std::vector<std::string> GetLocalizedPresentationAnnotations() const {
+    return localized_presentation_annotations_;
   }
 
   DecodedUleb128 GetNumSubMixes() const { return num_sub_mixes_; }
@@ -445,9 +403,9 @@ class MixPresentationObu : public ObuBase {
   DecodedUleb128 mix_presentation_id_;
   DecodedUleb128 count_label_;
   // Length `count_label`.
-  std::vector<std::string> language_labels_;
+  std::vector<std::string> annotations_language_;
   // Length `count_label`.
-  std::vector<MixPresentationAnnotations> mix_presentation_annotations_;
+  std::vector<std::string> localized_presentation_annotations_;
 
   DecodedUleb128 num_sub_mixes_;
 
@@ -457,8 +415,8 @@ class MixPresentationObu : public ObuBase {
         sub_mixes_({}),
         mix_presentation_id_(DecodedUleb128()),
         count_label_(DecodedUleb128()),
-        language_labels_({}),
-        mix_presentation_annotations_({}),
+        annotations_language_({}),
+        localized_presentation_annotations_({}),
         num_sub_mixes_(DecodedUleb128()) {}
   /*!\brief Writes the OBU payload to the buffer.
    *

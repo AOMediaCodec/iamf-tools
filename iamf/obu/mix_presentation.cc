@@ -66,10 +66,9 @@ absl::Status ValidateAndWriteSubMixAudioElement(
     const SubMixAudioElement& element, WriteBitBuffer& wb) {
   // Write the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(element.audio_element_id));
-  for (const auto& mix_presentation_element_annotation :
-       element.mix_presentation_element_annotations) {
-    RETURN_IF_NOT_OK(wb.WriteString(
-        mix_presentation_element_annotation.audio_element_friendly_label));
+  for (const auto& localized_element_annotation :
+       element.localized_element_annotations) {
+    RETURN_IF_NOT_OK(wb.WriteString(localized_element_annotation));
   }
 
   // Write out `rendering_config`.
@@ -87,7 +86,7 @@ absl::Status ValidateAndWriteSubMixAudioElement(
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(
       element.rendering_config.rendering_config_extension_bytes));
 
-  RETURN_IF_NOT_OK(element.element_mix_config.mix_gain.ValidateAndWrite(wb));
+  RETURN_IF_NOT_OK(element.element_mix_gain.ValidateAndWrite(wb));
   return absl::OkStatus();
 }
 
@@ -176,8 +175,7 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
         ValidateAndWriteSubMixAudioElement(sub_mix_audio_element, wb));
   }
 
-  RETURN_IF_NOT_OK(
-      sub_mix.output_mix_config.output_mix_gain.ValidateAndWrite(wb));
+  RETURN_IF_NOT_OK(sub_mix.output_mix_gain.ValidateAndWrite(wb));
   RETURN_IF_NOT_OK(wb.WriteUleb128(sub_mix.num_layouts));
 
   // Loop to write the `layouts` array.
@@ -278,11 +276,9 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
   // Read the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id));
   for (int i = 0; i < count_label; ++i) {
-    MixPresentationElementAnnotations mix_presentation_element_annotation;
-    RETURN_IF_NOT_OK(rb.ReadString(
-        mix_presentation_element_annotation.audio_element_friendly_label));
-    mix_presentation_element_annotations.push_back(
-        mix_presentation_element_annotation);
+    std::string localized_element_annotation;
+    RETURN_IF_NOT_OK(rb.ReadString(localized_element_annotation));
+    localized_element_annotations.push_back(localized_element_annotation);
   }
 
   // Read `rendering_config`.
@@ -301,7 +297,7 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
       rb.ReadUint8Vector(rendering_config.rendering_config_extension_size,
                          rendering_config.rendering_config_extension_bytes));
 
-  RETURN_IF_NOT_OK(element_mix_config.mix_gain.ReadAndValidate(rb));
+  RETURN_IF_NOT_OK(element_mix_gain.ReadAndValidate(rb));
   return absl::OkStatus();
 }
 
@@ -317,7 +313,7 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
     audio_elements.push_back(sub_mix_audio_element);
   }
 
-  RETURN_IF_NOT_OK(output_mix_config.output_mix_gain.ReadAndValidate(rb));
+  RETURN_IF_NOT_OK(output_mix_gain.ReadAndValidate(rb));
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_layouts));
   for (int i = 0; i < num_layouts; ++i) {
     MixPresentationLayout mix_presentation_layout;
@@ -416,21 +412,21 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(wb.WriteUleb128(count_label_));
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-      "language_labels", language_labels_.size(), count_label_));
-  RETURN_IF_NOT_OK(ValidateUnique(language_labels_.begin(),
-                                  language_labels_.end(), "Language labels"));
+      "language_labels", annotations_language_.size(), count_label_));
+  RETURN_IF_NOT_OK(ValidateUnique(annotations_language_.begin(),
+                                  annotations_language_.end(),
+                                  "Language labels"));
 
-  for (const auto& language_label : language_labels_) {
-    RETURN_IF_NOT_OK(wb.WriteString(language_label));
+  for (const auto& annotations_language : annotations_language_) {
+    RETURN_IF_NOT_OK(wb.WriteString(annotations_language));
   }
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual("mix presentation annotations",
-                                           mix_presentation_annotations_.size(),
+                                           annotations_language_.size(),
                                            count_label_));
-  for (const auto& mix_presentation_annotation :
-       mix_presentation_annotations_) {
-    RETURN_IF_NOT_OK(wb.WriteString(
-        mix_presentation_annotation.mix_presentation_friendly_label));
+  for (const auto& localized_presentation_annotation :
+       localized_presentation_annotations_) {
+    RETURN_IF_NOT_OK(wb.WriteString(localized_presentation_annotation));
   }
 
   RETURN_IF_NOT_OK(wb.WriteUleb128(num_sub_mixes_));
@@ -460,18 +456,19 @@ absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
 
   for (int i = 0; i < count_label_; ++i) {
-    std::string language_label;
-    RETURN_IF_NOT_OK(rb.ReadString(language_label));
-    language_labels_.push_back(language_label);
+    std::string annotations_language;
+    RETURN_IF_NOT_OK(rb.ReadString(annotations_language));
+    annotations_language_.push_back(annotations_language);
   }
-  RETURN_IF_NOT_OK(ValidateUnique(language_labels_.begin(),
-                                  language_labels_.end(), "Language labels"));
+  RETURN_IF_NOT_OK(ValidateUnique(annotations_language_.begin(),
+                                  annotations_language_.end(),
+                                  "Annotation languages"));
 
   for (int i = 0; i < count_label_; ++i) {
-    MixPresentationAnnotations mix_presentation_annotation;
-    RETURN_IF_NOT_OK(rb.ReadString(
-        mix_presentation_annotation.mix_presentation_friendly_label));
-    mix_presentation_annotations_.push_back(mix_presentation_annotation);
+    std::string localized_presentation_annotation;
+    RETURN_IF_NOT_OK(rb.ReadString(localized_presentation_annotation));
+    localized_presentation_annotations_.push_back(
+        localized_presentation_annotation);
   }
 
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes_));
@@ -504,15 +501,13 @@ void MixPresentationObu::PrintObu() const {
   LOG(INFO) << "  count_label= " << count_label_;
   LOG(INFO) << "  language_labels:";
   for (int i = 0; i < count_label_; ++i) {
-    LOG(INFO) << "    language_label[" << i << "]= \"" << language_labels_[i]
-              << "\"";
+    LOG(INFO) << "    annotations_languages[" << i << "]= \""
+              << annotations_language_[i] << "\"";
   }
   LOG(INFO) << "  mix_presentation_annotations:";
   for (int i = 0; i < count_label_; ++i) {
-    LOG(INFO)
-        << "    mix_presentation_friendly_label[" << i << "]= \""
-        << mix_presentation_annotations_[i].mix_presentation_friendly_label
-        << "\"";
+    LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
+              << localized_presentation_annotations_[i] << "\"";
   }
   LOG(INFO) << "  num_sub_mixes= " << num_sub_mixes_;
 
@@ -526,12 +521,10 @@ void MixPresentationObu::PrintObu() const {
       const auto& audio_element = sub_mix.audio_elements[j];
       LOG(INFO) << "    // audio_elements[" << j << "]:";
       LOG(INFO) << "      audio_element_id= " << audio_element.audio_element_id;
-      LOG(INFO) << "      mix_presentation_element_annotations:";
+      LOG(INFO) << "      localized_presentation_annotations:";
       for (int k = 0; k < count_label_; ++k) {
-        LOG(INFO) << "        audio_element_friendly_label= \""
-                  << audio_element.mix_presentation_element_annotations[k]
-                         .audio_element_friendly_label
-                  << "\"";
+        LOG(INFO) << "        localized_element_annotations= \""
+                  << audio_element.localized_element_annotations[k] << "\"";
       }
       LOG(INFO) << "        rendering_config:";
       LOG(INFO) << "          headphones_rendering_mode= "
@@ -543,17 +536,12 @@ void MixPresentationObu::PrintObu() const {
           << "          rendering_config_extension_size= "
           << audio_element.rendering_config.rendering_config_extension_size;
       LOG(INFO) << "          rendering_config_extension_bytes omitted.";
-      LOG(INFO) << "        element_mix_config:";
-      LOG(INFO) << "          mix_gain:";
-      audio_element.element_mix_config.mix_gain.Print();
+      LOG(INFO) << "        element_mix_gain:";
+      audio_element.element_mix_gain.Print();
     }
 
-    // `output_mix_config`.
-    {
-      LOG(INFO) << "    output_mix_config:";
-      LOG(INFO) << "      output_mix_gain:";
-      sub_mix.output_mix_config.output_mix_gain.Print();
-    }
+    LOG(INFO) << "    output_mix_gain:";
+    sub_mix.output_mix_gain.Print();
 
     LOG(INFO) << "    num_layouts= " << sub_mix.num_layouts;
 

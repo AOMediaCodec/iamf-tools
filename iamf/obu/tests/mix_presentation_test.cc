@@ -74,14 +74,14 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
             }),
         mix_presentation_id_(10),
         count_label_(1),
-        language_labels_({{"en-us"}}),
-        mix_presentation_annotations_({{"Mix 1"}}),
+        annotations_language_({"en-us"}),
+        localized_presentation_annotations_({"Mix 1"}),
         num_sub_mixes_(1),
         sub_mixes_(
             {{.num_audio_elements = 1,
               .audio_elements = {{
                   .audio_element_id = 11,
-                  .mix_presentation_element_annotations = {{"Submix 1"}},
+                  .localized_element_annotations = {"Submix 1"},
                   .rendering_config =
                       {.headphones_rendering_mode =
                            RenderingConfig::kHeadphonesRenderingModeStereo,
@@ -111,8 +111,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     element_mix_gain.param_definition_mode_ = true;
     element_mix_gain.reserved_ = 0;
     element_mix_gain.default_mix_gain_ = 14;
-    sub_mixes_[0].audio_elements[0].element_mix_config.mix_gain =
-        element_mix_gain;
+    sub_mixes_[0].audio_elements[0].element_mix_gain = element_mix_gain;
 
     MixGainParamDefinition output_mix_gain;
     output_mix_gain.parameter_id_ = 15;
@@ -120,7 +119,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     output_mix_gain.param_definition_mode_ = true;
     output_mix_gain.reserved_ = 0;
     output_mix_gain.default_mix_gain_ = 17;
-    sub_mixes_[0].output_mix_config.output_mix_gain = output_mix_gain;
+    sub_mixes_[0].output_mix_gain = output_mix_gain;
   }
 
   ~MixPresentationObuTest() override = default;
@@ -136,9 +135,9 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
 
   DecodedUleb128 mix_presentation_id_;
   DecodedUleb128 count_label_;
-  std::vector<std::string> language_labels_;
+  std::vector<std::string> annotations_language_;
   // Length `count_label`.
-  std::vector<MixPresentationAnnotations> mix_presentation_annotations_;
+  std::vector<std::string> localized_presentation_annotations_;
 
   DecodedUleb128 num_sub_mixes_;
   // Length `num_sub_mixes`.
@@ -163,28 +162,27 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
       const auto& audio_element_args =
           sub_mix_args.element_mix_gain_subblocks[j];
 
-      audio_element.element_mix_config.mix_gain.InitializeSubblockDurations(
+      audio_element.element_mix_gain.InitializeSubblockDurations(
           static_cast<DecodedUleb128>(audio_element_args.size()));
       ASSERT_EQ(audio_element_args.size(),
-                audio_element.element_mix_config.mix_gain.GetNumSubblocks());
+                audio_element.element_mix_gain.GetNumSubblocks());
       for (int k = 0; k < audio_element_args.size(); ++k) {
-        EXPECT_THAT(
-            audio_element.element_mix_config.mix_gain.SetSubblockDuration(
-                k, audio_element_args[k]),
-            IsOk());
+        EXPECT_THAT(audio_element.element_mix_gain.SetSubblockDuration(
+                        k, audio_element_args[k]),
+                    IsOk());
       }
     }
 
     // Create and initialize memory for the subblock durations within the
     // output mix config.
 
-    sub_mix.output_mix_config.output_mix_gain.InitializeSubblockDurations(
+    sub_mix.output_mix_gain.InitializeSubblockDurations(
         static_cast<DecodedUleb128>(
             sub_mix_args.output_mix_gain_subblocks.size()));
     ASSERT_EQ(sub_mix_args.output_mix_gain_subblocks.size(),
-              sub_mix.output_mix_config.output_mix_gain.GetNumSubblocks());
+              sub_mix.output_mix_gain.GetNumSubblocks());
     for (int j = 0; j < sub_mix_args.output_mix_gain_subblocks.size(); ++j) {
-      EXPECT_THAT(sub_mix.output_mix_config.output_mix_gain.SetSubblockDuration(
+      EXPECT_THAT(sub_mix.output_mix_gain.SetSubblockDuration(
                       j, sub_mix_args.output_mix_gain_subblocks[j]),
                   IsOk());
     }
@@ -200,8 +198,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
 
     // Construct and transfer ownership of the memory to the OBU.
     obu_ = std::make_unique<MixPresentationObu>(
-        header_, mix_presentation_id_, count_label_, language_labels_,
-        mix_presentation_annotations_, num_sub_mixes_, sub_mixes_);
+        header_, mix_presentation_id_, count_label_, annotations_language_,
+        localized_presentation_annotations_, num_sub_mixes_, sub_mixes_);
   }
 };
 
@@ -441,17 +439,13 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       // `rendering_config_extension_size` is affected by the `LebGenerator`.
       0x80 | 2, 0x00, 'e', 'x',
       // End RenderingConfig.
-      // `element_mix_config.mix_gain.parameter_id` is affected by the
-      // `LebGenerator`.
+      // `element_mix_gain.parameter_id` is affected by the `LebGenerator`.
       0x80 | 12, 0x00,
-      // `element_mix_config.mix_gain.parameter_rate` is affected by the
-      // `LebGenerator`.
+      // `element_mix_gain.parameter_rate` is affected by the `LebGenerator`.
       0x80 | 13, 0x00, 0x80, 0, 14,
-      // `output_mix_config.mix_gain.parameter_id` is affected by the
-      // `LebGenerator`.
+      // `output_mix_gain.parameter_id` is affected by the `LebGenerator`.
       0x80 | 15, 0x00,
-      // `output_mix_config.mix_gain.parameter_rate` is affected by the
-      // `LebGenerator`.
+      // `output_mix_gain.parameter_rate` is affected by the `LebGenerator`.
       0x80 | 16, 0x00, 0x80, 0, 17,
       // `num_layouts` is affected by the `LebGenerator`.
       0x80 | 1, 0x00,
@@ -496,8 +490,7 @@ TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithIllegalIamfStringOver128Bytes) {
   // Create a string that has no null terminator in the first 128 bytes.
   const std::string kIllegalIamfString(kIamfMaxStringSize, 'a');
-  mix_presentation_annotations_[0].mix_presentation_friendly_label =
-      kIllegalIamfString;
+  localized_presentation_annotations_[0] = kIllegalIamfString;
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -506,10 +499,10 @@ TEST_F(MixPresentationObuTest,
 
 TEST_F(MixPresentationObuTest, MultipleLabels) {
   count_label_ = 2;
-  language_labels_ = {{"en-us"}, {"en-gb"}};
-  mix_presentation_annotations_ = {{"Mix 1"}, {"Mix 1"}};
-  sub_mixes_[0].audio_elements[0].mix_presentation_element_annotations = {
-      {{"Submix 1"}, {"GB Submix 1"}}};
+  annotations_language_ = {"en-us", "en-gb"};
+  localized_presentation_annotations_ = {"Mix 1", "Mix 1"};
+  sub_mixes_[0].audio_elements[0].localized_element_annotations = {
+      "Submix 1", "GB Submix 1"};
 
   expected_header_ = {kObuIaMixPresentation << 3, 71};
   expected_payload_ = {
@@ -534,15 +527,14 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
 }
 
 TEST_F(MixPresentationObuTest,
-       ValidateAndWriteSucceedsWhenLanguageLabelsAreUnique) {
-  const std::vector<std::string> kLanguageLabelsWithDifferentRegions = {
+       ValidateAndWriteSucceedsWhenAnnotationsLanguagesAreUnique) {
+  const std::vector<std::string> kAnnotationsLanaguesWithDifferentRegions = {
       {"en-us"}, {"en-gb"}};
-  language_labels_ = kLanguageLabelsWithDifferentRegions;
+  annotations_language_ = kAnnotationsLanaguesWithDifferentRegions;
 
   count_label_ = 2;
-  mix_presentation_annotations_ = {{"0"}, {"1"}};
-  sub_mixes_[0].audio_elements[0].mix_presentation_element_annotations = {
-      {{"0"}, {"1"}}};
+  localized_presentation_annotations_ = {"0", "1"};
+  sub_mixes_[0].audio_elements[0].localized_element_annotations = {"0", "1"};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -550,16 +542,15 @@ TEST_F(MixPresentationObuTest,
 }
 
 TEST_F(MixPresentationObuTest,
-       ValidateAndWriteFailsWhenLanguageLabelsAreNotUnique) {
-  const std::vector<std::string> kInvalidLanguageLabelsWithDuplicate = {
+       ValidateAndWriteFailsWhenAnnotationsLanguagesAreNotUnique) {
+  const std::vector<std::string> kInvalidAnnotationsLanguagesWithDuplicate = {
       {"en-us"}, {"en-us"}};
-  language_labels_ = kInvalidLanguageLabelsWithDuplicate;
+  annotations_language_ = kInvalidAnnotationsLanguagesWithDuplicate;
 
   // Configure plausible values for the related fields.
   count_label_ = 2;
-  mix_presentation_annotations_ = {{"0"}, {"1"}};
-  sub_mixes_[0].audio_elements[0].mix_presentation_element_annotations = {
-      {{"0"}, {"1"}}};
+  localized_presentation_annotations_ = {"0", "1"};
+  sub_mixes_[0].audio_elements[0].localized_element_annotations = {"0", "1"};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -654,7 +645,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       {.num_audio_elements = 1,
        .audio_elements = {{
            .audio_element_id = 21,
-           .mix_presentation_element_annotations = {{"Submix 2"}},
+           .localized_element_annotations = {"Submix 2"},
            .rendering_config =
                {.headphones_rendering_mode =
                     RenderingConfig::kHeadphonesRenderingModeBinaural,
@@ -701,8 +692,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   element_mix_gain.param_definition_mode_ = true;
   element_mix_gain.reserved_ = 0;
   element_mix_gain.default_mix_gain_ = 24;
-  sub_mixes_.back().audio_elements[0].element_mix_config.mix_gain =
-      element_mix_gain;
+  sub_mixes_.back().audio_elements[0].element_mix_gain = element_mix_gain;
 
   MixGainParamDefinition output_mix_gain;
   output_mix_gain.parameter_id_ = 25;
@@ -710,7 +700,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   output_mix_gain.param_definition_mode_ = true;
   output_mix_gain.reserved_ = 0;
   output_mix_gain.default_mix_gain_ = 27;
-  sub_mixes_.back().output_mix_config.output_mix_gain = output_mix_gain;
+  sub_mixes_.back().output_mix_gain = output_mix_gain;
 
   dynamic_sub_mix_args_.push_back(
       {.element_mix_gain_subblocks = {{}}, .output_mix_gain_subblocks = {}});
@@ -967,9 +957,7 @@ TEST(CreateFromBufferTest, OneSubMix) {
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
-  EXPECT_EQ(
-      obu->GetMixPresentationAnnotations()[0].mix_presentation_friendly_label,
-      "Mix 1");
+  EXPECT_EQ(obu->GetLocalizedPresentationAnnotations()[0], "Mix 1");
   EXPECT_EQ(obu->GetNumSubMixes(), 1);
 }
 
@@ -983,7 +971,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       // Start RenderingConfig.
       RenderingConfig::kHeadphonesRenderingModeBinaural << 6, 0,
       // End RenderingConfig.
-      // Start ElementMixConfig
+      // Start ElementMixGain
       // Parameter ID.
       0x00,
       // Parameter Rate.
@@ -992,7 +980,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       0x80,
       // Default Mix Gain.
       0, 4
-      // End ElementMixConfig
+      // End ElementMixGain
   };
   ReadBitBuffer buffer(1024, &source);
   SubMixAudioElement audio_element;
@@ -1001,20 +989,16 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
   // Set up expected values.
   SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
       .audio_element_id = 11,
-      .mix_presentation_element_annotations =
-          {MixPresentationElementAnnotations(
-              {.audio_element_friendly_label = "Submix 1"})},
+      .localized_element_annotations = {"Submix 1"},
       .rendering_config =
           {.headphones_rendering_mode =
                RenderingConfig::kHeadphonesRenderingModeBinaural},
-      .element_mix_config = {.mix_gain = MixGainParamDefinition()}};
-  expected_submix_audio_element.element_mix_config.mix_gain.parameter_id_ = 0;
-  expected_submix_audio_element.element_mix_config.mix_gain.parameter_rate_ = 1;
-  expected_submix_audio_element.element_mix_config.mix_gain
-      .param_definition_mode_ = true;
-  expected_submix_audio_element.element_mix_config.mix_gain.reserved_ = 0;
-  expected_submix_audio_element.element_mix_config.mix_gain.default_mix_gain_ =
-      4;
+      .element_mix_gain = MixGainParamDefinition()};
+  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
   EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 

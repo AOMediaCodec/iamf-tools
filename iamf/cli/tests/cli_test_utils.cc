@@ -188,7 +188,7 @@ void AddMixPresentationObuWithAudioElementIds(
   std::vector<MixPresentationSubMix> sub_mixes = {
       {.num_audio_elements =
            static_cast<DecodedUleb128>(audio_element_ids.size()),
-       .output_mix_config = {common_mix_gain_param_definition},
+       .output_mix_gain = common_mix_gain_param_definition,
        .num_layouts = 1,
        .layouts = {
            {.loudness_layout =
@@ -204,14 +204,14 @@ void AddMixPresentationObuWithAudioElementIds(
   for (const auto& audio_element_id : audio_element_ids) {
     sub_mixes[0].audio_elements.push_back({
         .audio_element_id = audio_element_id,
-        .mix_presentation_element_annotations = {},
+        .localized_element_annotations = {},
         .rendering_config =
             {.headphones_rendering_mode =
                  RenderingConfig::kHeadphonesRenderingModeStereo,
              .reserved = 0,
              .rendering_config_extension_size = 0,
              .rendering_config_extension_bytes = {}},
-        .element_mix_config = {common_mix_gain_param_definition},
+        .element_mix_gain = common_mix_gain_param_definition,
     });
   }
 

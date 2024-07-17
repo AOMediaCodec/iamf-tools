@@ -210,12 +210,11 @@ TEST_F(MixPresentationGeneratorTest, SupportsUtf8) {
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
   ASSERT_THAT(generator.Generate(generated_obus_), IsOk());
-  ASSERT_FALSE(generated_obus_.back().GetMixPresentationAnnotations().empty());
 
-  EXPECT_EQ(generated_obus_.back()
-                .GetMixPresentationAnnotations()[0]
-                .mix_presentation_friendly_label,
-            kUtf8FourByteSequenceCode);
+  const auto generated_annotations =
+      generated_obus_.back().GetLocalizedPresentationAnnotations();
+  ASSERT_FALSE(generated_annotations.empty());
+  EXPECT_EQ(generated_annotations[0], kUtf8FourByteSequenceCode);
 }
 
 TEST_F(MixPresentationGeneratorTest, InvalidHeadphonesRenderingMode) {

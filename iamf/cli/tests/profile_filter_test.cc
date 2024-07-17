@@ -438,28 +438,26 @@ void InitializeDescriptorObusWithTwoSubmixes(
       .loudness = {
           .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}};
   std::vector<MixPresentationSubMix> sub_mixes;
-  sub_mixes.push_back(
-      {.num_audio_elements = kNumAudioElementsPerSubmix,
-       .audio_elements = {{
-           .audio_element_id = kFirstAudioElementId,
-           .mix_presentation_element_annotations = {},
-           .rendering_config = kRenderingConfig,
-           .element_mix_config = {common_mix_gain_param_definition},
-       }},
-       .output_mix_config = {common_mix_gain_param_definition},
-       .num_layouts = 1,
-       .layouts = {kStereoLayout}});
-  sub_mixes.push_back(
-      {.num_audio_elements = kNumAudioElementsPerSubmix,
-       .audio_elements = {{
-           .audio_element_id = kSecondAudioElementId,
-           .mix_presentation_element_annotations = {},
-           .rendering_config = kRenderingConfig,
-           .element_mix_config = {common_mix_gain_param_definition},
-       }},
-       .output_mix_config = {common_mix_gain_param_definition},
-       .num_layouts = 1,
-       .layouts = {kStereoLayout}});
+  sub_mixes.push_back({.num_audio_elements = kNumAudioElementsPerSubmix,
+                       .audio_elements = {{
+                           .audio_element_id = kFirstAudioElementId,
+                           .localized_element_annotations = {},
+                           .rendering_config = kRenderingConfig,
+                           .element_mix_gain = common_mix_gain_param_definition,
+                       }},
+                       .output_mix_gain = common_mix_gain_param_definition,
+                       .num_layouts = 1,
+                       .layouts = {kStereoLayout}});
+  sub_mixes.push_back({.num_audio_elements = kNumAudioElementsPerSubmix,
+                       .audio_elements = {{
+                           .audio_element_id = kSecondAudioElementId,
+                           .localized_element_annotations = {},
+                           .rendering_config = kRenderingConfig,
+                           .element_mix_gain = common_mix_gain_param_definition,
+                       }},
+                       .output_mix_gain = common_mix_gain_param_definition,
+                       .num_layouts = 1,
+                       .layouts = {kStereoLayout}});
 
   mix_presentation_obus.push_back(MixPresentationObu(
       ObuHeader(), kFirstMixPresentationId,

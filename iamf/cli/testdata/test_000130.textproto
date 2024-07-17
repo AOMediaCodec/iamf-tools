@@ -73,12 +73,12 @@ arbitrary_obu_metadata: [
       "\x33"  # audio_element_id.
       "\x00"  # headphones_rendering_mode (2), reserved (6).
       "\x00"  # rendering_config_size.
-      # Begin ElementMixConfig.
+      # Begin ElementMixGain.
       "\x66"  # parameter_id.
       "\x80\xf7\x02"  # parameter_rate (leb128).
       "\x80"  # param_definition_mode (1), reserved (7).
       "\x00\00"  # default_mix_gain.
-      # Begin OutputMixConfig.
+      # Begin OutputMixGain.
       "\x66"  # parameter_id.
       "\x80\xf7\x02"  # parameter_rate (leb128).
       "\x80"  # param_definition_mode (1), reserved (7).

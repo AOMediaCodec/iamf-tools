@@ -522,7 +522,7 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
-  // Create a mix presentation OBU. It will have a `element_mix_config` and
+  // Create a mix presentation OBU. It will have a `element_mix_gain` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
@@ -532,10 +532,8 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
   ASSERT_EQ(mix_presentation_obus.back()
                 .sub_mixes_[0]
                 .audio_elements[0]
-                .element_mix_config.mix_gain,
-            mix_presentation_obus.back()
-                .sub_mixes_[0]
-                .output_mix_config.output_mix_gain);
+                .element_mix_gain,
+            mix_presentation_obus.back().sub_mixes_[0].output_mix_gain);
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,
@@ -550,21 +548,20 @@ TEST(CollectAndValidateParamDefinitions,
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
-  // Create a mix presentation OBU. It will have a `element_mix_config` and
+  // Create a mix presentation OBU. It will have a `element_mix_gain` and
   // `output_mix_gain` which common settings.
   std::list<MixPresentationObu> mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
       kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
       mix_presentation_obus);
-  auto& output_mix_gain = mix_presentation_obus.back()
-                              .sub_mixes_[0]
-                              .output_mix_config.output_mix_gain;
+  auto& output_mix_gain =
+      mix_presentation_obus.back().sub_mixes_[0].output_mix_gain;
   output_mix_gain.default_mix_gain_ = 1;
   // Assert that the new mix presentation OBU has different param definitions.
   ASSERT_NE(mix_presentation_obus.back()
                 .sub_mixes_[0]
                 .audio_elements[0]
-                .element_mix_config.mix_gain,
+                .element_mix_gain,
             output_mix_gain);
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;

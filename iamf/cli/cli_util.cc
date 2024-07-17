@@ -224,11 +224,10 @@ absl::Status CollectAndValidateParamDefinitions(
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
       for (const auto& audio_element : sub_mix.audio_elements) {
-        RETURN_IF_NOT_OK(insert_and_check_equivalence(
-            &audio_element.element_mix_config.mix_gain));
+        RETURN_IF_NOT_OK(
+            insert_and_check_equivalence(&audio_element.element_mix_gain));
       }
-      RETURN_IF_NOT_OK(insert_and_check_equivalence(
-          &sub_mix.output_mix_config.output_mix_gain));
+      RETURN_IF_NOT_OK(insert_and_check_equivalence(&sub_mix.output_mix_gain));
     }
   }
 
