@@ -72,7 +72,7 @@ class TemporalDelimiterObu : public ObuBase {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` always.
    */
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
     return absl::OkStatus();
   };
 };

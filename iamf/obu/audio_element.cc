@@ -217,7 +217,7 @@ absl::Status ValidateAndWriteScalableChannelLayout(
 }
 
 // Reads the `ScalableChannelLayoutConfig` of an `AudioElementObu`.
-absl::Status ValidateAndReadScalableChannelLayout(
+absl::Status ReadAndValidateScalableChannelLayout(
     ScalableChannelLayoutConfig& layout, const DecodedUleb128 num_substreams,
     ReadBitBuffer& rb) {
   // Read the main portion of the `ScalableChannelLayoutConfig`.
@@ -573,7 +573,7 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
   AudioElementObu audio_element_obu(header);
-  RETURN_IF_NOT_OK(audio_element_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(audio_element_obu.ReadAndValidatePayload(rb));
   return audio_element_obu;
 }
 
@@ -788,7 +788,7 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
   return absl::OkStatus();
 }
 
-absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status AudioElementObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id_));
   uint8_t audio_element_type;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, audio_element_type));
@@ -822,7 +822,7 @@ absl::Status AudioElementObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   switch (audio_element_type_) {
     case kAudioElementChannelBased:
       config_ = ScalableChannelLayoutConfig();
-      return ValidateAndReadScalableChannelLayout(
+      return ReadAndValidateScalableChannelLayout(
           std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, rb);
     case kAudioElementSceneBased:
       config_ = AmbisonicsConfig();

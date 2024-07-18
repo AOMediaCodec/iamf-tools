@@ -76,7 +76,7 @@ class ObuBase {
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  virtual absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) = 0;
+  virtual absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) = 0;
 
   /*!\brief Prints logging information about the OBU Header.
    *

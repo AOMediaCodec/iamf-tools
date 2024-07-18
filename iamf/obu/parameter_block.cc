@@ -265,7 +265,7 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
   }
 
   ParameterBlockObu parameter_block_obu(header, parameter_id, it->second);
-  RETURN_IF_NOT_OK(parameter_block_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(parameter_block_obu.ReadAndValidatePayload(rb));
   return parameter_block_obu;
 }
 
@@ -642,7 +642,7 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   return absl::OkStatus();
 }
 
-absl::Status ParameterBlockObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status ParameterBlockObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   // Validate the associated `param_definition`.
   RETURN_IF_NOT_OK(metadata_.param_definition.Validate());
 

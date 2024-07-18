@@ -446,11 +446,11 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
 absl::StatusOr<MixPresentationObu> MixPresentationObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
   MixPresentationObu mix_presentation_obu(header);
-  RETURN_IF_NOT_OK(mix_presentation_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(mix_presentation_obu.ReadAndValidatePayload(rb));
   return mix_presentation_obu;
 }
 
-absl::Status MixPresentationObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status MixPresentationObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   // Read the main portion of the OBU.
   RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));

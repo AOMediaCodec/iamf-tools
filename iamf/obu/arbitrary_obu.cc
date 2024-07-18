@@ -43,9 +43,9 @@ absl::Status ArbitraryObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
              : absl::OkStatus();
 }
 
-absl::Status ArbitraryObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status ArbitraryObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   return absl::UnimplementedError(
-      "ArbitraryOBU ValidateAndReadPayload not yet implemented.");
+      "ArbitraryOBU ReadAndValidatePayload not yet implemented.");
 }
 
 void ArbitraryObu::PrintObu() const {

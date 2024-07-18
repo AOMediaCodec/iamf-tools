@@ -37,7 +37,7 @@ class ImaginaryObuNonIntegerBytes : public ObuBase {
     return wb.WriteUnsignedLiteral(0, 1);
   }
 
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
     return absl::OkStatus();
   }
 };
@@ -65,7 +65,7 @@ class OneByteObu : public ObuBase {
     return wb.WriteUnsignedLiteral(255, 8);
   }
 
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override {
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
     return absl::OkStatus();
   }
 };

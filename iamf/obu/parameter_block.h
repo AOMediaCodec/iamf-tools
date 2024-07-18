@@ -226,7 +226,7 @@ class ParameterBlockObu : public ObuBase {
   /*!\brief Creates a `ParameterBlockObu` from a `ReadBitBuffer`.
    *
    * This function is designed to be used from the perspective of the decoder.
-   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * It will call `ReadAndValidatePayload` in order to read from the buffer;
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
@@ -389,7 +389,7 @@ class ParameterBlockObu : public ObuBase {
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
 
   // `duration` and `constant_subblock_duration` are conditionally included
   // based on `param_definition_mode`.

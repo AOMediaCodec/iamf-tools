@@ -108,7 +108,7 @@ CodecConfigObu::CodecConfigObu(const ObuHeader& header,
 absl::StatusOr<CodecConfigObu> CodecConfigObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
   CodecConfigObu codec_config_obu(header);
-  RETURN_IF_NOT_OK(codec_config_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(codec_config_obu.ReadAndValidatePayload(rb));
   RETURN_IF_NOT_OK(codec_config_obu.Initialize());
   return codec_config_obu;
 }
@@ -161,7 +161,7 @@ absl::Status CodecConfigObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
+absl::Status CodecConfigObu::ReadAndValidateDecoderConfig(ReadBitBuffer& rb) {
   const int16_t audio_roll_distance = codec_config_.audio_roll_distance;
   const uint32_t num_samples_per_frame = codec_config_.num_samples_per_frame;
   // Read the `decoder_config` struct portion. This is codec specific.
@@ -169,7 +169,7 @@ absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
     using enum CodecConfig::CodecId;
     case kCodecIdOpus:
       return std::get<OpusDecoderConfig>(codec_config_.decoder_config)
-          .ValidateAndRead(num_samples_per_frame, audio_roll_distance, rb);
+          .ReadAndValidate(num_samples_per_frame, audio_roll_distance, rb);
     case kCodecIdLpcm:
       LpcmDecoderConfig lpcm_decoder_config;
       RETURN_IF_NOT_OK(
@@ -187,7 +187,7 @@ absl::Status CodecConfigObu::ValidateAndReadDecoderConfig(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-absl::Status CodecConfigObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status CodecConfigObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
   uint64_t codec_id;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, codec_id));
@@ -198,7 +198,7 @@ absl::Status CodecConfigObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadSigned16(codec_config_.audio_roll_distance));
 
   // Read the `decoder_config_`. This is codec specific.
-  RETURN_IF_NOT_OK(ValidateAndReadDecoderConfig(rb));
+  RETURN_IF_NOT_OK(ReadAndValidateDecoderConfig(rb));
   return absl::OkStatus();
 }
 

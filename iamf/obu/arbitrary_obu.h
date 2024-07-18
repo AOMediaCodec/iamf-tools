@@ -115,7 +115,7 @@ class ArbitraryObu : public ObuBase {
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

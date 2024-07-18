@@ -1407,7 +1407,7 @@ TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
             DemixingInfoParameterData::kDMixPMode2);
 }
 
-TEST(AudioElementParam, ValidateAndReadReadsReservedParamDefinition3) {
+TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
   constexpr uint32_t kAudioElementId = 1;
   constexpr auto kExpectedParamDefinitionType =
       ParamDefinition::kParameterDefinitionReservedStart;
@@ -1435,8 +1435,7 @@ TEST(AudioElementParam, ValidateAndReadReadsReservedParamDefinition3) {
 }
 
 // --- Begin CreateFromBuffer tests ---
-// TODO(b/329700768): Update test once ValidateAndReadPayload is implemented.
-TEST(CreateFromBuffer, IsNotSupported) {
+TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;

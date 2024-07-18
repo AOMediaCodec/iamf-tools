@@ -509,8 +509,8 @@ TEST_F(ObuHeaderTest, ObuSizeIncludesAllConditionalFields) {
   TestGenerateAndWrite();
 }
 
-// --- Begin ValidateAndRead Tests ---
-TEST_F(ObuHeaderTest, ValidateAndReadIncludeAllConditionalFields) {
+// --- Begin ReadAndValidate Tests ---
+TEST_F(ObuHeaderTest, ReadAndValidateIncludeAllConditionalFields) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -527,7 +527,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIncludeAllConditionalFields) {
       100, 101, 102};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -550,7 +550,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIncludeAllConditionalFields) {
   }
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadImplicitAudioFrameId17) {
+TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -559,7 +559,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadImplicitAudioFrameId17) {
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -578,7 +578,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadImplicitAudioFrameId17) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderNoConditionalFields) {
+TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderNoConditionalFields) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -587,7 +587,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderNoConditionalFields) {
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -606,7 +606,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderNoConditionalFields) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderRedundantCopy) {
+TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderRedundantCopy) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -615,7 +615,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderRedundantCopy) {
       0x80, 0x08};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -634,7 +634,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadIaSequenceHeaderRedundantCopy) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeOneByteLeb128) {
+TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeOneByteLeb128) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -643,7 +643,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeOneByteLeb128) {
       0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -662,7 +662,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeOneByteLeb128) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeTwoByteLeb128) {
+TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeTwoByteLeb128) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -671,7 +671,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeTwoByteLeb128) {
       0x80, 0x01};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -690,7 +690,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeTwoByteLeb128) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeFourByteLeb128) {
+TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeFourByteLeb128) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -699,7 +699,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeFourByteLeb128) {
       0xff, 0xff, 0xff, 0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -717,7 +717,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadUpperEdgeObuSizeFourByteLeb128) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeFiveByteLeb128) {
+TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeFiveByteLeb128) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -726,7 +726,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeFiveByteLeb128) {
       0x80, 0x80, 0x80, 0x80, 0x01};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -744,7 +744,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadLowerEdgeObuSizeFiveByteLeb128) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeFullPayload) {
+TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeFullPayload) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -753,7 +753,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeFullPayload) {
       0xff, 0xff, 0xff, 0xff, 0x0f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -771,7 +771,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeFullPayload) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeWithMinimalTrim) {
+TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -784,7 +784,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeWithMinimalTrim) {
       0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -804,7 +804,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadMaxObuSizeWithMinimalTrim) {
 }
 
 TEST_F(ObuHeaderTest,
-       ValidateAndReadIllegalTrimmingStatusFlagIaSequenceHeader) {
+       ReadAndValidateIllegalTrimmingStatusFlagIaSequenceHeader) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -817,11 +817,11 @@ TEST_F(ObuHeaderTest,
       0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_FALSE(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_)
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
           .ok());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtEnd) {
+TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -834,7 +834,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtEnd) {
       0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -853,7 +853,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtEnd) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtStart) {
+TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -866,7 +866,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtStart) {
       0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
@@ -885,7 +885,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroTrimAtStart) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroBothTrims) {
+TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
@@ -898,7 +898,7 @@ TEST_F(ObuHeaderTest, ValidateAndReadTrimmingStatusFlagNonZeroBothTrims) {
       0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
-      obu_header_.ValidateAndRead(read_bit_buffer, payload_serialized_size_),
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.

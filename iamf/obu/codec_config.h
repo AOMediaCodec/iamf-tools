@@ -70,7 +70,7 @@ class CodecConfigObu : public ObuBase {
   /*!\brief Creates a `CodecConfigObu` from a `ReadBitBuffer`.
    *
    * This function is designed to be used from the perspective of the decoder.
-   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * It will call `ReadAndValidatePayload` in order to read from the buffer;
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
@@ -115,7 +115,7 @@ class CodecConfigObu : public ObuBase {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status ValidateAndReadDecoderConfig(ReadBitBuffer& rb);
+  absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb);
 
   /*!\brief Gets the output sample rate associated with the OBU.
    *
@@ -199,7 +199,7 @@ class CodecConfigObu : public ObuBase {
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

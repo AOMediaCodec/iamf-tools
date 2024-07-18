@@ -87,7 +87,7 @@ struct ObuHeader {
    *      the fields are invalid or set in a manner that is inconsistent with
    *      the IAMF specification.
    */
-  absl::Status ValidateAndRead(ReadBitBuffer& rb,
+  absl::Status ReadAndValidate(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
 
   /*!\brief Prints logging information about an `ObuHeader`.

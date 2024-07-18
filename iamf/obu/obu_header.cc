@@ -232,7 +232,7 @@ absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
 // instead use `output_obu_type` and `output_payload_serialized_size` as output
 // parameters. Note that `output_payload_serialized_size` is a derived value
 // from `obu_size`, as this is the value the caller is more interested in.
-absl::Status ObuHeader::ValidateAndRead(
+absl::Status ObuHeader::ReadAndValidate(
     ReadBitBuffer& rb, int64_t& output_payload_serialized_size) {
   uint64_t obu_type_uint64_t = 0;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type_uint64_t));

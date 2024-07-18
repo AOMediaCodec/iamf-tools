@@ -53,7 +53,7 @@ class IASequenceHeaderObu : public ObuBase {
   /*!\brief Creates a `IASequenceHeaderObu` from a `ReadBitBuffer`.
    *
    * This function is designed to be used from the perspective of the decoder.
-   * It will call `ValidateAndReadPayload` in order to read from the buffer;
+   * It will call `ReadAndValidatePayload` in order to read from the buffer;
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
@@ -119,7 +119,7 @@ class IASequenceHeaderObu : public ObuBase {
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ValidateAndReadPayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
 };
 }  // namespace iamf_tools
 

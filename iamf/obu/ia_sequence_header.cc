@@ -52,7 +52,7 @@ absl::Status IASequenceHeaderObu::Validate() const {
 absl::StatusOr<IASequenceHeaderObu> IASequenceHeaderObu::CreateFromBuffer(
     const ObuHeader& header, ReadBitBuffer& rb) {
   IASequenceHeaderObu ia_sequence_header_obu(header);
-  RETURN_IF_NOT_OK(ia_sequence_header_obu.ValidateAndReadPayload(rb));
+  RETURN_IF_NOT_OK(ia_sequence_header_obu.ReadAndValidatePayload(rb));
   return ia_sequence_header_obu;
 }
 
@@ -75,7 +75,7 @@ absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
   return absl::OkStatus();
 }
 
-absl::Status IASequenceHeaderObu::ValidateAndReadPayload(ReadBitBuffer& rb) {
+absl::Status IASequenceHeaderObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, ia_code_));
   uint8_t primary_profile;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, primary_profile));

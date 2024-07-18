@@ -114,7 +114,7 @@ absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
   return absl::OkStatus();
 }
 
-absl::Status OpusDecoderConfig::ValidateAndRead(uint32_t num_samples_per_frame,
+absl::Status OpusDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
                                                 int16_t audio_roll_distance,
                                                 ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(

@@ -65,7 +65,7 @@ class OpusDecoderConfig {
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
    *     code on failure.
    */
-  absl::Status ValidateAndRead(uint32_t num_samples_per_frame,
+  absl::Status ReadAndValidate(uint32_t num_samples_per_frame,
                                int16_t audio_roll_distance, ReadBitBuffer& rb);
 
   /*!\brief Gets the output sample rate represented within the decoder config.
