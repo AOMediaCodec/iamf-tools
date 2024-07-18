@@ -151,11 +151,20 @@ absl::Status OpusEncoder::InitializeEncoder() {
       opus_error_code, "Failed to initialize Opus encoder."));
 
   // `OPUS_SET_BITRATE` treats this as the bit-rate for the entire substream.
-  // Configure `libopus` so coupled substreams and mono substreams have the same
+  // Configure `libopus` so coupled substreams and mono substreams have equally
   // effective bit-rate per channel.
-  const auto substream_bitrate = static_cast<opus_int32>(
-      encoder_metadata_.target_bitrate_per_channel() * num_channels_);
-  opus_encoder_ctl(encoder_, OPUS_SET_BITRATE(substream_bitrate));
+  if (num_channels_ > 1) {
+    opus_encoder_ctl(
+        encoder_,
+        OPUS_SET_BITRATE(static_cast<opus_int32>(
+            encoder_metadata_.target_bitrate_per_channel() * num_channels_ *
+                encoder_metadata_.coupling_rate_adjustment() +
+            0.5f)));
+  } else {
+    opus_encoder_ctl(encoder_,
+                     OPUS_SET_BITRATE(static_cast<opus_int32>(
+                         encoder_metadata_.target_bitrate_per_channel())));
+  }
 
   return absl::OkStatus();
 }
