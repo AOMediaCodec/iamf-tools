@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -518,7 +519,8 @@ TEST(CopyObuHeader, MostValuesModified) {
             (std::vector<uint8_t>{'e', 'x', 't', 'r', 'a'}));
 }
 
-TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
+TEST(CollectAndValidateParamDefinitions,
+     ReturnsOneUniqueParamDefinitionWhenTheyAreIdentical) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
@@ -544,7 +546,7 @@ TEST(CollectAndValidateParamDefinitions, IdenticalMixGain) {
 }
 
 TEST(CollectAndValidateParamDefinitions,
-     InvalidParametersWithSameIdHaveDifferentDefaultValues) {
+     IsInvalidWhenParamDefinitionsAreNotEquivalent) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
 
@@ -565,10 +567,59 @@ TEST(CollectAndValidateParamDefinitions,
             output_mix_gain);
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
-  EXPECT_EQ(CollectAndValidateParamDefinitions(audio_elements,
-                                               mix_presentation_obus, result)
-                .code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_FALSE(CollectAndValidateParamDefinitions(audio_elements,
+                                                  mix_presentation_obus, result)
+                   .ok());
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     IsInvalidWhenMixGainParamDefinitionIsPresentInAudioElement) {
+  // Initialize prerequisites.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
+  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
+      audio_elements);
+  auto& audio_element = audio_elements.at(kAudioElementId);
+  audio_element.obu.InitializeParams(1);
+  audio_element.obu.audio_element_params_[0] = AudioElementParam{
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = std::make_unique<MixGainParamDefinition>()};
+
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
+  EXPECT_FALSE(CollectAndValidateParamDefinitions(
+                   audio_elements, kNoMixPresentationObus, result)
+                   .ok());
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     DoesNotCollectParamDefinitionsFromExtensionParamDefinitions) {
+  // Initialize prerequisites.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
+  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
+      audio_elements);
+
+  // Add an extension param definition to the audio element. It is not possible
+  // to determine the ID to store it or to use further processing.
+  auto& audio_element = audio_elements.at(kAudioElementId);
+  audio_element.obu.InitializeParams(1);
+  audio_element.obu.audio_element_params_[0] = AudioElementParam{
+      .param_definition_type =
+          ParamDefinition::kParameterDefinitionReservedStart,
+      .param_definition = std::make_unique<ExtendedParamDefinition>(
+          ParamDefinition::kParameterDefinitionReservedStart)};
+
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
+  EXPECT_THAT(CollectAndValidateParamDefinitions(
+                  audio_elements, kNoMixPresentationObus, result),
+              IsOk());
+  EXPECT_TRUE(result.empty());
 }
 
 TEST(GenerateParamIdToMetadataMapTest, MixGainParamDefinition) {

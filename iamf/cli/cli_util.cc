@@ -203,21 +203,28 @@ absl::Status CollectAndValidateParamDefinitions(
 
   // Collect all `param_definition`s in Audio Element and Mix Presentation
   // OBUs.
-  for (const auto& [unused_id, audio_element] : audio_elements) {
+  for (const auto& [audio_element_id_for_debugging, audio_element] :
+       audio_elements) {
     for (const auto& audio_element_param :
          audio_element.obu.audio_element_params_) {
       const auto param_definition_type =
           audio_element_param.param_definition_type;
-      if (param_definition_type !=
-              ParamDefinition::kParameterDefinitionDemixing &&
-          param_definition_type !=
-              ParamDefinition::kParameterDefinitionReconGain) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Param definition type = ", param_definition_type,
-                         " not allowed in an audio element"));
+      switch (param_definition_type) {
+        case ParamDefinition::kParameterDefinitionDemixing:
+        case ParamDefinition::kParameterDefinitionReconGain:
+          RETURN_IF_NOT_OK(insert_and_check_equivalence(
+              audio_element_param.param_definition.get()));
+          break;
+        case ParamDefinition::kParameterDefinitionMixGain:
+          return absl::InvalidArgumentError(absl::StrCat(
+              "Mix gain parameters are not allowed in an audio element= ",
+              audio_element_id_for_debugging));
+        default:
+          LOG(WARNING) << "Ignoring parameter definition of type= "
+                       << param_definition_type << " in audio element= "
+                       << audio_element_id_for_debugging;
+          continue;
       }
-      RETURN_IF_NOT_OK(insert_and_check_equivalence(
-          audio_element_param.param_definition.get()));
     }
   }
 
