@@ -212,10 +212,10 @@ TEST(InitializeForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
   EXPECT_EQ(demixer->size(), 1);
 }
 
-TEST(InitializeForReconstruction, InvalidForReservedLoudspeakerLayout) {
+TEST(InitializeForReconstruction, InvalidForReservedLoudspeakerLayout15) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
-      {{0, {"MaybeLFE"}}}, {ChannelAudioLayerConfig::kLayoutReservedEnd},
+      {{0, {"MaybeLFE"}}}, {ChannelAudioLayerConfig::kLayoutReserved15},
       audio_elements);
   DemixingModule demixing_module;
 

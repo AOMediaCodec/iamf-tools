@@ -106,16 +106,20 @@ absl::Status FilterChannelBasedConfig(
     case kLayout3_1_2_ch:
     case kLayoutBinaural:
       break;
-    case kLayoutReservedEnd:
+    case kLayoutReserved10:
+    case kLayoutReserved11:
+    case kLayoutReserved12:
+    case kLayoutReserved13:
+    case kLayoutReserved14:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      break;
+    case kLayoutReserved15:
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       // TODO(b/350765228): Filter out any `expanded_loudspeaker_layout` which
       //                    are invalid under Base-enhnaced profile.
-      break;
-    default:
-      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
-      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
-      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
       break;
   }
 

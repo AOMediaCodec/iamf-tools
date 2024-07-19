@@ -597,8 +597,8 @@ absl::Status CopyLoudspeakerLayout(
           {LOUDSPEAKER_LAYOUT_7_1_4_CH, kLayout7_1_4_ch},
           {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
           {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
-          {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReservedBegin},
-          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutReservedEnd},
+          {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReserved10},
+          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutReserved15},
       });
 
   if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,

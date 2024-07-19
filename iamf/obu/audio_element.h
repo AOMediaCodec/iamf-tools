@@ -72,8 +72,12 @@ struct ChannelAudioLayerConfig {
     kLayout7_1_4_ch = 7,  // L/C/R/Lss/Rss/Lrs/Rrs/Ltf/Rtf/Ltb/Rtb/LFE.
     kLayout3_1_2_ch = 8,  // L/C/R//Ltf/Rtf/LFE.
     kLayoutBinaural = 9,  // L/R.
-    kLayoutReservedBegin = 10,
-    kLayoutReservedEnd = 15,
+    kLayoutReserved10 = 10,
+    kLayoutReserved11 = 11,
+    kLayoutReserved12 = 12,
+    kLayoutReserved13 = 13,
+    kLayoutReserved14 = 14,
+    kLayoutReserved15 = 15,
   };
 
   friend bool operator==(const ChannelAudioLayerConfig& lhs,

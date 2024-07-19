@@ -173,10 +173,33 @@ TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
 }
 
 TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
-     FailsForReservedLayout) {
-  EXPECT_FALSE(LookupInputChannelOrderFromScalableLoudspeakerLayout(
-                   ChannelAudioLayerConfig::kLayoutReservedEnd)
-                   .ok());
+     FailsForReservedLayouts10Through14) {
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved10)
+          .ok());
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved11)
+          .ok());
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved12)
+          .ok());
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved13)
+          .ok());
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved14)
+          .ok());
+}
+
+TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
+     FailsForReservedLayout15) {
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+
+  EXPECT_FALSE(
+      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved15)
+          .ok());
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
