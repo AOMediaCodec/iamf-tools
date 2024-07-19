@@ -122,7 +122,6 @@ absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
   }
 
   // Sort within each temporal unit by Parameter ID.
-  // TODO(b/302470464): Test the output Parameter Blocks are in order.
   auto compare_parameter_id = [](const ParameterBlockWithData* a,
                                  const ParameterBlockWithData* b) {
     return a->obu->parameter_id_ < b->obu->parameter_id_;
