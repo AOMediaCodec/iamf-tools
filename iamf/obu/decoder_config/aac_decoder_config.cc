@@ -20,6 +20,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "libSYS/include/machine_type.h"
 
@@ -97,6 +98,25 @@ absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
+absl::Status AudioSpecificConfig::Read(ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, audio_object_type_));
+  uint8_t sample_frequency_index_uint8;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, sample_frequency_index_uint8));
+  sample_frequency_index_ =
+      static_cast<SampleFrequencyIndex>(sample_frequency_index_uint8);
+  if (sample_frequency_index_ == kSampleFrequencyIndexEscapeValue) {
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, sampling_frequency_));
+  }
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, channel_configuration_));
+
+  // Write nested `ga_specific_config`.
+  RETURN_IF_NOT_OK(rb.ReadBoolean(ga_specific_config_.frame_length_flag));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(ga_specific_config_.depends_on_core_coder));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(ga_specific_config_.extension_flag));
+
+  return absl::OkStatus();
+}
+
 absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
                                                 WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
@@ -120,6 +140,29 @@ absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
   RETURN_IF_NOT_OK(
       decoder_specific_info_.audio_specific_config.ValidateAndWrite(wb));
 
+  return absl::OkStatus();
+}
+
+absl::Status AacDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
+                                               ReadBitBuffer& rb) {
+  // Write top-level fields.
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, decoder_config_descriptor_tag_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_type_indication_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, stream_type_));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(upstream_));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(reserved_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, buffer_size_db_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, max_bitrate_));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, average_bit_rate_));
+
+  // Write nested `decoder_specific_info`.
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
+      8, decoder_specific_info_.decoder_specific_info_tag));
+
+  // Write nested `audio_specific_config`.
+  RETURN_IF_NOT_OK(decoder_specific_info_.audio_specific_config.Read(rb));
+  RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
+  RETURN_IF_NOT_OK(Validate());
   return absl::OkStatus();
 }
 

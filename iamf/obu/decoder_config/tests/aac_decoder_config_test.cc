@@ -18,6 +18,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -151,6 +152,138 @@ TEST(AacDecoderConfig, ValidatesExtensionFlag) {
       .ga_specific_config_.extension_flag = kInvalidExtensionFlag;
 
   EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency) {
+  std::vector<uint8_t> data = {
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
+  AudioSpecificConfig audio_specific_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_THAT(audio_specific_config.Read(rb), IsOk());
+
+  EXPECT_EQ(audio_specific_config.audio_object_type_,
+            AudioSpecificConfig::kAudioObjectType);
+  EXPECT_EQ(audio_specific_config.sample_frequency_index_,
+            AudioSpecificConfig::kSampleFrequencyIndex64000);
+  EXPECT_EQ(audio_specific_config.channel_configuration_,
+            AudioSpecificConfig::kChannelConfiguration);
+  EXPECT_EQ(audio_specific_config.ga_specific_config_.frame_length_flag,
+            AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag);
+  EXPECT_EQ(audio_specific_config.ga_specific_config_.depends_on_core_coder,
+            AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder);
+  EXPECT_EQ(audio_specific_config.ga_specific_config_.extension_flag,
+            AudioSpecificConfig::GaSpecificConfig::kExtensionFlag);
+}
+
+TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
+  constexpr uint32_t kSampleFrequency = 48000;
+  std::vector<uint8_t> data = {
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`, upper 7 bits of
+      // `sampling_rate`.
+      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+          ((kSampleFrequency & 0xe00000) >> 17),
+      // Next 16 bits of `sampling_rate`.
+      ((kSampleFrequency & 0x1fe00) >> 9), ((kSampleFrequency & 0x1fe) >> 1),
+      // Upper bit of `sampling_rate`, `channel_configuration`,
+      // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
+      ((kSampleFrequency & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
+  AudioSpecificConfig audio_specific_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_THAT(audio_specific_config.Read(rb), IsOk());
+
+  EXPECT_EQ(audio_specific_config.sample_frequency_index_,
+            AudioSpecificConfig::kSampleFrequencyIndexEscapeValue);
+  EXPECT_EQ(audio_specific_config.sampling_frequency_, kSampleFrequency);
+}
+
+constexpr int16_t kAudioRollDistance = -1;
+constexpr int16_t kInvalidAudioRollDistance = 0;
+
+TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
+  std::vector<uint8_t> data = {
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
+  AacDecoderConfig decoder_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+
+  EXPECT_EQ(decoder_config.decoder_config_descriptor_tag_,
+            AacDecoderConfig::kDecoderConfigDescriptorTag);
+  EXPECT_EQ(decoder_config.object_type_indication_,
+            AacDecoderConfig::kObjectTypeIndication);
+  EXPECT_EQ(decoder_config.stream_type_, AacDecoderConfig::kStreamType);
+  EXPECT_EQ(decoder_config.upstream_, AacDecoderConfig::kUpstream);
+  EXPECT_EQ(decoder_config.buffer_size_db_, 0);
+  EXPECT_EQ(decoder_config.max_bitrate_, 0);
+  EXPECT_EQ(decoder_config.average_bit_rate_, 0);
+  EXPECT_EQ(decoder_config.decoder_specific_info_.decoder_specific_info_tag,
+            AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag);
+}
+
+TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
+  std::vector<uint8_t> data = {
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
+  AacDecoderConfig decoder_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_FALSE(
+      decoder_config.ReadAndValidate(kInvalidAudioRollDistance, rb).ok());
 }
 
 class AacTest : public testing::Test {

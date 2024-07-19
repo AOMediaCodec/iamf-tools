@@ -25,6 +25,7 @@
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/leb128.h"
@@ -556,8 +557,96 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   EXPECT_FALSE(obu->IsLossless());
 };
 
-// TODO(b/331833384, b/331831926): Add test cases for other
-// decoder configs.
+TEST(CreateFromBuffer, AacLcDecoderConfig) {
+  // A 7-bit mask representing `channel_configuration`, and all three fields in
+  // the GA specific config.
+  constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
+      AudioSpecificConfig::kChannelConfiguration << 3 |               // 4 bits.
+      AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag << 2 |  // 1 bit.
+      AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder
+          << 1 |                                                   // 1 bit.
+      AudioSpecificConfig::GaSpecificConfig::kExtensionFlag << 0;  // 1 bit.
+  constexpr DecodedUleb128 kExpectedNumSamplesPerFrame = 1024;
+  constexpr int16_t kExpectedAudioRollDistance = -1;
+  std::vector<uint8_t> source_data = {
+      kCodecConfigId, 'm', 'p', '4', 'a',
+      // num_samples_per_frame
+      0x80, 0x08,
+      // audio_roll_distance
+      0xff, 0xff,
+      // Start `DecoderConfig`.
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+          0 << 0,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
+  ReadBitBuffer buffer(1024, &source_data);
+  ObuHeader header;
+
+  absl::StatusOr<CodecConfigObu> obu =
+      CodecConfigObu::CreateFromBuffer(header, buffer);
+  EXPECT_THAT(obu, IsOk());
+
+  EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
+  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdAacLc);
+  EXPECT_EQ(obu->GetNumSamplesPerFrame(), kExpectedNumSamplesPerFrame);
+  EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
+            kExpectedAudioRollDistance);
+  ASSERT_TRUE(std::holds_alternative<AacDecoderConfig>(
+      obu->GetCodecConfig().decoder_config));
+  const auto& aac_decoder_config =
+      std::get<AacDecoderConfig>(obu->GetCodecConfig().decoder_config);
+  EXPECT_EQ(aac_decoder_config.decoder_config_descriptor_tag_,
+            AacDecoderConfig::kDecoderConfigDescriptorTag);
+  EXPECT_EQ(aac_decoder_config.object_type_indication_,
+            AacDecoderConfig::kObjectTypeIndication);
+  EXPECT_EQ(aac_decoder_config.stream_type_, AacDecoderConfig::kStreamType);
+  EXPECT_EQ(aac_decoder_config.upstream_, AacDecoderConfig::kUpstream);
+  EXPECT_EQ(aac_decoder_config.buffer_size_db_, 0);
+  EXPECT_EQ(aac_decoder_config.max_bitrate_, 0);
+  EXPECT_EQ(aac_decoder_config.average_bit_rate_, 0);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.decoder_specific_info_tag,
+            AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .audio_object_type_,
+            AudioSpecificConfig::kAudioObjectType);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .sample_frequency_index_,
+            AudioSpecificConfig::kSampleFrequencyIndex64000);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .channel_configuration_,
+            AudioSpecificConfig::kChannelConfiguration);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .ga_specific_config_.frame_length_flag,
+            AudioSpecificConfig::GaSpecificConfig::kFrameLengthFlag);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .ga_specific_config_.depends_on_core_coder,
+            AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder);
+  EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
+                .ga_specific_config_.extension_flag,
+            AudioSpecificConfig::GaSpecificConfig::kExtensionFlag);
+  EXPECT_FALSE(obu->IsLossless());
+};
+
+// TODO(b/331831926): Add a test case for `FlacDecoderConfig`.
 TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
   constexpr DecodedUleb128 kNumSamplesPerFrame = 64;
   constexpr int16_t kExpectedAudioRollDistance = 0;

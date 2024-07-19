@@ -161,17 +161,27 @@ absl::Status CodecConfigObu::ReadAndValidateDecoderConfig(ReadBitBuffer& rb) {
   // Read the `decoder_config` struct portion. This is codec specific.
   switch (codec_config_.codec_id) {
     using enum CodecConfig::CodecId;
-    case kCodecIdOpus:
-      return std::get<OpusDecoderConfig>(codec_config_.decoder_config)
-          .ReadAndValidate(num_samples_per_frame, audio_roll_distance, rb);
-    case kCodecIdLpcm:
+    case kCodecIdOpus: {
+      OpusDecoderConfig opus_decoder_config;
+      RETURN_IF_NOT_OK(opus_decoder_config.ReadAndValidate(
+          num_samples_per_frame, audio_roll_distance, rb));
+      codec_config_.decoder_config = opus_decoder_config;
+      return absl::OkStatus();
+    }
+    case kCodecIdLpcm: {
       LpcmDecoderConfig lpcm_decoder_config;
       RETURN_IF_NOT_OK(
           lpcm_decoder_config.ReadAndValidate(audio_roll_distance, rb));
       codec_config_.decoder_config = lpcm_decoder_config;
       return absl::OkStatus();
-    case kCodecIdAacLc:
-      return absl::UnimplementedError("AAC is not supported.");
+    }
+    case kCodecIdAacLc: {
+      AacDecoderConfig aac_decoder_config;
+      RETURN_IF_NOT_OK(
+          aac_decoder_config.ReadAndValidate(audio_roll_distance, rb));
+      codec_config_.decoder_config = aac_decoder_config;
+      return absl::OkStatus();
+    }
     case kCodecIdFlac:
       return absl::UnimplementedError("Flac is not supported.");
     default:

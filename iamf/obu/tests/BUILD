@@ -79,6 +79,7 @@ cc_test(
         "//iamf/obu:codec_config",
         "//iamf/obu:leb128",
         "//iamf/obu:obu_header",
+        "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_absl//absl/status",

@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "absl/status/status.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -57,6 +58,13 @@ class AudioSpecificConfig {
    *     specific status on failure.
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads the `AudioSpecificConfig` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` on success. A specific error code on failure.
+   */
+  absl::Status Read(ReadBitBuffer& rb);
 
   /*!\brief Prints logging information about the audio specific config.
    */
@@ -120,6 +128,16 @@ class AacDecoderConfig {
    */
   absl::Status ValidateAndWrite(int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
+
+  /*!\brief Validates and reads the `AacDecoderConfig` from a buffer.
+   *
+   * \param audio_roll_distance `audio_roll_distance` in the associated Codec
+   *     Config OBU.
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the decoder config is valid. A specific error
+   *     code on failure.
+   */
+  absl::Status ReadAndValidate(int16_t audio_roll_distance, ReadBitBuffer& rb);
 
   /*!\brief Gets the output sample rate of the `AacDecoderConfig`.
    *
