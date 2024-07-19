@@ -161,14 +161,12 @@ class CodecConfigObu : public ObuBase {
    */
   const CodecConfig& GetCodecConfig() const { return codec_config_; }
 
-  // Metadata fields.
-  const bool is_lossless_;
+  bool IsLossless() const;
 
  private:
   // Used only by the factory create function.
   explicit CodecConfigObu(const ObuHeader& header)
       : ObuBase(header, kObuIaCodecConfig),
-        is_lossless_(false),
         codec_config_id_(DecodedUleb128()),
         codec_config_(CodecConfig()) {}
 

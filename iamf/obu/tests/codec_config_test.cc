@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -35,13 +36,15 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr DecodedUleb128 kCodecConfigId = 123;
+
 class CodecConfigTestBase : public ObuTestBase {
  public:
   CodecConfigTestBase(CodecConfig::CodecId codec_id,
                       DecoderConfig decoder_config)
       : ObuTestBase(
             /*expected_header=*/{0, 14}, /*expected_payload=*/{}),
-        codec_config_id_(0),
+        codec_config_id_(kCodecConfigId),
         codec_config_({.codec_id = codec_id,
                        .num_samples_per_frame = 64,
                        .audio_roll_distance = 0,
@@ -155,7 +158,7 @@ class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
                               .sample_size_ = 16,
                               .sample_rate_ = 48000}) {
     expected_payload_ = {// `codec_config_id`.
-                         0,
+                         kCodecConfigId,
                          // `codec_id`.
                          'i', 'p', 'c', 'm',
                          // `num_samples_per_frame`.
@@ -170,6 +173,12 @@ class CodecConfigLpcmTest : public CodecConfigTestBase, public testing::Test {
                          0, 0, 0xbb, 0x80};
   }
 };
+
+TEST_F(CodecConfigLpcmTest, IsAlwaysLossless) {
+  InitExpectOk();
+
+  EXPECT_TRUE(obu_->IsLossless());
+}
 
 TEST_F(CodecConfigLpcmTest, ConstructorSetsObuTyoe) {
   InitExpectOk();
@@ -275,7 +284,7 @@ TEST_F(CodecConfigLpcmTest, NumSamplesPerFrame) {
   codec_config_.num_samples_per_frame = 128;
   expected_header_ = {0, 15};
   expected_payload_ = {// `codec_config_id`.
-                       0,
+                       kCodecConfigId,
                        // `codec_id`.
                        'i', 'p', 'c', 'm',
                        // `num_samples_per_frame`.
@@ -296,7 +305,7 @@ TEST_F(CodecConfigLpcmTest, SampleFormatFlags) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config)
       .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian;
   expected_payload_ = {// `codec_config_id`.
-                       0,
+                       kCodecConfigId,
                        // `codec_id`.
                        'i', 'p', 'c', 'm',
                        // `num_samples_per_frame`.
@@ -316,7 +325,7 @@ TEST_F(CodecConfigLpcmTest, SampleFormatFlags) {
 TEST_F(CodecConfigLpcmTest, WriteSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 24;
   expected_payload_ = {// `codec_config_id`.
-                       0,
+                       kCodecConfigId,
                        // `codec_id`.
                        'i', 'p', 'c', 'm',
                        // `num_samples_per_frame`.
@@ -344,7 +353,7 @@ TEST_F(CodecConfigLpcmTest, WriteSampleRate) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       16000;
   expected_payload_ = {// `codec_config_id`.
-                       0,
+                       kCodecConfigId,
                        // `codec_id`.
                        'i', 'p', 'c', 'm',
                        // `num_samples_per_frame`.
@@ -395,11 +404,18 @@ class CodecConfigOpusTest : public CodecConfigTestBase, public testing::Test {
     codec_config_.num_samples_per_frame = 960;
     codec_config_.audio_roll_distance = -4;
     expected_header_ = {0, 20};
-    expected_payload_ = {0, 'O', 'p', 'u', 's', 0xc0, 0x07, 0xff, 0xfc,
+    expected_payload_ = {kCodecConfigId, 'O', 'p', 'u', 's', 0xc0, 0x07, 0xff,
+                         0xfc,
                          // Start `DecoderConfig`.
                          1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   }
 };
+
+TEST_F(CodecConfigOpusTest, IsNeverLossless) {
+  InitExpectOk();
+
+  EXPECT_FALSE(obu_->IsLossless());
+}
 
 TEST_F(CodecConfigOpusTest, ManyLargeValues) {
   leb_generator_ =
@@ -459,12 +475,12 @@ TEST_F(CodecConfigOpusTest,
 TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }
 
 TEST_F(CodecConfigOpusTest, VarySeveralFields) {
-  codec_config_id_ = 123;
+  codec_config_id_ = 99;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).version_ = 15;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).pre_skip_ = 3;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).input_sample_rate_ =
       4;
-  expected_payload_ = {123, 'O', 'p', 'u', 's', 0xc0, 0x07, 0xff, 0xfc,
+  expected_payload_ = {99, 'O', 'p', 'u', 's', 0xc0, 0x07, 0xff, 0xfc,
                        // Start `DecoderConfig`.
                        // `version`.
                        15,
@@ -489,14 +505,19 @@ TEST_F(CodecConfigOpusTest, RedundantCopy) {
 }
 
 TEST(CreateFromBuffer, OpusDecoderConfig) {
-  std::vector<uint8_t> source_data = {123, 'O', 'p', 'u', 's',
+  constexpr DecodedUleb128 kExpectedNumSamplesPerFrame = 960;
+  constexpr int16_t kExpectedAudioRollDistance = -4;
+  constexpr uint8_t kVersion = 15;
+  constexpr int16_t kExpectedPreSkip = 3;
+  constexpr int16_t kExpectedInputSampleRate = 4;
+  std::vector<uint8_t> source_data = {kCodecConfigId, 'O', 'p', 'u', 's',
                                       // num_samples_per_frame
                                       0xc0, 0x07,
                                       // audio_roll_distance
                                       0xff, 0xfc,
                                       // Start `DecoderConfig`.
                                       // `version`.
-                                      15,
+                                      kVersion,
                                       // `output_channel_count`.
                                       OpusDecoderConfig::kOutputChannelCount,
                                       // `pre_skip`
@@ -510,53 +531,76 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
                                       OpusDecoderConfig::kMappingFamily};
   ReadBitBuffer buffer(1024, &source_data);
   ObuHeader header;
+
   absl::StatusOr<CodecConfigObu> obu =
       CodecConfigObu::CreateFromBuffer(header, buffer);
   EXPECT_THAT(obu, IsOk());
 
-  // Set up expected data
-  DecodedUleb128 expected_codec_config_id = 123;
-  CodecConfig expected_codec_config = {
-      .codec_id = static_cast<CodecConfig::CodecId>(CodecConfig::kCodecIdOpus),
-      .num_samples_per_frame = 960,
-      .audio_roll_distance = -4,
-      .decoder_config =
-          OpusDecoderConfig{
-              .version_ = 15,
-              .output_channel_count_ = OpusDecoderConfig::kOutputChannelCount,
-              .pre_skip_ = 3,
-              .input_sample_rate_ = 4,
-              .output_gain_ = 0,
-              .mapping_family_ = OpusDecoderConfig::kMappingFamily},
-  };
-
-  // Validate fields
-  EXPECT_EQ(obu.value().GetCodecConfigId(), expected_codec_config_id);
-  EXPECT_EQ(obu.value().GetCodecConfig(), expected_codec_config);
-}
+  EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
+  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdOpus);
+  EXPECT_EQ(obu->GetNumSamplesPerFrame(), kExpectedNumSamplesPerFrame);
+  EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
+            kExpectedAudioRollDistance);
+  ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(
+      obu->GetCodecConfig().decoder_config));
+  const auto& opus_decoder_config =
+      std::get<OpusDecoderConfig>(obu->GetCodecConfig().decoder_config);
+  EXPECT_EQ(opus_decoder_config.version_, kVersion);
+  EXPECT_EQ(opus_decoder_config.output_channel_count_,
+            OpusDecoderConfig::kOutputChannelCount);
+  EXPECT_EQ(opus_decoder_config.pre_skip_, kExpectedPreSkip);
+  EXPECT_EQ(opus_decoder_config.input_sample_rate_, kExpectedInputSampleRate);
+  EXPECT_EQ(opus_decoder_config.output_gain_, OpusDecoderConfig::kOutputGain);
+  EXPECT_EQ(opus_decoder_config.mapping_family_,
+            OpusDecoderConfig::kMappingFamily);
+  EXPECT_FALSE(obu->IsLossless());
+};
 
 // TODO(b/331833384, b/331831926): Add test cases for other
 // decoder configs.
 TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
+  constexpr DecodedUleb128 kNumSamplesPerFrame = 64;
+  constexpr int16_t kExpectedAudioRollDistance = 0;
+  constexpr uint8_t kSampleFormatFlagsAsUint8 = 0x00;
+  constexpr uint8_t kSampleSize = 16;
+  constexpr uint32_t kExpectedSampleRate = 48000;
+
   std::vector<uint8_t> source_data = {// `codec_config_id`.
-                                      0,
+                                      kCodecConfigId,
                                       // `codec_id`.
                                       'i', 'p', 'c', 'm',
                                       // `num_samples_per_frame`.
-                                      64,
+                                      kNumSamplesPerFrame,
                                       // `audio_roll_distance`.
                                       0, 0,
                                       // `sample_format_flags`.
-                                      0,
+                                      kSampleFormatFlagsAsUint8,
                                       // `sample_size`.
-                                      16,
+                                      kSampleSize,
                                       // `sample_rate`.
                                       0, 0, 0xbb, 0x80};
   ReadBitBuffer buffer(1024, &source_data);
   ObuHeader header;
+
   absl::StatusOr<CodecConfigObu> obu =
       CodecConfigObu::CreateFromBuffer(header, buffer);
+
   EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
+  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdLpcm);
+  EXPECT_EQ(obu->GetNumSamplesPerFrame(), kNumSamplesPerFrame);
+  EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
+            kExpectedAudioRollDistance);
+  ASSERT_TRUE(std::holds_alternative<LpcmDecoderConfig>(
+      obu->GetCodecConfig().decoder_config));
+  const auto& lpcm_decoder_config =
+      std::get<LpcmDecoderConfig>(obu->GetCodecConfig().decoder_config);
+  EXPECT_EQ(
+      static_cast<uint8_t>(lpcm_decoder_config.sample_format_flags_bitmask_),
+      kSampleFormatFlagsAsUint8);
+  EXPECT_EQ(lpcm_decoder_config.sample_size_, kSampleSize);
+  EXPECT_EQ(lpcm_decoder_config.sample_rate_, kExpectedSampleRate);
+  EXPECT_TRUE(obu->IsLossless());
 }
 
 }  // namespace

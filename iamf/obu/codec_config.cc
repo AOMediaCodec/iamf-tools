@@ -41,11 +41,6 @@ absl::Status ValidateNumSamplesPerFrame(uint32_t num_samples_per_frame) {
   return absl::OkStatus();
 }
 
-bool IsLossless(CodecConfig::CodecId codec_id) {
-  return codec_id == CodecConfig::kCodecIdFlac ||
-         codec_id == CodecConfig::kCodecIdLpcm;
-}
-
 absl::Status SetSampleRatesAndBitDepths(
     uint32_t codec_id, const DecoderConfig& decoder_config,
     uint32_t& output_sample_rate, uint32_t& input_sample_rate,
@@ -101,7 +96,6 @@ CodecConfigObu::CodecConfigObu(const ObuHeader& header,
                                const DecodedUleb128 codec_config_id,
                                const CodecConfig& codec_config)
     : ObuBase(header, kObuIaCodecConfig),
-      is_lossless_(IsLossless(codec_config.codec_id)),
       codec_config_id_(codec_config_id),
       codec_config_(std::move(codec_config)) {}
 
@@ -247,6 +241,12 @@ absl::Status CodecConfigObu::Initialize() {
     PrintObu();
   }
   return init_status_;
+}
+
+bool CodecConfigObu::IsLossless() const {
+  using enum CodecConfig::CodecId;
+  return codec_config_.codec_id == kCodecIdFlac ||
+         codec_config_.codec_id == kCodecIdLpcm;
 }
 
 }  // namespace iamf_tools

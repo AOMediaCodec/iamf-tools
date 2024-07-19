@@ -512,7 +512,7 @@ absl::Status ValidateReconGainDefined(
       // First layer: there is no demixed channel, so recon gain is not
       // required.
       expected_recon_gain_is_present_flag = 0;
-    } else if (codec_config_obu.is_lossless_) {
+    } else if (codec_config_obu.IsLossless()) {
       // Lossless codec does not require recon gain.
       expected_recon_gain_is_present_flag = 0;
     } else {
