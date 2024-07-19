@@ -86,7 +86,13 @@ class AudioSpecificConfig {
   } ga_specific_config_;
 };
 
-/*!\brief The `CodecConfig` `decoder_config` field for AAC. */
+/*!\brief The `CodecConfig` `decoder_config` field for AAC.
+ *
+ * As defined in IAMF v1.0.0-errata section 3.11.2
+ * https://aomediacodec.github.io/iamf/#aac-lc-specific. Many fields are fixed
+ * by the IAMF spec and should typically never be changed from their default
+ * values.
+ */
 class AacDecoderConfig {
  public:
   static constexpr uint8_t kDecoderConfigDescriptorTag = 0x04;
@@ -96,6 +102,13 @@ class AacDecoderConfig {
 
   friend bool operator==(const AacDecoderConfig& lhs,
                          const AacDecoderConfig& rhs) = default;
+
+  /*!\brief Validates the `AacDecoderConfig`.
+   *
+   * \return `absl::OkStatus()` if the decoder config is valid. A specific
+   *     status on failure.
+   */
+  absl::Status Validate() const;
 
   /*!\brief Validates and writes the `AacDecoderConfig` to a buffer.
    *

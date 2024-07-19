@@ -26,26 +26,36 @@
 namespace iamf_tools {
 
 namespace {
-// Validates the `AacDecoderConfig`.
-absl::Status ValidatePayload(const AacDecoderConfig& decoder_config) {
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.decoder_config_descriptor_tag_,
+
+absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
+  if (audio_roll_distance != -1) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
+  }
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+absl::Status AacDecoderConfig::Validate() const {
+  RETURN_IF_NOT_OK(ValidateEqual(decoder_config_descriptor_tag_,
                                  AacDecoderConfig::kDecoderConfigDescriptorTag,
                                  "decoder_config_descriptor_tag"));
   // IAMF restricts several fields.
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.object_type_indication_,
+  RETURN_IF_NOT_OK(ValidateEqual(object_type_indication_,
                                  AacDecoderConfig::kObjectTypeIndication,
                                  "object_type_indication"));
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.stream_type_,
-                                 AacDecoderConfig::kStreamType, "stream_type"));
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.upstream_,
-                                 AacDecoderConfig::kUpstream, "upstream"));
+  RETURN_IF_NOT_OK(ValidateEqual(stream_type_, AacDecoderConfig::kStreamType,
+                                 "stream_type"));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(upstream_, AacDecoderConfig::kUpstream, "upstream"));
   RETURN_IF_NOT_OK(ValidateEqual(
-      decoder_config.decoder_specific_info_.decoder_specific_info_tag,
+      decoder_specific_info_.decoder_specific_info_tag,
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
       "decoder_specific_info_tag"));
 
   const AudioSpecificConfig& audio_specific_config =
-      decoder_config.decoder_specific_info_.audio_specific_config;
+      decoder_specific_info_.audio_specific_config;
 
   RETURN_IF_NOT_OK(ValidateEqual(audio_specific_config.audio_object_type_,
                                  AudioSpecificConfig::kAudioObjectType,
@@ -66,16 +76,6 @@ absl::Status ValidatePayload(const AacDecoderConfig& decoder_config) {
       AudioSpecificConfig::GaSpecificConfig::kExtensionFlag, "extension_flag"));
   return absl::OkStatus();
 }
-
-absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
-  if (audio_roll_distance != -1) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
-  }
-  return absl::OkStatus();
-}
-
-}  // namespace
 
 absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(audio_object_type_, 5));
@@ -100,7 +100,7 @@ absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
 absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
                                                 WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
-  RETURN_IF_NOT_OK(ValidatePayload(*this));
+  RETURN_IF_NOT_OK(Validate());
 
   // Write top-level fields.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(decoder_config_descriptor_tag_, 8));

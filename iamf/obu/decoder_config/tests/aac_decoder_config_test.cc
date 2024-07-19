@@ -34,19 +34,128 @@ constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
     AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder << 1 |  // 1 bit.
     AudioSpecificConfig::GaSpecificConfig::kExtensionFlag << 0;        // 1 bit.
 
+AacDecoderConfig GetAacDecoderConfig() {
+  return AacDecoderConfig{
+      .reserved_ = 0,
+      .buffer_size_db_ = 0,
+      .max_bitrate_ = 0,
+      .average_bit_rate_ = 0,
+      .decoder_specific_info_ =
+          {.audio_specific_config =
+               {.sample_frequency_index_ = AudioSpecificConfig::
+                    AudioSpecificConfig::kSampleFrequencyIndex64000}},
+  };
+}
+
+TEST(AacDecoderConfig, ValidateWithCommonValues) {
+  EXPECT_THAT(GetAacDecoderConfig().Validate(), IsOk());
+}
+
+TEST(AacDecoderConfig, ValidateWithManyVaryingValues) {
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.reserved_ = 1;
+  aac_decoder_config.buffer_size_db_ = 1;
+  aac_decoder_config.max_bitrate_ = 1;
+  aac_decoder_config.average_bit_rate_ = 1;
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sample_frequency_index_ =
+      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue;
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sampling_frequency_ = 48;
+
+  EXPECT_THAT(GetAacDecoderConfig().Validate(), IsOk());
+}
+
+TEST(AacDecoderConfig, ValidatesDecoderConfigDescriptorTag) {
+  constexpr uint8_t kInvalidDecoderConfigDescriptorTag = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_config_descriptor_tag_ =
+      kInvalidDecoderConfigDescriptorTag;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesObjectTypeIndication) {
+  constexpr uint8_t kInvalidObjectTypeIndication = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.object_type_indication_ = kInvalidObjectTypeIndication;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesStreamType) {
+  constexpr uint8_t kInvalidStreamType = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.stream_type_ = kInvalidStreamType;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesUpstream) {
+  constexpr bool kInvalidUpstream = true;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.upstream_ = kInvalidUpstream;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesDecoderSpecificInfoTag) {
+  constexpr uint8_t kInvalidDecoderSpecificInfoTag = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.decoder_specific_info_tag =
+      kInvalidDecoderSpecificInfoTag;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesAudioObjectType) {
+  constexpr uint8_t kInvalidAudioObjectType = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .audio_object_type_ = kInvalidAudioObjectType;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesChannelConfiguration) {
+  constexpr uint8_t kInvalidChannelConfiguration = 0;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .channel_configuration_ = kInvalidChannelConfiguration;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesFrameLengthFlag) {
+  constexpr bool kInvalidFrameLengthFlag = true;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .ga_specific_config_.frame_length_flag = kInvalidFrameLengthFlag;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesDepenedsOnCoreCoder) {
+  constexpr bool kInvalidDependsOnCoreCoder = true;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .ga_specific_config_.depends_on_core_coder = kInvalidDependsOnCoreCoder;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesExtensionFlag) {
+  constexpr bool kInvalidExtensionFlag = true;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .ga_specific_config_.extension_flag = kInvalidExtensionFlag;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
 class AacTest : public testing::Test {
  public:
-  AacTest()
-      : aac_decoder_config_({
-            .reserved_ = 0,
-            .buffer_size_db_ = 0,
-            .max_bitrate_ = 0,
-            .average_bit_rate_ = 0,
-            .decoder_specific_info_ =
-                {.audio_specific_config =
-                     {.sample_frequency_index_ = AudioSpecificConfig::
-                          AudioSpecificConfig::kSampleFrequencyIndex64000}},
-        }) {}
+  AacTest() : aac_decoder_config_(GetAacDecoderConfig()) {}
 
   ~AacTest() = default;
 
@@ -194,30 +303,6 @@ TEST_F(AacTest, IllegalAudioRollDistanceMustBeNegativeOne) {
   TestWriteDecoderConfig();
 }
 
-TEST_F(AacTest, IllegalDecoderConfigDescriptorTag) {
-  aac_decoder_config_.decoder_config_descriptor_tag_ = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalObjectTypeIndication) {
-  aac_decoder_config_.object_type_indication_ = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalStreamType) {
-  aac_decoder_config_.stream_type_ = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalUpstream) {
-  aac_decoder_config_.upstream_ = true;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
 TEST_F(AacTest, MaxBufferSizeDb) {
   aac_decoder_config_.buffer_size_db_ = (1 << 24) - 1;
 
@@ -253,47 +338,6 @@ TEST_F(AacTest, OverflowBufferSizeDbOver24Bits) {
   // field that is 32 bits. Any value that cannot be represented in 24 bits
   // should fail.
   aac_decoder_config_.buffer_size_db_ = (1 << 24);
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalDecoderSpecificInfoTag) {
-  aac_decoder_config_.decoder_specific_info_.decoder_specific_info_tag = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalAudioObjectType) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .audio_object_type_ = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalChannelConfiguration) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .channel_configuration_ = 0;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalFrameLengthFlag) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .ga_specific_config_.frame_length_flag = true;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalDependsOnCoreCoder) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .ga_specific_config_.depends_on_core_coder = true;
-  expected_write_is_ok_ = false;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(AacTest, IllegalExtensionFlag) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .ga_specific_config_.extension_flag = true;
   expected_write_is_ok_ = false;
   TestWriteDecoderConfig();
 }
