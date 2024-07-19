@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <numeric>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -172,49 +173,71 @@ TEST(WavWriterTest, OutputFileHasCorrectSizeWithoutHeader) {
   EXPECT_FALSE(error_code);
 }
 
-TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples16Bit) {
-  const int kInputBytes = 12;
+TEST(WavWriterTest, Output16BitWavFileHasCorrectData) {
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+      {0x01000000}, {0x03020000}, {0x05040000},
+      {0x07060000}, {0x09080000}, {0x0b0a0000}};
+  constexpr int kNumSamplesPerFrame = 6;
+  const int kInputBytes = kNumSamplesPerFrame * 2;
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
     WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                          kBitDepth16);
     std::vector<uint8_t> samples(kInputBytes, 0);
+    std::iota(samples.begin(), samples.end(), 0);
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
-  EXPECT_EQ(wav_reader.remaining_samples(), 6);
+  auto wav_reader =
+      CreateWavReaderExpectOk(GetTestWavPath(), kNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
+  EXPECT_TRUE(wav_reader.ReadFrame());
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
 }
 
-TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples24Bit) {
-  const int kInputBytes = 12;
+TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+      {0x02010000}, {0x05040300}, {0x08070600}, {0x0b0a0900}};
+  constexpr int kNumSamplesPerFrame = 4;
+  constexpr int kInputBytes = kNumSamplesPerFrame * 3;
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
     WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                          kBitDepth24);
     std::vector<uint8_t> samples(kInputBytes, 0);
+    std::iota(samples.begin(), samples.end(), 0);
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
-  EXPECT_EQ(wav_reader.remaining_samples(), 4);
+  auto wav_reader =
+      CreateWavReaderExpectOk(GetTestWavPath(), kNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
+  EXPECT_TRUE(wav_reader.ReadFrame());
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
 }
 
-TEST(WavWriterTest, OutputWavFileHasCorrectNumberOfSamples32Bit) {
-  const int kInputBytes = 12;
+TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+      {0x03020100}, {0x07060504}, {0x0b0a0908}};
+  constexpr int kNumSamplesPerFrame = 3;
+  constexpr int kInputBytes = kNumSamplesPerFrame * 4;
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
     WavWriter wav_writer(GetTestWavPath(), kNumChannels, kSampleRateHz,
                          kBitDepth32);
     std::vector<uint8_t> samples(kInputBytes, 0);
+    std::iota(samples.begin(), samples.end(), 0);
     EXPECT_TRUE(wav_writer.WriteSamples(samples));
   }
 
-  const auto wav_reader = CreateWavReaderExpectOk(GetTestWavPath());
+  auto wav_reader =
+      CreateWavReaderExpectOk(GetTestWavPath(), kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), 3);
+  EXPECT_TRUE(wav_reader.ReadFrame());
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
 }
 
 TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {
@@ -278,9 +301,6 @@ TEST(WavWriterTest, MovingSucceeds) {
   EXPECT_FALSE(
       std::filesystem::exists(std::filesystem::path(GetTestWavPath())));
 }
-
-// TODO(b/307692452): Add tests that actually checks the content of the
-//                    output WAV files written by `WriteSamples()`.
 
 }  // namespace
 }  // namespace iamf_tools
