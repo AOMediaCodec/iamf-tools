@@ -37,6 +37,7 @@ cc_test(
         "//iamf/cli:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/tests:test_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",

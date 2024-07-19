@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -478,6 +479,256 @@ TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
   InitAndTestWrite();
 }
 
+constexpr int kLoudspeakerLayoutBitShift = 4;
+constexpr int kOutputGainIsPresentBitShift = 3;
+constexpr int kReconGainIsPresentBitShift = 2;
+constexpr int kOutputGainIsPresentFlagBitShift = 2;
+
+constexpr uint8_t kBinauralSubstreamCount = 1;
+constexpr uint8_t kBinauralCoupledSubstreamCount = 1;
+const ChannelAudioLayerConfig kChannelAudioLayerConfigBinaural = {
+    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutBinaural,
+    .output_gain_is_present_flag = false,
+    .recon_gain_is_present_flag = false,
+    .substream_count = kBinauralSubstreamCount,
+    .coupled_substream_count = kBinauralCoupledSubstreamCount};
+
+constexpr uint8_t kOneLayerStereoSubstreamCount = 1;
+constexpr uint8_t kOneLayerStereoCoupledSubstreamCount = 1;
+const ChannelAudioLayerConfig kChannelAudioLayerConfigStereo = {
+    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+    .output_gain_is_present_flag = false,
+    .recon_gain_is_present_flag = false,
+    .substream_count = kOneLayerStereoSubstreamCount,
+    .coupled_substream_count = kOneLayerStereoCoupledSubstreamCount};
+
+TEST(ChannelAudioLayerConfig, WritesBinauralLayer) {
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kChannelAudioLayerConfigBinaural.Write(wb), IsOk());
+
+  ValidateWriteResults(
+      wb, std::vector<uint8_t>{ChannelAudioLayerConfig::kLayoutBinaural
+                                   << kLoudspeakerLayoutBitShift,
+                               kBinauralSubstreamCount,
+                               kBinauralCoupledSubstreamCount});
+}
+
+TEST(ChannelAudioLayerConfig, WritesStereoLayer) {
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift,
+      kOneLayerStereoSubstreamCount, kOneLayerStereoCoupledSubstreamCount};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kChannelAudioLayerConfigStereo.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesReserved10Layer) {
+  constexpr uint8_t kExpectedSubstreamCount = 1;
+  constexpr uint8_t kExpectedCoupledSubstreamCount = 1;
+  const ChannelAudioLayerConfig kChannelAudioLayerConfigReserved10 = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedBegin,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = false,
+      .substream_count = kExpectedSubstreamCount,
+      .coupled_substream_count = kExpectedCoupledSubstreamCount};
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutReservedBegin
+          << kLoudspeakerLayoutBitShift,
+      kExpectedSubstreamCount, kExpectedCoupledSubstreamCount};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kChannelAudioLayerConfigReserved10.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesReserved15Layer) {
+  constexpr uint8_t kExpectedSubstreamCount = 1;
+  constexpr uint8_t kExpectedCoupledSubstreamCount = 1;
+  const ChannelAudioLayerConfig kChannelAudioLayerConfigReserved15 = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReservedEnd,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = false,
+      .substream_count = kExpectedSubstreamCount,
+      .coupled_substream_count = kExpectedCoupledSubstreamCount};
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutReservedEnd << kLoudspeakerLayoutBitShift,
+      kExpectedSubstreamCount, kExpectedCoupledSubstreamCount};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kChannelAudioLayerConfigReserved15.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesOutputGainIsPresentFields) {
+  constexpr bool kOutputGainIsPresent = true;
+  constexpr uint8_t kOutputGainFlag = 0b100000;
+  constexpr uint8_t kReservedB = 0b01;
+  constexpr int16_t kOutputGain = 5;
+  const ChannelAudioLayerConfig kSecondLayerStereo = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+      .output_gain_is_present_flag = kOutputGainIsPresent,
+      .recon_gain_is_present_flag = false,
+      .substream_count = 1,
+      .coupled_substream_count = 0,
+      .output_gain_flag = kOutputGainFlag,
+      .reserved_b = kReservedB,
+      .output_gain = kOutputGain,
+  };
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kOutputGainIsPresent << kOutputGainIsPresentBitShift,
+      1,
+      0,
+      kOutputGainFlag << kOutputGainIsPresentFlagBitShift | kReservedB,
+      0,
+      5};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kSecondLayerStereo.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesReconGainIsPresentFlag) {
+  constexpr bool kReconGainIsPresent = true;
+  const ChannelAudioLayerConfig kSecondLayerStereo = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = kReconGainIsPresent,
+      .substream_count = 1,
+      .coupled_substream_count = 0,
+  };
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kReconGainIsPresent << kReconGainIsPresentBitShift,
+      1, 0};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kSecondLayerStereo.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesFirstReservedField) {
+  const uint8_t kFirstReservedField = 3;
+  const ChannelAudioLayerConfig kSecondLayerStereo = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = false,
+      .reserved_a = kFirstReservedField,
+      .substream_count = 1,
+      .coupled_substream_count = 0,
+  };
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kFirstReservedField,
+      1, 0};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kSecondLayerStereo.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsBinauralLayer) {
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutBinaural << kLoudspeakerLayoutBitShift, 1,
+      1};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutBinaural);
+  EXPECT_EQ(config.output_gain_is_present_flag, false);
+  EXPECT_EQ(config.recon_gain_is_present_flag, false);
+  EXPECT_EQ(config.reserved_a, 0);
+  EXPECT_EQ(config.substream_count, kBinauralSubstreamCount);
+  EXPECT_EQ(config.coupled_substream_count, kBinauralCoupledSubstreamCount);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsReserved10Layer) {
+  std::vector<uint8_t> data = {ChannelAudioLayerConfig::kLayoutReservedBegin
+                                   << kLoudspeakerLayoutBitShift,
+                               1, 1};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutReservedBegin);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsReserved15Layer) {
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutReservedEnd << kLoudspeakerLayoutBitShift,
+      1, 1};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutReservedEnd);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsOutputGainIsPresentRelatedFields) {
+  constexpr bool kOutputGainIsPresent = true;
+  constexpr uint8_t kOutputGainFlag = 0b100000;
+  constexpr uint8_t kReservedB = 0b01;
+  constexpr int16_t kOutputGain = 5;
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kOutputGainIsPresent << kOutputGainIsPresentBitShift,
+      1,
+      0,
+      kOutputGainFlag << kOutputGainIsPresentFlagBitShift | kReservedB,
+      0,
+      5};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.output_gain_is_present_flag, kOutputGainIsPresent);
+  EXPECT_EQ(config.output_gain_flag, kOutputGainFlag);
+  EXPECT_EQ(config.reserved_b, kReservedB);
+  EXPECT_EQ(config.output_gain, kOutputGain);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsReconGainIsPresent) {
+  constexpr bool kReconGainIsPresent = true;
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kReconGainIsPresent << kReconGainIsPresentBitShift,
+      1, 0};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.recon_gain_is_present_flag, kReconGainIsPresent);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsFirstReservedField) {
+  constexpr uint8_t kReservedField = 3;
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
+          kReservedField,
+      1, 0};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.reserved_a, kReservedField);
+}
+
 const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
     .num_layers = 2,
     .channel_audio_layer_configs = {
@@ -519,20 +770,6 @@ TEST(ScalableChannelLayoutConfigValidate, TooManyLayers) {
 
   EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
 }
-
-const ChannelAudioLayerConfig kChannelAudioLayerConfigBinaural = {
-    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutBinaural,
-    .output_gain_is_present_flag = false,
-    .recon_gain_is_present_flag = false,
-    .substream_count = 1,
-    .coupled_substream_count = 1};
-
-const ChannelAudioLayerConfig kChannelAudioLayerConfigStereo = {
-    .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
-    .output_gain_is_present_flag = false,
-    .recon_gain_is_present_flag = false,
-    .substream_count = 1,
-    .coupled_substream_count = 1};
 
 TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
   const ScalableChannelLayoutConfig kBinauralConfig = {

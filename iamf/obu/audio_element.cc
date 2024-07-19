@@ -194,23 +194,7 @@ absl::Status ValidateAndWriteScalableChannelLayout(
 
   // Loop to write the `channel_audio_layer_configs` array.
   for (const auto& layer_config : layout.channel_audio_layer_configs) {
-    RETURN_IF_NOT_OK(
-        wb.WriteUnsignedLiteral(layer_config.loudspeaker_layout, 4));
-    RETURN_IF_NOT_OK(
-        wb.WriteUnsignedLiteral(layer_config.output_gain_is_present_flag, 1));
-    RETURN_IF_NOT_OK(
-        wb.WriteUnsignedLiteral(layer_config.recon_gain_is_present_flag, 1));
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.reserved_a, 2));
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.substream_count, 8));
-    RETURN_IF_NOT_OK(
-        wb.WriteUnsignedLiteral(layer_config.coupled_substream_count, 8));
-
-    if (layer_config.output_gain_is_present_flag == 1) {
-      RETURN_IF_NOT_OK(
-          wb.WriteUnsignedLiteral(layer_config.output_gain_flag, 6));
-      RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layer_config.reserved_b, 2));
-      RETURN_IF_NOT_OK(wb.WriteSigned16(layer_config.output_gain));
-    }
+    RETURN_IF_NOT_OK(layer_config.Write(wb));
   }
 
   return absl::OkStatus();
@@ -226,26 +210,7 @@ absl::Status ReadAndValidateScalableChannelLayout(
 
   for (int i = 0; i < layout.num_layers; ++i) {
     ChannelAudioLayerConfig layer_config;
-    uint8_t loudspeaker_layout;
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, loudspeaker_layout));
-    layer_config.loudspeaker_layout =
-        static_cast<ChannelAudioLayerConfig::LoudspeakerLayout>(
-            loudspeaker_layout);
-    RETURN_IF_NOT_OK(
-        rb.ReadUnsignedLiteral(1, layer_config.output_gain_is_present_flag));
-    RETURN_IF_NOT_OK(
-        rb.ReadUnsignedLiteral(1, layer_config.recon_gain_is_present_flag));
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layer_config.reserved_a));
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, layer_config.substream_count));
-    RETURN_IF_NOT_OK(
-        rb.ReadUnsignedLiteral(8, layer_config.coupled_substream_count));
-
-    if (layer_config.output_gain_is_present_flag == 1) {
-      RETURN_IF_NOT_OK(
-          rb.ReadUnsignedLiteral(6, layer_config.output_gain_flag));
-      RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, layer_config.reserved_b));
-      RETURN_IF_NOT_OK(rb.ReadSigned16(layer_config.output_gain));
-    }
+    RETURN_IF_NOT_OK(layer_config.Read(rb));
     layout.channel_audio_layer_configs.push_back(layer_config);
   }
 
@@ -412,6 +377,41 @@ absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
       param_definition = std::move(extended_param_definition);
       return absl::OkStatus();
   }
+}
+
+absl::Status ChannelAudioLayerConfig::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(loudspeaker_layout, 4));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(output_gain_is_present_flag, 1));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(recon_gain_is_present_flag, 1));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_a, 2));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(substream_count, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(coupled_substream_count, 8));
+
+  if (output_gain_is_present_flag == 1) {
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(output_gain_flag, 6));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_b, 2));
+    RETURN_IF_NOT_OK(wb.WriteSigned16(output_gain));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status ChannelAudioLayerConfig::Read(ReadBitBuffer& rb) {
+  uint8_t loudspeaker_layout_uint8;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, loudspeaker_layout_uint8));
+  loudspeaker_layout = static_cast<ChannelAudioLayerConfig::LoudspeakerLayout>(
+      loudspeaker_layout_uint8);
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, output_gain_is_present_flag));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, recon_gain_is_present_flag));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved_a));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, substream_count));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, coupled_substream_count));
+
+  if (output_gain_is_present_flag == 1) {
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, output_gain_flag));
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved_b));
+    RETURN_IF_NOT_OK(rb.ReadSigned16(output_gain));
+  }
+  return absl::OkStatus();
 }
 
 absl::Status ScalableChannelLayoutConfig::Validate(

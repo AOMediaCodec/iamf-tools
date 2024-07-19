@@ -54,7 +54,11 @@ struct AudioElementParam {
   std::unique_ptr<ParamDefinition> param_definition;
 };
 
-/*!\brief An element of the `ScalableChannelLayoutConfig` vector. */
+/*!\brief An element of the `ScalableChannelLayoutConfig` vector.
+ *
+ * Implements the `ChannelAudioLayerConfig` as defined by section 3.6.2 of
+ * https://aomediacodec.github.io/iamf/v1.0.0-errata.html.
+ */
 struct ChannelAudioLayerConfig {
   /*!\brief A 4-bit enum for the type of layout. */
   enum LoudspeakerLayout : uint8_t {
@@ -74,6 +78,21 @@ struct ChannelAudioLayerConfig {
 
   friend bool operator==(const ChannelAudioLayerConfig& lhs,
                          const ChannelAudioLayerConfig& rhs) = default;
+
+  /*!\brief Writes the `ChannelAudioLayerConfig` payload to the buffer.
+   *
+   * \param wb Buffer to write to.
+   * \return `absl::OkStatus()` if the payload is valid. A specific status on
+   *     failure.
+   */
+  absl::Status Write(WriteBitBuffer& wb) const;
+
+  /*!\brief Reads the `ChannelAudioLayerConfig` payload from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Read(ReadBitBuffer& rb);
 
   LoudspeakerLayout loudspeaker_layout;  // 4 bits.
   uint8_t output_gain_is_present_flag;   // 1 bit.
