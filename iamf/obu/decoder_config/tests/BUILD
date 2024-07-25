@@ -1,7 +1,5 @@
 # Tests for the IAMF software.
 
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_test(
     name = "aac_decoder_config_test",
     srcs = ["aac_decoder_config_test.cc"],
