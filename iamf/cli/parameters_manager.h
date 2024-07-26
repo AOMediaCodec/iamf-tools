@@ -109,16 +109,30 @@ class ParametersManager {
     DemixingInfoParameterData::WIdxUpdateRule update_rule;
   };
 
+  struct ReconGainState {
+    const ReconGainParamDefinition* param_definition;
+
+    // Timestamp for the next frame to be processed.
+    int32_t next_timestamp;
+  };
+
   // Mapping from Audio Element ID to audio element data.
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
       audio_elements_;
 
-  // Mapping from Parameter ID to parameter blocks.
+  // Mapping from Parameter ID to demixing parameter blocks.
   absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
-      parameter_blocks_;
+      demixing_parameter_blocks_;
+
+  // Mapping from Parameter ID to recon gain parameter blocks.
+  absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
+      recon_gain_parameter_blocks_;
 
   // Mapping from Audio Element ID to the demixing state.
   absl::flat_hash_map<DecodedUleb128, DemixingState> demixing_states_;
+
+  // Mapping from Audio Element ID to the recon gain state.
+  absl::flat_hash_map<DecodedUleb128, ReconGainState> recon_gain_states_;
 };
 
 }  // namespace iamf_tools

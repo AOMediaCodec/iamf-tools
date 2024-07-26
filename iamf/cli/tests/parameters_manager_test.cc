@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -23,6 +24,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
@@ -39,9 +41,24 @@ constexpr DecodedUleb128 kCodecConfigId = 1450;
 constexpr DecodedUleb128 kSampleRate = 16000;
 constexpr DecodedUleb128 kAudioElementId = 157;
 constexpr DecodedUleb128 kParameterId = 995;
+constexpr DecodedUleb128 kSecondParameterId = 996;
 constexpr DecodedUleb128 kDuration = 8;
 constexpr DemixingInfoParameterData::DMixPMode kDMixPMode =
     DemixingInfoParameterData::kDMixPMode3_n;
+
+absl::Status AppendParameterBlock(
+    int32_t start_timestamp, PerIdParameterMetadata& per_id_metadata,
+    std::vector<ParameterBlockWithData>& parameter_blocks) {
+  parameter_blocks.emplace_back(ParameterBlockWithData{
+      std::make_unique<ParameterBlockObu>(ObuHeader(), kParameterId,
+                                          per_id_metadata),
+      start_timestamp, start_timestamp + static_cast<int32_t>(kDuration)});
+  ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
+  absl::Status status =
+      parameter_block_obu.InitializeSubblocks(kDuration, kDuration, 1);
+  status.Update(parameter_block_obu.SetSubblockDuration(0, kDuration));
+  return status;
+}
 
 absl::Status AddOneDemixingParameterBlock(
     const ParamDefinition& param_definition, int32_t start_timestamp,
@@ -51,19 +68,59 @@ absl::Status AddOneDemixingParameterBlock(
       .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = param_definition,
   };
-  parameter_blocks.emplace_back(ParameterBlockWithData{
-      std::make_unique<ParameterBlockObu>(ObuHeader(), kParameterId,
-                                          per_id_metadata),
-      start_timestamp, start_timestamp + static_cast<int32_t>(kDuration)});
-  ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  absl::Status status =
-      parameter_block_obu.InitializeSubblocks(kDuration, kDuration, 1);
-  status.Update(parameter_block_obu.SetSubblockDuration(0, kDuration));
+  auto status =
+      AppendParameterBlock(start_timestamp, per_id_metadata, parameter_blocks);
   DemixingInfoParameterData demixing_info_param_data;
   demixing_info_param_data.dmixp_mode = kDMixPMode;
+  ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
   parameter_block_obu.subblocks_[0].param_data = demixing_info_param_data;
 
   return status;
+}
+
+absl::Status AddOneReconGainParameterBlock(
+    const ParamDefinition& param_definition, int32_t start_timestamp,
+    PerIdParameterMetadata& per_id_metadata,
+    std::vector<ParameterBlockWithData>& parameter_blocks) {
+  per_id_metadata = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
+      .param_definition = param_definition,
+  };
+  auto status =
+      AppendParameterBlock(start_timestamp, per_id_metadata, parameter_blocks);
+
+  ReconGainInfoParameterData recon_gain_info_param_data;
+  recon_gain_info_param_data.recon_gain_elements.emplace_back(ReconGainElement{
+      .recon_gain_flag = DecodedUleb128(1),
+      .recon_gain = {0},
+  });
+  ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
+  parameter_block_obu.subblocks_[0].param_data = recon_gain_info_param_data;
+
+  return status;
+}
+
+// TODO(b/355436892): Refactor common parts of this and
+// `AddDemixingParamDefinition()` into a helper function.
+void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
+                                 DecodedUleb128 parameter_rate,
+                                 DecodedUleb128 duration,
+                                 AudioElementObu& audio_element_obu) {
+  const auto audio_element_id = audio_element_obu.GetAudioElementId();
+  auto param_definition =
+      std::make_unique<ReconGainParamDefinition>(audio_element_id);
+  param_definition->parameter_id_ = parameter_id;
+  param_definition->parameter_rate_ = parameter_rate;
+  param_definition->param_definition_mode_ = 0;
+  param_definition->reserved_ = 0;
+  param_definition->duration_ = duration;
+  param_definition->constant_subblock_duration_ = duration;
+
+  // Add to the Audio Element OBU.
+  audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
+  audio_element_obu.audio_element_params_.back() = AudioElementParam{
+      .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
+      .param_definition = std::move(param_definition)};
 }
 
 class ParametersManagerTest : public testing::Test {
@@ -108,6 +165,19 @@ TEST_F(ParametersManagerTest, InitializeWithTwoDemixingParametersFails) {
 
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   EXPECT_FALSE(parameters_manager_->Initialize().ok());
+}
+
+TEST_F(ParametersManagerTest, InitializeWithReconGainParameterSucceeds) {
+  AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
+                              audio_elements_.at(kAudioElementId).obu);
+  EXPECT_THAT(AddOneReconGainParameterBlock(
+                  *audio_elements_.at(kAudioElementId)
+                       .obu.audio_element_params_[0]
+                       .param_definition,
+                  /*start_timestamp=*/0, per_id_metadata_, parameter_blocks_),
+              IsOk());
+  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
+  EXPECT_THAT(parameters_manager_->Initialize(), IsOk());
 }
 
 TEST_F(ParametersManagerTest, DemixingParamDefinitionIsAvailable) {

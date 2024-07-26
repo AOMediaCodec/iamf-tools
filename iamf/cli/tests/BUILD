@@ -285,6 +285,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:parameters_manager",
+        "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",

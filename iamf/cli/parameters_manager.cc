@@ -33,40 +33,60 @@ ParametersManager::ParametersManager(
     : audio_elements_(audio_elements) {}
 
 absl::Status ParametersManager::Initialize() {
-  // Collect all `DemixingParamDefinition`s in all Audio Elements. Validate
-  // there is no more than one per Audio Element.
+  // Collect all `DemixingParamDefinition`s and all `ReconGainParamDefinitions`
+  // in all Audio Elements. Validate there is no more than one per Audio
+  // Element.
   for (const auto& [audio_element_id, audio_element] : audio_elements_) {
     const DemixingParamDefinition* demixing_param_definition = nullptr;
+    const ReconGainParamDefinition* recon_gain_param_definition = nullptr;
     for (const auto& param : audio_element.obu.audio_element_params_) {
-      if (param.param_definition_type !=
+      if (param.param_definition_type ==
           ParamDefinition::kParameterDefinitionDemixing) {
-        continue;
+        if (demixing_param_definition != nullptr) {
+          return absl::InvalidArgumentError(
+              "Not allowed to have multiple demixing parameters in a "
+              "single Audio Element.");
+        }
+
+        demixing_param_definition =
+            static_cast<DemixingParamDefinition*>(param.param_definition.get());
+
+        // Continue searching. Only to validate that there is at most one
+        // `DemixingParamDefinition`.
+      } else if (param.param_definition_type ==
+                 ParamDefinition::kParameterDefinitionReconGain) {
+        if (recon_gain_param_definition != nullptr) {
+          return absl::InvalidArgumentError(
+              "Not allowed to have multiple recon gain parameters in a "
+              "single Audio Element.");
+        }
+        recon_gain_param_definition = static_cast<ReconGainParamDefinition*>(
+            param.param_definition.get());
       }
-
-      if (demixing_param_definition != nullptr) {
-        return absl::InvalidArgumentError(
-            "Not allowed to have multiple demixing parameters in a "
-            "single Audio Element.");
-      }
-
-      demixing_param_definition =
-          static_cast<DemixingParamDefinition*>(param.param_definition.get());
-
-      // Continue searching. Only to validate that there is at most one
-      // `DemixingParamDefinition`.
     }
 
     if (demixing_param_definition != nullptr) {
       // Insert a `nullptr` for a parameter ID. If no parameter blocks have
       // this parameter ID, then it will remain null and default values will
       // be used.
-      parameter_blocks_.insert(
+      demixing_parameter_blocks_.insert(
           {demixing_param_definition->parameter_id_, nullptr});
       demixing_states_[audio_element_id] = {
           .param_definition = demixing_param_definition,
           .previous_w_idx = 0,
           .next_timestamp = 0,
           .update_rule = DemixingInfoParameterData::kFirstFrame,
+      };
+    }
+    if (recon_gain_param_definition != nullptr) {
+      // Insert a `nullptr` for a parameter ID. If no parameter blocks have
+      // this parameter ID, then it will remain null and default values will
+      // be used.
+      recon_gain_parameter_blocks_.insert(
+          {recon_gain_param_definition->parameter_id_, nullptr});
+      recon_gain_states_[audio_element_id] = {
+          .param_definition = recon_gain_param_definition,
+          .next_timestamp = 0,
       };
     }
   }
@@ -96,11 +116,11 @@ absl::Status ParametersManager::GetDownMixingParameters(
   auto& demixing_state = demixing_states_iter->second;
   const auto* param_definition = demixing_state.param_definition;
   const auto* parameter_block =
-      parameter_blocks_.at(param_definition->parameter_id_);
+      demixing_parameter_blocks_.at(param_definition->parameter_id_);
   if (parameter_block == nullptr) {
     // Failed to find a parameter block that overlaps this frame. Use the
-    // default value from the parameter definition. This is OK when there are no
-    // parameter blocks covering this substream. If there is only partial
+    // default value from the parameter definition. This is OK when there are
+    // no parameter blocks covering this substream. If there is only partial
     // coverage this will be marked invalid when the coverage of parameter
     // blocks is checked.
     LOG_FIRST_N(WARNING, 10)
@@ -114,8 +134,9 @@ absl::Status ParametersManager::GetDownMixingParameters(
 
   if (parameter_block->start_timestamp != demixing_state.next_timestamp) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Mismatching timestamps for down-mixing parameters for audio element ",
-        "ID= ", audio_element_id, ": expecting", demixing_state.next_timestamp,
+        "Mismatching timestamps for down-mixing parameters for "
+        "audio element ID= ",
+        audio_element_id, ": expecting", demixing_state.next_timestamp,
         " but got ", parameter_block->start_timestamp));
   }
 
@@ -131,7 +152,8 @@ absl::Status ParametersManager::GetDownMixingParameters(
 
 void ParametersManager::AddDemixingParameterBlock(
     const ParameterBlockWithData* parameter_block) {
-  parameter_blocks_[parameter_block->obu->parameter_id_] = parameter_block;
+  demixing_parameter_blocks_[parameter_block->obu->parameter_id_] =
+      parameter_block;
 }
 
 absl::Status ParametersManager::UpdateDemixingState(
@@ -147,11 +169,11 @@ absl::Status ParametersManager::UpdateDemixingState(
   auto& demixing_state = demixing_states_iter->second;
 
   // Using `.at()` here is safe because if the demixing state exists for the
-  // `audio_element_id`, an entry in `parameter_blocks_` with the key
+  // `audio_element_id`, an entry in `demixing_parameter_blocks_` with the key
   // `demixing_state.param_definition->parameter_id_` has already been
   // created during `Initialize()`.
-  auto& parameter_block =
-      parameter_blocks_.at(demixing_state.param_definition->parameter_id_);
+  auto& parameter_block = demixing_parameter_blocks_.at(
+      demixing_state.param_definition->parameter_id_);
   if (parameter_block == nullptr) {
     // No parameter block found for this ID. Do not validate the timestamp
     // or update anything else.
