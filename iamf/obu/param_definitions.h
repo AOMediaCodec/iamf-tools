@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -55,6 +56,14 @@ class ParamDefinition {
 
   friend bool operator==(const ParamDefinition& lhs,
                          const ParamDefinition& rhs);
+
+  /*!\brief Deep clones a `ParamDefinition`.
+   *
+   * \return A deep clone of this param definition.
+   */
+  virtual std::unique_ptr<ParamDefinition> Clone() {
+    return std::make_unique<ParamDefinition>(*this);
+  };
 
   /*!\brief Gets the number of subblocks.
    *
@@ -183,6 +192,14 @@ class MixGainParamDefinition : public ParamDefinition {
            static_cast<const ParamDefinition&>(rhs);
   }
 
+  /*!\brief Deep clones a `MixGainParamDefinition`.
+   *
+   * \return A deep clone of this param definition.
+   */
+  virtual std::unique_ptr<ParamDefinition> Clone() {
+    return std::make_unique<MixGainParamDefinition>(*this);
+  };
+
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.
@@ -233,6 +250,14 @@ class DemixingParamDefinition : public ParamDefinition {
     return static_cast<const ParamDefinition&>(lhs) ==
            static_cast<const ParamDefinition&>(rhs);
   }
+
+  /*!\brief Deep clones a `DemixingParamDefinition`.
+   *
+   * \return A deep clone of this param definition.
+   */
+  virtual std::unique_ptr<ParamDefinition> Clone() {
+    return std::make_unique<DemixingParamDefinition>(*this);
+  };
 
   /*!\brief Validates and writes to a buffer.
    *
@@ -291,6 +316,14 @@ class ReconGainParamDefinition : public ParamDefinition {
            static_cast<const ParamDefinition&>(rhs);
   }
 
+  /*!\brief Deep clones a `ReconGainParamDefinition`.
+   *
+   * \return A deep clone of this param definition.
+   */
+  std::unique_ptr<ParamDefinition> Clone() override {
+    return std::make_unique<ReconGainParamDefinition>(*this);
+  };
+
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.
@@ -345,6 +378,14 @@ class ExtendedParamDefinition : public ParamDefinition {
     return static_cast<const ParamDefinition&>(lhs) ==
            static_cast<const ParamDefinition&>(rhs);
   }
+
+  /*!\brief Deep clones a `ExtendedParamDefinition`.
+   *
+   * \return A deep clone of this param definition.
+   */
+  std::unique_ptr<ParamDefinition> Clone() override {
+    return std::make_unique<ExtendedParamDefinition>(*this);
+  };
 
   /*!\brief Validates and writes a `ExtendedParamDefinition` to a buffer.
    *

@@ -32,11 +32,28 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr DecodedUleb128 kParameterId = 100;
+constexpr DecodedUleb128 kParameterRate = 48000;
+constexpr DecodedUleb128 kDuration = 64;
+
 void PopulateParameterDefinition(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = 0;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
   param_definition.reserved_ = 0;
+}
+
+TEST(ParamDefinitionBaseClone, IsDeepCopy) {
+  ParamDefinition param_definition;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = kParameterRate;
+  param_definition.duration_ = kDuration;
+  param_definition.constant_subblock_duration_ = kDuration;
+
+  auto other = param_definition.Clone();
+
+  EXPECT_EQ(param_definition, *other);
 }
 
 class ParamDefinitionTestBase : public testing::Test {
@@ -76,6 +93,20 @@ TEST(ParamDefinitionTest, GetTypeHasNoValueWithDefaultConstructor) {
   std::unique_ptr<ParamDefinition> param_definition =
       std::make_unique<ParamDefinition>();
   EXPECT_FALSE(param_definition->GetType().has_value());
+}
+
+TEST(MixGainParamDefinitionClone, IsDeepCopy) {
+  MixGainParamDefinition mix_gain_param_definition;
+  mix_gain_param_definition.param_definition_mode_ = 0;
+  mix_gain_param_definition.parameter_id_ = kParameterId;
+  mix_gain_param_definition.parameter_rate_ = kParameterRate;
+  mix_gain_param_definition.duration_ = kDuration;
+  mix_gain_param_definition.constant_subblock_duration_ = kDuration;
+  mix_gain_param_definition.default_mix_gain_ = -16;
+
+  auto other = mix_gain_param_definition.Clone();
+
+  EXPECT_EQ(mix_gain_param_definition, *other);
 }
 
 class MixGainParamDefinitionTest : public ParamDefinitionTestBase {
@@ -247,6 +278,21 @@ TEST_F(MixGainParamDefinitionTest, InvalidWhenSubblockDurationIsZero) {
   EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
+TEST(DemixingParamDefinitionClone, IsDeepCopy) {
+  DemixingParamDefinition demixing_param_definition;
+  demixing_param_definition.param_definition_mode_ = 0;
+  demixing_param_definition.parameter_id_ = kParameterId;
+  demixing_param_definition.parameter_rate_ = kParameterRate;
+  demixing_param_definition.duration_ = kDuration;
+  demixing_param_definition.constant_subblock_duration_ = kDuration;
+  demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
+      DemixingInfoParameterData::kDMixPMode1;
+
+  auto other = demixing_param_definition.Clone();
+
+  EXPECT_EQ(demixing_param_definition, *other);
+}
+
 class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
  public:
   DemixingParamDefinitionTest() {
@@ -254,8 +300,8 @@ class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
     demixing_ = demixing.get();
     PopulateParameterDefinition(*demixing_);
     demixing->param_definition_mode_ = 0;
-    demixing->duration_ = 64;
-    demixing->constant_subblock_duration_ = 64;
+    demixing->duration_ = kDuration;
+    demixing->constant_subblock_duration_ = kDuration;
     demixing->default_demixing_info_parameter_data_.dmixp_mode =
         DemixingInfoParameterData::kDMixPMode1;
     demixing->default_demixing_info_parameter_data_.reserved = 0;
@@ -402,6 +448,19 @@ TEST_F(DemixingParamDefinitionTest, InvalidWhenParamDefinitionModeIsOne) {
   EXPECT_FALSE(param_definition_->Validate().ok());
 }
 
+TEST(ReconGainParamDefinitionClone, IsDeepCopy) {
+  ReconGainParamDefinition recon_gain_param_definition(0);
+  recon_gain_param_definition.param_definition_mode_ = 0;
+  recon_gain_param_definition.parameter_id_ = kParameterId;
+  recon_gain_param_definition.parameter_rate_ = kParameterRate;
+  recon_gain_param_definition.duration_ = kDuration;
+  recon_gain_param_definition.constant_subblock_duration_ = kDuration;
+
+  auto other = recon_gain_param_definition.Clone();
+
+  EXPECT_EQ(recon_gain_param_definition, *other);
+}
+
 class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
  public:
   ReconGainParamDefinitionTest() {
@@ -409,8 +468,8 @@ class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
     PopulateParameterDefinition(*recon_gain);
     recon_gain->param_definition_mode_ = 0;
     recon_gain->reserved_ = 0;
-    recon_gain->duration_ = 64;
-    recon_gain->constant_subblock_duration_ = 64;
+    recon_gain->duration_ = kDuration;
+    recon_gain->constant_subblock_duration_ = kDuration;
     param_definition_ = std::move(recon_gain);
   }
 };
@@ -521,6 +580,20 @@ TEST_F(ReconGainParamDefinitionTest, InvalidWhenParamDefinitionModeIsOne) {
   Init();
 
   EXPECT_FALSE(param_definition_->Validate().ok());
+}
+
+TEST(ExtendedParamDefinitionClone, IsDeepCopy) {
+  ExtendedParamDefinition extended_param_definition(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  extended_param_definition.param_definition_mode_ = 1;
+  extended_param_definition.parameter_id_ = kParameterId;
+  extended_param_definition.parameter_rate_ = kParameterRate;
+  extended_param_definition.param_definition_size_ = 5;
+  extended_param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
+
+  auto other = extended_param_definition.Clone();
+
+  EXPECT_EQ(extended_param_definition, *other);
 }
 
 class ExtendedParamDefinitionTest : public ParamDefinitionTestBase {
