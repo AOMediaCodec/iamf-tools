@@ -187,11 +187,6 @@ class AudioFrameGenerator {
   // Mapping from Audio Element ID to labeled samples.
   absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples_;
 
-  // Mapping from substream IDs to number of samples that the user requested
-  // to trim at end.
-  absl::flat_hash_map<uint32_t, uint32_t>
-      substream_id_to_user_samples_trim_end_;
-
   // Mapping from substream IDs to substream data.
   absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data_;
 

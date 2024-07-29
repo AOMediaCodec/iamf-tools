@@ -174,9 +174,6 @@ absl::Status InitializeSubstreamData(
     const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
         substream_id_to_encoder,
     const uint32_t user_samples_to_trim_at_start,
-    const uint32_t user_samples_to_trim_at_end,
-    absl::flat_hash_map<uint32_t, uint32_t>&
-        substream_id_to_user_samples_trim_end,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
   // Validate user start trim is correct; it depends on the encoder. Insert
@@ -195,14 +192,6 @@ absl::Status InitializeSubstreamData(
         encoder_iter->second->GetNumberOfSamplesToDelayAtStart();
     RETURN_IF_NOT_OK(ValidateUserStartTrim(user_samples_to_trim_at_start,
                                            encoder_required_samples_to_delay));
-
-    // Track number of samples requested and prevent trimming samples the user
-    // did not request. Although an error will be thrown later as it creates an
-    // invalid IAMF stream.
-    // All substreams in the same Audio Element have the same user trim
-    // applied.
-    substream_id_to_user_samples_trim_end[substream_id] =
-        user_samples_to_trim_at_end;
 
     // Initialize a `SubstreamData` with virtual samples for any delay
     // introduced by the encoder.
@@ -282,8 +271,8 @@ absl::Status GetNextFrameSubstreamData(
     const DecodedUleb128 audio_element_id,
     const DemixingModule& demixing_module, const size_t num_samples_per_frame,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const absl::flat_hash_map<uint32_t, uint32_t>&
-        substream_id_to_user_samples_trim_end,
+    const absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
+        substream_id_to_trimming_state,
     LabelSamplesMap& label_to_samples, ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data,
@@ -313,7 +302,8 @@ absl::Status GetNextFrameSubstreamData(
       uint32_t num_samples_to_pad_at_end;
       RETURN_IF_NOT_OK(GetNumSamplesToPadAtEndAndValidate(
           num_samples_per_frame - substream_data.samples_obu.size(),
-          substream_id_to_user_samples_trim_end.at(substream_id),
+          substream_id_to_trimming_state.at(substream_id)
+              .user_samples_left_to_trim_at_end,
           num_samples_to_pad_at_end));
 
       PadSamples(num_samples_to_pad_at_end, num_channels,
@@ -363,8 +353,8 @@ absl::Status EncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
     const DemixingModule& demixing_module, LabelSamplesMap& label_to_samples,
-    const absl::flat_hash_map<uint32_t, uint32_t>&
-        substream_id_to_user_samples_trim_end,
+    const absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
+        substream_id_to_trimming_state,
     ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
         substream_id_to_encoder,
@@ -411,9 +401,8 @@ absl::Status EncodeFramesForAudioElement(
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
         audio_element_id, demixing_module, num_samples_per_frame,
         audio_element_with_data.substream_id_to_labels,
-        substream_id_to_user_samples_trim_end, label_to_samples,
-        parameters_manager, substream_id_to_substream_data,
-        down_mixing_params));
+        substream_id_to_trimming_state, label_to_samples, parameters_manager,
+        substream_id_to_substream_data, down_mixing_params));
 
     more_samples_to_encode = false;
     for (const auto& [substream_id, labels] :
@@ -655,8 +644,6 @@ absl::Status AudioFrameGenerator::Initialize() {
         InitializeSubstreamData(audio_element_with_data.substream_id_to_labels,
                                 substream_id_to_encoder_,
                                 audio_frame_metadata.samples_to_trim_at_start(),
-                                audio_frame_metadata.samples_to_trim_at_end(),
-                                substream_id_to_user_samples_trim_end_,
                                 substream_id_to_substream_data_));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
@@ -721,9 +708,9 @@ absl::Status AudioFrameGenerator::AddSamples(
     absl::MutexLock lock(&mutex_);
     RETURN_IF_NOT_OK(EncodeFramesForAudioElement(
         audio_element_id, audio_element_with_data, demixing_module_,
-        labeled_samples, substream_id_to_user_samples_trim_end_,
-        parameters_manager_, substream_id_to_encoder_,
-        substream_id_to_substream_data_, global_timing_module_));
+        labeled_samples, substream_id_to_trimming_state_, parameters_manager_,
+        substream_id_to_encoder_, substream_id_to_substream_data_,
+        global_timing_module_));
 
     labeled_samples.clear();
   }
