@@ -355,9 +355,7 @@ cc_test(
     name = "wav_reader_test",
     srcs = ["wav_reader_test.cc"],
     data = [
-        "//iamf/cli/testdata:sine_1000_16khz_512ms_s32le.wav",
-        "//iamf/cli/testdata:stereo_8_samples_48khz_s16le.wav",
-        "//iamf/cli/testdata:stereo_8_samples_48khz_s24le.wav",
+        "//iamf/cli/testdata:input_wav_files",
     ],
     deps = [
         "//iamf/cli:wav_reader",
@@ -370,8 +368,7 @@ cc_test(
     name = "wav_sample_provider_test",
     srcs = ["wav_sample_provider_test.cc"],
     data = [
-        "//iamf/cli/testdata:stereo_8_samples_48khz_s16le.wav",
-        "//iamf/cli/testdata:stereo_8_samples_48khz_s24le.wav",
+        "//iamf/cli/testdata:input_wav_files",
     ],
     deps = [
         ":cli_test_utils",
