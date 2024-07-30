@@ -98,6 +98,19 @@ class ParametersManager {
   absl::Status UpdateDemixingState(DecodedUleb128 audio_element_id,
                                    int32_t expected_timestamp);
 
+  /*!\brief Updates the state of recon gain parameters for an audio element.
+   *
+   * Also validates the timestamp is as expected.
+   *
+   * \param audio_element_id Audio Element ID whose corresponding recon gain
+   *     state are to be updated.
+   * \param expected_timestamp Expected timestamp of the next set of
+   *     recon gain parameter blocks.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status UpdateReconGainState(DecodedUleb128 audio_element_id,
+                                    int32_t expected_timestamp);
+
  private:
   // State used when generating demixing parameters for an audio element.
   struct DemixingState {

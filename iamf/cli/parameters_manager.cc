@@ -210,4 +210,45 @@ absl::Status ParametersManager::UpdateDemixingState(
   return absl::OkStatus();
 }
 
+// TODO(b/356393945): Refactor to use a template function.
+absl::Status ParametersManager::UpdateReconGainState(
+    DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
+  const auto recon_gain_states_iter = recon_gain_states_.find(audio_element_id);
+  if (recon_gain_states_iter == recon_gain_states_.end()) {
+    // No recon gain parameter definition found for the audio element ID, so
+    // nothing to update.
+    return absl::OkStatus();
+  }
+
+  // Validate the timestamps before updating.
+  auto& recon_gain_state = recon_gain_states_iter->second;
+
+  // Using `.at()` here is safe because if the recon gain state exists for the
+  // `audio_element_id`, an entry in `recon_gain_parameter_blocks_` with the key
+  // `recon_gain_state.param_definition->parameter_id_` has already been
+  // created during `Initialize()`.
+  auto& parameter_block = recon_gain_parameter_blocks_.at(
+      recon_gain_state.param_definition->parameter_id_);
+  if (parameter_block == nullptr) {
+    // No parameter block found for this ID. Do not validate the timestamp
+    // or update anything else.
+    return absl::OkStatus();
+  }
+
+  if (expected_timestamp != recon_gain_state.next_timestamp) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Mismatching timestamps for recon gain parameters: (",
+        recon_gain_state.next_timestamp, " vs ", expected_timestamp, ")"));
+  }
+
+  // Update the next timestamp for the next frame.
+  recon_gain_state.next_timestamp = parameter_block->end_timestamp;
+
+  // Clear out the parameter block, which should not be used before a new
+  // one is added via `AddReconGainParameterBlock()`.
+  parameter_block = nullptr;
+
+  return absl::OkStatus();
+}
+
 }  // namespace iamf_tools
