@@ -156,6 +156,12 @@ void ParametersManager::AddDemixingParameterBlock(
       parameter_block;
 }
 
+void ParametersManager::AddReconGainParameterBlock(
+    const ParameterBlockWithData* parameter_block) {
+  recon_gain_parameter_blocks_[parameter_block->obu->parameter_id_] =
+      parameter_block;
+}
+
 absl::Status ParametersManager::UpdateDemixingState(
     DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
   const auto demixing_states_iter = demixing_states_.find(audio_element_id);

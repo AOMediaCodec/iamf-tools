@@ -77,6 +77,14 @@ class ParametersManager {
    */
   void AddDemixingParameterBlock(const ParameterBlockWithData* parameter_block);
 
+  /*!\brief Adds a new recon gain parameter block.
+   *
+   * \param parameter_block Pointer to the new recon gain parameter block to
+   * add.
+   */
+  void AddReconGainParameterBlock(
+      const ParameterBlockWithData* parameter_block);
+
   /*!\brief Updates the state of demixing parameters for an audio element.
    *
    * Also validates the timestamp is as expected.
