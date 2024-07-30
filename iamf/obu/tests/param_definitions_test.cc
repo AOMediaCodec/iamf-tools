@@ -287,6 +287,10 @@ TEST(DemixingParamDefinitionClone, IsDeepCopy) {
   demixing_param_definition.constant_subblock_duration_ = kDuration;
   demixing_param_definition.default_demixing_info_parameter_data_.dmixp_mode =
       DemixingInfoParameterData::kDMixPMode1;
+  demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
+  demixing_param_definition.default_demixing_info_parameter_data_.default_w = 0;
+  demixing_param_definition.default_demixing_info_parameter_data_
+      .reserved_default = 0;
 
   auto other = demixing_param_definition.Clone();
 
