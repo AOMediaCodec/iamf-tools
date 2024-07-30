@@ -24,6 +24,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 
 namespace iamf_tools {
 namespace {
@@ -56,8 +57,7 @@ TEST(CreateFromFile, FailsWhenNumSamplesPerFrameIsZero) {
 }
 
 TEST(CreateFromFile, FailsOnMissingFile) {
-  const std::string non_existent_file =
-      std::filesystem::path(::testing::TempDir()) / "non_existent_file.wav";
+  const std::string non_existent_file(GetAndCleanupOutputFileName(".wav"));
   ASSERT_FALSE(std::filesystem::exists(non_existent_file));
 
   EXPECT_FALSE(
@@ -66,8 +66,7 @@ TEST(CreateFromFile, FailsOnMissingFile) {
 }
 
 TEST(CreateFromFile, FailsOnNonWavFile) {
-  const std::string non_wav_file =
-      std::filesystem::path(::testing::TempDir()) / "non_wav_file.txt";
+  const std::string non_wav_file(GetAndCleanupOutputFileName(".txt"));
   std::ofstream(non_wav_file) << "This is not a wav file.";
   ASSERT_TRUE(std::filesystem::exists(non_wav_file));
 

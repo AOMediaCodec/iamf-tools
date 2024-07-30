@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
@@ -141,6 +142,25 @@ void AddDemixingParamDefinition(
  */
 WavReader CreateWavReaderExpectOk(const std::string& filename,
                                   int num_samples_per_frame = 1);
+
+/*!\brief Gets and cleans up unique file name based on the specified suffix.
+ *
+ * Useful when testing components that write to a single file.
+ *
+ * \param suffix Suffix to append to the file path.
+ * \return Unique file path based on the current unit test info.
+ */
+std::string GetAndCleanupOutputFileName(absl::string_view suffix);
+
+/*!\brief Gets and creates a unique directory based on the specified suffix.
+ *
+ * Useful when testing components that write several files to a single
+ * directory.
+ *
+ * \param suffix Suffix to append to the directory.
+ * \return Unique file path based on the current unit test info.
+ */
+std::string GetAndCreateOutputDirectory(absl::string_view suffix);
 
 }  // namespace iamf_tools
 

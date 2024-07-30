@@ -13,15 +13,18 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <list>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -268,6 +271,25 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
   auto wav_reader = WavReader::CreateFromFile(filename, num_samples_per_frame);
   EXPECT_THAT(wav_reader, IsOk());
   return std::move(*wav_reader);
+}
+
+std::string GetAndCleanupOutputFileName(absl::string_view suffix) {
+  const testing::TestInfo* const test_info =
+      testing::UnitTest::GetInstance()->current_test_info();
+  const std::filesystem::path test_specific_file_name =
+      std::filesystem::path(::testing::TempDir()) /
+      absl::StrCat(test_info->name(), "-", test_info->test_suite_name(), "-",
+                   test_info->test_case_name(), suffix);
+  std::filesystem::remove(test_specific_file_name);
+  return test_specific_file_name.string();
+}
+
+std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
+  const std::string output_directory = GetAndCleanupOutputFileName(suffix);
+  std::error_code error_code;
+  EXPECT_TRUE(
+      std::filesystem::create_directories(output_directory, error_code));
+  return output_directory;
 }
 
 }  // namespace iamf_tools

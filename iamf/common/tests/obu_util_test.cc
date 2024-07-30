@@ -23,6 +23,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -829,9 +830,9 @@ TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
 }
 
 TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
-  const std::filesystem::path file_path_does_not_exist =
-      std::filesystem::path(::testing::TempDir()) /
-      "fails_is_file_does_not_exist.bin";
+  const std::filesystem::path file_path_does_not_exist(
+      GetAndCleanupOutputFileName(".bin"));
+
   ASSERT_FALSE(std::filesystem::exists(file_path_does_not_exist));
 
   std::vector<uint8_t> bytes;
@@ -840,8 +841,7 @@ TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
 
 TEST(ReadFileToBytes, ReadsFileContents) {
   // Create a file to read back.
-  const std::filesystem::path file_to_read =
-      std::filesystem::path(::testing::TempDir()) / "reads_file_contents.txt";
+  const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
   std::filesystem::remove(file_to_read);
   WriteBitBuffer wb(0);
   const std::vector<uint8_t> kExpectedBytes = {0x01, 0x02, 0x00, 0x03, 0x04};
@@ -858,8 +858,7 @@ TEST(ReadFileToBytes, ReadsFileContents) {
 
 TEST(ReadFileToBytes, AppendsFileContents) {
   // Create a file to read back.
-  const std::filesystem::path file_to_read =
-      std::filesystem::path(::testing::TempDir()) / "appends_file_contents.txt";
+  const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
   std::filesystem::remove(file_to_read);
   WriteBitBuffer wb(0);
   const std::vector<uint8_t> kExpectedBytes = {0x01, 0x02, 0x00, 0x03, 0x04};

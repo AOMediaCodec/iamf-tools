@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
@@ -184,12 +185,11 @@ TEST(SpliceWavFilesFromAdm, CreatesWavFiles) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoObject)));
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_THAT(reader, IsOk());
+  const std::string directory = GetAndCreateOutputDirectory("");
 
-  EXPECT_THAT(
-      SpliceWavFilesFromAdm(::testing::TempDir(), "prefix", *reader, ss),
-      IsOk());
-  EXPECT_TRUE(std::filesystem::exists(
-      std::filesystem::path(::testing::TempDir()) / "prefix_converted1.wav"));
+  EXPECT_THAT(SpliceWavFilesFromAdm(directory, "prefix", *reader, ss), IsOk());
+  EXPECT_TRUE(std::filesystem::exists(std::filesystem::path(directory) /
+                                      "prefix_converted1.wav"));
 }
 
 TEST(SpliceWavFilesFromAdm,
@@ -198,26 +198,24 @@ TEST(SpliceWavFilesFromAdm,
       (std::string(kInvalidWavFileWithInconsistentDataChunkSize)));
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_THAT(reader, IsOk());
-  const auto kPathOnSuccess =
-      std::filesystem::path(::testing::TempDir()) / "prefix_converted1.wav";
-  std::filesystem::remove(kPathOnSuccess);
+  const std::string directory = GetAndCreateOutputDirectory("");
 
   EXPECT_FALSE(
       SpliceWavFilesFromAdm(::testing::TempDir(), "prefix", *reader, ss).ok());
-  EXPECT_FALSE(std::filesystem::exists(kPathOnSuccess));
+
+  EXPECT_TRUE(std::filesystem::is_empty(directory));
 }
 
 TEST(SpliceWavFilesFromAdm, StripsAxmlChunkAndUpdatesChunkSizes) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoObject)));
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_THAT(reader, IsOk());
+  const std::string directory = GetAndCreateOutputDirectory("");
 
-  ASSERT_THAT(
-      SpliceWavFilesFromAdm(::testing::TempDir(), "prefix", *reader, ss),
-      IsOk());
+  ASSERT_THAT(SpliceWavFilesFromAdm(directory, "prefix", *reader, ss), IsOk());
 
   ValidateFileContents(
-      std::filesystem::path(::testing::TempDir()) / "prefix_converted1.wav",
+      std::filesystem::path(directory) / "prefix_converted1.wav",
       kExpectedOutputForStereoObject);
 }
 
@@ -225,17 +223,16 @@ TEST(SpliceWavFilesFromAdm, OutputsOneWavFilePerObject) {
   std::istringstream ss((std::string(kAdmBwfWithOneStereoAndOneMonoObject)));
   const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
   ASSERT_THAT(reader, IsOk());
+  const std::string directory = GetAndCreateOutputDirectory("");
 
-  EXPECT_THAT(
-      SpliceWavFilesFromAdm(::testing::TempDir(), "prefix", *reader, ss),
-      IsOk());
+  EXPECT_THAT(SpliceWavFilesFromAdm(directory, "prefix", *reader, ss), IsOk());
 
   ValidateFileContents(
-      std::filesystem::path(::testing::TempDir()) / "prefix_converted1.wav",
+      std::filesystem::path(directory) / ("prefix_converted1.wav"),
       kExpectedOutputForStereoObject);
 
   ValidateFileContents(
-      std::filesystem::path(::testing::TempDir()) / "prefix_converted2.wav",
+      std::filesystem::path(directory) / ("prefix_converted2.wav"),
       kExpectedOutputForMonoObject);
 }
 }  // namespace

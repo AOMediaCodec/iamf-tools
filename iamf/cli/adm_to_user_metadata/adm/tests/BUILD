@@ -15,6 +15,7 @@ cc_test(
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
         "//iamf/cli/adm_to_user_metadata/adm:wav_file_splicer",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:obu_util",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings:string_view",

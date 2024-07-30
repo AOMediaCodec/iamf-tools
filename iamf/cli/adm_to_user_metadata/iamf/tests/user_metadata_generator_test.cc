@@ -28,6 +28,7 @@
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -119,13 +120,15 @@ TEST(WriteUserMetadataToFile, CreatesTextprotoFile) {
   const absl::string_view kFileNamePrefix = "prefix";
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix(
       kFileNamePrefix);
-  const auto kPath = std::filesystem::path(::testing::TempDir());
+  const auto kOutputDirectory = GetAndCreateOutputDirectory("");
   const auto kExpectedTextprotoPath =
-      kPath / absl::StrCat(kFileNamePrefix, ".textproto");
+      std::filesystem::path(kOutputDirectory) /
+      absl::StrCat(kFileNamePrefix, ".textproto");
 
-  EXPECT_THAT(UserMetadataGenerator::WriteUserMetadataToFile(
-                  /*write_binary_proto=*/false, kPath, user_metadata),
-              IsOk());
+  EXPECT_THAT(
+      UserMetadataGenerator::WriteUserMetadataToFile(
+          /*write_binary_proto=*/false, kOutputDirectory, user_metadata),
+      IsOk());
   EXPECT_TRUE(std::filesystem::exists(kExpectedTextprotoPath));
 }
 
@@ -134,12 +137,13 @@ TEST(WriteUserMetadataToFile, CreatesBinaryProtoFile) {
   const absl::string_view kFileNamePrefix = "prefix";
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix(
       kFileNamePrefix);
-  const auto kPath = std::filesystem::path(::testing::TempDir());
+  const auto kOutputDirectory = GetAndCreateOutputDirectory("");
   const auto kExpectedBinaryProtoPath =
-      kPath / absl::StrCat(kFileNamePrefix, ".binpb");
+      std::filesystem::path(kOutputDirectory) /
+      absl::StrCat(kFileNamePrefix, ".binpb");
 
   EXPECT_THAT(UserMetadataGenerator::WriteUserMetadataToFile(
-                  /*write_binary_proto=*/true, kPath, user_metadata),
+                  /*write_binary_proto=*/true, kOutputDirectory, user_metadata),
               IsOk());
   EXPECT_TRUE(std::filesystem::exists(kExpectedBinaryProtoPath));
 }

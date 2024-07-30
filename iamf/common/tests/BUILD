@@ -18,6 +18,7 @@ cc_test(
     size = "small",
     srcs = ["obu_util_test.cc"],
     deps = [
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:obu_util",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/status",

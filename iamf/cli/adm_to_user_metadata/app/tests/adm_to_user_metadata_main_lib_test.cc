@@ -24,6 +24,7 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -100,11 +101,11 @@ constexpr absl::string_view kInvalidAdmWithoutAxmlChunk(
     52);
 
 iamf_tools_cli_proto::UserMetadata
-GenerateUserMetadataAndSpliceWavFilesExpectOk(absl::string_view input_adm) {
+GenerateUserMetadataAndSpliceWavFilesExpectOk(
+    absl::string_view input_adm, const std::filesystem::path& output_path) {
   std::istringstream ss((std::string(input_adm)));
   const auto& user_metadata = GenerateUserMetadataAndSpliceWavFiles(
-      kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-      ::testing::TempDir(), ss);
+      kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold, output_path, ss);
 
   EXPECT_THAT(user_metadata, IsOk());
 
@@ -113,27 +114,29 @@ GenerateUserMetadataAndSpliceWavFilesExpectOk(absl::string_view input_adm) {
 
 TEST(GenerateUserMetadataAndSpliceWavFiles,
      WavFileNameAndAudioFrameMetadataAreConsistent) {
-  const auto& user_metadata =
-      GenerateUserMetadataAndSpliceWavFilesExpectOk(kAdmWithOneStereoObject);
+  const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
+  const auto& user_metadata = GenerateUserMetadataAndSpliceWavFilesExpectOk(
+      kAdmWithOneStereoObject, output_path);
 
   const std::filesystem::path expected_wav_path =
-      std::filesystem::path(::testing::TempDir()) /
-      user_metadata.audio_frame_metadata(0).wav_filename();
+      output_path / user_metadata.audio_frame_metadata(0).wav_filename();
   EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
 }
 
 TEST(GenerateUserMetadataAndSpliceWavFiles,
      SetsTestVectorMetadataFileNamePrefix) {
-  const auto& user_metadata =
-      GenerateUserMetadataAndSpliceWavFilesExpectOk(kAdmWithOneStereoObject);
+  const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
+  const auto& user_metadata = GenerateUserMetadataAndSpliceWavFilesExpectOk(
+      kAdmWithOneStereoObject, output_path);
 
   EXPECT_EQ(user_metadata.test_vector_metadata().file_name_prefix(),
             kFilePrefix);
 }
 
 TEST(GenerateUserMetadataAndSpliceWavFiles, CreatesDescriptorObuMetadata) {
-  const auto& user_metadata =
-      GenerateUserMetadataAndSpliceWavFilesExpectOk(kAdmWithOneStereoObject);
+  const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
+  const auto& user_metadata = GenerateUserMetadataAndSpliceWavFilesExpectOk(
+      kAdmWithOneStereoObject, output_path);
 
   EXPECT_EQ(user_metadata.ia_sequence_header_metadata().size(), 1);
   EXPECT_EQ(user_metadata.codec_config_metadata().size(), 1);
@@ -144,18 +147,24 @@ TEST(GenerateUserMetadataAndSpliceWavFiles, CreatesDescriptorObuMetadata) {
 
 TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutAxmlChunk) {
   std::istringstream ss((std::string(kInvalidAdmWithoutAxmlChunk)));
+  const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
+
   EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
                    kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   ::testing::TempDir(), ss)
+                   output_path, ss)
                    .ok());
+  EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }
 
 TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutDataChunk) {
   std::istringstream ss((std::string(kInvalidAdmWithoutDataChunk)));
+  const std::filesystem::path output_path(GetAndCreateOutputDirectory(""));
+
   EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
                    kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   ::testing::TempDir(), ss)
+                   output_path, ss)
                    .ok());
+  EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }
 
 }  // namespace
