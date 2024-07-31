@@ -1,7 +1,5 @@
 # Tests for the IAMF software.
 
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_test(
     name = "bit_buffer_util_test",
     srcs = ["bit_buffer_util_test.cc"],
