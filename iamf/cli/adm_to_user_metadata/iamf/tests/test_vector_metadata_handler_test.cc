@@ -27,6 +27,7 @@ TEST(TestVectorMetadataHandler, GeneratesValidTestVectorMetadata) {
   TestVectorMetadataHandler(kFilePrefix, test_vector_metadata);
 
   EXPECT_TRUE(test_vector_metadata.is_valid());
+  EXPECT_TRUE(test_vector_metadata.is_valid_to_decode());
   EXPECT_EQ(test_vector_metadata.file_name_prefix(), kFilePrefix);
 }
 

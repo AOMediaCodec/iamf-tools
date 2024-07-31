@@ -26,6 +26,7 @@ void TestVectorMetadataHandler(
       kHumanReadableDescription);
   test_vector_metadata.set_file_name_prefix(file_name_prefix);
   test_vector_metadata.set_is_valid(true);
+  test_vector_metadata.set_is_valid_to_decode(true);
 }
 
 }  // namespace adm_to_user_metadata
