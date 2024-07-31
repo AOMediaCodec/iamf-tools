@@ -11,7 +11,9 @@
  */
 #include "iamf/cli/parameters_manager.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
@@ -24,6 +26,7 @@
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 
@@ -147,6 +150,74 @@ absl::Status ParametersManager::GetDownMixingParameters(
       demixing_state.previous_w_idx, demixing_state.update_rule,
       down_mixing_params));
   demixing_state.w_idx = down_mixing_params.w_idx_used;
+  return absl::OkStatus();
+}
+
+absl::Status ParametersManager::GetReconGainParameters(
+    DecodedUleb128 audio_element_id, int32_t num_layers,
+    ReconGainInfoParameterData& recon_gain_parameters) {
+  const auto recon_gain_states_iter = recon_gain_states_.find(audio_element_id);
+  if (recon_gain_states_iter == recon_gain_states_.end()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "No recon gain parameter definition found for Audio "
+        << "Element with ID= " << audio_element_id
+        << "; setting recon gain to 255 (which represents a multiplier of 1.0, "
+           "i.e. a gain of 0 dB) in all layers";
+    for (int i = 0; i < num_layers; ++i) {
+      ReconGainElement recon_gain_element;
+      recon_gain_element.recon_gain_flag = DecodedUleb128(0);
+      std::fill(recon_gain_element.recon_gain.begin(),
+                recon_gain_element.recon_gain.end(), 255);
+      recon_gain_parameters.recon_gain_elements.push_back(recon_gain_element);
+    }
+    return absl::OkStatus();
+  }
+
+  auto& recon_gain_state = recon_gain_states_iter->second;
+  const auto* param_definition = recon_gain_state.param_definition;
+  const auto* recon_gain_parameter_block =
+      recon_gain_parameter_blocks_.at(param_definition->parameter_id_);
+  if (recon_gain_parameter_block == nullptr) {
+    // Failed to find a parameter block that overlaps this frame. A default
+    // recon gain value of 0 dB is implied when there are no Parameter Block
+    // OBUs provided. This is OK when there are no parameter blocks covering
+    // this substream. If there is only partial coverage this will be marked
+    // invalid when the coverage of parameter blocks is checked.
+    LOG_FIRST_N(WARNING, 10)
+        << "Failed to find a recon gain parameter block; "
+           "A default recon gain value of 0 dB is implied when there are no "
+           "Parameter Block OBUs provided";
+
+    for (int i = 0; i < num_layers; ++i) {
+      ReconGainElement recon_gain_element;
+      recon_gain_element.recon_gain_flag = DecodedUleb128(0);
+      std::fill(recon_gain_element.recon_gain.begin(),
+                recon_gain_element.recon_gain.end(), 255);
+      recon_gain_parameters.recon_gain_elements.push_back(recon_gain_element);
+    }
+
+    return absl::OkStatus();
+  }
+
+  if (recon_gain_parameter_block->start_timestamp !=
+      recon_gain_state.next_timestamp) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Mismatching timestamps for recon gain parameters for "
+        "audio element ID= ",
+        audio_element_id, ": expecting", recon_gain_state.next_timestamp,
+        " but got ", recon_gain_parameter_block->start_timestamp));
+  }
+
+  auto recon_gain_info_param_data = std::get_if<ReconGainInfoParameterData>(
+      &recon_gain_parameter_block->obu->subblocks_[0].param_data);
+  if (recon_gain_info_param_data == nullptr) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Failed to find recon gain parameter data for "
+                     "audio element ID= ",
+                     audio_element_id));
+  } else {
+    recon_gain_parameters = *recon_gain_info_param_data;
+  }
   return absl::OkStatus();
 }
 

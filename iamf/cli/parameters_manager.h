@@ -22,6 +22,7 @@
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 
@@ -70,6 +71,18 @@ class ParametersManager {
    */
   absl::Status GetDownMixingParameters(DecodedUleb128 audio_element_id,
                                        DownMixingParams& down_mixing_params);
+
+  /*!\brief Gets current recon gain parameters for an audio element.
+   *
+   * \param audio_element_id ID of the audio element that the parameters are
+   *     to be applied.
+   * \param num_layers Number of layers in the audio element.
+   * \param recon_gain_parameters Output recon gain parameters.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status GetReconGainParameters(
+      DecodedUleb128 audio_element_id, int32_t num_layers,
+      ReconGainInfoParameterData& recon_gain_parameters);
 
   /*!\brief Adds a new demixing parameter block.
    *
