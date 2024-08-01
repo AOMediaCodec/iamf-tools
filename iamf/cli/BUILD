@@ -51,6 +51,7 @@ cc_library(
         ":audio_element_with_data",
         "//iamf/obu:audio_frame",
         "//iamf/obu:demixing_info_param_data",
+        "//iamf/obu:parameter_block",
     ],
 )
 
