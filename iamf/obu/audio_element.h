@@ -77,7 +77,28 @@ struct ChannelAudioLayerConfig {
     kLayoutReserved12 = 12,
     kLayoutReserved13 = 13,
     kLayoutReserved14 = 14,
-    kLayoutReserved15 = 15,
+    kLayoutExpanded = 15,
+  };
+
+  /*!\brief A 8-bit enum for the type of expanded layout. */
+  enum ExpandedLoudspeakerLayout : uint8_t {
+    kExpandedLayoutLFE = 0,      // Low-frequency effects subset (LFE) or 7.1.4.
+    kExpandedLayoutStereoS = 1,  // Stereo subset (Ls/Rs) of 5.1.4.
+    kExpandedLayoutStereoSS = 2,  // Side surround subset (Lss/Rss) of 7.1.4.
+    kExpandedLayoutStereoRS = 3,  // Rear surround subset (Lrs/Rrs) of 7.1.4.
+    kExpandedLayoutStereoTF = 4,  // Top front subset (Ltf/Rtf) of 7.1.4.
+    kExpandedLayoutStereoTB = 5,  // Top back subset (Ltb/Rtb) of 7.1.4.
+    kExpandedLayoutTop4Ch = 6,  // Top four channels (Ltf/Rtf/Ltb/Rtb) of 7.1.4.
+    kExpandedLayout3_0_ch = 7,  // Front three channels (L/C/R) of 5.1.4.
+    kExpandedLayout9_1_6_ch = 8,   // Subset of Sound System H [ITU-2051-3].
+    kExpandedLayoutStereoF = 9,    // Front stereo subset (FL/FR) of 9.1.6.
+    kExpandedLayoutStereoSi = 10,  // Side surround subset (SiL/SiR) of 9.1.6.
+    kExpandedLayoutStereoTpSi =
+        11,  // Top surround subset (TpSiL/TpSiR) of 9.1.46
+    kExpandedLayoutStereoTop6Ch =
+        12,  // Top six channels (TpFL/TpFR/TpSiL/TpSiR/TpBL/TpBR) of 9.1.6.
+    kExpandedLayoutReserved13 = 13,
+    kExpandedLayoutReserved255 = 255,
   };
 
   friend bool operator==(const ChannelAudioLayerConfig& lhs,
@@ -109,6 +130,10 @@ struct ChannelAudioLayerConfig {
   uint8_t output_gain_flag = 0;  // 6 bits.
   uint8_t reserved_b = 0;        // 2 bits.
   int16_t output_gain = 0;
+  // }
+
+  // if (loudspeaker_layout == kLayoutExpanded) {
+  ExpandedLoudspeakerLayout expanded_loudspeaker_layout;
   // }
 };
 

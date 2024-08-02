@@ -618,21 +618,46 @@ TEST(ChannelAudioLayerConfig, WritesReserved14Layer) {
   ValidateWriteResults(wb, kExpectedData);
 }
 
-TEST(ChannelAudioLayerConfig, WritesReserved15Layer) {
+TEST(ChannelAudioLayerConfig, WritesExpandedLayoutLFE) {
   constexpr uint8_t kExpectedSubstreamCount = 1;
   constexpr uint8_t kExpectedCoupledSubstreamCount = 1;
   const ChannelAudioLayerConfig kChannelAudioLayerConfigReserved15 = {
-      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved15,
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
       .output_gain_is_present_flag = false,
       .recon_gain_is_present_flag = false,
       .substream_count = kExpectedSubstreamCount,
-      .coupled_substream_count = kExpectedCoupledSubstreamCount};
+      .coupled_substream_count = kExpectedCoupledSubstreamCount,
+      .expanded_loudspeaker_layout =
+          ChannelAudioLayerConfig::kExpandedLayoutLFE};
 
   const std::vector<uint8_t> kExpectedData = {
-      ChannelAudioLayerConfig::kLayoutReserved15 << kLoudspeakerLayoutBitShift,
-      kExpectedSubstreamCount, kExpectedCoupledSubstreamCount};
+      ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift,
+      kExpectedSubstreamCount, kExpectedCoupledSubstreamCount,
+      ChannelAudioLayerConfig::kExpandedLayoutLFE};
   WriteBitBuffer wb(1024);
   EXPECT_THAT(kChannelAudioLayerConfigReserved15.Write(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedData);
+}
+
+TEST(ChannelAudioLayerConfig, WritesExpandedLayoutReserved13) {
+  constexpr uint8_t kExpectedSubstreamCount = 1;
+  constexpr uint8_t kExpectedCoupledSubstreamCount = 1;
+  const ChannelAudioLayerConfig kChannelAudioLayerConfigReserved13 = {
+      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = false,
+      .substream_count = kExpectedSubstreamCount,
+      .coupled_substream_count = kExpectedCoupledSubstreamCount,
+      .expanded_loudspeaker_layout =
+          ChannelAudioLayerConfig::kExpandedLayoutReserved13};
+
+  const std::vector<uint8_t> kExpectedData = {
+      ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift,
+      kExpectedSubstreamCount, kExpectedCoupledSubstreamCount,
+      ChannelAudioLayerConfig::kExpandedLayoutReserved13};
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(kChannelAudioLayerConfigReserved13.Write(wb), IsOk());
 
   ValidateWriteResults(wb, kExpectedData);
 }
@@ -791,17 +816,34 @@ TEST(ChannelAudioLayerConfig, ReadsReserved14Layer) {
             ChannelAudioLayerConfig::kLayoutReserved14);
 }
 
-TEST(ChannelAudioLayerConfig, ReadsReserved15Layer) {
+TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutLFE) {
   std::vector<uint8_t> data = {
-      ChannelAudioLayerConfig::kLayoutReserved15 << kLoudspeakerLayoutBitShift,
-      1, 1};
+      ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
+      1, ChannelAudioLayerConfig::kExpandedLayoutLFE};
   ReadBitBuffer buffer(1024, &data);
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
-            ChannelAudioLayerConfig::kLayoutReserved15);
+            ChannelAudioLayerConfig::kLayoutExpanded);
+  EXPECT_EQ(config.expanded_loudspeaker_layout,
+            ChannelAudioLayerConfig::kExpandedLayoutLFE);
+}
+
+TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutReserved13) {
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
+      1, ChannelAudioLayerConfig::kExpandedLayoutReserved13};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_THAT(config.Read(buffer), IsOk());
+
+  EXPECT_EQ(config.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutExpanded);
+  EXPECT_EQ(config.expanded_loudspeaker_layout,
+            ChannelAudioLayerConfig::kExpandedLayoutReserved13);
 }
 
 TEST(ChannelAudioLayerConfig, ReadsOutputGainIsPresentRelatedFields) {

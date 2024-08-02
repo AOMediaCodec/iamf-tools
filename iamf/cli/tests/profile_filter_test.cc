@@ -172,7 +172,7 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesSimpleProfileWhenFirstLayerIsLoudspeakerLayout15) {
+     RemovesSimpleProfileWhenFirstLayerIsExpandedLayout) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementChannelBased,
                                     kAudioElementReserved, kCodecConfigId);
@@ -183,7 +183,9 @@ TEST(FilterProfilesForAudioElement,
   auto& first_layer =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
           .channel_audio_layer_configs[0];
-  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved15;
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded;
+  first_layer.expanded_loudspeaker_layout =
+      ChannelAudioLayerConfig::kExpandedLayoutLFE;
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -224,7 +226,7 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesBaseProfileWhenFirstLayerIsLoudspeakerLayout15) {
+     RemovesBaseProfileWhenFirstLayerIsExpandedLayout) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementChannelBased,
                                     kAudioElementReserved, kCodecConfigId);
@@ -235,7 +237,9 @@ TEST(FilterProfilesForAudioElement,
   auto& first_layer =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
           .channel_audio_layer_configs[0];
-  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved15;
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded;
+  first_layer.expanded_loudspeaker_layout =
+      ChannelAudioLayerConfig::kExpandedLayoutLFE;
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -276,7 +280,7 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     KeepsBaseEnhancedProfileWhenFirstLayerIsLoudspeakerLayout15) {
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutReserved13) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementChannelBased,
                                     kAudioElementReserved, kCodecConfigId);
@@ -287,7 +291,33 @@ TEST(FilterProfilesForAudioElement,
   auto& first_layer =
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
           .channel_audio_layer_configs[0];
-  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved15;
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded;
+  first_layer.expanded_loudspeaker_layout =
+      ChannelAudioLayerConfig::kExpandedLayoutReserved13;
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+TEST(FilterProfilesForAudioElement,
+     KeepsBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutLFE) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded;
+  first_layer.expanded_loudspeaker_layout =
+      ChannelAudioLayerConfig::kExpandedLayoutLFE;
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 

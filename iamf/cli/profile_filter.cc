@@ -68,6 +68,45 @@ absl::Status FilterAudioElementType(
   return absl::OkStatus();
 }
 
+// Filters out profiles that do not support specific expanded loudspeaker
+// layouts. This function assumes profiles that do not support expanded layout
+// have already been filtered out (e.g. kIamfSimpleProfile, kIamfBaseProfile).
+absl::Status FilterExpandedLoudspeakerLayout(
+    absl::string_view debugging_context,
+    ChannelAudioLayerConfig::ExpandedLoudspeakerLayout
+        expanded_loudspeaker_layout,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  switch (expanded_loudspeaker_layout) {
+    using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+    case kExpandedLayoutLFE:
+    case kExpandedLayoutStereoS:
+    case kExpandedLayoutStereoSS:
+    case kExpandedLayoutStereoRS:
+    case kExpandedLayoutStereoTF:
+    case kExpandedLayoutStereoTB:
+    case kExpandedLayoutTop4Ch:
+    case kExpandedLayout3_0_ch:
+    case kExpandedLayout9_1_6_ch:
+    case kExpandedLayoutStereoF:
+    case kExpandedLayoutStereoSi:
+    case kExpandedLayoutStereoTpSi:
+    case kExpandedLayoutStereoTop6Ch:
+      break;
+    case kExpandedLayoutReserved13:
+    case kExpandedLayoutReserved255:
+    default:
+      // Other layouts are reserved and not supported by base-enhanced profile.
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+  }
+  if (profile_versions.empty()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        debugging_context,
+        "has expanded_loudspeaker_layout= ", expanded_loudspeaker_layout,
+        ". But the requested profiles do support not support this type."));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status FilterChannelBasedConfig(
     absl::string_view debugging_context,
     const AudioElementObu& audio_element_obu,
@@ -89,11 +128,10 @@ absl::Status FilterChannelBasedConfig(
         profile_versions);
   }
 
-  const auto& first_loudspeaker_layout =
-      scalable_channel_layout_config.channel_audio_layer_configs[0]
-          .loudspeaker_layout;
+  const auto& first_channel_audio_layer_config =
+      scalable_channel_layout_config.channel_audio_layer_configs[0];
 
-  switch (first_loudspeaker_layout) {
+  switch (first_channel_audio_layer_config.loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::LoudspeakerLayout;
     case kLayoutMono:
     case kLayoutStereo:
@@ -115,18 +153,20 @@ absl::Status FilterChannelBasedConfig(
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
       break;
-    case kLayoutReserved15:
+    case kLayoutExpanded:
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
-      // TODO(b/354000981): Filter out any `expanded_loudspeaker_layout` which
-      //                    are invalid under Base-enhnaced profile.
+      RETURN_IF_NOT_OK(FilterExpandedLoudspeakerLayout(
+          debugging_context,
+          first_channel_audio_layer_config.expanded_loudspeaker_layout,
+          profile_versions));
       break;
   }
 
   if (profile_versions.empty()) {
     return absl::InvalidArgumentError(absl::StrCat(
-        debugging_context,
-        "has the first loudspeaker_layout= ", first_loudspeaker_layout,
+        debugging_context, "has the first loudspeaker_layout= ",
+        first_channel_audio_layer_config.loudspeaker_layout,
         ". But the requested profiles do support not support this type."));
   }
 

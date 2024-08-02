@@ -392,6 +392,11 @@ absl::Status ChannelAudioLayerConfig::Write(WriteBitBuffer& wb) const {
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_b, 2));
     RETURN_IF_NOT_OK(wb.WriteSigned16(output_gain));
   }
+
+  if (loudspeaker_layout == kLayoutExpanded) {
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(expanded_loudspeaker_layout, 8));
+  }
+
   return absl::OkStatus();
 }
 
@@ -411,6 +416,16 @@ absl::Status ChannelAudioLayerConfig::Read(ReadBitBuffer& rb) {
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved_b));
     RETURN_IF_NOT_OK(rb.ReadSigned16(output_gain));
   }
+
+  if (loudspeaker_layout == kLayoutExpanded) {
+    uint8_t expanded_loudspeaker_layout_uint8;
+    RETURN_IF_NOT_OK(
+        rb.ReadUnsignedLiteral(8, expanded_loudspeaker_layout_uint8));
+    expanded_loudspeaker_layout =
+        static_cast<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>(
+            expanded_loudspeaker_layout_uint8);
+  }
+
   return absl::OkStatus();
 }
 

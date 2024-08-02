@@ -270,10 +270,11 @@ TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
                    .ok());
 }
 
+// TODO(b/354000981): Support expanded layout.
 TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
      FailsForReservedLayout15) {
   EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   ChannelAudioLayerConfig::kLayoutReserved15)
+                   ChannelAudioLayerConfig::kLayoutExpanded)
                    .ok());
 }
 
@@ -311,10 +312,11 @@ TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
           .ok());
 }
 
+// TODO(b/354000981): Support expanded layout.
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      FailsForReservedLayouts15) {
   EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   ChannelAudioLayerConfig::kLayoutReserved15)
+                   ChannelAudioLayerConfig::kLayoutExpanded)
                    .ok());
 }
 

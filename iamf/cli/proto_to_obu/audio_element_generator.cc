@@ -609,7 +609,9 @@ absl::Status CopyLoudspeakerLayout(
           {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
           {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
           {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReserved10},
-          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutReserved15},
+          // TODO(b/354000981): Rename `LOUDSPEAKER_LAYOUT_RESERVED_END` and add
+          //                    expanded layouts to the input layer.
+          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutExpanded},
       });
 
   if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,

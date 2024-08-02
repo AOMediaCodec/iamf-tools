@@ -223,11 +223,28 @@ TEST(InitializeForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
   EXPECT_EQ(demixer->size(), 1);
 }
 
-TEST(InitializeForReconstruction, InvalidForReservedLoudspeakerLayout15) {
+TEST(InitializeForReconstruction, InvalidForReservedLoudspeakerLayout14) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
-      {{0, {kOmitted}}}, {ChannelAudioLayerConfig::kLayoutReserved15},
+      {{0, {kOmitted}}}, {ChannelAudioLayerConfig::kLayoutReserved14},
       audio_elements);
+  DemixingModule demixing_module;
+
+  EXPECT_FALSE(
+      demixing_module.InitializeForReconstruction(audio_elements).ok());
+}
+
+// TODO(b/354000981): Support expanded layout.
+TEST(InitializeForReconstruction, InvalidForExpandedLayout) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{0, {kLFE}}}, {ChannelAudioLayerConfig::kLayoutExpanded},
+      audio_elements);
+  std::get<ScalableChannelLayoutConfig>(
+      audio_elements.at(kAudioElementId).obu.config_)
+      .channel_audio_layer_configs[0]
+      .expanded_loudspeaker_layout =
+      ChannelAudioLayerConfig::kExpandedLayoutLFE;
   DemixingModule demixing_module;
 
   EXPECT_FALSE(
