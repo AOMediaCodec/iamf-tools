@@ -260,7 +260,7 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
       [](const MixPresentationObu& obu_1, const MixPresentationObu& obu_2) {
         return obu_1.GetMixPresentationId() < obu_2.GetMixPresentationId();
       });
-  // TODO(b/350765228): Ensure at least one the profiles in the IA Sequence
+  // TODO(b/269708630): Ensure at least one the profiles in the IA Sequence
   //                    Header supports all of the layers for scalable audio
   //                    elements.
   for (const auto& mix_presentation_obu : sorted_mix_presentation_obus) {
@@ -279,8 +279,6 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterMixPresentations, arbitrary_obus, wb));
 
-  // TODO(b/274065471): Check that the number of descriptor OBUs is allowed by
-  //                    the current profile version.
   return absl::OkStatus();
 }
 

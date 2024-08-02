@@ -118,7 +118,7 @@ absl::Status FilterChannelBasedConfig(
     case kLayoutReserved15:
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
-      // TODO(b/350765228): Filter out any `expanded_loudspeaker_layout` which
+      // TODO(b/354000981): Filter out any `expanded_loudspeaker_layout` which
       //                    are invalid under Base-enhnaced profile.
       break;
   }
