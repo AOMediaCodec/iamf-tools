@@ -226,9 +226,9 @@ absl::Status ConvertReconGainsAndFlags(
       bit_position = 3;
     } else if (label == "D_Rs5") {
       bit_position = 4;
-    } else if (label == "D_Ltf4" || label == "D_Ltf2") {
+    } else if (label == "D_Ltf2") {
       bit_position = 5;
-    } else if (label == "D_Rtf4" || label == "D_Rtf2") {
+    } else if (label == "D_Rtf2") {
       bit_position = 6;
     } else if (label == "D_Lrs7") {
       bit_position = 7;

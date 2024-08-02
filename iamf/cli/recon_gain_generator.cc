@@ -62,7 +62,6 @@ absl::Status FindRelevantMixedSamples(
                     {"D_Rtf2", "Rtf3"},
                     {"D_L3", "L2"},
                     {"D_R3", "R2"},
-                    {"D_L2", "M"},
                     {"D_R2", "M"}});
 
   std::string mixed_label;

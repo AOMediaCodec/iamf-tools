@@ -66,11 +66,24 @@ TEST(FindSamplesOrDemixedSamples, FindsMatchingSamples) {
 
 TEST(FindSamplesOrDemixedSamples, FindsMatchingDemixedSamples) {
   const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
-  const LabelSamplesMap kLabelToSamples = {{"D_L2", kSamplesToFind}};
+  const LabelSamplesMap kLabelToSamples = {{"D_R2", kSamplesToFind}};
 
   const std::vector<int32_t>* found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("R2", kLabelToSamples,
                                                           &found_samples),
+              IsOk());
+  EXPECT_EQ(*found_samples, kSamplesToFind);
+}
+
+// TODO(b/289901508): Prevent arbitrary labels from being used.
+TEST(FindSamplesOrDemixedSamples, PermitsArbitraryLabels) {
+  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
+  const LabelSamplesMap kLabelToSamples = {
+      {"D_ArbitraryLabel", kSamplesToFind}};
+
+  const std::vector<int32_t>* found_samples;
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(
+                  "ArbitraryLabel", kLabelToSamples, &found_samples),
               IsOk());
   EXPECT_EQ(*found_samples, kSamplesToFind);
 }
@@ -78,11 +91,11 @@ TEST(FindSamplesOrDemixedSamples, FindsMatchingDemixedSamples) {
 TEST(FindSamplesOrDemixedSamples, RegularSamplesTakePrecedence) {
   const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
   const std::vector<int32_t> kDemixedSamplesToIgnore = {4, 5, 6};
-  const LabelSamplesMap kLabelToSamples = {{"L2", kSamplesToFind},
-                                           {"D_L2", kDemixedSamplesToIgnore}};
+  const LabelSamplesMap kLabelToSamples = {{"R2", kSamplesToFind},
+                                           {"R_L2", kDemixedSamplesToIgnore}};
 
   const std::vector<int32_t>* found_samples;
-  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("L2", kLabelToSamples,
+  EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples("R2", kLabelToSamples,
                                                           &found_samples),
               IsOk());
   EXPECT_EQ(*found_samples, kSamplesToFind);
