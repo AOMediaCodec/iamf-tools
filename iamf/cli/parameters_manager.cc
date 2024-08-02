@@ -102,6 +102,13 @@ bool ParametersManager::DemixingParamDefinitionAvailable(
   return demixing_states_.find(audio_element_id) != demixing_states_.end();
 }
 
+// This function will populate `down_mixing_params` as follows:
+// 1) If no parameter definition of type kParameterDefinitionDemixing
+//    exists, it will use sensible defaults.
+// 2) If such a parameter definition exists but no demixing parameter
+//    blocks are present, it will use the parameter definition defaults.
+// 3) If such a parameter definition exists AND a demixing parameter block
+//    is present, it will use the values provided in the parameter block.
 absl::Status ParametersManager::GetDownMixingParameters(
     const DecodedUleb128 audio_element_id,
     DownMixingParams& down_mixing_params) {
