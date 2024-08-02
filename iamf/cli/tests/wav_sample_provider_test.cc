@@ -19,9 +19,11 @@
 // Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -33,6 +35,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using enum ChannelLabel::Label;
 
 static constexpr DecodedUleb128 kAudioElementId = 300;
 static constexpr DecodedUleb128 kCodecConfigId = 200;
@@ -69,7 +72,7 @@ std::filesystem::path GetInputWavDir() {
   return input_wav_dir;
 }
 
-TEST(WavSampleProviderTest, InitializeSucceeds) {
+TEST(Initialize, SucceedsForStereoInput) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
@@ -77,6 +80,19 @@ TEST(WavSampleProviderTest, InitializeSucceeds) {
   WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
   EXPECT_THAT(wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
               IsOk());
+}
+
+TEST(Initialize, FailsForUnknownLabels) {
+  constexpr absl::string_view kUnknownLabel = "unknown_label";
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitializeTestData(kSampleRate, user_metadata, audio_elements);
+  user_metadata.mutable_audio_frame_metadata(0)->set_channel_labels(
+      0, kUnknownLabel);
+  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
+
+  EXPECT_FALSE(
+      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
 TEST(WavSampleProviderTest, MismatchingChannelIdsAndLabels) {
@@ -144,8 +160,8 @@ TEST(WavSampleProviderTest, ReadFrameSucceeds) {
   const std::vector<int32_t> expected_samples_r2 = {
       65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
       65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
-  EXPECT_THAT(labeled_samples["L2"], testing::Eq(expected_samples_l2));
-  EXPECT_THAT(labeled_samples["R2"], testing::Eq(expected_samples_r2));
+  EXPECT_THAT(labeled_samples[kL2], testing::Eq(expected_samples_l2));
+  EXPECT_THAT(labeled_samples[kR2], testing::Eq(expected_samples_r2));
 }
 
 TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {

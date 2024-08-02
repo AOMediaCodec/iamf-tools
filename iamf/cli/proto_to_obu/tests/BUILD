@@ -20,6 +20,7 @@ cc_test(
     srcs = ["audio_element_generator_test.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto_to_obu:audio_element_generator",
         "//iamf/cli/tests:cli_test_utils",
@@ -41,6 +42,7 @@ cc_test(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameters_manager",
@@ -128,6 +130,7 @@ cc_test(
     srcs = ["parameter_block_generator_test.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameter_block_with_data",

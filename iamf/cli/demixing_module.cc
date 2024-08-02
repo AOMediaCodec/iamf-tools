@@ -17,11 +17,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
-#include <string>
 #include <utility>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
@@ -31,6 +29,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -45,6 +44,8 @@ namespace iamf_tools {
 
 namespace {
 
+using enum ChannelLabel::Label;
+
 using DemxingMetadataForAudioElementId =
     DemixingModule::DemxingMetadataForAudioElementId;
 
@@ -53,26 +54,26 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
   LOG_FIRST_N(INFO, 1) << "S7 to S5";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("L7") == label_to_samples.end() ||
-      label_to_samples.find("R7") == label_to_samples.end() ||
-      label_to_samples.find("Lss7") == label_to_samples.end() ||
-      label_to_samples.find("Lrs7") == label_to_samples.end() ||
-      label_to_samples.find("Rss7") == label_to_samples.end() ||
-      label_to_samples.find("Rrs7") == label_to_samples.end()) {
+  if (label_to_samples.find(kL7) == label_to_samples.end() ||
+      label_to_samples.find(kR7) == label_to_samples.end() ||
+      label_to_samples.find(kLss7) == label_to_samples.end() ||
+      label_to_samples.find(kLrs7) == label_to_samples.end() ||
+      label_to_samples.find(kRss7) == label_to_samples.end() ||
+      label_to_samples.find(kRrs7) == label_to_samples.end()) {
     return absl::InvalidArgumentError("Missing some input channels");
   }
 
-  const auto& l7_samples = label_to_samples["L7"];
-  const auto& lss7_samples = label_to_samples["Lss7"];
-  const auto& lrs7_samples = label_to_samples["Lrs7"];
-  const auto& r7_samples = label_to_samples["R7"];
-  const auto& rss7_samples = label_to_samples["Rss7"];
-  const auto& rrs7_samples = label_to_samples["Rrs7"];
+  const auto& l7_samples = label_to_samples[kL7];
+  const auto& lss7_samples = label_to_samples[kLss7];
+  const auto& lrs7_samples = label_to_samples[kLrs7];
+  const auto& r7_samples = label_to_samples[kR7];
+  const auto& rss7_samples = label_to_samples[kRss7];
+  const auto& rrs7_samples = label_to_samples[kRrs7];
 
-  auto& l5_samples = label_to_samples["L5"];
-  auto& r5_samples = label_to_samples["R5"];
-  auto& ls5_samples = label_to_samples["Ls5"];
-  auto& rs5_samples = label_to_samples["Rs5"];
+  auto& l5_samples = label_to_samples[kL5];
+  auto& r5_samples = label_to_samples[kR5];
+  auto& ls5_samples = label_to_samples[kLs5];
+  auto& rs5_samples = label_to_samples[kRs5];
 
   // Directly copy L7/R7 to L5/R5, because they are the same.
   l5_samples = l7_samples;
@@ -114,22 +115,22 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   const std::vector<int32_t>* rs5_samples;
   const std::vector<int32_t>* rss7_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L5", label_to_samples, &l5_samples));
+      kL5, label_to_samples, &l5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Ls5", label_to_samples, &ls5_samples));
+      kLs5, label_to_samples, &ls5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Lss7", label_to_samples, &lss7_samples));
+      kLss7, label_to_samples, &lss7_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R5", label_to_samples, &r5_samples));
+      kR5, label_to_samples, &r5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Rs5", label_to_samples, &rs5_samples));
+      kRs5, label_to_samples, &rs5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Rss7", label_to_samples, &rss7_samples));
+      kRss7, label_to_samples, &rss7_samples));
 
-  auto& l7_samples = label_to_samples["D_L7"];
-  auto& r7_samples = label_to_samples["D_R7"];
-  auto& lrs7_samples = label_to_samples["D_Lrs7"];
-  auto& rrs7_samples = label_to_samples["D_Rrs7"];
+  auto& l7_samples = label_to_samples[kDemixedL7];
+  auto& r7_samples = label_to_samples[kDemixedR7];
+  auto& lrs7_samples = label_to_samples[kDemixedLrs7];
+  auto& rrs7_samples = label_to_samples[kDemixedRrs7];
 
   // Directly copy L5/R5 to L7/R7, because they are the same.
   l7_samples = *l5_samples;
@@ -170,20 +171,20 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
   LOG_FIRST_N(INFO, 1) << "S5 to S3";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("L5") == label_to_samples.end() ||
-      label_to_samples.find("Ls5") == label_to_samples.end() ||
-      label_to_samples.find("R5") == label_to_samples.end() ||
-      label_to_samples.find("Rs5") == label_to_samples.end()) {
+  if (label_to_samples.find(kL5) == label_to_samples.end() ||
+      label_to_samples.find(kLs5) == label_to_samples.end() ||
+      label_to_samples.find(kR5) == label_to_samples.end() ||
+      label_to_samples.find(kRs5) == label_to_samples.end()) {
     return absl::InvalidArgumentError("Missing some input channels");
   }
 
-  const auto& l5_samples = label_to_samples["L5"];
-  const auto& ls5_samples = label_to_samples["Ls5"];
-  const auto& r5_samples = label_to_samples["R5"];
-  const auto& rs5_samples = label_to_samples["Rs5"];
+  const auto& l5_samples = label_to_samples[kL5];
+  const auto& ls5_samples = label_to_samples[kLs5];
+  const auto& r5_samples = label_to_samples[kR5];
+  const auto& rs5_samples = label_to_samples[kRs5];
 
-  auto& l3_samples = label_to_samples["L3"];
-  auto& r3_samples = label_to_samples["R3"];
+  auto& l3_samples = label_to_samples[kL3];
+  auto& r3_samples = label_to_samples[kR3];
   l3_samples.resize(l5_samples.size());
   r3_samples.resize(r5_samples.size());
 
@@ -217,16 +218,16 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
   const std::vector<int32_t>* r3_samples;
   const std::vector<int32_t>* r5_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L3", label_to_samples, &l3_samples));
+      kL3, label_to_samples, &l3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L5", label_to_samples, &l5_samples));
+      kL5, label_to_samples, &l5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R3", label_to_samples, &r3_samples));
+      kR3, label_to_samples, &r3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R5", label_to_samples, &r5_samples));
+      kR5, label_to_samples, &r5_samples));
 
-  auto& ls5_samples = label_to_samples["D_Ls5"];
-  auto& rs5_samples = label_to_samples["D_Rs5"];
+  auto& ls5_samples = label_to_samples[kDemixedLs5];
+  auto& rs5_samples = label_to_samples[kDemixedRs5];
 
   const size_t num_ticks = l3_samples->size();
   ls5_samples.resize(num_ticks, 0.0);
@@ -258,18 +259,18 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
   LOG_FIRST_N(INFO, 1) << "S3 to S2";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("L3") == label_to_samples.end() ||
-      label_to_samples.find("R3") == label_to_samples.end() ||
-      label_to_samples.find("C") == label_to_samples.end()) {
+  if (label_to_samples.find(kL3) == label_to_samples.end() ||
+      label_to_samples.find(kR3) == label_to_samples.end() ||
+      label_to_samples.find(kCentre) == label_to_samples.end()) {
     return absl::InvalidArgumentError("Missing some input channels");
   }
 
-  const auto& l3_samples = label_to_samples["L3"];
-  const auto& r3_samples = label_to_samples["R3"];
-  const auto& c_samples = label_to_samples["C"];
+  const auto& l3_samples = label_to_samples[kL3];
+  const auto& r3_samples = label_to_samples[kR3];
+  const auto& c_samples = label_to_samples[kCentre];
 
-  auto& l2_samples = label_to_samples["L2"];
-  auto& r2_samples = label_to_samples["R2"];
+  auto& l2_samples = label_to_samples[kL2];
+  auto& r2_samples = label_to_samples[kR2];
   l2_samples.resize(l3_samples.size());
   r2_samples.resize(r3_samples.size());
 
@@ -300,14 +301,14 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
   const std::vector<int32_t>* r2_samples;
   const std::vector<int32_t>* c_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L2", label_to_samples, &l2_samples));
+      kL2, label_to_samples, &l2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R2", label_to_samples, &r2_samples));
+      kR2, label_to_samples, &r2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "C", label_to_samples, &c_samples));
+      kCentre, label_to_samples, &c_samples));
 
-  auto& l3_samples = label_to_samples["D_L3"];
-  auto& r3_samples = label_to_samples["D_R3"];
+  auto& l3_samples = label_to_samples[kDemixedL3];
+  auto& r3_samples = label_to_samples[kDemixedR3];
 
   const size_t num_ticks = c_samples->size();
   l3_samples.resize(num_ticks, 0.0);
@@ -337,15 +338,15 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
   LOG_FIRST_N(INFO, 1) << "S2 to S1";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("L2") == label_to_samples.end() ||
-      label_to_samples.find("R2") == label_to_samples.end()) {
+  if (label_to_samples.find(kL2) == label_to_samples.end() ||
+      label_to_samples.find(kR2) == label_to_samples.end()) {
     return absl::UnknownError("Missing some input channels");
   }
 
-  const auto& l2_samples = label_to_samples["L2"];
-  const auto& r2_samples = label_to_samples["R2"];
+  const auto& l2_samples = label_to_samples[kL2];
+  const auto& r2_samples = label_to_samples[kR2];
 
-  auto& mono_samples = label_to_samples["M"];
+  auto& mono_samples = label_to_samples[kMono];
   mono_samples.resize(l2_samples.size());
 
   // Computation in double.
@@ -371,11 +372,11 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
   const std::vector<int32_t>* l2_samples;
   const std::vector<int32_t>* mono_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L2", label_to_samples, &l2_samples));
+      kL2, label_to_samples, &l2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "M", label_to_samples, &mono_samples));
+      kMono, label_to_samples, &mono_samples));
 
-  auto& r2_samples = label_to_samples["D_R2"];
+  auto& r2_samples = label_to_samples[kDemixedR2];
   const size_t num_ticks = mono_samples->size();
   r2_samples.resize(num_ticks, 0.0);
 
@@ -399,20 +400,20 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
   LOG_FIRST_N(INFO, 1) << "T4 to T2";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("Ltf4") == label_to_samples.end() ||
-      label_to_samples.find("Ltb4") == label_to_samples.end() ||
-      label_to_samples.find("Rtf4") == label_to_samples.end() ||
-      label_to_samples.find("Rtb4") == label_to_samples.end()) {
+  if (label_to_samples.find(kLtf4) == label_to_samples.end() ||
+      label_to_samples.find(kLtb4) == label_to_samples.end() ||
+      label_to_samples.find(kRtf4) == label_to_samples.end() ||
+      label_to_samples.find(kRtb4) == label_to_samples.end()) {
     return absl::UnknownError("Missing some input channels");
   }
 
-  const auto& ltf4_samples = label_to_samples["Ltf4"];
-  const auto& ltb4_samples = label_to_samples["Ltb4"];
-  const auto& rtf4_samples = label_to_samples["Rtf4"];
-  const auto& rtb4_samples = label_to_samples["Rtb4"];
+  const auto& ltf4_samples = label_to_samples[kLtf4];
+  const auto& ltb4_samples = label_to_samples[kLtb4];
+  const auto& rtf4_samples = label_to_samples[kRtf4];
+  const auto& rtb4_samples = label_to_samples[kRtb4];
 
-  auto& ltf2_samples = label_to_samples["Ltf2"];
-  auto& rtf2_samples = label_to_samples["Rtf2"];
+  auto& ltf2_samples = label_to_samples[kLtf2];
+  auto& rtf2_samples = label_to_samples[kRtf2];
   ltf2_samples.resize(ltf4_samples.size());
   rtf2_samples.resize(rtf4_samples.size());
 
@@ -450,16 +451,16 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
   const std::vector<int32_t>* rtf2_samples;
   const std::vector<int32_t>* rtf4_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Ltf2", label_to_samples, &ltf2_samples));
+      kLtf2, label_to_samples, &ltf2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Ltf4", label_to_samples, &ltf4_samples));
+      kLtf4, label_to_samples, &ltf4_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Rtf2", label_to_samples, &rtf2_samples));
+      kRtf2, label_to_samples, &rtf2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Rtf4", label_to_samples, &rtf4_samples));
+      kRtf4, label_to_samples, &rtf4_samples));
 
-  auto& ltb4_samples = label_to_samples["D_Ltb4"];
-  auto& rtb4_samples = label_to_samples["D_Rtb4"];
+  auto& ltb4_samples = label_to_samples[kDemixedLtb4];
+  auto& rtb4_samples = label_to_samples[kDemixedRtb4];
   const size_t num_ticks = ltf2_samples->size();
   ltb4_samples.resize(num_ticks, 0.0);
   rtb4_samples.resize(num_ticks, 0.0);
@@ -492,20 +493,20 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
   LOG_FIRST_N(INFO, 1) << "T2 to TF2";
 
   // Check input to perform this down-mixing exist.
-  if (label_to_samples.find("Ltf2") == label_to_samples.end() ||
-      label_to_samples.find("Ls5") == label_to_samples.end() ||
-      label_to_samples.find("Rtf2") == label_to_samples.end() ||
-      label_to_samples.find("Rs5") == label_to_samples.end()) {
+  if (label_to_samples.find(kLtf2) == label_to_samples.end() ||
+      label_to_samples.find(kLs5) == label_to_samples.end() ||
+      label_to_samples.find(kRtf2) == label_to_samples.end() ||
+      label_to_samples.find(kRs5) == label_to_samples.end()) {
     return absl::UnknownError("Missing some input channels");
   }
 
-  const auto& ltf2_samples = label_to_samples["Ltf2"];
-  const auto& ls5_samples = label_to_samples["Ls5"];
-  const auto& rtf2_samples = label_to_samples["Rtf2"];
-  const auto& rs5_samples = label_to_samples["Rs5"];
+  const auto& ltf2_samples = label_to_samples[kLtf2];
+  const auto& ls5_samples = label_to_samples[kLs5];
+  const auto& rtf2_samples = label_to_samples[kRtf2];
+  const auto& rs5_samples = label_to_samples[kRs5];
 
-  auto& ltf3_samples = label_to_samples["Ltf3"];
-  auto& rtf3_samples = label_to_samples["Rtf3"];
+  auto& ltf3_samples = label_to_samples[kLtf3];
+  auto& rtf3_samples = label_to_samples[kRtf3];
   ltf3_samples.resize(ltf2_samples.size());
   rtf3_samples.resize(rtf2_samples.size());
 
@@ -543,20 +544,20 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
   const std::vector<int32_t>* r3_samples;
   const std::vector<int32_t>* r5_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Ltf3", label_to_samples, &ltf3_samples));
+      kLtf3, label_to_samples, &ltf3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L3", label_to_samples, &l3_samples));
+      kL3, label_to_samples, &l3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "L5", label_to_samples, &l5_samples));
+      kL5, label_to_samples, &l5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "Rtf3", label_to_samples, &rtf3_samples));
+      kRtf3, label_to_samples, &rtf3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R3", label_to_samples, &r3_samples));
+      kR3, label_to_samples, &r3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      "R5", label_to_samples, &r5_samples));
+      kR5, label_to_samples, &r5_samples));
 
-  auto& ltf2_samples = label_to_samples["D_Ltf2"];
-  auto& rtf2_samples = label_to_samples["D_Rtf2"];
+  auto& ltf2_samples = label_to_samples[kDemixedLtf2];
+  auto& rtf2_samples = label_to_samples[kDemixedRtf2];
   const size_t num_ticks = ltf3_samples->size();
   ltf2_samples.resize(num_ticks, 0.0);
   rtf2_samples.resize(num_ticks, 0.0);
@@ -587,7 +588,7 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
 }
 
 absl::Status FillRequiredDemixingMetadata(
-    const absl::flat_hash_set<std::string>& labels_to_demix,
+    const absl::flat_hash_set<ChannelLabel::Label>& labels_to_demix,
     const AudioElementWithData& audio_element_with_data,
     DemxingMetadataForAudioElementId& demixing_metadata) {
   auto& down_mixers = demixing_metadata.down_mixers;
@@ -605,15 +606,15 @@ absl::Status FillRequiredDemixingMetadata(
 
   // Find the input surround number.
   int input_surround_number = 0;
-  if (labels_to_demix.contains("L7")) {
+  if (labels_to_demix.contains(kL7)) {
     input_surround_number = 7;
-  } else if (labels_to_demix.contains("L5")) {
+  } else if (labels_to_demix.contains(kL5)) {
     input_surround_number = 5;
-  } else if (labels_to_demix.contains("L3")) {
+  } else if (labels_to_demix.contains(kL3)) {
     input_surround_number = 3;
-  } else if (labels_to_demix.contains("L2")) {
+  } else if (labels_to_demix.contains(kL2)) {
     input_surround_number = 2;
-  } else if (labels_to_demix.contains("M")) {
+  } else if (labels_to_demix.contains(kMono)) {
     input_surround_number = 1;
   }
 
@@ -621,19 +622,19 @@ absl::Status FillRequiredDemixingMetadata(
   int output_lowest_surround_number = INT_MAX;
   for (const auto& [substream_id, labels] :
        demixing_metadata.substream_id_to_labels) {
-    if (std::find(labels.begin(), labels.end(), "L7") != labels.end() &&
+    if (std::find(labels.begin(), labels.end(), kL7) != labels.end() &&
         output_lowest_surround_number > 7) {
       output_lowest_surround_number = 7;
-    } else if (std::find(labels.begin(), labels.end(), "L5") != labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kL5) != labels.end() &&
                output_lowest_surround_number > 5) {
       output_lowest_surround_number = 5;
-    } else if (std::find(labels.begin(), labels.end(), "L3") != labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kL3) != labels.end() &&
                output_lowest_surround_number > 3) {
       output_lowest_surround_number = 3;
-    } else if (std::find(labels.begin(), labels.end(), "L2") != labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kL2) != labels.end() &&
                output_lowest_surround_number > 2) {
       output_lowest_surround_number = 2;
-    } else if (std::find(labels.begin(), labels.end(), "M") != labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kMono) != labels.end() &&
                output_lowest_surround_number > 1) {
       output_lowest_surround_number = 1;
       // This is the lowest possible value, abort.
@@ -670,11 +671,11 @@ absl::Status FillRequiredDemixingMetadata(
   // Find the input height number. Artificially defining the height number of
   // "TF2" as 1.
   int input_height_number = 0;
-  if (labels_to_demix.contains("Ltf4")) {
+  if (labels_to_demix.contains(kLtf4)) {
     input_height_number = 4;
-  } else if (labels_to_demix.contains("Ltf2")) {
+  } else if (labels_to_demix.contains(kLtf2)) {
     input_height_number = 2;
-  } else if (labels_to_demix.contains("Ltf3")) {
+  } else if (labels_to_demix.contains(kLtf3)) {
     input_height_number = 1;
   }
 
@@ -682,15 +683,13 @@ absl::Status FillRequiredDemixingMetadata(
   int output_lowest_height_number = INT_MAX;
   for (const auto& [substream_id, labels] :
        demixing_metadata.substream_id_to_labels) {
-    if (std::find(labels.begin(), labels.end(), "Ltf4") != labels.end() &&
+    if (std::find(labels.begin(), labels.end(), kLtf4) != labels.end() &&
         output_lowest_height_number > 4) {
       output_lowest_height_number = 4;
-    } else if (std::find(labels.begin(), labels.end(), "Ltf2") !=
-                   labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kLtf2) != labels.end() &&
                output_lowest_height_number > 2) {
       output_lowest_height_number = 2;
-    } else if (std::find(labels.begin(), labels.end(), "Ltf3") !=
-                   labels.end() &&
+    } else if (std::find(labels.begin(), labels.end(), kLtf3) != labels.end() &&
                output_lowest_height_number > 1) {
       output_lowest_height_number = 1;
       // This is the lowest possible value, abort.
@@ -832,47 +831,8 @@ absl::Status GetDemixerMetadata(
   return absl::OkStatus();
 }
 
-// TODO(b/339618019): Unify this with a similar function in `render_utils`:
-//                    `LookupInputChannelOrderFromScalableLoudspeakerLayout`.
-absl::StatusOr<absl::flat_hash_set<std::string>>
-LookupLabelsToReconstructForLoudspeakerLayout(
-    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
-  static const absl::NoDestructor<
-      absl::flat_hash_map<ChannelAudioLayerConfig::LoudspeakerLayout,
-                          absl::flat_hash_set<std::string>>>
-      kLoudspeakerLayoutToReconstructedLabels({
-          {kLayoutMono, {"M"}},
-          {kLayoutStereo, {"L2", "R2"}},
-          {kLayout5_1_ch, {"L5", "R5", "C", "LFE", "Ls5", "Rs5"}},
-          {kLayout5_1_2_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"}},
-          {kLayout5_1_4_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf4", "Rtf4", "Ltb4",
-            "Rtb4"}},
-          {kLayout7_1_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7"}},
-          {kLayout7_1_2_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf2",
-            "Rtf2"}},
-          {kLayout7_1_4_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
-            "Rtf4", "Ltb4", "Rtb4"}},
-          {kLayout3_1_2_ch, {"L3", "R3", "C", "LFE", "Ltf3", "Rtf3"}},
-          {kLayoutBinaural, {"L2", "R2"}},
-      });
-
-  auto it = kLoudspeakerLayoutToReconstructedLabels->find(loudspeaker_layout);
-  if (it == kLoudspeakerLayoutToReconstructedLabels->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Channel order not found for layout= ", loudspeaker_layout));
-  }
-  return it->second;
-}
-
-absl::StatusOr<absl::flat_hash_set<std::string>> LookupLabelsToReconstruct(
-    const AudioElementObu& obu) {
+absl::StatusOr<absl::flat_hash_set<ChannelLabel::Label>>
+LookupLabelsToReconstruct(const AudioElementObu& obu) {
   switch (obu.GetAudioElementType()) {
     using enum AudioElementObu::AudioElementType;
     case kAudioElementChannelBased: {
@@ -887,20 +847,19 @@ absl::StatusOr<absl::flat_hash_set<std::string>> LookupLabelsToReconstruct(
       }
 
       // Reconstruct the highest layer.
-      return LookupLabelsToReconstructForLoudspeakerLayout(
-          channel_audio_layer_configs.back().loudspeaker_layout);
-      break;
+      return ChannelLabel::
+          LookupLabelsToReconstructFromScalableLoudspeakerLayout(
+              channel_audio_layer_configs.back().loudspeaker_layout);
     }
     case kAudioElementSceneBased:
-      // OK. Ambisonics does not any channels to be reconstructed.
-      return absl::flat_hash_set<std::string>{};
+      // OK. Ambisonics does not have any channels to be reconstructed.
+      return absl::flat_hash_set<ChannelLabel::Label>{};
       break;
     default:
       return absl::UnimplementedError(absl::StrCat(
           "Unsupported audio element type= ", obu.GetAudioElementType()));
   }
 }
-
 void LogForAudioElementId(
     DecodedUleb128 audio_element_id,
     const IdLabeledFrameMap& id_to_labeled_frame,
@@ -922,19 +881,24 @@ void LogForAudioElementId(
 }  // namespace
 
 absl::Status DemixingModule::FindSamplesOrDemixedSamples(
-    const std::string& label, const LabelSamplesMap& label_to_samples,
+    ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
     const std::vector<int32_t>** samples) {
   if (label_to_samples.find(label) != label_to_samples.end()) {
     *samples = &label_to_samples.at(label);
     return absl::OkStatus();
-  } else if (label_to_samples.find(absl::StrCat("D_", label)) !=
-             label_to_samples.end()) {
-    *samples = &label_to_samples.at(absl::StrCat("D_", label));
+  }
+
+  auto demixed_label = ChannelLabel::GetDemixedLabel(label);
+  if (!demixed_label.ok()) {
+    return demixed_label.status();
+  }
+  if (label_to_samples.find(*demixed_label) != label_to_samples.end()) {
+    *samples = &label_to_samples.at(*demixed_label);
     return absl::OkStatus();
   } else {
     *samples = nullptr;
     return absl::UnknownError(
-        absl::StrCat("Channel ", label, " or D_", label, " not found"));
+        absl::StrCat("Channel ", label, " or ", *demixed_label, " not found"));
   }
 }
 
@@ -951,9 +915,9 @@ absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
           absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));
     }
 
-    const absl::flat_hash_set<std::string> input_channel_labels(
-        audio_frame_metadata.channel_labels().begin(),
-        audio_frame_metadata.channel_labels().end());
+    absl::flat_hash_set<ChannelLabel::Label> input_channel_labels;
+    RETURN_IF_NOT_OK(ChannelLabel::FillLabelsFromStrings(
+        audio_frame_metadata.channel_labels(), input_channel_labels));
 
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
         input_channel_labels, audio_element->second,
@@ -967,7 +931,7 @@ absl::Status DemixingModule::InitializeForReconstruction(
         audio_elements) {
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
-    auto labels_to_reconstruct =
+    const auto labels_to_reconstruct =
         LookupLabelsToReconstruct(audio_element_with_data.obu);
     if (!labels_to_reconstruct.ok()) {
       return labels_to_reconstruct.status();
@@ -1012,7 +976,7 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     // Output gains to be applied to the (one or two) channels.
     std::vector<double> output_gains_linear(output_channel_labels.size());
     int channel_index = 0;
-    for (const std::string& output_channel_label : output_channel_labels) {
+    for (const auto& output_channel_label : output_channel_labels) {
       auto iter = input_label_to_samples.find(output_channel_label);
       if (iter == input_label_to_samples.end()) {
         return absl::UnknownError(absl::StrCat(

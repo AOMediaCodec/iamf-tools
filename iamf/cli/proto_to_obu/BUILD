@@ -28,6 +28,7 @@ cc_library(
     hdrs = ["audio_element_generator.h"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:cli_util",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
@@ -55,6 +56,7 @@ cc_library(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameters_manager",
@@ -73,6 +75,7 @@ cc_library(
         "//iamf/obu:leb128",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/memory",
@@ -151,6 +154,7 @@ cc_library(
     hdrs = ["parameter_block_generator.h"],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:cli_util",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",

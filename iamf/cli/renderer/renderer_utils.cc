@@ -19,9 +19,9 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -35,11 +35,11 @@ namespace {
 // number of time ticks in the rendered audio after trimming.
 absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
     const LabeledFrame& labeled_frame,
-    const std::vector<std::string>& ordered_labels) {
+    const std::vector<ChannelLabel::Label>& ordered_labels) {
   const int kUnknownNumTimeTicks = -1;
   int num_raw_time_ticks = kUnknownNumTimeTicks;
   for (const auto& label : ordered_labels) {
-    if (label.empty()) {
+    if (label == ChannelLabel::kOmitted) {
       continue;
     }
 
@@ -76,7 +76,7 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
 
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
-    const std::vector<std::string>& ordered_labels,
+    const std::vector<ChannelLabel::Label>& ordered_labels,
     std::vector<std::vector<int32_t>>& samples_to_render) {
   samples_to_render.clear();
   if (ordered_labels.empty()) {
@@ -95,7 +95,7 @@ absl::Status ArrangeSamplesToRender(
 
   for (int channel = 0; channel < num_channels; ++channel) {
     const auto& channel_label = ordered_labels[channel];
-    if (channel_label.empty()) {
+    if (channel_label == ChannelLabel::kOmitted) {
       // Missing channels for mixed-order ambisonics representation will not be
       // updated and will thus have the initialized zeros.
       continue;
@@ -117,43 +117,6 @@ absl::Status ArrangeSamplesToRender(
   }
 
   return absl::OkStatus();
-}
-
-absl::StatusOr<std::vector<std::string>>
-LookupInputChannelOrderFromScalableLoudspeakerLayout(
-    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
-  using enum LoudspeakersSsConventionLayout::SoundSystem;
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
-  static const absl::NoDestructor<absl::flat_hash_map<
-      ChannelAudioLayerConfig::LoudspeakerLayout, std::vector<std::string>>>
-      kSoundSystemToLoudspeakerLayout({
-          {kLayoutMono, {"M"}},
-          {kLayoutStereo, {"L2", "R2"}},
-          {kLayout5_1_ch, {"L5", "R5", "C", "LFE", "Ls5", "Rs5"}},
-          {kLayout5_1_2_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"}},
-          {kLayout5_1_4_ch,
-           {"L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf4", "Rtf4", "Ltb4",
-            "Rtb4"}},
-          {kLayout7_1_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7"}},
-          {kLayout7_1_2_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf2",
-            "Rtf2"}},
-          {kLayout7_1_4_ch,
-           {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
-            "Rtf4", "Ltb4", "Rtb4"}},
-          {kLayout3_1_2_ch, {"L3", "R3", "C", "LFE", "Ltf3", "Rtf3"}},
-          {kLayoutBinaural, {"L2", "R2"}},
-      });
-
-  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
-  if (it == kSoundSystemToLoudspeakerLayout->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Channel order not found for layout= ", loudspeaker_layout));
-  }
-  return it->second;
 }
 
 absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(

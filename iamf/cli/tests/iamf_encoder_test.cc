@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <list>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -14,6 +13,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -247,8 +247,8 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   int32_t output_timestamp = 0;
   int iteration = 0;
   while (iamf_encoder.GeneratingDataObus()) {
-    iamf_encoder.AddSamples(kAudioElementId, "L2", zero_samples);
-    iamf_encoder.AddSamples(kAudioElementId, "R2", zero_samples);
+    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, zero_samples);
+    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, zero_samples);
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {

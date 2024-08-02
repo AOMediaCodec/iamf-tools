@@ -16,7 +16,6 @@
 #include <list>
 #include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -28,6 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
@@ -154,29 +154,30 @@ absl::Status GenerateMixGainSubblock(
 absl::Status FindDemixedChannels(
     const ChannelNumbers& accumulated_channels,
     const ChannelNumbers& layer_channels,
-    std::list<std::string>* const demixed_channel_labels) {
+    std::list<ChannelLabel::Label>* const demixed_channel_labels) {
+  using enum ChannelLabel::Label;
   for (int surround = accumulated_channels.surround + 1;
        surround <= layer_channels.surround; surround++) {
     switch (surround) {
       case 2:
         // Previous layer is Mono, this layer is Stereo.
         if (accumulated_channels.surround == 1) {
-          demixed_channel_labels->push_back("D_R2");
+          demixed_channel_labels->push_back(kDemixedR2);
         }
         break;
       case 3:
-        demixed_channel_labels->push_back("D_L3");
-        demixed_channel_labels->push_back("D_R3");
+        demixed_channel_labels->push_back(kDemixedL3);
+        demixed_channel_labels->push_back(kDemixedR3);
         break;
       case 5:
-        demixed_channel_labels->push_back("D_Ls5");
-        demixed_channel_labels->push_back("D_Rs5");
+        demixed_channel_labels->push_back(kDemixedLs5);
+        demixed_channel_labels->push_back(kDemixedRs5);
         break;
       case 7:
-        demixed_channel_labels->push_back("D_L7");
-        demixed_channel_labels->push_back("D_R7");
-        demixed_channel_labels->push_back("D_Lrs7");
-        demixed_channel_labels->push_back("D_Rrs7");
+        demixed_channel_labels->push_back(kDemixedL7);
+        demixed_channel_labels->push_back(kDemixedR7);
+        demixed_channel_labels->push_back(kDemixedLrs7);
+        demixed_channel_labels->push_back(kDemixedRrs7);
         break;
       default:
         if (surround > 7) {
@@ -189,13 +190,13 @@ absl::Status FindDemixedChannels(
 
   if (accumulated_channels.height == 2) {
     if (layer_channels.height == 4) {
-      demixed_channel_labels->push_back("D_Ltb4");
-      demixed_channel_labels->push_back("D_Rtb4");
+      demixed_channel_labels->push_back(kDemixedLtb4);
+      demixed_channel_labels->push_back(kDemixedRtb4);
     } else if (layer_channels.height == 2 &&
                accumulated_channels.surround == 3 &&
                layer_channels.surround > 3) {
-      demixed_channel_labels->push_back("D_Ltf2");
-      demixed_channel_labels->push_back("D_Rtf2");
+      demixed_channel_labels->push_back(kDemixedLtf2);
+      demixed_channel_labels->push_back(kDemixedRtf2);
     }
   }
 
@@ -204,7 +205,7 @@ absl::Status FindDemixedChannels(
 
 absl::Status ConvertReconGainsAndFlags(
     const bool additional_logging,
-    const absl::flat_hash_map<std::string, double>& label_to_recon_gain,
+    const absl::flat_hash_map<ChannelLabel::Label, double>& label_to_recon_gain,
     std::vector<uint8_t>& computed_recon_gains,
     DecodedUleb128& computed_recon_gain_flag) {
   computed_recon_gains.resize(12, 0);
@@ -215,32 +216,48 @@ absl::Status ConvertReconGainsAndFlags(
 
     // Bit position is based on Figure 5 of the Spec.
     int bit_position = 0;
-    if (label == "D_L7" || label == "D_L5" || label == "D_L3") {
-      // "D_L2" is never demixed.
-      bit_position = 0;
-    } else if (label == "D_R7" || label == "D_R5" || label == "D_R3" ||
-               label == "D_R2") {
-      // "D_C" is never demixed. Skipping bit position = 1.
-      bit_position = 2;
-    } else if (label == "D_Ls5") {
-      bit_position = 3;
-    } else if (label == "D_Rs5") {
-      bit_position = 4;
-    } else if (label == "D_Ltf2") {
-      bit_position = 5;
-    } else if (label == "D_Rtf2") {
-      bit_position = 6;
-    } else if (label == "D_Lrs7") {
-      bit_position = 7;
-    } else if (label == "D_Rrs7") {
-      bit_position = 8;
-    } else if (label == "D_Ltb4") {
-      bit_position = 9;
-    } else if (label == "D_Rtb4") {
-      bit_position = 10;
-      // "D_LFE" is never demixed. Skipping bit position = 11.
-    } else {
-      LOG(ERROR) << "Unrecognized demixed channel label: " << label;
+    switch (label) {
+      using enum ChannelLabel::Label;
+      case kDemixedL7:
+      case kDemixedL5:
+      case kDemixedL3:
+        // `kDemixedL2` is never demixed.
+        bit_position = 0;
+        break;
+      case kDemixedR7:
+      case kDemixedR5:
+      case kDemixedR3:
+      case kDemixedR2:
+        // `kCentre` is never demixed. Skipping bit position = 1.
+        bit_position = 2;
+        break;
+      case kDemixedLs5:
+        bit_position = 3;
+        break;
+      case kDemixedRs5:
+        bit_position = 4;
+        break;
+      case kDemixedLtf2:
+        bit_position = 5;
+        break;
+      case kDemixedRtf2:
+        bit_position = 6;
+        break;
+      case kDemixedLrs7:
+        bit_position = 7;
+        break;
+      case kDemixedRrs7:
+        bit_position = 8;
+        break;
+      case kDemixedLtb4:
+        bit_position = 9;
+        break;
+      case kDemixedRtb4:
+        bit_position = 10;
+        // `kLFE` is never demixed. Skipping bit position = 11.
+        break;
+      default:
+        LOG(ERROR) << "Unrecognized demixed channel label: " << label;
     }
     computed_recon_gain_flag |= 1 << bit_position;
     computed_recon_gains[bit_position] =
@@ -261,9 +278,9 @@ absl::Status ComputeReconGains(
   if (additional_recon_gains_logging) {
     LogChannelNumbers(absl::StrCat("Layer[", layer_index, "]"), layer_channels);
   }
-  absl::flat_hash_map<std::string, double> label_to_recon_gain;
+  absl::flat_hash_map<ChannelLabel::Label, double> label_to_recon_gain;
   if (layer_index > 0) {
-    std::list<std::string> demixed_channel_labels;
+    std::list<ChannelLabel::Label> demixed_channel_labels;
     RETURN_IF_NOT_OK(FindDemixedChannels(accumulated_channels, layer_channels,
                                          &demixed_channel_labels));
 

@@ -19,6 +19,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -35,6 +36,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using enum ChannelLabel::Label;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -156,10 +158,10 @@ TEST_F(AudioElementGeneratorTest, FirstOrderMonoAmbisonicsArbitraryOrder) {
 
   // Configures the remapped `substream_id_to_labels` correctly.
   expected_obu.substream_id_to_labels = {
-      {103, {"A0"}},
-      {101, {"A1"}},
-      {100, {"A2"}},
-      {102, {"A3"}},
+      {103, {kA0}},
+      {101, {kA1}},
+      {100, {kA2}},
+      {102, {kA3}},
   };
 
   InitAndTestGenerate();
@@ -199,9 +201,9 @@ TEST_F(AudioElementGeneratorTest,
 
   // Configures the remapped `substream_id_to_labels` correctly.
   expected_obu.substream_id_to_labels = {
-      {100, {"A0", "A3"}},
-      {101, {"A2"}},
-      {102, {"A1"}},
+      {100, {kA0, kA3}},
+      {101, {kA2}},
+      {102, {kA1}},
   };
 
   InitAndTestGenerate();
@@ -300,8 +302,7 @@ TEST_F(AudioElementGeneratorTest, ThirdOrderMonoAmbisonics) {
 
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForOneLayerStereo) {
-  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {99, {"L2", "R2"}}};
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{99, {kL2, kR2}}};
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -398,8 +399,8 @@ TEST_F(AudioElementGeneratorTest, DefaultLoudspeakerLayoutIsNotSupported) {
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForOneLayer5_1_4) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {55, {"L5", "R5"}},     {77, {"Ls5", "Rs5"}}, {66, {"Ltf4", "Rtf4"}},
-      {11, {"Ltb4", "Rtb4"}}, {22, {"C"}},          {88, {"LFE"}}};
+      {55, {kL5, kR5}},     {77, {kLs5, kRs5}}, {66, {kLtf4, kRtf4}},
+      {11, {kLtb4, kRtb4}}, {22, {kCentre}},    {88, {kLFE}}};
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -436,9 +437,9 @@ TEST_F(AudioElementGeneratorTest,
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForOneLayer7_1_4) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {6, {"L7", "R7"}},     {5, {"Lss7", "Rss7"}}, {4, {"Lrs7", "Rrs7"}},
-      {3, {"Ltf4", "Rtf4"}}, {2, {"Ltb4", "Rtb4"}}, {1, {"C"}},
-      {0, {"LFE"}}};
+      {6, {kL7, kR7}},     {5, {kLss7, kRss7}}, {4, {kLrs7, kRrs7}},
+      {3, {kLtf4, kRtf4}}, {2, {kLtb4, kRtb4}}, {1, {kCentre}},
+      {0, {kLFE}}};
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -474,8 +475,8 @@ TEST_F(AudioElementGeneratorTest,
 
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayerMonoStereo) {
-  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {"M"}},
-                                                             {1, {"L2"}}};
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kMono}},
+                                                             {1, {kL2}}};
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -520,10 +521,10 @@ TEST_F(AudioElementGeneratorTest,
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayerStereo3_1_2) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {0, {"L2", "R2"}},
-      {1, {"Ltf3", "Rtf3"}},
-      {2, {"C"}},
-      {3, {"LFE"}},
+      {0, {kL2, kR2}},
+      {1, {kLtf3, kRtf3}},
+      {2, {kCentre}},
+      {3, {kLFE}},
   };
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -569,8 +570,8 @@ TEST_F(AudioElementGeneratorTest,
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayer3_1_2And5_1_2) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {300, {"L3", "R3"}}, {301, {"Ltf3", "Rtf3"}}, {302, {"C"}},
-      {303, {"LFE"}},      {514, {"L5", "R5"}},
+      {300, {kL3, kR3}}, {301, {kLtf3, kRtf3}}, {302, {kCentre}},
+      {303, {kLFE}},     {514, {kL5, kR5}},
   };
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -616,8 +617,8 @@ TEST_F(AudioElementGeneratorTest,
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayer5_1_2And5_1_4) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {520, {"L5", "R5"}}, {521, {"Ls5", "Rs5"}}, {522, {"Ltf2", "Rtf2"}},
-      {523, {"C"}},        {524, {"LFE"}},        {540, {"Ltf4", "Rtf4"}},
+      {520, {kL5, kR5}}, {521, {kLs5, kRs5}}, {522, {kLtf2, kRtf2}},
+      {523, {kCentre}},  {524, {kLFE}},       {540, {kLtf4, kRtf4}},
   };
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -663,8 +664,8 @@ TEST_F(AudioElementGeneratorTest,
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayer5_1_0And7_1_0) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {500, {"L5", "R5"}}, {501, {"Ls5", "Rs5"}},   {502, {"C"}},
-      {503, {"LFE"}},      {704, {"Lss7", "Rss7"}},
+      {500, {kL5, kR5}}, {501, {kLs5, kRs5}},   {502, {kCentre}},
+      {503, {kLFE}},     {704, {kLss7, kRss7}},
   };
 
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -746,10 +747,9 @@ void AddTwoLayer7_1_0_And7_1_4(::google::protobuf::RepeatedPtrField<
 TEST_F(AudioElementGeneratorTest,
        GeneratesCorrectSubstreamIdToLabelsForTwoLayer7_1_0And7_1_4) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
-      {700, {"L7", "R7"}},     {701, {"Lss7", "Rss7"}},
-      {702, {"Lrs7", "Rrs7"}}, {703, {"C"}},
-      {704, {"LFE"}},          {740, {"Ltf4", "Rtf4"}},
-      {741, {"Ltb4", "Rtb4"}},
+      {700, {kL7, kR7}},     {701, {kLss7, kRss7}}, {702, {kLrs7, kRrs7}},
+      {703, {kCentre}},      {704, {kLFE}},         {740, {kLtf4, kRtf4}},
+      {741, {kLtb4, kRtb4}},
   };
 
   AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);

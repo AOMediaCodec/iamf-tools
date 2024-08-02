@@ -16,7 +16,6 @@
 #include <list>
 #include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -25,6 +24,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -112,7 +112,7 @@ class IamfEncoder {
    * \param label Channel label to add samples to.
    * \param samples Audio samples to add.
    */
-  void AddSamples(DecodedUleb128 audio_element_id, const std::string& label,
+  void AddSamples(DecodedUleb128 audio_element_id, ChannelLabel::Label label,
                   const std::vector<int32_t>& samples);
 
   /*!\brief Finalizes the process of adding samples.

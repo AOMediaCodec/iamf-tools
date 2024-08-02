@@ -21,6 +21,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
@@ -28,6 +29,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using enum ChannelLabel::Label;
 
 using enum LoudspeakersSsConventionLayout::SoundSystem;
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
@@ -132,7 +134,7 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 const LabeledFrame kLabeledFrameWithL2AndR2 = {
-    .label_to_samples = {{"L2", {1, 3, 5, 7}}, {"R2", {2, 4, 6, 8}}}};
+    .label_to_samples = {{kL2, {1, 3, 5, 7}}, {kR2, {2, 4, 6, 8}}}};
 
 TEST(RenderLabeledFrame, RendersPassThroughStereo) {
   auto stereo_pass_through_renderer =
@@ -168,18 +170,18 @@ TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
 
 TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
   const LabeledFrame k7_1_4LabeledFrame = {.label_to_samples = {
-                                               {"L7", {0, 100}},
-                                               {"R7", {1, 101}},
-                                               {"C", {2, 102}},
-                                               {"LFE", {3, 103}},
-                                               {"Lss7", {4, 104}},
-                                               {"Rss7", {5, 105}},
-                                               {"Lrs7", {6, 106}},
-                                               {"Rrs7", {7, 107}},
-                                               {"Ltf4", {8, 108}},
-                                               {"Rtf4", {9, 109}},
-                                               {"Ltb4", {10, 110}},
-                                               {"Rtb4", {11, 111}},
+                                               {kL7, {0, 100}},
+                                               {kR7, {1, 101}},
+                                               {kCentre, {2, 102}},
+                                               {kLFE, {3, 103}},
+                                               {kLss7, {4, 104}},
+                                               {kRss7, {5, 105}},
+                                               {kLrs7, {6, 106}},
+                                               {kRrs7, {7, 107}},
+                                               {kLtf4, {8, 108}},
+                                               {kRtf4, {9, 109}},
+                                               {kLtb4, {10, 110}},
+                                               {kRtb4, {11, 111}},
                                            }};
 
   auto pass_through_renderer =
@@ -201,7 +203,7 @@ TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
 
 TEST(RenderLabeledFrame, RendersDemixedSamples) {
   const LabeledFrame kTwoLayerStereo = {
-      .label_to_samples = {{"M", {999}}, {"L2", {1}}, {"D_R2", {2}}}};
+      .label_to_samples = {{kMono, {999}}, {kL2, {1}}, {kDemixedR2, {2}}}};
 
   auto demixed_stereo_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -221,7 +223,7 @@ TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
   const LabeledFrame kStereoFrameWithTwoRenderedTicks = {
       .samples_to_trim_at_end = 1,
       .samples_to_trim_at_start = 1,
-      .label_to_samples = {{"L2", {999, 1, 2, 999}}, {"R2", {999, 1, 2, 999}}}};
+      .label_to_samples = {{kL2, {999, 1, 2, 999}}, {kR2, {999, 1, 2, 999}}}};
 
   auto stereo_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -233,13 +235,14 @@ TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
 }
 
 TEST(RenderLabeledFrame, EdgeCaseWithAllSamplesTrimmedReturnsZero) {
-  const LabeledFrame kMono = {.samples_to_trim_at_start = 1,
-                              .label_to_samples = {{"M", {1}}}};
+  const LabeledFrame kMonoFrame = {.samples_to_trim_at_start = 1,
+                                   .label_to_samples = {{kMono, {1}}}};
 
   auto mono_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kMonoScalableChannelLayoutConfig, kMonoLayout);
-  const auto result = mono_pass_through_renderer->RenderLabeledFrame(kMono);
+  const auto result =
+      mono_pass_through_renderer->RenderLabeledFrame(kMonoFrame);
   EXPECT_THAT(result, IsOk());
   EXPECT_EQ(*result, 0);
 }
@@ -255,7 +258,7 @@ void RenderMonoSequence(int num_frames, int samples_per_frame,
     sample += samples_per_frame;
 
     EXPECT_THAT(
-        renderer.RenderLabeledFrame({.label_to_samples = {{"M", samples}}}),
+        renderer.RenderLabeledFrame({.label_to_samples = {{kMono, samples}}}),
         IsOk());
   }
   EXPECT_THAT(renderer.Finalize(), IsOk());

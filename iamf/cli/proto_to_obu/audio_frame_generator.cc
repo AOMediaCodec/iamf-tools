@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
@@ -33,6 +34,7 @@
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/aac_encoder.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/cli/codec/flac_encoder.h"
@@ -49,7 +51,6 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
-#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
@@ -216,7 +217,7 @@ absl::Status InitializeSubstreamData(
 // samples ready.
 bool SamplesReadyForAudioElement(
     const LabelSamplesMap& label_to_samples,
-    const ::google::protobuf::RepeatedPtrField<std::string>& channel_labels) {
+    const absl::flat_hash_set<ChannelLabel::Label>& channel_labels) {
   size_t common_num_samples = 0;
   for (const auto& label : channel_labels) {
     const auto label_to_samples_iter = label_to_samples.find(label);
@@ -625,6 +626,11 @@ absl::Status AudioFrameGenerator::Initialize() {
        audio_frame_metadata_) {
     absl::MutexLock lock(&mutex_);
 
+    // Precompute the `ChannelLabel::Label` for each channel label string.
+    RETURN_IF_NOT_OK(ChannelLabel::FillLabelsFromStrings(
+        audio_frame_metadata.channel_labels(),
+        audio_element_id_to_labels_[audio_element_id]));
+
     // Find the Codec Config OBU for this mono or coupled stereo substream.
     const auto audio_elements_iter = audio_elements_.find(audio_element_id);
     if (audio_elements_iter == audio_elements_.end()) {
@@ -682,11 +688,11 @@ bool AudioFrameGenerator::TakingSamples() const {
 }
 
 absl::Status AudioFrameGenerator::AddSamples(
-    const DecodedUleb128 audio_element_id, const std::string& label,
+    const DecodedUleb128 audio_element_id, ChannelLabel::Label label,
     const std::vector<int32_t>& samples) {
-  const auto& audio_frame_metadata_iter =
-      audio_frame_metadata_.find(audio_element_id);
-  if (audio_frame_metadata_iter == audio_frame_metadata_.end()) {
+  const auto& audio_element_labels =
+      audio_element_id_to_labels_.find(audio_element_id);
+  if (audio_element_labels == audio_element_id_to_labels_.end()) {
     return absl::InvalidArgumentError(
         absl::StrCat("No audio frame metadata found for Audio Element ID= ",
                      audio_element_id));
@@ -702,9 +708,8 @@ absl::Status AudioFrameGenerator::AddSamples(
   }
   const auto& audio_element_with_data = audio_element_iter->second;
 
-  if (SamplesReadyForAudioElement(
-          labeled_samples,
-          audio_frame_metadata_iter->second.channel_labels())) {
+  if (SamplesReadyForAudioElement(labeled_samples,
+                                  audio_element_labels->second)) {
     absl::MutexLock lock(&mutex_);
     RETURN_IF_NOT_OK(EncodeFramesForAudioElement(
         audio_element_id, audio_element_with_data, demixing_module_,

@@ -1,5 +1,21 @@
 package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
 
+cc_test(
+    name = "channel_label_test",
+    srcs = ["channel_label_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/cli/proto:temporal_delimiter_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:audio_element",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "cli_test_utils",
     testonly = True,
@@ -11,6 +27,7 @@ cc_library(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:wav_reader",
+        "//iamf/cli/proto_to_obu:audio_element_generator",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
@@ -36,6 +53,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
@@ -88,6 +106,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:audio_element",
@@ -99,6 +118,7 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
@@ -157,6 +177,7 @@ cc_test(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:iamf_encoder",
         "//iamf/cli:parameter_block_with_data",
@@ -328,6 +349,7 @@ cc_test(
     name = "recon_gain_generator_test",
     srcs = ["recon_gain_generator_test.cc"],
     deps = [
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:recon_gain_generator",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -340,6 +362,7 @@ cc_test(
     name = "renderer_factory_test",
     srcs = ["renderer_factory_test.cc"],
     deps = [
+        "//iamf/cli:channel_label",
         "//iamf/cli:renderer_factory",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
@@ -374,6 +397,7 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:wav_sample_provider",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -381,6 +405,7 @@ cc_test(
         "//iamf/obu:leb128",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

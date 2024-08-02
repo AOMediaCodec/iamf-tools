@@ -17,8 +17,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -38,18 +38,8 @@ namespace renderer_utils {
  */
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
-    const std::vector<std::string>& ordered_labels,
+    const std::vector<ChannelLabel::Label>& ordered_labels,
     std::vector<std::vector<int32_t>>& samples_to_render);
-
-/*!\brief Gets the channel ordering to use for the associated input layout.
- *
- * \param loudspeaker_layout Layout to get channel ordering from.
- * \return Channel ordering associated with the layout if known. Or a specific
- *     status on failure.
- */
-absl::StatusOr<std::vector<std::string>>
-LookupInputChannelOrderFromScalableLoudspeakerLayout(
-    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout);
 
 /*!\brief Gets a key associated with the playback layout.
  *

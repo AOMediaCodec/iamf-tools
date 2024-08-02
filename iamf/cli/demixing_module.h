@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <deque>
 #include <list>
-#include <string>
 #include <vector>
 
 #include "absl/container/btree_map.h"
@@ -26,6 +25,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/demixing_info_param_data.h"
@@ -50,7 +50,8 @@ struct SubstreamData {
 };
 
 // Mapping from channel label to a frame of samples.
-typedef absl::node_hash_map<std::string, std::vector<int32_t>> LabelSamplesMap;
+typedef absl::node_hash_map<ChannelLabel::Label, std::vector<int32_t>>
+    LabelSamplesMap;
 
 struct LabeledFrame {
   int32_t end_timestamp;
@@ -132,15 +133,14 @@ class DemixingModule {
 
   /*!\brief Searches the input map for the target samples or demixed samples.
    *
-   * \param label Label to directly search for or prefix with "D_" and search
-   *     for.
+   * \param label Label of the channel (or its demixed version) to search for.
    * \param label_to_samples Map of label to samples to search.
    * \param samples Output argument for the samples if found.
    * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the search
    *     failed.
    */
   static absl::Status FindSamplesOrDemixedSamples(
-      const std::string& label, const LabelSamplesMap& label_to_samples,
+      ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
       const std::vector<int32_t>** samples);
 
   /*!\brief Down-mixes samples of input channels to substreams.

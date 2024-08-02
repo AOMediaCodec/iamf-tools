@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <list>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -28,6 +29,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -129,20 +131,18 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
       std::get<AmbisonicsMonoConfig>(
           std::get<AmbisonicsConfig>(obu.config_).ambisonics_config)
           .channel_mapping;
+  // Map the first n channels from [0, n] in input order. Leave the rest of
+  // the channels as unmapped.
   std::fill(channel_mapping.begin(), channel_mapping.end(),
             AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
-  SubstreamIdLabelsMap substream_id_to_labels;
-  for (int i = 0; i < substream_ids.size(); ++i) {
-    // Map the first n channels from [0, n] in input order. Leave the rest of
-    // the channels as unmapped.
-    channel_mapping[i] = i;
-    substream_id_to_labels[substream_ids[i]] = {absl::StrCat("A", i)};
-  }
+  std::iota(channel_mapping.begin(),
+            channel_mapping.begin() + substream_ids.size(), 0);
 
   AudioElementWithData audio_element = {
-      .obu = std::move(obu),
-      .codec_config = &codec_config_iter->second,
-      .substream_id_to_labels = substream_id_to_labels};
+      .obu = std::move(obu), .codec_config = &codec_config_iter->second};
+  ASSERT_THAT(AudioElementGenerator::FinalizeAmbisonicsConfig(
+                  audio_element.obu, audio_element.substream_id_to_labels),
+              IsOk());
 
   audio_elements.emplace(audio_element_id, std::move(audio_element));
 }

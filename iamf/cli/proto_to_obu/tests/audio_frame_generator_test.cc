@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
@@ -305,14 +306,15 @@ void GenerateAudioFrameWithEightSamples(
          user_metadata.audio_frame_metadata()) {
       const auto audio_element_id = audio_frame_metadata.audio_element_id();
       EXPECT_THAT(audio_frame_generator.AddSamples(
-                      audio_element_id, "L2",
+                      audio_element_id, ChannelLabel::kL2,
                       frame_count == 0 ? frame_0_l2 : empty_frame),
                   IsOk());
 
       // `AddSamples()` will trigger encoding once all samples for an
       // audio element have been added and thus may return a non-OK status.
       const auto add_samples_status = audio_frame_generator.AddSamples(
-          audio_element_id, "R2", frame_count == 0 ? frame_0_r2 : empty_frame);
+          audio_element_id, ChannelLabel::kR2,
+          frame_count == 0 ? frame_0_r2 : empty_frame);
       EXPECT_EQ(expected_add_samples_is_ok, add_samples_status.ok());
       if (!expected_add_samples_is_ok) {
         return;

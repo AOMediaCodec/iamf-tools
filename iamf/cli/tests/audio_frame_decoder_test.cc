@@ -21,6 +21,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -103,7 +104,8 @@ TEST(InitDecodersForSubstreams,
   const auto& codec_config = codec_config_obus.at(kCodecConfigId);
 
   AudioFrameDecoder decoder;
-  const SubstreamIdLabelsMap kLabelsForSubstreamZero = {{kSubstreamId, {"M"}}};
+  const SubstreamIdLabelsMap kLabelsForSubstreamZero = {
+      {kSubstreamId, {ChannelLabel::kMono}}};
   EXPECT_THAT(
       decoder.InitDecodersForSubstreams(kLabelsForSubstreamZero, codec_config),
       IsOk());
@@ -112,7 +114,7 @@ TEST(InitDecodersForSubstreams,
           .ok());
 
   const SubstreamIdLabelsMap kLabelsForSubstreamOne = {
-      {kSubstreamId + 1, {"M"}}};
+      {kSubstreamId + 1, {ChannelLabel::kMono}}};
   EXPECT_THAT(
       decoder.InitDecodersForSubstreams(kLabelsForSubstreamOne, codec_config),
       IsOk());

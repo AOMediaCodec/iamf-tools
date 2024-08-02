@@ -14,10 +14,10 @@
 #define CLI_AUDIO_ELEMENT_WITH_DATA_H_
 
 #include <list>
-#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/leb128.h"
@@ -25,9 +25,9 @@
 
 namespace iamf_tools {
 
-typedef absl::flat_hash_map<DecodedUleb128, std::list<std::string>>
+typedef absl::flat_hash_map<DecodedUleb128, std::list<ChannelLabel::Label>>
     SubstreamIdLabelsMap;
-typedef absl::flat_hash_map<std::string, float> LabelGainMap;
+typedef absl::flat_hash_map<ChannelLabel::Label, float> LabelGainMap;
 
 struct AudioElementWithData {
   friend bool operator==(const AudioElementWithData& lhs,

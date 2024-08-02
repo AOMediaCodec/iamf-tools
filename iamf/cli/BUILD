@@ -15,6 +15,7 @@ cc_library(
     name = "audio_element_with_data",
     hdrs = ["audio_element_with_data.h"],
     deps = [
+        ":channel_label",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:leb128",
@@ -52,6 +53,23 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:parameter_block",
+    ],
+)
+
+cc_library(
+    name = "channel_label",
+    srcs = ["channel_label.cc"],
+    hdrs = ["channel_label.h"],
+    deps = [
+        "//iamf/obu:audio_element",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
     ],
 )
 
@@ -95,6 +113,7 @@ cc_library(
         ":audio_element_with_data",
         ":audio_frame_decoder",
         ":audio_frame_with_data",
+        ":channel_label",
         ":cli_util",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -104,7 +123,6 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",
-        "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -196,6 +214,7 @@ cc_library(
         ":audio_element_with_data",
         ":audio_frame_decoder",
         ":audio_frame_with_data",
+        ":channel_label",
         ":cli_util",
         ":demixing_module",
         ":global_timing_module",
@@ -374,6 +393,7 @@ cc_library(
     srcs = ["recon_gain_generator.cc"],
     hdrs = ["recon_gain_generator.h"],
     deps = [
+        ":channel_label",
         ":demixing_module",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
@@ -417,9 +437,11 @@ cc_library(
     hdrs = ["wav_sample_provider.h"],
     deps = [
         ":audio_element_with_data",
+        ":channel_label",
         ":demixing_module",
         ":wav_reader",
         "//iamf/cli/proto:audio_frame_cc_proto",
+        "//iamf/common:macros",
         "//iamf/obu:leb128",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",

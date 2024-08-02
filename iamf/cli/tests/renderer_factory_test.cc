@@ -12,6 +12,7 @@
 #include "iamf/cli/renderer_factory.h"
 
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
@@ -24,6 +25,7 @@ namespace {
 
 using enum LoudspeakersSsConventionLayout::SoundSystem;
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+using enum ChannelLabel::Label;
 
 const Layout kMonoLayout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
@@ -49,7 +51,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForPassThroughRenderer) {
   const RendererFactory factory;
 
   EXPECT_EQ(factory.CreateRendererForLayout(
-                {0}, {{0, {"M"}}}, AudioElementObu::kAudioElementChannelBased,
+                {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
                 kMonoScalableChannelLayoutConfig, kMonoLayout),
             nullptr);
 }
@@ -58,7 +60,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToBinauralRenderer) {
   const RendererFactory factory;
 
   EXPECT_EQ(factory.CreateRendererForLayout(
-                {0}, {{0, {"M"}}}, AudioElementObu::kAudioElementChannelBased,
+                {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
                 kMonoScalableChannelLayoutConfig, kBinauralLayout),
             nullptr);
 }
@@ -68,7 +70,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToChannelRenderer) {
 
   EXPECT_EQ(
       factory.CreateRendererForLayout(
-          {0}, {{0, {"L2", "R2"}}}, AudioElementObu::kAudioElementChannelBased,
+          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
           kStereoScalableChannelLayoutConfig, kMonoLayout),
       nullptr);
 }
@@ -77,7 +79,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToChannelRenderer) {
   const RendererFactory factory;
 
   EXPECT_EQ(factory.CreateRendererForLayout(
-                {0}, {{0, {"A0"}}}, AudioElementObu::kAudioElementSceneBased,
+                {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
                 kFullZerothOrderAmbisonicsConfig, kMonoLayout),
             nullptr);
 }
@@ -86,7 +88,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToBinauralRenderer) {
   const RendererFactory factory;
 
   EXPECT_EQ(factory.CreateRendererForLayout(
-                {0}, {{0, {"A0"}}}, AudioElementObu::kAudioElementSceneBased,
+                {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
                 kFullZerothOrderAmbisonicsConfig, kBinauralLayout),
             nullptr);
 }

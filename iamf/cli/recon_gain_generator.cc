@@ -13,7 +13,6 @@
 
 #include <cmath>
 #include <cstdint>
-#include <string>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -21,6 +20,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
@@ -39,47 +39,50 @@ double ComputeSignalPower(const std::vector<int32_t>& samples) {
   return std::sqrt(mean_square);
 }
 
-// Find relevant samples. E.g. Computation of D_Lrs7 uses Ls5 and Lss7. Spec
-// says "relevant mixed channel of the down-mixed audio for CL #i-1." So Level
-// Mk is the signal power or Ls5. Lss7 is from CL #i and does not contribute to
-// Level Mk.
+// Find relevant samples. E.g. Computation of kDemixedLrs7 uses kLs5 and kLss7.
+// Spec says "relevant mixed channel of the down-mixed audio for CL #i-1." So
+// Level Mk is the signal power or kLs5. kLss7 is from CL #i and does not
+// contribute to Level Mk.
 absl::Status FindRelevantMixedSamples(
-    const bool additional_logging, const std::string& label,
+    const bool additional_logging, ChannelLabel::Label label,
     const LabelSamplesMap& label_to_samples,
     const std::vector<int32_t>** relevant_mixed_samples) {
-  static const absl::NoDestructor<absl::flat_hash_map<std::string, std::string>>
-      kMixedLabels({{"D_L7", "L5"},
-                    {"D_R7", "R5"},
-                    {"D_Lrs7", "Ls5"},
-                    {"D_Rrs7", "Rs5"},
-                    {"D_Ltb4", "Ltf2"},
-                    {"D_Rtb4", "Rtf2"},
-                    {"D_L5", "L3"},
-                    {"D_R5", "R3"},
-                    {"D_Ls5", "L3"},
-                    {"D_Rs5", "R3"},
-                    {"D_Ltf2", "Ltf3"},
-                    {"D_Rtf2", "Rtf3"},
-                    {"D_L3", "L2"},
-                    {"D_R3", "R2"},
-                    {"D_R2", "M"}});
+  using enum ChannelLabel::Label;
+  static const absl::NoDestructor<
+      absl::flat_hash_map<ChannelLabel::Label, ChannelLabel::Label>>
+      kLabelToRelevantMixedLabel({{kDemixedL7, kL5},
+                                  {kDemixedR7, kR5},
+                                  {kDemixedLrs7, kLs5},
+                                  {kDemixedRrs7, kRs5},
+                                  {kDemixedLtb4, kLtf2},
+                                  {kDemixedRtb4, kRtf2},
+                                  {kDemixedL5, kL3},
+                                  {kDemixedR5, kR3},
+                                  {kDemixedLs5, kL3},
+                                  {kDemixedRs5, kR3},
+                                  {kDemixedLtf2, kLtf3},
+                                  {kDemixedRtf2, kRtf3},
+                                  {kDemixedL3, kL2},
+                                  {kDemixedR3, kR2},
+                                  {kDemixedR2, kMono}});
 
-  std::string mixed_label;
-
-  if (!LookupInMap(*kMixedLabels, label, mixed_label).ok()) {
-    return absl::InvalidArgumentError(absl::StrCat("Unknown label= ", label));
+  ChannelLabel::Label relevant_mixed_label;
+  if (!LookupInMap(*kLabelToRelevantMixedLabel, label, relevant_mixed_label)
+           .ok()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Failed to find relevant mixed label associated with label= ", label));
   }
 
   LOG_IF(INFO, additional_logging)
-      << "Relevant mixed samples has label: " << mixed_label;
+      << "Relevant mixed samples has label: " << relevant_mixed_label;
   return DemixingModule::FindSamplesOrDemixedSamples(
-      mixed_label, label_to_samples, relevant_mixed_samples);
+      relevant_mixed_label, label_to_samples, relevant_mixed_samples);
 }
 
 }  // namespace
 
 absl::Status ReconGainGenerator::ComputeReconGain(
-    const std::string& label, const LabelSamplesMap& label_to_samples,
+    ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
     const LabelSamplesMap& label_to_decoded_samples,
     const bool additional_logging, double& recon_gain) {
   // Gather information about the original samples.

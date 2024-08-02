@@ -13,9 +13,8 @@
 #ifndef CLI_RECON_GAIN_GENERATOR_H_
 #define CLI_RECON_GAIN_GENERATOR_H_
 
-#include <string>
-
 #include "absl/status/status.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 
 namespace iamf_tools {
@@ -33,7 +32,7 @@ class ReconGainGenerator {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status ComputeReconGain(
-      const std::string& label, const LabelSamplesMap& label_to_samples,
+      ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
       const LabelSamplesMap& label_to_decoded_samples, bool additional_logging,
       double& recon_gain);
 };

@@ -14,10 +14,12 @@
 #define CLI_WAV_SAMPLE_PROVIDER_H_
 
 #include <string>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/wav_reader.h"
@@ -72,6 +74,10 @@ class WavSampleProvider {
   absl::flat_hash_map<DecodedUleb128,
                       iamf_tools_cli_proto::AudioFrameObuMetadata>
       audio_frame_metadata_;
+
+  // Mapping from Audio Element ID to channel labels.
+  absl::flat_hash_map<DecodedUleb128, std::vector<ChannelLabel::Label>>
+      audio_element_id_to_labels_;
 };
 
 }  // namespace iamf_tools

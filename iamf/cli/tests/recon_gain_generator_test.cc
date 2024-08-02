@@ -19,6 +19,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 
@@ -27,6 +28,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+using enum ChannelLabel::Label;
+
 const int32_t kArbitrarySample = std::numeric_limits<int32_t>::max();
 
 void TestComputeReconGainForOneChannelLrs7(
@@ -34,13 +37,14 @@ void TestComputeReconGainForOneChannelLrs7(
     const std::vector<int32_t>& mixed_channel,
     const std::vector<int32_t>& demixed_channel,
     const double expected_recon_gain) {
-  const LabelSamplesMap label_to_samples{{"D_Lrs7", original_channel},
-                                         {"Ls5", mixed_channel}};
-  const LabelSamplesMap label_to_decoded_samples{{"D_Lrs7", demixed_channel}};
+  const LabelSamplesMap label_to_samples{{kDemixedLrs7, original_channel},
+                                         {kLs5, mixed_channel}};
+  const LabelSamplesMap label_to_decoded_samples{
+      {kDemixedLrs7, demixed_channel}};
 
   double recon_gain;
   EXPECT_THAT(ReconGainGenerator::ComputeReconGain(
-                  "D_Lrs7", label_to_samples, label_to_decoded_samples,
+                  kDemixedLrs7, label_to_samples, label_to_decoded_samples,
                   /*additional_logging=*/true, recon_gain),
               IsOk());
   EXPECT_NEAR(recon_gain, expected_recon_gain, 0.0001);
@@ -70,28 +74,26 @@ TEST(ComputeReconGain, SucceedsForTwoLayerStereo) {
   const std::vector<int32_t> kOriginalChannel{kArbitrarySample};
   const std::vector<int32_t> kMixedChannel{kArbitrarySample};
   const std::vector<int32_t> kDemixedChannel{kArbitrarySample};
-  const LabelSamplesMap label_to_samples{{"D_R2", kOriginalChannel},
-                                         {"M", kMixedChannel}};
-  const LabelSamplesMap label_to_decoded_samples{{"D_R2", kDemixedChannel}};
+  const LabelSamplesMap label_to_samples{{kDemixedR2, kOriginalChannel},
+                                         {kMono, kMixedChannel}};
+  const LabelSamplesMap label_to_decoded_samples{{kDemixedR2, kDemixedChannel}};
 
   double recon_gain;
   EXPECT_THAT(ReconGainGenerator::ComputeReconGain(
-                  "D_R2", label_to_samples, label_to_decoded_samples,
+                  kDemixedR2, label_to_samples, label_to_decoded_samples,
                   /*additional_logging=*/true, recon_gain),
               IsOk());
 }
 
-TEST(ComputeReconGain, InvalidWhenComputingForDemixedL2) {
+TEST(ComputeReconGain, InvalidWhenRelevantMixedSampleCannotBeFound) {
   const std::vector<int32_t> kOriginalChannel{kArbitrarySample};
-  const std::vector<int32_t> kMixedChannel{kArbitrarySample};
   const std::vector<int32_t> kDemixedChannel{kArbitrarySample};
-  const LabelSamplesMap label_to_samples{{"D_L2", kOriginalChannel},
-                                         {"M", kMixedChannel}};
-  const LabelSamplesMap label_to_decoded_samples{{"D_L2", kDemixedChannel}};
+  const LabelSamplesMap label_to_samples{{kDemixedR2, kOriginalChannel}};
+  const LabelSamplesMap label_to_decoded_samples{{kDemixedR2, kDemixedChannel}};
 
   double recon_gain;
   EXPECT_FALSE(ReconGainGenerator::ComputeReconGain(
-                   "D_L2", label_to_samples, label_to_decoded_samples,
+                   kDemixedR2, label_to_samples, label_to_decoded_samples,
                    /*additional_logging=*/true, recon_gain)
                    .ok());
 }

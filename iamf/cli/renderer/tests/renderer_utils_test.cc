@@ -13,14 +13,13 @@
 #include "iamf/cli/renderer/renderer_utils.h"
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -28,6 +27,8 @@ namespace renderer_utils {
 namespace {
 
 using ::absl_testing::IsOk;
+
+using enum ChannelLabel::Label;
 
 TEST(ArrangeSamplesToRender, SucceedsOnEmptyFrame) {
   std::vector<std::vector<int32_t>> samples;
@@ -37,8 +38,8 @@ TEST(ArrangeSamplesToRender, SucceedsOnEmptyFrame) {
 
 TEST(ArrangeSamplesToRender, ArrangesSamplesInTimeChannelAxes) {
   const LabeledFrame kStereoLabeledFrame = {
-      .label_to_samples = {{"L2", {0, 1, 2}}, {"R2", {10, 11, 12}}}};
-  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+      .label_to_samples = {{kL2, {0, 1, 2}}, {kR2, {10, 11, 12}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(
@@ -51,8 +52,8 @@ TEST(ArrangeSamplesToRender, ArrangesSamplesInTimeChannelAxes) {
 
 TEST(ArrangeSamplesToRender, FindsDemixedLabels) {
   const LabeledFrame kDemixedTwoLayerStereoFrame = {
-      .label_to_samples = {{"M", {75}}, {"L2", {50}}, {"D_R2", {100}}}};
-  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+      .label_to_samples = {{kMono, {75}}, {kL2, {50}}, {kDemixedR2, {100}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(ArrangeSamplesToRender(kDemixedTwoLayerStereoFrame,
@@ -64,8 +65,8 @@ TEST(ArrangeSamplesToRender, FindsDemixedLabels) {
 
 TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
   const LabeledFrame kStereoLabeledFrameWithExtraLabel = {
-      .label_to_samples = {{"L2", {0}}, {"R2", {10}}, {"LFE", {999}}}};
-  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+      .label_to_samples = {{kL2, {0}}, {kR2, {10}}, {kLFE, {999}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrameWithExtraLabel,
@@ -77,9 +78,9 @@ TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
 TEST(ArrangeSamplesToRender, LeavesEmptyLabelsZero) {
   const LabeledFrame kMixedFirstOrderAmbisonicsFrame = {
       .label_to_samples = {
-          {"A0", {1, 2}}, {"A2", {201, 202}}, {"A3", {301, 302}}}};
-  const std::vector<std::string> kMixedFirstOrderAmbisonicsArrangement = {
-      "A0", "", "A2", "A3"};
+          {kA0, {1, 2}}, {kA2, {201, 202}}, {kA3, {301, 302}}}};
+  const std::vector<ChannelLabel::Label> kMixedFirstOrderAmbisonicsArrangement =
+      {kA0, kOmitted, kA2, kA3};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(
@@ -94,8 +95,8 @@ TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
   const LabeledFrame kMonoLabeledFrameWithSamplesToTrim = {
       .samples_to_trim_at_end = 2,
       .samples_to_trim_at_start = 1,
-      .label_to_samples = {{"M", {999, 100, 999, 999}}}};
-  const std::vector<std::string> kMonoArrangement = {"M"};
+      .label_to_samples = {{kMono, {999, 100, 999, 999}}}};
+  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
@@ -105,8 +106,9 @@ TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
 }
 
 TEST(ArrangeSamplesToRender, ClearsInputVector) {
-  const LabeledFrame kMonoLabeledFrame = {.label_to_samples = {{"M", {1, 2}}}};
-  const std::vector<std::string> kMonoArrangement = {"M"};
+  const LabeledFrame kMonoLabeledFrame = {
+      .label_to_samples = {{kMono, {1, 2}}}};
+  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
 
   std::vector<std::vector<int32_t>> samples = {{999, 999}};
   EXPECT_THAT(
@@ -119,8 +121,8 @@ TEST(ArrangeSamplesToRender, TrimmingAllFramesFromStartIsResultsInEmptyOutput) {
   const LabeledFrame kMonoLabeledFrameWithSamplesToTrim = {
       .samples_to_trim_at_end = 0,
       .samples_to_trim_at_start = 4,
-      .label_to_samples = {{"M", {999, 999, 999, 999}}}};
-  const std::vector<std::string> kMonoArrangement = {"M"};
+      .label_to_samples = {{kMono, {999, 999, 999, 999}}}};
+  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
@@ -132,8 +134,8 @@ TEST(ArrangeSamplesToRender, TrimmingAllFramesFromStartIsResultsInEmptyOutput) {
 TEST(ArrangeSamplesToRender,
      InvalidWhenRequestedLabelsHaveDifferentNumberOfSamples) {
   const LabeledFrame kStereoLabeledFrameWithMissingSample = {
-      .label_to_samples = {{"L2", {0, 1}}, {"R2", {10}}}};
-  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrameWithMissingSample,
@@ -145,8 +147,8 @@ TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
   const LabeledFrame kFrameWithExcessSamplesTrimmed = {
       .samples_to_trim_at_end = 1,
       .samples_to_trim_at_start = 2,
-      .label_to_samples = {{"L2", {0, 1}}, {"R2", {10, 11}}}};
-  const std::vector<std::string> kStereoArrangement = {"L2", "R2"};
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
 
   std::vector<std::vector<int32_t>> samples;
   EXPECT_FALSE(ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed,
@@ -156,50 +158,13 @@ TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
 
 TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
   const LabeledFrame kStereoLabeledFrame = {
-      .label_to_samples = {{"L2", {0}}, {"R2", {10}}}};
-  const std::vector<std::string> kMonoArrangement = {"M"};
+      .label_to_samples = {{kL2, {0}}, {kR2, {10}}}};
+  const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
 
   std::vector<std::vector<int32_t>> unused_samples;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
                                       unused_samples)
                    .ok());
-}
-
-TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
-     SucceedsForChannelBasedLayout) {
-  EXPECT_THAT(LookupInputChannelOrderFromScalableLoudspeakerLayout(
-                  ChannelAudioLayerConfig::kLayoutMono),
-              IsOk());
-}
-
-TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
-     FailsForReservedLayouts10Through14) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved10)
-          .ok());
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved11)
-          .ok());
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved12)
-          .ok());
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved13)
-          .ok());
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved14)
-          .ok());
-}
-
-TEST(LookupInputChannelOrderFromScalableLoudspeakerLayout,
-     FailsForReservedLayout15) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
-  EXPECT_FALSE(
-      LookupInputChannelOrderFromScalableLoudspeakerLayout(kLayoutReserved15)
-          .ok());
 }
 
 TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {

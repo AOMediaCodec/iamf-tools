@@ -12,10 +12,10 @@
 #ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_PASSTHROUGH_H_
 #define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_PASSTHROUGH_H_
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/status/statusor.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
@@ -73,10 +73,11 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
 
  private:
   /*!\brief Constructor. */
-  AudioElementRendererPassThrough(const std::vector<std::string>& channel_order)
+  AudioElementRendererPassThrough(
+      const std::vector<ChannelLabel::Label>& channel_order)
       : channel_order_(channel_order) {}
 
-  const std::vector<std::string> channel_order_;
+  const std::vector<ChannelLabel::Label> channel_order_;
 };
 
 }  // namespace iamf_tools

@@ -25,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -40,6 +41,8 @@ namespace iamf_tools {
 
 using absl::InvalidArgumentError;
 using absl::StrCat;
+
+using enum ChannelLabel::Label;
 
 namespace {
 // Copies the `ParameterDefinitionType` based on the input data.
@@ -255,36 +258,36 @@ absl::Status LoudspeakerLayoutToChannels(
 
 absl::Status CollectBcgLabels(
     const ChannelNumbers& layer_channels,
-    std::list<std::string>* coupled_substream_labels,
-    std::list<std::string>* non_coupled_substream_labels) {
+    std::list<ChannelLabel::Label>* coupled_substream_labels,
+    std::list<ChannelLabel::Label>* non_coupled_substream_labels) {
   switch (layer_channels.surround) {
     case 1:
-      non_coupled_substream_labels->push_back("M");
+      non_coupled_substream_labels->push_back(kMono);
       break;
     case 2:
-      coupled_substream_labels->push_back("L2");
-      coupled_substream_labels->push_back("R2");
+      coupled_substream_labels->push_back(kL2);
+      coupled_substream_labels->push_back(kR2);
       break;
     case 3:
-      coupled_substream_labels->push_back("L3");
-      coupled_substream_labels->push_back("R3");
-      non_coupled_substream_labels->push_back("C");
+      coupled_substream_labels->push_back(kL3);
+      coupled_substream_labels->push_back(kR3);
+      non_coupled_substream_labels->push_back(kCentre);
       break;
     case 5:
-      coupled_substream_labels->push_back("L5");
-      coupled_substream_labels->push_back("R5");
-      coupled_substream_labels->push_back("Ls5");
-      coupled_substream_labels->push_back("Rs5");
-      non_coupled_substream_labels->push_back("C");
+      coupled_substream_labels->push_back(kL5);
+      coupled_substream_labels->push_back(kR5);
+      coupled_substream_labels->push_back(kLs5);
+      coupled_substream_labels->push_back(kRs5);
+      non_coupled_substream_labels->push_back(kCentre);
       break;
     case 7:
-      coupled_substream_labels->push_back("L7");
-      coupled_substream_labels->push_back("R7");
-      coupled_substream_labels->push_back("Lss7");
-      coupled_substream_labels->push_back("Rss7");
-      coupled_substream_labels->push_back("Lrs7");
-      coupled_substream_labels->push_back("Rrs7");
-      non_coupled_substream_labels->push_back("C");
+      coupled_substream_labels->push_back(kL7);
+      coupled_substream_labels->push_back(kR7);
+      coupled_substream_labels->push_back(kLss7);
+      coupled_substream_labels->push_back(kRss7);
+      coupled_substream_labels->push_back(kLrs7);
+      coupled_substream_labels->push_back(kRrs7);
+      non_coupled_substream_labels->push_back(kCentre);
       break;
     default:
       LOG(ERROR) << "Unsupported number of surround channels: "
@@ -299,18 +302,18 @@ absl::Status CollectBcgLabels(
       break;
     case 2:
       if (layer_channels.surround == 3) {
-        coupled_substream_labels->push_back("Ltf3");
-        coupled_substream_labels->push_back("Rtf3");
+        coupled_substream_labels->push_back(kLtf3);
+        coupled_substream_labels->push_back(kRtf3);
       } else {
-        coupled_substream_labels->push_back("Ltf2");
-        coupled_substream_labels->push_back("Rtf2");
+        coupled_substream_labels->push_back(kLtf2);
+        coupled_substream_labels->push_back(kRtf2);
       }
       break;
     case 4:
-      coupled_substream_labels->push_back("Ltf4");
-      coupled_substream_labels->push_back("Rtf4");
-      coupled_substream_labels->push_back("Ltb4");
-      coupled_substream_labels->push_back("Rtb4");
+      coupled_substream_labels->push_back(kLtf4);
+      coupled_substream_labels->push_back(kRtf4);
+      coupled_substream_labels->push_back(kLtb4);
+      coupled_substream_labels->push_back(kRtb4);
       break;
     default:
       LOG(ERROR) << "Unsupported number of height channels: "
@@ -323,7 +326,7 @@ absl::Status CollectBcgLabels(
       // Not adding anything.
       break;
     case 1:
-      non_coupled_substream_labels->push_back("LFE");
+      non_coupled_substream_labels->push_back(kLFE);
       break;
     default:
       return InvalidArgumentError(
@@ -336,8 +339,8 @@ absl::Status CollectBcgLabels(
 absl::Status CollectDcgLabels(
     const ChannelNumbers& accumulated_channels,
     const ChannelNumbers& layer_channels,
-    std::list<std::string>* coupled_substream_labels,
-    std::list<std::string>* non_coupled_substream_labels) {
+    std::list<ChannelLabel::Label>* coupled_substream_labels,
+    std::list<ChannelLabel::Label>* non_coupled_substream_labels) {
   bool push_l2_in_the_end = false;
   for (int surround = accumulated_channels.surround + 1;
        surround <= layer_channels.surround; surround++) {
@@ -348,19 +351,19 @@ absl::Status CollectDcgLabels(
         // (https://aomediacodec.github.io/iamf/#syntax-scalable-channel-layout-config):
         // "The Centre (or Front Centre) channel comes first and is followed by
         // the LFE (or LFE1) channel, and then the L channel.". Save pushing
-        // "L2" till the end.
+        // kL2 till the end.
         push_l2_in_the_end = true;
         break;
       case 3:
-        non_coupled_substream_labels->push_back("C");
+        non_coupled_substream_labels->push_back(kCentre);
         break;
       case 5:
-        coupled_substream_labels->push_back("L5");
-        coupled_substream_labels->push_back("R5");
+        coupled_substream_labels->push_back(kL5);
+        coupled_substream_labels->push_back(kR5);
         break;
       case 7:
-        coupled_substream_labels->push_back("Lss7");
-        coupled_substream_labels->push_back("Rss7");
+        coupled_substream_labels->push_back(kLss7);
+        coupled_substream_labels->push_back(kRss7);
         break;
       default:
         if (surround > 7) {
@@ -374,25 +377,25 @@ absl::Status CollectDcgLabels(
   if (layer_channels.height > accumulated_channels.height) {
     if (accumulated_channels.height == 0) {
       if (layer_channels.height == 4) {
-        coupled_substream_labels->push_back("Ltf4");
-        coupled_substream_labels->push_back("Rtf4");
-        coupled_substream_labels->push_back("Ltb4");
-        coupled_substream_labels->push_back("Rtb4");
+        coupled_substream_labels->push_back(kLtf4);
+        coupled_substream_labels->push_back(kRtf4);
+        coupled_substream_labels->push_back(kLtb4);
+        coupled_substream_labels->push_back(kRtb4);
       } else if (layer_channels.height == 2) {
         if (layer_channels.surround == 3) {
-          coupled_substream_labels->push_back("Ltf3");
-          coupled_substream_labels->push_back("Rtf3");
+          coupled_substream_labels->push_back(kLtf3);
+          coupled_substream_labels->push_back(kRtf3);
         } else {
-          coupled_substream_labels->push_back("Ltf2");
-          coupled_substream_labels->push_back("Rtf2");
+          coupled_substream_labels->push_back(kLtf2);
+          coupled_substream_labels->push_back(kRtf2);
         }
       } else {
         return InvalidArgumentError(StrCat(
             "Unsupported number of height channels: ", layer_channels.height));
       }
     } else if (accumulated_channels.height == 2) {
-      coupled_substream_labels->push_back("Ltf4");
-      coupled_substream_labels->push_back("Rtf4");
+      coupled_substream_labels->push_back(kLtf4);
+      coupled_substream_labels->push_back(kRtf4);
     } else {
       return InvalidArgumentError(
           absl::StrCat("Unsupported number of height channels: ",
@@ -402,7 +405,7 @@ absl::Status CollectDcgLabels(
 
   if (layer_channels.lfe > accumulated_channels.lfe) {
     if (layer_channels.lfe == 1) {
-      non_coupled_substream_labels->push_back("LFE");
+      non_coupled_substream_labels->push_back(kLFE);
     } else {
       return InvalidArgumentError(
           StrCat("Unsupported number of LFE channels: ", layer_channels.lfe));
@@ -410,15 +413,15 @@ absl::Status CollectDcgLabels(
   }
 
   if (push_l2_in_the_end) {
-    non_coupled_substream_labels->push_back("L2");
+    non_coupled_substream_labels->push_back(kL2);
   }
 
   return absl::OkStatus();
 }
 
 void AddSubstreamLabels(
-    const std::list<std::string>& coupled_substream_labels,
-    const std::list<std::string>& non_coupled_substream_labels,
+    const std::list<ChannelLabel::Label>& coupled_substream_labels,
+    const std::list<ChannelLabel::Label>& non_coupled_substream_labels,
     const std::vector<DecodedUleb128>& substream_ids,
     SubstreamIdLabelsMap& substream_id_to_labels, int& substream_index) {
   // First add coupled substream labels, two at a time.
@@ -427,7 +430,8 @@ void AddSubstreamLabels(
     const auto substream_id = substream_ids[substream_index++];
     auto& labels_for_substream_id = substream_id_to_labels[substream_id];
     labels_for_substream_id.push_back(*iter++);
-    std::string concatenated_labels = labels_for_substream_id.back();
+    std::string concatenated_labels =
+        ChannelLabel::LabelToString(labels_for_substream_id.back());
     labels_for_substream_id.push_back(*iter++);
     absl::StrAppend(&concatenated_labels, "/", labels_for_substream_id.back());
     LOG(INFO) << "  substream_id_to_labels[" << substream_id
@@ -445,8 +449,8 @@ void AddSubstreamLabels(
 }
 
 absl::Status ValidateSubstreamCounts(
-    const std::list<std::string>& coupled_substream_labels,
-    const std::list<std::string>& non_coupled_substream_labels,
+    const std::list<ChannelLabel::Label>& coupled_substream_labels,
+    const std::list<ChannelLabel::Label>& non_coupled_substream_labels,
     const ChannelAudioLayerConfig& layer_config) {
   const auto num_required_coupled_channels =
       static_cast<uint32_t>(coupled_substream_labels.size()) / 2;
@@ -481,21 +485,28 @@ absl::Status ValidateSubstreamCounts(
 }
 
 bool OutputGainApplies(const uint8_t output_gain_flag,
-                       const std::string& label) {
-  if (label == "M" || label == "L2" || label == "L3") {
-    return output_gain_flag & (1 << 5);
-  } else if (label == "R2" || label == "R3") {
-    return output_gain_flag & (1 << 4);
-  } else if (label == "Ls5") {
-    return output_gain_flag & (1 << 3);
-  } else if (label == "Rs5") {
-    return output_gain_flag & (1 << 2);
-  } else if (label == "Ltf2" || label == "Ltf3") {
-    return output_gain_flag & (1 << 1);
-  } else if (label == "Rtf2" || label == "Rtf3") {
-    return output_gain_flag & 1;
+                       ChannelLabel::Label label) {
+  switch (label) {
+    case kMono:
+    case kL2:
+    case kL3:
+      return output_gain_flag & (1 << 5);
+    case kR2:
+    case kR3:
+      return output_gain_flag & (1 << 4);
+    case kLs5:
+      return output_gain_flag & (1 << 3);
+    case kRs5:
+      return output_gain_flag & (1 << 2);
+    case kLtf2:
+    case kLtf3:
+      return output_gain_flag & (1 << 1);
+    case kRtf2:
+    case kRtf3:
+      return output_gain_flag & 1;
+    default:
+      return false;
   }
-  return false;
 }
 
 absl::Status ValidateReconGainDefined(
@@ -696,8 +707,12 @@ absl::Status FinalizeAmbisonicsMonoConfig(
         audio_element_obu.audio_substream_ids_[obu_substream_index];
 
     // Add the associated ACN to the labels associated with that substream.
-    substream_id_to_labels[substream_id].push_back(
-        {StrCat("A", ambisonics_channel_number)});
+    const auto ambisonics_label =
+        ChannelLabel::AmbisonicsChannelNumberToLabel(ambisonics_channel_number);
+    if (!ambisonics_label.ok()) {
+      return ambisonics_label.status();
+    }
+    substream_id_to_labels[substream_id].push_back(*ambisonics_label);
   }
   return absl::OkStatus();
 }
@@ -717,14 +732,21 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
   // For projection mode, assume coupled substreams (using 2 channels) come
   // first and are followed by non-coupled substreams (using 1 channel each).
   for (int i = 0; i < audio_element_obu.num_substreams_; ++i) {
-    substream_id_to_labels[audio_element_obu.audio_substream_ids_[i]] =
-        (i < projection_config.coupled_substream_count
-             ? std::list<std::string>{StrCat("A", 2 * i),
-                                      StrCat("A", 2 * i + 1)}
-             : std::list<std::string>{StrCat(
-                   "A", 2 * projection_config.coupled_substream_count + i)});
+    const std::list<int> ambisonic_channel_numbers =
+        i < projection_config.coupled_substream_count
+            ? std::list<int>{2 * i, 2 * i + 1}
+            : std::list<int>{2 * projection_config.coupled_substream_count + i};
+    for (const auto ambisonic_channel_number : ambisonic_channel_numbers) {
+      const auto ambisonics_label =
+          ChannelLabel::AmbisonicsChannelNumberToLabel(
+              ambisonic_channel_number);
+      if (!ambisonics_label.ok()) {
+        return ambisonics_label.status();
+      }
+      substream_id_to_labels[audio_element_obu.audio_substream_ids_[i]]
+          .push_back(*ambisonics_label);
+    }
   }
-
   return absl::OkStatus();
 }
 
@@ -907,8 +929,8 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     LogChannelNumbers("  layer_channels", layer_channels);
     LogChannelNumbers("  accumulated_channels", accumulated_channels);
 
-    std::list<std::string> coupled_substream_labels;
-    std::list<std::string> non_coupled_substream_labels;
+    std::list<ChannelLabel::Label> coupled_substream_labels;
+    std::list<ChannelLabel::Label> non_coupled_substream_labels;
     if (i == 0) {
       RETURN_IF_NOT_OK(CollectBcgLabels(layer_channels,
                                         &coupled_substream_labels,

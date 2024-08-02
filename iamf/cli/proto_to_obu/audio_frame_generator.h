@@ -16,16 +16,17 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
@@ -136,7 +137,7 @@ class AudioFrameGenerator {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status AddSamples(DecodedUleb128 audio_element_id,
-                          const std::string& label,
+                          ChannelLabel::Label label,
                           const std::vector<int32_t>& samples);
 
   /*!\brief Finalizes the sample-adding process.
@@ -170,6 +171,10 @@ class AudioFrameGenerator {
   absl::flat_hash_map<DecodedUleb128,
                       iamf_tools_cli_proto::AudioFrameObuMetadata>
       audio_frame_metadata_;
+
+  // Mapping from Audio Element ID to labels.
+  absl::flat_hash_map<DecodedUleb128, absl::flat_hash_set<ChannelLabel::Label>>
+      audio_element_id_to_labels_;
 
   // Mapping from Audio Element ID to audio element data.
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&

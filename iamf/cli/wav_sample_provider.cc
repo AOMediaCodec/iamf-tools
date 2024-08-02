@@ -17,14 +17,17 @@
 #include <filesystem>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/macros.h"
 #include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
@@ -42,6 +45,10 @@ absl::Status WavSampleProvider::Initialize(
                        audio_frame_metadata.channel_ids_size(), " vs ",
                        audio_frame_metadata.channel_labels_size(), ")"));
     }
+    // Precompute the `ChannelLabel::Label` for each channel label string.
+    RETURN_IF_NOT_OK(ChannelLabel::FillLabelsFromStrings(
+        audio_frame_metadata.channel_labels(),
+        audio_element_id_to_labels_[audio_element_id]));
 
     const auto audio_element_iter = audio_elements.find(audio_element_id);
     if (audio_element_iter == audio_elements.end()) {
@@ -112,7 +119,7 @@ absl::Status WavSampleProvider::ReadFrames(
   const auto& audio_frame_metadata = audio_frame_metadata_.at(audio_element_id);
   const size_t num_time_ticks = samples_read / wav_reader.num_channels();
   const auto& channel_ids = audio_frame_metadata.channel_ids();
-  const auto& channel_labels = audio_frame_metadata.channel_labels();
+  const auto& channel_labels = audio_element_id_to_labels_.at(audio_element_id);
   labeled_samples.clear();
   for (int c = 0; c < channel_labels.size(); ++c) {
     auto& samples = labeled_samples[channel_labels[c]];

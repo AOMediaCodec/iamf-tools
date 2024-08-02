@@ -16,7 +16,6 @@
 #include <list>
 #include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -25,6 +24,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
@@ -170,7 +170,7 @@ absl::Status IamfEncoder::GetInputTimestamp(int32_t& input_timestamp) {
 }
 
 void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
-                             const std::string& label,
+                             ChannelLabel::Label label,
                              const std::vector<int32_t>& samples) {
   id_to_labeled_samples_[audio_element_id][label] = samples;
 }

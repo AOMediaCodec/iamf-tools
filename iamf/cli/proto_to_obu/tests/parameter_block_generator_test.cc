@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -436,9 +437,11 @@ void PrepareAudioElementWithDataForReconGain(
 }
 
 IdLabeledFrameMap PrepareIdLabeledFrameMap() {
+  using enum ChannelLabel::Label;
   const std::vector<int32_t> samples(8, 10000);
   LabelSamplesMap label_to_samples;
-  for (const auto& label : {"L2", "R2", "D_L3", "D_R3", "D_Ls5", "D_Rs5"}) {
+  for (const auto& label :
+       {kL2, kR2, kDemixedL3, kDemixedR3, kDemixedLs5, kDemixedRs5}) {
     label_to_samples[label] = samples;
   }
   IdLabeledFrameMap id_to_labeled_frame;

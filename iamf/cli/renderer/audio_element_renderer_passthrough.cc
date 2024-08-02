@@ -25,6 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -115,7 +116,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
     return nullptr;
   }
   const auto& channel_order =
-      renderer_utils::LookupInputChannelOrderFromScalableLoudspeakerLayout(
+      ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
           *equivalent_layer);
   if (!channel_order.ok()) {
     return nullptr;

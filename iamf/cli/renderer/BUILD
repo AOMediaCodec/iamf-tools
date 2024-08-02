@@ -21,6 +21,7 @@ cc_library(
     deps = [
         ":audio_element_renderer_base",
         ":renderer_utils",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
@@ -53,9 +54,9 @@ cc_library(
     srcs = ["renderer_utils.cc"],
     hdrs = ["renderer_utils.h"],
     deps = [
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/common:macros",
-        "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
