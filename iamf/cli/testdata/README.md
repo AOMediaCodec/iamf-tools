@@ -21,7 +21,10 @@ Theses file describe metadata about the test vector to encode an
     exercise fields or features which would cause mixes to be ignored.
 -   `is_valid_to_decode`: True when an IAMF-compliant decoder could decode at
     least one mix of the associated IA Sequence ("should-pass"). False when all
-    mixes are non-conformant and would fail to be decoded ("should-fail").
+    mixes are non-conformant and may fail to be decoded ("should-fail"). The
+    IAMF spec does not specify what happens when requirements are violated; a
+    robust system may still attempt to process and create output for
+    "should-fail" tests.
 -   `human_readable_descriptions`: A short description of what is being tested
     and why.
 -   `mp4_fixed_timestamp`: The timestamp within the MP4 file. Can be safely
