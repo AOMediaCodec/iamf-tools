@@ -183,7 +183,7 @@ std::string ChannelLabel::LabelToString(Label label) {
     case kLtf4:
       return "Ltf4";
     case kRtf4:
-      return "Rtb4";
+      return "Rtf4";
     case kLtb4:
       return "Ltb4";
     case kRtb4:

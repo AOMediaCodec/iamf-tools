@@ -131,6 +131,20 @@ TEST(FillLabelsFromStrings, ValidWithUnorderedOutputContainers) {
   EXPECT_EQ(output_set, kExpectedOutputSet);
 }
 
+TEST(FillLabelsFromStrings, ValidWith7_1_4Labels) {
+  std::vector<std::string> input_labels = {"L7",   "R7",   "C",    "LFE",
+                                           "Lss7", "Rss7", "Lrs7", "Rrs7",
+                                           "Ltf4", "Rtf4", "Ltb4", "Rtb4"};
+  const absl::flat_hash_set<ChannelLabel::Label> kExpectedOutputSet = {
+      kL7,   kR7,   kCentre, kLFE,  kLss7, kRss7,
+      kLrs7, kRrs7, kLtf4,   kRtf4, kLtb4, kRtb4};
+  absl::flat_hash_set<ChannelLabel::Label> output_set;
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(input_labels, output_set),
+              IsOk());
+
+  EXPECT_EQ(output_set, kExpectedOutputSet);
+}
+
 TEST(FillLabelsFromStrings,
      InvalidWhenThereAreDuplicateLabelsWithOutputVector) {
   const std::vector<std::string> kInputWithDuplicates = {"R2", "C", "L2"};
