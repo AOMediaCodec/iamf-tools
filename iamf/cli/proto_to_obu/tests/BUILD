@@ -29,6 +29,7 @@ cc_test(
         "//iamf/obu:demixing_info_param_data",
         "//iamf/obu:leb128",
         "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

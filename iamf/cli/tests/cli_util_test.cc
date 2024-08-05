@@ -677,10 +677,10 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   SubstreamIdLabelsMap substream_id_labels_map;
   LabelGainMap label_gain_map;
   std::vector<ChannelNumbers> channel_numbers;
-  ASSERT_THAT(
-      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-          obu, substream_id_labels_map, label_gain_map, channel_numbers),
-      IsOk());
+  ASSERT_THAT(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                  obu.audio_substream_ids_, config, substream_id_labels_map,
+                  label_gain_map, channel_numbers),
+              IsOk());
 
   auto iter = input_codec_configs.find(kCodecConfigId);
   audio_elements_with_data.insert(

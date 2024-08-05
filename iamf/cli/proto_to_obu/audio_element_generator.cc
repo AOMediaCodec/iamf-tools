@@ -683,8 +683,8 @@ absl::Status FillScalableChannelLayoutConfig(
       ValidateReconGainDefined(codec_config_obu, audio_element.obu));
 
   return AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-      audio_element.obu, audio_element.substream_id_to_labels,
-      audio_element.label_to_output_gain,
+      audio_element.obu.audio_substream_ids_, config,
+      audio_element.substream_id_to_labels, audio_element.label_to_output_gain,
       audio_element.channel_numbers_for_layers);
 }
 
@@ -892,15 +892,12 @@ void LogAudioElements(
 
 }  // namespace
 
-// TODO(b/338134145): Add tests for this function.
 absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-    const AudioElementObu& audio_element_obu,
+    const std::vector<DecodedUleb128>& audio_substream_ids,
+    const ScalableChannelLayoutConfig& config,
     SubstreamIdLabelsMap& substream_id_to_labels,
     LabelGainMap& label_to_output_gain,
     std::vector<ChannelNumbers>& channel_numbers_for_layers) {
-  const auto& config =
-      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_);
-
   // Starting from no channel at all.
   ChannelNumbers accumulated_channels = {0, 0, 0};
   int substream_index = 0;
@@ -943,8 +940,8 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
                                         &non_coupled_substream_labels));
     }
     AddSubstreamLabels(coupled_substream_labels, non_coupled_substream_labels,
-                       audio_element_obu.audio_substream_ids_,
-                       substream_id_to_labels, substream_index);
+                       audio_substream_ids, substream_id_to_labels,
+                       substream_index);
     RETURN_IF_NOT_OK(ValidateSubstreamCounts(
         coupled_substream_labels, non_coupled_substream_labels, layer_config));
 
@@ -954,7 +951,7 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     if (layer_config.output_gain_is_present_flag == 1) {
       // Loop through all substream IDs added in this layer.
       for (int i = previous_layer_substream_index; i < substream_index; i++) {
-        const auto substream_id = audio_element_obu.audio_substream_ids_[i];
+        const auto substream_id = audio_substream_ids[i];
 
         LOG(INFO) << "Output gain for substream ID: " << substream_id << ":";
         for (const auto& label : substream_id_to_labels.at(substream_id)) {
