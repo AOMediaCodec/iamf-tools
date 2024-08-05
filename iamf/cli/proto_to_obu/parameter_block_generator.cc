@@ -53,15 +53,14 @@ absl::Status GetPerIdMetadata(
         audio_elements,
     const ParamDefinition* param_definition,
     PerIdParameterMetadata& per_id_metadata) {
+  RETURN_IF_NOT_OK(ValidateHasValue(param_definition->GetType(),
+                                    "`param_definition_type`."));
   // Initialize some fields that may not be set later.
-  per_id_metadata.num_layers = 0;
-
-  per_id_metadata.param_definition = *param_definition;
-  if (!param_definition->GetType().has_value()) {
-    return absl::InvalidArgumentError(
-        "Internal error: `param_definition` has no type.");
-  }
-  per_id_metadata.param_definition_type = param_definition->GetType().value();
+  per_id_metadata = PerIdParameterMetadata{
+      .param_definition_type = param_definition->GetType().value(),
+      .param_definition = *param_definition,
+      .num_layers = 0,
+  };
   if (per_id_metadata.param_definition_type ==
       ParamDefinition::kParameterDefinitionReconGain) {
     const ReconGainParamDefinition* recon_gain_param_definition =

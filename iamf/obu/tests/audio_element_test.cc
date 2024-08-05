@@ -16,6 +16,7 @@
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -662,6 +663,25 @@ TEST(ChannelAudioLayerConfig, WritesExpandedLayoutReserved13) {
   ValidateWriteResults(wb, kExpectedData);
 }
 
+TEST(ChannelAudioLayerConfig,
+     DoesNotWriteWhenExpandedLoudspeakerLayoutIsInconsistent) {
+  constexpr uint8_t kExpectedSubstreamCount = 1;
+  constexpr uint8_t kExpectedCoupledSubstreamCount = 1;
+
+  const ChannelAudioLayerConfig
+      kChannelAudioLayerConfigWithInconsistentExpandedLayout = {
+          .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+          .output_gain_is_present_flag = false,
+          .recon_gain_is_present_flag = false,
+          .substream_count = kExpectedSubstreamCount,
+          .coupled_substream_count = kExpectedCoupledSubstreamCount,
+          .expanded_loudspeaker_layout = std::nullopt};
+
+  WriteBitBuffer wb(1024);
+  EXPECT_FALSE(
+      kChannelAudioLayerConfigWithInconsistentExpandedLayout.Write(wb).ok());
+}
+
 TEST(ChannelAudioLayerConfig, WritesOutputGainIsPresentFields) {
   constexpr bool kOutputGainIsPresent = true;
   constexpr uint8_t kOutputGainFlag = 0b100000;
@@ -829,6 +849,18 @@ TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutLFE) {
             ChannelAudioLayerConfig::kLayoutExpanded);
   EXPECT_EQ(config.expanded_loudspeaker_layout,
             ChannelAudioLayerConfig::kExpandedLayoutLFE);
+}
+
+TEST(ChannelAudioLayerConfig,
+     DoesNotReadWhenExpandedLoudspeakerLayoutIsInconsistent) {
+  std::vector<uint8_t> data = {
+      ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
+      1
+      /*`expanded_loudspeaker_layout` is omitted*/};
+  ReadBitBuffer buffer(1024, &data);
+  ChannelAudioLayerConfig config;
+
+  EXPECT_FALSE(config.Read(buffer).ok());
 }
 
 TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutReserved13) {

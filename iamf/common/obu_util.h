@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/leb128.h"
@@ -265,6 +267,25 @@ absl::Status ValidateNotEqual(const T& left, const T& right,
 
   return absl::InvalidArgumentError(absl::StrCat(
       "Invalid ", context, ". Expected ", left, " != ", right, "."));
+}
+
+/*!\brief Returns `absl::OkStatus()` if the argument has a value.
+ *
+ * \param argument Argument to check.
+ * \param context Context to insert into the error message for debugging
+ *     purposes.
+ * \return `absl::OkStatus()` if the arguments has a value.
+ *     `absl::InvalidArgumentError()` if the argument does not have a value.
+ */
+template <typename T>
+absl::Status ValidateHasValue(const std::optional<T>& argument,
+                              const absl::string_view context) {
+  if (argument.has_value()) {
+    return absl::OkStatus();
+  }
+
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid ", context, ". Expected to have a value."));
 }
 
 /*!\brief Validates that all values in the range [first, last) are unique.

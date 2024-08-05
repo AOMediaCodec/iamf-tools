@@ -377,6 +377,7 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",

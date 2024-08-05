@@ -15,6 +15,7 @@
 #include <initializer_list>
 #include <list>
 #include <numeric>
+#include <optional>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -303,6 +304,7 @@ TEST(FilterProfilesForAudioElement,
 
   EXPECT_TRUE(base_enhanced_profile.empty());
 }
+
 TEST(FilterProfilesForAudioElement,
      KeepsBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutLFE) {
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
@@ -849,7 +851,7 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     RemovesAllProfilesThatDoNotMeetRequirements) {
+     RemovesAllKnownProfilesThatDoNotMeetRequirements) {
   const int kNumAudioElements = 28;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -889,7 +891,7 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     RemovesAllProfilesWhenThereIsAnUnknownAudioElement) {
+     RemovesAllKnownProfilesWhenThereIsAnUnknownAudioElement) {
   constexpr DecodedUleb128 kUnknownAudioElementId = 1000;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   // Omit adding an audio element.
@@ -905,6 +907,30 @@ TEST(FilterProfilesForMixPresentation,
       ProfileFilter::FilterProfilesForMixPresentation(
           kNoAudioElements, mix_presentation_obus.front(), all_known_profiles)
           .ok());
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesAllKnownProfilesWhenExpandedLayoutIsSignalledButNotPresent) {
+  AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
+                                    AudioElementObu::kAudioElementChannelBased,
+                                    kAudioElementReserved, kCodecConfigId);
+  audio_element_obu.InitializeAudioSubstreams(1);
+  ASSERT_THAT(audio_element_obu.InitializeScalableChannelLayout(
+                  kOneLayer, kAudioElementReserved),
+              IsOk());
+  auto& first_layer =
+      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
+          .channel_audio_layer_configs[0];
+  first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded;
+  first_layer.expanded_loudspeaker_layout = std::nullopt;
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", audio_element_obu, all_known_profiles)
+                   .ok());
 
   EXPECT_TRUE(all_known_profiles.empty());
 }

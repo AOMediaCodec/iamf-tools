@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -133,7 +134,7 @@ struct ChannelAudioLayerConfig {
   // }
 
   // if (loudspeaker_layout == kLayoutExpanded) {
-  ExpandedLoudspeakerLayout expanded_loudspeaker_layout;
+  std::optional<ExpandedLoudspeakerLayout> expanded_loudspeaker_layout;
   // }
 };
 

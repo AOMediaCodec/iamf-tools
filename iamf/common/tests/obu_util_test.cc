@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -811,6 +812,16 @@ TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
   const auto kLeftArg = 123;
   const auto kEqualRightArg = 123;
   EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, "").ok());
+}
+
+TEST(ValidateHasValue, OkIfArgHasValue) {
+  constexpr std::optional<int> kArg = 123;
+  EXPECT_THAT(ValidateHasValue(kArg, ""), IsOk());
+}
+
+TEST(ValidateHasValue, NotOkIfArgDoesNotHaveValue) {
+  constexpr std::optional<int> kArg = std::nullopt;
+  EXPECT_FALSE(ValidateHasValue(kArg, "").ok());
 }
 
 TEST(ValidateUnique, OkIfArgsAreUnique) {

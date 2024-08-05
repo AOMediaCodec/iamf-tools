@@ -394,7 +394,9 @@ absl::Status ChannelAudioLayerConfig::Write(WriteBitBuffer& wb) const {
   }
 
   if (loudspeaker_layout == kLayoutExpanded) {
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(expanded_loudspeaker_layout, 8));
+    RETURN_IF_NOT_OK(ValidateHasValue(expanded_loudspeaker_layout,
+                                      "`expanded_loudspeaker_layout`"));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(*expanded_loudspeaker_layout, 8));
   }
 
   return absl::OkStatus();

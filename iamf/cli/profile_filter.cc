@@ -12,6 +12,7 @@
 #include "iamf/cli/profile_filter.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -22,6 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -73,10 +75,17 @@ absl::Status FilterAudioElementType(
 // have already been filtered out (e.g. kIamfSimpleProfile, kIamfBaseProfile).
 absl::Status FilterExpandedLoudspeakerLayout(
     absl::string_view debugging_context,
-    ChannelAudioLayerConfig::ExpandedLoudspeakerLayout
+    std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>
         expanded_loudspeaker_layout,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
-  switch (expanded_loudspeaker_layout) {
+  if (auto status = ValidateHasValue(expanded_loudspeaker_layout,
+                                     "expanded_loudspeaker_layout");
+      !status.ok()) {
+    return ClearAndReturnError(
+        absl::StrCat(debugging_context, status.message()), profile_versions);
+  }
+
+  switch (*expanded_loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
     case kExpandedLayoutLFE:
     case kExpandedLayoutStereoS:
@@ -101,7 +110,7 @@ absl::Status FilterExpandedLoudspeakerLayout(
   if (profile_versions.empty()) {
     return absl::InvalidArgumentError(absl::StrCat(
         debugging_context,
-        "has expanded_loudspeaker_layout= ", expanded_loudspeaker_layout,
+        "has expanded_loudspeaker_layout= ", *expanded_loudspeaker_layout,
         ". But the requested profiles do support not support this type."));
   }
   return absl::OkStatus();
