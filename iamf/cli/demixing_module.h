@@ -30,6 +30,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 
@@ -59,6 +60,7 @@ struct LabeledFrame {
   uint32_t samples_to_trim_at_start;
   LabelSamplesMap label_to_samples;
   DownMixingParams demixing_params;
+  ReconGainInfoParameterData recon_gain_parameters;
 };
 
 // Mapping from audio element ids to `LabeledFrame`s.
