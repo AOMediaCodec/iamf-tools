@@ -38,6 +38,7 @@ cc_library(
         "//iamf/common:macros",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
+        "//iamf/obu:parameter_block",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
