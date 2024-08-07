@@ -98,51 +98,104 @@ TEST(StringToLabel, InvalidForFourteenthOrderAmbisonicsInput) {
   EXPECT_FALSE(ChannelLabel::StringToLabel("A224").ok());
 }
 
+using LabelTestCase = ::testing::TestWithParam<ChannelLabel::Label>;
+TEST_P(LabelTestCase, StringToLabelAndLabelToStringAreSymmetric) {
+  const ChannelLabel::Label label = GetParam();
+  const std::string label_string = ChannelLabel::LabelToString(label);
+
+  EXPECT_THAT(ChannelLabel::StringToLabel(label_string), IsOkAndHolds(label));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    StringToLabelAndLabelToStringAreSymmetric, LabelTestCase,
+    ::testing::ValuesIn<ChannelLabel::Label>(
+        {kOmitted,
+         // Mono channels.
+         kMono,
+         // Stereo or binaural channels.
+         kL2, kR2, kDemixedR2,
+         // Centre channel common to several layouts
+         // (e.g. 3.1.2, 5.x.y, 7.x.y, 9.1.6).
+         kCentre,
+         // LFE channel common to several layouts
+         // (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
+         kLFE,
+         // 3.1.2 surround channels.
+         kL3, kR3, kLtf3, kRtf3, kDemixedL3, kDemixedR3,
+         // 5.x.y surround channels.
+         kL5, kR5, kLs5, kRs5, kLtf2, kRtf2, kDemixedL5, kDemixedR5,
+         kDemixedLs5, kDemixedRs5, kDemixedLtf2, kDemixedRtf2,
+         // 7.x.y surround channels.
+         kL7, kR7, kLss7, kRss7, kLrs7, kRrs7, kLtf4, kRtf4, kLtb4, kRtb4,
+         kDemixedL7, kDemixedR7, kDemixedLrs7, kDemixedRrs7, kDemixedLtb4,
+         kDemixedRtb4,
+         // 9.1.6 surround channels.
+         kFLc, kFC, kFRc, kFL, kFR, kSiL, kSiR, kBL, kBR, kTpFL, kTpFR, kTpSiL,
+         kTpSiR, kTpBL, kTpBR,
+         // Ambisonics channels.
+         kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8, kA9, kA10, kA11, kA12,
+         kA13, kA14, kA15, kA16, kA17, kA18, kA19, kA20, kA21, kA22, kA23,
+         kA24}));
+
 TEST(FillLabelsFromStrings, OutputContainerHasSameOrderAsInputContainer) {
-  std::vector<std::string> input_labels = {"L2", "R2", "C", "LFE"};
+  const std::vector<std::string> kInputLabels = {"L2", "R2", "C", "LFE"};
   const std::vector<ChannelLabel::Label> kExpectedOrderedOutput = {
       kL2, kR2, kCentre, kLFE};
   std::vector<ChannelLabel::Label> ordered_output;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(input_labels, ordered_output),
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, ordered_output),
               IsOk());
 
   EXPECT_EQ(ordered_output, kExpectedOrderedOutput);
 }
 
 TEST(FillLabelsFromStrings, AppendsToOutputContainer) {
-  std::vector<std::string> input_labels = {"R2", "C", "LFE"};
+  const std::vector<std::string> kInputLabels = {"R2", "C", "LFE"};
   const std::vector<ChannelLabel::Label> kExpectedOutputVector = {
       kL2, kR2, kCentre, kLFE};
   std::vector<ChannelLabel::Label> output_vector = {kL2};
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(input_labels, output_vector),
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, output_vector),
               IsOk());
 
   EXPECT_EQ(output_vector, kExpectedOutputVector);
 }
 
 TEST(FillLabelsFromStrings, ValidWithUnorderedOutputContainers) {
-  std::vector<std::string> input_labels = {"L2", "R2", "C", "LFE"};
+  const std::vector<std::string> kInputLabels = {"L2", "R2", "C", "LFE"};
   const absl::flat_hash_set<ChannelLabel::Label> kExpectedOutputSet = {
       kL2, kR2, kCentre, kLFE};
   absl::flat_hash_set<ChannelLabel::Label> output_set;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(input_labels, output_set),
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, output_set),
               IsOk());
 
   EXPECT_EQ(output_set, kExpectedOutputSet);
 }
 
 TEST(FillLabelsFromStrings, ValidWith7_1_4Labels) {
-  std::vector<std::string> input_labels = {"L7",   "R7",   "C",    "LFE",
-                                           "Lss7", "Rss7", "Lrs7", "Rrs7",
-                                           "Ltf4", "Rtf4", "Ltb4", "Rtb4"};
-  const absl::flat_hash_set<ChannelLabel::Label> kExpectedOutputSet = {
+  const std::vector<std::string> k7_1_4InputLabels = {
+      "L7",   "R7",   "C",    "LFE",  "Lss7", "Rss7",
+      "Lrs7", "Rrs7", "Ltf4", "Rtf4", "Ltb4", "Rtb4"};
+  const std::vector<ChannelLabel::Label> kExpectedOutput = {
       kL7,   kR7,   kCentre, kLFE,  kLss7, kRss7,
       kLrs7, kRrs7, kLtf4,   kRtf4, kLtb4, kRtb4};
-  absl::flat_hash_set<ChannelLabel::Label> output_set;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(input_labels, output_set),
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(k7_1_4InputLabels, output),
               IsOk());
 
-  EXPECT_EQ(output_set, kExpectedOutputSet);
+  EXPECT_EQ(output, kExpectedOutput);
+}
+
+TEST(FillLabelsFromStrings, ValidWith9_1_6Labels) {
+  const std::vector<std::string> k9_1_6InputLabels = {
+      "FLc", "FC",   "FRc",  "FL",    "FR",    "SiL",  "SiR",  "BL",
+      "BR",  "TpFL", "TpFR", "TpSiL", "TpSiR", "TpBL", "TpBR", "LFE"};
+  const std::vector<ChannelLabel::Label> kExpectedOutput = {
+      kFLc, kFC,   kFRc,  kFL,    kFR,    kSiL,  kSiR,  kBL,
+      kBR,  kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR, kLFE};
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(k9_1_6InputLabels, output),
+              IsOk());
+
+  EXPECT_EQ(output, kExpectedOutput);
 }
 
 TEST(FillLabelsFromStrings,

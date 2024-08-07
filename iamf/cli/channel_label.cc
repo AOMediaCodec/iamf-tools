@@ -80,6 +80,21 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
           {"DemixedRrs7", kDemixedRrs7},
           {"DemixedLtb4", kDemixedLtb4},
           {"DemixedRtb4", kDemixedRtb4},
+          {"FLc", kFLc},
+          {"FC", kFC},
+          {"FRc", kFRc},
+          {"FL", kFL},
+          {"FR", kFR},
+          {"SiL", kSiL},
+          {"SiR", kSiR},
+          {"BL", kBL},
+          {"BR", kBR},
+          {"TpFL", kTpFL},
+          {"TpFR", kTpFR},
+          {"TpSiL", kTpSiL},
+          {"TpSiR", kTpSiR},
+          {"TpBL", kTpBL},
+          {"TpBR", kTpBR},
           {"A0", kA0},
           {"A1", kA1},
           {"A2", kA2},
@@ -200,6 +215,36 @@ std::string ChannelLabel::LabelToString(Label label) {
       return "DemixedLtb4";
     case kDemixedRtb4:
       return "DemixedRtb4";
+    case kFLc:
+      return "FLc";
+    case kFC:
+      return "FC";
+    case kFRc:
+      return "FRc";
+    case kFL:
+      return "FL";
+    case kFR:
+      return "FR";
+    case kSiL:
+      return "SiL";
+    case kSiR:
+      return "SiR";
+    case kBL:
+      return "BL";
+    case kBR:
+      return "BR";
+    case kTpFL:
+      return "TpFL";
+    case kTpFR:
+      return "TpFR";
+    case kTpSiL:
+      return "TpSiL";
+    case kTpSiR:
+      return "TpSiR";
+    case kTpBL:
+      return "TpBL";
+    case kTpBR:
+      return "TpBR";
     case kA0:
       return "A0";
     case kA1:

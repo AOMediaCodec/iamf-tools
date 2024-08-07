@@ -43,7 +43,7 @@ class ChannelLabel {
     kR2,
     kDemixedR2,
     // Centre channel common to several layouts
-    // (e.g. 3.1.2, 5.x.y, 7.x.y, 9.1.6).
+    // (e.g. 3.1.2, 5.x.y, 7.x.y).
     kCentre,
     // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
     kLFE,
@@ -84,6 +84,22 @@ class ChannelLabel {
     kDemixedRrs7,
     kDemixedLtb4,
     kDemixedRtb4,
+    // 9.1.6 surround channels.
+    kFLc,
+    kFC,
+    kFRc,
+    kFL,
+    kFR,
+    kSiL,
+    kSiR,
+    kBL,
+    kBR,
+    kTpFL,
+    kTpFR,
+    kTpSiL,
+    kTpSiR,
+    kTpBL,
+    kTpBR,
     // Ambisonics channels.
     kA0,
     kA1,
@@ -149,7 +165,7 @@ class ChannelLabel {
       if (std::find(output_labels.begin(), output_labels.end(), *label) !=
           output_labels.end()) {
         return absl::InvalidArgumentError(absl::StrCat(
-            "Duplicate output_labels: ", *label,
+            "Duplicate output_label: ", *label,
             " when inserting from input_label= ", input_label_string));
       }
       output_labels.insert(output_labels.end(), *label);
