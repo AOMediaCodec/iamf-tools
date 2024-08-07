@@ -14,6 +14,7 @@ cc_test(
     name = "audio_frame_handler_test",
     srcs = ["audio_frame_handler_test.cc"],
     deps = [
+        "//iamf/cli:channel_label",
         "//iamf/cli/adm_to_user_metadata/iamf:audio_frame_handler",
         "//iamf/cli/adm_to_user_metadata/iamf:iamf_input_layout",
         "//iamf/cli/proto:audio_frame_cc_proto",

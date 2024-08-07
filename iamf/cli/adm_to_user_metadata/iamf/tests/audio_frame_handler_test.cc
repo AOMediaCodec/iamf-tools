@@ -13,12 +13,14 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/audio_frame_handler.h"
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 
 namespace iamf_tools {
@@ -28,6 +30,8 @@ namespace {
 using ::absl_testing::IsOk;
 
 using testing::ElementsAreArray;
+
+using enum ChannelLabel::Label;
 
 constexpr absl::string_view kFileNamePrefix = "prefix";
 constexpr absl::string_view kFileNameSuffix = "suffix";
@@ -85,21 +89,42 @@ TEST(PopulateAudioFrameMetadata, ConfiguresSamplesToTrimAtStartToZero) {
             kExpectedNumSamplesToTrimAtStart);
 }
 
-TEST(PopulateAudioFrameMetadata, ConfiguresLabelsForChannelBasedInput) {
+template <class InputContainer>
+void ExpectLabelsAreConvertibleToChannelLabels(
+    InputContainer labels,
+    const std::vector<ChannelLabel::Label>& expected_labels) {
+  std::vector<ChannelLabel::Label> converted_labels;
+  ASSERT_THAT(ChannelLabel::FillLabelsFromStrings(labels, converted_labels),
+              IsOk());
+  EXPECT_EQ(converted_labels, expected_labels);
+}
+
+TEST(PopulateAudioFrameMetadata, ConfiguresChannelIdsAndLabelsForStereoInput) {
   const auto audio_frame_obu_metadata =
       GetAudioFrameMetadataExpectOk(IamfInputLayout::kStereo);
 
-  EXPECT_THAT(audio_frame_obu_metadata.channel_labels(),
-              ElementsAreArray({"L2", "R2"}));
+  ExpectLabelsAreConvertibleToChannelLabels(
+      audio_frame_obu_metadata.channel_labels(), {kL2, kR2});
   EXPECT_THAT(audio_frame_obu_metadata.channel_ids(), ElementsAreArray({0, 1}));
 }
 
-TEST(PopulateAudioFrameMetadata, ConfiguresLabelsForSceneBasedInput) {
+TEST(PopulateAudioFrameMetadata,
+     ConfiguresChannelIdsAndLabelsForBinauralInput) {
+  const auto audio_frame_obu_metadata =
+      GetAudioFrameMetadataExpectOk(IamfInputLayout::kBinaural);
+
+  ExpectLabelsAreConvertibleToChannelLabels(
+      audio_frame_obu_metadata.channel_labels(), {kL2, kR2});
+  EXPECT_THAT(audio_frame_obu_metadata.channel_ids(), ElementsAreArray({0, 1}));
+}
+
+TEST(PopulateAudioFrameMetadata,
+     ConfiguresChannelIdsAndLabelsForAmbisonicsOrder1Input) {
   const auto audio_frame_obu_metadata =
       GetAudioFrameMetadataExpectOk(IamfInputLayout::kAmbisonicsOrder1);
 
-  EXPECT_THAT(audio_frame_obu_metadata.channel_labels(),
-              ElementsAreArray({"A0", "A1", "A2", "A3"}));
+  ExpectLabelsAreConvertibleToChannelLabels(
+      audio_frame_obu_metadata.channel_labels(), {kA0, kA1, kA2, kA3});
   EXPECT_THAT(audio_frame_obu_metadata.channel_ids(),
               ElementsAreArray({0, 1, 2, 3}));
 }

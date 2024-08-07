@@ -50,7 +50,7 @@ absl::StatusOr<std::vector<std::string>> LookupLabelsFromInputLayout(
           {k7_1_4,
            {"L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4",
             "Rtf4", "Ltb4", "Rtb4"}},
-          {kBinaural, {"L", "R"}},
+          {kBinaural, {"L2", "R2"}},
           {kAmbisonicsOrder1, {"A0", "A1", "A2", "A3"}},
           {kAmbisonicsOrder2,
            {"A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"}},
