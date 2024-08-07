@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -256,7 +257,10 @@ absl::Status LoudspeakerLayoutToChannels(
   return absl::OkStatus();
 }
 
-absl::Status CollectBcgLabels(
+// For the Base Channel Group (BCG). This is the first layer of a scalable audio
+// element.
+// https://aomediacodec.github.io/iamf/#scalablechannelaudio-channelgroupformat
+absl::Status CollectBaseChannelGroupLabels(
     const ChannelNumbers& layer_channels,
     std::list<ChannelLabel::Label>* coupled_substream_labels,
     std::list<ChannelLabel::Label>* non_coupled_substream_labels) {
@@ -336,7 +340,94 @@ absl::Status CollectBcgLabels(
   return absl::OkStatus();
 }
 
-absl::Status CollectDcgLabels(
+absl::Status CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
+    int layer_index,
+    std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>
+        expanded_loudspeaker_layout,
+    ChannelNumbers& channel_numbers,
+    std::list<ChannelLabel::Label>& coupled_substream_labels,
+    std::list<ChannelLabel::Label>& non_coupled_substream_labels) {
+  if (layer_index != 0) {
+    return absl::InvalidArgumentError(
+        "Expanded layout is only permitted when there is a single layer.");
+  }
+  RETURN_IF_NOT_OK(ValidateHasValue(expanded_loudspeaker_layout,
+                                    "Expanded layout is required."));
+
+  switch (*expanded_loudspeaker_layout) {
+    using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+    case kExpandedLayoutLFE:
+      channel_numbers = {0, 1, 0};
+      non_coupled_substream_labels = {kLFE};
+      break;
+    case kExpandedLayoutStereoS:
+      channel_numbers = {2, 0, 0};
+      coupled_substream_labels = {kLs5, kRs5};
+      break;
+    case kExpandedLayoutStereoSS:
+      channel_numbers = {2, 0, 0};
+      coupled_substream_labels = {kLss7, kRss7};
+      break;
+    case kExpandedLayoutStereoRS:
+      channel_numbers = {2, 0, 0};
+      coupled_substream_labels = {kLrs7, kRrs7};
+      break;
+    case kExpandedLayoutStereoTF:
+      channel_numbers = {0, 0, 2};
+      coupled_substream_labels = {kLtf4, kRtf4};
+      break;
+    case kExpandedLayoutStereoTB:
+      channel_numbers = {0, 0, 2};
+      coupled_substream_labels = {kLtb4, kRtb4};
+      break;
+    case kExpandedLayoutTop4Ch:
+      channel_numbers = {0, 0, 4};
+      coupled_substream_labels = {kLtf4, kRtf4, kLtb4, kRtb4};
+      break;
+    case kExpandedLayout3_0_ch:
+      channel_numbers = {3, 0, 0};
+      coupled_substream_labels = {kL7, kR7};
+      non_coupled_substream_labels = {kCentre};
+      break;
+    case kExpandedLayout9_1_6_ch:
+      channel_numbers = {9, 1, 6};
+      coupled_substream_labels = {kFLc,   kFRc,   kFL,   kFR,   kSiL,
+                                  kSiR,   kBL,    kBR,   kTpFL, kTpFR,
+                                  kTpSiL, kTpSiR, kTpBL, kTpBR};
+      non_coupled_substream_labels = {kFC, kLFE};
+      break;
+    case kExpandedLayoutStereoF:
+      channel_numbers = {2, 0, 0};
+      coupled_substream_labels = {kFL, kFR};
+      break;
+    case kExpandedLayoutStereoSi:
+      channel_numbers = {2, 0, 0};
+      coupled_substream_labels = {kSiL, kSiR};
+      break;
+    case kExpandedLayoutStereoTpSi:
+      channel_numbers = {0, 0, 2};
+      coupled_substream_labels = {kTpSiL, kTpSiR};
+      break;
+    case kExpandedLayoutTop6Ch:
+      channel_numbers = {0, 0, 6};
+      coupled_substream_labels = {kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR};
+      break;
+    default:
+      return absl::InvalidArgumentError(
+          StrCat("Unsupported expanded loudspeaker layout= ",
+                 *expanded_loudspeaker_layout));
+  }
+
+  LOG(INFO) << "Layer[" << layer_index << "]:";
+  LogChannelNumbers("  layer_channels", channel_numbers);
+
+  return absl::OkStatus();
+}
+
+// For the Demixed Channel Groups (DCG). This all layers after the first layer
+// in a scalable audio element.
+// https://aomediacodec.github.io/iamf/#scalablechannelaudio-channelgroupformat
+absl::Status CollectDemixedChannelGroupLabels(
     const ChannelNumbers& accumulated_channels,
     const ChannelNumbers& layer_channels,
     std::list<ChannelLabel::Label>* coupled_substream_labels,
@@ -467,8 +558,9 @@ absl::Status ValidateSubstreamCounts(
       static_cast<uint32_t>(layer_config.substream_count);
   if (coupled_substream_count_in_obu != num_required_coupled_channels) {
     return InvalidArgumentError(StrCat(
-        "Coupled substream count different from the required number: ",
-        coupled_substream_count_in_obu, " vs ", num_required_coupled_channels));
+        "Coupled substream count different from the required number. In OBU: ",
+        coupled_substream_count_in_obu,
+        " vs expected: ", num_required_coupled_channels));
   }
 
   // The sum of coupled and non-coupled channels must be the same as
@@ -476,8 +568,8 @@ absl::Status ValidateSubstreamCounts(
   if (substream_count_in_obu !=
       (num_required_non_coupled_channels + num_required_coupled_channels)) {
     return InvalidArgumentError(StrCat(
-        "Substream count different from the #non-coupled substreams ",
-        substream_count_in_obu, " vs ",
+        "Substream count different from the #non-coupled substreams. In OBU: ",
+        substream_count_in_obu, " vs expected: ",
         num_required_non_coupled_channels + num_required_coupled_channels));
   }
 
@@ -890,6 +982,43 @@ void LogAudioElements(
   }
 }
 
+absl::Status CollectChannelLayersAndLabelsForLoudspeakerLayout(
+    int layer_index,
+    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
+    const ChannelNumbers& accumulated_channels, ChannelNumbers& layer_channels,
+    std::list<ChannelLabel::Label>& coupled_substream_labels,
+    std::list<ChannelLabel::Label>& non_coupled_substream_labels) {
+  // Figure out the `ChannelNumber` representation of ChannelGroup #i, i.e.
+  // the additional channels presented in this layer.
+  RETURN_IF_NOT_OK(
+      LoudspeakerLayoutToChannels(loudspeaker_layout, layer_channels));
+
+  // Channel number in each group can only grow or stay the same.
+  if (layer_channels.surround < accumulated_channels.surround ||
+      layer_channels.lfe < accumulated_channels.lfe ||
+      layer_channels.height < accumulated_channels.height) {
+    LogChannelNumbers("From", accumulated_channels);
+    LogChannelNumbers("To", layer_channels);
+    return InvalidArgumentError(
+        StrCat("At least one channel number decreased from "
+               "accumulated_channels to layer_channels"));
+  }
+
+  LOG(INFO) << "Layer[" << layer_index << "]:";
+  LogChannelNumbers("  layer_channels", layer_channels);
+  LogChannelNumbers("  accumulated_channels", accumulated_channels);
+
+  if (layer_index == 0) {
+    return CollectBaseChannelGroupLabels(layer_channels,
+                                         &coupled_substream_labels,
+                                         &non_coupled_substream_labels);
+  } else {
+    return CollectDemixedChannelGroupLabels(
+        accumulated_channels, layer_channels, &coupled_substream_labels,
+        &non_coupled_substream_labels);
+  }
+}
+
 }  // namespace
 
 absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
@@ -905,40 +1034,25 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
   for (int i = 0; i < config.num_layers; ++i) {
     const int previous_layer_substream_index = substream_index;
 
-    // Figure out the `ChannelNumber` representation of ChannelGroup #i, i.e.
-    // the additional channels presented in this layer.
-    const auto& layer_config = config.channel_audio_layer_configs[i];
     ChannelNumbers layer_channels;
-    RETURN_IF_NOT_OK(LoudspeakerLayoutToChannels(
-        layer_config.loudspeaker_layout, layer_channels));
-
-    // Channel number in each group can only grow or stay the same.
-    if (layer_channels.surround < accumulated_channels.surround ||
-        layer_channels.lfe < accumulated_channels.lfe ||
-        layer_channels.height < accumulated_channels.height) {
-      LogChannelNumbers("From", accumulated_channels);
-      LogChannelNumbers("To", layer_channels);
-      return InvalidArgumentError(
-          StrCat("At least one channel number decreased from "
-                 "accumulated_channels to layer_channels"));
+    std::list<ChannelLabel::Label> coupled_substream_labels;
+    std::list<ChannelLabel::Label> non_coupled_substream_labels;
+    const auto& layer_config = config.channel_audio_layer_configs[i];
+    if (layer_config.loudspeaker_layout ==
+        ChannelAudioLayerConfig::kLayoutExpanded) {
+      RETURN_IF_NOT_OK(
+          CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
+              i, layer_config.expanded_loudspeaker_layout, layer_channels,
+              coupled_substream_labels, non_coupled_substream_labels));
+    } else {
+      RETURN_IF_NOT_OK(CollectChannelLayersAndLabelsForLoudspeakerLayout(
+          i, layer_config.loudspeaker_layout, accumulated_channels,
+          layer_channels, coupled_substream_labels,
+          non_coupled_substream_labels));
     }
 
     channel_numbers_for_layers.push_back(layer_channels);
-    LOG(INFO) << "Layer[" << i << "]:";
-    LogChannelNumbers("  layer_channels", layer_channels);
-    LogChannelNumbers("  accumulated_channels", accumulated_channels);
 
-    std::list<ChannelLabel::Label> coupled_substream_labels;
-    std::list<ChannelLabel::Label> non_coupled_substream_labels;
-    if (i == 0) {
-      RETURN_IF_NOT_OK(CollectBcgLabels(layer_channels,
-                                        &coupled_substream_labels,
-                                        &non_coupled_substream_labels));
-    } else {
-      RETURN_IF_NOT_OK(CollectDcgLabels(accumulated_channels, layer_channels,
-                                        &coupled_substream_labels,
-                                        &non_coupled_substream_labels));
-    }
     AddSubstreamLabels(coupled_substream_labels, non_coupled_substream_labels,
                        audio_substream_ids, substream_id_to_labels,
                        substream_index);

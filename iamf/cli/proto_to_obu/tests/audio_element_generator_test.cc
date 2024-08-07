@@ -78,7 +78,32 @@ TEST(FinalizeScalableChannelLayoutConfig,
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,
-     InvalidWhenSubstreamCountOrCoupledSubstreamCountIsInconsistent) {
+     InvalidWhenSubstreamCountIsInconsistent) {
+  constexpr uint8_t kInvalidOneLayerStereoSubstreamCount = 2;
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig
+      kInvalidOneLayerStereoWithoutCoupledSubstreams{
+          .num_layers = 1,
+          .channel_audio_layer_configs = {
+              {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+               .output_gain_is_present_flag = false,
+               .substream_count = kInvalidOneLayerStereoSubstreamCount,
+               .coupled_substream_count = 1}}};
+  SubstreamIdLabelsMap unused_substream_id_to_labels;
+  LabelGainMap unused_label_to_output_gain;
+  std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
+
+  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                   kSubstreamIds,
+                   kInvalidOneLayerStereoWithoutCoupledSubstreams,
+                   unused_substream_id_to_labels, unused_label_to_output_gain,
+                   unused_channel_numbers_for_layer)
+                   .ok());
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     InvalidWhenCoupledSubstreamCountIsInconsistent) {
+  constexpr uint8_t kInvalidOneLayerStereoCoupledSubstreamCount = 0;
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig
       kInvalidOneLayerStereoWithoutCoupledSubstreams{
@@ -87,7 +112,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
               {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
                .output_gain_is_present_flag = false,
                .substream_count = 1,
-               .coupled_substream_count = 0}}};
+               .coupled_substream_count =
+                   kInvalidOneLayerStereoCoupledSubstreamCount}}};
   SubstreamIdLabelsMap unused_substream_id_to_labels;
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
@@ -475,11 +501,43 @@ TEST(FinalizeScalableChannelLayoutConfig, InvalidWithReservedLayout14) {
                    .ok());
 }
 
-// TODO(b/354000981): Supported expanded layouts.
 TEST(FinalizeScalableChannelLayoutConfig,
-     InvalidWithExpandedLoudspeakerLayoutLFE) {
+     FillsExpectedOutputForExpandedLoudspeakerLayoutLFE) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kLFE}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 1, .height = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
-  const ScalableChannelLayoutConfig kOneLayerLFELayout{
+  const ScalableChannelLayoutConfig kLFELayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 0,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutLFE}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kLFELayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutStereoS) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kLs5, kRs5}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 2, .lfe = 0, .height = 0}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig kStereoSSLayout{
       .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
@@ -487,23 +545,187 @@ TEST(FinalizeScalableChannelLayoutConfig,
            .substream_count = 1,
            .coupled_substream_count = 1,
            .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutLFE}}};
-  SubstreamIdLabelsMap unused_substream_id_to_labels;
-  LabelGainMap unused_label_to_output_gain;
-  std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
+               ChannelAudioLayerConfig::kExpandedLayoutStereoS}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
 
-  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds, kOneLayerLFELayout,
-                   unused_substream_id_to_labels, unused_label_to_output_gain,
-                   unused_channel_numbers_for_layer)
-                   .ok());
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kStereoSSLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
 }
 
-// TODO(b/354000981): Supported expanded layouts.
 TEST(FinalizeScalableChannelLayoutConfig,
-     InvalidWithExpandedLoudspeakerLayout9_1_6) {
+     FillsExpectedOutputForExpandedLoudspeakerLayoutStereoSS) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kLss7, kRss7}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 2, .lfe = 0, .height = 0}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig kStereoSSLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutStereoSS}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kStereoSSLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutStereoTf) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kLtf4, kRtf4}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 0, .height = 2}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig kStereoTfLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutStereoTF}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kStereoTfLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutStereoTB) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kLtb4, kRtb4}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 0, .height = 2}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig kStereoTBLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutStereoTB}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kStereoTBLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutTop4Ch) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kLtf4, kRtf4}}, {1, {kLtb4, kRtb4}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 0, .height = 4}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
+  const ScalableChannelLayoutConfig kTop4ChLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 2,
+           .coupled_substream_count = 2,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutTop4Ch}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kTop4ChLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayout3_0_Ch) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kL7, kR7}},
+                                                             {1, {kCentre}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 3, .lfe = 0, .height = 0}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
+  const ScalableChannelLayoutConfig k3_0_ChLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 2,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayout3_0_ch}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, k3_0_ChLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayout9_1_6) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kFLc, kFRc}},   {1, {kFL, kFR}},     {2, {kSiL, kSiR}},
+      {3, {kBL, kBR}},     {4, {kTpFL, kTpFR}}, {5, {kTpSiL, kTpSiR}},
+      {6, {kTpBL, kTpBR}}, {7, {kFC}},          {8, {kLFE}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 9, .lfe = 1, .height = 6}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2, 3, 4, 5, 6, 7, 8};
-  const ScalableChannelLayoutConfig kOneLayer9_1_6Layout{
+  const ScalableChannelLayoutConfig k9_1_6Layout{
       .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
@@ -512,12 +734,134 @@ TEST(FinalizeScalableChannelLayoutConfig,
            .coupled_substream_count = 7,
            .expanded_loudspeaker_layout =
                ChannelAudioLayerConfig::kExpandedLayout9_1_6_ch}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, k9_1_6Layout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutStereoTpSi) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kTpSiL, kTpSiR}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 0, .height = 2}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0};
+  const ScalableChannelLayoutConfig kTpSiLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutStereoTpSi}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kTpSiLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     FillsExpectedOutputForExpandedLoudspeakerLayoutTop6_Ch) {
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {0, {kTpFL, kTpFR}}, {1, {kTpSiL, kTpSiR}}, {2, {kTpBL, kTpBR}}};
+  const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
+      {.surround = 0, .lfe = 0, .height = 6}};
+  const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2};
+  const ScalableChannelLayoutConfig kTop6ChLayout{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 3,
+           .coupled_substream_count = 3,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutTop6Ch}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_THAT(
+      AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+          kSubstreamIds, kTop6ChLayout, output_substream_id_to_labels,
+          output_label_to_output_gain, output_channel_numbers_for_layer),
+      IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+  EXPECT_TRUE(output_label_to_output_gain.empty());
+  EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     InvalidWhenThereAreTwoLayersWithExpandedLoudspeakerLayout) {
+  const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
+  const ScalableChannelLayoutConfig
+      kInvalidWithFirstLayerExpandedAndAnotherSecondLayer{
+          .num_layers = 2,
+          .channel_audio_layer_configs = {
+              {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+               .output_gain_is_present_flag = false,
+               .substream_count = 1,
+               .coupled_substream_count = 0,
+               .expanded_loudspeaker_layout =
+                   ChannelAudioLayerConfig::kExpandedLayoutLFE},
+              {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+               .output_gain_is_present_flag = false,
+               .substream_count = 1,
+               .coupled_substream_count = 1}}};
   SubstreamIdLabelsMap unused_substream_id_to_labels;
   LabelGainMap unused_label_to_output_gain;
   std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
 
   EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-                   kSubstreamIds, kOneLayer9_1_6Layout,
+                   kSubstreamIds,
+                   kInvalidWithFirstLayerExpandedAndAnotherSecondLayer,
+                   unused_substream_id_to_labels, unused_label_to_output_gain,
+                   unused_channel_numbers_for_layer)
+                   .ok());
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     InvalidWhenSecondLayerIsExpandedLayout) {
+  const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
+  const ScalableChannelLayoutConfig kInvalidWithSecondLayerExpandedLayout{
+      .num_layers = 2,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 1},
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .output_gain_is_present_flag = false,
+           .substream_count = 1,
+           .coupled_substream_count = 0,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutLFE}}};
+  SubstreamIdLabelsMap unused_substream_id_to_labels;
+  LabelGainMap unused_label_to_output_gain;
+  std::vector<ChannelNumbers> unused_channel_numbers_for_layer;
+
+  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                   kSubstreamIds, kInvalidWithSecondLayerExpandedLayout,
                    unused_substream_id_to_labels, unused_label_to_output_gain,
                    unused_channel_numbers_for_layer)
                    .ok());

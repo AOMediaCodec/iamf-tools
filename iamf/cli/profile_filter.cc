@@ -99,7 +99,7 @@ absl::Status FilterExpandedLoudspeakerLayout(
     case kExpandedLayoutStereoF:
     case kExpandedLayoutStereoSi:
     case kExpandedLayoutStereoTpSi:
-    case kExpandedLayoutStereoTop6Ch:
+    case kExpandedLayoutTop6Ch:
       break;
     case kExpandedLayoutReserved13:
     case kExpandedLayoutReserved255:

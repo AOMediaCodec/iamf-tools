@@ -90,13 +90,13 @@ struct ChannelAudioLayerConfig {
     kExpandedLayoutStereoTF = 4,  // Top front subset (Ltf/Rtf) of 7.1.4.
     kExpandedLayoutStereoTB = 5,  // Top back subset (Ltb/Rtb) of 7.1.4.
     kExpandedLayoutTop4Ch = 6,  // Top four channels (Ltf/Rtf/Ltb/Rtb) of 7.1.4.
-    kExpandedLayout3_0_ch = 7,  // Front three channels (L/C/R) of 5.1.4.
+    kExpandedLayout3_0_ch = 7,  // Front three channels (L/C/R) of 7.1.4.
     kExpandedLayout9_1_6_ch = 8,   // Subset of Sound System H [ITU-2051-3].
     kExpandedLayoutStereoF = 9,    // Front stereo subset (FL/FR) of 9.1.6.
     kExpandedLayoutStereoSi = 10,  // Side surround subset (SiL/SiR) of 9.1.6.
     kExpandedLayoutStereoTpSi =
-        11,  // Top surround subset (TpSiL/TpSiR) of 9.1.46
-    kExpandedLayoutStereoTop6Ch =
+        11,  // Top surround subset (TpSiL/TpSiR) of 9.1.6.
+    kExpandedLayoutTop6Ch =
         12,  // Top six channels (TpFL/TpFR/TpSiL/TpSiR/TpBL/TpBR) of 9.1.6.
     kExpandedLayoutReserved13 = 13,
     kExpandedLayoutReserved255 = 255,
