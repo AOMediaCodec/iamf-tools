@@ -59,7 +59,7 @@ namespace {
 absl::Status InitializeEncoder(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config, int num_channels,
-    std::unique_ptr<EncoderBase>& encoder) {
+    std::unique_ptr<EncoderBase>& encoder, int substream_id = NULL) {
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
@@ -68,7 +68,7 @@ absl::Status InitializeEncoder(
     case kCodecIdOpus:
       encoder = std::make_unique<OpusEncoder>(
           codec_config_metadata.decoder_config_opus().opus_encoder_metadata(),
-          codec_config, num_channels);
+          codec_config, num_channels, substream_id);
       break;
     case kCodecIdAacLc:
       encoder = std::make_unique<AacEncoder>(
@@ -109,9 +109,9 @@ absl::Status GetEncodingDataAndInitializeEncoders(
           codec_config_obu.GetCodecConfigId()));
     }
 
-    RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata_iter->second,
-                                       codec_config_obu, num_channels,
-                                       substream_id_to_encoder[substream_id]));
+    RETURN_IF_NOT_OK(InitializeEncoder(
+        codec_config_metadata_iter->second, codec_config_obu, num_channels,
+        substream_id_to_encoder[substream_id], substream_id));
   }
 
   return absl::OkStatus();

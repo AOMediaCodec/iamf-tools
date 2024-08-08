@@ -54,7 +54,7 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
     EXPECT_THAT(codec_config.Initialize(), IsOk());
 
     encoder_ = std::make_unique<OpusEncoder>(opus_encoder_metadata_,
-                                             codec_config, num_channels_);
+                                             codec_config, num_channels_, substream_id_);
   }
 
   OpusDecoderConfig opus_decoder_config_ = {
