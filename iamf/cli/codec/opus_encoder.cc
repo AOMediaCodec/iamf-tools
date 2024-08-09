@@ -163,7 +163,7 @@ absl::Status OpusEncoder::InitializeEncoder() {
   } else {
     opus_rate =
         encoder_metadata_.use_substream_rate_override()
-            ? (float)encoder_metadata_.substream_rate_overrides()[substream_id_]
+            ? encoder_metadata_.substream_rate_overrides()[substream_id_]
             : encoder_metadata_.target_bitrate_per_channel();
   }
   opus_encoder_ctl(encoder_,
