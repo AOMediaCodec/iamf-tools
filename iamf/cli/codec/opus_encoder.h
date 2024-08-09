@@ -30,11 +30,12 @@ class OpusEncoder : public EncoderBase {
  public:
   OpusEncoder(
       const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
-      const CodecConfigObu& codec_config, int num_channels)
+      const CodecConfigObu& codec_config, int num_channels, int substream_id)
       : EncoderBase(false, codec_config, num_channels),
         encoder_metadata_(opus_encoder_metadata),
         decoder_config_(std::get<OpusDecoderConfig>(
-            codec_config.GetCodecConfig().decoder_config)) {}
+            codec_config.GetCodecConfig().decoder_config)),
+        substream_id_(substream_id) {}
 
   ~OpusEncoder() override;
 
@@ -84,6 +85,7 @@ class OpusEncoder : public EncoderBase {
 
   const iamf_tools_cli_proto::OpusEncoderMetadata encoder_metadata_;
   const OpusDecoderConfig decoder_config_;
+  const int substream_id_;
 
   LibOpusEncoder* encoder_ = nullptr;
 };
