@@ -66,6 +66,7 @@ Title                                                | Summary                  
 `stereo_8_samples_48khz_s16le.wav`                   | Tiny test file. The first channel encodes 1, 2, ... 8. The second channel encodes 65535, 65534, ... 65528.          | 2        | 48kHz       | pcm_s16le | 8 samples
 `stereo_8_samples_48khz_s24le.wav`                   | Tiny test file. The first channel encodes 1, 2, ... 8. The second channel encodes 16777216, 16777215, ... 16777209. | 2        | 48kHz       | pcm_s24le | 8 samples
 `Transport_TOA_5s.wav`                               | Short clip of vehicles driving by using third-order ambisonics.                                                     | 16       | 48kHz       | pcm_s16le | 5s
+`Transport_9.1.6_5s.wav`                             | Short clip of vehicles driving by using 9.1.6.                                                                      | 16       | 48kHz       | pcm_s16le | 5s
 
 # Output WAV files
 

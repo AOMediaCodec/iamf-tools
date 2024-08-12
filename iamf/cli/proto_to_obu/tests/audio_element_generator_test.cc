@@ -15,6 +15,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -43,10 +44,15 @@ using enum ChannelLabel::Label;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
+constexpr uint32_t kSampleRate = 48000;
 
 // Based on `output_gain_flags` in
 // https://aomediacodec.github.io/iamf/#syntax-scalable-channel-layout-config.
 constexpr uint8_t kApplyOutputGainToLeftChannel = 0x20;
+
+typedef ::google::protobuf::RepeatedPtrField<
+    iamf_tools_cli_proto::AudioElementObuMetadata>
+    AudioElementObuMetadatas;
 
 TEST(FinalizeScalableChannelLayoutConfig,
      FillsExpectedOutputForForOneLayerStereo) {
@@ -891,10 +897,157 @@ TEST(FinalizeScalableChannelLayoutConfig,
                    .ok());
 }
 
+const ScalableChannelLayoutConfig& GetScalableLayoutForAudioElementIdExpectOk(
+    DecodedUleb128 audio_element_id,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        output_obus) {
+  EXPECT_TRUE(output_obus.contains(audio_element_id));
+  const auto& output_scalable_channel_layout_config =
+      output_obus.at(audio_element_id).obu.config_;
+  EXPECT_TRUE(std::holds_alternative<ScalableChannelLayoutConfig>(
+      output_scalable_channel_layout_config));
+  return std::get<ScalableChannelLayoutConfig>(
+      output_scalable_channel_layout_config);
+}
+
+TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        num_substreams: 1
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          num_layers: 1
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
+            substream_count: 1
+            coupled_substream_count: 0
+            expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  const auto& output_first_layer =
+      GetScalableLayoutForAudioElementIdExpectOk(kAudioElementId, output_obus)
+          .channel_audio_layer_configs[0];
+  EXPECT_EQ(output_first_layer.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutExpanded);
+  ASSERT_TRUE(output_first_layer.expanded_loudspeaker_layout.has_value());
+  EXPECT_EQ(*output_first_layer.expanded_loudspeaker_layout,
+            ChannelAudioLayerConfig::kExpandedLayoutLFE);
+}
+
+TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        num_substreams: 1
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          num_layers: 1
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
+            substream_count: 1
+            coupled_substream_count: 0
+            # expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_FALSE(generator.Generate(codec_config_obus, output_obus).ok());
+}
+
+TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        num_substreams: 1
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          num_layers: 1
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+            substream_count: 1
+            coupled_substream_count: 1
+            expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_LFE
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  const auto& output_first_layer =
+      GetScalableLayoutForAudioElementIdExpectOk(kAudioElementId, output_obus)
+          .channel_audio_layer_configs[0];
+  EXPECT_FALSE(output_first_layer.expanded_loudspeaker_layout.has_value());
+}
+
+TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        num_substreams: 1
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          num_layers: 1
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+            substream_count: 1
+            coupled_substream_count: 1
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  const auto& output_first_layer =
+      GetScalableLayoutForAudioElementIdExpectOk(kAudioElementId, output_obus)
+          .channel_audio_layer_configs[0];
+  EXPECT_FALSE(output_first_layer.expanded_loudspeaker_layout.has_value());
+}
+
 class AudioElementGeneratorTest : public ::testing::Test {
  public:
   AudioElementGeneratorTest() {
-    AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, 48000,
+    AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_config_obus_);
   }
 
@@ -907,9 +1060,7 @@ class AudioElementGeneratorTest : public ::testing::Test {
   }
 
  protected:
-  ::google::protobuf::RepeatedPtrField<
-      iamf_tools_cli_proto::AudioElementObuMetadata>
-      audio_element_metadata_;
+  AudioElementObuMetadatas audio_element_metadata_;
 
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus_;

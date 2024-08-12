@@ -81,6 +81,13 @@ void LogChannelBased(const ScalableChannelLayoutConfig& channel_config) {
       LOG(INFO) << "      output_gain= "
                 << channel_audio_layer_config.output_gain;
     }
+    if (channel_audio_layer_config.expanded_loudspeaker_layout.has_value()) {
+      LOG(INFO) << "      expanded_loudspeaker_layout= "
+                << absl::StrCat(
+                       *channel_audio_layer_config.expanded_loudspeaker_layout);
+    } else {
+      LOG(INFO) << "      expanded_loudspeaker_layout= Not present.";
+    }
   }
 }
 

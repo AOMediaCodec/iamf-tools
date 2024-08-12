@@ -655,9 +655,10 @@ absl::Status ValidateReconGainDefined(
 
 // Copies the `LoudspeakerLayout` based on the input data.
 absl::Status CopyLoudspeakerLayout(
-    const iamf_tools_cli_proto::ChannelAudioLayerConfig& input_layer_config,
+    const iamf_tools_cli_proto::ChannelAudioLayerConfig
+        input_channel_audio_layer_config,
     ChannelAudioLayerConfig::LoudspeakerLayout& output_loudspeaker_layout) {
-  if (input_layer_config.has_deprecated_loudspeaker_layout()) {
+  if (input_channel_audio_layer_config.has_deprecated_loudspeaker_layout()) {
     return InvalidArgumentError(
         "Please upgrade the `deprecated_loudspeaker_layout` field to the new "
         "`loudspeaker_layout` field.\n"
@@ -700,20 +701,83 @@ absl::Status CopyLoudspeakerLayout(
           {LOUDSPEAKER_LAYOUT_7_1_4_CH, kLayout7_1_4_ch},
           {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
           {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
-          {LOUDSPEAKER_LAYOUT_RESERVED_BEGIN, kLayoutReserved10},
-          // TODO(b/354000981): Rename `LOUDSPEAKER_LAYOUT_RESERVED_END` and add
-          //                    expanded layouts to the input layer.
-          {LOUDSPEAKER_LAYOUT_RESERVED_END, kLayoutExpanded},
+          {LOUDSPEAKER_LAYOUT_RESERVED_10, kLayoutReserved10},
+          {LOUDSPEAKER_LAYOUT_RESERVED_14, kLayoutReserved14},
+          {LOUDSPEAKER_LAYOUT_EXPANDED, kLayoutExpanded},
       });
 
   if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
-                   input_layer_config.loudspeaker_layout(),
+                   input_channel_audio_layer_config.loudspeaker_layout(),
                    output_loudspeaker_layout)
            .ok()) {
     return InvalidArgumentError(
         StrCat("Unknown loudspeaker_layout= ",
-               input_layer_config.loudspeaker_layout()));
+               input_channel_audio_layer_config.loudspeaker_layout()));
   }
+
+  return absl::OkStatus();
+}
+
+// Copies the `ExpandedLoudspeakerLayout` based on the input data.
+absl::Status CopyExpandedLoudspeakerLayout(
+    const iamf_tools_cli_proto::ExpandedLoudspeakerLayout
+        input_expanded_loudspeaker_layout,
+    ChannelAudioLayerConfig::ExpandedLoudspeakerLayout&
+        output_expanded_loudspeaker_layout) {
+  using enum iamf_tools_cli_proto::ExpandedLoudspeakerLayout;
+  using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+  static const absl::NoDestructor<
+      absl::flat_hash_map<iamf_tools_cli_proto::ExpandedLoudspeakerLayout,
+                          ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>>
+      kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
+          {EXPANDED_LOUDSPEAKER_LAYOUT_LFE, kExpandedLayoutLFE},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_S, kExpandedLayoutStereoS},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_SS, kExpandedLayoutStereoSS},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_RS, kExpandedLayoutStereoRS},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TF, kExpandedLayoutStereoTF},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TB, kExpandedLayoutStereoTB},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_4_CH, kExpandedLayoutTop4Ch},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_3_0_CH, kExpandedLayout3_0_ch},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_9_1_6_CH, kExpandedLayout9_1_6_ch},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_F, kExpandedLayoutStereoF},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_SI, kExpandedLayoutStereoSi},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TP_SI, kExpandedLayoutStereoTpSi},
+          {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_6_CH, kExpandedLayoutTop6Ch},
+      });
+
+  if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+                   input_expanded_loudspeaker_layout,
+                   output_expanded_loudspeaker_layout)
+           .ok()) {
+    return InvalidArgumentError(StrCat("Unknown expanded_loudspeaker_layout= ",
+                                       input_expanded_loudspeaker_layout));
+  }
+
+  return absl::OkStatus();
+}
+
+// Copies the `LoudspeakerLayout` and `ExpandedLoudspeakerLayout` based on the
+// input data.
+absl::Status CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
+    const iamf_tools_cli_proto::ChannelAudioLayerConfig& input_layer_config,
+    ChannelAudioLayerConfig::LoudspeakerLayout& output_loudspeaker_layout,
+    std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
+        output_expanded_loudspeaker_layout) {
+  RETURN_IF_NOT_OK(
+      CopyLoudspeakerLayout(input_layer_config, output_loudspeaker_layout));
+
+  if (output_loudspeaker_layout == ChannelAudioLayerConfig::kLayoutExpanded) {
+    ChannelAudioLayerConfig::ExpandedLoudspeakerLayout
+        expanded_loudspeaker_layout;
+    RETURN_IF_NOT_OK(CopyExpandedLoudspeakerLayout(
+        input_layer_config.expanded_loudspeaker_layout(),
+        expanded_loudspeaker_layout));
+    output_expanded_loudspeaker_layout = expanded_loudspeaker_layout;
+  } else {
+    // Ignore user input since it would not be in the bitstream as of IAMF v1.1.
+    output_expanded_loudspeaker_layout = std::nullopt;
+  }
+
   return absl::OkStatus();
 }
 
@@ -746,8 +810,9 @@ absl::Status FillScalableChannelLayoutConfig(
     const auto& input_layer_config =
         input_config.channel_audio_layer_configs(i);
 
-    RETURN_IF_NOT_OK(CopyLoudspeakerLayout(input_layer_config,
-                                           layer_config->loudspeaker_layout));
+    RETURN_IF_NOT_OK(CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
+        input_layer_config, layer_config->loudspeaker_layout,
+        layer_config->expanded_loudspeaker_layout));
     RETURN_IF_NOT_OK(
         Uint32ToUint8(input_layer_config.output_gain_is_present_flag(),
                       layer_config->output_gain_is_present_flag));

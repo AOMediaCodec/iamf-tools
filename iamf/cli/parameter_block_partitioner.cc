@@ -20,6 +20,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
@@ -324,11 +325,13 @@ absl::Status ParameterBlockPartitioner::FindPartitionDuration(
     uint32_t& partition_duration) {
   using enum iamf_tools_cli_proto::ProfileVersion;
   if (primary_profile != PROFILE_VERSION_SIMPLE &&
-      primary_profile != PROFILE_VERSION_BASE) {
-    // This function only implements limitations described in IAMF V1 are for
-    // simple and base profile.
-    return absl::InvalidArgumentError(absl::StrCat(
-        "FindPartitionDuration() only works with Simple or Base profile"));
+      primary_profile != PROFILE_VERSION_BASE &&
+      primary_profile != PROFILE_VERSION_BASE_ENHANCED) {
+    // This function only implements limitations described in IAMF V1.1 are for
+    // simple, base, base-enhanced profile.
+    return absl::InvalidArgumentError(
+        absl::StrCat("FindPartitionDuration() only works with Simple, Base, or "
+                     "Base-Enhanced profile"));
   }
 
   // TODO(b/283281856): Set the duration to a different value when
