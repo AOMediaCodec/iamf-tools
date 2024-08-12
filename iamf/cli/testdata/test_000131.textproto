@@ -147,8 +147,8 @@ mix_presentation_metadata {
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -32768  # Loudness value should be ignored.
-        digital_peak: -32768  # Loudness value should be ignored.
+        integrated_loudness: -4495
+        digital_peak: -4078
       }
     }
   }

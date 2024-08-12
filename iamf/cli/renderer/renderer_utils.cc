@@ -144,6 +144,7 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
               {kSoundSystem10_2_7_0, "7.1.2"},
               {kSoundSystem11_2_3_0, "3.1.2"},
               {kSoundSystem12_0_1_0, "0+1+0"},
+              {kSoundSystem13_6_9_0, "9.1.6"},
           });
 
       auto it = kSoundSystemToInputKey->find(sound_system);

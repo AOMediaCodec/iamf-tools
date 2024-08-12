@@ -191,6 +191,16 @@ TEST(LookupOutputKeyFromPlaybackLayout, SucceedsForChannelBasedLayout) {
       IsOk());
 }
 
+TEST(LookupOutputKeyFromPlaybackLayout, SucceedsFor9_1_6) {
+  EXPECT_THAT(
+      LookupOutputKeyFromPlaybackLayout(
+          {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+           .specific_layout =
+               LoudspeakersSsConventionLayout{
+                   .sound_system =
+                       LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0}}),
+      IsOk());
+}
 TEST(LookupOutputKeyFromPlaybackLayout, FailsOnBinauralBasedLayout) {
   EXPECT_FALSE(LookupOutputKeyFromPlaybackLayout(
                    {.layout_type = Layout::kLayoutTypeBinaural,
