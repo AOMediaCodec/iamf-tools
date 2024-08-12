@@ -162,7 +162,7 @@ arbitrary_obu_metadata: [
       "\x01"  # substream_id.
       "\x00"  # num_parameters.
       "\x20"  # num_layers (3), reserved (5)
-      "\xa0"  # loudspeaker_layout (4), output_gain_is_present_flag (1), reserved (2).
+      "\xa0"  # loudspeaker_layout (4), output_gain_is_present_flag (1), recon_gain_is_present_flag (1), reserved (2).
       "\x01"  # substream_count.
       "\x01"  # coupled_substream_count.
   },

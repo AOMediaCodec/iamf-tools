@@ -13,7 +13,7 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A zero-order ambisonics IAMF stream encoded using "
+    "A zeroth-order ambisonics IAMF stream encoded using "
     "`ambisonics_mode` = `MONO`."
   file_name_prefix: "test_000100"
   is_valid: true

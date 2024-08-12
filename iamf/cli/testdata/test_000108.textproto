@@ -13,7 +13,7 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A zero-order ambisonics IAMF stream encoded using Opus and "
+    "A zeroth-order ambisonics IAMF stream encoded using Opus and "
     "`ambisonics_mode` = `MONO`."
   file_name_prefix: "test_000108"
   is_valid: true
