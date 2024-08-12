@@ -29,7 +29,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -271,6 +273,16 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
   auto wav_reader = WavReader::CreateFromFile(filename, num_samples_per_frame);
   EXPECT_THAT(wav_reader, IsOk());
   return std::move(*wav_reader);
+}
+
+void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
+                            AudioElementRendererBase* renderer,
+                            std::vector<int32_t>& output_samples) {
+  ASSERT_NE(renderer, nullptr);
+  EXPECT_THAT(renderer->RenderLabeledFrame(labeled_frame), IsOk());
+  EXPECT_THAT(renderer->Finalize(), IsOk());
+  EXPECT_TRUE(renderer->IsFinalized());
+  EXPECT_THAT(renderer->Flush(output_samples), IsOk());
 }
 
 std::string GetAndCleanupOutputFileName(absl::string_view suffix) {

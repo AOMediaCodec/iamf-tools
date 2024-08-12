@@ -21,6 +21,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -142,6 +144,16 @@ void AddDemixingParamDefinition(
  */
 WavReader CreateWavReaderExpectOk(const std::string& filename,
                                   int num_samples_per_frame = 1);
+
+/*!\brief Renders the `LabeledFrame` flushes to the output vector.
+ *
+ * \param labeled_frame Labeled frame to render.
+ * \param renderer Renderer to use.
+ * \param output_samples Vector to flush to.
+ */
+void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
+                            AudioElementRendererBase* renderer,
+                            std::vector<int32_t>& output_samples);
 
 /*!\brief Gets and cleans up unique file name based on the specified suffix.
  *

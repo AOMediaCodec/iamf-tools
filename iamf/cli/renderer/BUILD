@@ -26,6 +26,7 @@ cc_library(
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/base:no_destructor",

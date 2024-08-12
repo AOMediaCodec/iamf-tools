@@ -75,7 +75,7 @@ TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>({{0, 10}}));
 }
 
-TEST(ArrangeSamplesToRender, LeavesEmptyLabelsZero) {
+TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForMixedOrderAmbisonics) {
   const LabeledFrame kMixedFirstOrderAmbisonicsFrame = {
       .label_to_samples = {
           {kA0, {1, 2}}, {kA2, {201, 202}}, {kA3, {301, 302}}}};
@@ -89,6 +89,19 @@ TEST(ArrangeSamplesToRender, LeavesEmptyLabelsZero) {
       IsOk());
   EXPECT_EQ(samples, std::vector<std::vector<int32_t>>(
                          {{1, 0, 201, 301}, {2, 0, 202, 302}}));
+}
+
+TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForChannelBasedLayout) {
+  const LabeledFrame kLFEOnlyFrame = {.label_to_samples = {{kLFE, {1, 2}}}};
+  const std::vector<ChannelLabel::Label> kLFEAsSecondChannelArrangement = {
+      kOmitted, kOmitted, kLFE, kOmitted};
+
+  std::vector<std::vector<int32_t>> samples;
+  EXPECT_THAT(ArrangeSamplesToRender(kLFEOnlyFrame,
+                                     kLFEAsSecondChannelArrangement, samples),
+              IsOk());
+  EXPECT_EQ(samples,
+            std::vector<std::vector<int32_t>>({{0, 0, 1, 0}, {0, 0, 2, 0}}));
 }
 
 TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {

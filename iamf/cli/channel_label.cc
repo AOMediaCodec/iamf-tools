@@ -30,6 +30,144 @@
 
 namespace iamf_tools {
 
+namespace {
+
+absl::StatusOr<std::vector<ChannelLabel::Label>>
+LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
+  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+  using enum ChannelLabel::Label;
+  static const absl::NoDestructor<
+      absl::flat_hash_map<ChannelAudioLayerConfig::LoudspeakerLayout,
+                          std::vector<ChannelLabel::Label>>>
+      kSoundSystemToLoudspeakerLayout({
+          {kLayoutMono, {kMono}},
+          {kLayoutStereo, {kL2, kR2}},
+          {kLayout5_1_ch, {kL5, kR5, kCentre, kLFE, kLs5, kRs5}},
+          {kLayout5_1_2_ch,
+           {kL5, kR5, kCentre, kLFE, kLs5, kRs5, kLtf2, kRtf2}},
+          {kLayout5_1_4_ch,
+           {kL5, kR5, kCentre, kLFE, kLs5, kRs5, kLtf4, kRtf4, kLtb4, kRtb4}},
+          {kLayout7_1_ch,
+           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7}},
+          {kLayout7_1_2_ch,
+           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7, kLtf2, kRtf2}},
+          {kLayout7_1_4_ch,
+           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7, kLtf4, kRtf4,
+            kLtb4, kRtb4}},
+          {kLayout3_1_2_ch, {kL3, kR3, kCentre, kLFE, kLtf3, kRtf3}},
+          {kLayoutBinaural, {kL2, kR2}},
+      });
+
+  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
+  if (it == kSoundSystemToLoudspeakerLayout->end()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Channel order not found for layout= ", loudspeaker_layout));
+  }
+  return it->second;
+}
+
+void SetLabelsToOmittedExceptFor(
+    const absl::flat_hash_set<ChannelLabel::Label>& labels_to_keep,
+    std::vector<ChannelLabel::Label>& channel_order) {
+  for (auto& label : channel_order) {
+    if (!labels_to_keep.contains(label)) {
+      label = ChannelLabel::kOmitted;
+    }
+  }
+}
+
+absl::StatusOr<std::vector<ChannelLabel::Label>>
+LookupEarChannelOrderFromExpandedLoudspeakerLayout(
+    const ChannelAudioLayerConfig::ExpandedLoudspeakerLayout&
+        expanded_loudspeaker_layout) {
+  using enum ChannelLabel::Label;
+  static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
+      k9_1_6ChannelOrder({kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR,
+                          kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR});
+  // Determine the related layout and then omit any irrelevant channels. This
+  // ensures the permitted channels are in the same slot and allows downstream
+  // processing to use the related layout's EAR matrix.
+  absl::StatusOr<std::vector<ChannelLabel::Label>> related_labels;
+  absl::flat_hash_set<ChannelLabel::Label> labels_to_keep;
+  switch (expanded_loudspeaker_layout) {
+    using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+    using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+    case kExpandedLayoutLFE:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLFE};
+      break;
+    case kExpandedLayoutStereoS:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout5_1_4_ch);
+      labels_to_keep = {kLs5, kRs5};
+      break;
+    case kExpandedLayoutStereoSS:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLss7, kRss7};
+      break;
+    case kExpandedLayoutStereoRS:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLrs7, kRrs7};
+      break;
+    case kExpandedLayoutStereoTF:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLtf4, kRtf4};
+      break;
+    case kExpandedLayoutStereoTB:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLtb4, kRtb4};
+      break;
+    case kExpandedLayoutTop4Ch:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kLtf4, kRtf4, kLtb4, kRtb4};
+      break;
+    case kExpandedLayout3_0_ch:
+      related_labels = LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+          kLayout7_1_4_ch);
+      labels_to_keep = {kL7, kR7, kCentre};
+      break;
+    case kExpandedLayout9_1_6_ch:
+      return *k9_1_6ChannelOrder;
+    case kExpandedLayoutStereoF:
+      related_labels = *k9_1_6ChannelOrder;
+      labels_to_keep = {kFL, kFR};
+      break;
+    case kExpandedLayoutStereoSi:
+      related_labels = *k9_1_6ChannelOrder;
+      labels_to_keep = {kSiL, kSiR};
+      break;
+    case kExpandedLayoutStereoTpSi:
+      related_labels = *k9_1_6ChannelOrder;
+      labels_to_keep = {kTpSiL, kTpSiR};
+      break;
+    case kExpandedLayoutTop6Ch:
+      related_labels = *k9_1_6ChannelOrder;
+      labels_to_keep = {kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR};
+      break;
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Reserved or unknown expanded_loudspeaker_layout= ",
+                       expanded_loudspeaker_layout));
+  }
+
+  // Leave the labels to keep in their original slot, but filter out all other
+  // labels.
+  if (!related_labels.ok()) {
+    return related_labels.status();
+  }
+  SetLabelsToOmittedExceptFor(labels_to_keep, *related_labels);
+  return related_labels;
+}
+
+}  // namespace
+
 absl::StatusOr<ChannelLabel::Label>
 ChannelLabel::AmbisonicsChannelNumberToLabel(int ambisonics_channel_number) {
   return ChannelLabel::StringToLabel(
@@ -335,37 +473,18 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::GetDemixedLabel(
 
 absl::StatusOr<std::vector<ChannelLabel::Label>>
 ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-  using enum ChannelLabel::Label;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<ChannelAudioLayerConfig::LoudspeakerLayout,
-                          std::vector<ChannelLabel::Label>>>
-      kSoundSystemToLoudspeakerLayout({
-          {kLayoutMono, {kMono}},
-          {kLayoutStereo, {kL2, kR2}},
-          {kLayout5_1_ch, {kL5, kR5, kCentre, kLFE, kLs5, kRs5}},
-          {kLayout5_1_2_ch,
-           {kL5, kR5, kCentre, kLFE, kLs5, kRs5, kLtf2, kRtf2}},
-          {kLayout5_1_4_ch,
-           {kL5, kR5, kCentre, kLFE, kLs5, kRs5, kLtf4, kRtf4, kLtb4, kRtb4}},
-          {kLayout7_1_ch,
-           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7}},
-          {kLayout7_1_2_ch,
-           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7, kLtf2, kRtf2}},
-          {kLayout7_1_4_ch,
-           {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7, kLtf4, kRtf4,
-            kLtb4, kRtb4}},
-          {kLayout3_1_2_ch, {kL3, kR3, kCentre, kLFE, kLtf3, kRtf3}},
-          {kLayoutBinaural, {kL2, kR2}},
-      });
-
-  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
-  if (it == kSoundSystemToLoudspeakerLayout->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Channel order not found for layout= ", loudspeaker_layout));
+    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
+    const std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
+        expanded_loudspeaker_layout) {
+  if (loudspeaker_layout == ChannelAudioLayerConfig::kLayoutExpanded) {
+    RETURN_IF_NOT_OK(ValidateHasValue(expanded_loudspeaker_layout,
+                                      "expanded_loudspeaker_layout"));
+    return LookupEarChannelOrderFromExpandedLoudspeakerLayout(
+        *expanded_loudspeaker_layout);
+  } else {
+    return LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
+        loudspeaker_layout);
   }
-  return it->second;
 }
 
 absl::StatusOr<absl::flat_hash_set<ChannelLabel::Label>>
@@ -383,7 +502,7 @@ ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
   // Reconstruct the highest layer.
   const auto ordered_labels =
       ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-          loudspeaker_layout);
+          loudspeaker_layout, expanded_loudspeaker_layout);
   if (!ordered_labels.ok()) {
     return ordered_labels.status();
   } else {

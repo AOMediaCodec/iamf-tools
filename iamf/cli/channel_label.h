@@ -130,7 +130,7 @@ class ChannelLabel {
   };
 
   template <typename Sink>
-  void AbslStringify(Sink& sink, Label e) {
+  friend void AbslStringify(Sink& sink, Label e) {
     sink.Append(LabelToString(e));
   }
 
@@ -201,15 +201,21 @@ class ChannelLabel {
 
   /*!\brief Gets the channel ordering to use for the associated input layout.
    *
-   * The output is ordered to agree with the "precomputed" EAR matrices.
+   * The output is ordered to agree with the "precomputed" EAR matrices. Certain
+   * layouts are based on other layouts. The channels which are excluded are
+   * represented by `ChannelLabel::Label::kOmitted`.
    *
    * \param loudspeaker_layout Layout to get the channel ordering from.
+   * \param expanded_loudspeaker_layout Associated expanded loudspeaker layout
+   *     or `std::nullopt` when it is not relevant.
    * \return Channel ordering associated with the layout if known. Or a specific
    *     status on failure.
    */
   static absl::StatusOr<std::vector<ChannelLabel::Label>>
   LookupEarChannelOrderFromScalableLoudspeakerLayout(
-      const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout);
+      ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
+      const std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
+          expanded_loudspeaker_layout);
 
   /*!\brief Gets the labels related to reconstructing the input layout.
    *

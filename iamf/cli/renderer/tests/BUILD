@@ -20,6 +20,7 @@ cc_test(
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/status:status_matchers",

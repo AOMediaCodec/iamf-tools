@@ -31,7 +31,8 @@ namespace renderer_utils {
  *     samples to trim and render.
  * \param ordered_labels Ordered list of original labels. Samples are arranged
  *     based on the original or demixed label samples in each time tick. Slots
- *     corresponding with empty labels ("") will create zeroed-out samples.
+ *     corresponding with `ChannelLabel::Label::kOmitted` will create zeroed-out
+ *     samples.
  * \param samples_to_render Output samples to render in (time, channel) axes.
  *     Samples which should be trimmed are omitted from the output.
  * \return `absl::OkStatus()` on success. A specific status on failure.

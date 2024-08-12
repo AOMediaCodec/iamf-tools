@@ -26,8 +26,10 @@ cc_library(
     ],
     deps = [
         "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:demixing_module",
         "//iamf/cli:wav_reader",
         "//iamf/cli/proto_to_obu:audio_element_generator",
+        "//iamf/cli/renderer:audio_element_renderer_base",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_info_param_data",
