@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/channel_label.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,8 +30,14 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::IsEmpty;
 
 using enum ChannelLabel::Label;
+using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+
+constexpr std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>
+    kNoExpandedLayout = std::nullopt;
 
 TEST(StringToLabel, SucceedsForMonoInput) {
   EXPECT_THAT(ChannelLabel::StringToLabel("M"), IsOkAndHolds(kMono));
@@ -318,8 +325,6 @@ TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
 
 TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
      FailsForReservedLayouts10Through14) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
   EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
                    kLayoutReserved10)
                    .ok());
@@ -349,43 +354,63 @@ TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      SucceedsForChannelBasedLayout) {
   EXPECT_THAT(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          ChannelAudioLayerConfig::kLayoutMono),
+          kLayoutMono, kNoExpandedLayout),
       IsOk());
 }
 
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      FailsForReservedLayouts10Through14) {
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-
   EXPECT_FALSE(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved10)
+          kLayoutReserved10, kNoExpandedLayout)
           .ok());
   EXPECT_FALSE(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved11)
+          kLayoutReserved11, kNoExpandedLayout)
           .ok());
   EXPECT_FALSE(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved12)
+          kLayoutReserved12, kNoExpandedLayout)
           .ok());
   EXPECT_FALSE(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved13)
+          kLayoutReserved13, kNoExpandedLayout)
           .ok());
   EXPECT_FALSE(
       ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-          kLayoutReserved14)
+          kLayoutReserved14, kNoExpandedLayout)
           .ok());
 }
 
-// TODO(b/354000981): Support expanded layout.
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
-     FailsForReservedLayouts15) {
-  EXPECT_FALSE(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
-                   ChannelAudioLayerConfig::kLayoutExpanded)
-                   .ok());
+     InvalidWhenExpandedLayoutIsInconsistent) {
+  EXPECT_FALSE(
+      ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
+          ChannelAudioLayerConfig::kLayoutExpanded, kNoExpandedLayout)
+          .ok());
 }
+
+using LookupLabelsToReconstructFromScalableLoudspeakerLayout =
+    ::testing::TestWithParam<
+        ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>;
+TEST_P(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
+       ReturnsEmptySet) {
+  EXPECT_THAT(
+      ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
+          kLayoutExpanded, GetParam()),
+      IsOkAndHolds(IsEmpty()));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BaseEnhancedProfileExpandedLayoutsReturnEmptySet,
+    LookupLabelsToReconstructFromScalableLoudspeakerLayout,
+    ::testing::ValuesIn<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>(
+        {kExpandedLayoutLFE, kExpandedLayoutStereoS, kExpandedLayoutStereoSS,
+         kExpandedLayoutStereoRS, kExpandedLayoutStereoTF,
+         kExpandedLayoutStereoTB, kExpandedLayoutTop4Ch, kExpandedLayout3_0_ch,
+         kExpandedLayout9_1_6_ch, kExpandedLayoutStereoF,
+         kExpandedLayoutStereoSi, kExpandedLayoutStereoTpSi,
+         kExpandedLayoutTop6Ch}));
 
 }  // namespace
 }  // namespace iamf_tools

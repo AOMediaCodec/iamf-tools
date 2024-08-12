@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/channel_label.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,6 +24,8 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 
 namespace iamf_tools {
@@ -367,7 +370,16 @@ ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
 
 absl::StatusOr<absl::flat_hash_set<ChannelLabel::Label>>
 ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-    const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout) {
+    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
+    const std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
+        expanded_loudspeaker_layout) {
+  if (loudspeaker_layout == ChannelAudioLayerConfig::kLayoutExpanded) {
+    RETURN_IF_NOT_OK(ValidateHasValue(expanded_loudspeaker_layout,
+                                      "expanded_loudspeaker_layout"));
+    // OK. Expanded layouts may only exist in a single-layer and thus never need
+    // to be reconstructed as of IAMF v1.1.
+    return absl::flat_hash_set<ChannelLabel::Label>{};
+  }
   // Reconstruct the highest layer.
   const auto ordered_labels =
       ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(

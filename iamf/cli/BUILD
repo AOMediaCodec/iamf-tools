@@ -62,6 +62,8 @@ cc_library(
     srcs = ["channel_label.cc"],
     hdrs = ["channel_label.h"],
     deps = [
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",

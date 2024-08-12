@@ -849,7 +849,8 @@ LookupLabelsToReconstruct(const AudioElementObu& obu) {
       // Reconstruct the highest layer.
       return ChannelLabel::
           LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-              channel_audio_layer_configs.back().loudspeaker_layout);
+              channel_audio_layer_configs.back().loudspeaker_layout,
+              channel_audio_layer_configs.back().expanded_loudspeaker_layout);
     }
     case kAudioElementSceneBased:
       // OK. Ambisonics does not have any channels to be reconstructed.

@@ -14,6 +14,7 @@
 #define CLI_CHANNEL_LABEL_H_
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -218,12 +219,16 @@ class ChannelLabel {
    * when there are multiple layers in a scalable channel audio element.
    *
    * \param loudspeaker_layout Layout to get the labels to reconstruct from.
+   * \param expanded_loudspeaker_layout Associated expanded loudspeaker layout
+   *     or `std::nullopt` when it is not relevant.
    * \return Labels to reconstruct the associated layout if known. Or a specific
    *     status on failure.
    */
   static absl::StatusOr<absl::flat_hash_set<ChannelLabel::Label>>
   LookupLabelsToReconstructFromScalableLoudspeakerLayout(
-      const ChannelAudioLayerConfig::LoudspeakerLayout& loudspeaker_layout);
+      ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
+      const std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
+          expanded_loudspeaker_layout);
 };
 
 }  // namespace iamf_tools

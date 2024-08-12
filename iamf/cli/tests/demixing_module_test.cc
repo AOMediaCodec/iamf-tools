@@ -234,7 +234,6 @@ TEST(InitializeForReconstruction, InvalidForReservedLoudspeakerLayout14) {
       demixing_module.InitializeForReconstruction(audio_elements).ok());
 }
 
-// TODO(b/354000981): Support expanded layout.
 TEST(InitializeForReconstruction, InvalidForExpandedLayout) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
@@ -247,8 +246,8 @@ TEST(InitializeForReconstruction, InvalidForExpandedLayout) {
       ChannelAudioLayerConfig::kExpandedLayoutLFE;
   DemixingModule demixing_module;
 
-  EXPECT_FALSE(
-      demixing_module.InitializeForReconstruction(audio_elements).ok());
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
 }
 
 TEST(InitializeForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
