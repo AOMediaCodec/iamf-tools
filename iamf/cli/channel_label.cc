@@ -83,8 +83,9 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
         expanded_loudspeaker_layout) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
-      k9_1_6ChannelOrder({kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR,
-                          kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR});
+      k9_1_6ChannelOrder(std::vector<ChannelLabel::Label>(
+          {kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR, kTpFL, kTpFR,
+           kTpBL, kTpBR, kTpSiL, kTpSiR}));
   // Determine the related layout and then omit any irrelevant channels. This
   // ensures the permitted channels are in the same slot and allows downstream
   // processing to use the related layout's EAR matrix.
