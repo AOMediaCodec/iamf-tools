@@ -22,6 +22,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -510,14 +511,27 @@ absl::Status CollectDemixedChannelGroupLabels(
   return absl::OkStatus();
 }
 
-void AddSubstreamLabels(
+absl::Status AddSubstreamLabels(
     const std::list<ChannelLabel::Label>& coupled_substream_labels,
     const std::list<ChannelLabel::Label>& non_coupled_substream_labels,
     const std::vector<DecodedUleb128>& substream_ids,
     SubstreamIdLabelsMap& substream_id_to_labels, int& substream_index) {
+  CHECK_EQ(coupled_substream_labels.size() % 2, 0);
+  // Determine how many substream IDs will be used below. This helps prevent
+  // indexing `substream_ids` out of bounds.
+  const auto substreams_to_add =
+      coupled_substream_labels.size() / 2 + non_coupled_substream_labels.size();
+  if (substream_index + substreams_to_add > substream_ids.size()) {
+    return absl::OutOfRangeError(
+        absl::StrCat("Too few substream IDs are present to assign all labels. "
+                     "substream_ids.size()= ",
+                     substream_ids.size()));
+  }
+
   // First add coupled substream labels, two at a time.
   for (auto iter = coupled_substream_labels.begin();
-       iter != coupled_substream_labels.end();) {
+       iter != coupled_substream_labels.end() &&
+       substream_index < substream_ids.size();) {
     const auto substream_id = substream_ids[substream_index++];
     auto& labels_for_substream_id = substream_id_to_labels[substream_id];
     labels_for_substream_id.push_back(*iter++);
@@ -537,6 +551,7 @@ void AddSubstreamLabels(
     LOG(INFO) << "  substream_id_to_labels[" << substream_id
               << "]: " << substream_id_to_labels[substream_id].back();
   }
+  return absl::OkStatus();
 }
 
 absl::Status ValidateSubstreamCounts(
@@ -1092,6 +1107,9 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
     SubstreamIdLabelsMap& substream_id_to_labels,
     LabelGainMap& label_to_output_gain,
     std::vector<ChannelNumbers>& channel_numbers_for_layers) {
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids.begin(),
+                                  audio_substream_ids.end(),
+                                  "audio_substream_ids"));
   // Starting from no channel at all.
   ChannelNumbers accumulated_channels = {0, 0, 0};
   int substream_index = 0;
@@ -1118,9 +1136,9 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
 
     channel_numbers_for_layers.push_back(layer_channels);
 
-    AddSubstreamLabels(coupled_substream_labels, non_coupled_substream_labels,
-                       audio_substream_ids, substream_id_to_labels,
-                       substream_index);
+    RETURN_IF_NOT_OK(AddSubstreamLabels(
+        coupled_substream_labels, non_coupled_substream_labels,
+        audio_substream_ids, substream_id_to_labels, substream_index));
     RETURN_IF_NOT_OK(ValidateSubstreamCounts(
         coupled_substream_labels, non_coupled_substream_labels, layer_config));
 
@@ -1145,6 +1163,11 @@ absl::Status AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
       }
     }
   }
+
+  // Validate that all substreams were assigned at least one label.
+  RETURN_IF_NOT_OK(ValidateEqual(
+      audio_substream_ids.size(), substream_id_to_labels.size(),
+      "audio_substream_ids.size() vs. substream_id_to_labels.size()"));
 
   return absl::OkStatus();
 }

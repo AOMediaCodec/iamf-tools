@@ -42,6 +42,10 @@ namespace {
 using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
 
+typedef ::google::protobuf::RepeatedPtrField<
+    iamf_tools_cli_proto::AudioElementObuMetadata>
+    AudioElementObuMetadatas;
+
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr uint32_t kSampleRate = 48000;
@@ -50,9 +54,13 @@ constexpr uint32_t kSampleRate = 48000;
 // https://aomediacodec.github.io/iamf/#syntax-scalable-channel-layout-config.
 constexpr uint8_t kApplyOutputGainToLeftChannel = 0x20;
 
-typedef ::google::protobuf::RepeatedPtrField<
-    iamf_tools_cli_proto::AudioElementObuMetadata>
-    AudioElementObuMetadatas;
+const ScalableChannelLayoutConfig kOneLayerStereoConfig{
+    .num_layers = 1,
+    .channel_audio_layer_configs = {
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+         .output_gain_is_present_flag = false,
+         .substream_count = 1,
+         .coupled_substream_count = 1}}};
 
 TEST(FinalizeScalableChannelLayoutConfig,
      FillsExpectedOutputForForOneLayerStereo) {
@@ -61,13 +69,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {kSubstreamIds[0], {kL2, kR2}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
       {.surround = 2, .lfe = 0, .height = 0}};
-  const ScalableChannelLayoutConfig kOneLayerStereoConfig{
-      .num_layers = 1,
-      .channel_audio_layer_configs = {
-          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
-           .output_gain_is_present_flag = false,
-           .substream_count = 1,
-           .coupled_substream_count = 1}}};
+
   SubstreamIdLabelsMap output_substream_id_to_labels;
   LabelGainMap output_label_to_output_gain;
   std::vector<ChannelNumbers> output_channel_numbers_for_layer;
@@ -81,6 +83,58 @@ TEST(FinalizeScalableChannelLayoutConfig,
   EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
   EXPECT_TRUE(output_label_to_output_gain.empty());
   EXPECT_EQ(output_channel_numbers_for_layer, kExpectedChannelNumbersForLayer);
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     InvalidWhenThereAreTooFewAudioSubstreamIds) {
+  const std::vector<DecodedUleb128> kTooFewSubstreamIdsForOneLayerStereo = {};
+
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                   kTooFewSubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
+                   output_substream_id_to_labels, output_label_to_output_gain,
+                   output_channel_numbers_for_layer)
+                   .ok());
+}
+
+TEST(FinalizeScalableChannelLayoutConfig,
+     InvalidWhenThereAreTooManyAudioSubstreamIds) {
+  const std::vector<DecodedUleb128> kTooManySubstreamIdsForOneLayerStereo = {
+      99, 100};
+
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                   kTooManySubstreamIdsForOneLayerStereo, kOneLayerStereoConfig,
+                   output_substream_id_to_labels, output_label_to_output_gain,
+                   output_channel_numbers_for_layer)
+                   .ok());
+}
+
+TEST(FinalizeScalableChannelLayoutConfig, InvalidWhenSubstreamIdsAreNotUnique) {
+  const std::vector<DecodedUleb128> kNonUniqueSubstreamIds = {1, 2, 99, 99};
+
+  const ScalableChannelLayoutConfig k3_1_2Config{
+      .num_layers = 1,
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout3_1_2_ch,
+           .output_gain_is_present_flag = false,
+           .substream_count = 4,
+           .coupled_substream_count = 2}}};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  LabelGainMap output_label_to_output_gain;
+  std::vector<ChannelNumbers> output_channel_numbers_for_layer;
+
+  EXPECT_FALSE(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+                   kNonUniqueSubstreamIds, k3_1_2Config,
+                   output_substream_id_to_labels, output_label_to_output_gain,
+                   output_channel_numbers_for_layer)
+                   .ok());
 }
 
 TEST(FinalizeScalableChannelLayoutConfig,

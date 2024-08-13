@@ -656,30 +656,31 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   obu.InitializeParams(0);
   EXPECT_THAT(obu.InitializeScalableChannelLayout(2, 0), IsOk());
 
-  auto& config = std::get<ScalableChannelLayoutConfig>(obu.config_);
-  ChannelAudioLayerConfig layer_config_0 = {
+  auto& two_layer_stereo_config =
+      std::get<ScalableChannelLayoutConfig>(obu.config_);
+  two_layer_stereo_config.channel_audio_layer_configs.clear();
+  const ChannelAudioLayerConfig mono_layer = {
+      .loudspeaker_layout =
+          ChannelAudioLayerConfig::LoudspeakerLayout::kLayoutMono,
+      .output_gain_is_present_flag = false,
+      .recon_gain_is_present_flag = true,
+      .substream_count = 1,
+      .coupled_substream_count = 0};
+  two_layer_stereo_config.channel_audio_layer_configs.push_back(mono_layer);
+  const ChannelAudioLayerConfig stereo_layer = {
       .loudspeaker_layout =
           ChannelAudioLayerConfig::LoudspeakerLayout::kLayoutStereo,
       .output_gain_is_present_flag = false,
       .recon_gain_is_present_flag = true,
       .substream_count = 1,
-      .coupled_substream_count = 1};
-  config.channel_audio_layer_configs.clear();
-  config.channel_audio_layer_configs.push_back(layer_config_0);
-  ChannelAudioLayerConfig layer_config_1 = {
-      .loudspeaker_layout =
-          ChannelAudioLayerConfig::LoudspeakerLayout::kLayoutStereo,
-      .output_gain_is_present_flag = false,
-      .recon_gain_is_present_flag = true,
-      .substream_count = 0,
       .coupled_substream_count = 0};
-  config.channel_audio_layer_configs.push_back(layer_config_1);
+  two_layer_stereo_config.channel_audio_layer_configs.push_back(stereo_layer);
   SubstreamIdLabelsMap substream_id_labels_map;
   LabelGainMap label_gain_map;
   std::vector<ChannelNumbers> channel_numbers;
   ASSERT_THAT(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
-                  obu.audio_substream_ids_, config, substream_id_labels_map,
-                  label_gain_map, channel_numbers),
+                  obu.audio_substream_ids_, two_layer_stereo_config,
+                  substream_id_labels_map, label_gain_map, channel_numbers),
               IsOk());
 
   auto iter = input_codec_configs.find(kCodecConfigId);
@@ -707,11 +708,14 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   EXPECT_EQ(param_iter->second.param_definition, param_definition);
   EXPECT_EQ(param_iter->second.audio_element_id, kAudioElementId);
   EXPECT_EQ(param_iter->second.num_layers, 2);
-  ChannelNumbers expected_channel_numbers = {.surround = 2};
+  constexpr ChannelNumbers expected_channel_numbers_mono_layer = {.surround =
+                                                                      1};
+  constexpr ChannelNumbers expected_channel_numbers_stereo_layer = {.surround =
+                                                                        2};
   EXPECT_EQ(param_iter->second.channel_numbers_for_layers[0],
-            expected_channel_numbers);
+            expected_channel_numbers_mono_layer);
   EXPECT_EQ(param_iter->second.channel_numbers_for_layers[1],
-            expected_channel_numbers);
+            expected_channel_numbers_stereo_layer);
   EXPECT_EQ(param_iter->second.recon_gain_is_present_flags[0], true);
   EXPECT_EQ(param_iter->second.recon_gain_is_present_flags[1], true);
 }
