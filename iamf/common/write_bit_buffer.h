@@ -110,6 +110,16 @@ class WriteBitBuffer {
    */
   absl::Status WriteUleb128(DecodedUleb128 data);
 
+  /*!\brief Writes the expandable size according to ISO 14496-1.
+   *
+   * \param size_of_instance Size of the instance.
+   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
+   *     if there is not enough room in the write buffer.
+   *    `absl::InvalidArgumentError()` if the generation fails. Other specific
+   *     statuses on failure.
+   */
+  absl::Status WriteIso14496_1Expanded(uint32_t size_of_instance);
+
   /*!\brief Flushes and writes a byte-aligned buffer to a file.
    *
    * \param output_file File to write to.

@@ -304,6 +304,47 @@ TEST_F(WriteBitBufferTest, WriteMinUleb128CanFailWithFixedSizeGenerator) {
   EXPECT_FALSE(wb_->WriteUleb128(128).ok());
 }
 
+struct WriteIso14496_1ExpandedTestCase {
+  uint32_t size_of_instance;
+  const std::vector<uint8_t> expected_source_data;
+};
+
+using WriteIso14496_1Expanded =
+    ::testing::TestWithParam<WriteIso14496_1ExpandedTestCase>;
+
+TEST_P(WriteIso14496_1Expanded, WriteIso14496_1Expanded) {
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(wb.WriteIso14496_1Expanded(GetParam().size_of_instance), IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), GetParam().expected_source_data);
+}
+
+INSTANTIATE_TEST_SUITE_P(OneByteOutput, WriteIso14496_1Expanded,
+                         testing::ValuesIn<WriteIso14496_1ExpandedTestCase>({
+                             {0, {0x00}},
+                             {1, {0x01}},
+                             {127, {0x7f}},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(TwoByteOutput, WriteIso14496_1Expanded,
+                         testing::ValuesIn<WriteIso14496_1ExpandedTestCase>({
+                             {128, {0x81, 0x00}},
+                             {129, {0x81, 0x01}},
+                             {0x3fff, {0xff, 0x7f}},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(FiveByteOutput, WriteIso14496_1Expanded,
+                         testing::ValuesIn<WriteIso14496_1ExpandedTestCase>({
+                             {0x10000000, {0x81, 0x80, 0x80, 0x80, 0x00}},
+                             {0xf0000000, {0x8f, 0x80, 0x80, 0x80, 0x00}},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(MaxOutput, WriteIso14496_1Expanded,
+                         testing::ValuesIn<WriteIso14496_1ExpandedTestCase>({
+                             {std::numeric_limits<uint32_t>::max(),
+                              {0x8f, 0xff, 0xff, 0xff, 0x7f}},
+                         }));
+
 TEST_F(WriteBitBufferTest, CapacityMayBeSmaller) {
   // The buffer may have a small initial capacity and resize as needed.
   wb_ = std::make_unique<WriteBitBuffer>(/*initial_capacity=*/0);

@@ -204,6 +204,27 @@ absl::Status WriteBitBuffer::WriteUleb128(const DecodedUleb128 data) {
   return absl::OkStatus();
 }
 
+absl::Status WriteBitBuffer::WriteIso14496_1Expanded(
+    uint32_t size_of_instance) {
+  constexpr uint8_t kSizeOfInstanceMask = 0x7f;
+  constexpr uint8_t kNextByteMask = 0x80;
+  std::vector<uint8_t> buffer;
+
+  // Fill the buffer in reverse order. After the loop the most significant bits
+  // will be at the start of the buffer.
+  do {
+    const uint8_t byte =
+        (size_of_instance & kSizeOfInstanceMask) | kNextByteMask;
+    buffer.insert(buffer.begin(), byte);
+
+    size_of_instance >>= 7;
+  } while (size_of_instance > 0);
+  // Ensure the last byte signals the end of the data.
+  buffer.back() &= kSizeOfInstanceMask;
+
+  return WriteUint8Vector(buffer);
+}
+
 absl::Status WriteBitBuffer::WriteUint8Vector(
     const std::vector<uint8_t>& data) {
   if (IsByteAligned()) {
