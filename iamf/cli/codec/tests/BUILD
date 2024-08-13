@@ -1,5 +1,3 @@
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_library(
     name = "encoder_test_base",
     testonly = True,
