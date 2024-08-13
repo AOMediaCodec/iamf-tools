@@ -110,6 +110,9 @@ class ReadBitBuffer {
 
   /*!\brief Reads an unsigned leb128 from buffer into `uleb128`.
    *
+   * This version is useful when the caller does not care about the number of
+   * bytes used to encode the data in the bitstream.
+   *
    * \param uleb128 Decoded unsigned leb128 from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *     the consumed data from the buffer does not fit into the 32 bits of
@@ -139,6 +142,21 @@ class ReadBitBuffer {
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128,
                            int8_t& encoded_uleb128_size);
+
+  /*!\brief Reads the expandable size according to ISO 14496-1.
+   *
+   * \param max_class_size Maximum class size in bits.
+   * \param size_of_instance Size of instance according to the expandable size.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *     the consumed data from the buffer does not fit into the 32 bit output,
+   *     or if the data encoded is larger than the `max_class_size` bits.
+   *     `absl::ResourceExhaustedError()` if the buffer is exhausted
+   *     before the expanded field is fully read and source does not have the
+   *     requisite data to complete the expanded field. `absl::UnknownError()`
+   *     if the `rb->bit_offset` is negative.
+   */
+  absl::Status ReadIso14496_1Expanded(uint32_t max_class_size,
+                                      uint32_t& size_of_instance);
 
   /*!\brief Reads an uint8 vector from buffer into `output`.
    *

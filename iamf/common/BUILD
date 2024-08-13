@@ -39,7 +39,9 @@ cc_library(
         ":bit_buffer_util",
         ":macros",
         "//iamf/obu:leb128",
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
     ],
 )
 

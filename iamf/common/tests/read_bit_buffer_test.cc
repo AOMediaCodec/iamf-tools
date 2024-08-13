@@ -12,6 +12,7 @@
 #include "iamf/common/read_bit_buffer.h"
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,12 +25,22 @@
 #include "iamf/obu/leb128.h"
 
 namespace iamf_tools {
+namespace {
 using absl::StatusCode::kInvalidArgument;
 using absl::StatusCode::kResourceExhausted;
 using testing::ElementsAreArray;
-namespace {
 
 using ::absl_testing::IsOk;
+
+constexpr int kBitsPerByte = 8;
+constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
+
+ReadBitBuffer CreateReadBitBufferAndLoadBitsExpectOk(
+    std::vector<uint8_t>& source_data) {
+  ReadBitBuffer rb(source_data.size() * kBitsPerByte, &source_data);
+  EXPECT_THAT(rb.LoadBits(source_data.size() * kBitsPerByte), IsOk());
+  return rb;
+}
 
 class ReadBitBufferTest : public ::testing::Test {
  public:
@@ -396,6 +407,101 @@ TEST_F(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
   // Expect to buffer_bit_offset to be reset if there is not enough data in
   // the buffer.
   EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+}
+
+// ---- ReadIso14496_1Expanded Tests -----
+
+struct ReadIso14496_1ExpandedTestCase {
+  std::vector<uint8_t> source_data;
+  uint32_t expected_size_of_instance;
+};
+
+using ReadIso14496_1Expanded =
+    ::testing::TestWithParam<ReadIso14496_1ExpandedTestCase>;
+
+TEST_P(ReadIso14496_1Expanded, ReadIso14496_1Expanded) {
+  // Grab a copy of the data because the ReadBitBuffer will consume it.
+  std::vector<uint8_t> source_data = GetParam().source_data;
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data);
+
+  uint32_t output_size_of_instance = 0;
+  EXPECT_THAT(rb.ReadIso14496_1Expanded(kMaxUint32, output_size_of_instance),
+              IsOk());
+
+  EXPECT_EQ(output_size_of_instance, GetParam().expected_size_of_instance);
+}
+
+INSTANTIATE_TEST_SUITE_P(OneByteInput, ReadIso14496_1Expanded,
+                         testing::ValuesIn<ReadIso14496_1ExpandedTestCase>({
+                             {{0x00}, 0},
+                             {{0x40}, 64},
+                             {{0x7f}, 127},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(TwoByteInput, ReadIso14496_1Expanded,
+                         testing::ValuesIn<ReadIso14496_1ExpandedTestCase>({
+                             {{0x81, 0x00}, 128},
+                             {{0x81, 0x01}, 129},
+                             {{0xff, 0x7e}, 0x3ffe},
+                             {{0xff, 0x7f}, 0x3fff},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(FourByteInput, ReadIso14496_1Expanded,
+                         testing::ValuesIn<ReadIso14496_1ExpandedTestCase>({
+                             {{0x81, 0x80, 0x80, 0x00}, 0x0200000},
+                             {{0x81, 0x80, 0x80, 0x01}, 0x0200001},
+                             {{0xff, 0xff, 0xff, 0x7e}, 0x0ffffffe},
+                             {{0xff, 0xff, 0xff, 0x7f}, 0x0fffffff},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(FiveByteInput, ReadIso14496_1Expanded,
+                         testing::ValuesIn<ReadIso14496_1ExpandedTestCase>({
+                             {{0x81, 0x80, 0x80, 0x80, 0x00}, 0x10000000},
+                             {{0x8f, 0x80, 0x80, 0x80, 0x00}, 0xf0000000},
+                             {{0x8f, 0xff, 0xff, 0xff, 0x7f}, 0xffffffff},
+                         }));
+
+INSTANTIATE_TEST_SUITE_P(HandlesLeadingZeroes, ReadIso14496_1Expanded,
+                         testing::ValuesIn<ReadIso14496_1ExpandedTestCase>({
+                             {{0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01},
+                              1},
+                         }));
+
+TEST(ReadIso14496_1Expanded, ValidWhenDecodedValueEqualToMaxClassSize) {
+  constexpr uint32_t kMaxClassSizeExact = 127;
+  std::vector<uint8_t> source_data_ = {0x7f};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data_);
+
+  uint32_t unused_output = 0;
+  EXPECT_THAT(rb.ReadIso14496_1Expanded(kMaxClassSizeExact, unused_output),
+              IsOk());
+}
+
+TEST(ReadIso14496_1Expanded, InvalidWhenDecodedValueIsGreaterThanMaxClassSize) {
+  constexpr uint32_t kMaxClassSizeTooLow = 126;
+  std::vector<uint8_t> source_data_ = {0x7f};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data_);
+
+  uint32_t unused_output = 0;
+  EXPECT_FALSE(
+      rb.ReadIso14496_1Expanded(kMaxClassSizeTooLow, unused_output).ok());
+}
+
+TEST(ReadIso14496_1Expanded, InvalidWhenDecodedValueDoesNotFitIntoUint32) {
+  std::vector<uint8_t> source_data_ = {0x90, 0x80, 0x80, 0x80, 0x00};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data_);
+
+  uint32_t unused_output = 0;
+  EXPECT_FALSE(rb.ReadIso14496_1Expanded(kMaxUint32, unused_output).ok());
+}
+
+TEST(ReadIso14496_1Expanded, InvalidWhenInputDataSignalsMoreThan8Bytes) {
+  std::vector<uint8_t> source_data_ = {0x80, 0x80, 0x80, 0x80, 0x80,
+                                       0x80, 0x80, 0x80, 0x01};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data_);
+
+  uint32_t unused_output = 0;
+  EXPECT_FALSE(rb.ReadIso14496_1Expanded(kMaxUint32, unused_output).ok());
 }
 
 // --- ReadUint8Vector tests ---
