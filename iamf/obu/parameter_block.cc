@@ -256,7 +256,13 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
         parameter_id_to_metadata,
     ReadBitBuffer& rb) {
   DecodedUleb128 parameter_id;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id));
+  int8_t encoded_uleb128_size = 0;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id, encoded_uleb128_size));
+  if (payload_size < encoded_uleb128_size) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Read beyond the end of the OBU for parameter_id=", parameter_id));
+  }
+
   auto it = parameter_id_to_metadata.find(parameter_id);
   if (it == parameter_id_to_metadata.end()) {
     return absl::InvalidArgumentError(
@@ -264,9 +270,13 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
         "definition).");
   }
 
+  // TODO(b/359588455): Use `ReadBitBuffer::Seek` to go back to the start of the
+  //                    OBU. Update `ReadAndValidatePayload` to expect to read
+  //                    `parameter_id`).
+  const int64_t remaining_payload_size = payload_size - encoded_uleb128_size;
   ParameterBlockObu parameter_block_obu(header, parameter_id, it->second);
   RETURN_IF_NOT_OK(
-      parameter_block_obu.ReadAndValidatePayload(payload_size, rb));
+      parameter_block_obu.ReadAndValidatePayload(remaining_payload_size, rb));
   return parameter_block_obu;
 }
 

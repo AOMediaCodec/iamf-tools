@@ -14,6 +14,7 @@
 #define OBU_OBU_BASE_H_
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -61,6 +62,20 @@ class ObuBase {
 
   ObuHeader header_;
 
+  /*!\brief Bytes at the end of the OBU.
+   *
+   * Store any bytes signalled by `obu_size` but not read by
+   * `ReadAndValidatePayloadDerived`. This helps comply with section 3.2
+   * (https://aomediacodec.github.io/iamf/#obu-header-syntax):
+   *
+   * "The obu_size MAY be greater than the size needed to represent the OBU
+   * syntax. Parsers SHOULD ignore bytes past the OBU syntax that they
+   * recognize."
+   *
+   * Store the extra bytes so any components can forward them as needed.
+   */
+  std::vector<uint8_t> footer_;
+
  protected:
   /*!\brief Writes the OBU payload to the buffer.
    *
@@ -92,7 +107,8 @@ class ObuBase {
   /*!\brief Reads the known OBU payload from the buffer.
    *
    * Implementations of this function MAY omit reading any bytes not known -
-   * even if their presence is implied by `payload_size`.
+   * even if their presence is implied by `payload_size`. Implementations are
+   * expected to read an integral number of bytes.
    *
    * \param payload_size Size of the obu payload in bytes. Useful to determine
    *     some fields whose presence or size are not directly signalled

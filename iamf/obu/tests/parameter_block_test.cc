@@ -170,6 +170,51 @@ TEST(MixGainParameterData,
   EXPECT_FALSE(mix_gain_param_data.ReadAndValidate(buffer).ok());
 }
 
+TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
+  const DecodedUleb128 kParameterId = 0x07;
+  std::vector<uint8_t> source_data = {
+      // Parameter ID (leb128).
+      0x87,
+      0x80,
+      0x00,
+      // Duration.
+      0x0a,
+      // Constant subblock duration.
+      0x0a,
+      // Animation type.
+      MixGainParameterData::kAnimateStep,
+      // Start point value.
+      0x09,
+      0x88,
+  };
+  const int64_t kCorrectObuSize = source_data.size();
+  constexpr int64_t kIncorrectObuSize = 1;
+  ReadBitBuffer buffer(1024, &source_data);
+  // Usually metadata would live in the descriptor OBUs.
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      per_param_metadata;
+  per_param_metadata[kParameterId] = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition = MixGainParamDefinition(),
+  };
+  per_param_metadata[kParameterId].param_definition.parameter_id_ =
+      kParameterId;
+  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+
+  // Sanity check that the OBU is valid.
+  ASSERT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock}, kCorrectObuSize,
+                  per_param_metadata, buffer),
+              IsOk());
+
+  // But it would be invalid if the OBU size is too small.
+  EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
+                   ObuHeader{.obu_type = kObuIaParameterBlock},
+                   kIncorrectObuSize, per_param_metadata, buffer)
+                   .ok());
+}
+
 TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   const DecodedUleb128 kParameterId = 0x07;
   std::vector<uint8_t> source_data = {

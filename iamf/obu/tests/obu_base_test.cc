@@ -37,14 +37,22 @@ class ImaginaryObuNonIntegerBytes : public ObuBase {
   ~ImaginaryObuNonIntegerBytes() override = default;
   void PrintObu() const override {}
 
+  static absl::StatusOr<ImaginaryObuNonIntegerBytes> CreateFromBuffer(
+      int64_t payload_size, ReadBitBuffer& rb) {
+    ImaginaryObuNonIntegerBytes obu;
+    RETURN_IF_NOT_OK(obu.ReadAndValidatePayload(payload_size, rb));
+    return obu;
+  }
+
  private:
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override {
     return wb.WriteUnsignedLiteral(0, 1);
   }
 
-  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+  absl::Status ReadAndValidatePayloadDerived(int64_t /*payload_size*/,
                                              ReadBitBuffer& rb) override {
-    return absl::OkStatus();
+    uint8_t payload_to_read;
+    return rb.ReadUnsignedLiteral(1, payload_to_read);
   }
 };
 
@@ -54,6 +62,15 @@ TEST(ObuBaseTest, ObuSizeImpliesValidateAndWritePayloadMustWriteIntegerBytes) {
   WriteBitBuffer wb(1024);
   EXPECT_EQ(obu.ValidateAndWriteObu(wb).code(),
             absl::StatusCode::kInvalidArgument);
+}
+
+TEST(ObuBaseTest, InvalidWhenValidatePayloadDerivedDoesNotReadIntegerBytes) {
+  const ImaginaryObuNonIntegerBytes obu;
+
+  std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 0x80};
+  ReadBitBuffer rb(1024, &source_data);
+
+  EXPECT_FALSE(ImaginaryObuNonIntegerBytes::CreateFromBuffer(1, rb).ok());
 }
 
 // A simple OBU with a constant payload with a length of 1 byte.
@@ -117,6 +134,21 @@ TEST(ObuBaseTest, OneByteObuExtensionHeader) {
                           {255});
 }
 
+TEST(ObuBaseTest, WritesObuFooterAndConsistentObuSize) {
+  constexpr uint8_t kExpectedObuSizeWithFooter = 7;
+  OneByteObu obu;
+  obu.footer_ = {'f', 'o', 'o', 't', 'e', 'r'};
+
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb,
+                          {kObuIaReserved24 << 3,
+                           // `obu_size`.
+                           kExpectedObuSizeWithFooter},
+                          {255, 'f', 'o', 'o', 't', 'e', 'r'});
+}
+
 TEST(ObuBaseTest, ReadWithConsistentSize) {
   std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
   ReadBitBuffer rb(1024, &source_data);
@@ -125,30 +157,28 @@ TEST(ObuBaseTest, ReadWithConsistentSize) {
   EXPECT_THAT(obu, IsOk());
 }
 
-// TODO(b/340289722): Update behavior to fail because too many bytes were
-//                    parsed.
-TEST(ObuBaseTest, ReadSucceedsWhenSizeIsTooSmall) {
+TEST(ObuBaseTest, ReadFailsWhenSizeIsTooSmall) {
   const int64_t kSizeTooSmall = 0;
   std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
   ReadBitBuffer rb(1024, &source_data);
 
-  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, rb),
-              IsOk());
+  EXPECT_FALSE(
+      OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, rb).ok());
 }
 
-TEST(ObuBaseTest, ReadSucceedsWhenSizeIsTooLarge) {
-  const int64_t kSizeWithExtraData = 5;
+TEST(ObuBaseTest, ReadsFooterWhenObuSizeIsTooLarge) {
+  const int64_t kSizeWithExtraData = 4;
+  const std::vector<uint8_t> kExtraData = {'e', 'x', 't'};
 
   std::vector<uint8_t> source_data = {255, 'e', 'x', 't'};
   ReadBitBuffer rb(1024, &source_data);
 
-  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), kSizeWithExtraData, rb),
-              IsOk());
+  const auto obu =
+      OneByteObu::CreateFromBuffer(ObuHeader(), kSizeWithExtraData, rb);
 
-  // TODO(b/340289722): Update to expect that the buffer is after the 'e', 'x',
-  //                    't', bytes. Add a test that the "footer" is ['e', 'x',
-  //                    't'].
-  EXPECT_EQ(rb.buffer_bit_offset(), 8);
+  EXPECT_EQ(rb.buffer_bit_offset(), 32);
+  ASSERT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->footer_, kExtraData);
 }
 
 }  // namespace

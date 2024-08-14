@@ -36,6 +36,8 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
 
   // Write the payload to a temporary buffer using the virtual function.
   RETURN_IF_NOT_OK(ValidateAndWritePayload(temp_wb));
+  // Write the footer to the temporary buffer.
+  RETURN_IF_NOT_OK(temp_wb.WriteUint8Vector(footer_));
   if (!temp_wb.IsByteAligned()) {
     // The header stores the size of the OBU in bytes.
     return absl::InvalidArgumentError(absl::StrCat(
@@ -66,10 +68,35 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
 
 absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
                                              ReadBitBuffer& rb) {
-  // TODO(b/340289722): Examine how many bytes are read from the buffer. If too
-  //                    many bytes are read this function should fail. If too
-  //                    few this function should consume the "footer".
-  return ReadAndValidatePayloadDerived(payload_size_bytes, rb);
+  // TODO(b/359588455): Use `ReadBitBuffer::Seek` and `Tell`.
+  const int expected_final_position =
+      (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset())) +
+      (payload_size_bytes * 8);
+
+  // Read the known portion of the payload
+  RETURN_IF_NOT_OK(ReadAndValidatePayloadDerived(payload_size_bytes, rb));
+  const int64_t final_position =
+      rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset());
+
+  // Read the remaining of the payload (if any) into the footer.
+  if (expected_final_position == final_position) {
+    return absl::OkStatus();
+  } else if (expected_final_position > final_position) {
+    if ((expected_final_position - final_position) % 8 != 0) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Expected `ReadAndValidatePayloadDerived` to write a "
+                       "multiple of 8 bits for obu_type=",
+                       header_.obu_type));
+    }
+    const int64_t num_bytes_to_read =
+        (expected_final_position - final_position) / 8;
+    return rb.ReadUint8Vector(num_bytes_to_read, footer_);
+  } else {
+    // The dispatched function read past the end of the payload. Something could
+    // be inconsistent between the parsing logic and the claimed OBU size.
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Read beyond the end of the OBU for obu_type=", header_.obu_type));
+  }
 }
 
 void ObuBase::PrintHeader(int64_t payload_size_bytes) const {
