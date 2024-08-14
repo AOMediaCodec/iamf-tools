@@ -173,6 +173,106 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {
             kExpectedHeadphonesRenderingMode3);
 }
 
+TEST(Generate, CopiesNoAnnotations) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0).set_count_label(0);
+  mix_presentation_metadata.at(0).clear_language_labels();
+  mix_presentation_metadata.at(0).clear_mix_presentation_annotations_array();
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->clear_mix_presentation_element_annotations_array();
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  EXPECT_TRUE(first_obu.GetAnnotationsLanguage().empty());
+  EXPECT_TRUE(first_obu.GetLocalizedPresentationAnnotations().empty());
+  EXPECT_TRUE(first_obu.sub_mixes_[0]
+                  .audio_elements[0]
+                  .localized_element_annotations.empty());
+}
+
+TEST(Generate, CopiesAnnotations) {
+  constexpr int kCountLabel = 2;
+  const std::vector<std::string> kAnnotationsLanguage = {"en-us", "en-gb"};
+  const std::vector<std::string> kLocalizedPresentationAnnotations = {
+      "US Label", "GB Label"};
+  const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
+      "US AE Label", "GB AE Label"};
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_count_label(kCountLabel);
+  mix_presentation.mutable_language_labels()->Add(kAnnotationsLanguage.begin(),
+                                                  kAnnotationsLanguage.end());
+  *mix_presentation.mutable_mix_presentation_annotations_array()
+       ->Add()
+       ->mutable_mix_presentation_friendly_label() =
+      kLocalizedPresentationAnnotations[0];
+  *mix_presentation.mutable_mix_presentation_annotations_array()
+       ->Add()
+       ->mutable_mix_presentation_friendly_label() =
+      kLocalizedPresentationAnnotations[1];
+  auto* first_element_annotations_array =
+      mix_presentation.mutable_sub_mixes(0)
+          ->mutable_audio_elements(0)
+          ->mutable_mix_presentation_element_annotations_array();
+  first_element_annotations_array->Add()->set_audio_element_friendly_label(
+      kAudioElementLocalizedElementAnnotations[0]);
+  first_element_annotations_array->Add()->set_audio_element_friendly_label(
+      kAudioElementLocalizedElementAnnotations[1]);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
+  EXPECT_EQ(first_obu.GetLocalizedPresentationAnnotations(),
+            kLocalizedPresentationAnnotations);
+  EXPECT_EQ(
+      first_obu.sub_mixes_[0].audio_elements[0].localized_element_annotations,
+      kAudioElementLocalizedElementAnnotations);
+}
+
+TEST(Generate, ObeysInconsistentNumberOfLabels) {
+  const std::vector<std::string> kAnnotationsLanguage = {"Language 1",
+                                                         "Language 2"};
+  const std::vector<std::string> kOnlyOneLocalizedPresentationAnnotation = {
+      "Localized annotation 1"};
+  const std::vector<std::string> kNoAudioElementLocalizedElementAnnotations =
+      {};
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_count_label(2);
+  mix_presentation.mutable_language_labels()->Add(kAnnotationsLanguage.begin(),
+                                                  kAnnotationsLanguage.end());
+  *mix_presentation.mutable_mix_presentation_annotations_array()
+       ->Add()
+       ->mutable_mix_presentation_friendly_label() =
+      kOnlyOneLocalizedPresentationAnnotation[0];
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
+  EXPECT_EQ(first_obu.GetLocalizedPresentationAnnotations(),
+            kOnlyOneLocalizedPresentationAnnotation);
+  EXPECT_EQ(
+      first_obu.sub_mixes_[0].audio_elements[0].localized_element_annotations,
+      kNoAudioElementLocalizedElementAnnotations);
+}
+
 class MixPresentationGeneratorTest : public ::testing::Test {
  public:
   void SetUp() override {

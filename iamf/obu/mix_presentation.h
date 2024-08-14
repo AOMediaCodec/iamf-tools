@@ -369,7 +369,7 @@ class MixPresentationObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param rb `ReadBitBuffer` where the `MixPresentationObu` data is stored.
    *     Data read from the buffer is consumed.
-   * \return an `MixPresentationObu` on success. A specific status on failure.
+   * \return A `MixPresentationObu` on success. A specific status on failure.
    */
   static absl::StatusOr<MixPresentationObu> CreateFromBuffer(
       const ObuHeader& header, ReadBitBuffer& rb);
@@ -391,6 +391,18 @@ class MixPresentationObu : public ObuBase {
 
   DecodedUleb128 GetMixPresentationId() const { return mix_presentation_id_; }
 
+  /*!\brief Gets a copy of the `annotations_language`.
+   *
+   * \return A copy of the `annotations_language` member variable.
+   */
+  std::vector<std::string> GetAnnotationsLanguage() const {
+    return annotations_language_;
+  }
+
+  /*!\brief Gets a copy of the `localized_presentation_annotations`.
+   *
+   * \return A copy of the `localized_presentation_annotations` member variable.
+   */
   std::vector<std::string> GetLocalizedPresentationAnnotations() const {
     return localized_presentation_annotations_;
   }

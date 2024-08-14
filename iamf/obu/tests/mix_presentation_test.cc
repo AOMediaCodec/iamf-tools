@@ -954,6 +954,10 @@ TEST(CreateFromBufferTest, RejectNoSubMix) {
 }
 
 TEST(CreateFromBufferTest, OneSubMix) {
+  const std::vector<std::string> kAnnotationsLanguage = {"en-us"};
+  const std::vector<std::string> kLocalizedPresentationAnnotations = {"Mix 1"};
+  const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
+      "Submix 1"};
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
@@ -992,8 +996,13 @@ TEST(CreateFromBufferTest, OneSubMix) {
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
-  EXPECT_EQ(obu->GetLocalizedPresentationAnnotations()[0], "Mix 1");
+  EXPECT_EQ(obu->GetAnnotationsLanguage(), kAnnotationsLanguage);
+  EXPECT_EQ(obu->GetLocalizedPresentationAnnotations(),
+            kLocalizedPresentationAnnotations);
   EXPECT_EQ(obu->GetNumSubMixes(), 1);
+  ASSERT_FALSE(obu->sub_mixes_[0].audio_elements.empty());
+  EXPECT_EQ(obu->sub_mixes_[0].audio_elements[0].localized_element_annotations,
+            kAudioElementLocalizedElementAnnotations);
 }
 
 TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
