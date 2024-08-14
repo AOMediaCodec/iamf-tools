@@ -13,6 +13,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Add support for binary proto input in the encoder.
 -   Add support for "Expanded" layouts for Base-Enhanced profile.
 
+### Deprecated
+
+-   Deprecate several fields renamed in the V1.1 of the spec:
+    -   Deprecate `language_labels` in favor of `annotations_language`.
+    -   Deprecate `MixPresentationAnnotations` and
+        `mix_presentation_element_annotations_array` in favor of
+        `localized_presentation_annotations`.
+    -   Deprecate `MixPresentationElementAnnotations` and
+        `mix_presentation_element_annotations_array` in favor of
+        `localized_element_annotations`.
+
 ### Removed
 
 -   Remove support for integral `deprecated_codec_id`, `deprecated_info_type`,

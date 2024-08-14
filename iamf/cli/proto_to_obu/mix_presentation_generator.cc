@@ -43,17 +43,39 @@ void FillAnnotationsLanguageAndAnnotations(
   count_label = mix_presentation_metadata.count_label();
 
   annotations_language.reserve(mix_presentation_metadata.count_label());
-  for (const auto& language_label :
-       mix_presentation_metadata.language_labels()) {
-    annotations_language.push_back(language_label);
+  // Prioritize the `annotations_language` field from version 1.1.
+  if (!mix_presentation_metadata.annotations_language().empty()) {
+    for (const auto& language :
+         mix_presentation_metadata.annotations_language()) {
+      annotations_language.push_back(language);
+    }
+  } else if (!mix_presentation_metadata.language_labels().empty()) {
+    LOG(WARNING) << "Please upgrade `language_labels` to "
+                    "`annotations_language`.";
+    for (const auto& language_label :
+         mix_presentation_metadata.language_labels()) {
+      annotations_language.push_back(language_label);
+    }
   }
 
   localized_presentation_annotations.reserve(
       mix_presentation_metadata.count_label());
-  for (const auto& mix_presentation_annotation :
-       mix_presentation_metadata.mix_presentation_annotations_array()) {
-    localized_presentation_annotations.push_back(
-        mix_presentation_annotation.mix_presentation_friendly_label());
+  // Prioritize the `localized_presentation_annotations` field from version 1.1.
+  if (!mix_presentation_metadata.localized_presentation_annotations().empty()) {
+    for (const auto& localized_presentation_annotation :
+         mix_presentation_metadata.localized_presentation_annotations()) {
+      localized_presentation_annotations.push_back(
+          localized_presentation_annotation);
+    }
+  } else if (!mix_presentation_metadata.mix_presentation_annotations_array()
+                  .empty()) {
+    LOG(WARNING) << "Please upgrade `mix_presentation_annotations_array` to "
+                    "`localized_presentation_annotations`.";
+    for (const auto& mix_presentation_annotation :
+         mix_presentation_metadata.mix_presentation_annotations_array()) {
+      localized_presentation_annotations.push_back(
+          mix_presentation_annotation.mix_presentation_friendly_label());
+    }
   }
 }
 
@@ -76,13 +98,25 @@ void FillSubMixNumAudioElements(
 absl::Status FillLocalizedElementAnnotations(
     const iamf_tools_cli_proto::SubMixAudioElement& input_sub_mix_audio_element,
     SubMixAudioElement& sub_mix_audio_element) {
-  for (const auto& input_audio_element_friendly_label :
-       input_sub_mix_audio_element
-           .mix_presentation_element_annotations_array()) {
-    sub_mix_audio_element.localized_element_annotations.push_back(
-        input_audio_element_friendly_label.audio_element_friendly_label());
+  if (!input_sub_mix_audio_element.localized_element_annotations().empty()) {
+    for (const auto& localized_element_annotation :
+         input_sub_mix_audio_element.localized_element_annotations()) {
+      sub_mix_audio_element.localized_element_annotations.push_back(
+          localized_element_annotation);
+    }
+  } else if (!input_sub_mix_audio_element
+                  .mix_presentation_element_annotations_array()
+                  .empty()) {
+    LOG(WARNING)
+        << "Please upgrade `mix_presentation_element_annotations_array` to "
+           "`localized_element_annotations`.";
+    for (const auto& input_audio_element_friendly_label :
+         input_sub_mix_audio_element
+             .mix_presentation_element_annotations_array()) {
+      sub_mix_audio_element.localized_element_annotations.push_back(
+          input_audio_element_friendly_label.audio_element_friendly_label());
+    }
   }
-
   return absl::OkStatus();
 }
 
