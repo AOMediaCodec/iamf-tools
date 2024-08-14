@@ -577,6 +577,8 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       // Start `DecoderConfig`.
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      17,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -590,6 +592,8 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),

@@ -13,6 +13,7 @@
 #define OBU_DECODER_CONFIG_AAC_DECODER_CONFIG_H_
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -163,6 +164,7 @@ class AacDecoderConfig {
   void Print() const;
 
   uint8_t decoder_config_descriptor_tag_ = kDecoderConfigDescriptorTag;
+  // ISO 14496-1 8.3.3 expandable field is inserted automatically.
   uint8_t object_type_indication_ = kObjectTypeIndication;
   uint8_t stream_type_ = kStreamType;  // 6 bits.
   bool upstream_ = kUpstream;
@@ -176,9 +178,14 @@ class AacDecoderConfig {
 
     friend bool operator==(const DecoderSpecificInfo& lhs,
                            const DecoderSpecificInfo& rhs) = default;
+
     uint8_t decoder_specific_info_tag = kDecoderSpecificInfoTag;
+    // ISO 14496-1 8.3.3 expandable field is inserted automatically.
     AudioSpecificConfig audio_specific_config;
+    std::vector<uint8_t> decoder_specific_info_extension;
   } decoder_specific_info_;
+
+  std::vector<uint8_t> decoder_config_extension_;
   // ProfileLevelIndicationIndexDescriptor is an extension in the original
   // message, but is unused in IAMF.
 };

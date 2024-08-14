@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     number of `substream_id`s.
 -   Prevent encoding Mix Presentation OBUs with an inconsistent number of
     annotations.
+-   Fix compliance with ISO 14496-1:2010 when writing AAC Codec Config OBUs
+    (AOMediaCodec/libiamf#119).
 
 ## [1.0.0] - 2024-01-26
 

@@ -225,6 +225,8 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
   std::vector<uint8_t> data = {
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      17,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -237,6 +239,8 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
@@ -261,12 +265,20 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
   EXPECT_EQ(decoder_config.average_bit_rate_, 0);
   EXPECT_EQ(decoder_config.decoder_specific_info_.decoder_specific_info_tag,
             AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag);
+  EXPECT_TRUE(decoder_config.decoder_specific_info_
+                  .decoder_specific_info_extension.empty());
+  EXPECT_TRUE(decoder_config.decoder_config_extension_.empty());
+  uint32_t sample_frequency;
+  EXPECT_THAT(decoder_config.GetOutputSampleRate(sample_frequency), IsOk());
+  EXPECT_EQ(sample_frequency, 64000);
 }
 
-TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
+TEST(AacDecoderConfig, ReadAndValidateWithExplicitSampleFrequency) {
   std::vector<uint8_t> data = {
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      20,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -279,6 +291,125 @@ TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      5,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`, upper 7 bits of
+      // `sampling_rate`.
+      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+          ((48000 & 0xe00000) >> 17),
+      // Next 16 bits of `sampling_rate`.
+      ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
+      // Upper bit of `sampling_rate`, `channel_configuration`,
+      // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
+      ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
+  AacDecoderConfig decoder_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+
+  uint32_t sample_frequency;
+  EXPECT_THAT(decoder_config.GetOutputSampleRate(sample_frequency), IsOk());
+  EXPECT_EQ(sample_frequency, 48000);
+}
+
+TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
+  std::vector<uint8_t> data = {
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      16,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      kStreamTypeUpstreamReserved,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      3,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask};
+  AacDecoderConfig decoder_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_FALSE(decoder_config.ReadAndValidate(kAudioRollDistance, rb).ok());
+}
+
+TEST(AacDecoderConfig, ReadExtensions) {
+  std::vector<uint8_t> data = {
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      23,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      kStreamTypeUpstreamReserved,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      5,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask,
+      'd', 'e', 'f', 'a', 'b', 'c'};
+  AacDecoderConfig decoder_config;
+  ReadBitBuffer rb(1024, &data);
+
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+
+  EXPECT_EQ(
+      decoder_config.decoder_specific_info_.decoder_specific_info_extension,
+      std::vector<uint8_t>({'d', 'e', 'f'}));
+  EXPECT_EQ(decoder_config.decoder_config_extension_,
+            std::vector<uint8_t>({'a', 'b', 'c'}));
+}
+
+TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
+  std::vector<uint8_t> data = {
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      17,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      kStreamTypeUpstreamReserved,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
@@ -339,8 +470,11 @@ class AacTest : public testing::Test {
 
 TEST_F(AacTest, DefaultWriteDecoderConfig) {
   expected_decoder_config_payload_ = {
+      // Start `DecoderConfigDescriptor`.
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      17,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -351,8 +485,11 @@ TEST_F(AacTest, DefaultWriteDecoderConfig) {
       0, 0, 0, 0,
       // `average_bit_rate`.
       0, 0, 0, 0,
+      // Start `DecoderSpecificInfo`.
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
@@ -361,6 +498,43 @@ TEST_F(AacTest, DefaultWriteDecoderConfig) {
       // `depends_on_core_coder`, `extension_flag`.
       (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
           kChannelConfigurationAndGaSpecificConfigMask};
+  TestWriteDecoderConfig();
+}
+
+TEST_F(AacTest, WritesWithExtension) {
+  aac_decoder_config_.decoder_config_extension_ = {'a', 'b', 'c'};
+  aac_decoder_config_.decoder_specific_info_.decoder_specific_info_extension = {
+      'c', 'd', 'e'};
+  expected_decoder_config_payload_ = {
+      // Start `DecoderConfigDescriptor`.
+      // `decoder_config_descriptor_tag`
+      AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      23,
+      // `object_type_indication`.
+      AacDecoderConfig::kObjectTypeIndication,
+      // `stream_type`, `upstream`, `reserved`.
+      kStreamTypeUpstreamReserved,
+      // `buffer_size_db`.
+      0, 0, 0,
+      // `max_bitrate`.
+      0, 0, 0, 0,
+      // `average_bit_rate`.
+      0, 0, 0, 0,
+      // Start `DecoderSpecificInfo`.
+      // `decoder_specific_info_tag`
+      AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      5,
+      // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
+      AudioSpecificConfig::kAudioObjectType << 3 |
+          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      // lower bit of `sample_frequency_index`,
+      // `channel_configuration`, `frame_length_flag`,
+      // `depends_on_core_coder`, `extension_flag`.
+      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+          kChannelConfigurationAndGaSpecificConfigMask,
+      'c', 'd', 'e', 'a', 'b', 'c'};
   TestWriteDecoderConfig();
 }
 
@@ -386,6 +560,8 @@ TEST_F(AacTest, ExplicitSampleRate) {
   expected_decoder_config_payload_ = {
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      20,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -398,6 +574,8 @@ TEST_F(AacTest, ExplicitSampleRate) {
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      5,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
@@ -411,6 +589,10 @@ TEST_F(AacTest, ExplicitSampleRate) {
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
       ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
+  uint32_t sample_frequency;
+  EXPECT_THAT(aac_decoder_config_.GetOutputSampleRate(sample_frequency),
+              IsOk());
+  EXPECT_EQ(sample_frequency, 48000);
 }
 
 TEST_F(AacTest, ExplicitSampleRateAudioSpecificConfig) {
@@ -448,6 +630,8 @@ TEST_F(AacTest, MaxBufferSizeDb) {
   expected_decoder_config_payload_ = {
       // `decoder_config_descriptor_tag`
       AacDecoderConfig::kDecoderConfigDescriptorTag,
+      // ISO 14496:1 expandable size field.
+      17,
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
@@ -460,6 +644,8 @@ TEST_F(AacTest, MaxBufferSizeDb) {
       0, 0, 0, 0,
       // `decoder_specific_info_tag`
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
+      // ISO 14496:1 expandable size field.
+      2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
           ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),

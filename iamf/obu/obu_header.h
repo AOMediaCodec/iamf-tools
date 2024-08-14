@@ -100,6 +100,7 @@ struct ObuHeader {
              int64_t payload_serialized_size) const;
 
   ObuType obu_type;
+  // `obu_size` is inserted automatically.
   bool obu_redundant_copy = false;
   bool obu_trimming_status_flag = false;
   bool obu_extension_flag = false;

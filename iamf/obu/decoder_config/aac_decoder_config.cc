@@ -12,12 +12,15 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 
 #include <cstdint>
+#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -28,12 +31,90 @@ namespace iamf_tools {
 
 namespace {
 
+// ISO 14496:1 limits the max size of `DecoderConfigDescriptor` and
+// `DecoderSpecificInfo` to 2^28 - 1 bits.
+constexpr int32_t kMaxClassSize = (1 << 28) - 1;
+
+// We typically expect the classes in this file to be very small (except when
+// extensions are present).
+constexpr int kInternalBufferSize = 32;
+
 absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
   if (audio_roll_distance != -1) {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
   }
   return absl::OkStatus();
+}
+
+// Copies all data from `original_wb` to `output_wb` with the corresponding ISO
+// 14496-1:2010 expandable size field prepended.
+absl::Status PrependWithIso14496_1Expanded(const WriteBitBuffer& original_wb,
+                                           WriteBitBuffer& output_wb) {
+  CHECK(original_wb.IsByteAligned());
+  if (original_wb.bit_buffer().size() > kMaxClassSize) {
+    return absl::ResourceExhaustedError(
+        absl::StrCat("Buffer size ", original_wb.bit_buffer().size(),
+                     " exceeds the maximum expected size."));
+  }
+  RETURN_IF_NOT_OK(
+      output_wb.WriteIso14496_1Expanded(original_wb.bit_buffer().size()));
+  RETURN_IF_NOT_OK(output_wb.WriteUint8Vector(original_wb.bit_buffer()));
+  return absl::OkStatus();
+}
+
+absl::Status WriteDecoderSpecificInfo(
+    const AacDecoderConfig::DecoderSpecificInfo& decoder_specific_info,
+    WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      decoder_specific_info.decoder_specific_info_tag, 8));
+  // Determine the size by writing the remaining `DecoderSpecificInfo`, then
+  // prepend the size and write it to the output buffer.
+  {
+    WriteBitBuffer wb_internal(kInternalBufferSize);
+    // Write nested `audio_specific_config`.
+    RETURN_IF_NOT_OK(
+        decoder_specific_info.audio_specific_config.ValidateAndWrite(
+            wb_internal));
+    // Write the `DecoderSpecificInfo` extension.
+    RETURN_IF_NOT_OK(wb_internal.WriteUint8Vector(
+        decoder_specific_info.decoder_specific_info_extension));
+    RETURN_IF_NOT_OK(PrependWithIso14496_1Expanded(wb_internal, wb));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status GetExpectedPositionFromIso14496_1Expanded(
+    ReadBitBuffer& rb, int64_t& expected_position) {
+  uint32_t size;
+  RETURN_IF_NOT_OK(rb.ReadIso14496_1Expanded(kMaxClassSize, size));
+  expected_position =
+      (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset())) +
+      (size * 8);
+  return absl::OkStatus();
+}
+
+// Advances the buffer to the position. Dumps all skipped bytes to `extension`.
+// OK if the buffer is already at the position. Fails if the buffer would need
+// to go backwards.
+absl::Status AdvanceBufferToPosition(absl::string_view debugging_context,
+                                     ReadBitBuffer& rb,
+                                     int32_t expected_position,
+                                     std::vector<uint8_t>& extension) {
+  const int actual_position =
+      (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset()));
+  if (actual_position == expected_position) {
+    // Ok no extension is present.
+    return absl::OkStatus();
+  } else if (actual_position < expected_position) {
+    // Advance and consume the extension.
+    return rb.ReadUint8Vector((expected_position - actual_position) / 8,
+                              extension);
+  } else {
+    // The buffer is already past the position.
+    return absl::OutOfRangeError(
+        absl::StrCat("Not enough bytes to parse ", debugging_context, "."));
+  }
 }
 
 }  // namespace
@@ -124,31 +205,40 @@ absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(Validate());
 
-  // Write top-level fields.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(decoder_config_descriptor_tag_, 8));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(object_type_indication_, 8));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(stream_type_, 6));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(upstream_, 1));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_, 1));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(buffer_size_db_, 24));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(max_bitrate_, 32));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(average_bit_rate_, 32));
+  // Write the remaining `DecoderConfigDescriptor`, then once we know the size,
+  // prepend it with the expandable size field.
+  {
+    WriteBitBuffer wb_internal(kInternalBufferSize);
+    RETURN_IF_NOT_OK(
+        wb_internal.WriteUnsignedLiteral(object_type_indication_, 8));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(stream_type_, 6));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(upstream_, 1));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(reserved_, 1));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(buffer_size_db_, 24));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(max_bitrate_, 32));
+    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(average_bit_rate_, 32));
 
-  // Write nested `decoder_specific_info`.
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-      decoder_specific_info_.decoder_specific_info_tag, 8));
+    // Write nested `decoder_specific_info`.
+    RETURN_IF_NOT_OK(
+        WriteDecoderSpecificInfo(decoder_specific_info_, wb_internal));
 
-  // Write nested `audio_specific_config`.
-  RETURN_IF_NOT_OK(
-      decoder_specific_info_.audio_specific_config.ValidateAndWrite(wb));
+    RETURN_IF_NOT_OK(wb_internal.WriteUint8Vector(decoder_config_extension_));
+
+    RETURN_IF_NOT_OK(PrependWithIso14496_1Expanded(wb_internal, wb));
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status AacDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
                                                ReadBitBuffer& rb) {
-  // Write top-level fields.
+  // Read top-level fields.
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, decoder_config_descriptor_tag_));
+  int64_t end_of_decoder_config_position;
+  RETURN_IF_NOT_OK(GetExpectedPositionFromIso14496_1Expanded(
+      rb, end_of_decoder_config_position));
+
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_type_indication_));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, stream_type_));
   RETURN_IF_NOT_OK(rb.ReadBoolean(upstream_));
@@ -157,12 +247,24 @@ absl::Status AacDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, max_bitrate_));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, average_bit_rate_));
 
-  // Write nested `decoder_specific_info`.
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
-      8, decoder_specific_info_.decoder_specific_info_tag));
+  // Read nested `decoder_specific_info` the advance past its nested extension.
+  {
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
+        8, decoder_specific_info_.decoder_specific_info_tag));
+    int64_t end_of_decoder_specific_info_position;
+    RETURN_IF_NOT_OK(GetExpectedPositionFromIso14496_1Expanded(
+        rb, end_of_decoder_specific_info_position));
+    // Read nested `audio_specific_config`.
+    RETURN_IF_NOT_OK(decoder_specific_info_.audio_specific_config.Read(rb));
+    RETURN_IF_NOT_OK(AdvanceBufferToPosition(
+        "decoder_specific_info", rb, end_of_decoder_specific_info_position,
+        decoder_specific_info_.decoder_specific_info_extension));
+  }
+  // Advance past the top-level extension.
+  RETURN_IF_NOT_OK(AdvanceBufferToPosition("decoder_config_descriptor", rb,
+                                           end_of_decoder_config_position,
+                                           decoder_config_extension_));
 
-  // Write nested `audio_specific_config`.
-  RETURN_IF_NOT_OK(decoder_specific_info_.audio_specific_config.Read(rb));
   RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
   RETURN_IF_NOT_OK(Validate());
   return absl::OkStatus();
@@ -256,6 +358,8 @@ void AacDecoderConfig::Print() const {
   LOG(INFO) << "      decoder_specific_info(aac):";
 
   decoder_specific_info_.audio_specific_config.Print();
+  LOG(INFO) << "      // decoder_specific_info_extension omitted.";
+  LOG(INFO) << "      // decoder_config_extension omitted.";
 }
 
 }  // namespace iamf_tools
