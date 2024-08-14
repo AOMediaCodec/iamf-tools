@@ -15,7 +15,7 @@ test_vector_metadata {
   human_readable_description:
     "A simple example of a third-order mono ambisonics + LFE "
     "Base-Enhanced profile IAMF stream and a 7.1.4 output layout."
-  file_name_prefix: "test_000616"
+  file_name_prefix: "test_000632"
   is_valid: true
   is_valid_to_decode: false
   validate_user_loudness: true
