@@ -581,7 +581,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
       AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+          AacDecoderConfig::kReserved << 0,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -620,6 +620,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
             AacDecoderConfig::kObjectTypeIndication);
   EXPECT_EQ(aac_decoder_config.stream_type_, AacDecoderConfig::kStreamType);
   EXPECT_EQ(aac_decoder_config.upstream_, AacDecoderConfig::kUpstream);
+  EXPECT_EQ(aac_decoder_config.reserved_, AacDecoderConfig::kReserved);
   EXPECT_EQ(aac_decoder_config.buffer_size_db_, 0);
   EXPECT_EQ(aac_decoder_config.max_bitrate_, 0);
   EXPECT_EQ(aac_decoder_config.average_bit_rate_, 0);
@@ -631,6 +632,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
   EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
                 .sample_frequency_index_,
             AudioSpecificConfig::kSampleFrequencyIndex64000);
+  EXPECT_EQ(obu->GetOutputSampleRate(), 64000);
   EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
                 .channel_configuration_,
             AudioSpecificConfig::kChannelConfiguration);

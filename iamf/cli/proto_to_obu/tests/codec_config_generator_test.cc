@@ -134,6 +134,7 @@ void InitMetadataForAac(
             object_type_indication: 0x40
             stream_type: 0x05
             upstream: 0
+            reserved: 1
             buffer_size_db: 0
             max_bitrate: 0
             average_bit_rate: 0
@@ -169,7 +170,6 @@ void InitExpectedObuForAac(
            .num_samples_per_frame = 1024,
            .audio_roll_distance = -1,
            .decoder_config = AacDecoderConfig{
-               .reserved_ = 0,
                .buffer_size_db_ = 0,
                .max_bitrate_ = 0,
                .average_bit_rate_ = 0,

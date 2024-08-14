@@ -50,6 +50,8 @@ absl::Status AacDecoderConfig::Validate() const {
                                  "stream_type"));
   RETURN_IF_NOT_OK(
       ValidateEqual(upstream_, AacDecoderConfig::kUpstream, "upstream"));
+  RETURN_IF_NOT_OK(
+      ValidateEqual(reserved_, AacDecoderConfig::kReserved, "reserved"));
   RETURN_IF_NOT_OK(ValidateEqual(
       decoder_specific_info_.decoder_specific_info_tag,
       AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,

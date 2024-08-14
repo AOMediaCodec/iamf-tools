@@ -35,9 +35,12 @@ constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
     AudioSpecificConfig::GaSpecificConfig::kDependsOnCoreCoder << 1 |  // 1 bit.
     AudioSpecificConfig::GaSpecificConfig::kExtensionFlag << 0;        // 1 bit.
 
+constexpr uint8_t kStreamTypeUpstreamReserved =
+    AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
+    AacDecoderConfig::kReserved << 0;
+
 AacDecoderConfig GetAacDecoderConfig() {
   return AacDecoderConfig{
-      .reserved_ = 0,
       .buffer_size_db_ = 0,
       .max_bitrate_ = 0,
       .average_bit_rate_ = 0,
@@ -54,7 +57,6 @@ TEST(AacDecoderConfig, ValidateWithCommonValues) {
 
 TEST(AacDecoderConfig, ValidateWithManyVaryingValues) {
   auto aac_decoder_config = GetAacDecoderConfig();
-  aac_decoder_config.reserved_ = 1;
   aac_decoder_config.buffer_size_db_ = 1;
   aac_decoder_config.max_bitrate_ = 1;
   aac_decoder_config.average_bit_rate_ = 1;
@@ -96,6 +98,14 @@ TEST(AacDecoderConfig, ValidatesUpstream) {
   constexpr bool kInvalidUpstream = true;
   auto aac_decoder_config = GetAacDecoderConfig();
   aac_decoder_config.upstream_ = kInvalidUpstream;
+
+  EXPECT_FALSE(aac_decoder_config.Validate().ok());
+}
+
+TEST(AacDecoderConfig, ValidatesReserved) {
+  constexpr bool kInvalidReserved = false;
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.reserved_ = kInvalidReserved;
 
   EXPECT_FALSE(aac_decoder_config.Validate().ok());
 }
@@ -218,8 +228,7 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+      kStreamTypeUpstreamReserved,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -261,8 +270,7 @@ TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+      kStreamTypeUpstreamReserved,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -336,8 +344,7 @@ TEST_F(AacTest, DefaultWriteDecoderConfig) {
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+      kStreamTypeUpstreamReserved,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -382,8 +389,7 @@ TEST_F(AacTest, ExplicitSampleRate) {
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+      kStreamTypeUpstreamReserved,
       // `buffer_size_db`.
       0, 0, 0,
       // `max_bitrate`.
@@ -445,8 +451,7 @@ TEST_F(AacTest, MaxBufferSizeDb) {
       // `object_type_indication`.
       AacDecoderConfig::kObjectTypeIndication,
       // `stream_type`, `upstream`, `reserved`.
-      AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
-          0 << 0,
+      kStreamTypeUpstreamReserved,
       // `buffer_size_db`.
       0xff, 0xff, 0xff,
       // `max_bitrate`.

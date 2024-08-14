@@ -107,6 +107,7 @@ class AacDecoderConfig {
   static constexpr uint8_t kObjectTypeIndication = 0x40;
   static constexpr uint8_t kStreamType = 0x05;
   static constexpr bool kUpstream = false;
+  static constexpr bool kReserved = true;
 
   friend bool operator==(const AacDecoderConfig& lhs,
                          const AacDecoderConfig& rhs) = default;
@@ -165,7 +166,7 @@ class AacDecoderConfig {
   uint8_t object_type_indication_ = kObjectTypeIndication;
   uint8_t stream_type_ = kStreamType;  // 6 bits.
   bool upstream_ = kUpstream;
-  bool reserved_;
+  bool reserved_ = kReserved;
   uint32_t buffer_size_db_;  // 24 bits.
   uint32_t max_bitrate_;
   uint32_t average_bit_rate_;
