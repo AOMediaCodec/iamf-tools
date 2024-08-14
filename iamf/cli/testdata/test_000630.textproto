@@ -13,19 +13,19 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A simple example of a 9.1.6 + 3.0ch Base-Enhanced profile IAMF "
-    "stream and a mono output layout."
-  file_name_prefix: "test_000600"
+    "A simple example of a 7.1.4 + Stereo-TB Base-Enhanced profile IAMF "
+    "stream and a 7.1.4 output layout."
+  file_name_prefix: "test_000630"
   is_valid: true
   is_valid_to_decode: true
   validate_user_loudness: true
   mp4_fixed_timestamp: "2024-08-08 00:00:00"
   test_repository_tags: ["github/aomediacodec/libiamf/main"]
   primary_tested_spec_sections: [
+    "3.6.2/loudspeaker_layout == 7.1.4",
     "3.6.2/loudspeaker_layout == Expanded",
-    "3.6.2/expanded_loudspeaker_layout == 9.1.6",
-    "3.6.2/expanded_loudspeaker_layout == 3.0ch",
-    "3.7.3/sound_system == Mono",
+    "3.6.2/expanded_loudspeaker_layout == Stereo-TB",
+    "3.7.3/sound_system == 7.1.4",
     "3.7.4/default_mix_gain",
     "4.2/Base-Enhanced Profile",
     "8.5.1/Loudness Information"
@@ -58,21 +58,20 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 9
-    audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    num_substreams: 7
+    audio_substream_ids: [0, 1, 2, 3, 4, 5, 6]
     num_parameters: 0
     scalable_channel_layout_config {
       num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
-          loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
+          loudspeaker_layout: LOUDSPEAKER_LAYOUT_7_1_4_CH
           output_gain_is_present_flag: 0
           recon_gain_is_present_flag: 0
           reserved_a: 0
-          substream_count: 9
-          coupled_substream_count: 7
-          expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_9_1_6_CH
+          substream_count: 7
+          coupled_substream_count: 5
         }
       ]
     }
@@ -82,8 +81,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 2
-    audio_substream_ids: [9, 10]
+    num_substreams: 1
+    audio_substream_ids: [7]
     num_parameters: 0
     scalable_channel_layout_config {
       num_layers: 1
@@ -94,9 +93,9 @@ audio_element_metadata: [
           output_gain_is_present_flag: 0
           recon_gain_is_present_flag: 0
           reserved_a: 0
-          substream_count: 2
+          substream_count: 1
           coupled_substream_count: 1
-          expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_3_0_CH
+          expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TB
         }
       ]
     }
@@ -171,22 +170,22 @@ mix_presentation_metadata {
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -3206
-        digital_peak: -211
+        integrated_loudness: -4693
+        digital_peak: -767
       }
     }
     layouts {
       loudness_layout {
         layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
         ss_layout {
-          sound_system: SOUND_SYSTEM_12_0_1_0
+          sound_system: SOUND_SYSTEM_J_4_7_0
           reserved: 0
         }
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -3838
-        digital_peak: -498
+        integrated_loudness: -5404
+        digital_peak: -1777
       }
     }
   }
@@ -194,20 +193,23 @@ mix_presentation_metadata {
 
 audio_frame_metadata: [
   {
-    wav_filename: "Transport_9.1.6_5s.wav"
-    samples_to_trim_at_end: 640
-    samples_to_trim_at_start: 0
-    audio_element_id: 300
-    channel_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    channel_labels: ["FL", "FR", "FC", "LFE", "BL", "BR", "FLc", "FRc", "SiL", "SiR", "TpFL", "TpFR", "TpBL", "TpBR", "TpSiL", "TpSiR"]
-  },
-  {
     wav_filename: "Mechanism_5s.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
+    audio_element_id: 300
+    channel_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    channel_labels: ["L7", "R7", "C", "LFE", "Lss7", "Rss7", "Lrs7", "Rrs7", "Ltf4", "Rtf4", "Ltb4", "Rtb4"]
+  },
+  {
+    wav_filename: "Transport_9.1.6_5s.wav"
+    samples_to_trim_at_end: 640
+    samples_to_trim_at_start: 0
     audio_element_id: 301
-    channel_ids: [0, 1, 2]
-    channel_labels: ["L7", "R7", "C"]
+    channel_ids: [12, 13]
+    channel_labels: [
+      "Ltb4",  # TpBL in the original file.
+      "Rtb4"  # TpBR in the original file.
+    ]
   }
 ]
 

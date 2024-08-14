@@ -13,24 +13,24 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A simple example of a 9.1.6 + 3.0ch Base-Enhanced profile IAMF "
-    "stream and a mono output layout."
-  file_name_prefix: "test_000600"
+    "A simple example of a 9.1.6 + Stereo-F Base-Enhanced profile IAMF "
+    "stream and a 9.1.6 output layout."
+  file_name_prefix: "test_000609"
   is_valid: true
   is_valid_to_decode: true
   validate_user_loudness: true
-  mp4_fixed_timestamp: "2024-08-08 00:00:00"
+  mp4_fixed_timestamp: "2024-08-09 00:00:00"
   test_repository_tags: ["github/aomediacodec/libiamf/main"]
   primary_tested_spec_sections: [
     "3.6.2/loudspeaker_layout == Expanded",
     "3.6.2/expanded_loudspeaker_layout == 9.1.6",
-    "3.6.2/expanded_loudspeaker_layout == 3.0ch",
-    "3.7.3/sound_system == Mono",
+    "3.6.2/expanded_loudspeaker_layout == Stereo-F",
+    "3.7.3/sound_system == 9.1.6",
     "3.7.4/default_mix_gain",
     "4.2/Base-Enhanced Profile",
     "8.5.1/Loudness Information"
   ]
-  base_test: "test_000400"
+  base_test: "test_000600"
 }
 
 ia_sequence_header_metadata {
@@ -82,8 +82,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 2
-    audio_substream_ids: [9, 10]
+    num_substreams: 1
+    audio_substream_ids: [9]
     num_parameters: 0
     scalable_channel_layout_config {
       num_layers: 1
@@ -94,9 +94,9 @@ audio_element_metadata: [
           output_gain_is_present_flag: 0
           recon_gain_is_present_flag: 0
           reserved_a: 0
-          substream_count: 2
+          substream_count: 1
           coupled_substream_count: 1
-          expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_3_0_CH
+          expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_F
         }
       ]
     }
@@ -171,22 +171,22 @@ mix_presentation_metadata {
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -3206
-        digital_peak: -211
+        integrated_loudness: -3188
+        digital_peak: -455
       }
     }
     layouts {
       loudness_layout {
         layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
         ss_layout {
-          sound_system: SOUND_SYSTEM_12_0_1_0
+          sound_system: SOUND_SYSTEM_13_6_9_0
           reserved: 0
         }
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -3838
-        digital_peak: -498
+        integrated_loudness: -5044
+        digital_peak: -1760
       }
     }
   }
@@ -206,8 +206,11 @@ audio_frame_metadata: [
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 301
-    channel_ids: [0, 1, 2]
-    channel_labels: ["L7", "R7", "C"]
+    channel_ids: [0, 1]
+    channel_labels: [
+      "FL",  # L7 in the original file.
+      "FR"  # R7 in the original file.
+    ]
   }
 ]
 
