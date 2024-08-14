@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <list>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -761,6 +762,42 @@ const std::vector<std::vector<int32_t>>& GetSamples(
   return audio_frame_with_data.decoded_samples;
 }
 
+// NOOP function if the frame is not a DecodedAudioFrame.
+absl::Status PassThroughReconGainData(const AudioFrameWithData& audio_frame,
+                                      LabeledFrame& labeled_frame) {
+  return absl::OkStatus();
+}
+
+absl::Status PassThroughReconGainData(
+    const DecodedAudioFrame& decoded_audio_frame,
+    LabeledFrame& labeled_decoded_frame) {
+  if (decoded_audio_frame.audio_element_with_data == nullptr) {
+    LOG(INFO)
+        << "No audio element with data found, thus layer info is inaccessible.";
+    return absl::OkStatus();
+  }
+  auto layout_config = std::get_if<ScalableChannelLayoutConfig>(
+      &decoded_audio_frame.audio_element_with_data->obu.config_);
+  if (layout_config == nullptr) {
+    LOG(INFO) << "No scalable channel layout config found, thus recon gain "
+                 "info is not necessary.";
+    return absl::OkStatus();
+  }
+  auto& loudspeaker_layout_per_layer =
+      labeled_decoded_frame.loudspeaker_layout_per_layer;
+  loudspeaker_layout_per_layer.clear();
+  loudspeaker_layout_per_layer.reserve(
+      layout_config->channel_audio_layer_configs.size());
+  for (const auto& channel_audio_layer_config :
+       layout_config->channel_audio_layer_configs) {
+    loudspeaker_layout_per_layer.push_back(
+        channel_audio_layer_config.loudspeaker_layout);
+  }
+  labeled_decoded_frame.recon_gain_parameters =
+      decoded_audio_frame.recon_gain_info_param_data;
+  return absl::OkStatus();
+}
+
 // TODO(b/339037792): Unify `AudioFrameWithData` and `DecodedAudioFrame`.
 template <typename T>
 absl::Status StoreSamplesForAudioElementId(
@@ -801,6 +838,7 @@ absl::Status StoreSamplesForAudioElementId(
       }
       channel_index++;
     }
+    RETURN_IF_NOT_OK(PassThroughReconGainData(audio_frame, labeled_frame));
   }
 
   return absl::OkStatus();

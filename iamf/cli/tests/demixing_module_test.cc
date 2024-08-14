@@ -12,6 +12,7 @@
 #include "iamf/cli/demixing_module.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <iterator>
 #include <list>
@@ -36,6 +37,7 @@
 #include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/parameter_block.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -45,6 +47,8 @@ using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
 
 constexpr DecodedUleb128 kAudioElementId = 137;
+constexpr std::array<uint8_t, 12> kReconGainValues = {
+    255, 0, 125, 200, 150, 255, 255, 255, 255, 255, 255, 255};
 const uint32_t kZeroSamplesToTrimAtEnd = 0;
 const uint32_t kZeroSamplesToTrimAtStart = 0;
 const int kStartTimestamp = 0;
@@ -457,6 +461,64 @@ TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
   // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
   EXPECT_EQ(labeled_frame.label_to_samples.at(kDemixedR2),
             std::vector<int32_t>({500}));
+}
+
+TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  ReconGainInfoParameterData recon_gain_parameter_data;
+  recon_gain_parameter_data.recon_gain_elements.push_back(ReconGainElement{
+      .recon_gain_flag = DecodedUleb128(1), .recon_gain = kReconGainValues});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kMonoSubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = {{0}},
+      .down_mixing_params = DownMixingParams(),
+      .recon_gain_info_param_data = recon_gain_parameter_data,
+      .audio_element_with_data = &audio_elements.at(kAudioElementId)});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kL2SubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = {{0}},
+      .down_mixing_params = DownMixingParams(),
+      .recon_gain_info_param_data = recon_gain_parameter_data,
+      .audio_element_with_data = &audio_elements.at(kAudioElementId)});
+  DemixingModule demixing_module;
+  EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
+              IsOk());
+  IdLabeledFrameMap id_labeled_frame;
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  EXPECT_THAT(demixing_module.DemixAudioSamples({}, decoded_audio_frames,
+                                                id_labeled_frame,
+                                                id_to_labeled_decoded_frame),
+              IsOk());
+
+  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains(kL2));
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains(kMono));
+  EXPECT_TRUE(labeled_frame.label_to_samples.contains(kDemixedR2));
+
+  EXPECT_EQ(labeled_frame.recon_gain_parameters.recon_gain_elements.size(), 1);
+  const auto& recon_gain_element =
+      labeled_frame.recon_gain_parameters.recon_gain_elements.at(0);
+  EXPECT_EQ(recon_gain_element.recon_gain_flag, DecodedUleb128(1));
+  EXPECT_THAT(recon_gain_element.recon_gain,
+              testing::ElementsAreArray(kReconGainValues));
+  EXPECT_EQ(labeled_frame.loudspeaker_layout_per_layer.size(), 2);
+  EXPECT_THAT(labeled_frame.loudspeaker_layout_per_layer,
+              testing::ElementsAre(ChannelAudioLayerConfig::kLayoutMono,
+                                   ChannelAudioLayerConfig::kLayoutStereo));
 }
 
 class DemixingModuleTestBase {
