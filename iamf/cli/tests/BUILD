@@ -10,6 +10,7 @@ cc_test(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:audio_element",
+        "//iamf/obu:parameter_block",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

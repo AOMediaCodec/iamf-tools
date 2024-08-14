@@ -23,6 +23,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 
@@ -235,6 +236,16 @@ class ChannelLabel {
       ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout,
       const std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>&
           expanded_loudspeaker_layout);
+
+  /*!\brief Gets the demixed labels for a given recon gain flag and layout.
+   *
+   * \param loudspeaker_layout Layout of the layer to get the labels from.
+   * \param recon_gain_flag Specifies the recon gain to get the labels for.
+   * \return Demixed channel labels. Or a specific status on failure.
+   */
+  static absl::StatusOr<ChannelLabel::Label> GetDemixedChannelLabelForReconGain(
+      const ChannelAudioLayerConfig::LoudspeakerLayout& layout,
+      const ReconGainElement::ReconGainFlagBitmask& recon_gain_flag);
 };
 
 }  // namespace iamf_tools

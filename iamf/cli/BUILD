@@ -65,6 +65,7 @@ cc_library(
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
+        "//iamf/obu:parameter_block",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",

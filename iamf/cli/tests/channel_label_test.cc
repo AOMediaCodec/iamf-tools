@@ -24,6 +24,7 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 namespace {
@@ -38,6 +39,8 @@ using enum ChannelAudioLayerConfig::LoudspeakerLayout;
 
 constexpr std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>
     kNoExpandedLayout = std::nullopt;
+using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+using enum ReconGainElement::ReconGainFlagBitmask;
 
 TEST(StringToLabel, SucceedsForMonoInput) {
   EXPECT_THAT(ChannelLabel::StringToLabel("M"), IsOkAndHolds(kMono));
@@ -522,6 +525,122 @@ INSTANTIATE_TEST_SUITE_P(
          kExpandedLayout9_1_6_ch, kExpandedLayoutStereoF,
          kExpandedLayoutStereoSi, kExpandedLayoutStereoTpSi,
          kExpandedLayoutTop6Ch}));
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForL3) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout3_1_2_ch,
+                                                               kReconGainFlagL),
+              IsOkAndHolds(kDemixedL3));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForL5) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout5_1_ch,
+                                                               kReconGainFlagL),
+              IsOkAndHolds(kDemixedL5));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForL7) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout7_1_2_ch,
+                                                               kReconGainFlagL),
+              IsOkAndHolds(kDemixedL7));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForR2) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
+                                                               kReconGainFlagR),
+              IsOkAndHolds(kDemixedR2));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForR3) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout3_1_2_ch,
+                                                               kReconGainFlagR),
+              IsOkAndHolds(kDemixedR3));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForR5) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout5_1_ch,
+                                                               kReconGainFlagR),
+              IsOkAndHolds(kDemixedR5));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForR7) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout7_1_2_ch,
+                                                               kReconGainFlagR),
+              IsOkAndHolds(kDemixedR7));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForLs5) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_ch, kReconGainFlagLss),
+              IsOkAndHolds(kDemixedLs5));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForRs5) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_ch, kReconGainFlagRss),
+              IsOkAndHolds(kDemixedRs5));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForLtf2) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_ch, kReconGainFlagLtf),
+              IsOkAndHolds(kDemixedLtf2));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForRtf2) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_ch, kReconGainFlagRtf),
+              IsOkAndHolds(kDemixedRtf2));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForLrs7) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout7_1_2_ch, kReconGainFlagLrs),
+              IsOkAndHolds(kDemixedLrs7));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForRrs7) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout7_1_2_ch, kReconGainFlagRrs),
+              IsOkAndHolds(kDemixedRrs7));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForLtb4) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_4_ch, kReconGainFlagLtb),
+              IsOkAndHolds(kDemixedLtb4));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, SucceedsForRtb4) {
+  EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                  kLayout5_1_4_ch, kReconGainFlagRtb),
+              IsOkAndHolds(kDemixedRtb4));
+}
+
+TEST(GetDemixedChannelLabelForReconGain, FailsForReconGainFlagC) {
+  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
+                                                                kReconGainFlagC)
+                   .ok());
+}
+
+TEST(GetDemixedChannelLabelForReconGain, FailsForReconGainFlagLfe) {
+  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(
+                   kLayout5_1_ch, kReconGainFlagLfe)
+                   .ok());
+}
+
+TEST(GetDemixedChannelLabelForReconGain,
+     FailsForReconGainFlagLWithoutAppropriateLayout) {
+  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutStereo,
+                                                                kReconGainFlagL)
+                   .ok());
+}
+
+TEST(GetDemixedChannelLabelForReconGain,
+     FailsForReconGainFlagRWithoutAppropriateLayout) {
+  EXPECT_FALSE(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayoutMono,
+                                                                kReconGainFlagR)
+                   .ok());
+}
 
 }  // namespace
 }  // namespace iamf_tools

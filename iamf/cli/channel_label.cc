@@ -27,6 +27,7 @@
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
 
@@ -509,6 +510,71 @@ ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
   } else {
     return absl::flat_hash_set<ChannelLabel::Label>(ordered_labels->begin(),
                                                     ordered_labels->end());
+  }
+}
+
+absl::StatusOr<ChannelLabel::Label>
+ChannelLabel::GetDemixedChannelLabelForReconGain(
+    const ChannelAudioLayerConfig::LoudspeakerLayout& layout,
+    const ReconGainElement::ReconGainFlagBitmask& flag) {
+  switch (flag) {
+    using enum ReconGainElement::ReconGainFlagBitmask;
+    using enum ChannelLabel::Label;
+    using enum ChannelAudioLayerConfig::LoudspeakerLayout;
+    case kReconGainFlagL:
+      if (layout == kLayout5_1_ch || layout == kLayout5_1_2_ch ||
+          layout == kLayout5_1_4_ch) {
+        return kDemixedL5;
+      } else if (layout == kLayout7_1_ch || layout == kLayout7_1_2_ch ||
+                 layout == kLayout7_1_4_ch) {
+        return kDemixedL7;
+      } else if (layout == kLayout3_1_2_ch) {
+        return kDemixedL3;
+      } else {
+        LOG(WARNING)
+            << "Unexpected recon gain flag. No corresponding channel label.";
+        return absl::InvalidArgumentError("Unexpected recon gain flag.");
+      }
+    case kReconGainFlagC:
+      LOG(WARNING)
+          << "Unexpected recon gain flag. No corresponding channel label.";
+      return absl::InvalidArgumentError("Unexpected recon gain flag.");
+    case kReconGainFlagR:
+      if (layout == kLayoutStereo) {
+        return kDemixedR2;
+      } else if (layout == kLayout5_1_ch || layout == kLayout5_1_2_ch ||
+                 layout == kLayout5_1_4_ch) {
+        return kDemixedR5;
+      } else if (layout == kLayout7_1_ch || layout == kLayout7_1_2_ch ||
+                 layout == kLayout7_1_4_ch) {
+        return kDemixedR7;
+      } else if (layout == kLayout3_1_2_ch) {
+        return kDemixedR3;
+      } else {
+        LOG(WARNING)
+            << "Unexpected recon gain flag. No corresponding channel label.";
+        return absl::InvalidArgumentError("Unexpected recon gain flag.");
+      }
+    case kReconGainFlagLss:
+      return kDemixedLs5;
+    case kReconGainFlagRss:
+      return kDemixedRs5;
+    case kReconGainFlagLtf:
+      return kDemixedLtf2;
+    case kReconGainFlagRtf:
+      return kDemixedRtf2;
+    case kReconGainFlagLrs:
+      return kDemixedLrs7;
+    case kReconGainFlagRrs:
+      return kDemixedRrs7;
+    case kReconGainFlagLtb:
+      return kDemixedLtb4;
+    case kReconGainFlagRtb:
+      return kDemixedRtb4;
+    case kReconGainFlagLfe:
+      LOG(WARNING)
+          << "Unexpected recon gain flag. No corresponding channel label.";
+      return absl::InvalidArgumentError("Unexpected recon gain flag.");
   }
 }
 
