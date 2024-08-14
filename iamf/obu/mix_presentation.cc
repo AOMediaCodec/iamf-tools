@@ -37,7 +37,6 @@ absl::Status ValidateUniqueAudioElementIds(
     const std::vector<MixPresentationSubMix>& sub_mixes) {
   std::vector<DecodedUleb128> collected_audio_element_ids;
 
-  absl::flat_hash_set<DecodedUleb128> seen_audio_element_ids;
   // Audio Element IDs must be unique across all sub-mixes.
   for (const auto& sub_mix : sub_mixes) {
     for (const auto& audio_element : sub_mix.audio_elements) {
@@ -63,9 +62,14 @@ absl::Status ValidateUniqueAnchorElements(
 }
 
 absl::Status ValidateAndWriteSubMixAudioElement(
-    const SubMixAudioElement& element, WriteBitBuffer& wb) {
+    DecodedUleb128 count_label, const SubMixAudioElement& element,
+    WriteBitBuffer& wb) {
   // Write the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(element.audio_element_id));
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      absl::StrCat("localized_element_annotations with audio_element_id= ",
+                   element.audio_element_id),
+      element.localized_element_annotations.size(), count_label));
   for (const auto& localized_element_annotation :
        element.localized_element_annotations) {
     RETURN_IF_NOT_OK(wb.WriteString(localized_element_annotation));
@@ -157,7 +161,8 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   return absl::OkStatus();
 }
 
-absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
+absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
+                                    const MixPresentationSubMix& sub_mix,
                                     WriteBitBuffer& wb) {
   // IAMF requires there to be at least one audio element.
   RETURN_IF_NOT_OK(ValidateNotEqual(
@@ -171,8 +176,8 @@ absl::Status ValidateAndWriteSubMix(const MixPresentationSubMix& sub_mix,
                                            sub_mix.audio_elements.size(),
                                            sub_mix.num_audio_elements));
   for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
-    RETURN_IF_NOT_OK(
-        ValidateAndWriteSubMixAudioElement(sub_mix_audio_element, wb));
+    RETURN_IF_NOT_OK(ValidateAndWriteSubMixAudioElement(
+        count_label, sub_mix_audio_element, wb));
   }
 
   RETURN_IF_NOT_OK(sub_mix.output_mix_gain.ValidateAndWrite(wb));
@@ -407,23 +412,30 @@ absl::Status MixPresentationObu::GetNumChannelsFromLayout(
 
 absl::Status MixPresentationObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
+  const std::string with_mix_presentation_id =
+      absl::StrCat(" with mix_presentation_id= ", mix_presentation_id_);
+
   // Write the main portion of the OBU.
   RETURN_IF_NOT_OK(wb.WriteUleb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(wb.WriteUleb128(count_label_));
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
       "language_labels", annotations_language_.size(), count_label_));
-  RETURN_IF_NOT_OK(ValidateUnique(annotations_language_.begin(),
-                                  annotations_language_.end(),
-                                  "Language labels"));
+  RETURN_IF_NOT_OK(ValidateUnique(
+      annotations_language_.begin(), annotations_language_.end(),
+      absl::StrCat("Language labels", with_mix_presentation_id)));
 
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      absl::StrCat("annotations_language", with_mix_presentation_id),
+      annotations_language_.size(), count_label_));
   for (const auto& annotations_language : annotations_language_) {
     RETURN_IF_NOT_OK(wb.WriteString(annotations_language));
   }
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("mix presentation annotations",
-                                           annotations_language_.size(),
-                                           count_label_));
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+      absl::StrCat("localized_presentation_annotation",
+                   with_mix_presentation_id),
+      localized_presentation_annotations_.size(), count_label_));
   for (const auto& localized_presentation_annotation :
        localized_presentation_annotations_) {
     RETURN_IF_NOT_OK(wb.WriteString(localized_presentation_annotation));
@@ -437,7 +449,7 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(
       ValidateVectorSizeEqual("sub_mixes", sub_mixes_.size(), num_sub_mixes_));
   for (const auto& sub_mix : sub_mixes_) {
-    RETURN_IF_NOT_OK(ValidateAndWriteSubMix(sub_mix, wb));
+    RETURN_IF_NOT_OK(ValidateAndWriteSubMix(count_label_, sub_mix, wb));
   }
 
   return absl::OkStatus();

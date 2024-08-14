@@ -256,6 +256,41 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
 }
 
 TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithInconsistentCountLabelAndAnnotationsLanguage) {
+  count_label_ = 1;
+  annotations_language_.clear();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST_F(
+    MixPresentationObuTest,
+    ValidateAndWriteFailsWithInconsistentCountLabelAndLocalizedPresentationAnnotations) {
+  count_label_ = 1;
+  localized_presentation_annotations_.clear();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST_F(
+    MixPresentationObuTest,
+    ValidateAndWriteFailsWithInconsistentCountLabelAndLocalizedElementAnnotations) {
+  count_label_ = 1;
+  sub_mixes_[0].audio_elements[0].localized_element_annotations.clear();
+
+  InitExpectOk();
+  WriteBitBuffer unused_wb(0);
+
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+}
+
+TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithInvalidNonUniqueAudioElementIds) {
   ASSERT_EQ(sub_mixes_.size(), 1);
   ASSERT_EQ(sub_mixes_[0].audio_elements.size(), 1);

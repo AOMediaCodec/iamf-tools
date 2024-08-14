@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Fix parsing multi-byte UTF-8 characters on certain platforms.
 -   Fix crashes when attempting to encode audio frames without the correct
     number of `substream_id`s.
+-   Prevent encoding Mix Presentation OBUs with an inconsistent number of
+    annotations.
 
 ## [1.0.0] - 2024-01-26
 
