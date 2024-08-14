@@ -20,6 +20,9 @@ test_vector_metadata {
   is_valid_to_decode: true
   validate_user_loudness: true
   mp4_fixed_timestamp: "2023-08-08 00:00:00"
+  # TODO(b/350763115): Add "github/aomediacodec/libiamf/main" once this is
+  #                    ready to to publish on libiamf.
+  test_repository_tags: []
   primary_tested_spec_sections: [
     "3.6.2/loudspeaker_layout == Expanded",
     "3.6.2/expanded_loudspeaker_layout == 9.1.6",
