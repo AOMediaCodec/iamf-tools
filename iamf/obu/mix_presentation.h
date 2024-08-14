@@ -367,12 +367,13 @@ class MixPresentationObu : public ObuBase {
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `MixPresentationObu` data is stored.
    *     Data read from the buffer is consumed.
    * \return A `MixPresentationObu` on success. A specific status on failure.
    */
   static absl::StatusOr<MixPresentationObu> CreateFromBuffer(
-      const ObuHeader& header, ReadBitBuffer& rb);
+      const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb);
 
   /*!\brief Move Constructor. */
   MixPresentationObu(MixPresentationObu&& other) = default;
@@ -439,11 +440,13 @@ class MixPresentationObu : public ObuBase {
 
   /*!\brief Reads the OBU payload from the buffer.
    *
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                             ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

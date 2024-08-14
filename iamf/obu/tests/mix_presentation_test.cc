@@ -929,7 +929,8 @@ TEST(CreateFromBufferTest, RejectEmptyBitstream) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_FALSE(MixPresentationObu::CreateFromBuffer(header, buffer).ok());
+  EXPECT_FALSE(
+      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
 }
 
 TEST(CreateFromBufferTest, RejectNoSubMix) {
@@ -950,7 +951,8 @@ TEST(CreateFromBufferTest, RejectNoSubMix) {
   };
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_FALSE(MixPresentationObu::CreateFromBuffer(header, buffer).ok());
+  EXPECT_FALSE(
+      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
 }
 
 TEST(CreateFromBufferTest, OneSubMix) {
@@ -992,7 +994,8 @@ TEST(CreateFromBufferTest, OneSubMix) {
   };
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = MixPresentationObu::CreateFromBuffer(header, buffer);
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);

@@ -111,11 +111,13 @@ class ArbitraryObu : public ObuBase {
 
   /*!\brief Reads the OBU payload from the buffer.
    *
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                             ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

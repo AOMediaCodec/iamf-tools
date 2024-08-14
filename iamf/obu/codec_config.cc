@@ -100,9 +100,9 @@ CodecConfigObu::CodecConfigObu(const ObuHeader& header,
       codec_config_(std::move(codec_config)) {}
 
 absl::StatusOr<CodecConfigObu> CodecConfigObu::CreateFromBuffer(
-    const ObuHeader& header, ReadBitBuffer& rb) {
+    const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
   CodecConfigObu codec_config_obu(header);
-  RETURN_IF_NOT_OK(codec_config_obu.ReadAndValidatePayload(rb));
+  RETURN_IF_NOT_OK(codec_config_obu.ReadAndValidatePayload(payload_size, rb));
   RETURN_IF_NOT_OK(codec_config_obu.Initialize());
   return codec_config_obu;
 }
@@ -191,7 +191,8 @@ absl::Status CodecConfigObu::ReadAndValidateDecoderConfig(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-absl::Status CodecConfigObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
+absl::Status CodecConfigObu::ReadAndValidatePayloadDerived(
+    int64_t /*payload_size*/, ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
   uint64_t codec_id;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, codec_id));

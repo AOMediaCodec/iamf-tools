@@ -251,7 +251,7 @@ absl::Status ReconGainInfoParameterData::ReadAndValidate(
 }
 
 absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
-    const ObuHeader& header,
+    const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
         parameter_id_to_metadata,
     ReadBitBuffer& rb) {
@@ -265,7 +265,8 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
   }
 
   ParameterBlockObu parameter_block_obu(header, parameter_id, it->second);
-  RETURN_IF_NOT_OK(parameter_block_obu.ReadAndValidatePayload(rb));
+  RETURN_IF_NOT_OK(
+      parameter_block_obu.ReadAndValidatePayload(payload_size, rb));
   return parameter_block_obu;
 }
 
@@ -642,7 +643,8 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   return absl::OkStatus();
 }
 
-absl::Status ParameterBlockObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
+absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
+    int64_t /*payload_size*/, ReadBitBuffer& rb) {
   // Validate the associated `param_definition`.
   RETURN_IF_NOT_OK(metadata_.param_definition.Validate());
 

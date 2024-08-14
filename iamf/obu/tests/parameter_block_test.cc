@@ -216,7 +216,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
   per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
-      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+      ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
+      per_param_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data.
@@ -281,7 +282,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   ASSERT_THAT(param_definition.SetSubblockDuration(1, 3), IsOk());
   ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
-      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+      ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
+      per_param_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
@@ -344,7 +346,7 @@ TEST(ParameterBlockObu,
 
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   per_param_metadata, buffer)
+                   source_data.size(), per_param_metadata, buffer)
                    .ok());
 }
 
@@ -376,7 +378,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
   per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock},
-                  per_param_metadata, buffer),
+                  source_data.size(), per_param_metadata, buffer),
               absl_testing::IsOk());
 
   // When there is no matching metadata, the parameter block cannot be created.
@@ -384,7 +386,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
   ReadBitBuffer buffer_to_use_without_metadata(1024, &source_data);
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   per_param_metadata, buffer_to_use_without_metadata)
+                   source_data.size(), per_param_metadata,
+                   buffer_to_use_without_metadata)
                    .ok());
 }
 
@@ -411,7 +414,8 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
   param_definition.constant_subblock_duration_ = 10;
   param_definition.InitializeSubblockDurations(1);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
-      ObuHeader{.obu_type = kObuIaParameterBlock}, per_param_metadata, buffer);
+      ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
+      per_param_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data

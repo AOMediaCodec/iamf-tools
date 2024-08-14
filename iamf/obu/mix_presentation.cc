@@ -456,13 +456,15 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
 }
 
 absl::StatusOr<MixPresentationObu> MixPresentationObu::CreateFromBuffer(
-    const ObuHeader& header, ReadBitBuffer& rb) {
+    const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
   MixPresentationObu mix_presentation_obu(header);
-  RETURN_IF_NOT_OK(mix_presentation_obu.ReadAndValidatePayload(rb));
+  RETURN_IF_NOT_OK(
+      mix_presentation_obu.ReadAndValidatePayload(payload_size, rb));
   return mix_presentation_obu;
 }
 
-absl::Status MixPresentationObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
+absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
+    int64_t /*payload_size*/, ReadBitBuffer& rb) {
   // Read the main portion of the OBU.
   RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
@@ -491,6 +493,8 @@ absl::Status MixPresentationObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
     RETURN_IF_NOT_OK(sub_mix.ReadAndValidate(count_label_, rb));
     sub_mixes_.push_back(sub_mix);
   }
+  // TODO(b/329705373): Examine how many bytes were read so far. Use this to
+  //                    determine if Mix Presentation Tags should be read.
 
   RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes_));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));

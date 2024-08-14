@@ -70,19 +70,38 @@ class ObuBase {
    */
   virtual absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const = 0;
 
-  /*!\brief Reads the OBU payload from the buffer.
+  /*!\brief Reads the entire OBU payload from the buffer.
    *
+   * This includes reading in any extra bytes signalled by `obu_size`, but not
+   * known to the `ReadAndValidatePayloadDerived` implementation.
+   *
+   * \param payload_size Size of the remaining payload to read.
    * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   * \return `absl::OkStatus()` if the payload is valid and at least as large
+   *     as the claimed size. A specific status on failure.
    */
-  virtual absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) = 0;
+  absl::Status ReadAndValidatePayload(int64_t payload_size, ReadBitBuffer& rb);
 
   /*!\brief Prints logging information about the OBU Header.
    *
    * \param payload_size Payload size of the header.
    */
   void PrintHeader(int64_t payload_size) const;
+
+ private:
+  /*!\brief Reads the known OBU payload from the buffer.
+   *
+   * Implementations of this function MAY omit reading any bytes not known -
+   * even if their presence is implied by `payload_size`.
+   *
+   * \param payload_size Size of the obu payload in bytes. Useful to determine
+   *     some fields whose presence or size are not directly signalled
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the payload is valid. A specific status on
+   *     failure.
+   */
+  virtual absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                                     ReadBitBuffer& rb) = 0;
 };
 
 }  // namespace iamf_tools

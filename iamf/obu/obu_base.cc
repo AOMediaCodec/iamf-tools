@@ -20,6 +20,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 
@@ -61,6 +62,14 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
   }
 
   return absl::OkStatus();
+}
+
+absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
+                                             ReadBitBuffer& rb) {
+  // TODO(b/340289722): Examine how many bytes are read from the buffer. If too
+  //                    many bytes are read this function should fail. If too
+  //                    few this function should consume the "footer".
+  return ReadAndValidatePayloadDerived(payload_size_bytes, rb);
 }
 
 void ObuBase::PrintHeader(int64_t payload_size_bytes) const {

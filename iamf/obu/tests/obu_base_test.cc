@@ -11,10 +11,15 @@
  */
 #include "iamf/obu/obu_base.h"
 
+#include <cstdint>
+#include <vector>
+
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -37,7 +42,8 @@ class ImaginaryObuNonIntegerBytes : public ObuBase {
     return wb.WriteUnsignedLiteral(0, 1);
   }
 
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
+  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                             ReadBitBuffer& rb) override {
     return absl::OkStatus();
   }
 };
@@ -57,6 +63,14 @@ class OneByteObu : public ObuBase {
   explicit OneByteObu(const ObuHeader& header)
       : ObuBase(header, kObuIaReserved24) {}
 
+  static absl::StatusOr<OneByteObu> CreateFromBuffer(const ObuHeader& header,
+                                                     int64_t payload_size,
+                                                     ReadBitBuffer& rb) {
+    OneByteObu obu(header);
+    RETURN_IF_NOT_OK(obu.ReadAndValidatePayload(payload_size, rb));
+    return obu;
+  }
+
   ~OneByteObu() override = default;
   void PrintObu() const override {}
 
@@ -65,8 +79,10 @@ class OneByteObu : public ObuBase {
     return wb.WriteUnsignedLiteral(255, 8);
   }
 
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
-    return absl::OkStatus();
+  absl::Status ReadAndValidatePayloadDerived(int64_t /*payload_size*/,
+                                             ReadBitBuffer& rb) override {
+    uint8_t payload_to_read;
+    return rb.ReadUnsignedLiteral(8, payload_to_read);
   }
 };
 
@@ -75,6 +91,7 @@ TEST(ObuBaseTest, OneByteObu) {
 
   WriteBitBuffer wb(1024);
   EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
+
   ValidateObuWriteResults(wb,
                           {kObuIaReserved24 << 3,
                            // `obu_size`.
@@ -98,6 +115,40 @@ TEST(ObuBaseTest, OneByteObuExtensionHeader) {
                            // `extension_header_bytes`.
                            128},
                           {255});
+}
+
+TEST(ObuBaseTest, ReadWithConsistentSize) {
+  std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
+  ReadBitBuffer rb(1024, &source_data);
+
+  auto obu = OneByteObu::CreateFromBuffer(ObuHeader(), 1, rb);
+  EXPECT_THAT(obu, IsOk());
+}
+
+// TODO(b/340289722): Update behavior to fail because too many bytes were
+//                    parsed.
+TEST(ObuBaseTest, ReadSucceedsWhenSizeIsTooSmall) {
+  const int64_t kSizeTooSmall = 0;
+  std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
+  ReadBitBuffer rb(1024, &source_data);
+
+  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, rb),
+              IsOk());
+}
+
+TEST(ObuBaseTest, ReadSucceedsWhenSizeIsTooLarge) {
+  const int64_t kSizeWithExtraData = 5;
+
+  std::vector<uint8_t> source_data = {255, 'e', 'x', 't'};
+  ReadBitBuffer rb(1024, &source_data);
+
+  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), kSizeWithExtraData, rb),
+              IsOk());
+
+  // TODO(b/340289722): Update to expect that the buffer is after the 'e', 'x',
+  //                    't', bytes. Add a test that the "footer" is ['e', 'x',
+  //                    't'].
+  EXPECT_EQ(rb.buffer_bit_offset(), 8);
 }
 
 }  // namespace

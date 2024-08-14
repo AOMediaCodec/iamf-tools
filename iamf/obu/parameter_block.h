@@ -230,13 +230,14 @@ class ParameterBlockObu : public ObuBase {
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
+   * \param payload_size Size of the obu payload in bytes.
    * \param metadata Map containing the Per-ID parameter metadata.
    * \param rb `ReadBitBuffer` where the `ParameterBlockObu` data is stored.
    * Data read from the buffer is consumed.
    * \return a `ParameterBlockObu` on success. A specific status on failure.
    */
   static absl::StatusOr<ParameterBlockObu> CreateFromBuffer(
-      const ObuHeader& header,
+      const ObuHeader& header, int64_t payload_size,
       absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata,
       ReadBitBuffer& rb);
@@ -385,11 +386,13 @@ class ParameterBlockObu : public ObuBase {
 
   /*!\brief Reads the OBU payload from the buffer.
    *
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                             ReadBitBuffer& rb) override;
 
   // `duration` and `constant_subblock_duration` are conditionally included
   // based on `param_definition_mode`.

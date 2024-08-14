@@ -595,9 +595,9 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
       codec_config_id_(codec_config_id) {}
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
-    const ObuHeader& header, ReadBitBuffer& rb) {
+    const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
   AudioElementObu audio_element_obu(header);
-  RETURN_IF_NOT_OK(audio_element_obu.ReadAndValidatePayload(rb));
+  RETURN_IF_NOT_OK(audio_element_obu.ReadAndValidatePayload(payload_size, rb));
   return audio_element_obu;
 }
 
@@ -788,7 +788,8 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
   return absl::OkStatus();
 }
 
-absl::Status AudioElementObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
+absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
+    int64_t /*payload_size*/, ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id_));
   uint8_t audio_element_type;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, audio_element_type));

@@ -143,7 +143,7 @@ TEST(CreateFromBuffer, SimpleAndBaseProfile) {
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
-      IASequenceHeaderObu::CreateFromBuffer(header, buffer);
+      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfSimpleProfile);
@@ -162,7 +162,7 @@ TEST(CreateFromBuffer, BaseEnhancedProfile) {
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
-      IASequenceHeaderObu::CreateFromBuffer(header, buffer);
+      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseEnhancedProfile);
@@ -181,7 +181,9 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs3) {
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
-  EXPECT_FALSE(IASequenceHeaderObu::CreateFromBuffer(header, buffer).ok());
+  EXPECT_FALSE(
+      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer)
+          .ok());
 }
 
 TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
@@ -195,7 +197,9 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
-  EXPECT_FALSE(IASequenceHeaderObu::CreateFromBuffer(header, buffer).ok());
+  EXPECT_FALSE(
+      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer)
+          .ok());
 }
 
 struct IASequenceHeaderInitArgs {

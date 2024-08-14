@@ -45,14 +45,14 @@ class AudioFrameObu : public ObuBase {
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
-   * \param obu_payload_serialized_size Size of the obu payload in bytes.
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `AudioFrameObu` data is stored.
    *     Data read from the buffer is consumed.
    * \return a `AudioFrameObu` on success. A specific status on failure.
    */
-  static absl::StatusOr<AudioFrameObu> CreateFromBuffer(
-      const ObuHeader& header, int64_t obu_payload_serialized_size,
-      ReadBitBuffer& rb);
+  static absl::StatusOr<AudioFrameObu> CreateFromBuffer(const ObuHeader& header,
+                                                        int64_t payload_size,
+                                                        ReadBitBuffer& rb);
 
   /*!\brief Constructor.
    *
@@ -85,9 +85,6 @@ class AudioFrameObu : public ObuBase {
   // This field is not serialized when in the range [0, 17].
   DecodedUleb128 audio_substream_id_;
 
-  // Size of the obu in bytes. Used for the decoder only.
-  int64_t payload_serialized_size_ = 0;
-
   // Used only by the factory create function.
   explicit AudioFrameObu(const ObuHeader& header)
       : ObuBase(header, header.obu_type),
@@ -103,11 +100,13 @@ class AudioFrameObu : public ObuBase {
 
   /*!\brief Reads the OBU payload from the buffer.
    *
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
    *     failure.
    */
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
+                                             ReadBitBuffer& rb) override;
 };
 
 }  // namespace iamf_tools

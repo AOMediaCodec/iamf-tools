@@ -1877,7 +1877,8 @@ TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, buffer).ok());
+  EXPECT_FALSE(
+      AudioElementObu::CreateFromBuffer(header, source.size(), buffer).ok());
 }
 
 TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
@@ -1923,7 +1924,7 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
       0, 1};
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -1999,7 +2000,7 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
       1};
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
 
   EXPECT_FALSE(obu.ok());
 }
@@ -2028,7 +2029,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
   };
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -2075,7 +2076,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
       0x00, 0x0d, 0x00, 0x0e, 0x00, 0x0f, 0x00, 0x10};
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());

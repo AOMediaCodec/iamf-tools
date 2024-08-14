@@ -145,6 +145,7 @@ cc_test(
     name = "obu_base_test",
     srcs = ["obu_base_test.cc"],
     deps = [
+        "//iamf/common:macros",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
@@ -152,6 +153,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_googletest//:gtest_main",
     ],
 )

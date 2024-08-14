@@ -534,7 +534,7 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, buffer);
+      CodecConfigObu::CreateFromBuffer(header, source_data.size(), buffer);
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
@@ -602,7 +602,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, buffer);
+      CodecConfigObu::CreateFromBuffer(header, source_data.size(), buffer);
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
@@ -672,7 +672,7 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, buffer);
+      CodecConfigObu::CreateFromBuffer(header, source_data.size(), buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);

@@ -12,8 +12,11 @@
 #ifndef OBU_TEMPORAL_DELIMITER_H_
 #define OBU_TEMPORAL_DELIMITER_H_
 
+#include <cstdint>
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -30,13 +33,16 @@ class TemporalDelimiterObu : public ObuBase {
    * `TemporalDelimiterObu` has no payload.
    *
    * \param header `ObuHeader` of the OBU.
+   * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `TemporalDelimiterObu` data is stored.
    *     Data read from the buffer is consumed.
    * \return a `TemporalDelimiterObu` on success. A specific status on failure.
    */
   static absl::StatusOr<TemporalDelimiterObu> CreateFromBuffer(
-      const ObuHeader& header, ReadBitBuffer& /*rb*/) {
-    return TemporalDelimiterObu(header);
+      const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
+    TemporalDelimiterObu obu(header);
+    RETURN_IF_NOT_OK(obu.ReadAndValidatePayload(payload_size, rb));
+    return obu;
   }
 
   /*!\brief Constructor. */
@@ -72,7 +78,8 @@ class TemporalDelimiterObu : public ObuBase {
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` always.
    */
-  absl::Status ReadAndValidatePayload(ReadBitBuffer& rb) override {
+  absl::Status ReadAndValidatePayloadDerived(int64_t /*payload_size*/,
+                                             ReadBitBuffer& rb) override {
     return absl::OkStatus();
   };
 };

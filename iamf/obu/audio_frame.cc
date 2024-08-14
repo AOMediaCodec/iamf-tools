@@ -48,11 +48,9 @@ AudioFrameObu::AudioFrameObu(const ObuHeader& header,
       audio_substream_id_(substream_id) {}
 
 absl::StatusOr<AudioFrameObu> AudioFrameObu::CreateFromBuffer(
-    const ObuHeader& header, const int64_t obu_payload_serialized_size,
-    ReadBitBuffer& rb) {
+    const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
   AudioFrameObu audio_frame_obu(header);
-  audio_frame_obu.payload_serialized_size_ = obu_payload_serialized_size;
-  RETURN_IF_NOT_OK(audio_frame_obu.ReadAndValidatePayload(rb));
+  RETURN_IF_NOT_OK(audio_frame_obu.ReadAndValidatePayload(payload_size, rb));
   return audio_frame_obu;
 }
 
@@ -67,7 +65,8 @@ absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   return absl::OkStatus();
 }
 
-absl::Status AudioFrameObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
+absl::Status AudioFrameObu::ReadAndValidatePayloadDerived(int64_t payload_size,
+                                                          ReadBitBuffer& rb) {
   int8_t encoded_uleb128_size = 0;
   if (header_.obu_type == kObuIaAudioFrame) {
     // The ID is explicitly in the bitstream when `kObuIaAudioFrame`. Otherwise
@@ -76,8 +75,8 @@ absl::Status AudioFrameObu::ReadAndValidatePayload(ReadBitBuffer& rb) {
   } else {
     audio_substream_id_ = header_.obu_type - kObuIaAudioFrameId0;
   }
-  RETURN_IF_NOT_OK(rb.ReadUint8Vector(
-      payload_serialized_size_ - encoded_uleb128_size, audio_frame_));
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Vector(payload_size - encoded_uleb128_size, audio_frame_));
   return absl::OkStatus();
 }
 

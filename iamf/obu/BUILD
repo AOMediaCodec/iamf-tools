@@ -220,6 +220,7 @@ cc_library(
     deps = [
         ":obu_base",
         ":obu_header",
+        "//iamf/common:macros",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/status",
