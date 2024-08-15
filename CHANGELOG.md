@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Add a library to process ADM files into `UserMetadata`.
 -   Add support for ADM input in the encoder.
 -   Add support for binary proto input in the encoder.
--   Add support for "Expanded" layouts for Base-Enhanced profile.
+-   Add support for Base-Enhanced profile for IAMF v1.1 ("Expanded" layouts, Mix
+    Presentation Tags).
 
 ### Deprecated
 

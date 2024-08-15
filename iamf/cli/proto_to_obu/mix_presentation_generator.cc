@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <list>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -300,6 +301,22 @@ absl::Status FillLayouts(
   return absl::OkStatus();
 }
 
+absl::Status FillMixPresentationTags(
+    const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
+    std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
+  obu_mix_presentation_tags = MixPresentationTags{};
+  RETURN_IF_NOT_OK(Uint32ToUint8(mix_presentation_tags.num_tags(),
+                                 obu_mix_presentation_tags->num_tags));
+  for (const auto& input_tag : mix_presentation_tags.tags()) {
+    obu_mix_presentation_tags->tags.push_back(MixPresentationTags::Tag{
+        .tag_name = input_tag.tag_name(),
+        .tag_value = input_tag.tag_value(),
+    });
+  }
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status MixPresentationGenerator::CopyInfoType(
@@ -447,6 +464,8 @@ absl::Status MixPresentationGenerator::Generate(
       DecodedUleb128 num_sub_mixes;
       // Length `num_sub_mixes`.
       std::vector<MixPresentationSubMix> sub_mixes;
+
+      std::optional<MixPresentationTags> mix_presentation_tags;
     } obu_args;
 
     obu_args.mix_presentation_id =
@@ -489,13 +508,22 @@ absl::Status MixPresentationGenerator::Generate(
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));
     }
+    if (mix_presentation_metadata.include_mix_presentation_tags()) {
+      RETURN_IF_NOT_OK(FillMixPresentationTags(
+          mix_presentation_metadata.mix_presentation_tags(),
+          obu_args.mix_presentation_tags));
+    } else {
+      obu_args.mix_presentation_tags = std::nullopt;
+    }
 
-    mix_presentation_obus.emplace_back(
+    MixPresentationObu obu(
         GetHeaderFromMetadata(mix_presentation_metadata.obu_header()),
         obu_args.mix_presentation_id, obu_args.count_label,
         obu_args.annotations_language,
         obu_args.localized_presentation_annotations, obu_args.num_sub_mixes,
         obu_args.sub_mixes);
+    obu.mix_presentation_tags_ = obu_args.mix_presentation_tags;
+    mix_presentation_obus.emplace_back(std::move(obu));
   }
   return absl::OkStatus();
 }

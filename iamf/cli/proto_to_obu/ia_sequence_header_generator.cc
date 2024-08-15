@@ -37,9 +37,6 @@ absl::Status CopyProfileVersion(
       obu_profile_version = kIamfBaseProfile;
       return absl::OkStatus();
     case PROFILE_VERSION_BASE_ENHANCED:
-      // TODO(b/350763115): Remove the warning once the profile is fully
-      //                    supported.
-      LOG(WARNING) << "Base Enhanced profile has limited support.";
       obu_profile_version = kIamfBaseEnhancedProfile;
       return absl::OkStatus();
     default:

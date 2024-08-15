@@ -356,6 +356,73 @@ TEST(Generate, ObeysInconsistentNumberOfLabels) {
       kNoAudioElementLocalizedElementAnnotations);
 }
 
+TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
+  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 0);
+  EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
+}
+
+TEST(Generate, CopiesDuplicateContentLanguageTags) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+  mix_presentation.mutable_mix_presentation_tags()->set_num_tags(2);
+  auto* first_tag =
+      mix_presentation.mutable_mix_presentation_tags()->add_tags();
+  first_tag->set_tag_name("content_language");
+  first_tag->set_tag_value("en-us");
+  auto* second_tag =
+      mix_presentation.mutable_mix_presentation_tags()->add_tags();
+  second_tag->set_tag_name("content_language");
+  second_tag->set_tag_value("en-uk");
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
+  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 2);
+  ASSERT_EQ(first_obu.mix_presentation_tags_->tags.size(), 2);
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_name,
+            "content_language");
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_value, "en-us");
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_name,
+            "content_language");
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_value, "en-uk");
+}
+
+TEST(Generate, IgnoresTagsWhenSetIncludeMixPresentationTagsIsFalse) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(false);
+  auto* tag = mix_presentation.mutable_mix_presentation_tags()->add_tags();
+  tag->set_tag_name("ignored_tag_name");
+  tag->set_tag_value("ignored_tag_value");
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  EXPECT_FALSE(first_obu.mix_presentation_tags_.has_value());
+}
+
 class MixPresentationGeneratorTest : public ::testing::Test {
  public:
   void SetUp() override {
