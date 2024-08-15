@@ -24,7 +24,6 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/obu_header.h"
-#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
@@ -147,6 +146,17 @@ TEST(Generate, SetsPrimaryProfileBaseEnhanced) {
             ProfileVersion::kIamfBaseEnhancedProfile);
 }
 
+TEST(Generate, InvalidWhenPrimaryProfileReserved255) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_primary_profile(
+      iamf_tools_cli_proto::PROFILE_VERSION_RESERVED_255);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+
+  EXPECT_FALSE(generator.Generate(output_obu).ok());
+}
+
 TEST(Generate, SetsAdditionalProfileBase) {
   auto metadata = GetSimpleProfileMetadata();
   metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
@@ -172,6 +182,17 @@ TEST(Generate, SetsAdditionalProfileBaseEnhanced) {
 
   EXPECT_EQ(output_obu->GetAdditionalProfile(),
             ProfileVersion::kIamfBaseEnhancedProfile);
+}
+
+TEST(Generate, SetsAdditionalProfileReserved255) {
+  auto metadata = GetSimpleProfileMetadata();
+  metadata.set_additional_profile(
+      iamf_tools_cli_proto::PROFILE_VERSION_RESERVED_255);
+
+  std::optional<IASequenceHeaderObu> output_obu;
+  const IaSequenceHeaderGenerator generator(metadata);
+
+  EXPECT_FALSE(generator.Generate(output_obu).ok());
 }
 
 TEST(Generate, InvalidWhenEnumIsInvalid) {

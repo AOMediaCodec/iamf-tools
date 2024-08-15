@@ -79,12 +79,13 @@ TEST(Validate, FailsWithUnsupportedPrimaryProfile3) {
   EXPECT_FALSE(profile_3_obu.Validate().ok());
 }
 
-TEST(Validate, FailsWithUnsupportedPrimaryProfile255) {
-  const IASequenceHeaderObu profile_255_obu(
+TEST(Validate, FailsWithUnsupportedPrimaryProfileReserved255) {
+  const IASequenceHeaderObu reserved_profile_255_obu(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
-      static_cast<ProfileVersion>(255), ProfileVersion::kIamfSimpleProfile);
+      ProfileVersion::kIamfReserved255Profile,
+      ProfileVersion::kIamfSimpleProfile);
 
-  EXPECT_FALSE(profile_255_obu.Validate().ok());
+  EXPECT_FALSE(reserved_profile_255_obu.Validate().ok());
 }
 
 TEST(Validate, FailsWithInvalidIaCode) {
@@ -191,7 +192,7 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
       // `ia_code`.
       0x69, 0x61, 0x6d, 0x66,
       // `primary_profile`.
-      255,
+      static_cast<uint8_t>(ProfileVersion::kIamfReserved255Profile),
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   ReadBitBuffer buffer(1024, &source);
@@ -328,14 +329,15 @@ TEST_F(IaSequenceHeaderObuTest, BaseEnhancedProfileBackwardsCompatible2) {
   InitAndTestWrite();
 }
 
-TEST_F(IaSequenceHeaderObuTest, UnknownProfileBackwardsCompatible255) {
-  init_args_.additional_profile = static_cast<ProfileVersion>(255);
-  expected_payload_ = {// `ia_code`.
-                       0x69, 0x61, 0x6d, 0x66,
-                       // `primary_profile`.
-                       static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
-                       // `additional_profile`.
-                       255};
+TEST_F(IaSequenceHeaderObuTest, UnknownProfileBackwardsCompatibleReserved255) {
+  init_args_.additional_profile = ProfileVersion::kIamfReserved255Profile;
+  expected_payload_ = {
+      // `ia_code`.
+      0x69, 0x61, 0x6d, 0x66,
+      // `primary_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
+      // `additional_profile`.
+      static_cast<uint8_t>(ProfileVersion::kIamfReserved255Profile)};
   InitAndTestWrite();
 }
 

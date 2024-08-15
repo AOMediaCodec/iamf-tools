@@ -28,6 +28,7 @@ enum class ProfileVersion : uint8_t {
   kIamfSimpleProfile = 0,
   kIamfBaseProfile = 1,
   kIamfBaseEnhancedProfile = 2,
+  kIamfReserved255Profile = 255
 };
 
 class IASequenceHeaderObu : public ObuBase {

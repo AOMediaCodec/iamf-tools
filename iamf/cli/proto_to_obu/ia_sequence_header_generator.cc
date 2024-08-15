@@ -39,6 +39,10 @@ absl::Status CopyProfileVersion(
     case PROFILE_VERSION_BASE_ENHANCED:
       obu_profile_version = kIamfBaseEnhancedProfile;
       return absl::OkStatus();
+    case PROFILE_VERSION_RESERVED_255:
+      obu_profile_version = kIamfReserved255Profile;
+      return absl::InvalidArgumentError(
+          "ProfileVersion::kIamfReserved255Profile is not supported.");
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown profile version= ", metadata_profile_version));
