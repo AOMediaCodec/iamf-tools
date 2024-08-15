@@ -17,7 +17,6 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -325,6 +324,29 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
     RETURN_IF_NOT_OK(mix_presentation_layout.ReadAndValidate(rb));
     layouts.push_back(mix_presentation_layout);
   }
+  return absl::OkStatus();
+}
+
+absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_tags, 8));
+  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("tags", tags.size(), num_tags));
+
+  int count_content_language_tag = 0;
+
+  for (const auto& tag : tags) {
+    if (tag.tag_name == "content_language") {
+      count_content_language_tag++;
+    }
+    RETURN_IF_NOT_OK(wb.WriteString(tag.tag_name));
+    RETURN_IF_NOT_OK(wb.WriteString(tag.tag_value));
+  }
+  // Tags are freeform and may be duplicated. Except for the "content_language"
+  // tag which SHALL appear at most once.
+  if (count_content_language_tag > 1) {
+    return absl::InvalidArgumentError(
+        "Expected zero or one content_language tag.");
+  }
+
   return absl::OkStatus();
 }
 

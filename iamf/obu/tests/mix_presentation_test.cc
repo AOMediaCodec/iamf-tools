@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -933,7 +934,7 @@ TEST(CreateFromBufferTest, RejectEmptyBitstream) {
       MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
 }
 
-TEST(CreateFromBufferTest, RejectNoSubMix) {
+TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
@@ -955,7 +956,7 @@ TEST(CreateFromBufferTest, RejectNoSubMix) {
       MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
 }
 
-TEST(CreateFromBufferTest, OneSubMix) {
+TEST(CreateFromBuffer, ReadsOneSubMix) {
   const std::vector<std::string> kAnnotationsLanguage = {"en-us"};
   const std::vector<std::string> kLocalizedPresentationAnnotations = {"Mix 1"};
   const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
@@ -996,7 +997,7 @@ TEST(CreateFromBufferTest, OneSubMix) {
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
-  EXPECT_THAT(obu, IsOk());
+  ASSERT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
   EXPECT_EQ(obu->GetAnnotationsLanguage(), kAnnotationsLanguage);
@@ -1006,6 +1007,96 @@ TEST(CreateFromBufferTest, OneSubMix) {
   ASSERT_FALSE(obu->sub_mixes_[0].audio_elements.empty());
   EXPECT_EQ(obu->sub_mixes_[0].audio_elements[0].localized_element_annotations,
             kAudioElementLocalizedElementAnnotations);
+}
+
+TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
+  const std::vector<uint8_t> kMixPresentationTags = {
+      // Start MixPresentationTags.
+      1,
+      // Start Tag1.
+      'A', 'B', 'C', '\0', '1', '2', '3', '\0',
+      // End Tag1.
+  };
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      0,
+      // num_submixes
+      1,
+      // Start Submix.
+      1, 21,
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout0.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32,
+      // End SubMix.
+  };
+  source.insert(source.end(), kMixPresentationTags.begin(),
+                kMixPresentationTags.end());
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_FALSE(obu->mix_presentation_tags_.has_value());
+  EXPECT_EQ(obu->footer_, kMixPresentationTags);
+}
+
+TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
+  const std::vector<uint8_t> kDuplicateContentLanguageTags = {
+      // Start MixPresentationTags.
+      2,
+      // `tag_name[0]`.
+      'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
+      'e', '\0',
+      // `tag_value[0]`.
+      'e', 'n', '-', 'u', 's', '\0',
+      // `tag_name[1]`.
+      'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
+      'e', '\0',
+      // `tag_value[1]`.
+      'e', 'n', '-', 'g', 'b', '\0'};
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      0,
+      // num_submixes
+      1,
+      // Start Submix.
+      1, 21,
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout0.
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32,
+      // End SubMix.
+  };
+  source.insert(source.end(), kDuplicateContentLanguageTags.begin(),
+                kDuplicateContentLanguageTags.end());
+  ReadBitBuffer buffer(1024, &source);
+  ObuHeader header;
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_FALSE(obu->mix_presentation_tags_.has_value());
+  EXPECT_EQ(obu->footer_, kDuplicateContentLanguageTags);
 }
 
 TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
@@ -1218,6 +1309,96 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
             LoudspeakersSsConventionLayout(
                 {.sound_system =
                      LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
+}
+
+TEST(MixPresentationTagsWriteAndValidate, WritesWithZeroTags) {
+  constexpr uint8_t kZeroNumTags = 0;
+  const MixPresentationTags kMixPresentationTagsWithZeroTags = {
+      .num_tags = kZeroNumTags};
+  const std::vector<uint8_t> kExpectedBuffer = {
+      // `num_tags`.
+      kZeroNumTags,
+  };
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(kMixPresentationTagsWithZeroTags.ValidateAndWrite(wb), IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationTagsWriteAndValidate, WritesContentLanguageTag) {
+  constexpr uint8_t kOneTag = 1;
+  const MixPresentationTags kMixPresentationTagsWithContentLanguageTag = {
+      .num_tags = kOneTag, .tags = {{"content_language", "en-us"}}};
+  const std::vector<uint8_t> kExpectedBuffer = {
+      // `num_tags`.
+      kOneTag,
+      // `tag_name[0]`.
+      'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
+      'e', '\0',
+      // `tag_value[0]`.
+      'e', 'n', '-', 'u', 's', '\0'};
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(kMixPresentationTagsWithContentLanguageTag.ValidateAndWrite(wb),
+              IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationTagsWriteAndValidate, WritesArbitraryTags) {
+  constexpr uint8_t kNumTags = 1;
+  const MixPresentationTags kMixPresentationTagsWithArbitraryTag = {
+      .num_tags = kNumTags, .tags = {{"ABC", "123"}}};
+  const std::vector<uint8_t> kExpectedBuffer = {// `num_tags`.
+                                                kNumTags,
+                                                // `tag_name[0]`.
+                                                'A', 'B', 'C', '\0',
+                                                // `tag_value[1]`.
+                                                '1', '2', '3', '\0'};
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(kMixPresentationTagsWithArbitraryTag.ValidateAndWrite(wb),
+              IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationTagsWriteAndValidate, WritesDuplicateArbitraryTags) {
+  constexpr uint8_t kTwoTags = 2;
+  const MixPresentationTags kMixPresentationTagsWithArbitraryTag = {
+      .num_tags = kTwoTags, .tags = {{"tag", "value"}, {"tag", "value"}}};
+  const std::vector<uint8_t> kExpectedBuffer = {// `num_tags`.
+                                                kTwoTags,
+                                                // `tag_name[0]`.
+                                                't', 'a', 'g', '\0',
+                                                // `tag_value[0]`.
+                                                'v', 'a', 'l', 'u', 'e', '\0',
+                                                // `tag_name[1]`.
+                                                't', 'a', 'g', '\0',
+                                                // `tag_value[1]`.
+                                                'v', 'a', 'l', 'u', 'e', '\0'};
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(kMixPresentationTagsWithArbitraryTag.ValidateAndWrite(wb),
+              IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
+  constexpr uint8_t kTwoTags = 2;
+  const MixPresentationTags
+      kMixPresentationTagsWithDuplicateContentLanguageTag = {
+          .num_tags = kTwoTags,
+          .tags = {{"content_language", "en-us"},
+                   {"content_language", "en-gb"}}};
+
+  WriteBitBuffer wb(1024);
+
+  EXPECT_FALSE(
+      kMixPresentationTagsWithDuplicateContentLanguageTag.ValidateAndWrite(wb)
+          .ok());
 }
 
 }  // namespace

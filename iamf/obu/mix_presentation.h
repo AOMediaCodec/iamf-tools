@@ -13,6 +13,7 @@
 #define OBU_MIX_PRESENTATION_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -305,6 +306,29 @@ struct MixPresentationSubMix {
   std::vector<MixPresentationLayout> layouts;
 };
 
+struct MixPresentationTags {
+  struct Tag {
+    friend bool operator==(const Tag& lhs, const Tag& rhs) = default;
+
+    std::string tag_name;
+    std::string tag_value;
+  };
+
+  friend bool operator==(const MixPresentationTags& lhs,
+                         const MixPresentationTags& rhs) = default;
+
+  /*!\brief Writes the MixPresentationTags to the buffer.
+   *
+   * \param wb Buffer to write to.
+   * \return `absl::OkStatus()` if the MixPresentationTags is valid. A specific
+   * status if the write fails.
+   */
+  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  uint8_t num_tags;
+  std::vector<Tag> tags;
+};
+
 /*!\brief Metadata required for post-processing the mixed audio signal.
  *
  * The metadata specifies how to render, process and mix one or more audio
@@ -411,6 +435,10 @@ class MixPresentationObu : public ObuBase {
   DecodedUleb128 GetNumSubMixes() const { return num_sub_mixes_; }
 
   std::vector<MixPresentationSubMix> sub_mixes_;
+
+  // Implicitly included based on `obu_size` after writing the v1.0.0-errata
+  // payload.
+  std::optional<MixPresentationTags> mix_presentation_tags_;
 
  private:
   DecodedUleb128 mix_presentation_id_;
