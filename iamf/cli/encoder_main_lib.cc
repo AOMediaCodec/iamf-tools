@@ -185,8 +185,9 @@ absl::Status GenerateObus(
   IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
   int data_obus_iteration = 0;  // Just for logging purposes.
   while (iamf_encoder.GeneratingDataObus()) {
-    LOG(INFO) << "\n\n============================= Generating Data OBUs Iter #"
-              << data_obus_iteration++ << " =============================\n";
+    LOG_EVERY_N_SEC(INFO, 5)
+        << "\n\n============================= Generating Data OBUs Iter #"
+        << data_obus_iteration++ << " =============================\n";
 
     int32_t input_timestamp = 0;
     RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));

@@ -779,8 +779,9 @@ absl::Status PassThroughReconGainData(
   auto layout_config = std::get_if<ScalableChannelLayoutConfig>(
       &decoded_audio_frame.audio_element_with_data->obu.config_);
   if (layout_config == nullptr) {
-    LOG(INFO) << "No scalable channel layout config found, thus recon gain "
-                 "info is not necessary.";
+    LOG_IF(INFO, decoded_audio_frame.start_timestamp == 0)
+        << "No scalable channel layout config found, thus recon gain "
+           "info is not necessary.";
     return absl::OkStatus();
   }
   auto& loudspeaker_layout_per_layer =
