@@ -41,9 +41,7 @@ message OpusEncoderMetadata {
   optional OpusApplicationFlag application = 2;
   optional bool use_float_api = 3 [default = true];
   optional float coupling_rate_adjustment = 4 [default = 1.0];
-  optional bool use_substream_rate_override = 5 [default = false];
-  // so far the below uses substream_id as array index
-  repeated int32 substream_rate_overrides = 6 [packed = true];
+  map<uint32, int32> substream_id_to_bitrate_override = 5;
 }
 
 message OpusDecoderConfig {

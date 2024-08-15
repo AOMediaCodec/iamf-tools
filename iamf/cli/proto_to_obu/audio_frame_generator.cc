@@ -59,7 +59,7 @@ namespace {
 absl::Status InitializeEncoder(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config, int num_channels,
-    std::unique_ptr<EncoderBase>& encoder, int substream_id = NULL) {
+    std::unique_ptr<EncoderBase>& encoder, int substream_id = 0) {
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
