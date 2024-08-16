@@ -114,6 +114,7 @@ cc_test(
     srcs = ["mix_presentation_generator_test.cc"],
     deps = [
         "//iamf/cli/proto:mix_presentation_cc_proto",
+        "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto_to_obu:mix_presentation_generator",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:leb128",

@@ -23,6 +23,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
+#include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
@@ -43,6 +44,24 @@ constexpr DecodedUleb128 kMixPresentationId = 42;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr DecodedUleb128 kCommonParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = 16000;
+constexpr bool kParamDefinitionMode = true;
+constexpr uint8_t kParamDefinitionReserved = 0;
+constexpr int16_t kZeroMixGain = 0;
+constexpr int16_t kNonZeroMixGain = 100;
+
+void FillMixGainParamDefinition(
+    uint32_t parameter_id, int16_t output_mix_gain,
+    iamf_tools_cli_proto::MixGainParamDefinition& mix_gain_param_definition) {
+  mix_gain_param_definition.mutable_param_definition()->set_parameter_id(
+      parameter_id);
+  mix_gain_param_definition.mutable_param_definition()->set_parameter_rate(
+      kCommonParameterRate);
+  mix_gain_param_definition.mutable_param_definition()
+      ->set_param_definition_mode(kParamDefinitionMode);
+  mix_gain_param_definition.mutable_param_definition()->set_reserved(
+      kParamDefinitionReserved);
+  mix_gain_param_definition.set_default_mix_gain(output_mix_gain);
+}
 
 // Fills `mix_presentation_metadata` with a single submix that contains a single
 // stereo audio element.
@@ -61,28 +80,6 @@ void FillMixPresentationMetadata(
             rendering_config {
               headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
             }
-            element_mix_config {
-              mix_gain {
-                param_definition {
-                  parameter_id: 999
-                  parameter_rate: 16000
-                  param_definition_mode: 1
-                  reserved: 0
-                }
-                default_mix_gain: 0
-              }
-            }
-          }
-          output_mix_config {
-            output_mix_gain {
-              param_definition {
-                parameter_id: 999
-                parameter_rate: 16000
-                param_definition_mode: 1
-                reserved: 0
-              }
-              default_mix_gain: 0
-            }
           }
           num_layouts: 1
           layouts {
@@ -99,6 +96,17 @@ void FillMixPresentationMetadata(
         }
       )pb",
       mix_presentation_metadata));
+  // Also fill in some default values for the per-element and per-submix mix
+  // gain parameters.
+  FillMixGainParamDefinition(kCommonParameterId, kZeroMixGain,
+                             *mix_presentation_metadata->mutable_sub_mixes(0)
+                                  ->mutable_audio_elements(0)
+                                  ->mutable_element_mix_config()
+                                  ->mutable_mix_gain());
+  FillMixGainParamDefinition(kCommonParameterId, kZeroMixGain,
+                             *mix_presentation_metadata->mutable_sub_mixes(0)
+                                  ->mutable_output_mix_config()
+                                  ->mutable_output_mix_gain());
 }
 
 TEST(Generate, CopiesSoundSystem13_6_9_0) {
@@ -421,6 +429,52 @@ TEST(Generate, IgnoresTagsWhenSetIncludeMixPresentationTagsIsFalse) {
 
   const auto& first_obu = generated_obus.front();
   EXPECT_FALSE(first_obu.mix_presentation_tags_.has_value());
+}
+
+TEST(Generate, CopiesElementMixGain) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_audio_elements(0)
+                                  ->mutable_element_mix_config()
+                                  ->mutable_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_element_mix_gain =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].element_mix_gain;
+  EXPECT_EQ(first_element_mix_gain.parameter_id_, kCommonParameterId);
+  EXPECT_EQ(first_element_mix_gain.parameter_rate_, kCommonParameterRate);
+  EXPECT_EQ(first_element_mix_gain.param_definition_mode_,
+            kParamDefinitionMode);
+  EXPECT_EQ(first_element_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_element_mix_gain.default_mix_gain_, kNonZeroMixGain);
+}
+
+TEST(Generate, CopiesOutputMixGain) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_output_mix_config()
+                                  ->mutable_output_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_output_mix_gain =
+      generated_obus.front().sub_mixes_[0].output_mix_gain;
+  EXPECT_EQ(first_output_mix_gain.parameter_id_, kCommonParameterId);
+  EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
+  EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
+  EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_output_mix_gain.default_mix_gain_, kNonZeroMixGain);
 }
 
 class MixPresentationGeneratorTest : public ::testing::Test {
