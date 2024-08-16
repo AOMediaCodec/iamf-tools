@@ -101,11 +101,9 @@ void FillMixPresentationMetadata(
   FillMixGainParamDefinition(kCommonParameterId, kZeroMixGain,
                              *mix_presentation_metadata->mutable_sub_mixes(0)
                                   ->mutable_audio_elements(0)
-                                  ->mutable_element_mix_config()
-                                  ->mutable_mix_gain());
+                                  ->mutable_element_mix_gain());
   FillMixGainParamDefinition(kCommonParameterId, kZeroMixGain,
                              *mix_presentation_metadata->mutable_sub_mixes(0)
-                                  ->mutable_output_mix_config()
                                   ->mutable_output_mix_gain());
 }
 
@@ -431,9 +429,80 @@ TEST(Generate, IgnoresTagsWhenSetIncludeMixPresentationTagsIsFalse) {
   EXPECT_FALSE(first_obu.mix_presentation_tags_.has_value());
 }
 
+TEST(Generate, CopiesOutputMixGain) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_output_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_output_mix_gain =
+      generated_obus.front().sub_mixes_[0].output_mix_gain;
+  EXPECT_EQ(first_output_mix_gain.parameter_id_, kCommonParameterId);
+  EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
+  EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
+  EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_output_mix_gain.default_mix_gain_, kNonZeroMixGain);
+}
+
 TEST(Generate, CopiesElementMixGain) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_audio_elements(0)
+                                  ->mutable_element_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_element_mix_gain =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].element_mix_gain;
+  EXPECT_EQ(first_element_mix_gain.parameter_id_, kCommonParameterId);
+  EXPECT_EQ(first_element_mix_gain.parameter_rate_, kCommonParameterRate);
+  EXPECT_EQ(first_element_mix_gain.param_definition_mode_,
+            kParamDefinitionMode);
+  EXPECT_EQ(first_element_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_element_mix_gain.default_mix_gain_, kNonZeroMixGain);
+}
+
+TEST(Generate, CopiesDeprecatedOutputMixConfig) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0).mutable_sub_mixes(0)->clear_output_mix_gain();
+  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_output_mix_config()
+                                  ->mutable_output_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_output_mix_gain =
+      generated_obus.front().sub_mixes_[0].output_mix_gain;
+  EXPECT_EQ(first_output_mix_gain.parameter_id_, kCommonParameterId);
+  EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
+  EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
+  EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
+  EXPECT_EQ(first_output_mix_gain.default_mix_gain_, kNonZeroMixGain);
+}
+
+TEST(Generate, CopiesDeprecatedElementMixConfig) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->clear_element_mix_gain();
   FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
                              *mix_presentation_metadata.at(0)
                                   .mutable_sub_mixes(0)
@@ -455,10 +524,56 @@ TEST(Generate, CopiesElementMixGain) {
   EXPECT_EQ(first_element_mix_gain.default_mix_gain_, kNonZeroMixGain);
 }
 
-TEST(Generate, CopiesOutputMixGain) {
+TEST(Generate, NonDeprecatedElementMixConfigTakesPrecedence) {
+  constexpr uint32_t kDeprecatedParameterId = 2000;
+  constexpr uint32_t kNonDeprecatedParameterId = 3000;
+  constexpr int16_t kDeprecatedElementMixGain = 100;
+  constexpr int16_t kNonDeprecatedElementMixGain = 200;
+
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  FillMixGainParamDefinition(kCommonParameterId, kNonZeroMixGain,
+  // When both both the deprecated and non-deprecated element mix config are
+  // provided, the non-deprecated config takes precedence.
+  FillMixGainParamDefinition(kNonDeprecatedParameterId,
+                             kNonDeprecatedElementMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_audio_elements(0)
+                                  ->mutable_element_mix_gain());
+  FillMixGainParamDefinition(kDeprecatedParameterId, kDeprecatedElementMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_audio_elements(0)
+                                  ->mutable_element_mix_config()
+                                  ->mutable_mix_gain());
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  const auto& first_element_mix_gain =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].element_mix_gain;
+  EXPECT_EQ(first_element_mix_gain.parameter_id_, kNonDeprecatedParameterId);
+  EXPECT_EQ(first_element_mix_gain.default_mix_gain_,
+            kNonDeprecatedElementMixGain);
+}
+
+TEST(Generate, NonDeprecatedOutputMixConfigTakesPrecedence) {
+  constexpr uint32_t kDeprecatedParameterId = 2000;
+  constexpr uint32_t kNonDeprecatedParameterId = 3000;
+  constexpr int16_t kDeprecatedElementMixGain = 100;
+  constexpr int16_t kNonDeprecatedElementMixGain = 200;
+
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  // When both both the deprecated and non-deprecated element mix config are
+  // provided, the non-deprecated config takes precedence.
+  FillMixGainParamDefinition(kNonDeprecatedParameterId,
+                             kNonDeprecatedElementMixGain,
+                             *mix_presentation_metadata.at(0)
+                                  .mutable_sub_mixes(0)
+                                  ->mutable_output_mix_gain());
+  FillMixGainParamDefinition(kDeprecatedParameterId, kDeprecatedElementMixGain,
                              *mix_presentation_metadata.at(0)
                                   .mutable_sub_mixes(0)
                                   ->mutable_output_mix_config()
@@ -470,11 +585,9 @@ TEST(Generate, CopiesOutputMixGain) {
 
   const auto& first_output_mix_gain =
       generated_obus.front().sub_mixes_[0].output_mix_gain;
-  EXPECT_EQ(first_output_mix_gain.parameter_id_, kCommonParameterId);
-  EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
-  EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
-  EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
-  EXPECT_EQ(first_output_mix_gain.default_mix_gain_, kNonZeroMixGain);
+  EXPECT_EQ(first_output_mix_gain.parameter_id_, kNonDeprecatedParameterId);
+  EXPECT_EQ(first_output_mix_gain.default_mix_gain_,
+            kNonDeprecatedElementMixGain);
 }
 
 class MixPresentationGeneratorTest : public ::testing::Test {

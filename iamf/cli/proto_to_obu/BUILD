@@ -134,6 +134,7 @@ cc_library(
         "//iamf/cli:cli_util",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",

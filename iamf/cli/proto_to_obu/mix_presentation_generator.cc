@@ -26,6 +26,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/leb128.h"
@@ -164,6 +165,33 @@ absl::Status FillRenderingConfig(
   }
 
   return absl::OkStatus();
+}
+
+// Prefers selecting `element_mix_gain` (V1.1 field) if it present over
+// `element_mix_config.mix_gain` (deprecated in the proto based on V1.0 spec).
+const iamf_tools_cli_proto::MixGainParamDefinition& SelectElementMixConfig(
+    const iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
+  if (sub_mix_audio_element.has_element_mix_gain()) {
+    return sub_mix_audio_element.element_mix_gain();
+  } else {
+    LOG(WARNING)
+        << "Please upgrade `element_mix_config` to `element_mix_gain`.";
+    return sub_mix_audio_element.element_mix_config().mix_gain();
+  }
+}
+
+// Prefers selecting `output_mix_gain` (V1.1 field) if it present over
+// `output_mix_config.output_mix_gain` (deprecated in the proto based on V1.0
+// spec).
+const iamf_tools_cli_proto::MixGainParamDefinition& SelectOutputMixConfig(
+    const iamf_tools_cli_proto::MixPresentationSubMix&
+        mix_presentation_sub_mix) {
+  if (mix_presentation_sub_mix.has_output_mix_gain()) {
+    return mix_presentation_sub_mix.output_mix_gain();
+  } else {
+    LOG(WARNING) << "Please upgrade `output_mix_config` to `output_mix_gain`.";
+    return mix_presentation_sub_mix.output_mix_config().output_mix_gain();
+  }
 }
 
 absl::Status FillMixConfig(
@@ -495,15 +523,14 @@ absl::Status MixPresentationGenerator::Generate(
             FillRenderingConfig(input_sub_mix_audio_element.rendering_config(),
                                 sub_mix_audio_element.rendering_config));
 
-        RETURN_IF_NOT_OK(FillMixConfig(
-            input_sub_mix_audio_element.element_mix_config().mix_gain(),
-            sub_mix_audio_element.element_mix_gain));
+        RETURN_IF_NOT_OK(
+            FillMixConfig(SelectElementMixConfig(input_sub_mix_audio_element),
+                          sub_mix_audio_element.element_mix_gain));
         sub_mix.audio_elements.push_back(sub_mix_audio_element);
       }
 
-      RETURN_IF_NOT_OK(
-          FillMixConfig(input_sub_mix.output_mix_config().output_mix_gain(),
-                        sub_mix.output_mix_gain));
+      RETURN_IF_NOT_OK(FillMixConfig(SelectOutputMixConfig(input_sub_mix),
+                                     sub_mix.output_mix_gain));
 
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));
