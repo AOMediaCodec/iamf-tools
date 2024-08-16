@@ -154,8 +154,8 @@ absl::Status OpusEncoder::InitializeEncoder() {
   // Configure `libopus` so coupled substreams and mono substreams have equally
   // effective bit-rate per channel.
   float opus_rate;
-  if (encoder_metadata_.substream_id_to_bitrate_override().count(
-          substream_id_) == 1) {
+  if (encoder_metadata_.substream_id_to_bitrate_override().contains(
+          substream_id_)) {
     opus_rate =
         encoder_metadata_.substream_id_to_bitrate_override().at(substream_id_);
   } else if (num_channels_ > 1) {
