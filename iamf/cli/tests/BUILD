@@ -130,15 +130,23 @@ cc_test(
 
 cc_test(
     name = "encoder_main_lib_test",
+    size = "medium",
     srcs = ["encoder_main_lib_test.cc"],
+    data = [
+        "//iamf/cli/testdata:input_wav_files",
+        "//iamf/cli/testdata:test_vectors",
+    ],
+    shard_count = 16,
     deps = [
         "//iamf/cli:encoder_main_lib",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

@@ -13,10 +13,15 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 
+// Placeholder for get runfiles header.
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -29,6 +34,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+// TODO(b/314895932): Find a more portable alternative to `/dev/null/`.
+constexpr absl::string_view kOutputIamfToDevNull = "/dev/null";
 
 void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -168,6 +175,927 @@ TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
 
   EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));
 }
+
+struct TestVectorTestCase {
+  std::string textproto_filename;
+};
+
+using TestVector = ::testing::TestWithParam<TestVectorTestCase>;
+
+void ParseUserMetadataAssertSuccess(
+    const std::string& textproto_filename,
+    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  std::ifstream user_metadata_file(textproto_filename);
+  std::ostringstream user_metadata_stream;
+  user_metadata_stream << user_metadata_file.rdbuf();
+
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      user_metadata_stream.str(), &user_metadata));
+}
+
+// Validate the "is_valid" field in a test vector textproto file is consistent
+// with the return value of `iamf_tools::TestMain()`.
+TEST_P(TestVector, ValidateTestSuite) {
+  // Get the location of test wav files.
+  const TestVectorTestCase& test_case = GetParam();
+  static const auto input_wav_dir =
+      std::filesystem::current_path() / std::string("iamf/cli/testdata");
+
+  // Get the textproto to test.
+  const auto user_metadata_filename = std::filesystem::current_path() /
+                                      std::string("iamf/cli/testdata") /
+                                      test_case.textproto_filename;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
+                                 user_metadata);
+
+  // Call encoder. Clear `file_name_prefix` and set all output files to
+  // "/dev/null"; we only care about the status.
+  user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
+  LOG(INFO) << "Testing with " << test_case.textproto_filename;
+  const absl::Status result =
+      iamf_tools::TestMain(user_metadata, input_wav_dir.string().c_str(),
+                           std::string(kOutputIamfToDevNull));
+
+  // Check if the result matches the expected value in the protos.
+  if (user_metadata.test_vector_metadata().is_valid()) {
+    EXPECT_THAT(result, IsOk());
+  } else {
+    EXPECT_FALSE(result.ok());
+  }
+}
+
+// ---- Test Set 0 -----
+INSTANTIATE_TEST_SUITE_P(
+    InvalidTooLowTrim, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000000_3.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    NopParamBlock, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000002.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    NoTrimRequired, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000005.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    UserRequestedTemporalDelimiters, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000006.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidIASequenceHeaderIACode, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000007.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    UserRequestedTrimAtEnd, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000012.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    UserRequestedTrimAtStart, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000013.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidPreskip, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000014.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidDanglingFromDescriptorParameterBlock, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000015.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidParameterBlockNotFullCoveringEnd, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000016.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MultipleTrimmedFrames, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000017.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExplicitAudioSubstreamID, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000018.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParameterBlockStream, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000019.textproto"}}));
+
+// Batch 3:
+INSTANTIATE_TEST_SUITE_P(
+    Opus20ms, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000020.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus40ms, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000021.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidRollDistance, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000022.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus5ms, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000023.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus60ms, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000024.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidVersion, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000025.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidOutputChannelCount, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000026.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidOutputGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000027.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusInvalidMappingFamily, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000028.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMLittleEndian16Bit48kHz, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000029.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMLittleEndian16Bit44100Hz, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000030.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMLittleEndian24Bit48kHz, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000031.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus24kbps, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000032.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus96kbps, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000033.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusVoip, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000034.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusLowdelay, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000035.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMLayout5_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000036.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus20Seconds, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000037.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoLPCMInvalidOutputChannelCount, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000040.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaAsToaProjectionLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000044.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaProjectionOpusCoupledStereo, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000048.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusLayout5_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000049.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusFourLayerLayout7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000050.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusThreeLayerLayout7_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000051.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTwoLayerLayout3_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000052.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTwoLayerLayout7_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000053.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusFourLayerLayout5_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000054.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusThreeLayerLayout5_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000055.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTwoLayerLayout5_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000056.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixTwoStereoAudioElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000058.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExplicitReconGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000059.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    TwoLanguageLabels, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000060.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExplicitDemixing, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000061.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    TwoAnchorElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000062.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidDuplicateAnchorElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000063.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ThreeDbDefaultMixGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000064.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMFOALinearMixGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000065.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMFOABezierLinearMixGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000066.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    RenderingConfigExtension, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000067.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ConstantSubblockDurationEdgeCase, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000068.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCM5_1_2To3_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000069.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCM7_1_4To7_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000070.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixGainDifferentParamDefinitionModes, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000071.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    BasicStereoFLAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000072.textproto"}}));
+
+// TODO(b/360376661): Re-enable this test once the msan issue is fixed.
+// INSTANTIATE_TEST_SUITE_P(
+//     FLACLayout5_1, TestVector,
+//     testing::ValuesIn<TestVectorTestCase>({{"test_000073.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoFLAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000074.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaMonoFLAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000075.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FrameAlignedAAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000076.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    RedundantIASequenceHeaderAfter, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000078.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    RedundantIASequenceHeaderBefore, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000079.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    AppliedDefaultWNonzero, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000080.textproto"},
+                                           {"test_000081.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    IgnoredDefaultWNonzero, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000082.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoLPCMHeadphonesRenderingMode1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000083.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FLACInvalidRollDistance, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000084.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMInvalidRollDistance, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000085.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FOAAndTwoLayer_5_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000086.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    StereoAndTwoLayer_5_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000087.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParamDefinitionMode0ExplicitSubblockDurations, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000088.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Scalable7_1_4HeadphonesRenderingMode1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000089.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    NonFrameAlignedAAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000090.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    AACInvalidRollDistance, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000091.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    AACLayout5_1, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000092.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoAAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000093.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaMonoAAC, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000094.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Scalable7_1_4LPCMBinauralLayout, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000095.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaMonoLPCMBinauralLayout, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000096.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMLittleEndian32Bit16kHz, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000097.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Opus32BitInput, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000098.textproto"}}));
+
+// ---- Test Set 1 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    ZoaMonoLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000100.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoLPCMHeadphonesRenderingMode0, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000038.textproto"},
+                                           {"test_000101.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SoaMonoLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000102.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaMonoLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000039.textproto"},
+                                           {"test_000103.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ZoaProjectionLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000104.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaProjectionLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000042.textproto"},
+                                           {"test_000105.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SoaProjectionLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000106.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaProjectionLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000043.textproto"},
+                                           {"test_000107.textproto"}}));
+INSTANTIATE_TEST_SUITE_P(
+    ZoaMonoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000108.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000045.textproto"},
+                                           {"test_000109.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SoaMonoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000110.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaMonoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000046.textproto"},
+                                           {"test_000111.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ZoaProjectionOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000112.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaProjectionOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000113.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SoaProjectionOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000114.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ToaProjectionOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000115.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedDescriptorAndTemporalUnitObus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000116.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ObuExtensionFlag, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000117.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SimpleMixWithOneAudioElementAndBaseMixWithTwoAudioElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000118.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidCodecIdForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000119.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidAudioElementTypeForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000120.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedParameterTypeForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000121.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedLoudspeakerLayoutAsFirstLayerForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000122.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    BaseMixWithTwelveChannelsAndBaseEnhancedMixWithTwentyEightChannels,
+    TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000123.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    TwoSubmixes, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000124.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedHeadphonesRenderingModeForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000125.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedLayoutTypeForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000126.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidTwoAudioElementsForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000127.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidThreeAudioElementsForBaseProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000128.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedLoudspeakerLayoutAsSecondLayerForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000129.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedAmbisonicsModeForSimpleProfile, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000130.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedLoudnessLayoutForSimpleProfileWhichIsDefinedInBaseEnahncedProfile,
+    TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000131.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SimpleMixWithTwoChannelsAndBaseEnhancedMixWithTwentySevenChannels,
+    TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000132.textproto"}}));
+
+// ---- Test Set 2 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    BasicMonoLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000200.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    BasicStereoLPCM, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000003.textproto"},
+                                           {"test_000201.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer3_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000202.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer5_1_0, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000203.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer5_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000204.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer5_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000205.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer7_1_0, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000206.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer7_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000207.textproto"}}));
+
+// `test_000208` and `test_000211` are functionally identical.
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000208.textproto"},
+                                           {"test_000211.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer7_1_4DemixingParamDefinition, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000209.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMOneLayer7_1_4DemixingParameterBlocks, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000210.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    BasicMonoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000212.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    BasicStereoOpus, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000213.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer3_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000214.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer5_1_0, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000215.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer5_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000216.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer5_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000217.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer7_1_0, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000218.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer7_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000219.textproto"}}));
+
+// `test_000220` and `test_000223` are functionally identical.
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000220.textproto"},
+                                           {"test_000223.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer7_1_4DemixingParamDefinition, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000221.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusOneLayer7_1_4DemixingParameterBlocks, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000222.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMTwoLayer5_1_2, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000224.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMThreeLayer7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000225.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMTwoLayer7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000226.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTwoLayer5_1_2ReconGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000227.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusThreeLayer7_1_4ReconGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000228.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTwoLayer7_1_4ReconGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000229.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusThreeLayer5_1ReconGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000230.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMBigEndian32Bit48kHz, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000231.textproto"}}));
+
+// ---- Test Set 3 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMFOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000300.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMSOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000301.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMTOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000302.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusFOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000303.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusSOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000304.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusTOAStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000305.textproto"}}));
+
+// ---- Test Set 4 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereoStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000400.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereo3_1_2Mix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000401.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereo5_1Mix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000402.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusStereoStereoMix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000403.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusStereo3_1_2Mix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000404.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OpusStereo5_1Mix, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000405.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereoLinearMixGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000406.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereoStereoMixBezierGain, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000407.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LPCMStereoStereoMixTwoSubblocks, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000408.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    TwoMixPresentations, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000409.textproto"}}));
+
+// ---- Test Set 5 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    FoaMonoMixedOrder, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000500.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ReservedDescriptorObu, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000501.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidNumSubMixes, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000502.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    LayoutExtension, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000503.textproto"}}));
+
+// ---- Test Set 6 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6And3_0Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000600.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndTop4Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000601.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndTop6Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000602.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndLFE, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000603.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000604.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoSS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000605.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoRS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000606.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoTF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000607.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoTB, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000608.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayout9_1_6AndStereoF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000609.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfZerothOrderAmbisonicsAndTop4Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000610.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFirstOrderAmbisonicsAndStereoF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000611.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfSecondOrderAmbisonicsAndStereoSi, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000612.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfThirdOrderAmbisonicsAndStereoTpSi, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000613.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAnd3_0Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000614.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndTop4Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000615.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndTop6Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000616.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndLFE, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000617.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000618.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoSS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000619.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoRS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000620.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoTF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000621.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoTB, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000622.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfFourthOrderAmbisonicsAndStereoF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000623.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4And3_0Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000624.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndTop4Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000625.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndLFE, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000626.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndStereoSS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000627.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndStereoRS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000628.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndStereoTF, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000629.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndStereoTB, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000630.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf5_1_4AndStereoS, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000631.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfThirdOrderAmbisonicsAndLFE, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000632.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfThirdOrderAmbisonicsAndTop6Ch, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000633.textproto"}}));
+
+// ---- Test Set 7 -----
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfThreeAudioElementsWithTwentyEightChannels, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000700.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfThreeAudioElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000701.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayoutsToCompose7_1_4, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000702.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfExpandedLayoutsToCompose9_1_6, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000703.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    OneMixPresentationWithContentLanguageTag, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000704.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SeveralMixPresentationsWithContentLanguageTagChannelBased, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000705.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SeveralMixPresentationsWithContentLanguageTagAmbisonicsBased, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000706.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOfTwentyEightAudioElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000707.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    MixOf7_1_4AndThirdOrderAmbisonics, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000708.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidWithProfile255, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000709.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidWithMoreThanTwentyEightAudioElements, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000710.textproto"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidWithMoreThanTwentyEightChannels, TestVector,
+    testing::ValuesIn<TestVectorTestCase>({{"test_000711.textproto"}}));
+
 // TODO(b/308385831): Add more tests.
 
 }  // namespace

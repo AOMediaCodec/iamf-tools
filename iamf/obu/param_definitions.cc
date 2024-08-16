@@ -363,7 +363,8 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
 void ExtendedParamDefinition::Print() const {
   LOG(INFO) << "ExtendedParamDefinition:";
-  ParamDefinition::Print();
+  // This class does not read the base class's data, i.e. it doesn't call
+  // `ParamDefinition::Print()`.
   LOG(INFO) << "  param_definition_size= " << param_definition_size_;
   LOG(INFO) << "  // Skipped printing param_definition_bytes";
 }
