@@ -20,6 +20,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -327,6 +328,20 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
   return absl::OkStatus();
 }
 
+absl::Status ValidateCompliesWithIso639_2(absl::string_view string) {
+  if (string.size() == 3) {
+    // Consider any any three character string valid. A stricter
+    // implementation could check it actually is present in the list of valid
+    // ISO-639-2 code.
+    return absl::OkStatus();
+  } else {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected an ISO-639-2 code. ISO-639-2 codes should have three "
+        "characters. string= ",
+        string));
+  }
+}
+
 absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_tags, 8));
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual("tags", tags.size(), num_tags));
@@ -335,6 +350,8 @@ absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
 
   for (const auto& tag : tags) {
     if (tag.tag_name == "content_language") {
+      RETURN_IF_NOT_OK(ValidateCompliesWithIso639_2(tag.tag_value));
+
       count_content_language_tag++;
     }
     RETURN_IF_NOT_OK(wb.WriteString(tag.tag_name));
@@ -472,6 +489,10 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
       ValidateVectorSizeEqual("sub_mixes", sub_mixes_.size(), num_sub_mixes_));
   for (const auto& sub_mix : sub_mixes_) {
     RETURN_IF_NOT_OK(ValidateAndWriteSubMix(count_label_, sub_mix, wb));
+  }
+
+  if (mix_presentation_tags_.has_value()) {
+    RETURN_IF_NOT_OK(mix_presentation_tags_->ValidateAndWrite(wb));
   }
 
   return absl::OkStatus();

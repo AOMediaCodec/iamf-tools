@@ -388,11 +388,11 @@ TEST(Generate, CopiesDuplicateContentLanguageTags) {
   auto* first_tag =
       mix_presentation.mutable_mix_presentation_tags()->add_tags();
   first_tag->set_tag_name("content_language");
-  first_tag->set_tag_value("en-us");
+  first_tag->set_tag_value("eng");
   auto* second_tag =
       mix_presentation.mutable_mix_presentation_tags()->add_tags();
   second_tag->set_tag_name("content_language");
-  second_tag->set_tag_value("en-uk");
+  second_tag->set_tag_value("kor");
 
   MixPresentationGenerator generator(mix_presentation_metadata);
 
@@ -405,10 +405,10 @@ TEST(Generate, CopiesDuplicateContentLanguageTags) {
   ASSERT_EQ(first_obu.mix_presentation_tags_->tags.size(), 2);
   EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_name,
             "content_language");
-  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_value, "en-us");
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_value, "eng");
   EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_name,
             "content_language");
-  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_value, "en-uk");
+  EXPECT_EQ(first_obu.mix_presentation_tags_->tags[1].tag_value, "kor");
 }
 
 TEST(Generate, IgnoresTagsWhenSetIncludeMixPresentationTagsIsFalse) {

@@ -219,9 +219,9 @@ TEST_P(TestVector, ValidateTestSuite) {
 
   // Check if the result matches the expected value in the protos.
   if (user_metadata.test_vector_metadata().is_valid()) {
-    EXPECT_THAT(result, IsOk());
+    EXPECT_THAT(result, IsOk()) << "File= " << test_case.textproto_filename;
   } else {
-    EXPECT_FALSE(result.ok());
+    EXPECT_FALSE(result.ok()) << " File= " << test_case.textproto_filename;
   }
 }
 

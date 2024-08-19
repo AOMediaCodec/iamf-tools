@@ -131,6 +131,7 @@ cc_test(
         "//iamf/common:bit_buffer_util",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/tests:test_utils",
         "//iamf/obu:leb128",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",

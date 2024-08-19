@@ -25,6 +25,7 @@
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
@@ -105,7 +106,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                                         .digital_peak = 19,
                                         .true_peak = 20}}}}}),
         dynamic_sub_mix_args_({{.element_mix_gain_subblocks = {{}},
-                                .output_mix_gain_subblocks = {}}}) {
+                                .output_mix_gain_subblocks = {}}}),
+        mix_presentation_tags_(std::nullopt) {
     MixGainParamDefinition element_mix_gain;
     element_mix_gain.parameter_id_ = 12;
     element_mix_gain.parameter_rate_ = 13;
@@ -146,6 +148,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
 
   // Length `num_sub_mixes`.
   std::vector<DynamicSubMixArguments> dynamic_sub_mix_args_;
+
+  std::optional<MixPresentationTags> mix_presentation_tags_;
 
  private:
   // Copies over data into the output argument `obu->sub_mix[i]`.
@@ -787,6 +791,40 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidMissingStero) {
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
+TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
+  expected_header_ = {kObuIaMixPresentation << 3, 58};
+  expected_payload_ = {
+      // Start Mix OBU.
+      10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
+      // Start Submix 1
+      1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      // End RenderingConfig.
+      12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
+      // Start Layout 1 (of Submix 1).
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
+      // Start Mix Presentation Tags.
+      // `num_tags`.
+      1,
+      // `tag_name[0]`.
+      't', 'a', 'g', '\0',
+      // `tag_value[0]`.
+      'v', 'a', 'l', 'u', 'e', '\0',
+      // End Mix OBU.
+  };
+  InitExpectOk();
+  obu_->mix_presentation_tags_ =
+      MixPresentationTags{.num_tags = 1, .tags = {{"tag", "value"}}};
+
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, expected_header_, expected_payload_);
+}
+
 class GetNumChannelsFromLayoutTest : public testing::Test {
  public:
   GetNumChannelsFromLayoutTest()
@@ -1329,7 +1367,7 @@ TEST(MixPresentationTagsWriteAndValidate, WritesWithZeroTags) {
 TEST(MixPresentationTagsWriteAndValidate, WritesContentLanguageTag) {
   constexpr uint8_t kOneTag = 1;
   const MixPresentationTags kMixPresentationTagsWithContentLanguageTag = {
-      .num_tags = kOneTag, .tags = {{"content_language", "en-us"}}};
+      .num_tags = kOneTag, .tags = {{"content_language", "eng"}}};
   const std::vector<uint8_t> kExpectedBuffer = {
       // `num_tags`.
       kOneTag,
@@ -1337,13 +1375,25 @@ TEST(MixPresentationTagsWriteAndValidate, WritesContentLanguageTag) {
       'c', 'o', 'n', 't', 'e', 'n', 't', '_', 'l', 'a', 'n', 'g', 'u', 'a', 'g',
       'e', '\0',
       // `tag_value[0]`.
-      'e', 'n', '-', 'u', 's', '\0'};
+      'e', 'n', 'g', '\0'};
   WriteBitBuffer wb(1024);
 
   EXPECT_THAT(kMixPresentationTagsWithContentLanguageTag.ValidateAndWrite(wb),
               IsOk());
 
   EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationTagsWriteAndValidate,
+     InvalidWhenContentLanguageTagNotThreeCharacters) {
+  constexpr uint8_t kOneTag = 1;
+  const MixPresentationTags kMixPresentationTagsWithContentLanguageTag = {
+      .num_tags = kOneTag, .tags = {{"content_language", "en-us"}}};
+
+  WriteBitBuffer wb(0);
+
+  EXPECT_FALSE(
+      kMixPresentationTagsWithContentLanguageTag.ValidateAndWrite(wb).ok());
 }
 
 TEST(MixPresentationTagsWriteAndValidate, WritesArbitraryTags) {
@@ -1391,8 +1441,7 @@ TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
   const MixPresentationTags
       kMixPresentationTagsWithDuplicateContentLanguageTag = {
           .num_tags = kTwoTags,
-          .tags = {{"content_language", "en-us"},
-                   {"content_language", "en-gb"}}};
+          .tags = {{"content_language", "eng"}, {"content_language", "kor"}}};
 
   WriteBitBuffer wb(1024);
 
