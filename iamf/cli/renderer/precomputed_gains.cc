@@ -18,7 +18,7 @@ namespace iamf_tools {
 PrecomputedGains InitPrecomputedGains() {
   PrecomputedGains gains;
 
-  // Generated on Thu Aug  8 16:09:29 2024, GMT
+  // Generated on Tue Aug 20 13:40:43 2024, GMT
 
   // -------------------------------------------------------
   // Input layout: 0+1+0
@@ -574,9 +574,6 @@ PrecomputedGains InitPrecomputedGains() {
       {1, 0, 0, 0, 0, 0, 0, 0}, {0, 1, 0, 0, 0, 0, 0, 0},
       {0, 0, 0, 0, 0, 0, 1, 0}, {0, 0, 0, 0, 0, 0, 0, 1}};
   // Skipping identity matrix: 4+7+0 to 4+7+0
-  // TODO(b/292220783): Figure out the discrepancy of the generated data vs
-  //                    `libiamf`. As a hack the 5th and 6th row had their
-  //                    generated values changed.
   gains["4+7+0"]["3.1.2"] = {{1, 0, 0, 0, 0, 0},
                              {0, 1, 0, 0, 0, 0},
                              {0, 0, 1, 0, 0, 0},
