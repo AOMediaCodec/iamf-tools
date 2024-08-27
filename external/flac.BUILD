@@ -49,6 +49,7 @@ flac_copts = [
     "-DNDEBUG",
     "-D_FORTIFY_SOURCE=2",
     "-DFLAC__HAS_OGG=0",
+    "-DFLAC__NO_DLL",  # Static library for Windows
     "-Iexternal/flac/src/libFLAC/include",
     "-Iexternal/flac/include",
 ]
