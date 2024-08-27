@@ -68,7 +68,7 @@ cc_library(
         "libMpegTPDec/include/*.h",
     ]),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@bazel_tools//src/conditions:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
@@ -202,7 +202,7 @@ cc_library(
         "libPCMutils/include/*.h",
     ]),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@bazel_tools//src/conditions:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
@@ -258,7 +258,7 @@ cc_library(
         "//conditions:default": [],
     }),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@bazel_tools//src/conditions:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-variable",
