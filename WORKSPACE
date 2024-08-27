@@ -40,7 +40,7 @@ git_repository(
 git_repository(
     name = "com_google_audio_to_tactile",
     remote = "https://github.com/google/audio-to-tactile.git",
-    commit = "f1669677fa16654be66e2f99ac9c4d5f16f4b719",
+    commit = "d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15",
 )
 
 # Expat
