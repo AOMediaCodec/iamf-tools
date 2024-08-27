@@ -68,7 +68,7 @@ cc_library(
         "libMpegTPDec/include/*.h",
     ]),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@platforms//os:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
@@ -258,7 +258,7 @@ cc_library(
         "//conditions:default": [],
     }),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@platforms//os:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-variable",

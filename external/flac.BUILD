@@ -11,7 +11,7 @@ flac_version_dir = "src"
 exports_files(["LICENSE"])
 
 platform_srcs = select({
-    "//tools/cc_target_os:windows": glob(["src/share/win_utf8_io/*.c"]),
+    "@platforms//os:windows": glob(["src/share/win_utf8_io/*.c"]),
     "//conditions:default": glob([]),
 })
 
