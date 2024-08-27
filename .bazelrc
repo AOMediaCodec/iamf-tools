@@ -1,10 +1,15 @@
-build --cxxopt=-std=c++20
 build --linkopt=-lm
-build --cxxopt=-Wno-sign-compare
 # Use the default C++ toolchain to build the tools used during the
 # build.
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_bzlmod=false
 
 # Platform specific configuration.
+build:linux --cxxopt=-std=c++20
+build:linux --cxxopt=-Wno-sign-compare
+
 build:macos --macos_minimum_os=12.0
+build:macos --cxxopt=-std=c++20
+build:macos --cxxopt=-Wno-sign-compare
+
+build:windows --cxxopt=/std:c++20
