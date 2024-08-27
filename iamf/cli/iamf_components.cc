@@ -54,8 +54,9 @@ std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
   // TODO(b/314895932): Find a more portable alternative to `/dev/null/`.
   const std::string iamf_filename =
       prefix.empty() ? "/dev/null"
-                     : std::filesystem::path(output_iamf_directory) /
-                           std::filesystem::path(absl::StrCat(prefix, ".iamf"));
+                     : (std::filesystem::path(output_iamf_directory) /
+                        std::filesystem::path(absl::StrCat(prefix, ".iamf")))
+                           .string();
   obu_sequencers.emplace_back(std::make_unique<ObuSequencerIamf>(
       iamf_filename, include_temporal_delimiters, *leb_generator));
 

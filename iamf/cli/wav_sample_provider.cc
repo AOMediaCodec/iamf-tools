@@ -60,7 +60,7 @@ absl::Status WavSampleProvider::Initialize(
                                audio_frame_metadata.wav_filename();
 
     auto wav_reader = WavReader::CreateFromFile(
-        wav_filename,
+        wav_filename.string(),
         static_cast<size_t>(codec_config.GetNumSamplesPerFrame()));
     if (!wav_reader.ok()) {
       return wav_reader.status();

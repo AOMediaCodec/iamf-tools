@@ -152,8 +152,9 @@ int main(int argc, char** argv) {
           ? std::filesystem::temp_directory_path()
           : std::filesystem::path(absl::GetFlag(FLAGS_output_iamf_directory));
 
-  absl::Status status = iamf_tools::TestMain(
-      *user_metadata, input_wav_directory, output_iamf_directory);
+  absl::Status status =
+      iamf_tools::TestMain(*user_metadata, input_wav_directory.string(),
+                           output_iamf_directory.string());
 
   // Log success or failure. Success is defined as a valid test vector returning
   // `absl::OkStatus()` or an invalid test vector returning a different status.

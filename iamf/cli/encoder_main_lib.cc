@@ -280,8 +280,9 @@ absl::Status GenerateObus(
   // Write the output audio streams which were used to measure loudness to the
   // same directory as the IAMF file.
   const std::string output_wav_file_prefix =
-      std::filesystem::path(output_iamf_directory) /
-      user_metadata.test_vector_metadata().file_name_prefix();
+      (std::filesystem::path(output_iamf_directory) /
+       user_metadata.test_vector_metadata().file_name_prefix())
+          .string();
   LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
   auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
       output_wav_file_prefix, output_wav_file_bit_depth_override,
