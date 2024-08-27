@@ -10,6 +10,11 @@ flac_version_dir = "src"
 
 exports_files(["LICENSE"])
 
+platform_srcs = select({
+    "//tools/cc_target_os:windows": glob(["src/share/win_utf8_io/*.c"]),
+    "//conditions:default": glob([]),
+})
+
 flac_srcs = glob(
     [
         # keep sorted
@@ -21,7 +26,7 @@ flac_srcs = glob(
         "src/libFLAC/deduplication/**/*.c",
         "src/libFLAC/ogg*",
     ],
-)
+) + platform_srcs
 
 flac_textual_includes = glob([
     # keep sorted
