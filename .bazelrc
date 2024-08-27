@@ -3,6 +3,7 @@ build --linkopt=-lm
 # build.
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_bzlmod=false
+build --enable_platform_specific_config
 
 # Platform specific configuration.
 build:linux --cxxopt=-std=c++20
