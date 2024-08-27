@@ -67,11 +67,14 @@ cc_library(
     hdrs = glob([
         "libMpegTPDec/include/*.h",
     ]),
-    copts = [
+    copts = select({
+    "//tools/cc_target_os:windows": [],
+    "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
         "-Wno-unused-variable",
     ],
+    }),
     includes = [
         "libFDK/include",
         "libMpegTPDec/include",
@@ -198,11 +201,13 @@ cc_library(
         "libPCMutils/src/*.h",
         "libPCMutils/include/*.h",
     ]),
-    copts = [
+    copts = select({
+    "//tools/cc_target_os:windows": [],
+    "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
         "-Wno-unused-variable",
-    ],
+    ]}),
     includes = [
         "libFDK/include",
         "libPCMutils/include",
@@ -252,10 +257,12 @@ cc_library(
         "@platforms//cpu:arm64": ARM_LIB_AAC_DEC_HEADERS,
         "//conditions:default": [],
     }),
-    copts = [
+    copts = select({
+    "//tools/cc_target_os:windows": [],
+    "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-variable",
-    ],
+    ]}),
     includes = [
         "libAACdec/include",
         "libArithCoding/include",
