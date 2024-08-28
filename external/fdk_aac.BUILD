@@ -202,7 +202,7 @@ cc_library(
         "libPCMutils/include/*.h",
     ]),
     copts = select({
-    "//tools/cc_target_os:windows": [],
+    "@platforms//os:windows": [],
     "//conditions:default": [
         "-Wno-implicit-fallthrough",
         "-Wno-unused-label",
