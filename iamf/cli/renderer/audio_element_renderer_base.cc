@@ -23,7 +23,7 @@ namespace iamf_tools {
 AudioElementRendererBase::~AudioElementRendererBase() {}
 
 absl::Status AudioElementRendererBase::Flush(
-    std::vector<int32_t>& rendered_samples) {
+    std::vector<double>& rendered_samples) {
   absl::MutexLock lock(&mutex_);
   rendered_samples.insert(rendered_samples.end(), rendered_samples_.begin(),
                           rendered_samples_.end());

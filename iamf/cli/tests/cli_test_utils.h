@@ -153,7 +153,7 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
  */
 void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
                             AudioElementRendererBase* renderer,
-                            std::vector<int32_t>& output_samples);
+                            std::vector<double>& output_samples);
 
 /*!\brief Gets and cleans up unique file name based on the specified suffix.
  *

@@ -57,7 +57,7 @@ class AudioElementRendererBase {
    * \param rendered_samples Vector to append rendered samples to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Flush(std::vector<int32_t>& rendered_samples);
+  absl::Status Flush(std::vector<double>& rendered_samples);
 
   /*!\brief Finalizes the renderer. Waits for it to finish any remaining frames.
    *
@@ -87,7 +87,7 @@ class AudioElementRendererBase {
 
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
-  std::vector<int32_t> rendered_samples_ ABSL_GUARDED_BY(mutex_);
+  std::vector<double> rendered_samples_ ABSL_GUARDED_BY(mutex_);
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
 };
 

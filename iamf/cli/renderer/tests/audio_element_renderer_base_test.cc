@@ -59,14 +59,14 @@ TEST(AudioElementRendererBase, FinalizeAndFlushWithOutRenderingSucceeds) {
   MockAudioElementRenderer renderer;
   EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
-  std::vector<int32_t> rendered_samples;
+  std::vector<double> rendered_samples;
   EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
   EXPECT_TRUE(rendered_samples.empty());
 }
 
 TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
   MockAudioElementRenderer renderer;
-  std::vector<int32_t> vector_to_collect_rendered_samples;
+  std::vector<double> vector_to_collect_rendered_samples;
 
   EXPECT_THAT(renderer.RenderLabeledFrame({}), IsOk());
   EXPECT_THAT(renderer.Finalize(), IsOk());
@@ -83,9 +83,9 @@ TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
 
 TEST(AudioElementRendererBase, AppendsWhenFlushing) {
   MockAudioElementRenderer renderer;
-  std::vector<int32_t> vector_to_collect_rendered_samples({100, 200, 300, 400});
+  std::vector<double> vector_to_collect_rendered_samples({100, 200, 300, 400});
   // Flush should append `kSamplesToRender` to the initial vector.
-  std::vector<int32_t> expected_samples(vector_to_collect_rendered_samples);
+  std::vector<double> expected_samples(vector_to_collect_rendered_samples);
   expected_samples.insert(expected_samples.end(), kSamplesToRender.begin(),
                           kSamplesToRender.end());
 
@@ -94,7 +94,11 @@ TEST(AudioElementRendererBase, AppendsWhenFlushing) {
   EXPECT_TRUE(renderer.IsFinalized());
 
   EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
-  EXPECT_EQ(vector_to_collect_rendered_samples, expected_samples);
+  EXPECT_EQ(vector_to_collect_rendered_samples.size(), expected_samples.size());
+  for (int i = 0; i < vector_to_collect_rendered_samples.size(); ++i) {
+    EXPECT_DOUBLE_EQ(vector_to_collect_rendered_samples[i],
+                     expected_samples[i]);
+  }
 }
 
 }  // namespace

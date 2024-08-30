@@ -277,7 +277,7 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
 
 void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
                             AudioElementRendererBase* renderer,
-                            std::vector<int32_t>& output_samples) {
+                            std::vector<double>& output_samples) {
   ASSERT_NE(renderer, nullptr);
   EXPECT_THAT(renderer->RenderLabeledFrame(labeled_frame), IsOk());
   EXPECT_THAT(renderer->Finalize(), IsOk());
