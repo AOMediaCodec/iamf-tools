@@ -22,7 +22,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/bit_buffer_util.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {

@@ -19,9 +19,9 @@
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

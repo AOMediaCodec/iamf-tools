@@ -22,6 +22,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -30,12 +31,13 @@ using ::absl_testing::IsOk;
 
 using enum ChannelLabel::Label;
 
-const int32_t kArbitrarySample = std::numeric_limits<int32_t>::max();
+const InternalSampleType kArbitrarySample =
+    static_cast<InternalSampleType>(std::numeric_limits<int32_t>::max());
 
 void TestComputeReconGainForOneChannelLrs7(
-    const std::vector<int32_t>& original_channel,
-    const std::vector<int32_t>& mixed_channel,
-    const std::vector<int32_t>& demixed_channel,
+    const std::vector<InternalSampleType>& original_channel,
+    const std::vector<InternalSampleType>& mixed_channel,
+    const std::vector<InternalSampleType>& demixed_channel,
     const double expected_recon_gain) {
   const LabelSamplesMap label_to_samples{{kDemixedLrs7, original_channel},
                                          {kLs5, mixed_channel}};
@@ -71,9 +73,9 @@ TEST(ComputeReconGain, LessThanSecondThreshold) {
 }
 
 TEST(ComputeReconGain, SucceedsForTwoLayerStereo) {
-  const std::vector<int32_t> kOriginalChannel{kArbitrarySample};
-  const std::vector<int32_t> kMixedChannel{kArbitrarySample};
-  const std::vector<int32_t> kDemixedChannel{kArbitrarySample};
+  const std::vector<InternalSampleType> kOriginalChannel{kArbitrarySample};
+  const std::vector<InternalSampleType> kMixedChannel{kArbitrarySample};
+  const std::vector<InternalSampleType> kDemixedChannel{kArbitrarySample};
   const LabelSamplesMap label_to_samples{{kDemixedR2, kOriginalChannel},
                                          {kMono, kMixedChannel}};
   const LabelSamplesMap label_to_decoded_samples{{kDemixedR2, kDemixedChannel}};
@@ -86,8 +88,8 @@ TEST(ComputeReconGain, SucceedsForTwoLayerStereo) {
 }
 
 TEST(ComputeReconGain, InvalidWhenRelevantMixedSampleCannotBeFound) {
-  const std::vector<int32_t> kOriginalChannel{kArbitrarySample};
-  const std::vector<int32_t> kDemixedChannel{kArbitrarySample};
+  const std::vector<InternalSampleType> kOriginalChannel{kArbitrarySample};
+  const std::vector<InternalSampleType> kDemixedChannel{kArbitrarySample};
   const LabelSamplesMap label_to_samples{{kDemixedR2, kOriginalChannel}};
   const LabelSamplesMap label_to_decoded_samples{{kDemixedR2, kDemixedChannel}};
 

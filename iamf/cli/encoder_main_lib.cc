@@ -42,8 +42,8 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

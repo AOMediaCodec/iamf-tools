@@ -27,7 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

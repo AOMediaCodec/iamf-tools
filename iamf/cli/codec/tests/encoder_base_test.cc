@@ -24,8 +24,8 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {

@@ -22,9 +22,9 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

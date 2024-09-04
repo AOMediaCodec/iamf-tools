@@ -32,7 +32,7 @@ cc_test(
     deps = [
         "//iamf/common:bit_buffer_util",
         "//iamf/common:read_bit_buffer",
-        "//iamf/obu:leb128",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
@@ -64,7 +64,7 @@ cc_test(
         "//iamf/cli:leb_generator",
         "//iamf/common:bit_buffer_util",
         "//iamf/common:write_bit_buffer",
-        "//iamf/obu:leb128",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",

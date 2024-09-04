@@ -35,9 +35,9 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -45,6 +45,9 @@ namespace {
 
 using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
+using testing::DoubleEq;
+using testing::DoubleNear;
+using testing::Pointwise;
 
 constexpr DecodedUleb128 kAudioElementId = 137;
 constexpr std::array<uint8_t, 12> kReconGainValues = {
@@ -60,58 +63,57 @@ const DecodedUleb128 kL2SubstreamId = 1;
 //                    of erroneous input.
 
 TEST(FindSamplesOrDemixedSamples, FindsMatchingSamples) {
-  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
+  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
   const LabelSamplesMap kLabelToSamples = {{kL2, kSamplesToFind}};
 
-  const std::vector<int32_t>* found_samples;
+  const std::vector<InternalSampleType>* found_samples;
   EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
                                                           &found_samples),
               IsOk());
-  EXPECT_EQ(*found_samples, kSamplesToFind);
+  EXPECT_THAT(*found_samples, Pointwise(DoubleEq(), kSamplesToFind));
 }
 
 TEST(FindSamplesOrDemixedSamples, FindsMatchingDemixedSamples) {
-  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
+  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
   const LabelSamplesMap kLabelToSamples = {{kDemixedR2, kSamplesToFind}};
 
-  const std::vector<int32_t>* found_samples;
+  const std::vector<InternalSampleType>* found_samples;
   EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kR2, kLabelToSamples,
                                                           &found_samples),
               IsOk());
-  EXPECT_EQ(*found_samples, kSamplesToFind);
+  EXPECT_THAT(*found_samples, Pointwise(DoubleEq(), kSamplesToFind));
 }
 
 TEST(FindSamplesOrDemixedSamples, InvalidWhenThereIsNoDemixingLabel) {
-  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
+  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
   const LabelSamplesMap kLabelToSamples = {{kDemixedR2, kSamplesToFind}};
 
-  const std::vector<int32_t>* found_samples;
+  const std::vector<InternalSampleType>* found_samples;
   EXPECT_FALSE(DemixingModule::FindSamplesOrDemixedSamples(kL2, kLabelToSamples,
                                                            &found_samples)
                    .ok());
 }
 
 TEST(FindSamplesOrDemixedSamples, RegularSamplesTakePrecedence) {
-  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
-  const std::vector<int32_t> kDemixedSamplesToIgnore = {4, 5, 6};
+  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
+  const std::vector<InternalSampleType> kDemixedSamplesToIgnore = {4, 5, 6};
   const LabelSamplesMap kLabelToSamples = {
       {kR2, kSamplesToFind}, {kDemixedR2, kDemixedSamplesToIgnore}};
-  const std::vector<int32_t>* found_samples;
+  const std::vector<InternalSampleType>* found_samples;
   EXPECT_THAT(DemixingModule::FindSamplesOrDemixedSamples(kR2, kLabelToSamples,
                                                           &found_samples),
               IsOk());
-  EXPECT_EQ(*found_samples, kSamplesToFind);
+  EXPECT_THAT(*found_samples, Pointwise(DoubleEq(), kSamplesToFind));
 }
 
 TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
-  const std::vector<int32_t> kSamplesToFind = {1, 2, 3};
+  const std::vector<InternalSampleType> kSamplesToFind = {1, 2, 3};
   const LabelSamplesMap kLabelToSamples = {{kL2, kSamplesToFind}};
 
-  const std::vector<int32_t>* found_samples;
-  EXPECT_EQ(DemixingModule::FindSamplesOrDemixedSamples(kL3, kLabelToSamples,
-                                                        &found_samples)
-                .code(),
-            absl::StatusCode::kUnknown);
+  const std::vector<InternalSampleType>* found_samples;
+  EXPECT_FALSE(DemixingModule::FindSamplesOrDemixedSamples(kL3, kLabelToSamples,
+                                                           &found_samples)
+                   .ok());
 }
 
 void InitAudioElementWithLabelsAndLayers(
@@ -414,10 +416,10 @@ TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
 
   // Examine the demixed frame.
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
-  EXPECT_EQ(labeled_frame.label_to_samples.at(kMono),
-            std::vector<int32_t>({1, 2, 3}));
-  EXPECT_EQ(labeled_frame.label_to_samples.at(kL2),
-            std::vector<int32_t>({9, 10, 11}));
+  EXPECT_THAT(labeled_frame.label_to_samples.at(kMono),
+              Pointwise(DoubleEq(), {1.0, 2.0, 3.0}));
+  EXPECT_THAT(labeled_frame.label_to_samples.at(kL2),
+              Pointwise(DoubleEq(), {9.0, 10.0, 11.0}));
 }
 
 TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
@@ -459,8 +461,8 @@ TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
   // Examine the demixed frame.
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
   // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
-  EXPECT_EQ(labeled_frame.label_to_samples.at(kDemixedR2),
-            std::vector<int32_t>({500}));
+  EXPECT_THAT(labeled_frame.label_to_samples.at(kDemixedR2),
+              Pointwise(DoubleEq(), {500}));
 }
 
 TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
@@ -591,8 +593,9 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     }
   }
 
-  void ConfigureInputChannel(absl::string_view label_string,
-                             const std::vector<int32_t>& input_samples) {
+  void ConfigureInputChannel(
+      absl::string_view label_string,
+      const std::vector<InternalSampleType>& input_samples) {
     ConfigureAudioFrameMetadata(label_string);
     auto label = ChannelLabel::StringToLabel(label_string);
     ASSERT_TRUE(label.ok());
@@ -980,7 +983,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
 
   void ConfiguredExpectedDemixingChannelFrame(
       ChannelLabel::Label label,
-      std::vector<int32_t> expected_demixed_samples) {
+      std::vector<InternalSampleType> expected_demixed_samples) {
     // Configure the expected demixed channels. Typically the input `label`
     // should have a "D_" prefix.
     expected_id_to_labeled_decoded_frame_[kAudioElementId]
@@ -998,9 +1001,18 @@ class DemixingModuleTest : public DemixingModuleTestBase,
                 IsOk());
 
     // Check that the demixed samples have the correct values.
-    EXPECT_EQ(id_to_labeled_decoded_frame[kAudioElementId].label_to_samples,
-              expected_id_to_labeled_decoded_frame_[kAudioElementId]
-                  .label_to_samples);
+    const auto& actual_label_to_samples =
+        id_to_labeled_decoded_frame[kAudioElementId].label_to_samples;
+    const auto& expected_label_to_samples =
+        expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
+    EXPECT_EQ(actual_label_to_samples.size(), expected_label_to_samples.size());
+    for (const auto [label, samples] : actual_label_to_samples) {
+      // Use `DoubleNear` with a tolerance because floating-point arithmetic
+      // introduces errors larger than allowed by `DoubleEq`.
+      constexpr double kErrorTolerance = 1e-14;
+      EXPECT_THAT(samples, Pointwise(DoubleNear(kErrorTolerance),
+                                     expected_label_to_samples.at(label)));
+    }
   }
 
  protected:
@@ -1083,8 +1095,8 @@ TEST_F(DemixingModuleTest, S2ToS3Demixer) {
   // L3/R3 get demixed from the lower layers.
   // L3 = L2 - (C - 3 dB).
   // R3 = R2 - (C - 3 dB).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {0, 993});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {0, 993});
+  ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {-0.7, 993});
+  ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {-0.7, 993});
 
   TestDemixing(1);
 }

@@ -28,9 +28,9 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_base.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {

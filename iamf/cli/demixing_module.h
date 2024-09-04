@@ -30,8 +30,8 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -52,7 +52,8 @@ struct SubstreamData {
 };
 
 // Mapping from channel label to a frame of samples.
-typedef absl::node_hash_map<ChannelLabel::Label, std::vector<int32_t>>
+typedef absl::node_hash_map<ChannelLabel::Label,
+                            std::vector<InternalSampleType>>
     LabelSamplesMap;
 
 struct LabeledFrame {
@@ -147,7 +148,7 @@ class DemixingModule {
    */
   static absl::Status FindSamplesOrDemixedSamples(
       ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
-      const std::vector<int32_t>** samples);
+      const std::vector<InternalSampleType>** samples);
 
   /*!\brief Down-mixes samples of input channels to substreams.
    *

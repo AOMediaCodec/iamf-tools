@@ -28,7 +28,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -36,6 +36,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
+using testing::DoubleEq;
+using testing::Pointwise;
 
 static constexpr DecodedUleb128 kAudioElementId = 300;
 static constexpr DecodedUleb128 kCodecConfigId = 200;
@@ -155,13 +157,13 @@ TEST(WavSampleProviderTest, ReadFrameSucceeds) {
   EXPECT_TRUE(finished_reading);
 
   // Validate samples read from the WAV file.
-  const std::vector<int32_t> expected_samples_l2 = {
+  const std::vector<InternalSampleType> expected_samples_l2 = {
       1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16};
-  const std::vector<int32_t> expected_samples_r2 = {
+  const std::vector<InternalSampleType> expected_samples_r2 = {
       65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
       65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
-  EXPECT_THAT(labeled_samples[kL2], testing::Eq(expected_samples_l2));
-  EXPECT_THAT(labeled_samples[kR2], testing::Eq(expected_samples_r2));
+  EXPECT_THAT(labeled_samples[kL2], Pointwise(DoubleEq(), expected_samples_l2));
+  EXPECT_THAT(labeled_samples[kR2], Pointwise(DoubleEq(), expected_samples_r2));
 }
 
 TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {

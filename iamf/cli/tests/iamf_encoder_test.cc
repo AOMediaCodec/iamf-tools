@@ -25,8 +25,8 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -240,7 +240,7 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
               IsOk());
 
   // Temporary variables for one iteration.
-  const std::vector<int32_t> zero_samples(kNumSamplesPerFrame, 0);
+  const std::vector<InternalSampleType> zero_samples(kNumSamplesPerFrame, 0.0);
   std::list<AudioFrameWithData> temp_audio_frames;
   std::list<ParameterBlockWithData> temp_parameter_blocks;
   IdLabeledFrameMap id_to_labeled_frame;

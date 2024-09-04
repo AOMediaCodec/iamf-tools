@@ -12,7 +12,6 @@
 #include "iamf/cli/recon_gain_generator.h"
 
 #include <cmath>
-#include <cstdint>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -24,17 +23,18 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 namespace {
 
 // Returns the Root Mean Square (RMS) power of input `samples`.
-double ComputeSignalPower(const std::vector<int32_t>& samples) {
+double ComputeSignalPower(const std::vector<InternalSampleType>& samples) {
   double mean_square = 0.0;
   const double scale = 1.0 / static_cast<double>(samples.size());
-  for (const int32_t s : samples) {
-    mean_square += scale * static_cast<double>(s) * static_cast<double>(s);
+  for (const auto s : samples) {
+    mean_square += scale * s * s;
   }
   return std::sqrt(mean_square);
 }
@@ -46,7 +46,7 @@ double ComputeSignalPower(const std::vector<int32_t>& samples) {
 absl::Status FindRelevantMixedSamples(
     const bool additional_logging, ChannelLabel::Label label,
     const LabelSamplesMap& label_to_samples,
-    const std::vector<int32_t>** relevant_mixed_samples) {
+    const std::vector<InternalSampleType>** relevant_mixed_samples) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<
       absl::flat_hash_map<ChannelLabel::Label, ChannelLabel::Label>>
@@ -86,7 +86,7 @@ absl::Status ReconGainGenerator::ComputeReconGain(
     const LabelSamplesMap& label_to_decoded_samples,
     const bool additional_logging, double& recon_gain) {
   // Gather information about the original samples.
-  const std::vector<int32_t>* original_samples;
+  const std::vector<InternalSampleType>* original_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       label, label_to_samples, &original_samples));
   LOG_IF(INFO, additional_logging)
@@ -110,7 +110,7 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   }
 
   // Gather information about mixed samples.
-  const std::vector<int32_t>* relevant_mixed_samples;
+  const std::vector<InternalSampleType>* relevant_mixed_samples;
   RETURN_IF_NOT_OK(FindRelevantMixedSamples(
       additional_logging, label, label_to_samples, &relevant_mixed_samples));
   LOG_IF(INFO, additional_logging)
@@ -139,7 +139,7 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   }
 
   // Gather information about the demixed samples.
-  const std::vector<int32_t>* demixed_samples;
+  const std::vector<InternalSampleType>* demixed_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       label, label_to_decoded_samples, &demixed_samples));
   LOG_IF(INFO, additional_logging)

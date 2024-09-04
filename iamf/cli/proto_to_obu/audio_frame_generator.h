@@ -34,7 +34,7 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
@@ -138,7 +138,7 @@ class AudioFrameGenerator {
    */
   absl::Status AddSamples(DecodedUleb128 audio_element_id,
                           ChannelLabel::Label label,
-                          const std::vector<int32_t>& samples);
+                          const std::vector<InternalSampleType>& samples);
 
   /*!\brief Finalizes the sample-adding process.
    *

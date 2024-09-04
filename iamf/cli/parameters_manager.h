@@ -20,9 +20,9 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

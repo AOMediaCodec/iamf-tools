@@ -26,9 +26,9 @@
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -153,7 +153,7 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
  */
 void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
                             AudioElementRendererBase* renderer,
-                            std::vector<double>& output_samples);
+                            std::vector<InternalSampleType>& output_samples);
 
 /*!\brief Gets and cleans up unique file name based on the specified suffix.
  *

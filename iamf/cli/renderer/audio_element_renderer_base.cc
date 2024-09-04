@@ -11,19 +11,19 @@
  */
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 
-#include <cstdint>
 #include <vector>
 
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 AudioElementRendererBase::~AudioElementRendererBase() {}
 
 absl::Status AudioElementRendererBase::Flush(
-    std::vector<double>& rendered_samples) {
+    std::vector<InternalSampleType>& rendered_samples) {
   absl::MutexLock lock(&mutex_);
   rendered_samples.insert(rendered_samples.end(), rendered_samples_.begin(),
                           rendered_samples_.end());

@@ -23,10 +23,10 @@ cc_library(
     srcs = ["audio_element.cc"],
     hdrs = ["audio_element.h"],
     deps = [
-        ":leb128",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
@@ -46,9 +46,9 @@ cc_library(
     ],
     hdrs = ["audio_frame.h"],
     deps = [
-        ":leb128",
         ":obu_base",
         ":obu_header",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -63,9 +63,9 @@ cc_library(
     srcs = ["codec_config.cc"],
     hdrs = ["codec_config.h"],
     deps = [
-        ":leb128",
         ":obu_base",
         ":obu_header",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -115,8 +115,8 @@ cc_library(
 )
 
 cc_library(
-    name = "leb128",
-    hdrs = ["leb128.h"],
+    name = "types",
+    hdrs = ["types.h"],
 )
 
 cc_library(
@@ -124,10 +124,10 @@ cc_library(
     srcs = ["mix_presentation.cc"],
     hdrs = ["mix_presentation.h"],
     deps = [
-        ":leb128",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
@@ -162,7 +162,7 @@ cc_library(
     srcs = ["obu_header.cc"],
     hdrs = ["obu_header.h"],
     deps = [
-        ":leb128",
+        ":types",
         "//iamf/cli:leb_generator",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
@@ -180,7 +180,7 @@ cc_library(
     hdrs = ["param_definitions.h"],
     deps = [
         ":demixing_info_param_data",
-        ":leb128",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
@@ -197,10 +197,10 @@ cc_library(
     hdrs = ["parameter_block.h"],
     deps = [
         ":demixing_info_param_data",
-        ":leb128",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
+        ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",

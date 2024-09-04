@@ -22,7 +22,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {

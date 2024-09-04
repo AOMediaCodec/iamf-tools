@@ -25,8 +25,8 @@
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
 

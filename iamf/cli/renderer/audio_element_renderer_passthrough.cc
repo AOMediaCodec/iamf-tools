@@ -13,7 +13,6 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
-#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -34,6 +33,8 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
+
 namespace iamf_tools {
 namespace {
 
@@ -178,7 +179,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
 
 absl::StatusOr<int> AudioElementRendererPassThrough::RenderLabeledFrame(
     const LabeledFrame& labeled_frame) {
-  std::vector<std::vector<int32_t>> samples_to_render;
+  std::vector<std::vector<InternalSampleType>> samples_to_render;
   RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
       labeled_frame, channel_order_, samples_to_render));
 

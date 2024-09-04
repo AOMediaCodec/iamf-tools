@@ -39,7 +39,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -83,23 +83,11 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
   // Handle Ls5 and Rs5.
   ls5_samples.resize(lss7_samples.size());
   rs5_samples.resize(rss7_samples.size());
-
-  // Computation in double.
-  std::vector<double> ls5_samples_double(ls5_samples.size(), 0.0);
-  std::vector<double> rs5_samples_double(rs5_samples.size(), 0.0);
   for (int i = 0; i < ls5_samples.size(); i++) {
-    ls5_samples_double[i] =
-        down_mixing_params.alpha * static_cast<double>(lss7_samples[i]) +
-        down_mixing_params.beta * static_cast<double>(lrs7_samples[i]);
-    rs5_samples_double[i] =
-        down_mixing_params.alpha * static_cast<double>(rss7_samples[i]) +
-        down_mixing_params.beta * static_cast<double>(rrs7_samples[i]);
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < ls5_samples.size(); i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(ls5_samples_double[i], ls5_samples[i]));
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(rs5_samples_double[i], rs5_samples[i]));
+    ls5_samples[i] = down_mixing_params.alpha * lss7_samples[i] +
+                     down_mixing_params.beta * lrs7_samples[i];
+    rs5_samples[i] = down_mixing_params.alpha * rss7_samples[i] +
+                     down_mixing_params.beta * rrs7_samples[i];
   }
 
   return absl::OkStatus();
@@ -109,12 +97,12 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "S5 to S7";
 
-  const std::vector<int32_t>* l5_samples;
-  const std::vector<int32_t>* ls5_samples;
-  const std::vector<int32_t>* lss7_samples;
-  const std::vector<int32_t>* r5_samples;
-  const std::vector<int32_t>* rs5_samples;
-  const std::vector<int32_t>* rss7_samples;
+  const std::vector<InternalSampleType>* l5_samples;
+  const std::vector<InternalSampleType>* ls5_samples;
+  const std::vector<InternalSampleType>* lss7_samples;
+  const std::vector<InternalSampleType>* r5_samples;
+  const std::vector<InternalSampleType>* rs5_samples;
+  const std::vector<InternalSampleType>* rss7_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kL5, label_to_samples, &l5_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -141,27 +129,13 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = l5_samples->size();
   lrs7_samples.resize(num_ticks, 0.0);
   rrs7_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> lrs7_samples_double(num_ticks, 0.0);
-  std::vector<double> rrs7_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    lrs7_samples_double[i] =
-        (static_cast<double>((*ls5_samples)[i]) -
-         down_mixing_params.alpha * static_cast<double>((*lss7_samples)[i])) /
+    lrs7_samples[i] =
+        ((*ls5_samples)[i] - down_mixing_params.alpha * (*lss7_samples)[i]) /
         down_mixing_params.beta;
-    rrs7_samples_double[i] =
-        (static_cast<double>((*rs5_samples)[i]) -
-         down_mixing_params.alpha * static_cast<double>((*rss7_samples)[i])) /
+    rrs7_samples[i] =
+        ((*rs5_samples)[i] - down_mixing_params.alpha * (*rss7_samples)[i]) /
         down_mixing_params.beta;
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(lrs7_samples_double[i], lrs7_samples[i]));
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(rrs7_samples_double[i], rrs7_samples[i]));
   }
 
   return absl::OkStatus();
@@ -188,23 +162,9 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
   auto& r3_samples = label_to_samples[kR3];
   l3_samples.resize(l5_samples.size());
   r3_samples.resize(r5_samples.size());
-
-  // Computation in double.
-  std::vector<double> l3_samples_double(l3_samples.size(), 0.0);
-  std::vector<double> r3_samples_double(r3_samples.size(), 0.0);
   for (int i = 0; i < l3_samples.size(); i++) {
-    l3_samples_double[i] =
-        static_cast<double>(l5_samples[i]) +
-        down_mixing_params.delta * static_cast<double>(ls5_samples[i]);
-    r3_samples_double[i] =
-        static_cast<double>(r5_samples[i]) +
-        down_mixing_params.delta * static_cast<double>(rs5_samples[i]);
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < l3_samples.size(); i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(l3_samples_double[i], l3_samples[i]));
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(r3_samples_double[i], r3_samples[i]));
+    l3_samples[i] = l5_samples[i] + down_mixing_params.delta * ls5_samples[i];
+    r3_samples[i] = r5_samples[i] + down_mixing_params.delta * rs5_samples[i];
   }
 
   return absl::OkStatus();
@@ -214,10 +174,10 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "S3 to S5";
 
-  const std::vector<int32_t>* l3_samples;
-  const std::vector<int32_t>* l5_samples;
-  const std::vector<int32_t>* r3_samples;
-  const std::vector<int32_t>* r5_samples;
+  const std::vector<InternalSampleType>* l3_samples;
+  const std::vector<InternalSampleType>* l5_samples;
+  const std::vector<InternalSampleType>* r3_samples;
+  const std::vector<InternalSampleType>* r5_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kL3, label_to_samples, &l3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -233,23 +193,11 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = l3_samples->size();
   ls5_samples.resize(num_ticks, 0.0);
   rs5_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> ls5_samples_double(num_ticks, 0.0);
-  std::vector<double> rs5_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    ls5_samples_double[i] = (static_cast<double>((*l3_samples)[i]) -
-                             static_cast<double>((*l5_samples)[i])) /
-                            down_mixing_params.delta;
-    rs5_samples_double[i] = (static_cast<double>((*r3_samples)[i]) -
-                             static_cast<double>((*r5_samples)[i])) /
-                            down_mixing_params.delta;
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(ls5_samples_double[i], ls5_samples[i]));
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(rs5_samples_double[i], rs5_samples[i]));
+    ls5_samples[i] =
+        ((*l3_samples)[i] - (*l5_samples)[i]) / down_mixing_params.delta;
+    rs5_samples[i] =
+        ((*r3_samples)[i] - (*r5_samples)[i]) / down_mixing_params.delta;
   }
 
   return absl::OkStatus();
@@ -274,21 +222,9 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
   auto& r2_samples = label_to_samples[kR2];
   l2_samples.resize(l3_samples.size());
   r2_samples.resize(r3_samples.size());
-
-  // Computation in double.
-  std::vector<double> l2_samples_double(l2_samples.size(), 0.0);
-  std::vector<double> r2_samples_double(r2_samples.size(), 0.0);
   for (int i = 0; i < l2_samples.size(); i++) {
-    l2_samples_double[i] = static_cast<double>(l3_samples[i]) +
-                           0.707 * static_cast<double>(c_samples[i]);
-    r2_samples_double[i] = static_cast<double>(r3_samples[i]) +
-                           0.707 * static_cast<double>(c_samples[i]);
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < l2_samples.size(); i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(l2_samples_double[i], l2_samples[i]));
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(r2_samples_double[i], r2_samples[i]));
+    l2_samples[i] = l3_samples[i] + 0.707 * c_samples[i];
+    r2_samples[i] = r3_samples[i] + 0.707 * c_samples[i];
   }
 
   return absl::OkStatus();
@@ -298,9 +234,9 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
                            LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "S2 to S3";
 
-  const std::vector<int32_t>* l2_samples;
-  const std::vector<int32_t>* r2_samples;
-  const std::vector<int32_t>* c_samples;
+  const std::vector<InternalSampleType>* l2_samples;
+  const std::vector<InternalSampleType>* r2_samples;
+  const std::vector<InternalSampleType>* c_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kL2, label_to_samples, &l2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -314,21 +250,9 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
   const size_t num_ticks = c_samples->size();
   l3_samples.resize(num_ticks, 0.0);
   r3_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> l3_samples_double(num_ticks, 0.0);
-  std::vector<double> r3_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    l3_samples_double[i] = (static_cast<double>((*l2_samples)[i]) -
-                            0.707 * static_cast<double>((*c_samples)[i]));
-    r3_samples_double[i] = (static_cast<double>((*r2_samples)[i]) -
-                            0.707 * static_cast<double>((*c_samples)[i]));
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(l3_samples_double[i], l3_samples[i]));
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(r3_samples_double[i], r3_samples[i]));
+    l3_samples[i] = ((*l2_samples)[i] - 0.707 * (*c_samples)[i]);
+    r3_samples[i] = ((*r2_samples)[i] - 0.707 * (*c_samples)[i]);
   }
 
   return absl::OkStatus();
@@ -349,18 +273,8 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
 
   auto& mono_samples = label_to_samples[kMono];
   mono_samples.resize(l2_samples.size());
-
-  // Computation in double.
-  std::vector<double> mono_samples_double(l2_samples.size(), 0.0);
-  for (int i = 0; i < mono_samples_double.size(); i++) {
-    mono_samples_double[i] = 0.5 * (static_cast<double>(l2_samples[i]) +
-                                    static_cast<double>(r2_samples[i]));
-  }
-
-  // Convert back to int32_t.
   for (int i = 0; i < mono_samples.size(); i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(mono_samples_double[i], mono_samples[i]));
+    mono_samples[i] = 0.5 * (l2_samples[i] + r2_samples[i]);
   }
 
   return absl::OkStatus();
@@ -370,8 +284,8 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
                            LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "S1 to S2";
 
-  const std::vector<int32_t>* l2_samples;
-  const std::vector<int32_t>* mono_samples;
+  const std::vector<InternalSampleType>* l2_samples;
+  const std::vector<InternalSampleType>* mono_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kL2, label_to_samples, &l2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -380,17 +294,8 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
   auto& r2_samples = label_to_samples[kDemixedR2];
   const size_t num_ticks = mono_samples->size();
   r2_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> r2_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    r2_samples_double[i] = 2.0 * static_cast<double>((*mono_samples)[i]) -
-                           static_cast<double>((*l2_samples)[i]);
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(r2_samples_double[i], r2_samples[i]));
+    r2_samples[i] = 2.0 * (*mono_samples)[i] - (*l2_samples)[i];
   }
 
   return absl::OkStatus();
@@ -417,27 +322,11 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
   auto& rtf2_samples = label_to_samples[kRtf2];
   ltf2_samples.resize(ltf4_samples.size());
   rtf2_samples.resize(rtf4_samples.size());
-
-  // Computation in double.
-  std::vector<double> ltf2_samples_double(ltf2_samples.size(), 0.0);
-  std::vector<double> rtf2_samples_double(rtf2_samples.size(), 0.0);
   for (int i = 0; i < ltf2_samples.size(); i++) {
-    ltf2_samples_double[i] =
-        static_cast<double>(ltf4_samples[i]) +
-        down_mixing_params.gamma * static_cast<double>(ltb4_samples[i]);
-    rtf2_samples_double[i] =
-        static_cast<double>(rtf4_samples[i]) +
-        down_mixing_params.gamma * static_cast<double>(rtb4_samples[i]);
-  }
-
-  // Clip and convert back to int32_t.
-  for (int i = 0; i < ltf2_samples.size(); i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(ltf2_samples_double[i], ltf2_samples[i]));
-  }
-  for (int i = 0; i < rtf2_samples.size(); i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(rtf2_samples_double[i], rtf2_samples[i]));
+    ltf2_samples[i] =
+        ltf4_samples[i] + down_mixing_params.gamma * ltb4_samples[i];
+    rtf2_samples[i] =
+        rtf4_samples[i] + down_mixing_params.gamma * rtb4_samples[i];
   }
 
   return absl::OkStatus();
@@ -447,10 +336,10 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "T2 to T4";
 
-  const std::vector<int32_t>* ltf2_samples;
-  const std::vector<int32_t>* ltf4_samples;
-  const std::vector<int32_t>* rtf2_samples;
-  const std::vector<int32_t>* rtf4_samples;
+  const std::vector<InternalSampleType>* ltf2_samples;
+  const std::vector<InternalSampleType>* ltf4_samples;
+  const std::vector<InternalSampleType>* rtf2_samples;
+  const std::vector<InternalSampleType>* rtf4_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kLtf2, label_to_samples, &ltf2_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -465,25 +354,11 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = ltf2_samples->size();
   ltb4_samples.resize(num_ticks, 0.0);
   rtb4_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> ltb4_samples_double(num_ticks, 0.0);
-  std::vector<double> rtb4_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    ltb4_samples_double[i] = (static_cast<double>((*ltf2_samples)[i]) -
-                              static_cast<double>((*ltf4_samples)[i])) /
-                             down_mixing_params.gamma;
-    rtb4_samples_double[i] = (static_cast<double>((*rtf2_samples)[i]) -
-                              static_cast<double>((*rtf4_samples)[i])) /
-                             down_mixing_params.gamma;
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(ltb4_samples_double[i], ltb4_samples[i]));
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(rtb4_samples_double[i], rtb4_samples[i]));
+    ltb4_samples[i] =
+        ((*ltf2_samples)[i] - (*ltf4_samples)[i]) / down_mixing_params.gamma;
+    rtb4_samples[i] =
+        ((*rtf2_samples)[i] - (*rtf4_samples)[i]) / down_mixing_params.gamma;
   }
 
   return absl::OkStatus();
@@ -510,25 +385,13 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
   auto& rtf3_samples = label_to_samples[kRtf3];
   ltf3_samples.resize(ltf2_samples.size());
   rtf3_samples.resize(rtf2_samples.size());
-
-  // Computation in double.
-  std::vector<double> ltf3_samples_double(ltf3_samples.size(), 0.0);
-  std::vector<double> rtf3_samples_double(rtf3_samples.size(), 0.0);
   for (int i = 0; i < ltf2_samples.size(); i++) {
-    ltf3_samples_double[i] = static_cast<double>(ltf2_samples[i]) +
-                             down_mixing_params.w * down_mixing_params.delta *
-                                 static_cast<double>(ls5_samples[i]);
-    rtf3_samples_double[i] = static_cast<double>(rtf2_samples[i]) +
-                             down_mixing_params.w * down_mixing_params.delta *
-                                 static_cast<double>(rs5_samples[i]);
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < ltf3_samples.size(); i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(ltf3_samples_double[i], ltf3_samples[i]));
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(rtf3_samples_double[i], rtf3_samples[i]));
+    ltf3_samples[i] = ltf2_samples[i] + down_mixing_params.w *
+                                            down_mixing_params.delta *
+                                            ls5_samples[i];
+    rtf3_samples[i] = rtf2_samples[i] + down_mixing_params.w *
+                                            down_mixing_params.delta *
+                                            rs5_samples[i];
   }
 
   return absl::OkStatus();
@@ -538,12 +401,12 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
                             LabelSamplesMap& label_to_samples) {
   LOG_FIRST_N(INFO, 1) << "TF2 to T2";
 
-  const std::vector<int32_t>* ltf3_samples;
-  const std::vector<int32_t>* l3_samples;
-  const std::vector<int32_t>* l5_samples;
-  const std::vector<int32_t>* rtf3_samples;
-  const std::vector<int32_t>* r3_samples;
-  const std::vector<int32_t>* r5_samples;
+  const std::vector<InternalSampleType>* ltf3_samples;
+  const std::vector<InternalSampleType>* l3_samples;
+  const std::vector<InternalSampleType>* l5_samples;
+  const std::vector<InternalSampleType>* rtf3_samples;
+  const std::vector<InternalSampleType>* r3_samples;
+  const std::vector<InternalSampleType>* r5_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
       kLtf3, label_to_samples, &ltf3_samples));
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
@@ -562,27 +425,13 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = ltf3_samples->size();
   ltf2_samples.resize(num_ticks, 0.0);
   rtf2_samples.resize(num_ticks, 0.0);
-
-  // Computation in double.
-  std::vector<double> ltf2_samples_double(num_ticks, 0.0);
-  std::vector<double> rtf2_samples_double(num_ticks, 0.0);
   for (int i = 0; i < num_ticks; i++) {
-    ltf2_samples_double[i] =
-        static_cast<double>((*ltf3_samples)[i]) -
-        down_mixing_params.w * (static_cast<double>((*l3_samples)[i]) -
-                                static_cast<double>((*l5_samples)[i]));
-    rtf2_samples_double[i] =
-        static_cast<double>((*rtf3_samples)[i]) -
-        down_mixing_params.w * (static_cast<double>((*r3_samples)[i]) -
-                                static_cast<double>((*r5_samples)[i]));
-  }
-
-  // Convert back to int32_t.
-  for (int i = 0; i < num_ticks; i++) {
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(ltf2_samples_double[i], ltf2_samples[i]));
-    RETURN_IF_NOT_OK(
-        ClipDoubleToInt32(rtf2_samples_double[i], rtf2_samples[i]));
+    ltf2_samples[i] =
+        (*ltf3_samples)[i] -
+        down_mixing_params.w * ((*l3_samples)[i] - (*l5_samples)[i]);
+    rtf2_samples[i] =
+        (*rtf3_samples)[i] -
+        down_mixing_params.w * ((*r3_samples)[i] - (*r5_samples)[i]);
   }
 
   return absl::OkStatus();
@@ -835,7 +684,8 @@ absl::Status StoreSamplesForAudioElementId(
       auto& samples = labeled_frame.label_to_samples[label];
       samples.resize(num_ticks, 0);
       for (int t = 0; t < samples.size(); t++) {
-        samples[t] = input_samples[t][channel_index];
+        samples[t] =
+            static_cast<InternalSampleType>(input_samples[t][channel_index]);
       }
       channel_index++;
     }
@@ -922,7 +772,7 @@ void LogForAudioElementId(
 
 absl::Status DemixingModule::FindSamplesOrDemixedSamples(
     ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
-    const std::vector<int32_t>** samples) {
+    const std::vector<InternalSampleType>** samples) {
   if (label_to_samples.find(label) != label_to_samples.end()) {
     *samples = &label_to_samples.at(label);
     return absl::OkStatus();
@@ -1023,7 +873,8 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
             "Samples do not exist for channel: ", output_channel_label));
       }
       for (int t = 0; t < num_time_ticks; t++) {
-        substream_samples[t][channel_index] = iter->second[t];
+        RETURN_IF_NOT_OK(ClipDoubleToInt32(
+            iter->second[t], substream_samples[t][channel_index]));
       }
 
       // Compute and store the linear output gains.

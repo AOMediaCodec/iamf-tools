@@ -20,11 +20,14 @@ namespace iamf_tools {
  */
 inline constexpr int kMaxLeb128Size = 8;
 
-/*!\brief A decoded `leb128` in IAMF.  */
+/*!\brief Decoded `leb128` in IAMF. */
 typedef uint32_t DecodedUleb128;
 
-/*!\brief A decoded `sleb128` in IAMF.  */
+/*!\brief Decoded `sleb128` in IAMF. */
 typedef int32_t DecodedSleb128;
+
+/*!\brief Type of audio samples for internal computation. */
+typedef double InternalSampleType;
 
 }  // namespace iamf_tools
 

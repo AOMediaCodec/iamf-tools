@@ -38,9 +38,9 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -292,12 +292,12 @@ void GenerateAudioFrameWithEightSamples(
 
   // Add only one frame.
   int frame_count = 0;
-  const std::vector<int32_t> frame_0_l2 = {1 << 16, 2 << 16, 3 << 16, 4 << 16,
-                                           5 << 16, 6 << 16, 7 << 16, 8 << 16};
-  const std::vector<int32_t> frame_0_r2 = {
+  const std::vector<InternalSampleType> frame_0_l2 = {
+      1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16};
+  const std::vector<InternalSampleType> frame_0_r2 = {
       65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
       65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
-  const std::vector<int32_t> empty_frame;
+  const std::vector<InternalSampleType> empty_frame;
 
   // TODO(b/329375123): Test adding samples and outputing frames in different
   //                    threads.

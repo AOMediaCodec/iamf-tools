@@ -12,7 +12,6 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <numeric>
@@ -27,15 +26,18 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
+
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using enum ChannelLabel::Label;
-
-using enum LoudspeakersSsConventionLayout::SoundSystem;
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
 using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
+using enum ChannelLabel::Label;
+using enum LoudspeakersSsConventionLayout::SoundSystem;
+using testing::DoubleEq;
+using testing::Pointwise;
 
 Layout GetScalableLayoutForSoundSystem(
     LoudspeakersSsConventionLayout::SoundSystem sound_system) {
@@ -205,15 +207,13 @@ TEST(RenderLabeledFrame, RendersPassThroughStereo) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kStereoScalableChannelLayoutConfig, kStereoLayout);
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
                          stereo_pass_through_renderer.get(), rendered_samples);
 
-  const std::vector<double> expected_samples({1, 2, 3, 4, 5, 6, 7, 8});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  const std::vector<InternalSampleType> expected_samples(
+      {1, 2, 3, 4, 5, 6, 7, 8});
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
@@ -221,16 +221,14 @@ TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kBinauralScalableChannelLayoutConfig, kBinauralLayout);
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
                          binaural_pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples({1, 2, 3, 4, 5, 6, 7, 8});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  const std::vector<InternalSampleType> expected_samples(
+      {1, 2, 3, 4, 5, 6, 7, 8});
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
@@ -252,17 +250,14 @@ TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           k7_1_4ScalableChannelLayoutConfig, k7_1_4Layout);
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples(
+  const std::vector<InternalSampleType> expected_samples(
       {0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,
        100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughLFE) {
@@ -274,17 +269,14 @@ TEST(RenderLabeledFrame, RendersPassThroughLFE) {
               ChannelAudioLayerConfig::kExpandedLayoutLFE),
           GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLFELabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples({0, 0, 0, 3, 0, 0, 0, 0,
-                                              0, 0, 0, 0, 0, 0, 0, 103,
-                                              0, 0, 0, 0, 0, 0, 0, 0});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  const std::vector<InternalSampleType> expected_samples(
+      {0, 0, 0, 3,   0, 0, 0, 0, 0, 0, 0, 0,
+       0, 0, 0, 103, 0, 0, 0, 0, 0, 0, 0, 0});
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughStereoS) {
@@ -298,16 +290,13 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoS) {
               ChannelAudioLayerConfig::kExpandedLayoutStereoS),
           GetScalableLayoutForSoundSystem(kSoundSystemD_4_5_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kStereoSLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples(
+  const std::vector<InternalSampleType> expected_samples(
       {0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 104, 105, 0, 0, 0, 0});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough3_0_Ch) {
@@ -322,17 +311,14 @@ TEST(RenderLabeledFrame, RendersPassThrough3_0_Ch) {
               ChannelAudioLayerConfig::kExpandedLayout3_0_ch),
           GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples({0, 1, 2, 0, 0,   0,   0,   0,
-                                              0, 0, 0, 0, 100, 101, 102, 0,
-                                              0, 0, 0, 0, 0,   0,   0,   0});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  const std::vector<InternalSampleType> expected_samples(
+      {0,   1,   2,   0, 0, 0, 0, 0, 0, 0, 0, 0,
+       100, 101, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough9_1_6) {
@@ -360,18 +346,15 @@ TEST(RenderLabeledFrame, RendersPassThrough9_1_6) {
               ChannelAudioLayerConfig::kExpandedLayout9_1_6_ch),
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k9_1_6LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples(
+  const std::vector<InternalSampleType> expected_samples(
       {0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,
        11,  12,  13,  14,  15,  100, 101, 102, 103, 104, 105,
        106, 107, 108, 109, 110, 111, 112, 113, 114, 115});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughStereoF) {
@@ -385,17 +368,14 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoF) {
               ChannelAudioLayerConfig::kExpandedLayoutStereoF),
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kStreoFLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples(
+  const std::vector<InternalSampleType> expected_samples(
       {0,   1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
        100, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughTop6Ch) {
@@ -413,17 +393,14 @@ TEST(RenderLabeledFrame, RendersPassThroughTop6Ch) {
               ChannelAudioLayerConfig::kExpandedLayoutTop6Ch),
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
 
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kTop6ChLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<double> expected_samples(
+  const std::vector<InternalSampleType> expected_samples(
       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10,  11,  12,  13,  14,  15,
        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 111, 112, 113, 114, 115});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersDemixedSamples) {
@@ -439,13 +416,10 @@ TEST(RenderLabeledFrame, RendersDemixedSamples) {
               IsOk());
   EXPECT_THAT(demixed_stereo_renderer->Finalize(), IsOk());
   EXPECT_TRUE(demixed_stereo_renderer->IsFinalized());
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   EXPECT_THAT(demixed_stereo_renderer->Flush(rendered_samples), IsOk());
-  const std::vector<double> expected_samples({1, 2});
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  const std::vector<InternalSampleType> expected_samples({1, 2});
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
@@ -482,7 +456,7 @@ void RenderMonoSequence(int num_frames, int samples_per_frame,
                         AudioElementRendererPassThrough& renderer) {
   int sample = 0;
   for (int frame_index = 0; frame_index < num_frames; ++frame_index) {
-    std::vector<int32_t> samples(samples_per_frame);
+    std::vector<InternalSampleType> samples(samples_per_frame);
     std::iota(samples.begin(), samples.end(), sample);
     sample += samples_per_frame;
 
@@ -496,7 +470,7 @@ void RenderMonoSequence(int num_frames, int samples_per_frame,
 // Collects all of the rendered samples from `renderer` into `rendered_samples`.
 // This function blocks until the renderer is finalized.
 void CollectRenderedSamples(AudioElementRendererPassThrough& renderer,
-                            std::vector<double>& rendered_samples) {
+                            std::vector<InternalSampleType>& rendered_samples) {
   while (!renderer.IsFinalized()) {
     // In practice threads would be better off sleeping between calls. But
     // calling it very often is more likely to detect a problem.
@@ -517,7 +491,7 @@ TEST(RenderLabeledFrame, IsThreadSafe) {
   std::thread render_thread(&RenderMonoSequence, kNumFrames, kSamplesPerFrame,
                             std::ref(*mono_pass_through_renderer));
   // Spawn a thread to collect all of the rendered samples.
-  std::vector<double> rendered_samples;
+  std::vector<InternalSampleType> rendered_samples;
   std::thread collector_thread(&CollectRenderedSamples,
                                std::ref(*mono_pass_through_renderer),
                                std::ref(rendered_samples));
@@ -526,12 +500,10 @@ TEST(RenderLabeledFrame, IsThreadSafe) {
 
   // If the render was not thread safe, then we would expect trouble, such as
   // missing samples or samples coming back in the wrong order.
-  std::vector<double> expected_samples(kNumFrames * kSamplesPerFrame);
+  std::vector<InternalSampleType> expected_samples(kNumFrames *
+                                                   kSamplesPerFrame);
   std::iota(expected_samples.begin(), expected_samples.end(), 0);
-  EXPECT_EQ(rendered_samples.size(), expected_samples.size());
-  for (int i = 0; i < rendered_samples.size(); ++i) {
-    EXPECT_DOUBLE_EQ(rendered_samples[i], expected_samples[i]);
-  }
+  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
 }
 
 }  // namespace

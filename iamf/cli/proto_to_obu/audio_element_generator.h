@@ -22,8 +22,8 @@
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {

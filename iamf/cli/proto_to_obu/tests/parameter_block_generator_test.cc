@@ -33,9 +33,9 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -438,7 +438,7 @@ void PrepareAudioElementWithDataForReconGain(
 
 IdLabeledFrameMap PrepareIdLabeledFrameMap() {
   using enum ChannelLabel::Label;
-  const std::vector<int32_t> samples(8, 10000);
+  const std::vector<InternalSampleType> samples(8, 10000);
   LabelSamplesMap label_to_samples;
   for (const auto& label :
        {kL2, kR2, kDemixedL3, kDemixedR3, kDemixedLs5, kDemixedRs5}) {

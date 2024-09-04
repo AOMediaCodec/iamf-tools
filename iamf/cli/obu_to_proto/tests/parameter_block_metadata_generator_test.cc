@@ -23,8 +23,8 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {

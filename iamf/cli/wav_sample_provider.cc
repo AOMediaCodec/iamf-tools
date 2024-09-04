@@ -28,7 +28,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -125,7 +125,8 @@ absl::Status WavSampleProvider::ReadFrames(
     auto& samples = labeled_samples[channel_labels[c]];
     samples.resize(num_time_ticks);
     for (int t = 0; t < num_time_ticks; ++t) {
-      samples[t] = wav_reader.buffers_[t][channel_ids[c]];
+      samples[t] = static_cast<InternalSampleType>(
+          wav_reader.buffers_[t][channel_ids[c]]);
     }
   }
   finished_reading = (wav_reader.remaining_samples() == 0);

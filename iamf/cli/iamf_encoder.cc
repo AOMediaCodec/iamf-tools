@@ -41,8 +41,8 @@
 #include "iamf/common/macros.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -171,7 +171,7 @@ absl::Status IamfEncoder::GetInputTimestamp(int32_t& input_timestamp) {
 
 void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
                              ChannelLabel::Label label,
-                             const std::vector<int32_t>& samples) {
+                             const std::vector<InternalSampleType>& samples) {
   id_to_labeled_samples_[audio_element_id][label] = samples;
 }
 

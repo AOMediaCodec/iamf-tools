@@ -18,7 +18,7 @@ cc_library(
     hdrs = ["obu_util.h"],
     deps = [
         ":macros",
-        "//iamf/obu:leb128",
+        "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/functional:any_invocable",
@@ -38,7 +38,7 @@ cc_library(
     deps = [
         ":bit_buffer_util",
         ":macros",
-        "//iamf/obu:leb128",
+        "//iamf/obu:types",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -53,7 +53,7 @@ cc_library(
         ":bit_buffer_util",
         ":macros",
         "//iamf/cli:leb_generator",
-        "//iamf/obu:leb128",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

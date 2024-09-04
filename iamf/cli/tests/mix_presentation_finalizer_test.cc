@@ -21,8 +21,8 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_writer.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {

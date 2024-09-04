@@ -30,8 +30,8 @@
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
 

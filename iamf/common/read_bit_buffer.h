@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

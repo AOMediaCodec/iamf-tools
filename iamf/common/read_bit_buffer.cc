@@ -23,7 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

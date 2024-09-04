@@ -11,7 +11,6 @@
  */
 #ifndef CLI_RENDERER_RENDERER_UTILS_H_
 #define CLI_RENDERER_RENDERER_UTILS_H_
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -40,7 +40,7 @@ namespace renderer_utils {
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<int32_t>>& samples_to_render);
+    std::vector<std::vector<InternalSampleType>>& samples_to_render);
 
 /*!\brief Gets a key associated with the playback layout.
  *

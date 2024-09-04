@@ -18,8 +18,8 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

@@ -39,9 +39,9 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

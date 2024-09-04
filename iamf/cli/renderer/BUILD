@@ -6,6 +6,7 @@ cc_library(
     hdrs = ["audio_element_renderer_base.h"],
     deps = [
         "//iamf/cli:demixing_module",
+        "//iamf/obu:types",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
@@ -29,6 +30,7 @@ cc_library(
         "//iamf/common:obu_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
@@ -59,6 +61,7 @@ cc_library(
         "//iamf/cli:demixing_module",
         "//iamf/common:macros",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",

@@ -9,7 +9,6 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -23,6 +22,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -43,7 +43,7 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
       continue;
     }
 
-    const std::vector<int32_t>* samples_to_render = nullptr;
+    const std::vector<InternalSampleType>* samples_to_render = nullptr;
     RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
         label, labeled_frame.label_to_samples, &samples_to_render));
 
@@ -77,7 +77,7 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<int32_t>>& samples_to_render) {
+    std::vector<std::vector<InternalSampleType>>& samples_to_render) {
   samples_to_render.clear();
   if (ordered_labels.empty()) {
     return absl::OkStatus();
@@ -91,7 +91,7 @@ absl::Status ArrangeSamplesToRender(
 
   const auto num_channels = ordered_labels.size();
   samples_to_render.resize(*num_trimmed_time_ticks,
-                           std::vector<int32_t>(num_channels, 0));
+                           std::vector<InternalSampleType>(num_channels, 0));
 
   for (int channel = 0; channel < num_channels; ++channel) {
     const auto& channel_label = ordered_labels[channel];
@@ -101,7 +101,7 @@ absl::Status ArrangeSamplesToRender(
       continue;
     }
 
-    const std::vector<int32_t>* channel_samples = nullptr;
+    const std::vector<InternalSampleType>* channel_samples = nullptr;
     RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
         channel_label, labeled_frame.label_to_samples, &channel_samples));
     // The lookup should not fail because its presence was already checked in

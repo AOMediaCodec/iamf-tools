@@ -50,7 +50,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -689,7 +689,7 @@ bool AudioFrameGenerator::TakingSamples() const {
 
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, ChannelLabel::Label label,
-    const std::vector<int32_t>& samples) {
+    const std::vector<InternalSampleType>& samples) {
   const auto& audio_element_labels =
       audio_element_id_to_labels_.find(audio_element_id);
   if (audio_element_labels == audio_element_id_to_labels_.end()) {

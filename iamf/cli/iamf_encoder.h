@@ -35,10 +35,10 @@
 #include "iamf/cli/proto_to_obu/parameter_block_generator.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -113,7 +113,7 @@ class IamfEncoder {
    * \param samples Audio samples to add.
    */
   void AddSamples(DecodedUleb128 audio_element_id, ChannelLabel::Label label,
-                  const std::vector<int32_t>& samples);
+                  const std::vector<InternalSampleType>& samples);
 
   /*!\brief Finalizes the process of adding samples.
    *

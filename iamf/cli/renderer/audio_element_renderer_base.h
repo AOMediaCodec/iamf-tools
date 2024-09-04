@@ -11,7 +11,6 @@
  */
 #ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
 #define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
-#include <cstdint>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -19,6 +18,7 @@
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 /*!\brief Abstract class to render a demixed audio element to a playback layout.
@@ -57,7 +57,7 @@ class AudioElementRendererBase {
    * \param rendered_samples Vector to append rendered samples to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Flush(std::vector<double>& rendered_samples);
+  absl::Status Flush(std::vector<InternalSampleType>& rendered_samples);
 
   /*!\brief Finalizes the renderer. Waits for it to finish any remaining frames.
    *
@@ -87,7 +87,7 @@ class AudioElementRendererBase {
 
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
-  std::vector<double> rendered_samples_ ABSL_GUARDED_BY(mutex_);
+  std::vector<InternalSampleType> rendered_samples_ ABSL_GUARDED_BY(mutex_);
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
 };
 

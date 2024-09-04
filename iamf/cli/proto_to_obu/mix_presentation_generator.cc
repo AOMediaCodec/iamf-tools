@@ -29,9 +29,9 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

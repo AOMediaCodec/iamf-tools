@@ -29,7 +29,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/leb128.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 

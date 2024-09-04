@@ -39,10 +39,10 @@
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/leb128.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -277,7 +277,7 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
 
 void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
                             AudioElementRendererBase* renderer,
-                            std::vector<double>& output_samples) {
+                            std::vector<InternalSampleType>& output_samples) {
   ASSERT_NE(renderer, nullptr);
   EXPECT_THAT(renderer->RenderLabeledFrame(labeled_frame), IsOk());
   EXPECT_THAT(renderer->Finalize(), IsOk());
