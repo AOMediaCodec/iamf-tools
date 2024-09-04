@@ -88,9 +88,10 @@ TEST(CreateFromFile, SucceedsOnValidAdmFile) {
 }
 
 TEST(CreateFromFile, SucceedsOnValidWavFile) {
-  const auto input_wav_file = std::filesystem::current_path() /
-                              std::string("iamf/cli/testdata/") /
-                              "stereo_8_samples_48khz_s16le.wav";
+  const auto input_wav_file =
+      (std::filesystem::current_path() / std::string("iamf/cli/testdata/") /
+       "stereo_8_samples_48khz_s16le.wav")
+          .string();
   ASSERT_TRUE(std::filesystem::exists(input_wav_file));
 
   EXPECT_THAT(
@@ -100,9 +101,10 @@ TEST(CreateFromFile, SucceedsOnValidWavFile) {
 
 TEST(CreateFromFile, FailsWhenNumSamplesPerFrameIsZero) {
   const size_t kInvalidNumSamplesPerFrame = 0;
-  const auto input_wav_file = std::filesystem::current_path() /
-                              std::string("iamf/cli/testdata/") /
-                              "stereo_8_samples_48khz_s16le.wav";
+  const auto input_wav_file =
+      (std::filesystem::current_path() / std::string("iamf/cli/testdata/") /
+       "stereo_8_samples_48khz_s16le.wav")
+          .string();
   ASSERT_TRUE(std::filesystem::exists(input_wav_file));
 
   EXPECT_FALSE(
@@ -131,8 +133,9 @@ TEST(CreateFromFile, FailsOnNonWavFile) {
 
 WavReader InitAndValidate(const std::filesystem::path& filename,
                           const size_t num_samples_per_frame) {
-  const auto input_wav_file = std::filesystem::current_path() /
-                              std::string("iamf/cli/testdata/") / filename;
+  const auto input_wav_file = (std::filesystem::current_path() /
+                               std::string("iamf/cli/testdata/") / filename)
+                                  .string();
   auto wav_reader =
       WavReader::CreateFromFile(input_wav_file, num_samples_per_frame);
   EXPECT_THAT(wav_reader, IsOk());

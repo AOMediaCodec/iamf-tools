@@ -763,7 +763,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
   stream_info_metadata->set_minimum_frame_size(kInvalidMinimumFrameSize);
   stream_info_metadata->set_maximum_frame_size(kInvalidMaximumFrameSize);
   stream_info_metadata->set_number_of_channels(kInvalidNumberOfChannels);
-  stream_info_metadata->set_md5_signature(kInvalidMd5Signature.begin(),
+  stream_info_metadata->set_md5_signature(kInvalidMd5Signature.data(),
                                           kInvalidMd5Signature.size());
 
   const auto output_obus = InitAndGenerate();
@@ -801,7 +801,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
           .mutable_codec_config()
           ->mutable_decoder_config_flac()
           ->add_metadata_blocks()));
-  const auto kExpectedPictureBlock = (FlacMetadataBlock){
+  const auto kExpectedPictureBlock = FlacMetadataBlock{
       .header = {.last_metadata_block_flag = true,
                  .block_type = FlacMetaBlockHeader::kFlacPicture,
                  .metadata_data_block_length = 3},

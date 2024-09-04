@@ -68,9 +68,10 @@ void InitializeTestData(
                                           audio_elements);
 }
 
-std::filesystem::path GetInputWavDir() {
+std::string GetInputWavDir() {
   static const auto input_wav_dir =
-      std::filesystem::current_path() / std::string("iamf/cli/testdata");
+      (std::filesystem::current_path() / std::string("iamf/cli/testdata"))
+          .string();
   return input_wav_dir;
 }
 

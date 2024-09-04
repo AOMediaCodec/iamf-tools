@@ -13,12 +13,12 @@
 #include "iamf/cli/iamf_components.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -36,8 +36,8 @@ TEST(IamfComponentsTest, CreateMixPresentationFinalizerReturnsNonNull) {
 
 TEST(IamfComponentsTest,
      CreateObuSequencersReturnsNonNullAndNonZeroObuSequencers) {
-  auto obu_sequencers =
-      CreateObuSequencers({}, std::filesystem::temp_directory_path(), false);
+  auto obu_sequencers = CreateObuSequencers(
+      {}, GetAndCreateOutputDirectory("iamf_directory"), false);
 
   EXPECT_FALSE(obu_sequencers.empty());
   for (auto& obu_sequencer : obu_sequencers) {
@@ -57,7 +57,7 @@ TEST(IamfComponentsTest, CanBeConfiguredWithFixedSizeLebGenerator) {
             true);
 
   auto obu_sequencers = CreateObuSequencers(
-      user_metadata, std::filesystem::temp_directory_path(), false);
+      user_metadata, GetAndCreateOutputDirectory("iamf_directory"), false);
 
   EXPECT_FALSE(obu_sequencers.empty());
   for (auto& obu_sequencer : obu_sequencers) {
@@ -84,7 +84,7 @@ TEST(IamfComponentsTest, ReturnsEmptyListWhenLebGeneratorIsInvalid) {
             true);
 
   auto obu_sequencers = CreateObuSequencers(
-      user_metadata, std::filesystem::temp_directory_path(), false);
+      user_metadata, GetAndCreateOutputDirectory("iamf_directory"), false);
 
   EXPECT_TRUE(obu_sequencers.empty());
 }

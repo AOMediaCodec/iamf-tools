@@ -175,6 +175,7 @@ cc_test(
     name = "iamf_components_test",
     srcs = ["iamf_components_test.cc"],
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:iamf_components",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
