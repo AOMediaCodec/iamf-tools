@@ -116,13 +116,13 @@ TEST_F(FlacTest, CanContainAdditionalBlocks) {
       .header = {.last_metadata_block_flag = false,
                  .block_type = FlacMetaBlockHeader::kFlacPicture,
                  .metadata_data_block_length = 3},
-      .payload = (std::vector<uint8_t>){'a', 'b', 'c'}});
+      .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   flac_decoder_config_.metadata_blocks_.push_back(FlacMetadataBlock{
       .header = {.last_metadata_block_flag = true,
                  .block_type = FlacMetaBlockHeader::kFlacApplication,
                  .metadata_data_block_length = 3},
-      .payload = (std::vector<uint8_t>){'d', 'e', 'f'}});
+      .payload = std::vector<uint8_t>{'d', 'e', 'f'}});
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -173,7 +173,7 @@ TEST_F(FlacTest, IllegalMetadataBlockLengthInconsistent) {
       .header = {.last_metadata_block_flag = true,
                  .block_type = FlacMetaBlockHeader::kFlacPicture,
                  .metadata_data_block_length = 10},
-      .payload = (std::vector<uint8_t>){'a', 'b', 'c'}});
+      .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   expected_write_status_code_ = absl::StatusCode::kUnknown;
   TestWriteDecoderConfig();
@@ -188,7 +188,7 @@ TEST_F(FlacTest, IllegalExtraneousLastMetadataBlockFlag) {
       .header = {.last_metadata_block_flag = true,
                  .block_type = FlacMetaBlockHeader::kFlacPicture,
                  .metadata_data_block_length = 3},
-      .payload = (std::vector<uint8_t>){'a', 'b', 'c'}});
+      .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
@@ -201,7 +201,7 @@ TEST_F(FlacTest, IllegalStreamInfoMustBeFirstBlock) {
           .header = {.last_metadata_block_flag = true,
                      .block_type = FlacMetaBlockHeader::kFlacPicture,
                      .metadata_data_block_length = 3},
-          .payload = (std::vector<uint8_t>){'a', 'b', 'c'}});
+          .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   ASSERT_EQ(flac_decoder_config_.metadata_blocks_.back().header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);

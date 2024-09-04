@@ -2,9 +2,22 @@ name: iamf-tools-builder
 
 description: Run unit tests for IAMF Tools.
 
+inputs:
+  platform:
+    description: "The platform to build for."
+    type: string
+    default: linux
+
 runs:
   using: composite
   steps:
     - shell: bash
       run: |
-        bazelisk test -c opt iamf/...
+        if [[ "${{inputs.platform}}" == "windows" ]]; then
+          # Windows works best with a very short path as per https://bazel.build/configure/windows#long-path-issues.
+          echo  "startup --output_user_root=C:/" >> .bazelrc
+          # Disable windows tests until some platform-specific bugs are fixed.
+          bazelisk build -c opt iamf/...
+        else
+          bazelisk test -c opt iamf/...
+        fi
