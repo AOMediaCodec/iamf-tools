@@ -49,11 +49,7 @@ cc_library(
     name = "aac_utils",
     srcs = [],
     hdrs = ["aac_utils.h"],
-    deps = [
-        "@com_google_absl//absl/log",
-        "@fdk_aac//:aac_encoder_lib",
-        "@fdk_aac//:fdk_sys_lib",
-    ],
+    deps = ["@fdk_aac//:fdk_sys_lib"],
 )
 
 cc_library(
@@ -78,9 +74,15 @@ cc_library(
     ],
 )
 
+# TODO(b/362229054): Enable FLAC support on Windows and unify `flac_encoder.cc` and
+#                    `flac_encoder_windows.cc`.
+
 cc_library(
     name = "flac_encoder",
-    srcs = ["flac_encoder.cc"],
+    srcs = select({
+        "@platforms//os:windows": ["flac_encoder_windows.cc"],
+        "//conditions:default": ["flac_encoder.cc"],
+    }),
     hdrs = ["flac_encoder.h"],
     deps = [
         ":encoder_base",
