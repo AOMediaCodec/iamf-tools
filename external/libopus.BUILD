@@ -230,7 +230,10 @@ cc_library(
     srcs = INTERNAL_HDRS + OPUS_COMMON_SRCS + CELT_COMMON_SRCS + SILK_COMMON_SRCS + SILK_FLOAT_SRCS,
     hdrs = glob(["include/*.h"]),
     includes = ["include", "src", "celt", "silk", "silk/float"],
-    copts = ["-O3"],
+    copts = select({
+        "@platforms//os:windows": [],
+        "//conditions:default": ["-O3"],
+    }),
     defines = [
         "ENABLE_HARDENING",
         "OPUS_BUILD",
