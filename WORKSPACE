@@ -17,13 +17,22 @@ git_repository(
     tag = "v1.14.0",
 )
 
+git_repository(
+  name = "rules_python",
+  tag = "0.35.0",
+  remote = "https://github.com/bazelbuild/rules_python.git",
+)
+
+load("@rules_python//python:repositories.bzl", "py_repositories")
+py_repositories()
+
 # proto_library, cc_proto_library, and java_proto_library rules implicitly
 # depend on @com_google_protobuf for protoc and proto runtimes.
 # This statement defines the @com_google_protobuf repo.
 git_repository(
     name = "com_google_protobuf",
     remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v25.0",
+    tag = "v27.4",
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
