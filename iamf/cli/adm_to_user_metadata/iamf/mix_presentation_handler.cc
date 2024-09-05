@@ -131,8 +131,8 @@ absl::Status SubMixAudioElementHandler(
     iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
   sub_mix_audio_element.set_audio_element_id(audio_element_id);
 
-  sub_mix_audio_element.add_mix_presentation_element_annotations_array()
-      ->set_audio_element_friendly_label(audio_object.audio_object_label);
+  sub_mix_audio_element.add_localized_element_annotations(
+      audio_object.audio_object_label);
 
   auto* rendering_config = sub_mix_audio_element.mutable_rendering_config();
 
@@ -154,7 +154,7 @@ absl::Status SubMixAudioElementHandler(
   }
 
   auto* mix_gain_param_definition =
-      sub_mix_audio_element.mutable_element_mix_config()->mutable_mix_gain();
+      sub_mix_audio_element.mutable_element_mix_gain();
   // 'default_mix_gain' for each audio element in a mix presentation is
   // initialized to 0. If the corresponding audioObject in ADM has the 'gain'
   // parameter present, set it to the same.
@@ -228,9 +228,9 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
         mix_presentation_obu_metadata) {
   mix_presentation_obu_metadata.set_mix_presentation_id(mix_presentation_id);
   mix_presentation_obu_metadata.set_count_label(1);
-  mix_presentation_obu_metadata.add_language_labels("en-us");
-  mix_presentation_obu_metadata.add_mix_presentation_annotations_array()
-      ->set_mix_presentation_friendly_label("test_mix_pres");
+  mix_presentation_obu_metadata.add_annotations_language("en-us");
+  mix_presentation_obu_metadata.add_localized_presentation_annotations(
+      "test_mix_pres");
   mix_presentation_obu_metadata.set_num_sub_mixes(1);
 
   auto& mix_presentation_sub_mix =
@@ -246,8 +246,7 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
   }
 
   auto* mix_gain_param_definition =
-      mix_presentation_sub_mix.mutable_output_mix_config()
-          ->mutable_output_mix_gain();
+      mix_presentation_sub_mix.mutable_output_mix_gain();
   auto* param_definition =
       mix_gain_param_definition->mutable_param_definition();
 

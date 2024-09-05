@@ -979,10 +979,9 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
       10,
       // count_label
       1,
-      // language_labels
+      // annotations_language[0]
       'e', 'n', '-', 'u', 's', '\0',
-      // mix_presentation_annotation
-      // mix_presentation_friendly_label
+      // localized_presentation_annotations[0]
       'M', 'i', 'x', ' ', '1', '\0',
       // num_submixes
       0,
@@ -999,21 +998,23 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
   const std::vector<std::string> kLocalizedPresentationAnnotations = {"Mix 1"};
   const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
       "Submix 1"};
+
   std::vector<uint8_t> source = {
       // Start Mix OBU.
       // mix_presentation_id
       10,
       // count_label
       1,
-      // language_labels
+      // annotations_language[0]
       'e', 'n', '-', 'u', 's', '\0',
-      // mix_presentation_annotation
-      // mix_presentation_friendly_label
+      // localized_presentation_annotations[0]
       'M', 'i', 'x', ' ', '1', '\0',
       // num_submixes
       1,
       // Start Submix.
-      1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      1, 21,
+      // localized_element_annotations[0]
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
       RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
       // End RenderingConfig.
@@ -1142,7 +1143,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       // Start SubMixAudioElement.
       // audio_element_id
       11,
-      // mix_presentation_annotation[0].audio_element_friendly_label
+      // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
       RenderingConfig::kHeadphonesRenderingModeBinaural << 6, 0,

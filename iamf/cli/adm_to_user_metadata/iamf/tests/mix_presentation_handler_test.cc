@@ -101,10 +101,9 @@ TEST(PopulateMixPresentation, PopulatesLabels) {
   const auto& mix_presentation_metadata = GetMixObuMetataExpectOk();
 
   EXPECT_EQ(mix_presentation_metadata.count_label(), 1);
-  EXPECT_FALSE(mix_presentation_metadata.language_labels(0).empty());
-  EXPECT_FALSE(mix_presentation_metadata.mix_presentation_annotations_array(0)
-                   .mix_presentation_friendly_label()
-                   .empty());
+  EXPECT_FALSE(mix_presentation_metadata.annotations_language(0).empty());
+  EXPECT_FALSE(
+      mix_presentation_metadata.localized_presentation_annotations(0).empty());
 }
 
 TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
@@ -117,14 +116,12 @@ TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
 
   const uint32_t kExpectedAudioElementId = 0;
   EXPECT_EQ(audio_element.audio_element_id(), kExpectedAudioElementId);
-  EXPECT_FALSE(audio_element.mix_presentation_element_annotations_array(0)
-                   .audio_element_friendly_label()
-                   .empty());
+  EXPECT_FALSE(audio_element.localized_element_annotations().empty());
 
-  EXPECT_EQ(audio_element.element_mix_config().mix_gain().default_mix_gain(),
+  EXPECT_EQ(audio_element.element_mix_gain().default_mix_gain(),
             kExpectedStereoGain);
 
-  EXPECT_EQ(submix.output_mix_config().output_mix_gain().default_mix_gain(), 0);
+  EXPECT_EQ(submix.output_mix_gain().default_mix_gain(), 0);
 }
 
 TEST(PopulateMixPresentation, SetsStereoRenderingModeForStereoAudioObject) {

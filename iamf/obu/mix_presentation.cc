@@ -458,11 +458,9 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(wb.WriteUleb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(wb.WriteUleb128(count_label_));
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-      "language_labels", annotations_language_.size(), count_label_));
   RETURN_IF_NOT_OK(ValidateUnique(
       annotations_language_.begin(), annotations_language_.end(),
-      absl::StrCat("Language labels", with_mix_presentation_id)));
+      absl::StrCat("annotations_language", with_mix_presentation_id)));
 
   RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
       absl::StrCat("annotations_language", with_mix_presentation_id),
@@ -558,12 +556,12 @@ void MixPresentationObu::PrintObu() const {
   LOG(INFO) << "Mix Presentation OBU:";
   LOG(INFO) << "  mix_presentation_id= " << mix_presentation_id_;
   LOG(INFO) << "  count_label= " << count_label_;
-  LOG(INFO) << "  language_labels:";
+  LOG(INFO) << "  annotations_language:";
   for (int i = 0; i < count_label_; ++i) {
     LOG(INFO) << "    annotations_languages[" << i << "]= \""
               << annotations_language_[i] << "\"";
   }
-  LOG(INFO) << "  mix_presentation_annotations:";
+  LOG(INFO) << "  localized_presentation_annotations:";
   for (int i = 0; i < count_label_; ++i) {
     LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
               << localized_presentation_annotations_[i] << "\"";
@@ -580,9 +578,9 @@ void MixPresentationObu::PrintObu() const {
       const auto& audio_element = sub_mix.audio_elements[j];
       LOG(INFO) << "    // audio_elements[" << j << "]:";
       LOG(INFO) << "      audio_element_id= " << audio_element.audio_element_id;
-      LOG(INFO) << "      localized_presentation_annotations:";
+      LOG(INFO) << "      localized_element_annotations:";
       for (int k = 0; k < count_label_; ++k) {
-        LOG(INFO) << "        localized_element_annotations= \""
+        LOG(INFO) << "        localized_element_annotations[" << k << "]= \""
                   << audio_element.localized_element_annotations[k] << "\"";
       }
       LOG(INFO) << "        rendering_config:";

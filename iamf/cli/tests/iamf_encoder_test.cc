@@ -105,20 +105,7 @@ void AddMixPresentation(UserMetadata& user_metadata) {
             rendering_config {
               headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
             }
-            element_mix_config {
-              mix_gain {
-                param_definition {
-                  parameter_id: 100
-                  parameter_rate: 16000
-                  param_definition_mode: 1
-                  reserved: 0
-                }
-                default_mix_gain: 0
-              }
-            }
-          }
-          output_mix_config {
-            output_mix_gain {
+            element_mix_gain {
               param_definition {
                 parameter_id: 100
                 parameter_rate: 16000
@@ -127,6 +114,15 @@ void AddMixPresentation(UserMetadata& user_metadata) {
               }
               default_mix_gain: 0
             }
+          }
+          output_mix_gain {
+            param_definition {
+              parameter_id: 100
+              parameter_rate: 16000
+              param_definition_mode: 1
+              reserved: 0
+            }
+            default_mix_gain: 0
           }
           num_layouts: 1
           layouts {

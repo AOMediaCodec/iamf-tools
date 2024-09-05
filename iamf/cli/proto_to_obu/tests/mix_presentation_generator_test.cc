@@ -621,9 +621,8 @@ TEST_F(MixPresentationGeneratorTest, SSConventionWithOneStereoAudioElement) {
 TEST_F(MixPresentationGeneratorTest, SupportsUtf8) {
   const std::string kUtf8FourByteSequenceCode = "\xf0\x9d\x85\x9e\x00)";
   mix_presentation_metadata_.at(0).set_count_label(1);
-  mix_presentation_metadata_.at(0)
-      .add_mix_presentation_annotations_array()
-      ->set_mix_presentation_friendly_label(kUtf8FourByteSequenceCode);
+  mix_presentation_metadata_.at(0).add_localized_presentation_annotations(
+      kUtf8FourByteSequenceCode);
 
   MixPresentationGenerator generator(mix_presentation_metadata_);
   ASSERT_THAT(generator.Generate(generated_obus_), IsOk());

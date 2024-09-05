@@ -21,11 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     [IAMF v1.1 latest draft]:
     -   Deprecate `language_labels` in favor of `annotations_language`.
     -   Deprecate `MixPresentationAnnotations` and
-        `mix_presentation_element_annotations_array` in favor of
+        `mix_presentation_annotations_array` in favor of
         `localized_presentation_annotations`.
     -   Deprecate `MixPresentationElementAnnotations` and
         `mix_presentation_element_annotations_array` in favor of
         `localized_element_annotations`.
+    - Deprecate `OutputMixConfig` and `output_mix_config` in favor of `output_mix_gain`.
+    - Deprecate `ElementMixConfig` and `element_mix_config` in favour of `element_mix_gain`.
 
 ### Removed
 
