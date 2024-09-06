@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <string>
 #include <vector>
 
@@ -42,7 +43,7 @@ absl::Status UserMetadataGenerator::WriteUserMetadataToFile(
       absl::StrCat(user_metadata.test_vector_metadata().file_name_prefix(),
                    write_binary_proto ? ".binpb" : ".textproto");
 
-  std::ofstream output_file(file_name);
+  std::ofstream output_file(file_name, std::ios::binary | std::ios::out);
   if (!output_file.is_open()) {
     return absl::FailedPreconditionError(
         absl::StrCat("Failed to open file_name= ", file_name.string()));

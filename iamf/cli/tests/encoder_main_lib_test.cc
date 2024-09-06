@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <sstream>
 #include <string>
 
@@ -185,7 +186,7 @@ using TestVector = ::testing::TestWithParam<TestVectorTestCase>;
 void ParseUserMetadataAssertSuccess(
     const std::string& textproto_filename,
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
-  std::ifstream user_metadata_file(textproto_filename);
+  std::ifstream user_metadata_file(textproto_filename, std::ios::in);
   std::ostringstream user_metadata_stream;
   user_metadata_stream << user_metadata_file.rdbuf();
 

@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <string>
 
 #include "absl/flags/flag.h"
@@ -51,7 +52,7 @@ int main(int32_t argc, char* argv[]) {
       std::filesystem::path(adm_file_name).stem().string();
   const std::filesystem::path output_file_path(
       absl::GetFlag(FLAGS_output_file_path));
-  std::ifstream adm_file(adm_file_name);
+  std::ifstream adm_file(adm_file_name, std::ios::binary | std::ios::in);
 
   const auto& user_metadata =
       iamf_tools::adm_to_user_metadata::GenerateUserMetadataAndSpliceWavFiles(

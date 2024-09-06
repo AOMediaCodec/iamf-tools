@@ -16,6 +16,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <string>
 #include <utility>
 #include <vector>
@@ -71,7 +72,7 @@ void CreateFileFromStringView(absl::string_view file_contents,
                               absl::string_view file_path_suffix,
                               std::string& file_name) {
   file_name = GetAndCleanupOutputFileName(file_path_suffix);
-  std::ofstream file_stream(file_name);
+  std::ofstream file_stream(file_name, std::ios::binary | std::ios::out);
   file_stream << file_contents;
   file_stream.close();
   ASSERT_TRUE(std::filesystem::exists(file_name));
@@ -123,7 +124,8 @@ TEST(CreateFromFile, FailsOnMissingFile) {
 
 TEST(CreateFromFile, FailsOnNonWavFile) {
   const std::string non_wav_file(GetAndCleanupOutputFileName(".txt"));
-  std::ofstream(non_wav_file) << "This is not a wav file.";
+  std::ofstream(non_wav_file, std::ios::binary | std::ios::out)
+      << "This is not a wav file.";
   ASSERT_TRUE(std::filesystem::exists(non_wav_file));
 
   EXPECT_FALSE(

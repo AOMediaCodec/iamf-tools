@@ -60,6 +60,33 @@ constexpr absl::string_view kAdmBwfWithOneStereoObject(
     "audioObject></topLevel>",
     184);
 
+constexpr absl::string_view
+    kAdmBwfWithDataWithPlatformDependentControlCharacters(
+        "RIFF"
+        "\xb8\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
+        "WAVE"
+        "fmt "
+        "\x10\x00\x00\x00"  // Size of the `fmt ` chunk.
+        "\x01\x00"          // Format tag.
+        "\x02\x00"          // Number of channels.
+        "\x01\x00\x00\x00"  // Samples per second.
+        "\x04\x00\x00\x00"  // Bytes per second = [number_of_channels *
+                            // ceil(bits_per_sample / 8) * sample_per_second].
+        "\x04\x00"  // Block align = [number_of_channels * bits_per_sample].
+        "\x10\x00"  // Bits per sample.
+        "data"
+        "\x08\x00\x00\x00"  // Size of `data` chunk.
+        "\n\n"              // Sample[0] for channel 0.
+        "\r\n"              // Sample[0] for channel 1.
+        "\x1a\r"            // Sample[1] for channel 0.
+        "\r\r"              // Sample[1] for channel 1.
+        "axml"
+        "\x7c\x00\x00\x00"  // Size of `axml` chunk.
+        "<topLevel><audioObject><audioTrackUIDRef>L</"
+        "audioTrackUIDRef><audioTrackUIDRef>R</audioTrackUIDRef></"
+        "audioObject></topLevel>",
+        184);
+
 // When there is one object the output wav file is the same as the input wav
 // file with sizes adjusted and any extra chunks removed (e.g. "axml").
 constexpr absl::string_view kExpectedOutputForStereoObject(
@@ -190,6 +217,16 @@ TEST(SpliceWavFilesFromAdm, CreatesWavFiles) {
   EXPECT_THAT(SpliceWavFilesFromAdm(directory, "prefix", *reader, ss), IsOk());
   EXPECT_TRUE(std::filesystem::exists(std::filesystem::path(directory) /
                                       "prefix_converted1.wav"));
+}
+
+TEST(SpliceWavFilesFromAdm,
+     SucceedsWhenDataHasPlatformDependentControlCharacters) {
+  std::istringstream ss(
+      (std::string(kAdmBwfWithDataWithPlatformDependentControlCharacters)));
+
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+
+  ASSERT_THAT(reader, IsOk());
 }
 
 TEST(SpliceWavFilesFromAdm,

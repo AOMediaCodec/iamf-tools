@@ -53,6 +53,29 @@ constexpr absl::string_view kValidWav(
     "<audioObject></audioObject>",
     87);
 
+constexpr absl::string_view kValidWavWithPlatformDependentControlCharacters(
+    "RIFF"
+    "\x54\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
+    "WAVE"
+    "fmt "
+    "\x10\x00\x00\x00"  // Size of the `fmt ` chunk.
+    "\x01\x00"          // Format tag.
+    "\x02\x00"          // Number of channels
+    "\x03\x00\x00\x00"  // Sample Per Second
+    "\x04\x00\x00\x00"  // Bytes per second.
+    "\x10\x00"          // Block align.
+    "\x10\x00"          // Bits per sample.
+    "data"
+    "\x08\x00\x00\x00"  // Size of `data` chunk.
+    "\n\n"              // Sample[0] for channel 0.
+    "\r\n"              // Sample[0] for channel 1.
+    "\x1a\r"            // Sample[1] for channel 0.
+    "\r\r"              // Sample[1] for channel 1.
+    "axml"
+    "\x1b\x00\x00\x00"  // Size of `axml` chunk.
+    "<audioObject></audioObject>",
+    87);
+
 constexpr uint32_t kWavHeaderSize = 12;
 constexpr uint32_t kFmtChunkSize = 16;
 constexpr uint32_t kDataChunkSize = 8;
@@ -101,6 +124,15 @@ TEST(BuildFromStream, PopulatesChunkInfo) {
   ValidateGetChunkInfo(*reader, "axml", kAxmlChunkSize,
                        kWavHeaderSize + kFmtChunkSize + kDataChunkSize +
                            (Bw64Reader::kChunkHeaderOffset * 2));
+}
+
+TEST(BuildFromStream, SucceedsWhenDataHasPlatformDependentControlCharacters) {
+  std::istringstream ss(
+      (std::string(kValidWavWithPlatformDependentControlCharacters)));
+
+  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
+
+  ASSERT_THAT(reader, IsOk());
 }
 
 TEST(BuildFromStream, PopulatesFormatInfo) {

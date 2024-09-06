@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <sstream>
 #include <string>
 
@@ -60,7 +61,8 @@ namespace {
 // Reads in a user metadata proto from a binary or textproto file.
 absl::StatusOr<iamf_tools_cli_proto::UserMetadata> ReadUserMetadataFromFile(
     const std::filesystem::path& user_metadata_filename) {
-  std::ifstream user_metadata_file(user_metadata_filename.string());
+  std::ifstream user_metadata_file(user_metadata_filename.string(),
+                                   std::ios::binary | std::ios::in);
   if (!user_metadata_file) {
     return absl::FailedPreconditionError(
         absl::StrCat("Error loading user_metadata_filename= ",
@@ -111,7 +113,7 @@ GetUserMetadataAndInputWavDirectory(
     return ReadUserMetadataFromFile(input_user_metadata_filename);
   } else {
     // Generate user metadata and wav files based on the input ADM file.
-    std::ifstream adm_file(adm_filename);
+    std::ifstream adm_file(adm_filename, std::ios::binary | std::ios::in);
 
     // Wav files associated with each audio object will be written to a
     // temporary directory. The encoder will read back in the wav files from

@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <limits>
 #include <string>
 #include <vector>
@@ -195,7 +196,7 @@ absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
   if (!std::filesystem::exists(file_path)) {
     return absl::NotFoundError("File not found.");
   }
-  std::ifstream ifs(file_path);
+  std::ifstream ifs(file_path, std::ios::binary | std::ios::in);
 
   // Increase the size of the buffer. Write to the original end (before
   // resizing).

@@ -58,7 +58,7 @@ absl::Status ReadRiffChunk(std::istream& buffer) {
 }
 
 // Reads the chunk data of the WAV file. It returns a vector containing the name
-// of WAV header such as "fmt " and the correspdonding and data size.
+// of WAV header such as "fmt " and the corresponding and data size.
 std::pair<std::vector<char>, int32_t> ReadChunkHeader(std::istream& buffer) {
   std::pair<std::vector<char>, int32_t> chunk_header;
   chunk_header.first.resize(Bw64Reader::kChunkNameSize);

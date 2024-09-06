@@ -15,12 +15,14 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <limits>
 #include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -850,40 +852,55 @@ TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
   EXPECT_FALSE(ReadFileToBytes(file_path_does_not_exist, bytes).ok());
 }
 
-TEST(ReadFileToBytes, ReadsFileContents) {
-  // Create a file to read back.
-  const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
-  std::filesystem::remove(file_to_read);
+void WriteVectorToFile(const std::filesystem::path filename,
+                       const std::vector<uint8_t>& bytes) {
+  std::filesystem::remove(filename);
   WriteBitBuffer wb(0);
+
+  ASSERT_THAT(wb.WriteUint8Vector(bytes), IsOk());
+  std::fstream output_file(filename.string(), std::ios::binary | std::ios::out);
+  ASSERT_THAT(wb.FlushAndWriteToFile(output_file), IsOk());
+  output_file.close();
+}
+
+TEST(ReadFileToBytes, ReadsFileContents) {
+  // Prepare a file to read back.
+  const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
   const std::vector<uint8_t> kExpectedBytes = {0x01, 0x02, 0x00, 0x03, 0x04};
-  EXPECT_THAT(wb.WriteUint8Vector(kExpectedBytes), IsOk());
-  std::fstream ifs(file_to_read.string(),
-                   std::fstream::out | std::fstream::binary);
-  EXPECT_THAT(wb.FlushAndWriteToFile(ifs), IsOk());
-  ifs.close();
+  WriteVectorToFile(file_to_read, kExpectedBytes);
 
   std::vector<uint8_t> bytes;
   EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
+
   EXPECT_EQ(bytes, kExpectedBytes);
 }
 
 TEST(ReadFileToBytes, AppendsFileContents) {
-  // Create a file to read back.
+  // Prepare a file to read back.
   const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
-  std::filesystem::remove(file_to_read);
-  WriteBitBuffer wb(0);
   const std::vector<uint8_t> kExpectedBytes = {0x01, 0x02, 0x00, 0x03, 0x04};
-  EXPECT_THAT(wb.WriteUint8Vector(kExpectedBytes), IsOk());
-  std::fstream ifs(file_to_read.string(),
-                   std::fstream::out | std::fstream::binary);
-  EXPECT_THAT(wb.FlushAndWriteToFile(ifs), IsOk());
-  ifs.close();
+  WriteVectorToFile(file_to_read, kExpectedBytes);
 
   std::vector<uint8_t> bytes;
   EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
   EXPECT_EQ(bytes.size(), kExpectedBytes.size());
+  // The vector grows with each read.
   EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
   EXPECT_EQ(bytes.size(), kExpectedBytes.size() * 2);
+}
+
+TEST(ReadFileToBytes, ReadsBinaryFileWithPlatformDependentControlCharacters) {
+  // Prepare a file to read back.
+  const std::filesystem::path file_to_read(GetAndCleanupOutputFileName(".bin"));
+  const std::vector<uint8_t> kBinaryDataWithPlatformDependentControlCharacters =
+      {'\n', '\r', '\n', '\r', '\x1a', '\r', '\n', '\n', ' ', '\n'};
+  WriteVectorToFile(file_to_read,
+                    kBinaryDataWithPlatformDependentControlCharacters);
+
+  std::vector<uint8_t> bytes;
+  EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
+
+  EXPECT_THAT(bytes, kBinaryDataWithPlatformDependentControlCharacters);
 }
 
 }  // namespace
