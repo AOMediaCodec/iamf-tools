@@ -15,12 +15,10 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/status/statusor.h"
-#include "absl/synchronization/mutex.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -36,14 +34,14 @@ const std::vector<int32_t> kSamplesToRender = {0, 1, 2, 3};
 // `RenderLabeledFrame`.
 class MockAudioElementRenderer : public AudioElementRendererBase {
  public:
-  MockAudioElementRenderer() = default;
+  MockAudioElementRenderer() : AudioElementRendererBase({}, 0) {};
 
-  absl::StatusOr<int> RenderLabeledFrame(
-      const LabeledFrame& labeled_frame) override {
-    absl::MutexLock lock(&mutex_);
-    rendered_samples_.insert(rendered_samples_.end(), kSamplesToRender.begin(),
-                             kSamplesToRender.end());
-    return kSamplesToRender.size();
+  absl::Status RenderSamples(
+      const std::vector<std::vector<InternalSampleType>>&,
+      std::vector<InternalSampleType>& rendered_samples) override {
+    rendered_samples.insert(rendered_samples.end(), kSamplesToRender.begin(),
+                            kSamplesToRender.end());
+    return absl::OkStatus();
   }
 };
 

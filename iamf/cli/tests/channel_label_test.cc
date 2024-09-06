@@ -354,7 +354,7 @@ TEST(LookupEarChannelOrderFromScalableLoudspeakerLayout,
 
 struct ExpandedLayoutAndChannelOrderTestCase {
   ChannelAudioLayerConfig::ExpandedLoudspeakerLayout expanded_layout;
-  std::vector<ChannelLabel::Label> channel_order;
+  std::vector<ChannelLabel::Label> ordered_labels;
 };
 
 using LookupEarChannelOrderFromScalableLoudspeakerLayoutTest =
@@ -363,7 +363,7 @@ TEST_P(LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
        HoldsExpectedValue) {
   EXPECT_THAT(ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
                   kLayoutExpanded, GetParam().expanded_layout),
-              IsOkAndHolds(GetParam().channel_order));
+              IsOkAndHolds(GetParam().ordered_labels));
 }
 
 INSTANTIATE_TEST_SUITE_P(

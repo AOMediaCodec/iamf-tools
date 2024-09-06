@@ -13,7 +13,9 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
+#include <algorithm>
 #include <memory>
+#include <new>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -25,10 +27,8 @@
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
@@ -166,30 +166,30 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
   if (!equivalent_layer.ok()) {
     return nullptr;
   }
-  const auto& channel_order =
+  const auto& ordered_labels =
       ChannelLabel::LookupEarChannelOrderFromScalableLoudspeakerLayout(
           equivalent_layer->loudspeaker_layout,
           equivalent_layer->expanded_loudspeaker_layout);
-  if (!channel_order.ok()) {
+  if (!ordered_labels.ok()) {
     return nullptr;
   }
 
-  return absl::WrapUnique(new AudioElementRendererPassThrough(*channel_order));
+  return absl::WrapUnique(new AudioElementRendererPassThrough(*ordered_labels));
 }
 
-absl::StatusOr<int> AudioElementRendererPassThrough::RenderLabeledFrame(
-    const LabeledFrame& labeled_frame) {
-  std::vector<std::vector<InternalSampleType>> samples_to_render;
-  RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
-      labeled_frame, channel_order_, samples_to_render));
-
+absl::Status AudioElementRendererPassThrough::RenderSamples(
+    const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    std::vector<InternalSampleType>& rendered_samples) {
   // Flatten the (time, channel) axes into interleaved samples.
   absl::MutexLock lock(&mutex_);
-  for (const auto& tick : samples_to_render) {
-    // Skip applying the identity matrix.
-    rendered_samples_.insert(rendered_samples_.end(), tick.begin(), tick.end());
+  auto rendered_samples_iter = rendered_samples.begin();
+  for (const auto& samples_at_time : samples_to_render) {
+    // Skip applying the identity matrix and just copy values over.
+    std::copy(samples_at_time.begin(), samples_at_time.end(),
+              rendered_samples_iter);
+    rendered_samples_iter += num_output_channels_;
   }
-  return samples_to_render.size();
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

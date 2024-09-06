@@ -11,12 +11,14 @@
  */
 #ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
 #define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_BASE_H_
+#include <cstddef>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/types.h"
 
@@ -43,16 +45,15 @@ class AudioElementRendererBase {
   /*!\brief Destructor. */
   virtual ~AudioElementRendererBase() = 0;
 
-  /*!\brief Accumulates samples to be rendered.
+  /*!\brief Renders samples stored in labeled frames.
    *
    * \param labeled_frame Labeled frame to render.
    * \return Number of ticks which will be rendered. A specific status on
    *     failure.
    */
-  virtual absl::StatusOr<int> RenderLabeledFrame(
-      const LabeledFrame& labeled_frame) = 0;
+  absl::StatusOr<int> RenderLabeledFrame(const LabeledFrame& labeled_frame);
 
-  /*!\brief Flush finished audio frames.
+  /*!\brief Flushes finished audio frames.
    *
    * \param rendered_samples Vector to append rendered samples to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -82,13 +83,35 @@ class AudioElementRendererBase {
   }
 
  protected:
-  /*!\brief Constructor. */
-  AudioElementRendererBase() = default;
+  /*!\brief Constructor.
+   *
+   * \param ordered_labels Ordered list of channel labels to render.
+   * \param num_output_channels Number of output channels.
+   */
+  AudioElementRendererBase(
+      const std::vector<ChannelLabel::Label>& ordered_labels,
+      const size_t num_output_channels)
+      : ordered_labels_(ordered_labels),
+        num_output_channels_(num_output_channels) {}
+
+  /*!\brief Renders samples.
+   *
+   * \param samples_to_render Samples to render arranged in (time, channel).
+   * \param rendered_samples Output rendered samples.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  virtual absl::Status RenderSamples(
+      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples) = 0;
+
+  const std::vector<ChannelLabel::Label> ordered_labels_;
+  const size_t num_output_channels_;
 
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
   std::vector<InternalSampleType> rendered_samples_ ABSL_GUARDED_BY(mutex_);
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
+  const LabeledFrame* current_labeled_frame_ ABSL_GUARDED_BY(mutex_) = nullptr;
 };
 
 }  // namespace iamf_tools

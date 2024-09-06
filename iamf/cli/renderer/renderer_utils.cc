@@ -130,7 +130,7 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
       using enum LoudspeakersSsConventionLayout::SoundSystem;
       static const absl::NoDestructor<absl::flat_hash_map<
           LoudspeakersSsConventionLayout::SoundSystem, std::string>>
-          kSoundSystemToInputKey({
+          kSoundSystemToOutputKey({
               {kSoundSystemA_0_2_0, "0+2+0"},
               {kSoundSystemB_0_5_0, "0+5+0"},
               {kSoundSystemC_2_5_0, "2+5+0"},
@@ -147,8 +147,8 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
               {kSoundSystem13_6_9_0, "9.1.6"},
           });
 
-      auto it = kSoundSystemToInputKey->find(sound_system);
-      if (it == kSoundSystemToInputKey->end()) {
+      auto it = kSoundSystemToOutputKey->find(sound_system);
+      if (it == kSoundSystemToOutputKey->end()) {
         return absl::InvalidArgumentError(absl::StrCat(
             "Output key not found for sound_system= ", sound_system));
       }

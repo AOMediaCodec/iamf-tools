@@ -70,8 +70,8 @@ LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
 
 void SetLabelsToOmittedExceptFor(
     const absl::flat_hash_set<ChannelLabel::Label>& labels_to_keep,
-    std::vector<ChannelLabel::Label>& channel_order) {
-  for (auto& label : channel_order) {
+    std::vector<ChannelLabel::Label>& ordered_labels) {
+  for (auto& label : ordered_labels) {
     if (!labels_to_keep.contains(label)) {
       label = ChannelLabel::kOmitted;
     }

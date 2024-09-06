@@ -5,7 +5,10 @@ cc_library(
     srcs = ["audio_element_renderer_base.cc"],
     hdrs = ["audio_element_renderer_base.h"],
     deps = [
+        ":renderer_utils",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
+        "//iamf/common:macros",
         "//iamf/obu:types",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/log:check",
@@ -21,9 +24,7 @@ cc_library(
     hdrs = ["audio_element_renderer_passthrough.h"],
     deps = [
         ":audio_element_renderer_base",
-        ":renderer_utils",
         "//iamf/cli:channel_label",
-        "//iamf/cli:demixing_module",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common:macros",
@@ -36,7 +37,6 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/synchronization",

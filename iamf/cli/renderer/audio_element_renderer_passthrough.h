@@ -14,12 +14,12 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/statusor.h"
+#include "absl/status/status.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 /*!\brief Passthrough demixed channels corresponding with output layout.
@@ -62,22 +62,28 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
   /*!\brief Destructor. */
   ~AudioElementRendererPassThrough() override = default;
 
-  /*!\brief Accumulates samples to be rendered.
-   *
-   * \param labeled_frame Labeled frame to render.
-   * \return Number of ticks which will be rendered. A specific status on
-   *     failure.
-   */
-  absl::StatusOr<int> RenderLabeledFrame(
-      const LabeledFrame& labeled_frame) override;
-
  private:
-  /*!\brief Constructor. */
+  /*!\brief Constructor.
+   *
+   * \param ordered_labels Ordered list of channel labels to render.
+   */
   AudioElementRendererPassThrough(
-      const std::vector<ChannelLabel::Label>& channel_order)
-      : channel_order_(channel_order) {}
+      const std::vector<ChannelLabel::Label>& ordered_labels)
+      : AudioElementRendererBase(
+            ordered_labels,
+            // For a passthrough renderer, (number of output channels)
+            // is the same as (number of input channels).
+            /*num_output_channels=*/ordered_labels.size()) {}
 
-  const std::vector<ChannelLabel::Label> channel_order_;
+  /*!\brief Renders samples.
+   *
+   * \param samples_to_render Samples to render arranged in (time, channel).
+   * \param rendered_samples Output rendered samples.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status RenderSamples(
+      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples) override;
 };
 
 }  // namespace iamf_tools
