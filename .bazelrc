@@ -1,4 +1,8 @@
 build --linkopt=-lm
+# Runfiles are needed by several tests. Typically these are defaulted on for
+# non-Windows platforms.
+build --enable_runfiles
+
 # Use the default C++ toolchain to build the tools used during the
 # build.
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
@@ -14,3 +18,4 @@ build:macos --cxxopt=-std=c++20
 build:macos --cxxopt=-Wno-sign-compare
 
 build:windows --cxxopt=/std:c++20
+startup --windows_enable_symlinks

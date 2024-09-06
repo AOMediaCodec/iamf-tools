@@ -16,8 +16,10 @@ runs:
         if [[ "${{inputs.platform}}" == "windows" ]]; then
           # Windows works best with a very short path as per https://bazel.build/configure/windows#long-path-issues.
           echo  "startup --output_user_root=C:/" >> .bazelrc
-          # Disable windows tests until some platform-specific bugs are fixed.
-          bazelisk build -c opt iamf/...
+          # Disable some windows tests until some platform-specific bugs are fixed.
+          TEST_FILTER=*:-FlacEncoder*:*TestVector.ValidateTestSuite*:EncoderMainLibTest.*
         else
-          bazelisk test -c opt iamf/...
+          TEST_FILTER=*
         fi
+        bazelisk test -c opt iamf/... --test_filter=${TEST_FILTER}
+
