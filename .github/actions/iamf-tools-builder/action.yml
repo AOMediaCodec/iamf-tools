@@ -17,7 +17,7 @@ runs:
           # Windows works best with a very short path as per https://bazel.build/configure/windows#long-path-issues.
           echo  "startup --output_user_root=C:/" >> .bazelrc
           # Disable some windows tests until some platform-specific bugs are fixed.
-          TEST_FILTER=*:-FlacEncoder*:*TestVector.ValidateTestSuite*:EncoderMainLibTest.*
+          TEST_FILTER=*:-*TestVector.ValidateTestSuite*:EncoderMainLibTest.*
         else
           TEST_FILTER=*
         fi

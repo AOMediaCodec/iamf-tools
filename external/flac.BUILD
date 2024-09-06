@@ -47,26 +47,39 @@ flac_hdrs = glob([
 
 flac_copts = [
     "-w",
-    "-DFLAC__USE_VISIBILITY_ATTR",
-    "-DPACKAGE_VERSION=\\\"1.4.3\\\"",
-    "-DHAVE_STDINT_H",
-    "-DHAVE_LROUND",
-    "-DNDEBUG",
-    "-D_FORTIFY_SOURCE=2",
-    "-DFLAC__HAS_OGG=0",
-    "-DFLAC__NO_DLL",  # Static library for Windows
     "-Iexternal/flac/src/libFLAC/include",
     "-Iexternal/flac/include",
 ]
 
-flac_linkopts = ["-lm"]
+flac_local_defines = [
+    "FLAC__HAS_OGG=0",
+    "FLAC__USE_VISIBILITY_ATTR",
+    "PACKAGE_VERSION=\\\"1.4.3\\\"",
+    "HAVE_STDINT_H",
+    "HAVE_LROUND",
+    "NDEBUG",
+    "_FORTIFY_SOURCE=2",
+]
+
+# Defines which need to propagate to all downstream users.
+flac_defines = [
+    "@platforms//os:windows": ["FLAC__NO_DLL"],
+    "//conditions:default": [],
+]
+
+flac_linkopts = select({
+    "@platforms//os:windows": [],
+    "//conditions:default": ["-lm"],
+})
 
 cc_library(
     name = "flac",
     srcs = flac_srcs,
     hdrs = flac_hdrs,
     copts = flac_copts,
+    defines = flac_defines,
     linkopts = flac_linkopts,
+    local_defines = flac_local_defines,
     textual_hdrs = flac_textual_includes,
 )
 

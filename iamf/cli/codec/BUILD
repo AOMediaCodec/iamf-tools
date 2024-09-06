@@ -74,15 +74,9 @@ cc_library(
     ],
 )
 
-# TODO(b/362229054): Enable FLAC support on Windows and unify `flac_encoder.cc` and
-#                    `flac_encoder_windows.cc`.
-
 cc_library(
     name = "flac_encoder",
-    srcs = select({
-        "@platforms//os:windows": ["flac_encoder_windows.cc"],
-        "//conditions:default": ["flac_encoder.cc"],
-    }),
+    srcs = ["flac_encoder.cc"],
     hdrs = ["flac_encoder.h"],
     deps = [
         ":encoder_base",
