@@ -40,19 +40,19 @@ int main(int32_t argc, char* argv[]) {
   absl::SetProgramUsageMessage(argv[0]);
   absl::ParseCommandLine(argc, argv);
 
-  const std::string adm_file_name(absl::GetFlag(FLAGS_adm_filename));
-  if (adm_file_name.empty()) {
-    LOG(ERROR) << "ADM filename is empty. Please provide a valid filename with "
-                  "--adm_filename.";
+  const std::string adm_filename(absl::GetFlag(FLAGS_adm_filename));
+  if (adm_filename.empty() || std::filesystem::exists(adm_filename)) {
+    LOG(ERROR) << "ADM filename was not provided or could not be opened. "
+                  "Please provide a valid filename with --adm_filename.";
     return EXIT_FAILURE;
   }
 
   // Get the user metadata and write the wav files.
   const std::string file_prefix =
-      std::filesystem::path(adm_file_name).stem().string();
+      std::filesystem::path(adm_filename).stem().string();
   const std::filesystem::path output_file_path(
       absl::GetFlag(FLAGS_output_file_path));
-  std::ifstream adm_file(adm_file_name, std::ios::binary | std::ios::in);
+  std::ifstream adm_file(adm_filename, std::ios::binary | std::ios::in);
 
   const auto& user_metadata =
       iamf_tools::adm_to_user_metadata::GenerateUserMetadataAndSpliceWavFiles(
