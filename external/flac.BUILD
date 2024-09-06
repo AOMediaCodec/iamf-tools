@@ -62,10 +62,10 @@ flac_local_defines = [
 ]
 
 # Defines which need to propagate to all downstream users.
-flac_defines = [
+flac_defines = select({
     "@platforms//os:windows": ["FLAC__NO_DLL"],
     "//conditions:default": [],
-]
+})
 
 flac_linkopts = select({
     "@platforms//os:windows": [],
@@ -77,9 +77,9 @@ cc_library(
     srcs = flac_srcs,
     hdrs = flac_hdrs,
     copts = flac_copts,
+    local_defines = flac_local_defines,
     defines = flac_defines,
     linkopts = flac_linkopts,
-    local_defines = flac_local_defines,
     textual_hdrs = flac_textual_includes,
 )
 
