@@ -95,6 +95,18 @@ absl::Status WavSampleProvider::Initialize(
           " vs ", decoder_output_sample_rate, ")"));
     }
 
+    // To prevent indexing out of bounds after the `WavSampleProvider` is
+    // created, we ensure all user-specified channel IDs are in range of the
+    // number of channels in the input file.
+    for (const uint32_t channel_id : audio_frame_metadata.channel_ids()) {
+      if (channel_id >= wav_reader->num_channels()) {
+        return absl::InvalidArgumentError(
+            absl::StrCat("WAV (", wav_filename.string(),
+                         ") has num_channels= ", wav_reader->num_channels(),
+                         ". channel_id= ", channel_id, " is out of bounds."));
+      }
+    }
+
     wav_readers_.emplace(audio_element_id, std::move(*wav_reader));
   }
 

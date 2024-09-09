@@ -98,6 +98,22 @@ TEST(Initialize, FailsForUnknownLabels) {
       wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
+TEST(Initialize, FailsForChannelIdTooLarge) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitializeTestData(kSampleRate, user_metadata, audio_elements);
+  // Channel IDs are indexed from zero; a stereo wav file must not have a
+  // channel ID greater than 1.
+  constexpr auto kFirstChannelIndex = 0;
+  constexpr uint32_t kChannelIdTooLargeForStereoWavFile = 2;
+  user_metadata.mutable_audio_frame_metadata(0)->mutable_channel_ids()->Set(
+      kFirstChannelIndex, kChannelIdTooLargeForStereoWavFile);
+  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
+
+  EXPECT_FALSE(
+      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+}
+
 TEST(WavSampleProviderTest, MismatchingChannelIdsAndLabels) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
