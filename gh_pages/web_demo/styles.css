@@ -1,0 +1,184 @@
+/* Colors:
+     IAMF purple/blue: #202e5f
+     IAMF green: #12b17d
+     IAMF yellow: #ffc80c
+     background of page: #ccc
+     text: #444
+     card inside: #f5f5f5
+     logBox has its own colors.
+*/
+
+body {
+  font-family: 'Google Sans', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #ccc;
+  transition: background-color 0.25s ease;
+  line-height: 1.6;
+}
+
+button {
+  font-size: 24px;
+  margin-top: 1rem;
+  padding: 0.25rem 1rem;
+  border: 2px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+button:hover {
+  border: 2px solid #12b17d;
+  cursor: pointer;
+}
+
+button:active {
+  outline: none;
+  background-color: #12b17d;
+  color: #f5f5f5;
+}
+
+.activeButton {
+  outline: none;
+  background-color: #12b17d;
+  color: #f5f5f5;
+}
+
+h1 {
+  color: #202e5f;
+  text-align: center;
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+h2 {
+  text-align: center;
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #6b67bb;
+}
+
+h3 {
+  text-align: center;
+}
+
+audio {
+  width: 100%;
+}
+
+video {
+  width: 100%;
+  border-radius: 5px;
+}
+
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 35%;
+}
+
+input[type="checkbox"] {
+  accent-color: #12b17d;
+}
+
+label {
+  margin-left: 0.5rem;
+}
+
+canvas {
+  width: 100%;
+  height: 120px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+}
+
+canvas:hover {
+  cursor: crosshair;
+}
+
+.card {
+  background: #f5f5f5;
+  border-radius: 10px;
+  margin: 1rem;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  padding: 20px;
+}
+
+.container {
+  width: 80%;
+  max-width: 1000px;
+  margin: auto;
+  overflow: hidden;
+}
+
+.div-disabled {
+  pointer-events: none;
+  border: 2px solid #ccc;
+  opacity: 0.1;
+}
+
+.dropdown {
+  margin-bottom: 1rem;
+}
+
+select {
+  padding: 0.25rem 1rem;
+  border: 2px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: #f5f5f5;
+}
+
+select:focus {
+  outline: none;
+  border: 2px solid #12b17d;
+}
+
+.flexBox {
+ display: flex;
+}
+
+.audioDiv {
+  flex: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: background-color 0.1s ease;
+}
+
+.fineprint {
+  color: #202e5f;
+  text-align: center;
+  font-size: 11px;
+}
+
+#audioTimeline {
+  height: 150px;
+  width: 100%;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+}
+
+#demoFile {
+  width: 500px;
+}
+
+#fileDrop {
+  height: 1.5rem;
+  width: 500px;
+  border-radius: 0.25rem;
+  border: 2px solid #12b17d;
+  padding: 0.25rem 0rem;
+  text-align: center;
+}
+
+#logBox {
+  background-color: #1b1b1b;
+  color: #ccc;
+  padding: 1rem;
+  height: 600px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 14px;
+}
