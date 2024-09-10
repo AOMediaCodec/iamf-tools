@@ -12,6 +12,7 @@
 
 #ifndef CLI_RENDERER_PRECOMPUTED_GAINS_H_
 #define CLI_RENDERER_PRECOMPUTED_GAINS_H_
+
 #include <string>
 #include <vector>
 

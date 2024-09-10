@@ -47,9 +47,7 @@ cc_library(
     name = "precomputed_gains",
     srcs = ["precomputed_gains.cc"],
     hdrs = ["precomputed_gains.h"],
-    deps = [
-        "@com_google_absl//absl/container:flat_hash_map",
-    ],
+    deps = ["@com_google_absl//absl/container:flat_hash_map"],
 )
 
 cc_library(
