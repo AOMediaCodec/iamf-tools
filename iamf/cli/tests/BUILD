@@ -138,6 +138,7 @@ cc_test(
     ],
     shard_count = 16,
     deps = [
+        ":cli_test_utils",
         "//iamf/cli:encoder_main_lib",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",

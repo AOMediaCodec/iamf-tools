@@ -29,14 +29,14 @@
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-// TODO(b/314895932): Find a more portable alternative to `/dev/null/`.
-constexpr absl::string_view kOutputIamfToDevNull = "/dev/null";
+constexpr absl::string_view kIgnoredOutputPath = "";
 
 void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -75,16 +75,14 @@ TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // `partition_mix_gain_parameter_blocks` is left true (the default value).
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
-  EXPECT_FALSE(TestMain(user_metadata, "",
-                        std::filesystem::temp_directory_path().string())
-                   .ok());
+  EXPECT_FALSE(
+      TestMain(user_metadata, "", std::string(kIgnoredOutputPath)).ok());
 
   // After setting `partition_mix_gain_parameter_blocks` to false, `TestMain()`
   // will succeed.
   user_metadata.mutable_test_vector_metadata()
       ->set_partition_mix_gain_parameter_blocks(false);
-  EXPECT_THAT(TestMain(user_metadata, "",
-                       std::filesystem::temp_directory_path().string()),
+  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
               IsOk());
 }
 
@@ -94,8 +92,7 @@ TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
   AddCodecConfig(user_metadata);
-  EXPECT_THAT(TestMain(user_metadata, "",
-                       std::filesystem::temp_directory_path().string()),
+  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
               IsOk());
 }
 
@@ -110,8 +107,7 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(16);
 
-  EXPECT_THAT(TestMain(user_metadata, "",
-                       std::filesystem::temp_directory_path().string()),
+  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
               IsOk());
 }
 
@@ -126,9 +122,8 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideTooHighFails) {
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(kBitDepthTooHigh);
 
-  EXPECT_FALSE(TestMain(user_metadata, "",
-                        std::filesystem::temp_directory_path().string())
-                   .ok());
+  EXPECT_FALSE(
+      TestMain(user_metadata, "", std::string(kIgnoredOutputPath)).ok());
 }
 
 TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
@@ -140,12 +135,12 @@ TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
   // Setting a filename prefix makes the function output a .iamf file.
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix("empty");
 
-  const auto output_iamf_directory = std::filesystem::temp_directory_path();
+  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
 
-  EXPECT_THAT(TestMain(user_metadata, "", output_iamf_directory.string()),
-              IsOk());
+  EXPECT_THAT(TestMain(user_metadata, "", output_iamf_directory), IsOk());
 
-  EXPECT_TRUE(std::filesystem::exists(output_iamf_directory / "empty.iamf"));
+  EXPECT_TRUE(std::filesystem::exists(
+      std::filesystem::path(output_iamf_directory) / "empty.iamf"));
 }
 
 TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
@@ -157,16 +152,11 @@ TEST(EncoderMainLibTest, CreatesAndWritesToOutputIamfDirectory) {
   // Setting a filename prefix makes the function output a .iamf file.
   user_metadata.mutable_test_vector_metadata()->set_file_name_prefix("empty");
 
+  // Create a clean output directory.
+  const auto test_directory_root = GetAndCreateOutputDirectory("");
+
   // The encoder will create and write the file based on a (nested)
   // `output_iamf_directory` argument.
-  const auto test_directory_root =
-      std::filesystem::temp_directory_path() /
-      std::filesystem::path("encoder_main_lib_test");
-
-  // Clean up any previously created file and directories.
-  std::filesystem::remove_all(test_directory_root.c_str());
-  ASSERT_FALSE(std::filesystem::exists(test_directory_root));
-
   const auto output_iamf_directory =
       test_directory_root / std::filesystem::path("EncoderMainLibTest") /
       std::filesystem::path("CreatesAndWritesToOutputIamfDirectory");
@@ -210,13 +200,13 @@ TEST_P(TestVector, ValidateTestSuite) {
   ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
                                  user_metadata);
 
-  // Call encoder. Clear `file_name_prefix` and set all output files to
-  // "/dev/null"; we only care about the status.
+  // Call encoder. Clear `file_name_prefix`; we only care about the status and
+  // not the output files.
   user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
   LOG(INFO) << "Testing with " << test_case.textproto_filename;
   const absl::Status result =
       iamf_tools::TestMain(user_metadata, input_wav_dir.string().c_str(),
-                           std::string(kOutputIamfToDevNull));
+                           std::string(kIgnoredOutputPath));
 
   // Check if the result matches the expected value in the protos.
   if (user_metadata.test_vector_metadata().is_valid()) {
