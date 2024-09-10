@@ -13,7 +13,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -101,29 +100,6 @@ absl::Status AddOneReconGainParameterBlock(
   return status;
 }
 
-// TODO(b/355436892): Refactor common parts of this and
-// `AddDemixingParamDefinition()` into a helper function.
-void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
-                                 DecodedUleb128 parameter_rate,
-                                 DecodedUleb128 duration,
-                                 AudioElementObu& audio_element_obu) {
-  const auto audio_element_id = audio_element_obu.GetAudioElementId();
-  auto param_definition =
-      std::make_unique<ReconGainParamDefinition>(audio_element_id);
-  param_definition->parameter_id_ = parameter_id;
-  param_definition->parameter_rate_ = parameter_rate;
-  param_definition->param_definition_mode_ = 0;
-  param_definition->reserved_ = 0;
-  param_definition->duration_ = duration;
-  param_definition->constant_subblock_duration_ = duration;
-
-  // Add to the Audio Element OBU.
-  audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
-  audio_element_obu.audio_element_params_.back() = AudioElementParam{
-      .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
-      .param_definition = std::move(param_definition)};
-}
-
 class ParametersManagerTest : public testing::Test {
  public:
   ParametersManagerTest() {
@@ -172,7 +148,8 @@ TEST_F(ParametersManagerTest, InitializeWithTwoDemixingParametersFails) {
 
 TEST_F(ParametersManagerTest, InitializeWithReconGainParameterSucceeds) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
-                              audio_elements_.at(kAudioElementId).obu);
+                              audio_elements_.at(kAudioElementId).obu,
+                              /*param_definitions=*/nullptr);
   EXPECT_THAT(
       AddOneReconGainParameterBlock(*audio_elements_.at(kAudioElementId)
                                          .obu.audio_element_params_[0]
@@ -215,7 +192,8 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersSucceeds) {
 
 TEST_F(ParametersManagerTest, GetReconGainParametersSucceeds) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
-                              audio_elements_.at(kAudioElementId).obu);
+                              audio_elements_.at(kAudioElementId).obu,
+                              /*param_definitions=*/nullptr);
   ASSERT_THAT(
       AddOneReconGainParameterBlock(*audio_elements_.at(kAudioElementId)
                                          .obu.audio_element_params_[1]
@@ -242,7 +220,8 @@ TEST_F(ParametersManagerTest, GetReconGainParametersSucceeds) {
 TEST_F(ParametersManagerTest,
        GetReconGainParametersSucceedsWithNoParameterBlocks) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
-                              audio_elements_.at(kAudioElementId).obu);
+                              audio_elements_.at(kAudioElementId).obu,
+                              /*param_definitions=*/nullptr);
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
 
@@ -278,7 +257,8 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   // are multiple recon gain parameter blocks within the same substream, with
   // consecutive timestamps.
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
-                              audio_elements_.at(kAudioElementId).obu);
+                              audio_elements_.at(kAudioElementId).obu,
+                              /*param_definitions=*/nullptr);
   ASSERT_THAT(
       AddOneReconGainParameterBlock(*audio_elements_.at(kAudioElementId)
                                          .obu.audio_element_params_[1]
@@ -335,7 +315,8 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
 TEST_F(ParametersManagerTest,
        GetMultipleReconGainParametersFailsWithoutUpdatingState) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
-                              audio_elements_.at(kAudioElementId).obu);
+                              audio_elements_.at(kAudioElementId).obu,
+                              /*param_definitions=*/nullptr);
   ASSERT_THAT(
       AddOneReconGainParameterBlock(*audio_elements_.at(kAudioElementId)
                                          .obu.audio_element_params_[1]

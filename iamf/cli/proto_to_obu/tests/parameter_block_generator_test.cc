@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <utility>
 #include <variant>
 #include <vector>
 
@@ -146,19 +145,19 @@ void ValidateParameterBlocksCommon(
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
-  absl::flat_hash_map<uint32_t, PerIdParameterMetadata>
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ConfigureDemixingParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializePrerequisiteObus(/*substream_ids=*/{0}, codec_config_obus,
                              audio_elements);
 
   // Add a demixing parameter definition inside the Audio Element OBU.
-  absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   AddDemixingParamDefinition(kParameterId, kParameterRate, kDuration,
                              audio_elements.begin()->second.obu,
                              &param_definitions);
@@ -380,28 +379,6 @@ void ConfigureReconGainParameterBlocks(
       user_metadata.add_parameter_block_metadata()));
 }
 
-void AddReconGainParamDefinition(
-    AudioElementObu& audio_element_obu,
-    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions) {
-  auto param_definition = std::make_unique<ReconGainParamDefinition>(
-      audio_element_obu.GetAudioElementId());
-  param_definitions.insert({kParameterId, param_definition.get()});
-
-  param_definition->parameter_id_ = kParameterId;
-  param_definition->parameter_rate_ = 48000;
-  param_definition->param_definition_mode_ = 0;
-  param_definition->reserved_ = 0;
-  param_definition->duration_ = 8;
-  param_definition->constant_subblock_duration_ = 8;
-
-  // Add to the Audio Element OBU.
-  audio_element_obu.InitializeParams(1);
-  audio_element_obu.audio_element_params_[0] = AudioElementParam{
-      .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
-      .param_definition = std::move(param_definition)};
-}
-
 void PrepareAudioElementWithDataForReconGain(
     AudioElementWithData& audio_element_with_data) {
   audio_element_with_data.channel_numbers_for_layers = {
@@ -450,14 +427,14 @@ IdLabeledFrameMap PrepareIdLabeledFrameMap() {
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
-  absl::flat_hash_map<uint32_t, PerIdParameterMetadata>
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ConfigureReconGainParameterBlocks(user_metadata);
 
   // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3}, codec_config_obus,
                              audio_elements);
 
@@ -465,9 +442,10 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   PrepareAudioElementWithDataForReconGain(audio_elements.begin()->second);
 
   // Add a recon gain parameter definition inside the Audio Element OBU.
-  absl::flat_hash_map<uint32_t, const ParamDefinition*> param_definitions;
-  AddReconGainParamDefinition(audio_elements.begin()->second.obu,
-                              param_definitions);
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  AddReconGainParamDefinition(kParameterId, kParameterRate, kDuration,
+                              audio_elements.begin()->second.obu,
+                              &param_definitions);
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
@@ -509,19 +487,19 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
 
 TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<uint32_t, PerIdParameterMetadata>
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   // Initialize pre-requisite OBUs.
   ConfigureDemixingParameterBlocks(user_metadata);
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializePrerequisiteObus(/*substream_ids=*/{0, 1, 2, 3}, codec_config_obus,
                              audio_elements);
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
                                     parameter_id_to_metadata);
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
       empty_param_definitions;
   EXPECT_THAT(generator.Initialize(audio_elements, empty_param_definitions),
               IsOk());

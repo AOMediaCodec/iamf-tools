@@ -135,6 +135,22 @@ void AddDemixingParamDefinition(
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
         param_definitions);
 
+/*!\brief Adds a recon gain parameter definition to an Audio Element OBU.
+ *
+ * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
+ * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.
+ * \param duration `duration` and `constant_subblock_duration` of the
+ *     `ParamDefinition` to add.
+ * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
+ * \param param_definitions Output pointer to the map to add the
+ *     `ParamDefinition*` to keyed by `parameter_id`.
+ */
+void AddReconGainParamDefinition(
+    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
+    DecodedUleb128 duration, AudioElementObu& audio_element_obu,
+    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
+        param_definitions);
+
 /*!\brief Calls `CreateWavReader` and unwraps the `StatusOr`.
  *
  * \param filename Filename to forward to `CreateWavReader`.

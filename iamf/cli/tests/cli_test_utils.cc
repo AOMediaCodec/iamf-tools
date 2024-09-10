@@ -46,6 +46,43 @@
 
 namespace iamf_tools {
 
+namespace {
+
+void SetParamDefinitionCommonFields(DecodedUleb128 parameter_id,
+                                    DecodedUleb128 parameter_rate,
+                                    DecodedUleb128 duration,
+                                    ParamDefinition* param_definition) {
+  param_definition->parameter_id_ = parameter_id;
+  param_definition->parameter_rate_ = parameter_rate;
+  param_definition->param_definition_mode_ = 0;
+  param_definition->reserved_ = 0;
+  param_definition->duration_ = duration;
+  param_definition->constant_subblock_duration_ = duration;
+}
+
+void AddParamDefinition(
+    ParamDefinition::ParameterDefinitionType param_definition_type,
+    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
+    DecodedUleb128 duration, AudioElementObu& audio_element_obu,
+    std::unique_ptr<ParamDefinition> param_definition,
+    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
+        param_definitions) {
+  SetParamDefinitionCommonFields(parameter_id, parameter_rate, duration,
+                                 param_definition.get());
+
+  if (param_definitions != nullptr) {
+    param_definitions->insert({parameter_id, param_definition.get()});
+  }
+
+  // Add to the Audio Element OBU.
+  audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
+  audio_element_obu.audio_element_params_.back() =
+      AudioElementParam{.param_definition_type = param_definition_type,
+                        .param_definition = std::move(param_definition)};
+}
+
+}  // namespace
+
 using ::absl_testing::IsOk;
 
 void AddLpcmCodecConfigWithIdAndSampleRate(
@@ -231,11 +268,8 @@ void AddParamDefinitionWithMode0AndOneSubblock(
     absl::flat_hash_map<DecodedUleb128, std::unique_ptr<ParamDefinition>>&
         param_definitions) {
   auto param_definition = std::make_unique<ParamDefinition>();
-  param_definition->parameter_id_ = parameter_id;
-  param_definition->parameter_rate_ = parameter_rate;
-  param_definition->param_definition_mode_ = 0;
-  param_definition->duration_ = duration;
-  param_definition->constant_subblock_duration_ = duration;
+  SetParamDefinitionCommonFields(parameter_id, parameter_rate, duration,
+                                 param_definition.get());
   param_definitions.emplace(parameter_id, std::move(param_definition));
 }
 
@@ -245,27 +279,30 @@ void AddDemixingParamDefinition(
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
         demixing_param_definitions) {
   auto param_definition = std::make_unique<DemixingParamDefinition>();
-  param_definition->parameter_id_ = parameter_id;
-  param_definition->parameter_rate_ = parameter_rate;
-  param_definition->param_definition_mode_ = 0;
-  param_definition->reserved_ = 0;
-  param_definition->duration_ = duration;
-  param_definition->constant_subblock_duration_ = duration;
+
+  // Specific fields of demixing param definitions.
   param_definition->default_demixing_info_parameter_data_.dmixp_mode =
       DemixingInfoParameterData::kDMixPMode1;
   param_definition->default_demixing_info_parameter_data_.reserved = 0;
   param_definition->default_demixing_info_parameter_data_.default_w = 10;
   param_definition->default_demixing_info_parameter_data_.reserved_default = 0;
 
-  if (demixing_param_definitions != nullptr) {
-    demixing_param_definitions->insert({parameter_id, param_definition.get()});
-  }
+  AddParamDefinition(ParamDefinition::kParameterDefinitionDemixing,
+                     parameter_id, parameter_rate, duration, audio_element_obu,
+                     std::move(param_definition), demixing_param_definitions);
+}
 
-  // Add to the Audio Element OBU.
-  audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
-  audio_element_obu.audio_element_params_.back() = AudioElementParam{
-      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
-      .param_definition = std::move(param_definition)};
+void AddReconGainParamDefinition(
+    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
+    DecodedUleb128 duration, AudioElementObu& audio_element_obu,
+    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
+        recon_gain_param_definitions) {
+  auto param_definition = std::make_unique<ReconGainParamDefinition>(
+      audio_element_obu.GetAudioElementId());
+
+  AddParamDefinition(ParamDefinition::kParameterDefinitionReconGain,
+                     parameter_id, parameter_rate, duration, audio_element_obu,
+                     std::move(param_definition), recon_gain_param_definitions);
 }
 
 WavReader CreateWavReaderExpectOk(const std::string& filename,
