@@ -32,10 +32,23 @@
         <p>
           This is a demo of the
           <a href="https://github.com/AOMediaCodec/libiamf" target="_blank">libiamf decoder</a>
-          compiled into WebAssembly and decoding IAMF in the browser. You need to use
-          <b>headphones</b> for the spatial, binaural audio experience, in order to hear the
-          direction of sounds. Our team keeps on improving the binaural rendering quality and will
-          update the demo as work progresses.
+          compiled into WebAssembly and decoding IAMF in the browser.
+        </p>
+        <p>
+          To get the spatial, binaural audio experience and hear the direction of sounds, you need
+          to both use <b>headphones</b> and to use an IAMF file that has the
+          <code
+            ><a
+              href="https://aomediacodec.github.io/iamf/#headphones_rendering_mode"
+              target="_blank"
+              >headphones_rendering_mode</a
+            ></code
+          >
+          set to <code>HEADPHONES_RENDERING_MODE_BINAURAL</code>.
+        </p>
+        <p>
+          Our team keeps on improving the binaural rendering quality and will update the demo as
+          work progresses.
         </p>
         <p>Things to listen for:</p>
         <ul>
@@ -44,29 +57,29 @@
             your head" or "between your ears."
           </li>
           <li>
-            Binaural playback should give you the sense of sounds being external to your head, like
-            you normally hear sounds in real life.
+            Binaural playback creates the perception of sounds originating outside your head,
+            similar to natural hearing.
           </li>
           <li>
-            Sounds should appear to have a direction, for instance behind, above or below you, or
-            sometimes moving around you.
+            Sounds will be perceived as having directionality, such as behind, above, below, or even
+            moving around you.
           </li>
           <li>
-            IAMF uses ambisonic sound fields; think of it as a sound sphere around your head. Some
-            of the audio samples should give you the sense of that sound sphere.
+            IAMF can utilize ambisonic sound fields, creating a spherical auditory experience. Some
+            audio samples will effectively demonstrate this immersive sound sphere.
           </li>
         </ul>
         <p>How to run the demo:</p>
         <ul>
           <li>
-            Select a file from the dropdown and decoding will start (Do be patient, decoding time varies depending on your machine's processor)<br />
-            OR drag and drop your own IAMF file to decode it.
+            Choose a file from the dropdown menu to start decoding. (Please be patient as decoding
+            time may vary depending on your machine's processing power and the file's length and
+            type of content.) Alternatively, you can drag and drop your own IAMF file for decoding.
           </li>
           <li>
             With your headphones on, play the stereo and binaural versions to hear the differences
             in immersion, directionality, and fullness.
           </li>
-          <li>Drag and drop your own IAMF file to decode it.</li>
         </ul>
         
         <p>Questions or feedback: <a target="_blank" href="https://github.com/AOMediaCodec/iamf-tools/issues/new?title=[Web%20demo]%20%28Put%20a%20short%20title%20here%29&body=Please%20describe%20in%20detail:%0A-%20What%20did%20you%20do?%0A-%20What%20happened?%0A-%20What%20did%20you%20expect?">Please file an issue on GitHub</a>.</p>
@@ -76,7 +89,9 @@
         <div class="dropdown">
           <label for="demoFile">Select a demo file</label><br />
           <select id="demoFile" name="demoFile">
-            <option disabled selected value> (Select a demo file here or drop your own file below.) </option>
+            <option disabled selected value>
+              (Select a demo file here or drop your own file below.)
+            </option>
             <option value="Animated demo (3rd-order ambisonics)">
               Animated demo (3rd-order ambisonics)
             </option>
@@ -87,7 +102,10 @@
         </div>
         <label for="fileDrop">Or drag and drop an audio IAMF file</label><br />
         <div id="fileDrop">Drag and drop here</div>
-        <p>Note: Only standalone .iamf files are supported and very large files (> 1GB) may exhaust the browser sandbox's memory.</p>
+        <p>
+          Note: Only standalone .iamf files are supported and very large files (> 1GB) may exhaust
+          the browser sandbox's memory.
+        </p>
         <br />
         <div>
           <input type="checkbox" id="advancedSettingsCheckbox" name="advancedSettingsCheckbox" />
@@ -124,9 +142,14 @@
         <h2>Audio Playback</h2>
         <p>After a file is finished decoding, you can listen to the results here.</p>
         <p>
-          The binaural version is in the IAMF spatial audio format, you can compare it against the
-          regular stereo version as well. Remember to use headphones!
+          You can click the [Stereo] and [Binaural] buttons to switch between the binaural and
+          stereo versions and hear the difference in spatalization.
         </p>
+        <p>
+          Clicking on the waveform/timeline allows you to jump to a particular point and clicking
+          and dragging allows you to select a section for looping.
+        </p>
+        <p>Remember to use headphones!</p>
         <video id="videoPlayback" hidden="true"></video>
         <canvas id="timelineCanvas" width="932" , height="120"></canvas>
         <div class="flexBox">
@@ -142,7 +165,7 @@
         </div>
       </div>
       <div class="card" id="logBox"></div>
-      <div class="fineprint" id="fineprint"><p>Built 2024-09-09 21:11:29 UTC - Renderers: <a href="https://resonance-audio.github.io/resonance-audio/">Resonance Audio</a> and <a href="https://github.com/ebu/bear">BEAR</a></p></div>
+      <div class="fineprint" id="fineprint"><p>Built 2024-09-10 14:15:02 UTC - Renderers: <a href="https://resonance-audio.github.io/resonance-audio/">Resonance Audio</a> and <a href="https://github.com/ebu/bear">BEAR</a></p></div>
     </div>
     <script src="./decoder/wasm/wrapper.js"></script>
     <script src="./app_bundle.js"></script>

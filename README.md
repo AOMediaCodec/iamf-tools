@@ -115,6 +115,12 @@ files can be used to assist in testing or debugging an IAMF-compliant decoder.
 See the separate [README.md](iamf/cli/testdata/README.md) for further
 documentation.
 
+## Web demo
+
+The [web demo](https://aomediacodec.github.io/iamf-tools/web_demo/) hosted in
+the GitHub Pages of this repo decodes and renders standalone IAMF files to
+stereo and binaural wav files for preview and comparison.
+
 ## License
 
 Released under the BSD 3-Clause Clear License. See [LICENSE](LICENSE) for
