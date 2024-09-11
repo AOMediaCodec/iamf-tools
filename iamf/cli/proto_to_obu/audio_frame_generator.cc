@@ -375,13 +375,12 @@ absl::Status EncodeFramesForAudioElement(
       static_cast<int>(codec_config.GetBitDepthToMeasureLoudness());
 
   const uint32_t encoder_input_sample_rate = codec_config.GetInputSampleRate();
-
   const uint32_t decoder_output_sample_rate =
       codec_config.GetOutputSampleRate();
   if (encoder_input_sample_rate != decoder_output_sample_rate) {
-    // TODO(b/280361524): Calculate `num_samples_to_trim_at_end` and timestamps
-    //                    correctly when the input sample rate is different from
-    //                    the output sample rate.
+    // Prevent cases where resampling would occur. This allows later code to
+    // simplify assumptions when considering the number of samples in a frame or
+    // the trimming information.
     return absl::InvalidArgumentError(absl::StrCat(
         "Input sample rate and output sample rate differ: (",
         encoder_input_sample_rate, " vs ", decoder_output_sample_rate, ")"));

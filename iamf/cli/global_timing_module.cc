@@ -59,7 +59,8 @@ absl::Status GlobalTimingModule::Initialize(
         audio_elements,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
-  // TODO(b/277899855): Handle different rates.
+  // TODO(b/283281856): Handle cases where `parameter_rate` and `sample_rate`
+  //                    differ.
   for (const auto& [unused_id, audio_element] : audio_elements) {
     // Initialize all substream IDs to start at 0 even if the substreams do not
     // actually appear in the bitstream.

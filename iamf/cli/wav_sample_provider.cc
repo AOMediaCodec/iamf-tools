@@ -78,13 +78,13 @@ absl::Status WavSampleProvider::Initialize(
     const uint32_t encoder_input_sample_rate =
         codec_config.GetInputSampleRate();
     if (wav_reader->sample_rate_hz() != encoder_input_sample_rate) {
-      // TODO(b/277899855): Support resampling the input wav file to match the
-      //                    input sample rate.
-      return absl::InvalidArgumentError(
-          absl::StrCat("Sample rate read from ", wav_filename.string(),
-                       " inconsistent with the user metadata: (",
-                       wav_reader->sample_rate_hz(), " vs ",
-                       encoder_input_sample_rate, ")"));
+      return absl::InvalidArgumentError(absl::StrCat(
+          "WAV (", wav_filename.string(), ") has a sample rate of ",
+          wav_reader->sample_rate_hz(), " Hz. Expected a sample rate of ",
+          encoder_input_sample_rate,
+          " Hz based on the Codec Config OBU. Consider using a third party "
+          "resampler on the WAV file, or picking Codec Config OBU settings to "
+          "match the WAV file before trying again."));
     }
 
     const uint32_t decoder_output_sample_rate =
