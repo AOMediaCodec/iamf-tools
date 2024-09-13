@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -247,13 +248,16 @@ absl::Status WriteBitBuffer::WriteUint8Vector(
   return absl::OkStatus();
 }
 
-absl::Status WriteBitBuffer::FlushAndWriteToFile(std::fstream& output_file) {
+absl::Status WriteBitBuffer::FlushAndWriteToFile(
+    std::optional<std::fstream>& output_file) {
   if (!IsByteAligned()) {
     return absl::InvalidArgumentError("Write buffer not byte-aligned");
   }
 
-  bit_buffer_.resize(bit_offset_ / 8);
-  RETURN_IF_NOT_OK(WriteBufferToFile(bit_buffer_, output_file));
+  if (output_file.has_value()) {
+    bit_buffer_.resize(bit_offset_ / 8);
+    RETURN_IF_NOT_OK(WriteBufferToFile(bit_buffer_, *output_file));
+  }
 
   LOG(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
   Reset();
@@ -261,7 +265,7 @@ absl::Status WriteBitBuffer::FlushAndWriteToFile(std::fstream& output_file) {
 }
 
 absl::Status WriteBitBuffer::MaybeFlushIfCloseToCapacity(
-    std::fstream& output_file) {
+    std::optional<std::fstream>& output_file) {
   // Query if the buffer is close to capacity without letting it resize.
   if (CanWriteBytes(/*allow_resizing=*/false, bit_buffer_.capacity() / 2,
                     bit_offset_, bit_buffer_) != absl::OkStatus()) {

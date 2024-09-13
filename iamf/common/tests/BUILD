@@ -63,6 +63,7 @@ cc_test(
     deps = [
         ":test_utils",
         "//iamf/cli:leb_generator",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:bit_buffer_util",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:types",

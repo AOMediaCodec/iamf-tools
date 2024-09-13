@@ -13,7 +13,6 @@
 
 #include <cstdint>
 #include <list>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -265,7 +264,6 @@ void GenerateAudioFrameWithEightSamples(
   // containers.
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  const std::string output_wav_directory = "/dev/null";
 
   DemixingModule demixing_module;
   ASSERT_THAT(demixing_module.InitializeForDownMixingAndReconstruction(

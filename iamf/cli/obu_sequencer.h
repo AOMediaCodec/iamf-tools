@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <fstream>
 #include <list>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -139,7 +140,8 @@ class ObuSequencerBase {
 class ObuSequencerIamf : public ObuSequencerBase {
  public:
   /*!\brief Constructor.
-   * \param iamf_filename Name of the output standalone .iamf file.
+   * \param iamf_filename Name of the output standalone .iamf file or an empty
+   *     string to disable output.
    * \param include_temporal_delimiters Whether the serialized data should
    *     include a temporal delimiter.
    * \param leb_generator Leb generator to use when writing OBUs.
@@ -148,7 +150,11 @@ class ObuSequencerIamf : public ObuSequencerBase {
                    bool include_temporal_delimiters,
                    const LebGenerator& leb_generator)
       : ObuSequencerBase(leb_generator),
-        output_iamf_(iamf_filename, std::fstream::out | std::fstream::binary),
+        output_iamf_(
+            iamf_filename.empty()
+                ? std::nullopt
+                : std::make_optional<std::fstream>(
+                      iamf_filename, std::fstream::out | std::fstream::binary)),
         include_temporal_delimiters_(include_temporal_delimiters) {}
 
   ~ObuSequencerIamf() override = default;
@@ -174,7 +180,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
       const std::list<ArbitraryObu>& arbitrary_obus) override;
 
  private:
-  std::fstream output_iamf_;
+  std::optional<std::fstream> output_iamf_;
   const bool include_temporal_delimiters_;
 };
 

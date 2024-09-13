@@ -12,8 +12,12 @@
 #include "iamf/common/write_bit_buffer.h"
 
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <ios>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,6 +27,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/obu/types.h"
@@ -31,6 +36,37 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+
+TEST(FlushAndWriteToStream, WritesToOutputStream) {
+  const std::vector<uint8_t> kDataToOutput = {0x00, '\r', '\n', 0x1a};
+  const auto file_to_write_to = GetAndCleanupOutputFileName(".bin");
+  auto output_stream = std::make_optional<std::fstream>(
+      file_to_write_to, std::ios::binary | std::ios::out);
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(wb.WriteUint8Vector(kDataToOutput), IsOk());
+  EXPECT_THAT(wb.FlushAndWriteToFile(output_stream), IsOk());
+  output_stream->close();
+
+  EXPECT_EQ(std::filesystem::file_size(file_to_write_to), kDataToOutput.size());
+}
+
+TEST(FlushAndWriteToStream, SucceedsWithoutOutputStream) {
+  std::optional<std::fstream> omit_output_stream = std::nullopt;
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(wb.FlushAndWriteToFile(omit_output_stream), IsOk());
+}
+
+TEST(FlushAndWriteToStream, FlushesBuffer) {
+  std::optional<std::fstream> omit_output_stream = std::nullopt;
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0x01, 8), IsOk());
+
+  EXPECT_THAT(wb.FlushAndWriteToFile(omit_output_stream), IsOk());
+
+  EXPECT_TRUE(wb.bit_buffer().empty());
+}
 
 class WriteBitBufferTest : public ::testing::Test {
  protected:

@@ -275,6 +275,7 @@ cc_test(
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:leb_generator",
         "//iamf/cli:obu_sequencer",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/common:write_bit_buffer",
@@ -292,6 +293,7 @@ cc_test(
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

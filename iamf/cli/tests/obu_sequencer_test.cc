@@ -12,18 +12,22 @@
 #include "iamf/cli/obu_sequencer.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <list>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/leb_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -56,6 +60,7 @@ constexpr DecodedUleb128 kFirstDemixingParameterId = 998;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 const uint32_t kCommonMixGainParameterRate = kSampleRate;
 
+constexpr absl::string_view kOmitOutputIamfFile = "";
 constexpr bool kIncludeTemporalDelimiters = true;
 constexpr bool kDoNotIncludeTemporalDelimiters = false;
 
@@ -689,6 +694,46 @@ TEST(WriteDescriptorObus,
   EXPECT_THAT(ObuSequencerBase::WriteDescriptorObus(
                   ia_sequence_header_obu, codec_config_obus, audio_elements,
                   mix_presentation_obus, /*arbitrary_obus=*/{}, unused_wb),
+              IsOk());
+}
+
+TEST(ObuSequencerIamf, PickAndPlaceWritesFileWithOnlyIaSequenceHeader) {
+  const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
+  {
+    const IASequenceHeaderObu ia_sequence_header_obu(
+        ObuHeader(), IASequenceHeaderObu::kIaCode,
+        ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+    ObuSequencerIamf sequencer(kOutputIamfFilename,
+                               kDoNotIncludeTemporalDelimiters,
+                               *LebGenerator::Create());
+
+    EXPECT_THAT(sequencer.PickAndPlace(
+                    ia_sequence_header_obu, /*codec_config_obus=*/{},
+                    /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
+                    /*audio_frames=*/{}, /*parameter_blocks=*/{},
+                    /*arbitrary_obus=*/{}),
+                IsOk());
+
+    // `ObuSequencerIamf` goes out of scope and closes the file.
+  }
+
+  EXPECT_TRUE(std::filesystem::exists(kOutputIamfFilename));
+}
+
+TEST(ObuSequencerIamf, PickAndPlaceSucceedsWithEmptyOutputFile) {
+  const IASequenceHeaderObu ia_sequence_header_obu(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+
+  ObuSequencerIamf sequencer(std::string(kOmitOutputIamfFile),
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+
+  EXPECT_THAT(sequencer.PickAndPlace(
+                  ia_sequence_header_obu, /*codec_config_obus=*/{},
+                  /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
+                  /*audio_frames=*/{}, /*parameter_blocks=*/{},
+                  /*arbitrary_obus=*/{}),
               IsOk());
 }
 

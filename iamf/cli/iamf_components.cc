@@ -20,6 +20,7 @@
 
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/cli/mix_presentation_finalizer.h"
 #include "iamf/cli/obu_sequencer.h"
@@ -27,6 +28,12 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 
 namespace iamf_tools {
+
+namespace {
+
+constexpr absl::string_view kOmitIamfFile = "";
+
+}
 
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
     const std::string& /*file_name_prefix*/,
@@ -51,9 +58,8 @@ std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
       user_metadata.test_vector_metadata().file_name_prefix();
 
   // Create an OBU sequencer that writes to a standalone IAMF file.
-  // TODO(b/314895932): Find a more portable alternative to `/dev/null/`.
   const std::string iamf_filename =
-      prefix.empty() ? "/dev/null"
+      prefix.empty() ? std::string(kOmitIamfFile)
                      : (std::filesystem::path(output_iamf_directory) /
                         std::filesystem::path(absl::StrCat(prefix, ".iamf")))
                            .string();

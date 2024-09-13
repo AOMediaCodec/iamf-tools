@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -122,25 +123,26 @@ class WriteBitBuffer {
 
   /*!\brief Flushes and writes a byte-aligned buffer to a file.
    *
-   * \param output_file File to write to.
+   * \param output_file File to write to. Or `std::nullopt` to omit writing.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *     the buffer is not byte-aligned. `absl::UnknownError()` if the write
    *     failed.
    */
-  absl::Status FlushAndWriteToFile(std::fstream& output_file);
+  absl::Status FlushAndWriteToFile(std::optional<std::fstream>& output_file);
 
   /*!\brief May flush the buffer to a file if it is getting full.
    *
    * Intended to be used to avoid storing the entire buffer in memory if it will
    * later be flushed to a file anyway.
    *
-   * \param output_file File to write to.
+   * \param output_file File to write to. Or `std::nullopt` to omit writing.
    * \return `absl::OkStatus()` on success. Success does not guarantee the
    *     buffer was flushed or written to the file.
    *     `absl::InvalidArgumentError()` if the buffer is not byte-aligned when
    *     writing to a file. `absl::UnknownError()` if the write failed.
    */
-  absl::Status MaybeFlushIfCloseToCapacity(std::fstream& output_file);
+  absl::Status MaybeFlushIfCloseToCapacity(
+      std::optional<std::fstream>& output_file);
 
   /*!\brief Gets the offset in bits of the buffer.
    * \return Offset in bits of the write buffer.

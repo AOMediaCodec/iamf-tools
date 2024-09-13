@@ -858,9 +858,10 @@ void WriteVectorToFile(const std::filesystem::path filename,
   WriteBitBuffer wb(0);
 
   ASSERT_THAT(wb.WriteUint8Vector(bytes), IsOk());
-  std::fstream output_file(filename.string(), std::ios::binary | std::ios::out);
+  auto output_file = std::make_optional<std::fstream>(
+      filename.string(), std::ios::binary | std::ios::out);
   ASSERT_THAT(wb.FlushAndWriteToFile(output_file), IsOk());
-  output_file.close();
+  output_file->close();
 }
 
 TEST(ReadFileToBytes, ReadsFileContents) {
