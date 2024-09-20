@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/obu_base.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -155,6 +156,20 @@ TEST(ObuBaseTest, ReadWithConsistentSize) {
 
   auto obu = OneByteObu::CreateFromBuffer(ObuHeader(), 1, rb);
   EXPECT_THAT(obu, IsOk());
+}
+
+TEST(ObuBaseTest, ReadDoesNotOverflowWhenBufferIsLarge) {
+  // Create a large buffer, and put an OBU at the end.
+  const std::vector<uint8_t> kObu = {kObuIaReserved24 << 3, 1, 255};
+  constexpr size_t kJunkDataSize = 1 << 29;
+  std::vector<uint8_t> source_data(kJunkDataSize + kObu.size(), 0);
+  source_data.insert(source_data.end() - kObu.size(), kObu.begin(), kObu.end());
+  ReadBitBuffer rb(1024, &source_data);
+  // Advance the buffer to just before the OBU of interest.
+  std::vector<uint8_t> junk_data;
+  ASSERT_THAT(rb.ReadUint8Vector(kJunkDataSize, junk_data), IsOk());
+
+  EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), 1, rb), IsOk());
 }
 
 TEST(ObuBaseTest, ReadFailsWhenSizeIsTooSmall) {

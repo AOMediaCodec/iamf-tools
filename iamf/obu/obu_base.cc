@@ -69,7 +69,7 @@ absl::Status ObuBase::ValidateAndWriteObu(WriteBitBuffer& final_wb) const {
 absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
                                              ReadBitBuffer& rb) {
   // TODO(b/359588455): Use `ReadBitBuffer::Seek` and `Tell`.
-  const int expected_final_position =
+  const int64_t expected_final_position =
       (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset())) +
       (payload_size_bytes * 8);
 
