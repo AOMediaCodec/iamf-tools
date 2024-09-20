@@ -490,6 +490,7 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
   // Configure them with the same trimming information.
   const uint32_t kCommonNumSamplesToTrimAtStart = 2;
   const uint32_t kCommonNumSamplesToTrimAtEnd = 1;
+  const bool kCommonSamplesToTrimAtEndIncludesPadding = true;
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
       kCommonNumSamplesToTrimAtStart);
   user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_start(
@@ -498,6 +499,12 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
       kCommonNumSamplesToTrimAtEnd);
   user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_end(
       kCommonNumSamplesToTrimAtEnd);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(
+          kCommonSamplesToTrimAtEndIncludesPadding);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_end_includes_padding(
+          kCommonSamplesToTrimAtEndIncludesPadding);
 
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
@@ -544,6 +551,24 @@ TEST(AudioFrameGenerator,
                                      /*expected_initialize_is_ok=*/false);
 }
 
+TEST(AudioFrameGenerator,
+     ErrorAudioElementsMustHaveSameSamplesToTrimAtEndIncludesPadding) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  // IAMF requires that all audio elements have the same number of samples
+  // trimmed at the start.
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_end_includes_padding(true);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames,
+                                     /*expected_initialize_is_ok=*/false);
+}
+
 TEST(AudioFrameGenerator, NumSamplesToTrimAtEndWithPaddedFrames) {
   iamf_tools_cli_proto::UserMetadata user_metadata = {};
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
@@ -573,6 +598,54 @@ TEST(AudioFrameGenerator, NumSamplesToTrimAtEndWithPaddedFrames) {
   GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
   // Validate the generated audio frames.
   ValidateAudioFrames(audio_frames, expected_audio_frames);
+}
+
+TEST(AudioFrameGenerator,
+     CopiesNumSamplesPerFrameWhenSamplesToTrimAtEndIncludesPaddingIsTrue) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  // Reconfigure `user_metadata` to result in two padded samples.
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(10);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(3);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(true);
+  // Oney the user's request for three samples trimmed from the input data. Two
+  // of these samples represent padding.
+  constexpr uint32_t kExpectedNumSamplesToTrimAtEnd = 3;
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+
+  ASSERT_FALSE(audio_frames.empty());
+  const auto& audio_frame = audio_frames.front();
+  EXPECT_EQ(audio_frame.obu.header_.num_samples_to_trim_at_end,
+            kExpectedNumSamplesToTrimAtEnd);
+}
+
+TEST(AudioFrameGenerator,
+     IncrementsNumSamplesPerFrameWhenSamplesToTrimAtEndIncludesPaddingIsFalse) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  // Reconfigure `user_metadata` to result in two padded samples.
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(10);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(3);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+  // The user requested three samples trimmed from the input data. Plus an
+  // additional two samples are required to ensure the frame has ten samples.
+  constexpr uint32_t kExpectedNumSamplesToTrimAtEnd = 5;
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamples(user_metadata, audio_frames);
+
+  ASSERT_FALSE(audio_frames.empty());
+  const auto& audio_frame = audio_frames.front();
+  EXPECT_EQ(audio_frame.obu.header_.num_samples_to_trim_at_end,
+            kExpectedNumSamplesToTrimAtEnd);
 }
 
 TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {

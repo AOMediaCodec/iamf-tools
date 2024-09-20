@@ -17,8 +17,24 @@ message AudioFrameObuMetadata {
   reserved 2;
   reserved 3;
 
-  // Trimming information.
+  // Controls whether the number of samples required to pad the final frame are
+  // automatically added to the `samples_to_trim_at_end` value.
+  //
+  // When `true` `samples_to_trim_at_end` matches `num_samples_to_trim_at_end`
+  // in the OBU header. If the actual value is too small to account for padding,
+  // then encoding will fail.
+  //
+  // When `false` `num_samples_to_trim_at_end` will be incremented by the
+  // amount of required padding and may not match the OBU header value.
+  //
+  // Typically the recommended settings are:
+  //   - samples_to_trim_at_end_includes_padding: false
+  //   - samples_to_trim_at_end: 0
+  // These settings will automatically insert the correct padding to create a
+  // valid final frame and avoid trimming the original audio content.
+  optional bool samples_to_trim_at_end_includes_padding = 9 [default = true];
   optional uint32 samples_to_trim_at_end = 4;
+
   optional uint32 samples_to_trim_at_start = 5;
 
   // ID of the audio element whose substreams will be provided/mixed
@@ -34,4 +50,6 @@ message AudioFrameObuMetadata {
   // Channel Labels, e.g. "L2", "Ls5". For ambisonics, use "A{ACN number}",
   // e.g. "A0", "A13". Must be of the same length as `channel_ids`.
   repeated string channel_labels = 8;
+
+  // Next ID: 10
 }

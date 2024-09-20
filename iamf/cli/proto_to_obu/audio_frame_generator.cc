@@ -138,10 +138,19 @@ absl::Status ValidateUserStartTrim(
 
 absl::Status GetNumSamplesToPadAtEndAndValidate(
     const uint32_t required_samples_to_pad_at_end,
-    const uint32_t user_samples_to_trim_at_end,
-    uint32_t& num_samples_to_pad_at_end) {
+    bool increment_samples_to_trim_at_end_by_padding,
+    int64_t& user_samples_to_trim_at_end, uint32_t& num_samples_to_pad_at_end) {
+  if (increment_samples_to_trim_at_end_by_padding) {
+    // In this mode, the user's requested `samples_to_trim_at_end` represents
+    // the samples trimmed from the input data. Add in the virtual padded
+    // samples that the encoder will insert, to reflect the total number of
+    // samples which are trimmed in the OBU.
+    user_samples_to_trim_at_end += required_samples_to_pad_at_end;
+  }
+
   num_samples_to_pad_at_end =
-      std::min(required_samples_to_pad_at_end, user_samples_to_trim_at_end);
+      std::min(required_samples_to_pad_at_end,
+               static_cast<uint32_t>(user_samples_to_trim_at_end));
   if (user_samples_to_trim_at_end < required_samples_to_pad_at_end) {
     // Obey the user's request by setting `user_samples_to_trim_at_end`. But
     // throw an error.
@@ -272,7 +281,7 @@ absl::Status GetNextFrameSubstreamData(
     const DecodedUleb128 audio_element_id,
     const DemixingModule& demixing_module, const size_t num_samples_per_frame,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
+    absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
     LabelSamplesMap& label_to_samples, ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, SubstreamData>&
@@ -301,10 +310,11 @@ absl::Status GetNextFrameSubstreamData(
     const int num_channels = substream_data.samples_obu.front().size();
     if (substream_data.samples_obu.size() < num_samples_per_frame) {
       uint32_t num_samples_to_pad_at_end;
+      auto& trimming_state = substream_id_to_trimming_state.at(substream_id);
       RETURN_IF_NOT_OK(GetNumSamplesToPadAtEndAndValidate(
           num_samples_per_frame - substream_data.samples_obu.size(),
-          substream_id_to_trimming_state.at(substream_id)
-              .user_samples_left_to_trim_at_end,
+          trimming_state.increment_samples_to_trim_at_end_by_padding,
+          trimming_state.user_samples_left_to_trim_at_end,
           num_samples_to_pad_at_end));
 
       PadSamples(num_samples_to_pad_at_end, num_channels,
@@ -354,7 +364,7 @@ absl::Status EncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
     const DemixingModule& demixing_module, LabelSamplesMap& label_to_samples,
-    const absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
+    absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
     ParametersManager& parameters_manager,
     absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
@@ -512,22 +522,15 @@ absl::Status EncodeFramesForAudioElement(
 // Validates that all substreams share the same trimming information.
 absl::Status ValidateSubstreamsShareTrimming(
     const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
-    int64_t& common_samples_to_trim_at_start,
-    int64_t& common_samples_to_trim_at_end) {
-  // Set to the first seen values if uninitialized.
-  if (common_samples_to_trim_at_start == -1) {
-    common_samples_to_trim_at_start =
-        static_cast<int64_t>(audio_frame_metadata.samples_to_trim_at_start());
-  }
-  if (common_samples_to_trim_at_end == -1) {
-    common_samples_to_trim_at_end =
-        static_cast<int64_t>(audio_frame_metadata.samples_to_trim_at_end());
-  }
-
+    bool common_samples_to_trim_at_end_includes_padding,
+    int64_t common_samples_to_trim_at_start,
+    int64_t common_samples_to_trim_at_end) {
   if (audio_frame_metadata.samples_to_trim_at_end() !=
           common_samples_to_trim_at_end ||
       audio_frame_metadata.samples_to_trim_at_start() !=
-          common_samples_to_trim_at_start) {
+          common_samples_to_trim_at_start ||
+      audio_frame_metadata.samples_to_trim_at_end_includes_padding() !=
+          common_samples_to_trim_at_end_includes_padding) {
     return absl::InvalidArgumentError(
         "Expected all substreams to have the same trimming information");
   }
@@ -619,8 +622,18 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
 }
 
 absl::Status AudioFrameGenerator::Initialize() {
-  int64_t common_samples_to_trim_at_start = -1;
-  int64_t common_samples_to_trim_at_end = -1;
+  if (audio_frame_metadata_.empty()) {
+    return absl::OkStatus();
+  }
+  const auto& first_audio_frame_metadata =
+      audio_frame_metadata_.begin()->second;
+  const int64_t common_samples_to_trim_at_start = static_cast<int64_t>(
+      first_audio_frame_metadata.samples_to_trim_at_start());
+  const int64_t common_samples_to_trim_at_end =
+      static_cast<int64_t>(first_audio_frame_metadata.samples_to_trim_at_end());
+  const bool common_samples_to_trim_at_end_includes_padding =
+      first_audio_frame_metadata.samples_to_trim_at_end_includes_padding();
+
   for (const auto& [audio_element_id, audio_frame_metadata] :
        audio_frame_metadata_) {
     absl::MutexLock lock(&mutex_);
@@ -666,13 +679,15 @@ absl::Status AudioFrameGenerator::Initialize() {
 
     // Validate the assumption that trimming is the same for all substreams.
     RETURN_IF_NOT_OK(ValidateSubstreamsShareTrimming(
-        audio_frame_metadata, common_samples_to_trim_at_start,
-        common_samples_to_trim_at_end));
+        audio_frame_metadata, common_samples_to_trim_at_end_includes_padding,
+        common_samples_to_trim_at_start, common_samples_to_trim_at_end));
 
     // Populate the map of trimming states with all substream ID.
     for (const auto& [substream_id, labels] :
          audio_element_with_data.substream_id_to_labels) {
       substream_id_to_trimming_state_[substream_id] = {
+          .increment_samples_to_trim_at_end_by_padding =
+              !audio_frame_metadata.samples_to_trim_at_end_includes_padding(),
           .user_samples_left_to_trim_at_end = common_samples_to_trim_at_end,
           .user_samples_left_to_trim_at_start = common_samples_to_trim_at_start,
       };

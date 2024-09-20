@@ -64,6 +64,8 @@ class AudioFrameGenerator {
   /*!\brief Data structure to track the user requested trimming.
    */
   struct TrimmingState {
+    bool increment_samples_to_trim_at_end_by_padding;
+
     int64_t user_samples_left_to_trim_at_end;
     int64_t user_samples_left_to_trim_at_start;
   };
