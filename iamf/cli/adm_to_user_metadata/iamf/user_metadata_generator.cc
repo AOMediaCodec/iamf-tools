@@ -70,9 +70,8 @@ UserMetadataGenerator::GenerateUserMetadata(
     audio_pack_format_ids.push_back(audio_object.audio_pack_format_id_refs[0]);
   }
 
-  auto iamf =
-      IAMF::Create(file_prefix, adm_, max_frame_duration_,
-                   total_samples_per_channel_, format_info_.samples_per_sec);
+  auto iamf = IAMF::Create(file_prefix, adm_, max_frame_duration_,
+                           format_info_.samples_per_sec);
   if (!iamf.ok()) {
     return iamf.status();
   }

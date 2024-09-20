@@ -35,14 +35,12 @@ using enum ChannelLabel::Label;
 
 constexpr absl::string_view kFileNamePrefix = "prefix";
 constexpr absl::string_view kFileNameSuffix = "suffix";
-constexpr int32_t kNumSamplesToTrimAtEnd = 99;
 const int32_t kFirstAudioElementId = 0;
 
 iamf_tools_cli_proto::AudioFrameObuMetadata GetAudioFrameMetadataExpectOk(
     IamfInputLayout input_layout = IamfInputLayout::kStereo,
     int32_t audio_element_id = kFirstAudioElementId) {
-  const AudioFrameHandler audio_frame_handler(kFileNamePrefix,
-                                              kNumSamplesToTrimAtEnd);
+  const AudioFrameHandler audio_frame_handler(kFileNamePrefix);
 
   iamf_tools_cli_proto::AudioFrameObuMetadata audio_element_metadata;
   EXPECT_THAT(audio_frame_handler.PopulateAudioFrameMetadata(
@@ -53,11 +51,9 @@ iamf_tools_cli_proto::AudioFrameObuMetadata GetAudioFrameMetadataExpectOk(
 }
 
 TEST(Constructor, SetsMemberVariables) {
-  const AudioFrameHandler audio_frame_handler(kFileNamePrefix,
-                                              kNumSamplesToTrimAtEnd);
+  const AudioFrameHandler audio_frame_handler(kFileNamePrefix);
+
   EXPECT_EQ(audio_frame_handler.file_prefix_, kFileNamePrefix);
-  EXPECT_EQ(audio_frame_handler.num_samples_to_trim_at_end_,
-            kNumSamplesToTrimAtEnd);
 }
 
 TEST(PopulateAudioFrameMetadata, ConfiguresWavFilename) {
@@ -77,9 +73,11 @@ TEST(PopulateAudioFrameMetadata, ConfiguresAudioElementId) {
       kAudioElementId);
 }
 
-TEST(PopulateAudioFrameMetadata, ConfiguresSamplesToTrimAtEnd) {
+TEST(PopulateAudioFrameMetadata, ConfiguresSamplesToTrimAtEndToZero) {
+  constexpr int32_t kExpectedNumSamplesToTrimAtEnd = 0;
+
   EXPECT_EQ(GetAudioFrameMetadataExpectOk().samples_to_trim_at_end(),
-            kNumSamplesToTrimAtEnd);
+            kExpectedNumSamplesToTrimAtEnd);
 }
 
 TEST(PopulateAudioFrameMetadata, ConfiguresSamplesToTrimAtStartToZero) {
@@ -87,6 +85,15 @@ TEST(PopulateAudioFrameMetadata, ConfiguresSamplesToTrimAtStartToZero) {
 
   EXPECT_EQ(GetAudioFrameMetadataExpectOk().samples_to_trim_at_start(),
             kExpectedNumSamplesToTrimAtStart);
+}
+
+TEST(PopulateAudioFrameMetadata,
+     ConfiguresSamplesToTrimAtEndIncludesPaddingToFalse) {
+  constexpr bool kExpectedSamplesToTrimAtEndIncludesPadding = false;
+
+  EXPECT_EQ(
+      GetAudioFrameMetadataExpectOk().samples_to_trim_at_end_includes_padding(),
+      kExpectedSamplesToTrimAtEndIncludesPadding);
 }
 
 template <class InputContainer>

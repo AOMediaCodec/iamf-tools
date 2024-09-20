@@ -148,26 +148,6 @@ absl::StatusOr<Bw64Reader::ChunkInfo> Bw64Reader::GetChunkInfo(
                                                           chunks_offset_map_);
 }
 
-absl::StatusOr<int64_t> Bw64Reader::GetTotalSamplesPerChannel() const {
-  const int64_t kBitsPerByte = 8;
-
-  const int64_t bits_per_sample_per_channel =
-      format_info_.bits_per_sample * format_info_.num_channels;
-  if (bits_per_sample_per_channel == 0 ||
-      (bits_per_sample_per_channel % kBitsPerByte != 0)) {
-    return absl::InvalidArgumentError(
-        "Cannot compute number of samples per frame.");
-  }
-
-  const auto& chunk_info = GetChunkInfo("data");
-  if (!chunk_info.ok()) {
-    return absl::FailedPreconditionError("Missing `data` chunk.");
-  }
-
-  const int64_t data_chunk_size = static_cast<int64_t>(chunk_info->size);
-  return data_chunk_size / (bits_per_sample_per_channel / kBitsPerByte);
-}
-
 absl::StatusOr<Bw64Reader> Bw64Reader::BuildFromStream(
     int32_t importance_threshold, std::istream& buffer) {
   const auto read_riff_chunk_status = ReadRiffChunk(buffer);

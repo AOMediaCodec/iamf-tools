@@ -89,8 +89,6 @@ constexpr uint16_t kExpectedBitsPerSample = 16;
 
 constexpr size_t kExpectedNumObjects = 1;
 
-constexpr int64_t kExpectedTotalSamplesPerChannel = 2;
-
 void ValidateGetChunkInfo(const Bw64Reader& reader,
                           absl::string_view chunk_name, int32_t expected_size,
                           int32_t expected_offset) {
@@ -166,44 +164,6 @@ TEST(BuildFromStream, ReturnsErrorWhenLookingUpUnknownChunkName) {
 
   // Returns error when Looking up an invalid chunk name returns an error.
   EXPECT_FALSE(reader->GetChunkInfo("INVALID_CHUNK").ok());
-}
-
-TEST(GetTotalSamplesPerChannel, ReturnsTotalSamplesPerChannel) {
-  std::istringstream ss((std::string(kValidWav)));
-  auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_THAT(reader, IsOk());
-
-  const auto total_samples_per_channel = reader->GetTotalSamplesPerChannel();
-  ASSERT_THAT(total_samples_per_channel, IsOk());
-
-  EXPECT_EQ(*total_samples_per_channel, kExpectedTotalSamplesPerChannel);
-}
-
-TEST(GetTotalSamplesPerChannel, ReturnsErrorWhenInvalidNumberOfChannels) {
-  constexpr absl::string_view kInvalidNumberOfChannels(
-      "RIFF"
-      "\x44\x00\x00\x00"  // Size of `RIFF` chunk (the whole file).
-      "WAVE"
-      "fmt "
-      "\x10\x00\x00\x00"  // Size of the `fmt ` chunk.
-      "\x01\x00"          // Format tag.
-      "\x00\x00"          // Number of channels.
-      "\x03\x00\x00\x00"  // Sample Per Second
-      "\x04\x00\x00\x00"  // Bytes per second.
-      "\x10\x00"          // Block align.
-      "\x10\x00"          // Bits per sample.
-      "data"
-      "\x00\x00\x00\x00"
-      "axml"
-      "\x1b\x00\x00\x00"  // Size of `axml` chunk.
-      "<audioObject></audioObject>",
-      79);
-
-  std::istringstream ss((std::string(kInvalidNumberOfChannels)));
-  const auto reader = Bw64Reader::BuildFromStream(kImportanceThreshold, ss);
-  ASSERT_THAT(reader, IsOk());
-
-  EXPECT_FALSE(reader->GetTotalSamplesPerChannel().ok());
 }
 
 }  // namespace

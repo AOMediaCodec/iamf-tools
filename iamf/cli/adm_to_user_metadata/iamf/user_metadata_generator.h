@@ -47,17 +47,13 @@ class UserMetadataGenerator {
    *
    * \param adm ADM to use.
    * \param format_info Format info chunk to use.
-   * \param total_samples_per_channel Total samples per channel of the
-   *     associated audio.
    * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
    *     actual frame duration may be shorter due to rounding.
    */
   UserMetadataGenerator(const ADM& adm, const FormatInfoChunk& format_info,
-                        int64_t total_samples_per_channel,
                         int32_t max_frame_duration)
       : adm_(adm),
         format_info_(format_info),
-        total_samples_per_channel_(total_samples_per_channel),
         max_frame_duration_(max_frame_duration) {};
 
   /*!\brief Generates a `UserMetadata` proto.
@@ -72,7 +68,6 @@ class UserMetadataGenerator {
  private:
   const ADM& adm_;
   const FormatInfoChunk& format_info_;
-  const int64_t total_samples_per_channel_;
   const int32_t max_frame_duration_;
 };
 

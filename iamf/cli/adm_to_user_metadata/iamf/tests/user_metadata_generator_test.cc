@@ -104,15 +104,13 @@ const ADM& GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes() {
 
 constexpr FormatInfoChunk kFormatInfoChunk = {
     .num_channels = 1, .samples_per_sec = 48000, .bits_per_sample = 16};
-constexpr int kTotalSamplesPerChannel = 100;
 constexpr int kMaxFrameDuration = 10;
 
 using iamf_tools_cli_proto::UserMetadata;
 
 TEST(Constructor, DoesNotCrash) {
   const UserMetadataGenerator user_metadata_generator(
-      GetAdmWithStereoObject(), kFormatInfoChunk, kTotalSamplesPerChannel,
-      kMaxFrameDuration);
+      GetAdmWithStereoObject(), kFormatInfoChunk, kMaxFrameDuration);
 }
 
 TEST(WriteUserMetadataToFile, CreatesTextprotoFile) {
@@ -150,8 +148,8 @@ TEST(WriteUserMetadataToFile, CreatesBinaryProtoFile) {
 
 UserMetadata GenerateUserMetadataExpectOk(
     const ADM& adm, std::string_view input_file_prefix = "") {
-  const UserMetadataGenerator user_metadata_generator(
-      adm, kFormatInfoChunk, kTotalSamplesPerChannel, kMaxFrameDuration);
+  const UserMetadataGenerator user_metadata_generator(adm, kFormatInfoChunk,
+                                                      kMaxFrameDuration);
 
   const auto user_metadata =
       user_metadata_generator.GenerateUserMetadata(input_file_prefix);

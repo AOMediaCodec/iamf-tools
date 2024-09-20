@@ -201,15 +201,11 @@ void GenerateAudioObjectsMap(
 }
 
 // Computes the number of samples per frame to correspond to a frame duration of
-// at most `max_frame_duration_ms`. Also computes `num_samples_to_trim_at_end`
-// for the final audio frame.
+// at most `max_frame_duration_ms`.
 absl::Status ComputeNumSamplesPerFrame(uint32_t max_frame_duration_ms,
-                                       int64_t total_samples_per_channel,
                                        uint32_t num_samples_per_sec,
-                                       int64_t& num_samples_per_frame,
-                                       int64_t& num_samples_to_trim_at_end) {
-  if (total_samples_per_channel == 0 || num_samples_per_sec == 0 ||
-      max_frame_duration_ms == 0) {
+                                       int64_t& num_samples_per_frame) {
+  if (num_samples_per_sec == 0 || max_frame_duration_ms == 0) {
     return absl::InvalidArgumentError(
         "Cannot compute number of samples per frame.");
   }
@@ -219,12 +215,6 @@ absl::Status ComputeNumSamplesPerFrame(uint32_t max_frame_duration_ms,
   // duration.
   num_samples_per_frame = static_cast<int64_t>(max_frame_duration_ms *
                                                num_samples_per_sec / 1000.0);
-  // The last frame may need some padding so it has the same number of samples
-  // as all other frames.
-  const auto left_over_samples =
-      total_samples_per_channel % num_samples_per_frame;
-  num_samples_to_trim_at_end =
-      left_over_samples == 0 ? 0 : num_samples_per_frame - left_over_samples;
 
   return absl::OkStatus();
 }
@@ -236,26 +226,22 @@ IAMF::IAMF(absl::string_view file_prefix,
                mix_presentation_id_to_audio_objects_and_metadata,
            const std::map<std::string, uint32_t>& audio_object_to_audio_element,
            int64_t num_samples_per_frame, uint32_t samples_per_sec,
-           int64_t num_samples_to_trim_at_end,
            const std::vector<IamfInputLayout>& input_layouts)
     : mix_presentation_id_to_audio_objects_and_metadata_(
           mix_presentation_id_to_audio_objects_and_metadata),
       audio_object_to_audio_element_(audio_object_to_audio_element),
       num_samples_per_frame_(num_samples_per_frame),
       input_layouts_(input_layouts),
-      audio_frame_handler_(file_prefix, num_samples_to_trim_at_end),
+      audio_frame_handler_(file_prefix),
       mix_presentation_handler_(samples_per_sec,
                                 audio_object_to_audio_element) {}
 
 absl::StatusOr<IAMF> IAMF::Create(absl::string_view file_prefix, const ADM& adm,
                                   int32_t max_frame_duration_ms,
-                                  int64_t total_samples_per_channel,
                                   uint32_t samples_per_sec) {
   int64_t num_samples_per_frame;
-  int64_t num_samples_to_trim_at_end;
   if (const auto status = ComputeNumSamplesPerFrame(
-          max_frame_duration_ms, total_samples_per_channel, samples_per_sec,
-          num_samples_per_frame, num_samples_to_trim_at_end);
+          max_frame_duration_ms, samples_per_sec, num_samples_per_frame);
       !status.ok()) {
     return status;
   }
@@ -281,7 +267,7 @@ absl::StatusOr<IAMF> IAMF::Create(absl::string_view file_prefix, const ADM& adm,
 
   return IAMF(file_prefix, mix_presentation_id_to_audio_objects_and_metadata,
               audio_object_to_audio_element, num_samples_per_frame,
-              samples_per_sec, num_samples_to_trim_at_end, input_layouts);
+              samples_per_sec, input_layouts);
 }
 
 }  // namespace adm_to_user_metadata

@@ -75,13 +75,6 @@ class Bw64Reader {
    */
   absl::StatusOr<ChunkInfo> GetChunkInfo(absl::string_view chunk_name) const;
 
-  /*!\brief Returns the total number of samples per channel.
-   *
-   * \return Total number of samples or a specific error code if it cannot be
-   *     calculated.
-   */
-  absl::StatusOr<int64_t> GetTotalSamplesPerChannel() const;
-
   const ADM adm_;
   const FormatInfoChunk format_info_;
 

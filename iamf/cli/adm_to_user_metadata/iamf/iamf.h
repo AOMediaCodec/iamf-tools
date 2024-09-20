@@ -49,14 +49,11 @@ class IAMF {
    * \param adm ADM data to initialize with.
    * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
    *     actual frame duration may be shorter due to rounding.
-   * \param total_samples_per_channel Total samples per channel in the input
-   *     audio files.
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
    * \return `IAMF` object or a specific error code on failure.
    */
   static absl::StatusOr<IAMF> Create(absl::string_view file_prefix,
                                      const ADM& adm, int32_t frame_duration_ms,
-                                     int64_t total_samples_per_channel,
                                      uint32_t samples_per_sec);
 
   const std::map<int32_t, AudioObjectsAndMetadata>
@@ -81,7 +78,6 @@ class IAMF {
    *     audio element IDs.
    * \param num_samples_per_frame Number of samples per frame.
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
-   * \param samples_to_trim_at_end Number of samples to trim at the end.
    * \param input_layouts Vector of iamf input layouts format ids.
    */
   IAMF(absl::string_view file_prefix,
@@ -89,7 +85,6 @@ class IAMF {
            mix_presentation_id_to_audio_objects_and_metadata,
        const std::map<std::string, uint32_t>& audio_object_to_audio_element,
        int64_t num_samples_per_frame, uint32_t samples_per_sec,
-       int64_t samples_to_trim_at_end,
        const std::vector<IamfInputLayout>& input_layouts);
 };
 

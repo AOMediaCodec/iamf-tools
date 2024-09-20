@@ -46,14 +46,9 @@ GenerateUserMetadataAndSpliceWavFiles(absl::string_view file_prefix,
   }
 
   // Generate the user metadata.
-  const auto& total_samples_per_channel = reader->GetTotalSamplesPerChannel();
-  if (!total_samples_per_channel.ok()) {
-    return total_samples_per_channel.status();
-  }
   const auto& user_metadata_generator =
       iamf_tools::adm_to_user_metadata::UserMetadataGenerator(
-          reader->adm_, reader->format_info_, *total_samples_per_channel,
-          frame_duration_ms);
+          reader->adm_, reader->format_info_, frame_duration_ms);
 
   return user_metadata_generator.GenerateUserMetadata(file_prefix);
 }

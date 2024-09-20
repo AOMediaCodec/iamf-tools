@@ -32,7 +32,6 @@ namespace {
 using ::absl_testing::IsOk;
 
 constexpr int32_t kFrameDurationMs = 10;
-constexpr int64_t kTotalSamplesPerChannel = 100;
 constexpr uint32_t kSamplesPerSec = 48000;
 
 constexpr absl::string_view kStereoAudioPackFormatId = "AP_00010002";
@@ -130,8 +129,7 @@ const ADM& GetAdmWithComplementaryGroups() {
 
 TEST(Create, WithNoAudioObjectsSucceeds) {
   EXPECT_THAT(IAMF::Create(/*file_name=*/"",
-                           /*adm=*/{}, kFrameDurationMs,
-                           kTotalSamplesPerChannel, kSamplesPerSec),
+                           /*adm=*/{}, kFrameDurationMs, kSamplesPerSec),
               IsOk());
 }
 
@@ -139,16 +137,15 @@ TEST(Create, WithObjectBasedAudioObjectFails) {
   EXPECT_FALSE(
       IAMF::Create(/*file_name=*/"",
                    /*adm=*/{.audio_objects = {GetObjectBasedAudioObject()}},
-                   kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec)
+                   kFrameDurationMs, kSamplesPerSec)
           .ok());
 }
 
 TEST(Create, PopulatesAudioFrameHandlerFilePrefix) {
   constexpr absl::string_view kExpectedFileNamePrefix = "test_file_prefix";
 
-  const auto iamf =
-      IAMF::Create(kExpectedFileNamePrefix, /*adm=*/{}, kFrameDurationMs,
-                   kTotalSamplesPerChannel, kSamplesPerSec);
+  const auto iamf = IAMF::Create(kExpectedFileNamePrefix, /*adm=*/{},
+                                 kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_frame_handler_.file_prefix_, kExpectedFileNamePrefix);
@@ -157,7 +154,7 @@ TEST(Create, PopulatesAudioFrameHandlerFilePrefix) {
 TEST(Create, PopulatesIamfInputLayoutsFromObjects) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsWithoutAudioProgramme(),
-                   kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
+                   kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   const std::vector<IamfInputLayout> kExpectedInputLayouts = {
@@ -172,7 +169,7 @@ TEST(Create, PopulatesIamfInputLayoutsFromObjects) {
 TEST(Create, MapsAreEmptyWhenNoAudioProgramme) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsWithoutAudioProgramme(),
-                   kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
+                   kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_TRUE(iamf->audio_object_to_audio_element_.empty());
@@ -182,7 +179,7 @@ TEST(Create, MapsAreEmptyWhenNoAudioProgramme) {
 TEST(Create, PopulatesAudioObjectToAudioElement) {
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes(),
-                   kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
+                   kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_object_to_audio_element_.size(), 2);
@@ -202,7 +199,7 @@ TEST(Create, PopulatesAudioProgrammeToAudioObjectsMap) {
 
   const auto iamf =
       IAMF::Create("", GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes(),
-                   kFrameDurationMs, kTotalSamplesPerChannel, kSamplesPerSec);
+                   kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->mix_presentation_id_to_audio_objects_and_metadata_.size(), 2);
@@ -239,17 +236,15 @@ TEST(Create, IgnoresAudioProgrammeWithMoreThanTwoAudioObjects) {
                                std::string(kThirdOrderAmbisonicsAudioObjectId),
                                std::string(kSecondStereoObjectId)}});
   adm.audio_objects.push_back(GetStereoAudioObject(kSecondStereoObjectId));
-  const auto iamf = IAMF::Create("", adm, kFrameDurationMs,
-                                 kTotalSamplesPerChannel, kSamplesPerSec);
+  const auto iamf = IAMF::Create("", adm, kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->mix_presentation_id_to_audio_objects_and_metadata_.size(), 2);
 }
 
 TEST(Create, CreatesAudioProgrammesForComplementaryGroups) {
-  const auto iamf =
-      IAMF::Create("", GetAdmWithComplementaryGroups(), kFrameDurationMs,
-                   kTotalSamplesPerChannel, kSamplesPerSec);
+  const auto iamf = IAMF::Create("", GetAdmWithComplementaryGroups(),
+                                 kFrameDurationMs, kSamplesPerSec);
   ASSERT_THAT(iamf, IsOk());
 
   EXPECT_EQ(iamf->audio_object_to_audio_element_.size(), 2);
@@ -272,10 +267,8 @@ TEST(Create, CreatesAudioProgrammesForComplementaryGroups) {
 
 struct FrameDurationInfoTestCase {
   int32_t frame_duration_ms;
-  int64_t total_samples_per_channel;
   int64_t samples_per_sec;
   int32_t expected_num_samples_per_frame = 0;
-  int32_t expected_num_samples_to_trim_at_end = 0;
   bool is_valid = true;
 };
 
@@ -286,96 +279,51 @@ TEST_P(FrameDurationInfo, TestWithParam) {
   // Many fields are irrelevant to calculating the number of samples per frame.
   auto iamf = IAMF::Create(/*file_name=*/"",
                            /*adm=*/{}, test_case.frame_duration_ms,
-                           test_case.total_samples_per_channel,
                            test_case.samples_per_sec);
   ASSERT_EQ(iamf.ok(), test_case.is_valid);
 
   if (test_case.is_valid) {
     EXPECT_EQ(iamf->num_samples_per_frame_,
               test_case.expected_num_samples_per_frame);
-    EXPECT_EQ(iamf->audio_frame_handler_.num_samples_to_trim_at_end_,
-              test_case.expected_num_samples_to_trim_at_end);
   }
 }
 
 INSTANTIATE_TEST_SUITE_P(CalculatesNumSamplesPerFrame, FrameDurationInfo,
                          testing::ValuesIn<FrameDurationInfoTestCase>({
                              {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 480,
                               .samples_per_sec = 48000,
-                              .expected_num_samples_per_frame = 480,
-                              .expected_num_samples_to_trim_at_end = 0},
+                              .expected_num_samples_per_frame = 480},
                              {.frame_duration_ms = 20,
-                              .total_samples_per_channel = 960,
                               .samples_per_sec = 48000,
-                              .expected_num_samples_per_frame = 960,
-                              .expected_num_samples_to_trim_at_end = 0},
+                              .expected_num_samples_per_frame = 960},
                              {.frame_duration_ms = 20,
-                              .total_samples_per_channel = 1920,
                               .samples_per_sec = 96000,
-                              .expected_num_samples_per_frame = 1920,
-                              .expected_num_samples_to_trim_at_end = 0},
+                              .expected_num_samples_per_frame = 1920},
                              {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 441,
                               .samples_per_sec = 44100,
-                              .expected_num_samples_per_frame = 441,
-                              .expected_num_samples_to_trim_at_end = 0},
-                         }));
-
-INSTANTIATE_TEST_SUITE_P(CalculatesNumSamplesToTrimAtEnd, FrameDurationInfo,
-                         testing::ValuesIn<FrameDurationInfoTestCase>({
-                             {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 1,
-                              .samples_per_sec = 48000,
-                              .expected_num_samples_per_frame = 480,
-                              .expected_num_samples_to_trim_at_end = 479},
-                             {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 479,
-                              .samples_per_sec = 48000,
-                              .expected_num_samples_per_frame = 480,
-                              .expected_num_samples_to_trim_at_end = 1},
-                             {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 900,
-                              .samples_per_sec = 48000,
-                              .expected_num_samples_per_frame = 480,
-                              .expected_num_samples_to_trim_at_end = 60},
+                              .expected_num_samples_per_frame = 441},
                          }));
 
 INSTANTIATE_TEST_SUITE_P(CalculatesNumSamplesPerFrameAndRoundsDown,
                          FrameDurationInfo,
                          testing::ValuesIn<FrameDurationInfoTestCase>({
                              {.frame_duration_ms = 9,
-                              .total_samples_per_channel = 396,
                               .samples_per_sec = 44100,
-                              .expected_num_samples_per_frame = 396,
-                              .expected_num_samples_to_trim_at_end = 0},
+                              .expected_num_samples_per_frame = 396},
 
                          }));
 
-INSTANTIATE_TEST_SUITE_P(InvalidWheFramedurationIsZero, FrameDurationInfo,
-                         testing::ValuesIn<FrameDurationInfoTestCase>({
-                             {.frame_duration_ms = 0,
-                              .total_samples_per_channel = 100,
-                              .samples_per_sec = 48000,
-                              .is_valid = false},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    InvalidWheFrameDurationIsZero, FrameDurationInfo,
+    testing::ValuesIn<FrameDurationInfoTestCase>({
+        {.frame_duration_ms = 0, .samples_per_sec = 48000, .is_valid = false},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(InvalidWhenTotalSamplesPerChannelIsZero,
-                         FrameDurationInfo,
-                         testing::ValuesIn<FrameDurationInfoTestCase>({
-                             {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 0,
-                              .samples_per_sec = 48000,
-                              .is_valid = false},
-                         }));
-
-INSTANTIATE_TEST_SUITE_P(InvalidWhenSamplesPerSecIsZero, FrameDurationInfo,
-                         testing::ValuesIn<FrameDurationInfoTestCase>({
-                             {.frame_duration_ms = 10,
-                              .total_samples_per_channel = 100,
-                              .samples_per_sec = 0,
-                              .is_valid = false},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    InvalidWhenSamplesPerSecIsZero, FrameDurationInfo,
+    testing::ValuesIn<FrameDurationInfoTestCase>({
+        {.frame_duration_ms = 10, .samples_per_sec = 0, .is_valid = false},
+    }));
 
 }  // namespace
 }  // namespace adm_to_user_metadata

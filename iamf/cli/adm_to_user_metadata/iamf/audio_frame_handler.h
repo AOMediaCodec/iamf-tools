@@ -43,13 +43,9 @@ class AudioFrameHandler {
   /*!\brief Constructor.
    *
    * \param file_prefix Prefix for associated wav files.
-   * \param num_samples_to_trim_at_end Common number of samples to trim at end
-   *     for all audio frame metadata.
    */
-  AudioFrameHandler(absl::string_view file_prefix,
-                    int32_t num_samples_to_trim_at_end)
-      : file_prefix_(file_prefix),
-        num_samples_to_trim_at_end_(num_samples_to_trim_at_end) {};
+  AudioFrameHandler(absl::string_view file_prefix)
+      : file_prefix_(file_prefix) {};
 
   /*!\brief Populates a `AudioFrameMetadata`.
    *
@@ -65,7 +61,6 @@ class AudioFrameHandler {
       const;
 
   const std::string file_prefix_;
-  const int32_t num_samples_to_trim_at_end_;
 };
 
 }  // namespace adm_to_user_metadata

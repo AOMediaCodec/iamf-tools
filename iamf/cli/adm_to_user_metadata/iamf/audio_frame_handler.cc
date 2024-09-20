@@ -77,9 +77,11 @@ absl::Status AudioFrameHandler::PopulateAudioFrameMetadata(
     const {
   audio_frame_obu_metadata.set_wav_filename(
       absl::StrCat(file_prefix_, "_converted", file_suffix, ".wav"));
+  // Let the encoder determine how much padding is required. We just want to
+  // preserve the original audio.
+  audio_frame_obu_metadata.set_samples_to_trim_at_end_includes_padding(false);
   audio_frame_obu_metadata.set_samples_to_trim_at_start(0);
-  audio_frame_obu_metadata.set_samples_to_trim_at_end(
-      num_samples_to_trim_at_end_);
+  audio_frame_obu_metadata.set_samples_to_trim_at_end(0);
   audio_frame_obu_metadata.set_audio_element_id(audio_element_id);
 
   const auto& labels = LookupLabelsFromInputLayout(input_layout);
