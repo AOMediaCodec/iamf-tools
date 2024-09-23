@@ -13,9 +13,9 @@ syntax = "proto2";
 package iamf_tools_cli_proto;
 
 message AudioFrameObuMetadata {
+  reserved 2, 3;
+
   optional string wav_filename = 1;
-  reserved 2;
-  reserved 3;
 
   // Controls whether the number of samples required to pad the final frame are
   // automatically added to the `samples_to_trim_at_end` value.

@@ -67,6 +67,8 @@ message DemixingInfoParameterData {
 }
 
 message ReconGains {
+  reserved 1;
+
   // Mapping from a bit position to a recon gain value.
   // If recon_gain[j] is defined, then the j-th bit of recon_gain_flags[i]
   // (for the i-th layer) will be set.
@@ -74,6 +76,8 @@ message ReconGains {
 }
 
 message ReconGainInfoParameterData {
+  reserved 1;
+
   // Length = `num_layers`.
   repeated ReconGains recon_gains_for_layer = 2;
 }

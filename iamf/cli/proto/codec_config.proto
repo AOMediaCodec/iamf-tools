@@ -96,6 +96,8 @@ message AacDecoderSpecificInfo {
   optional SampleFrequencyIndex sample_frequency_index = 2;
   optional uint32 sampling_frequency = 3;
   optional uint32 channel_configuration = 4 [default = 2];
+
+  // Next ID: 6
 }
 
 message AacGaSpecificConfig {
@@ -163,6 +165,8 @@ message FlacMetaBlock {
 }
 
 message FlacDecoderConfig {
+  reserved 1, 2;
+
   repeated FlacMetaBlock metadata_blocks = 3;
   optional FlacEncoderMetadata flac_encoder_metadata = 4;
 }
@@ -176,10 +180,11 @@ enum CodecId {
 }
 
 message CodecConfig {
+  reserved 3, 4;
+
   optional uint32 deprecated_codec_id = 1 [deprecated = true];
   optional CodecId codec_id = 10;
   optional uint32 num_samples_per_frame = 2;
-  reserved 3, 4;
   optional int32 audio_roll_distance = 9;
   oneof decoder_config {
     LpcmDecoderConfig decoder_config_lpcm = 5;
@@ -187,6 +192,8 @@ message CodecConfig {
     AacDecoderConfig decoder_config_aac = 7;
     FlacDecoderConfig decoder_config_flac = 8;
   }
+
+  // Next ID: 11
 }
 
 message CodecConfigObuMetadata {

@@ -23,12 +23,12 @@ import "iamf/cli/proto/temporal_delimiter.proto";
 import "iamf/cli/proto/test_vector_metadata.proto";
 
 message UserMetadata {
-  reserved 1;
+  reserved 1, 5;
+
   repeated IASequenceHeaderObuMetadata ia_sequence_header_metadata = 10;
   repeated CodecConfigObuMetadata codec_config_metadata = 2;
   repeated AudioElementObuMetadata audio_element_metadata = 3;
   repeated MixPresentationObuMetadata mix_presentation_metadata = 4;
-  reserved 5;
   repeated AudioFrameObuMetadata audio_frame_metadata = 6;
   repeated ParameterBlockObuMetadata parameter_block_metadata = 7;
   optional TemporalDelimiterObuMetadata temporal_delimiter_metadata = 8;

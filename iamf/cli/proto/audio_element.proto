@@ -34,6 +34,8 @@ message AudioElementParam {
     ReconGainParamDefinition recon_gain_param = 3;
     ParamDefinitionExtension param_definition_extension = 4;
   }
+
+  // Next ID: 6
 }
 
 // Valid proto enums start at index 1, which are different from the

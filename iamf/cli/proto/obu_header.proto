@@ -13,11 +13,11 @@ syntax = "proto2";
 package iamf_tools_cli_proto;
 
 message ObuHeaderMetadata {
-  reserved 1;
+  reserved 1, 5;
+
   optional bool obu_redundant_copy = 2 [default = false];
   optional bool obu_trimming_status_flag = 3 [default = false];
   optional bool obu_extension_flag = 4 [default = false];
-  reserved 5;
   optional uint32 num_samples_to_trim_at_end = 6 [default = 0];
   optional uint32 num_samples_to_trim_at_start = 7 [default = 0];
   optional uint32 extension_header_size = 8 [default = 0];

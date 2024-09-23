@@ -28,6 +28,8 @@ message Leb128Generator {
 }
 
 message TestVectorMetadata {
+  reserved 5;
+
   optional string human_readable_description = 1;
   // Prefix of the output file names. Leave empty to skip writing to output
   // files.
@@ -42,7 +44,6 @@ message TestVectorMetadata {
   // other mixes may be invalid or use reserved values which may be ignored.
   optional bool is_valid_to_decode = 14 [default = true];
   optional string mp4_fixed_timestamp = 4;
-  reserved 5;
   // Tags to identify the repository this test vector belongs to. A repository
   // could be a git branch or it could refer to some other way to organize a
   // test suite.
@@ -75,4 +76,6 @@ message TestVectorMetadata {
 
   // Settings to configure how `Leb128`s are generated.
   optional Leb128Generator leb_generator = 11;
+
+  // Next ID: 16
 }
