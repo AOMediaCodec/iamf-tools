@@ -28,7 +28,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/tests/obu_test_base.h"
@@ -58,7 +59,8 @@ void FillDemixingInfoParamDefinition(
       dmixp_mode;
   param_definition.default_demixing_info_parameter_data_.default_w = 0;
   param_definition.default_demixing_info_parameter_data_.reserved = 0;
-  param_definition.default_demixing_info_parameter_data_.reserved_default = 0;
+  param_definition.default_demixing_info_parameter_data_
+      .reserved_for_future_use = 0;
   param_definition.InitializeSubblockDurations(1);
 }
 

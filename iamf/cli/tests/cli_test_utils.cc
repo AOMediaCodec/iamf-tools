@@ -38,7 +38,8 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -285,7 +286,8 @@ void AddDemixingParamDefinition(
       DemixingInfoParameterData::kDMixPMode1;
   param_definition->default_demixing_info_parameter_data_.reserved = 0;
   param_definition->default_demixing_info_parameter_data_.default_w = 10;
-  param_definition->default_demixing_info_parameter_data_.reserved_default = 0;
+  param_definition->default_demixing_info_parameter_data_
+      .reserved_for_future_use = 0;
 
   AddParamDefinition(ParamDefinition::kParameterDefinitionDemixing,
                      parameter_id, parameter_rate, duration, audio_element_obu,

@@ -19,9 +19,10 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -58,31 +59,32 @@ class ParametersManager {
    *
    * \param audio_element_id ID of the audio element to query.
    * \return True if a `DemixingParamDefinition` is available for the audio
-   *     element queried.
+   *         element queried.
    */
   bool DemixingParamDefinitionAvailable(DecodedUleb128 audio_element_id);
 
   /*!\brief Gets current down-mixing parameters for an audio element.
    *
    * \param audio_element_id ID of the audio element that the parameters are
-   *     to be applied.
+   *        to be applied.
    * \param down_mixing_params Output down mixing parameters.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GetDownMixingParameters(DecodedUleb128 audio_element_id,
                                        DownMixingParams& down_mixing_params);
 
-  /*!\brief Gets current recon gain parameters for an audio element.
+  /*!\brief Gets current recon gain info parameter data for an audio element.
    *
    * \param audio_element_id ID of the audio element that the parameters are
-   *     to be applied.
+   *        to be applied.
    * \param num_layers Number of layers in the audio element.
-   * \param recon_gain_parameters Output recon gain parameters.
+   * \param recon_gain_info_parameter_data Output recon gain info parameter
+   *        data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status GetReconGainParameters(
+  absl::Status GetReconGainInfoParameterData(
       DecodedUleb128 audio_element_id, int32_t num_layers,
-      ReconGainInfoParameterData& recon_gain_parameters);
+      ReconGainInfoParameterData& recon_gain_info_parameter_data);
 
   /*!\brief Adds a new demixing parameter block.
    *
@@ -103,9 +105,9 @@ class ParametersManager {
    * Also validates the timestamp is as expected.
    *
    * \param audio_element_id Audio Element ID whose corresponding demixing
-   *     state are to be updated.
+   *        state are to be updated.
    * \param expected_timestamp Expected timestamp of the next set of
-   *     demixing parameter blocks.
+   *        demixing parameter blocks.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateDemixingState(DecodedUleb128 audio_element_id,
@@ -116,9 +118,9 @@ class ParametersManager {
    * Also validates the timestamp is as expected.
    *
    * \param audio_element_id Audio Element ID whose corresponding recon gain
-   *     state are to be updated.
+   *        state are to be updated.
    * \param expected_timestamp Expected timestamp of the next set of
-   *     recon gain parameter blocks.
+   *        recon gain parameter blocks.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateReconGainState(DecodedUleb128 audio_element_id,

@@ -49,7 +49,7 @@
 #include "iamf/common/macros.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

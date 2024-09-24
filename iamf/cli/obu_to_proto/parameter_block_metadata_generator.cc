@@ -25,8 +25,12 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/extension_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -149,15 +153,16 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
   result.mutable_demixing_info_parameter_data()->set_dmixp_mode(dmixp_mode);
   result.mutable_demixing_info_parameter_data()->set_reserved(
       demixing_info_parameter_data.reserved);
+
   return result;
 }
 
-// Gets the proto representation of the input `recon_gain_parameter_data`.
+// Gets the proto representation of the input `recon_gain_info_parameter_data`.
 absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
-    const ReconGainInfoParameterData& recon_gain_parameter_data) {
+    const ReconGainInfoParameterData& recon_gain_info_parameter_data) {
   ParameterSubblockMetadata result;
   for (const auto& recon_gain_element :
-       recon_gain_parameter_data.recon_gain_elements) {
+       recon_gain_info_parameter_data.recon_gain_elements) {
     auto& recon_gains_for_layer =
         *result.mutable_recon_gain_info_parameter_data()
              ->add_recon_gains_for_layer()
@@ -192,14 +197,34 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
 
 }  // namespace
 
-absl::StatusOr<iamf_tools_cli_proto::ParameterSubblock>
+absl::StatusOr<ParameterSubblockMetadata>
 ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
+    ParamDefinition::ParameterDefinitionType param_definition_type,
     const ParameterSubblock& parameter_subblock) {
-  // Get the proto representation filled in with the specific type of
-  // param_data.
-  auto metadata_subblock = std::visit(
-      [](const auto& param_data) { return ParamDataToMetadata(param_data); },
-      parameter_subblock.param_data);
+  absl::StatusOr<ParameterSubblockMetadata> metadata_subblock;
+  switch (param_definition_type) {
+    using enum ParamDefinition::ParameterDefinitionType;
+    case kParameterDefinitionMixGain:
+      metadata_subblock =
+          ParamDataToMetadata(*static_cast<MixGainParameterData*>(
+              parameter_subblock.param_data.get()));
+      break;
+    case kParameterDefinitionDemixing:
+      metadata_subblock =
+          ParamDataToMetadata(*static_cast<DemixingInfoParameterData*>(
+              parameter_subblock.param_data.get()));
+      break;
+    case kParameterDefinitionReconGain:
+      metadata_subblock =
+          ParamDataToMetadata(*static_cast<ReconGainInfoParameterData*>(
+              parameter_subblock.param_data.get()));
+      break;
+    default:
+      metadata_subblock =
+          ParamDataToMetadata(*static_cast<ExtensionParameterData*>(
+              parameter_subblock.param_data.get()));
+      break;
+  }
   if (!metadata_subblock.ok()) {
     return metadata_subblock.status();
   }

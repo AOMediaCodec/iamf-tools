@@ -28,9 +28,9 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
@@ -1547,7 +1547,7 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
   expected_default_demixing_info_parameter_data.reserved = 11;
   // Extension portion of `DefaultDemixingInfoParameterData` in the IAMF spec.
   expected_default_demixing_info_parameter_data.default_w = 2;
-  expected_default_demixing_info_parameter_data.reserved_default = 12;
+  expected_default_demixing_info_parameter_data.reserved_for_future_use = 12;
 
   const AudioElementParam kExpectedAudioElementParam = {
       ParamDefinition::kParameterDefinitionDemixing,

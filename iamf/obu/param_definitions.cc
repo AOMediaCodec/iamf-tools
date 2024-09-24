@@ -20,7 +20,6 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -285,33 +284,6 @@ void MixGainParamDefinition::Print() const {
   LOG(INFO) << "MixGainParamDefinition:";
   ParamDefinition::Print();
   LOG(INFO) << "  default_mix_gain= " << default_mix_gain_;
-}
-
-absl::Status DemixingParamDefinition::ValidateAndWrite(
-    WriteBitBuffer& wb) const {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
-
-  // The sub-class specific part.
-  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.Write(wb));
-
-  return absl::OkStatus();
-}
-
-absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
-
-  // The sub-class specific part.
-  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.Read(rb));
-
-  return absl::OkStatus();
-}
-
-void DemixingParamDefinition::Print() const {
-  LOG(INFO) << "DemixingParamDefinition:";
-  ParamDefinition::Print();
-  default_demixing_info_parameter_data_.Print();
 }
 
 absl::Status ReconGainParamDefinition::ValidateAndWrite(

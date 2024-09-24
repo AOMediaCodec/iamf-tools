@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -25,10 +26,11 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -70,10 +72,11 @@ absl::Status AddOneDemixingParameterBlock(
   };
   auto status = AppendParameterBlock(kParameterId, start_timestamp,
                                      per_id_metadata, parameter_blocks);
-  DemixingInfoParameterData demixing_info_param_data;
-  demixing_info_param_data.dmixp_mode = kDMixPMode;
+  auto demixing_info_param_data = std::make_unique<DemixingInfoParameterData>();
+  demixing_info_param_data->dmixp_mode = kDMixPMode;
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  parameter_block_obu.subblocks_[0].param_data = demixing_info_param_data;
+  parameter_block_obu.subblocks_[0].param_data =
+      std::move(demixing_info_param_data);
 
   return status;
 }
@@ -84,18 +87,20 @@ absl::Status AddOneReconGainParameterBlock(
     std::vector<ParameterBlockWithData>& parameter_blocks) {
   per_id_metadata = {
       .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
-      .param_definition = param_definition,
-  };
+      .param_definition = param_definition};
   auto status = AppendParameterBlock(kSecondParameterId, start_timestamp,
                                      per_id_metadata, parameter_blocks);
 
-  ReconGainInfoParameterData recon_gain_info_param_data;
-  recon_gain_info_param_data.recon_gain_elements.emplace_back(ReconGainElement{
-      .recon_gain_flag = DecodedUleb128(1),
-      .recon_gain = {0},
-  });
+  auto recon_gain_info_parameter_data =
+      std::make_unique<ReconGainInfoParameterData>();
+  recon_gain_info_parameter_data->recon_gain_elements.emplace_back(
+      ReconGainElement{
+          .recon_gain_flag = DecodedUleb128(1),
+          .recon_gain = {0},
+      });
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  parameter_block_obu.subblocks_[0].param_data = recon_gain_info_param_data;
+  parameter_block_obu.subblocks_[0].param_data =
+      std::move(recon_gain_info_parameter_data);
 
   return status;
 }
@@ -190,7 +195,7 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersSucceeds) {
   EXPECT_FLOAT_EQ(down_mixing_params.w, 0.0);
 }
 
-TEST_F(ParametersManagerTest, GetReconGainParametersSucceeds) {
+TEST_F(ParametersManagerTest, GetReconGainInfoParameterDataSucceeds) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
                               audio_elements_.at(kAudioElementId).obu,
                               /*param_definitions=*/nullptr);
@@ -206,50 +211,59 @@ TEST_F(ParametersManagerTest, GetReconGainParametersSucceeds) {
   parameters_manager_->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[0]);
 
-  ReconGainInfoParameterData recon_gain_parameters;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters),
-              IsOk());
+  ReconGainInfoParameterData recon_gain_info_parameter_data;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
+      IsOk());
 
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain_flag,
-            DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain[0], 0);
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      DecodedUleb128(1));
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
+            0);
 }
 
 TEST_F(ParametersManagerTest,
-       GetReconGainParametersSucceedsWithNoParameterBlocks) {
+       GetReconGainInfoParameterDataSucceedsWithNoParameterBlocks) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
                               audio_elements_.at(kAudioElementId).obu,
                               /*param_definitions=*/nullptr);
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
 
-  ReconGainInfoParameterData recon_gain_parameters;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters),
-              IsOk());
+  ReconGainInfoParameterData recon_gain_info_parameter_data;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
+      IsOk());
 
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain_flag,
-            DecodedUleb128(0));
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain[0], 255);
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      DecodedUleb128(0));
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
+            255);
 }
 
 TEST_F(ParametersManagerTest,
-       GetReconGainParametersSucceedsWithNoParamDefinition) {
+       GetReconGainInfoParameterDataSucceedsWithNoParamDefinition) {
   parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
   ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
 
-  ReconGainInfoParameterData recon_gain_parameters;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters),
-              IsOk());
+  ReconGainInfoParameterData recon_gain_info_parameter_data;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
+      IsOk());
 
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain_flag,
-            DecodedUleb128(0));
-  EXPECT_EQ(recon_gain_parameters.recon_gain_elements[0].recon_gain[0], 255);
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      DecodedUleb128(0));
+  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
+            255);
 }
 
 TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
@@ -272,14 +286,16 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
       &recon_gain_parameter_blocks_[0]);
 
   // First recon gain parameter block.
-  ReconGainInfoParameterData recon_gain_parameters_0;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters_0),
-              IsOk());
-  EXPECT_EQ(recon_gain_parameters_0.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameters_0.recon_gain_elements[0].recon_gain_flag,
+  ReconGainInfoParameterData recon_gain_parameter_data_0;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_0),
+      IsOk());
+  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements.size(), 1);
+  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0].recon_gain_flag,
             DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_parameters_0.recon_gain_elements[0].recon_gain[0], 0);
+  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0].recon_gain[0],
+            0);
 
   EXPECT_THAT(
       parameters_manager_->UpdateReconGainState(kAudioElementId,
@@ -296,14 +312,16 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
               IsOk());
   parameters_manager_->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[1]);
-  ReconGainInfoParameterData recon_gain_parameters_1;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters_1),
-              IsOk());
-  EXPECT_EQ(recon_gain_parameters_1.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameters_1.recon_gain_elements[0].recon_gain_flag,
+  ReconGainInfoParameterData recon_gain_parameter_data_1;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_1),
+      IsOk());
+  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements.size(), 1);
+  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0].recon_gain_flag,
             DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_parameters_1.recon_gain_elements[0].recon_gain[0], 0);
+  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0].recon_gain[0],
+            0);
   // Updating should succeed a second time with the expected timestamp now
   // offset by the duration of the parameter block.
   EXPECT_THAT(parameters_manager_->UpdateReconGainState(
@@ -330,10 +348,11 @@ TEST_F(ParametersManagerTest,
       &recon_gain_parameter_blocks_[0]);
 
   // First recon gain parameter block.
-  ReconGainInfoParameterData recon_gain_parameters_0;
-  EXPECT_THAT(parameters_manager_->GetReconGainParameters(
-                  kAudioElementId, /*num_layers=*/1, recon_gain_parameters_0),
-              IsOk());
+  ReconGainInfoParameterData recon_gain_parameter_data_0;
+  EXPECT_THAT(
+      parameters_manager_->GetReconGainInfoParameterData(
+          kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_0),
+      IsOk());
 
   // Second recon gain parameter block.
   ASSERT_THAT(AddOneReconGainParameterBlock(
@@ -345,10 +364,11 @@ TEST_F(ParametersManagerTest,
               IsOk());
   parameters_manager_->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[1]);
-  ReconGainInfoParameterData recon_gain_parameters_1;
+  ReconGainInfoParameterData recon_gain_parameter_data_1;
   EXPECT_FALSE(parameters_manager_
-                   ->GetReconGainParameters(kAudioElementId, /*num_layers=*/1,
-                                            recon_gain_parameters_1)
+                   ->GetReconGainInfoParameterData(kAudioElementId,
+                                                   /*num_layers=*/1,
+                                                   recon_gain_parameter_data_1)
                    .ok());
 }
 

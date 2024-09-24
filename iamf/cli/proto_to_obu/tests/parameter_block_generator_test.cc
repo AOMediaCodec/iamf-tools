@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -31,7 +30,8 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
@@ -200,13 +200,11 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
        DemixingInfoParameterData::kDMixPMode2};
   int block_index = 0;
   for (const auto& parameter_block : output_parameter_blocks) {
-    const auto& obu = parameter_block.obu;
-    EXPECT_TRUE(std::holds_alternative<DemixingInfoParameterData>(
-        obu->subblocks_[0].param_data));
-    const auto& demixing_param_data =
-        std::get<DemixingInfoParameterData>(obu->subblocks_[0].param_data);
-    EXPECT_EQ(demixing_param_data.dmixp_mode, expected_dmixp_mode[block_index]);
-    EXPECT_EQ(demixing_param_data.reserved, 0);
+    auto demixing_info_parameter_data = static_cast<DemixingInfoParameterData*>(
+        parameter_block.obu->subblocks_[0].param_data.get());
+    EXPECT_EQ(demixing_info_parameter_data->dmixp_mode,
+              expected_dmixp_mode[block_index]);
+    EXPECT_EQ(demixing_info_parameter_data->reserved, 0);
     block_index++;
   }
 }
@@ -313,19 +311,14 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
                                 /*expected_end_timestamps=*/{8, 16});
 
   // Validate `MixGainParameterData` parts.
-  int block_index = 0;
   for (const auto& parameter_block : output_parameter_blocks) {
-    const auto& obu = parameter_block.obu;
-    EXPECT_TRUE(std::holds_alternative<MixGainParameterData>(
-        obu->subblocks_[0].param_data));
-    const auto& mix_gain_param_data =
-        std::get<MixGainParameterData>(obu->subblocks_[0].param_data);
-    EXPECT_EQ(mix_gain_param_data.animation_type,
+    auto mix_gain_parameter_data = static_cast<MixGainParameterData*>(
+        parameter_block.obu->subblocks_[0].param_data.get());
+    EXPECT_EQ(mix_gain_parameter_data->animation_type,
               MixGainParameterData::kAnimateStep);
-    EXPECT_EQ(std::get<AnimationStepInt16>(mix_gain_param_data.param_data)
+    EXPECT_EQ(std::get<AnimationStepInt16>(mix_gain_parameter_data->param_data)
                   .start_point_value,
               0);
-    block_index++;
   }
 }
 

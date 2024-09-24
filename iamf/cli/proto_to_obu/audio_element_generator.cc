@@ -35,8 +35,8 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -152,7 +152,7 @@ absl::Status GenerateParameterDefinitions(
         RETURN_IF_NOT_OK(Uint32ToUint8(
             user_data_parameter.demixing_param().reserved(),
             demixing_param_definition->default_demixing_info_parameter_data_
-                .reserved_default));
+                .reserved_for_future_use));
         if (demixing_param_definition->duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(

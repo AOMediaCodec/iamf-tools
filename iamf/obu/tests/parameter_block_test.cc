@@ -11,10 +11,8 @@
  */
 #include "iamf/obu/parameter_block.h"
 
-#include <array>
 #include <cstdint>
 #include <memory>
-#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -25,150 +23,30 @@
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
+#include "iamf/obu/extension_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/tests/obu_test_base.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
-
+using absl_testing::IsOk;
 using absl_testing::IsOkAndHolds;
+using enum MixGainParameterData::AnimationType;
+using enum DemixingInfoParameterData::DMixPMode;
+using enum DemixingInfoParameterData::WIdxUpdateRule;
 
 constexpr uint32_t kAudioElementId = 0;
 
 // TODO(b/273545873): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests. Test
 //                    `PerIdParameterMetadata` settings more thoroughly.
-
-TEST(AnimationStepInt16, ReadAndValidate) {
-  std::vector<uint8_t> source_data = {
-      // Start point value.
-      0x02,
-      0x01,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  AnimationStepInt16 step_animation;
-  EXPECT_THAT(step_animation.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(step_animation.start_point_value, 0x0201);
-}
-
-TEST(AnimationLinearInt16, ReadAndValidate) {
-  std::vector<uint8_t> source_data = {
-      // Start point value.
-      0x04,
-      0x03,
-      // End point value.
-      0x02,
-      0x01,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  AnimationLinearInt16 linear_animation;
-  EXPECT_THAT(linear_animation.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(linear_animation.start_point_value, 0x0403);
-  EXPECT_EQ(linear_animation.end_point_value, 0x0201);
-}
-
-TEST(AnimationBezierInt16, ReadAndValidate) {
-  std::vector<uint8_t> source_data = {// Start point value.
-                                      0x07, 0x06,
-                                      // End point value.
-                                      0x05, 0x04,
-                                      // Control point value.
-                                      0x03, 0x02,
-                                      // Control point relative time.
-                                      0x01};
-  ReadBitBuffer buffer(1024, &source_data);
-
-  AnimationBezierInt16 bezier_animation;
-  EXPECT_THAT(bezier_animation.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(bezier_animation.start_point_value, 0x0706);
-  EXPECT_EQ(bezier_animation.end_point_value, 0x0504);
-  EXPECT_EQ(bezier_animation.control_point_value, 0x0302);
-  EXPECT_EQ(bezier_animation.control_point_relative_time, 0x01);
-}
-
-TEST(MixGainParameterData, ReadAndValidateStep) {
-  std::vector<uint8_t> source_data = {
-      // Animation type.
-      0x00,
-      // Start point value.
-      0x02,
-      0x01,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  MixGainParameterData mix_gain_param_data;
-  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(mix_gain_param_data.animation_type,
-            MixGainParameterData::kAnimateStep);
-  EXPECT_TRUE(std::holds_alternative<AnimationStepInt16>(
-      mix_gain_param_data.param_data));
-}
-
-TEST(MixGainParameterData, ReadAndValidateLinear) {
-  std::vector<uint8_t> source_data = {
-      // Animation type.
-      0x01,
-      // Start point value.
-      0x04,
-      0x03,
-      // End point value.
-      0x02,
-      0x01,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  MixGainParameterData mix_gain_param_data;
-  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(mix_gain_param_data.animation_type,
-            MixGainParameterData::kAnimateLinear);
-  EXPECT_TRUE(std::holds_alternative<AnimationLinearInt16>(
-      mix_gain_param_data.param_data));
-}
-
-TEST(MixGainParameterData, ReadAndValidateBezier) {
-  std::vector<uint8_t> source_data = {
-      // Animation type.
-      0x02,
-      // Start point value.
-      0x07,
-      0x06,
-      // End point value.
-      0x05,
-      0x04,
-      // Control point value.
-      0x03,
-      0x02,
-      // Control point relative time.
-      0x01,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  MixGainParameterData mix_gain_param_data;
-  EXPECT_THAT(mix_gain_param_data.ReadAndValidate(buffer), IsOk());
-  EXPECT_EQ(mix_gain_param_data.animation_type,
-            MixGainParameterData::kAnimateBezier);
-  EXPECT_TRUE(std::holds_alternative<AnimationBezierInt16>(
-      mix_gain_param_data.param_data));
-}
-
-TEST(MixGainParameterData,
-     ReadAndValidateReturnsErrorWhenAnimationTypeIsUnknown) {
-  std::vector<uint8_t> source_data = {
-      // Animation type.
-      0x03,
-  };
-  ReadBitBuffer buffer(1024, &source_data);
-
-  MixGainParameterData mix_gain_param_data;
-  EXPECT_FALSE(mix_gain_param_data.ReadAndValidate(buffer).ok());
-}
 
 TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   const DecodedUleb128 kParameterId = 0x07;
@@ -182,7 +60,7 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
       // Constant subblock duration.
       0x0a,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x09,
       0x88,
@@ -191,27 +69,25 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   constexpr int64_t kIncorrectObuSize = 1;
   ReadBitBuffer buffer(1024, &source_data);
   // Usually metadata would live in the descriptor OBUs.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
-  per_param_metadata[kParameterId].param_definition.parameter_id_ =
-      kParameterId;
-  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
-  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
+  per_id_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
 
   // Sanity check that the OBU is valid.
-  ASSERT_THAT(ParameterBlockObu::CreateFromBuffer(
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, kCorrectObuSize,
-                  per_param_metadata, buffer),
+                  per_id_metadata, buffer),
               IsOk());
 
   // But it would be invalid if the OBU size is too small.
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   kIncorrectObuSize, per_param_metadata, buffer)
+                   kIncorrectObuSize, per_id_metadata, buffer)
                    .ok());
 }
 
@@ -229,62 +105,60 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
       // Subblock duration.
       0x01,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x09,
       0x88,
       // Subblock duration.
       0x03,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x07,
       0x66,
       // Subblock duration.
       0x06,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x05,
       0x44,
   };
   ReadBitBuffer buffer(1024, &source_data);
   // Usually metadata would live in the descriptor OBUs.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
-  per_param_metadata[kParameterId].param_definition.parameter_id_ =
-      kParameterId;
-  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
-  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
+  per_id_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
-      per_param_metadata, buffer);
+      per_id_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data.
-  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
-  EXPECT_EQ(parameter_block->GetDuration(), 10);
-  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 0);
-  EXPECT_EQ(parameter_block->GetNumSubblocks(), 3);
-  EXPECT_THAT(parameter_block->GetSubblockDuration(0), IsOkAndHolds(1));
-  EXPECT_THAT(parameter_block->GetSubblockDuration(1), IsOkAndHolds(3));
-  EXPECT_THAT(parameter_block->GetSubblockDuration(2), IsOkAndHolds(6));
+  EXPECT_EQ((*parameter_block)->parameter_id_, kParameterId);
+  EXPECT_EQ((*parameter_block)->GetDuration(), 10);
+  EXPECT_EQ((*parameter_block)->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ((*parameter_block)->GetNumSubblocks(), 3);
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(0), IsOkAndHolds(1));
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
 
   int16_t mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT(parameter_block->GetMixGain(0, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(0, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_THAT(parameter_block->GetMixGain(1, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(1, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_THAT(parameter_block->GetMixGain(4, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(4, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0544);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE(parameter_block->GetMixGain(10, mix_gain).ok());
+  EXPECT_FALSE((*parameter_block)->GetMixGain(10, mix_gain).ok());
 }
 
 TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
@@ -293,30 +167,29 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
       // Parameter ID.
       kParameterId,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x09,
       0x88,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x07,
       0x66,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x05,
       0x44,
   };
   ReadBitBuffer buffer(1024, &source_data);
   // Usually metadata would live in the descriptor OBUs.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
-  auto& param_definition = per_param_metadata[kParameterId].param_definition;
+  auto& param_definition = per_id_metadata[kParameterId].param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 0;
@@ -328,30 +201,30 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
-      per_param_metadata, buffer);
+      per_id_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
   // based on the `param_definition` and not the data in the OBU.
-  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
-  EXPECT_EQ(parameter_block->GetDuration(), 10);
-  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 0);
-  EXPECT_EQ(parameter_block->GetNumSubblocks(), 3);
-  EXPECT_THAT(parameter_block->GetSubblockDuration(0), IsOkAndHolds(1));
-  EXPECT_THAT(parameter_block->GetSubblockDuration(1), IsOkAndHolds(3));
-  EXPECT_THAT(parameter_block->GetSubblockDuration(2), IsOkAndHolds(6));
+  EXPECT_EQ((*parameter_block)->parameter_id_, kParameterId);
+  EXPECT_EQ((*parameter_block)->GetDuration(), 10);
+  EXPECT_EQ((*parameter_block)->GetConstantSubblockDuration(), 0);
+  EXPECT_EQ((*parameter_block)->GetNumSubblocks(), 3);
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(0), IsOkAndHolds(1));
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
+  EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
 
   int16_t mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT(parameter_block->GetMixGain(0, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(0, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_THAT(parameter_block->GetMixGain(1, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(1, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_THAT(parameter_block->GetMixGain(4, mix_gain), IsOk());
+  EXPECT_THAT((*parameter_block)->GetMixGain(4, mix_gain), IsOk());
   EXPECT_EQ(mix_gain, 0x0544);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE(parameter_block->GetMixGain(10, mix_gain).ok());
+  EXPECT_FALSE((*parameter_block)->GetMixGain(10, mix_gain).ok());
 }
 
 TEST(ParameterBlockObu,
@@ -371,27 +244,25 @@ TEST(ParameterBlockObu,
       // Subblock duration.
       kFirstSubblockDuration,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x09,
       0x88,
   };
   ReadBitBuffer buffer(1024, &source_data);
   // Usually metadata would live in the descriptor OBUs.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
-  per_param_metadata[kParameterId].param_definition.parameter_id_ =
-      kParameterId;
-  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
-  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
+  per_id_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
 
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   source_data.size(), per_param_metadata, buffer)
+                   source_data.size(), per_id_metadata, buffer)
                    .ok());
 }
 
@@ -405,53 +276,49 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
       // Constant subblock duration.
       0x0a,
       // Animation type.
-      MixGainParameterData::kAnimateStep,
+      kAnimateStep,
       // Start point value.
       0x09,
       0x88,
   };
   ReadBitBuffer buffer(1024, &source_data);
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
-  per_param_metadata[kParameterId].param_definition.parameter_id_ =
-      kParameterId;
-  per_param_metadata[kParameterId].param_definition.parameter_rate_ = 1;
-  per_param_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
+  per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
+  per_id_metadata[kParameterId].param_definition.parameter_rate_ = 1;
+  per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock},
-                  source_data.size(), per_param_metadata, buffer),
-              absl_testing::IsOk());
+                  source_data.size(), per_id_metadata, buffer),
+              IsOk());
 
   // When there is no matching metadata, the parameter block cannot be created.
-  per_param_metadata.erase(kParameterId);
+  per_id_metadata.erase(kParameterId);
   ReadBitBuffer buffer_to_use_without_metadata(1024, &source_data);
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   source_data.size(), per_param_metadata,
+                   source_data.size(), per_id_metadata,
                    buffer_to_use_without_metadata)
                    .ok());
 }
 
 TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
   const DecodedUleb128 kParameterId = 0x07;
-  std::vector<uint8_t> source_data = {
-      // Parameter ID.
-      kParameterId,
-      // `dmixp_mode`.
-      DemixingInfoParameterData::kDMixPMode2 << 5};
+  std::vector<uint8_t> source_data = {// Parameter ID.
+                                      kParameterId,
+                                      // `dmixp_mode`.
+                                      kDMixPMode2 << 5};
   ReadBitBuffer buffer(1024, &source_data);
   // Usually metadata would live in the descriptor OBUs.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      per_param_metadata;
-  per_param_metadata[kParameterId] = {
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
+  per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = DemixingParamDefinition(),
   };
-  auto& param_definition = per_param_metadata[kParameterId].param_definition;
+  auto& param_definition = per_id_metadata[kParameterId].param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 0;
@@ -460,20 +327,20 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
   param_definition.InitializeSubblockDurations(1);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, source_data.size(),
-      per_param_metadata, buffer);
+      per_id_metadata, buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
   // based on the `param_definition` and not the data in the OBU.
-  EXPECT_EQ(parameter_block->parameter_id_, kParameterId);
-  EXPECT_EQ(parameter_block->GetDuration(), 10);
-  EXPECT_EQ(parameter_block->GetConstantSubblockDuration(), 10);
-  EXPECT_EQ(parameter_block->GetNumSubblocks(), 1);
+  EXPECT_EQ((*parameter_block)->parameter_id_, kParameterId);
+  EXPECT_EQ((*parameter_block)->GetDuration(), 10);
+  EXPECT_EQ((*parameter_block)->GetConstantSubblockDuration(), 10);
+  EXPECT_EQ((*parameter_block)->GetNumSubblocks(), 1);
 
-  auto demixing_info = std::get<DemixingInfoParameterData>(
-      parameter_block->subblocks_[0].param_data);
+  auto demixing_info = static_cast<DemixingInfoParameterData*>(
+      (*parameter_block)->subblocks_[0].param_data.get());
 
-  EXPECT_EQ(demixing_info.dmixp_mode, DemixingInfoParameterData::kDMixPMode2);
+  EXPECT_EQ(demixing_info->dmixp_mode, kDMixPMode2);
 }
 
 class ParameterBlockObuTestBase : public ObuTestBase {
@@ -586,21 +453,20 @@ class MixGainParameterBlockTest : public ParameterBlockObuTestBase,
  public:
   MixGainParameterBlockTest()
       : ParameterBlockObuTestBase(MixGainParamDefinition()),
-        mix_gain_param_datas_(
-            {{.animation_type = MixGainParameterData::kAnimateStep,
-              .param_data = AnimationStepInt16{1}}}) {}
+        mix_gain_parameter_data_({{kAnimateStep, AnimationStepInt16{1}}}) {}
 
  protected:
   void InitParameterBlockTypeSpecificFields() override {
-    ASSERT_EQ(obu_->subblocks_.size(), mix_gain_param_datas_.size());
+    ASSERT_EQ(obu_->subblocks_.size(), mix_gain_parameter_data_.size());
 
-    // Copy over the mix gain parameter subblocks.
+    // Moving mix gain parameter subblocks.
     for (int i = 0; i < obu_->subblocks_.size(); i++) {
-      obu_->subblocks_[i].param_data = mix_gain_param_datas_[i];
+      obu_->subblocks_[i].param_data =
+          std::make_unique<MixGainParameterData>(mix_gain_parameter_data_[i]);
     }
   }
 
-  std::vector<MixGainParameterData> mix_gain_param_datas_;
+  std::vector<MixGainParameterData> mix_gain_parameter_data_;
 };
 
 TEST_F(MixGainParameterBlockTest, ConstructSetsObuType) {
@@ -612,7 +478,7 @@ TEST_F(MixGainParameterBlockTest, DefaultOneSubblockParamDefinitionMode0) {
   expected_payload_ = {// `parameter_id`.
                        3,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateStep, 0, 1};
+                       kAnimateStep, 0, 1};
 
   InitAndTestWrite();
 }
@@ -651,7 +517,7 @@ TEST_F(MixGainParameterBlockTest, ExtensionHeader) {
   expected_payload_ = {// `parameter_id`.
                        3,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateStep, 0, 1};
+                       kAnimateStep, 0, 1};
 
   InitAndTestWrite();
 }
@@ -667,7 +533,7 @@ TEST_F(MixGainParameterBlockTest, OneSubblockParamDefinitionMode1) {
                        // `constant_subblock_duration`.
                        64,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateStep, 0, 1};
+                       kAnimateStep, 0, 1};
 
   InitAndTestWrite();
 }
@@ -683,11 +549,8 @@ TEST_F(MixGainParameterBlockTest,
       .subblock_durations = {32, 31},  // Does not sum to `duration`.
   };
 
-  mix_gain_param_datas_ = {
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{0}},
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{0}}};
+  mix_gain_parameter_data_ = {{kAnimateStep, AnimationStepInt16{0}},
+                              {kAnimateStep, AnimationStepInt16{0}}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -704,13 +567,10 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
       .subblock_durations = {6, 7, 8},
   };
 
-  mix_gain_param_datas_ = {
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{9}},
-      {.animation_type = MixGainParameterData::kAnimateLinear,
-       .param_data = AnimationLinearInt16{10, 11}},
-      {.animation_type = MixGainParameterData::kAnimateBezier,
-       .param_data = AnimationBezierInt16{12, 13, 14, 15}}};
+  mix_gain_parameter_data_ = {
+      {kAnimateStep, AnimationStepInt16{9}},
+      {kAnimateLinear, AnimationLinearInt16{10, 11}},
+      {kAnimateBezier, AnimationBezierInt16{12, 13, 14, 15}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 23};
   expected_payload_ = {// `parameter_id`.
@@ -725,18 +585,17 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode1) {
                        // `subblock_duration`.
                        6,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateStep, 0, 9,
+                       kAnimateStep, 0, 9,
                        // Start `subblocks[1]`.
                        // `subblock_duration`.
                        7,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateLinear, 0, 10, 0, 11,
+                       kAnimateLinear, 0, 10, 0, 11,
                        // Start `subblocks[2]`.
                        // `subblock_duration`.
                        8,
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateBezier, 0, 12, 0, 13, 0,
-                       14, 15};
+                       kAnimateBezier, 0, 12, 0, 13, 0, 14, 15};
   InitAndTestWrite();
 }
 
@@ -748,27 +607,23 @@ TEST_F(MixGainParameterBlockTest, MultipleSubblocksParamDefinitionMode0) {
       .subblock_durations = {6, 7, 8},
   };
 
-  mix_gain_param_datas_ = {
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{9}},
-      {.animation_type = MixGainParameterData::kAnimateLinear,
-       .param_data = AnimationLinearInt16{10, 11}},
-      {.animation_type = MixGainParameterData::kAnimateBezier,
-       .param_data = AnimationBezierInt16{12, 13, 14, 15}}};
+  mix_gain_parameter_data_ = {
+      {kAnimateStep, AnimationStepInt16{9}},
+      {kAnimateLinear, AnimationLinearInt16{10, 11}},
+      {kAnimateBezier, AnimationBezierInt16{12, 13, 14, 15}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
   expected_payload_ = {// `parameter_id`.
                        3,
                        // Start `subblocks[0]`.
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateStep, 0, 9,
+                       kAnimateStep, 0, 9,
                        // Start `subblocks[1]`.
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateLinear, 0, 10, 0, 11,
+                       kAnimateLinear, 0, 10, 0, 11,
                        // Start `subblocks[2]`.
                        // `mix_gain_parameter_data`.
-                       MixGainParameterData::kAnimateBezier, 0, 12, 0, 13, 0,
-                       14, 15};
+                       kAnimateBezier, 0, 12, 0, 13, 0, 14, 15};
 
   InitAndTestWrite();
 }
@@ -783,11 +638,8 @@ TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   };
   metadata_args_.param_definition_mode = true;
 
-  mix_gain_param_datas_ = {
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{9}},
-      {.animation_type = MixGainParameterData::kAnimateStep,
-       .param_data = AnimationStepInt16{10}}};
+  mix_gain_parameter_data_ = {{kAnimateStep, AnimationStepInt16{9}},
+                              {kAnimateStep, AnimationStepInt16{10}}};
 
   // Configure the `LebGenerator`.
   leb_generator_ =
@@ -809,12 +661,12 @@ TEST_F(MixGainParameterBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       // `duration` is affected by the `LebGenerator`.
       0x80 | 6, 0x00,
       // `mix_gain_parameter_data`.
-      0x80 | MixGainParameterData::kAnimateStep, 0x00, 0, 9,
+      0x80 | kAnimateStep, 0x00, 0, 9,
       // Start `subblocks[1]`.
       // `duration` is affected by the `LebGenerator`.
       0x80 | 7, 0x00,
       // `mix_gain_parameter_data`.
-      0x80 | MixGainParameterData::kAnimateStep, 0x00, 0, 10};
+      0x80 | kAnimateStep, 0x00, 0, 10};
 
   InitAndTestWrite();
 }
@@ -824,47 +676,37 @@ class DemixingParameterBlockTest : public ParameterBlockObuTestBase,
  public:
   DemixingParameterBlockTest()
       : ParameterBlockObuTestBase(DemixingParamDefinition()),
-        demixing_info_args_(
-            {.dmixp_mode = {DemixingInfoParameterData::kDMixPMode1},
-             .reserved = {0}}) {
+        demixing_info_parameter_data_({{kDMixPMode1, 0}}) {
     expected_header_ = {kObuIaParameterBlock << 3, 2};
   }
 
  protected:
   void InitParameterBlockTypeSpecificFields() override {
-    ASSERT_EQ(demixing_info_args_.dmixp_mode.size(),
-              demixing_info_args_.reserved.size());
-    // Loop over and populate the demixing parameter for each subblock.
-    for (int i = 0; i < demixing_info_args_.dmixp_mode.size(); i++) {
-      DemixingInfoParameterData demixing_param_data;
-      demixing_param_data.dmixp_mode = demixing_info_args_.dmixp_mode[i];
-      demixing_param_data.reserved = demixing_info_args_.reserved[i];
-
-      obu_->subblocks_[i].param_data = demixing_param_data;
+    for (int i = 0; i < demixing_info_parameter_data_.size(); i++) {
+      obu_->subblocks_[i].param_data =
+          std::make_unique<DemixingInfoParameterData>(
+              demixing_info_parameter_data_[i]);
     }
   }
 
-  struct {
-    std::vector<DemixingInfoParameterData::DMixPMode> dmixp_mode;
-    std::vector<uint8_t> reserved;
-  } demixing_info_args_;
+  std::vector<DemixingInfoParameterData> demixing_info_parameter_data_;
 };
 
 TEST_F(DemixingParameterBlockTest, DefaultParamDefinitionMode0) {
   expected_payload_ = {// `parameter_id`.
                        3,
                        // `demixing_info_parameter_data`.
-                       DemixingInfoParameterData::kDMixPMode1 << 5};
+                       kDMixPMode1 << 5};
 
   InitAndTestWrite();
 }
 
 TEST_F(DemixingParameterBlockTest, DMixPMode2) {
-  demixing_info_args_.dmixp_mode = {DemixingInfoParameterData::kDMixPMode2};
+  demixing_info_parameter_data_ = {{kDMixPMode2, 0}};
   expected_payload_ = {// `parameter_id`.
                        3,
                        // `demixing_info_parameter_data`.
-                       DemixingInfoParameterData::kDMixPMode2 << 5};
+                       kDMixPMode2 << 5};
 
   InitAndTestWrite();
 }
@@ -884,13 +726,11 @@ TEST_F(DemixingParameterBlockTest,
       .subblock_durations = {6, 7, 8, 9, 10},
   };
 
-  demixing_info_args_ = {
-      .dmixp_mode = {DemixingInfoParameterData::kDMixPMode1,
-                     DemixingInfoParameterData::kDMixPMode2,
-                     DemixingInfoParameterData::kDMixPMode3,
-                     DemixingInfoParameterData::kDMixPMode1_n,
-                     DemixingInfoParameterData::kDMixPMode2_n},
-      .reserved = {0, 0, 0, 0, 0}};
+  demixing_info_parameter_data_ = {{kDMixPMode1, 0},
+                                   {kDMixPMode2, 0},
+                                   {kDMixPMode3, 0},
+                                   {kDMixPMode1_n, 0},
+                                   {kDMixPMode2_n, 0}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -918,52 +758,39 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
     // each subblock.
     const DecodedUleb128 num_subblocks = obu_->GetNumSubblocks();
 
-    // Each element in `recon_gain_flags` and `recon_gains` corresponds to a
-    // single subblock.
-    ASSERT_EQ(recon_gain_args_.recon_gain_flags.size(), num_subblocks);
-    ASSERT_EQ(recon_gain_args_.recon_gains.size(), num_subblocks);
-    for (int i = 0; i < recon_gain_args_.recon_gain_flags.size(); i++) {
-      // Each element in `recon_gain_flags[i]` and `recon_gains[i]` corresponds
-      // to a single layer.
-      ASSERT_EQ(recon_gain_args_.recon_gain_flags[i].size(),
+    ASSERT_EQ(recon_gain_parameter_data_.size(), num_subblocks);
+    for (int i = 0; i < num_subblocks; i++) {
+      // Each element in `recon_gain_parameter_data_[i].recon_gain_elements`
+      // corresponds to a single layer.
+      ASSERT_EQ(recon_gain_parameter_data_[i].recon_gain_elements.size(),
                 metadata_.num_layers);
-      ASSERT_EQ(recon_gain_args_.recon_gains[i].size(), metadata_.num_layers);
-      ReconGainInfoParameterData recon_gain_param_data;
-      recon_gain_param_data.recon_gain_elements.resize(metadata_.num_layers);
-      for (int j = 0; j < recon_gain_args_.recon_gain_flags[i].size(); j++) {
-        auto& recon_gain_element = recon_gain_param_data.recon_gain_elements[j];
-        recon_gain_element.recon_gain_flag =
-            recon_gain_args_.recon_gain_flags[i][j];
-        recon_gain_element.recon_gain = recon_gain_args_.recon_gains[i][j];
-      }
-
-      obu_->subblocks_[i].param_data = recon_gain_param_data;
+      obu_->subblocks_[i].param_data =
+          std::make_unique<ReconGainInfoParameterData>(
+              recon_gain_parameter_data_[i]);
     }
   }
 
-  struct {
-    // recon_gain_flags[i][j] represents the ith subblock and jth layer.
-    std::vector<std::vector<uint16_t>> recon_gain_flags;
-
-    // recon_gains[i][j][k] represents the ith subblock and jth layer with the
-    // kth element of `recon_gain`.
-    std::vector<std::vector<std::array<uint8_t, 12>>> recon_gains;
-  } recon_gain_args_;
+  std::vector<ReconGainInfoParameterData> recon_gain_parameter_data_;
 };
 
 TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode0) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
-
-  recon_gain_args_ =
-      {.recon_gain_flags = {{0, ReconGainElement::kReconGainFlagR}},
-       .recon_gains = {{
-           // clang-format off
-           // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-           {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-           {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-           // clang-format on
-       }}},
+  recon_gain_parameter_data_ = {
+      {{{
+            0,
+            // clang-format off
+            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+            // clang-format on
+        },
+        {
+            ReconGainElement::kReconGainFlagR,
+            // clang-format off
+            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+            // clang-format on
+        }}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 3};
   expected_payload_ = {
@@ -979,16 +806,21 @@ TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode0) {
 TEST_F(ReconGainBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
-
-  recon_gain_args_ = {
-      .recon_gain_flags = {{0, ReconGainElement::kReconGainFlagR}},
-      .recon_gains = {{
-          // clang-format off
-           // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-           {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-           {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-          // clang-format on
-      }}};
+  recon_gain_parameter_data_ = {
+      {{{
+            0,
+            // clang-format off
+            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+            // clang-format on
+        },
+        {
+            ReconGainElement::kReconGainFlagR,
+            // clang-format off
+            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+            // clang-format on
+        }}}};
 
   // Configure the `LebGenerator`.
   leb_generator_ =
@@ -1017,30 +849,53 @@ TEST_F(ReconGainBlockTest, MaxLayer7_1_4) {
   metadata_args_.num_layers = 6;
   metadata_args_.recon_gain_is_present_flags = {false, true, true,
                                                 true,  true, true};
-  recon_gain_args_ =
-      {.recon_gain_flags = {{
-           0,                                  // Mono.
-           ReconGainElement::kReconGainFlagR,  // M + R stereo.
-           ReconGainElement::kReconGainFlagRss |
-               ReconGainElement::kReconGainFlagLss,  // 5.1.0.
-           ReconGainElement::kReconGainFlagLrs |
-               ReconGainElement::kReconGainFlagRrs,  // 7.1.0.
-           ReconGainElement::kReconGainFlagLtf |
-               ReconGainElement::kReconGainFlagRtf,  // 7.1.2.
-           ReconGainElement::kReconGainFlagLtb |
-               ReconGainElement::kReconGainFlagRtb,  // 7.1.4.
-       }},
-       .recon_gains = {{
-           // clang-format off
-           // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-           {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-           {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-           {  0, 0,  0,       2,       3,   0,   0,   0,   0,   0,   0,   0},
-           {  0, 0,  0,       0,       0,   0,   0,   4,   5,   0,   0,   0},
-           {  0, 0,  0,       0,       0,   6,   7,   0,   0,   0,   0,   0},
-           {  0, 0,  0,       0,       0,   0,   0,   0,   0,   8,   9,   0},
-           // clang-format on
-       }}},
+  recon_gain_parameter_data_ = {
+      {{{{
+             0,  // Mono.
+                 // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+                 // clang-format on
+         },
+         {
+             ReconGainElement::kReconGainFlagR,  // M + R stereo.
+                                                 // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}
+                                                 // clang-format on
+         },
+         {
+             ReconGainElement::kReconGainFlagRss |
+                 ReconGainElement::kReconGainFlagLss,  // 5.1.0.
+                                                       // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  0,       2,       3,   0,   0,   0,   0,   0,   0,   0}
+                                                       // clang-format on
+         },
+         {
+             ReconGainElement::kReconGainFlagLrs |
+                 ReconGainElement::kReconGainFlagRrs,  // 7.1.0.
+                                                       // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  0,       0,       0,   0,   0,   4,   5,   0,   0,   0}
+                                                       // clang-format on
+         },
+         {
+             ReconGainElement::kReconGainFlagLtf |
+                 ReconGainElement::kReconGainFlagRtf,  // 7.1.2.
+                                                       // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  0,       0,       0,   6,   7,   0,   0,   0,   0,   0}
+                                                       // clang-format on
+         },
+         {
+             ReconGainElement::kReconGainFlagLtb |
+                 ReconGainElement::kReconGainFlagRtb,  // 7.1.4.
+                                                       // clang-format off
+             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   8,   9,   0}
+                                                       // clang-format on
+         }}}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
   expected_payload_ = {
@@ -1075,14 +930,12 @@ TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
 
   duration_args_ = {
       .duration = 64, .constant_subblock_duration = 32, .num_subblocks = 2};
-
-  recon_gain_args_ =
-      {.recon_gain_flags = {{0, ReconGainElement::kReconGainFlagR},
-                            {0, ReconGainElement::kReconGainFlagR}},
-       .recon_gains = {{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-                       {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
+  recon_gain_parameter_data_ = {{{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                  {ReconGainElement::kReconGainFlagR,
+                                   {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
+                                {{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                  {ReconGainElement::kReconGainFlagR,
+                                   {0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -1095,106 +948,13 @@ TEST_F(ReconGainBlockTest,
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
 
-  recon_gain_args_ =
-      {.recon_gain_flags = {{0, ReconGainElement::kReconGainFlagR}},
-       .recon_gains = {{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                        {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
+  recon_gain_parameter_data_ = {{{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                  {ReconGainElement::kReconGainFlagR,
+                                   {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}}};
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
-}
-
-TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
-  std::vector<bool> recon_gain_is_present_flags = {false, true};
-  std::vector<uint8_t> source_data = {
-      // Layer 0 is omitted due to `recon_gain_is_present_flags`.
-      // `layer[1]`.
-      ReconGainElement::kReconGainFlagR, 1};
-  ReadBitBuffer buffer(1024, &source_data);
-
-  ReconGainInfoParameterData recon_gain_info_param_data;
-  EXPECT_THAT(recon_gain_info_param_data.ReadAndValidate(
-                  recon_gain_is_present_flags, buffer),
-              IsOk());
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[0].recon_gain_flag,
-            ReconGainElement::kReconGainFlagR);
-  std::array<uint8_t, 12> expected_recon_gain = {0, 0, 1, 0, 0, 0,
-                                                 0, 0, 0, 0, 0, 0};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[0].recon_gain,
-            expected_recon_gain);
-}
-
-TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
-  std::vector<bool> recon_gain_is_present_flags = {false, true, true,
-                                                   true,  true, true};
-  std::vector<uint8_t> source_data = {
-      // Layer 0 is omitted due to `recon_gain_is_present_flags`.
-      // `layer[1]`.
-      ReconGainElement::kReconGainFlagR, 1,
-      // `layer[2]`.
-      ReconGainElement::kReconGainFlagRss | ReconGainElement::kReconGainFlagLss,
-      2, 3,
-      // `layer[3]`.
-      0x80,
-      (ReconGainElement::kReconGainFlagLrs >> 7) |
-          (ReconGainElement::kReconGainFlagRrs >> 7),
-      4, 5,
-      // `layer[4]`.
-      ReconGainElement::kReconGainFlagLtf | ReconGainElement::kReconGainFlagRtf,
-      6, 7,
-      // `layer[5]`.
-      0x80,
-      (ReconGainElement::kReconGainFlagLtb >> 7) |
-          (ReconGainElement::kReconGainFlagRtb >> 7),
-      8, 9};
-  ReadBitBuffer buffer(1024, &source_data);
-
-  ReconGainInfoParameterData recon_gain_info_param_data;
-  EXPECT_THAT(recon_gain_info_param_data.ReadAndValidate(
-                  recon_gain_is_present_flags, buffer),
-              IsOk());
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements.size(), 5);
-
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[0].recon_gain_flag,
-            ReconGainElement::kReconGainFlagR);
-  std::array<uint8_t, 12> expected_recon_gain_layer_1 = {0, 0, 1, 0, 0, 0,
-                                                         0, 0, 0, 0, 0, 0};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[0].recon_gain,
-            expected_recon_gain_layer_1);
-
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[1].recon_gain_flag,
-            ReconGainElement::kReconGainFlagRss |
-                ReconGainElement::kReconGainFlagLss);
-  std::array<uint8_t, 12> expected_recon_gain_layer_2 = {0, 0, 0, 2, 3, 0,
-                                                         0, 0, 0, 0, 0, 0};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[1].recon_gain,
-            expected_recon_gain_layer_2);
-
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[2].recon_gain_flag,
-            ReconGainElement::kReconGainFlagLrs |
-                ReconGainElement::kReconGainFlagRrs);
-  std::array<uint8_t, 12> expected_recon_gain_layer_3 = {
-      {0, 0, 0, 0, 0, 0, 0, 4, 5, 0, 0, 0}};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[2].recon_gain,
-            expected_recon_gain_layer_3);
-
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[3].recon_gain_flag,
-            ReconGainElement::kReconGainFlagLtf |
-                ReconGainElement::kReconGainFlagRtf);
-  std::array<uint8_t, 12> expected_recon_gain_layer_4 = {0, 0, 0, 0, 0, 6,
-                                                         7, 0, 0, 0, 0, 0};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[3].recon_gain,
-            expected_recon_gain_layer_4);
-
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[4].recon_gain_flag,
-            ReconGainElement::kReconGainFlagLtb |
-                ReconGainElement::kReconGainFlagRtb);
-  std::array<uint8_t, 12> expected_recon_gain_layer_5 = {0, 0, 0, 0, 0, 0,
-                                                         0, 0, 0, 8, 9, 0};
-  EXPECT_EQ(recon_gain_info_param_data.recon_gain_elements[4].recon_gain,
-            expected_recon_gain_layer_5);
 }
 
 class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
@@ -1213,7 +973,8 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
     for (int i = 0; i < num_subblocks; i++) {
       ASSERT_EQ(parameter_block_extensions_[i].parameter_data_size,
                 parameter_block_extensions_[i].parameter_data_bytes.size());
-      obu_->subblocks_[i].param_data = parameter_block_extensions_[i];
+      obu_->subblocks_[i].param_data = std::make_unique<ExtensionParameterData>(
+          parameter_block_extensions_[i]);
     }
   }
 
@@ -1292,7 +1053,7 @@ TEST_P(InterpolateMixGainParameter, InterpolateMixGainParameter) {
   const InterpolateMixGainParameterDataTestCase& test_case = GetParam();
   int16_t target_mix_gain;
   EXPECT_EQ(ParameterBlockObu::InterpolateMixGainParameterData(
-                test_case.mix_gain_parameter_data, test_case.start_time,
+                &test_case.mix_gain_parameter_data, test_case.start_time,
                 test_case.end_time, test_case.target_time, target_mix_gain),
             test_case.expected_status);
 
@@ -1305,24 +1066,21 @@ INSTANTIATE_TEST_SUITE_P(
     Step, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateStep,
-              .param_data = AnimationStepInt16{.start_point_value = 0}},
+             {kAnimateStep, AnimationStepInt16{.start_point_value = 0}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateStep,
-              .param_data = AnimationStepInt16{.start_point_value = 55}},
+             {kAnimateStep, AnimationStepInt16{.start_point_value = 55}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 55,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateStep,
-              .param_data = AnimationStepInt16{.start_point_value = 55}},
+             {kAnimateStep, AnimationStepInt16{.start_point_value = 55}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 100,
@@ -1334,45 +1092,40 @@ INSTANTIATE_TEST_SUITE_P(
     Linear, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateLinear,
-              .param_data = AnimationLinearInt16{.start_point_value = 0,
-                                                 .end_point_value = 1000}},
+             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
+                                                   .end_point_value = 1000}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 500,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateLinear,
-              .param_data = AnimationLinearInt16{.start_point_value = 0,
-                                                 .end_point_value = 768}},
+             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
+                                                   .end_point_value = 768}},
          .start_time = 0,
          .end_time = 240640,
          .target_time = 0,
          .expected_target_mix_gain = 0,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateLinear,
-              .param_data = AnimationLinearInt16{.start_point_value = 0,
-                                                 .end_point_value = 768}},
+             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
+                                                   .end_point_value = 768}},
          .start_time = 0,
          .end_time = 240640,
          .target_time = 1024,
          .expected_target_mix_gain = 3,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateLinear,
-              .param_data = AnimationLinearInt16{.start_point_value = 0,
-                                                 .end_point_value = 768}},
+             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
+                                                   .end_point_value = 768}},
          .start_time = 0,
          .end_time = 240640,
          .target_time = 3076,
          .expected_target_mix_gain = 9,
          .expected_status = absl::OkStatus()},
         {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateLinear,
-              .param_data = AnimationLinearInt16{.start_point_value = 0,
-                                                 .end_point_value = 768}},
+             {kAnimateLinear, AnimationLinearInt16{.start_point_value = 0,
+                                                   .end_point_value = 768}},
          .start_time = 0,
          .end_time = 240640,
          .target_time = 4096,
@@ -1383,13 +1136,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Bezier, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateBezier,
-              .param_data =
-                  AnimationBezierInt16{.start_point_value = 0,
-                                       .end_point_value = 768,
-                                       .control_point_value = 384,
-                                       .control_point_relative_time = 192}},
+        {.mix_gain_parameter_data = {kAnimateBezier,
+                                     AnimationBezierInt16{
+                                         .start_point_value = 0,
+                                         .end_point_value = 768,
+                                         .control_point_value = 384,
+                                         .control_point_relative_time = 192}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
@@ -1402,25 +1154,24 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BezierAsLinear, InterpolateMixGainParameter,
     testing::ValuesIn<InterpolateMixGainParameterDataTestCase>({
-        {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateBezier,
-              .param_data =
-                  AnimationBezierInt16{.start_point_value = 200,
-                                       .end_point_value = 768,
-                                       .control_point_value = 484,
-                                       .control_point_relative_time = 128}},
+        {.mix_gain_parameter_data = {kAnimateBezier,
+
+                                     AnimationBezierInt16{
+                                         .start_point_value = 200,
+                                         .end_point_value = 768,
+                                         .control_point_value = 484,
+                                         .control_point_relative_time = 128}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 50,
          .expected_target_mix_gain = 484,
          .expected_status = absl::OkStatus()},
-        {.mix_gain_parameter_data =
-             {.animation_type = MixGainParameterData::kAnimateBezier,
-              .param_data =
-                  AnimationBezierInt16{.start_point_value = 200,
-                                       .end_point_value = 768,
-                                       .control_point_value = 484,
-                                       .control_point_relative_time = 128}},
+        {.mix_gain_parameter_data = {kAnimateBezier,
+                                     AnimationBezierInt16{
+                                         .start_point_value = 200,
+                                         .end_point_value = 768,
+                                         .control_point_value = 484,
+                                         .control_point_relative_time = 128}},
          .start_time = 0,
          .end_time = 100,
          .target_time = 0,

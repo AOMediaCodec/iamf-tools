@@ -13,7 +13,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
@@ -24,9 +23,11 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -204,18 +205,18 @@ absl::Status ParametersManager::GetDownMixingParameters(
   }
 
   RETURN_IF_NOT_OK(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-      std::get<DemixingInfoParameterData>(
-          parameter_block->obu->subblocks_[0].param_data)
-          .dmixp_mode,
+      static_cast<DemixingInfoParameterData*>(
+          parameter_block->obu->subblocks_[0].param_data.get())
+          ->dmixp_mode,
       demixing_state.previous_w_idx, demixing_state.update_rule,
       down_mixing_params));
   demixing_state.w_idx = down_mixing_params.w_idx_used;
   return absl::OkStatus();
 }
 
-absl::Status ParametersManager::GetReconGainParameters(
+absl::Status ParametersManager::GetReconGainInfoParameterData(
     DecodedUleb128 audio_element_id, int32_t num_layers,
-    ReconGainInfoParameterData& recon_gain_parameters) {
+    ReconGainInfoParameterData& recon_gain_info_parameter_data) {
   const auto recon_gain_states_iter = recon_gain_states_.find(audio_element_id);
   if (recon_gain_states_iter == recon_gain_states_.end()) {
     LOG_FIRST_N(WARNING, 1)
@@ -228,7 +229,8 @@ absl::Status ParametersManager::GetReconGainParameters(
       recon_gain_element.recon_gain_flag = DecodedUleb128(0);
       std::fill(recon_gain_element.recon_gain.begin(),
                 recon_gain_element.recon_gain.end(), 255);
-      recon_gain_parameters.recon_gain_elements.push_back(recon_gain_element);
+      recon_gain_info_parameter_data.recon_gain_elements.push_back(
+          recon_gain_element);
     }
     return absl::OkStatus();
   }
@@ -253,7 +255,8 @@ absl::Status ParametersManager::GetReconGainParameters(
       recon_gain_element.recon_gain_flag = DecodedUleb128(0);
       std::fill(recon_gain_element.recon_gain.begin(),
                 recon_gain_element.recon_gain.end(), 255);
-      recon_gain_parameters.recon_gain_elements.push_back(recon_gain_element);
+      recon_gain_info_parameter_data.recon_gain_elements.push_back(
+          recon_gain_element);
     }
 
     return absl::OkStatus();
@@ -268,16 +271,11 @@ absl::Status ParametersManager::GetReconGainParameters(
         " but got ", recon_gain_parameter_block->start_timestamp));
   }
 
-  auto recon_gain_info_param_data = std::get_if<ReconGainInfoParameterData>(
-      &recon_gain_parameter_block->obu->subblocks_[0].param_data);
-  if (recon_gain_info_param_data == nullptr) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Failed to find recon gain parameter data for "
-                     "audio element ID= ",
-                     audio_element_id));
-  } else {
-    recon_gain_parameters = *recon_gain_info_param_data;
-  }
+  auto recon_gain_info_parameter_data_in_obu =
+      static_cast<ReconGainInfoParameterData*>(
+          recon_gain_parameter_block->obu->subblocks_[0].param_data.get());
+  recon_gain_info_parameter_data.recon_gain_elements =
+      recon_gain_info_parameter_data_in_obu->recon_gain_elements;
   return absl::OkStatus();
 }
 

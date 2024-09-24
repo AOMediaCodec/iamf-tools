@@ -21,7 +21,6 @@
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -233,66 +232,6 @@ class MixGainParamDefinition : public ParamDefinition {
   }
 };
 
-/* !\brief Parameter definition for demixing info.
- */
-class DemixingParamDefinition : public ParamDefinition {
- public:
-  /*!\brief Default constructor.
-   */
-  DemixingParamDefinition() : ParamDefinition(kParameterDefinitionDemixing) {}
-
-  /*!\brief Default destructor.
-   */
-  ~DemixingParamDefinition() override = default;
-
-  friend bool operator==(const DemixingParamDefinition& lhs,
-                         const DemixingParamDefinition& rhs) {
-    return static_cast<const ParamDefinition&>(lhs) ==
-           static_cast<const ParamDefinition&>(rhs);
-  }
-
-  /*!\brief Deep clones a `DemixingParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  virtual std::unique_ptr<ParamDefinition> Clone() {
-    return std::make_unique<DemixingParamDefinition>(*this);
-  };
-
-  /*!\brief Validates and writes to a buffer.
-   *
-   * \param wb Buffer to write to.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const override;
-
-  /*!\brief Reads from a buffer and validates the resulting output.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-
-  /*!\brief Prints the parameter definition.
-   */
-  void Print() const override;
-
-  DefaultDemixingInfoParameterData default_demixing_info_parameter_data_;
-
- private:
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  bool EquivalentDerived(const ParamDefinition& other) const override {
-    const auto& other_demixing =
-        dynamic_cast<const DemixingParamDefinition&>(other);
-    return default_demixing_info_parameter_data_ ==
-           other_demixing.default_demixing_info_parameter_data_;
-  }
-};
-
 /* !\brief Parameter definition for recon gain.
  */
 class ReconGainParamDefinition : public ParamDefinition {
@@ -424,6 +363,35 @@ class ExtendedParamDefinition : public ParamDefinition {
     }
     return param_definition_bytes_ == other_extended.param_definition_bytes_;
   }
+};
+
+struct ChannelNumbers {
+  friend bool operator==(const ChannelNumbers& lhs,
+                         const ChannelNumbers& rhs) = default;
+  // Number of surround channels.
+  int surround;
+  // Number of low-frequency effects channels.
+  int lfe;
+  // Number of height channels.
+  int height;
+};
+
+struct PerIdParameterMetadata {
+  ParamDefinition::ParameterDefinitionType param_definition_type;
+
+  // Common (base) part of the parameter definition.
+  ParamDefinition param_definition;
+
+  // Below are from the Audio Element. Only used when `param_definition_type` =
+  // `kParameterDefinitionReconGain`.
+  uint32_t audio_element_id;
+  uint8_t num_layers;
+
+  // Whether recon gain is present per layer.
+  std::vector<bool> recon_gain_is_present_flags;
+
+  // Channel numbers per layer.
+  std::vector<ChannelNumbers> channel_numbers_for_layers;
 };
 
 }  // namespace iamf_tools

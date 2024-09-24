@@ -23,6 +23,7 @@ cc_library(
     srcs = ["audio_element.cc"],
     hdrs = ["audio_element.h"],
     deps = [
+        ":demixing_param_definition",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
@@ -81,18 +82,17 @@ cc_library(
 )
 
 cc_library(
-    name = "demixing_info_param_data",
-    srcs = ["demixing_info_param_data.cc"],
-    hdrs = ["demixing_info_param_data.h"],
+    name = "demixing_param_definition",
+    srcs = ["demixing_param_definition.cc"],
+    hdrs = ["demixing_param_definition.h"],
     deps = [
+        ":param_definitions",
+        ":parameter_data",
         "//iamf/common:macros",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -179,7 +179,6 @@ cc_library(
     srcs = ["param_definitions.cc"],
     hdrs = ["param_definitions.h"],
     deps = [
-        ":demixing_info_param_data",
         ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
@@ -196,10 +195,10 @@ cc_library(
     srcs = ["parameter_block.cc"],
     hdrs = ["parameter_block.h"],
     deps = [
-        ":demixing_info_param_data",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
+        ":parameter_data",
         ":types",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
@@ -207,8 +206,39 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "parameter_data",
+    srcs = [
+        "demixing_info_parameter_data.cc",
+        "extension_parameter_data.cc",
+        "mix_gain_parameter_data.cc",
+        "recon_gain_info_parameter_data.cc",
+    ],
+    hdrs = [
+        "demixing_info_parameter_data.h",
+        "extension_parameter_data.h",
+        "mix_gain_parameter_data.h",
+        "parameter_data.h",
+        "recon_gain_info_parameter_data.h",
+    ],
+    deps = [
+        ":param_definitions",
+        ":types",
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
 )

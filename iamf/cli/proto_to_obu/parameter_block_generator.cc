@@ -38,9 +38,11 @@
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -95,24 +97,24 @@ absl::Status GetPerIdMetadata(
 absl::Status GenerateMixGainSubblock(
     const iamf_tools_cli_proto::MixGainParameterData&
         metadata_mix_gain_parameter_data,
-    MixGainParameterData& obu_mix_gain_param_data) {
+    MixGainParameterData* mix_gain_parameter_data) {
   switch (metadata_mix_gain_parameter_data.animation_type()) {
     using enum iamf_tools_cli_proto::AnimationType;
     case ANIMATE_STEP: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().step();
-      obu_mix_gain_param_data.animation_type =
+      mix_gain_parameter_data->animation_type =
           MixGainParameterData::kAnimateStep;
       AnimationStepInt16 obu_animation;
       RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.start_point_value(),
                                     obu_animation.start_point_value));
-      obu_mix_gain_param_data.param_data = obu_animation;
+      mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
     case ANIMATE_LINEAR: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().linear();
-      obu_mix_gain_param_data.animation_type =
+      mix_gain_parameter_data->animation_type =
           MixGainParameterData::kAnimateLinear;
 
       AnimationLinearInt16 obu_animation;
@@ -120,13 +122,13 @@ absl::Status GenerateMixGainSubblock(
                                     obu_animation.start_point_value));
       RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.end_point_value(),
                                     obu_animation.end_point_value));
-      obu_mix_gain_param_data.param_data = obu_animation;
+      mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
     case ANIMATE_BEZIER: {
       const auto& metadata_animation =
           metadata_mix_gain_parameter_data.param_data().bezier();
-      obu_mix_gain_param_data.animation_type =
+      mix_gain_parameter_data->animation_type =
           MixGainParameterData::kAnimateBezier;
       AnimationBezierInt16 obu_animation;
       RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.start_point_value(),
@@ -138,7 +140,7 @@ absl::Status GenerateMixGainSubblock(
       RETURN_IF_NOT_OK(
           Uint32ToUint8(metadata_animation.control_point_relative_time(),
                         obu_animation.control_point_relative_time));
-      obu_mix_gain_param_data.param_data = obu_animation;
+      mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
     default:
@@ -318,7 +320,7 @@ absl::Status GenerateReconGainSubblock(
     const iamf_tools_cli_proto::ReconGainInfoParameterData&
         metadata_recon_gain_info_parameter_data,
     const DecodedUleb128 audio_element_id,
-    ReconGainInfoParameterData& obu_recon_gain_info_param_data) {
+    ReconGainInfoParameterData* recon_gain_info_parameter_data) {
   const auto& user_recon_gains_layers =
       metadata_recon_gain_info_parameter_data.recon_gains_for_layer();
   if (num_layers > 1 &&
@@ -328,7 +330,7 @@ absl::Status GenerateReconGainSubblock(
                      "audio element, but the user only specifies ",
                      user_recon_gains_layers.size(), " layers."));
   }
-  obu_recon_gain_info_param_data.recon_gain_elements.resize(num_layers);
+  recon_gain_info_parameter_data->recon_gain_elements.resize(num_layers);
 
   ChannelNumbers accumulated_channels = {0, 0, 0};
   for (int layer_index = 0; layer_index < num_layers; layer_index++) {
@@ -346,7 +348,7 @@ absl::Status GenerateReconGainSubblock(
     // match the computed recon gains or are used as an override. Write to
     // output.
     auto& output_recon_gain_element =
-        obu_recon_gain_info_param_data.recon_gain_elements[layer_index];
+        recon_gain_info_parameter_data->recon_gain_elements[layer_index];
     for (const auto& [bit_position, user_recon_gain] :
          user_recon_gains_layers[layer_index].recon_gain()) {
       output_recon_gain_element.recon_gain[bit_position] =
@@ -424,15 +426,16 @@ absl::Status GenerateParameterBlockSubblock(
     RETURN_IF_NOT_OK(obu.SetSubblockDuration(
         subblock_index, metadata_subblock.subblock_duration()));
   }
-  ParameterSubblock& obu_subblock = obu.subblocks_[subblock_index];
 
+  auto& obu_subblock_param_data = obu.subblocks_[subblock_index].param_data;
   switch (per_id_metadata.param_definition_type) {
     using enum ParamDefinition::ParameterDefinitionType;
     case kParameterDefinitionMixGain: {
-      MixGainParameterData param_data;
-      RETURN_IF_NOT_OK(GenerateMixGainSubblock(
-          metadata_subblock.mix_gain_parameter_data(), param_data));
-      obu_subblock.param_data = param_data;
+      auto mix_gain_parameter_data = std::make_unique<MixGainParameterData>();
+      RETURN_IF_NOT_OK(
+          GenerateMixGainSubblock(metadata_subblock.mix_gain_parameter_data(),
+                                  mix_gain_parameter_data.get()));
+      obu_subblock_param_data = std::move(mix_gain_parameter_data);
       break;
     }
     case kParameterDefinitionDemixing: {
@@ -441,9 +444,12 @@ absl::Status GenerateParameterBlockSubblock(
             "There should be only one subblock for demixing info.");
       }
       DemixingInfoParameterData param_data;
+      auto demixing_info_parameter_data =
+          std::make_unique<DemixingInfoParameterData>();
       RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
-          metadata_subblock.demixing_info_parameter_data(), param_data));
-      obu_subblock.param_data = param_data;
+          metadata_subblock.demixing_info_parameter_data(),
+          *demixing_info_parameter_data));
+      obu_subblock_param_data = std::move(demixing_info_parameter_data);
       break;
     }
     case kParameterDefinitionReconGain: {
@@ -451,7 +457,8 @@ absl::Status GenerateParameterBlockSubblock(
         return absl::InvalidArgumentError(
             "There should be only one subblock for recon gain info.");
       }
-      ReconGainInfoParameterData param_data;
+      auto recon_gain_info_parameter_data =
+          std::make_unique<ReconGainInfoParameterData>();
       RETURN_IF_NOT_OK(GenerateReconGainSubblock(
           override_computed_recon_gains, additional_recon_gains_logging,
           *id_to_labeled_frame, *id_to_labeled_decoded_frame,
@@ -459,8 +466,9 @@ absl::Status GenerateParameterBlockSubblock(
           per_id_metadata.recon_gain_is_present_flags,
           per_id_metadata.channel_numbers_for_layers,
           metadata_subblock.recon_gain_info_parameter_data(),
-          per_id_metadata.audio_element_id, param_data));
-      obu_subblock.param_data = param_data;
+          per_id_metadata.audio_element_id,
+          recon_gain_info_parameter_data.get()));
+      obu_subblock_param_data = std::move(recon_gain_info_parameter_data);
       break;
     }
     default:

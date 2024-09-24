@@ -34,7 +34,8 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
@@ -182,16 +183,17 @@ TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
       CreatePerIdMetadataForDemixing(kLowerParameterId);
   PerIdParameterMetadata higher_per_id_metadata =
       CreatePerIdMetadataForDemixing(kHigherParameterId);
-  DemixingInfoParameterData common_demixing_info_parameter_data;
-  common_demixing_info_parameter_data.dmixp_mode =
+  auto common_demixing_info_parameter_data =
+      std::make_unique<DemixingInfoParameterData>();
+  common_demixing_info_parameter_data->dmixp_mode =
       DemixingInfoParameterData::kDMixPMode1;
-  common_demixing_info_parameter_data.reserved = 0;
+  common_demixing_info_parameter_data->reserved = 0;
   auto higher_id_parameter_block = std::make_unique<ParameterBlockObu>(
       ObuHeader(), higher_per_id_metadata.param_definition.parameter_id_,
       higher_per_id_metadata);
   ASSERT_THAT(higher_id_parameter_block->InitializeSubblocks(), IsOk());
   higher_id_parameter_block->subblocks_[0].param_data =
-      common_demixing_info_parameter_data;
+      std::move(common_demixing_info_parameter_data);
   auto lower_id_parameter_block = std::make_unique<ParameterBlockObu>(
       ObuHeader(), kSecondParameterId, lower_per_id_metadata);
   ASSERT_THAT(lower_id_parameter_block->InitializeSubblocks(), IsOk());
@@ -313,14 +315,14 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
       kFirstAudioElementId, kFirstSubstreamId, kStartTimestamp, kEndTimestamp,
       audio_elements, audio_frames);
-  DemixingInfoParameterData data;
-  data.dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
-  data.reserved = 0;
+  auto data = std::make_unique<DemixingInfoParameterData>();
+  data->dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
+  data->reserved = 0;
   auto parameter_block = std::make_unique<ParameterBlockObu>(
       ObuHeader(), per_id_metadata.param_definition.parameter_id_,
       per_id_metadata);
   ASSERT_THAT(parameter_block->InitializeSubblocks(), IsOk());
-  parameter_block->subblocks_[0].param_data = data;
+  parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),
       .start_timestamp = 0,

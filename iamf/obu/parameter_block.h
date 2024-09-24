@@ -12,196 +12,24 @@
 #ifndef OBU_PARAMETER_BLOCK_H_
 #define OBU_PARAMETER_BLOCK_H_
 
-#include <array>
 #include <cstdint>
-#include <variant>
+#include <memory>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-/*!\brief The metadata to describe animation of type `kAnimateStep`. */
-struct AnimationStepInt16 {
-  friend bool operator==(const AnimationStepInt16& lhs,
-                         const AnimationStepInt16& rhs) = default;
-
-  void Print() const;
-
-  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
-
-  /*!\brief Reads and validates the `AnimationStepInt16` to a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb);
-
-  int16_t start_point_value;
-};
-
-/*!\brief The metadata to describe animation of type `kAnimateLinear`. */
-struct AnimationLinearInt16 {
-  friend bool operator==(const AnimationLinearInt16& lhs,
-                         const AnimationLinearInt16& rhs) = default;
-
-  void Print() const;
-
-  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
-
-  /*!\brief Reads and validates the `AnimationLinearInt16` to a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb);
-
-  int16_t start_point_value;
-  int16_t end_point_value;
-};
-
-/*!\brief The metadata to describe animation of type `kAnimateBezier`. */
-struct AnimationBezierInt16 {
-  friend bool operator==(const AnimationBezierInt16& lhs,
-                         const AnimationBezierInt16& rhs) = default;
-
-  void Print() const;
-
-  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
-
-  /*!\brief Reads and validates the `AnimationBezierInt16` to a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` unless the buffer is exhausted during reading.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb);
-
-  int16_t start_point_value;
-  int16_t end_point_value;
-  int16_t control_point_value;
-  uint8_t control_point_relative_time;  // Q0.8 format.
-};
-
-/*!\brief The metadata for a mix gain parameter. */
-struct MixGainParameterData {
-  /*!\brief A `DecodedUleb128` enum for the type of animation to apply. */
-  enum AnimationType : DecodedUleb128 {
-    kAnimateStep = 0,
-    kAnimateLinear = 1,
-    kAnimateBezier = 2,
-  };
-
-  friend bool operator==(const MixGainParameterData& lhs,
-                         const MixGainParameterData& rhs) = default;
-
-  /*!\brief Reads and validates the `MixGainParameterData` to a buffer.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. Or a specific error code on failure.
-   */
-  absl::Status ReadAndValidate(ReadBitBuffer& rb);
-
-  AnimationType animation_type;  // Serialized to a ULEB128.
-
-  // The active field depends on `animation_type`.
-  std::variant<AnimationStepInt16, AnimationLinearInt16, AnimationBezierInt16>
-      param_data;
-};
-
-/*!\brief An element of the `ReconGainInfoParameterData` vector.
- *
- * This is not present in the bitstream when recon_gain_is_present_flag(i) == 0
- * in the associated Audio Element OBU.
- */
-struct ReconGainElement {
-  /*!\brief A `DecodedUleb128` bitmask to determine channels with recon gain.
-   *
-   * Apply the bitmask to the `ReconGainElement::recon_gain_flag` to determine
-   * if recon gain should be applied. Values are offset from the spec as they
-   * will be applied to a `DecodedUleb128` instead of a serialized LEB128.
-   */
-  enum ReconGainFlagBitmask : DecodedUleb128 {
-    kReconGainFlagL = 0x01,
-    kReconGainFlagC = 0x02,
-    kReconGainFlagR = 0x04,
-    kReconGainFlagLss = 0x08,
-    kReconGainFlagRss = 0x10,
-    kReconGainFlagLtf = 0x20,
-    kReconGainFlagRtf = 0x40,
-    kReconGainFlagLrs = 0x80,
-    kReconGainFlagRrs = 0x100,
-    kReconGainFlagLtb = 0x200,
-    kReconGainFlagRtb = 0x400,
-    kReconGainFlagLfe = 0x800,
-  };
-
-  // Apply the `ReconGainFlagBitmaskDecodedUleb` bitmask to determine which
-  // channels recon gain should be applied to.
-  DecodedUleb128 recon_gain_flag;
-
-  // Value is only present in the stream for channels with Recon Gain flag set.
-  std::array<uint8_t, 12> recon_gain;
-};
-
-/*!\brief The metadata for a recon gain parameter. */
-struct ReconGainInfoParameterData {
-  // vector of length `num_layers` in the Audio associated Audio Element OBU.
-  std::vector<ReconGainElement> recon_gain_elements;
-
-  /*!\brief Reads and validates the `ReconGainInfoParameterData` from a buffer.
-   *
-   * \param recon_gain_is_present_flags Specifies if recon gain should be
-   *    applied for a given layer.
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. A specific error code on failure.
-   */
-  absl::Status ReadAndValidate(
-      const std::vector<bool>& recon_gain_is_present_flags, ReadBitBuffer& rb);
-};
-
-struct ExtensionParameterData {
-  DecodedUleb128 parameter_data_size;
-  std::vector<uint8_t> parameter_data_bytes;
-};
-
-struct ChannelNumbers {
-  friend bool operator==(const ChannelNumbers& lhs,
-                         const ChannelNumbers& rhs) = default;
-
-  // Number of surround channels.
-  int surround;
-  // Number of low-frequency effects channels.
-  int lfe;
-  // Number of height channels.
-  int height;
-};
-
-struct PerIdParameterMetadata {
-  ParamDefinition::ParameterDefinitionType param_definition_type;
-
-  // Common (base) part of the parameter definition.
-  ParamDefinition param_definition;
-
-  // Below are from the Audio Element. Only used when `param_definition_type` =
-  // `kParameterDefinitionReconGain`.
-  uint32_t audio_element_id;
-  uint8_t num_layers;
-
-  // Whether recon gain is present per layer.
-  std::vector<bool> recon_gain_is_present_flags;
-
-  // Channel numbers per layer.
-  std::vector<ChannelNumbers> channel_numbers_for_layers;
-};
 
 /*!\brief An element of the Parameter Block OBU's `subblocks` vector. */
 struct ParameterSubblock {
@@ -210,9 +38,7 @@ struct ParameterSubblock {
   DecodedUleb128 subblock_duration;
 
   // The active field depends on `param_definition_type` in the metadata.
-  std::variant<MixGainParameterData, DemixingInfoParameterData,
-               ReconGainInfoParameterData, ExtensionParameterData>
-      param_data;
+  std::unique_ptr<ParameterData> param_data;
 };
 
 /*!\brief A Parameter Block OBU.
@@ -231,12 +57,14 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
-   * \param metadata Map containing the Per-ID parameter metadata.
+   * \param parameter_id_to_metadata Mapping from parameter ID to the
+   *        Per-ID parameter metadata.
    * \param rb `ReadBitBuffer` where the `ParameterBlockObu` data is stored.
-   * Data read from the buffer is consumed.
-   * \return a `ParameterBlockObu` on success. A specific status on failure.
+   *        Data read from the buffer is consumed.
+   * \return Unique pointer to a `ParameterBlockObu` on success. A specific
+   *         status on failure.
    */
-  static absl::StatusOr<ParameterBlockObu> CreateFromBuffer(
+  static absl::StatusOr<std::unique_ptr<ParameterBlockObu>> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size,
       absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata,
@@ -262,12 +90,12 @@ class ParameterBlockObu : public ObuBase {
    * \param mix_gain_parameter_data `MixGainParameterData` to interpolate.
    * \param start_time Start time of the `MixGainParameterData`.
    * \param end_time End time of the `MixGainParameterData`.
-   * \param target_time Target time to the get interpolated value of.
+   * \param target_time Target time to get the interpolated value of.
    * \param target_mix_gain Output argument for the inteprolated value.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status InterpolateMixGainParameterData(
-      const MixGainParameterData& mix_gain_parameter_data, int32_t start_time,
+      const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
       int32_t end_time, int32_t target_time, int16_t& target_mix_gain);
 
   /*!\brief Gets the duration of the parameter block.
@@ -292,7 +120,7 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param subblock_index Index of the subblock to get the duration of.
    * \return Duration of the subblock or `absl::InvalidArgumentError()` on
-   *     failure.
+   *         failure.
    */
   absl::StatusOr<DecodedUleb128> GetSubblockDuration(int subblock_index) const;
 
@@ -308,17 +136,17 @@ class ParameterBlockObu : public ObuBase {
    * \param subblock_index Index of the subblock to set.
    * \param duration `duration` to set.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
-   *     failure.
+   *        failure.
    */
   absl::Status SetSubblockDuration(int subblock_index, DecodedUleb128 duration);
 
   /*!\brief Writes the mix gain at the target time to the output argument.
    *
    * \param obu_relative_time Time relative to the start of the OBU to get the
-   *     mix gain of.
+   *        mix gain of.
    * \param mix_gain Output argument for the mix gain.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
-   *     failure.
+   *         failure.
    */
   absl::Status GetMixGain(int32_t obu_relative_time, int16_t& mix_gain) const;
 
@@ -343,6 +171,7 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::Status InitializeSubblocks();
 
+  /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
   // Mapped from an Audio Element or Mix Presentation OBU parameter ID.
@@ -380,7 +209,7 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
@@ -389,7 +218,7 @@ class ParameterBlockObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *        failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

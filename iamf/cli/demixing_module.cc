@@ -38,7 +38,7 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -643,8 +643,8 @@ absl::Status PassThroughReconGainData(
     loudspeaker_layout_per_layer.push_back(
         channel_audio_layer_config.loudspeaker_layout);
   }
-  labeled_decoded_frame.recon_gain_parameters =
-      decoded_audio_frame.recon_gain_info_param_data;
+  labeled_decoded_frame.recon_gain_info_parameter_data =
+      decoded_audio_frame.recon_gain_info_parameter_data;
   return absl::OkStatus();
 }
 

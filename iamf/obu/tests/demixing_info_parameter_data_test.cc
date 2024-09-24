@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 
 #include <cstdint>
 #include <vector>
@@ -26,6 +26,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using enum DemixingInfoParameterData::DMixPMode;
+using enum DemixingInfoParameterData::WIdxUpdateRule;
 
 const int kDMixPModeBitShift = 5;
 const int kDefaultWBitShift = 4;
@@ -33,10 +35,10 @@ const int kDefaultWBitShift = 4;
 TEST(DMixPModeToDownMixingParams, DMixPMode1) {
   DownMixingParams output_down_mix_args;
   EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                  DemixingInfoParameterData::kDMixPMode1,
+                  kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kNormal, output_down_mix_args),
+                  kNormal, output_down_mix_args),
               IsOk());
 
   // When `previous_w_idx = 6` and `w_idx_update_rule = kNormal`, the current
@@ -55,10 +57,10 @@ TEST(DMixPModeToDownMixingParams, DMixPMode1) {
 TEST(DMixPModeToDownMixingParams, FirstFrameWAlwaysEqualTo0) {
   DownMixingParams output_down_mix_args;
   EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                  DemixingInfoParameterData::kDMixPMode1,
+                  kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kFirstFrame, output_down_mix_args),
+                  kFirstFrame, output_down_mix_args),
               IsOk());
 
   // When `w_idx_update_rule = kFirstFrame`, the `w_idx` is forced to be 0,
@@ -76,10 +78,10 @@ TEST(DMixPModeToDownMixingParams, FirstFrameWAlwaysEqualTo0) {
 TEST(DMixPModeToDownMixingParams, DefaultWDirectlyUsed) {
   DownMixingParams output_down_mix_args;
   EXPECT_THAT(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                  DemixingInfoParameterData::kDMixPMode1,
+                  kDMixPMode1,
                   /*previous_w_idx=*/6,
                   /*w_idx_update_rule=*/
-                  DemixingInfoParameterData::kDefault, output_down_mix_args),
+                  kDefault, output_down_mix_args),
               IsOk());
 
   // When `w_idx_update_rule = kDefault`, the `w_idx` is directly equal to
@@ -97,123 +99,97 @@ TEST(DMixPModeToDownMixingParams, DefaultWDirectlyUsed) {
 
 TEST(DMixPModeToDownMixingParams, InvalidDMixPModeReserved) {
   DownMixingParams output_down_mix_args;
-  EXPECT_EQ(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                DemixingInfoParameterData::kDMixPModeReserved1, 5,
-                /*w_idx_update_rule=*/
-                DemixingInfoParameterData::kNormal, output_down_mix_args)
-                .code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_FALSE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+                   kDMixPModeReserved1, 5,
+                   /*w_idx_update_rule=*/
+                   kNormal, output_down_mix_args)
+                   .ok());
 }
 
 TEST(DMixPModeToDownMixingParams, InvalidWOffsetOver10) {
   DownMixingParams output_down_mix_args;
-  EXPECT_EQ(DemixingInfoParameterData::DMixPModeToDownMixingParams(
-                DemixingInfoParameterData::kDMixPModeReserved1, 11,
-                /*w_idx_update_rule=*/
-                DemixingInfoParameterData::kNormal, output_down_mix_args)
-                .code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_FALSE(DemixingInfoParameterData::DMixPModeToDownMixingParams(
+                   kDMixPModeReserved1, 11,
+                   /*w_idx_update_rule=*/
+                   kNormal, output_down_mix_args)
+                   .ok());
 }
 
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
-  DemixingInfoParameterData data;
-  data.dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
-  data.reserved = 0;
-
+  DemixingInfoParameterData data(kDMixPMode1, 0);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(wb), IsOk());
-  ValidateWriteResults(
-      wb, {DemixingInfoParameterData::kDMixPMode1 << kDMixPModeBitShift});
+  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  ValidateWriteResults(wb, {kDMixPMode1 << kDMixPModeBitShift});
 }
 
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode3) {
-  DemixingInfoParameterData data;
-  data.dmixp_mode = DemixingInfoParameterData::kDMixPMode3;
-  data.reserved = 0;
-
+  DemixingInfoParameterData data(kDMixPMode3, 0);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(wb), IsOk());
-  ValidateWriteResults(
-      wb, {DemixingInfoParameterData::kDMixPMode3 << kDMixPModeBitShift});
+  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  ValidateWriteResults(wb, {kDMixPMode3 << kDMixPModeBitShift});
 }
 
 TEST(WriteDemixingInfoParameterData, WriteReservedMax) {
-  DemixingInfoParameterData data;
-  data.dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
   // The IAMF spec reserved a 5-bit value.
   const uint32_t kReservedMax = 31;
-  data.reserved = kReservedMax;
-
+  DemixingInfoParameterData data(kDMixPMode1, kReservedMax);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(wb), IsOk());
-  ValidateWriteResults(
-      wb, {DemixingInfoParameterData::kDMixPMode1 << kDMixPModeBitShift |
-           kReservedMax});
+  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  ValidateWriteResults(wb, {kDMixPMode1 << kDMixPModeBitShift | kReservedMax});
 }
 
 TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
-  DemixingInfoParameterData data;
-  data.dmixp_mode = DemixingInfoParameterData::kDMixPModeReserved1;
-  data.reserved = 0;
-
+  DemixingInfoParameterData data(kDMixPModeReserved1, 0);
   WriteBitBuffer undetermined_wb(1);
-  EXPECT_EQ(data.Write(undetermined_wb).code(),
-            absl::StatusCode::kUnimplemented);
+  EXPECT_FALSE(data.Write(/*per_id_metadata=*/{}, undetermined_wb).ok());
 }
 
 TEST(WriteDefaultDemixingInfoParameterData, Writes) {
-  constexpr auto kExpectedDMixPMode = DemixingInfoParameterData::kDMixPMode1;
-  constexpr auto kExpectedReserved = 31;
-  constexpr auto kExpectedDefaultW = 5;
-  constexpr auto kExpectedReservedDefault = 15;
-  DefaultDemixingInfoParameterData data;
-  data.dmixp_mode = kExpectedDMixPMode;
-  data.reserved = kExpectedReserved;
-  data.default_w = kExpectedDefaultW;
-  data.reserved_default = kExpectedReservedDefault;
-
+  constexpr auto kExpectedDMixPMode = kDMixPMode1;
+  constexpr uint8_t kExpectedReserved = 31;
+  constexpr uint8_t kExpectedDefaultW = 5;
+  constexpr uint8_t kExpectedReservedDefault = 15;
+  DefaultDemixingInfoParameterData data(kExpectedDMixPMode, kExpectedReserved,
+                                        kExpectedDefaultW,
+                                        kExpectedReservedDefault);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(wb), IsOk());
-
+  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
   ValidateWriteResults(
       wb, {kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
            kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault});
 }
 
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
-  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode1
-                                      << kDMixPModeBitShift};
+  std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift};
   ReadBitBuffer rb(1024, &source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.Read(rb), IsOk());
-  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode1);
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 0);
 }
 
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode3) {
-  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode3
-                                      << kDMixPModeBitShift};
+  std::vector<uint8_t> source_data = {kDMixPMode3 << kDMixPModeBitShift};
   ReadBitBuffer rb(1024, &source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.Read(rb), IsOk());
-  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode3);
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, kDMixPMode3);
   EXPECT_EQ(data.reserved, 0);
 }
 
 TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
   const uint32_t kReservedMax = 31;
-  std::vector<uint8_t> source_data = {DemixingInfoParameterData::kDMixPMode1
-                                          << kDMixPModeBitShift |
+  std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift |
                                       kReservedMax};
   ReadBitBuffer rb(1024, &source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.Read(rb), IsOk());
-  EXPECT_EQ(data.dmixp_mode, DemixingInfoParameterData::kDMixPMode1);
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 31);
 }
 
 TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
-  constexpr auto kExpectedDMixPMode = DemixingInfoParameterData::kDMixPMode1_n;
+  constexpr auto kExpectedDMixPMode = kDMixPMode1_n;
   constexpr auto kExpectedReserved = 25;
   constexpr auto kExpectedDefaultW = 9;
   constexpr auto kExpectedReservedDefault = 12;
@@ -222,13 +198,11 @@ TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
       kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault};
   ReadBitBuffer rb(1024, &source_data);
   DefaultDemixingInfoParameterData data;
-
-  EXPECT_THAT(data.Read(rb), IsOk());
-
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kExpectedDMixPMode);
   EXPECT_EQ(data.reserved, kExpectedReserved);
   EXPECT_EQ(data.default_w, kExpectedDefaultW);
-  EXPECT_EQ(data.reserved_default, kExpectedReservedDefault);
+  EXPECT_EQ(data.reserved_for_future_use, kExpectedReservedDefault);
 }
 
 }  // namespace

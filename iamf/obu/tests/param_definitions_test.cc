@@ -24,7 +24,8 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -290,7 +291,7 @@ TEST(DemixingParamDefinitionClone, IsDeepCopy) {
   demixing_param_definition.default_demixing_info_parameter_data_.reserved = 0;
   demixing_param_definition.default_demixing_info_parameter_data_.default_w = 0;
   demixing_param_definition.default_demixing_info_parameter_data_
-      .reserved_default = 0;
+      .reserved_for_future_use = 0;
 
   auto other = demixing_param_definition.Clone();
 
@@ -310,7 +311,7 @@ class DemixingParamDefinitionTest : public ParamDefinitionTestBase {
         DemixingInfoParameterData::kDMixPMode1;
     demixing->default_demixing_info_parameter_data_.reserved = 0;
     demixing->default_demixing_info_parameter_data_.default_w = 0;
-    demixing->default_demixing_info_parameter_data_.reserved_default = 0;
+    demixing->default_demixing_info_parameter_data_.reserved_for_future_use = 0;
     param_definition_ = std::move(demixing);
   }
 

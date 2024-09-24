@@ -13,10 +13,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -24,233 +27,20 @@
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/extension_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_data.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-namespace {
 
-void PrintMixGainParameterData(
-    const MixGainParameterData& mix_gain_param_data) {
-  LOG(INFO) << "     animation_type= "
-            << absl::StrCat(mix_gain_param_data.animation_type);
-  switch (mix_gain_param_data.animation_type) {
-    using enum MixGainParameterData::AnimationType;
-    case kAnimateStep:
-      std::get<AnimationStepInt16>(mix_gain_param_data.param_data).Print();
-      break;
-    case kAnimateLinear:
-      std::get<AnimationLinearInt16>(mix_gain_param_data.param_data).Print();
-      break;
-    case kAnimateBezier:
-      std::get<AnimationBezierInt16>(mix_gain_param_data.param_data).Print();
-      break;
-    default:
-      LOG(ERROR) << "Unknown animation type: "
-                 << absl::StrCat(mix_gain_param_data.animation_type);
-  }
-}
-
-void PrintDemixingInfoParameterData(
-    const DemixingInfoParameterData& demixing_param_data) {
-  LOG(INFO) << "    dmixp_mode= "
-            << absl::StrCat(demixing_param_data.dmixp_mode);
-  LOG(INFO) << "    reserved= " << absl::StrCat(demixing_param_data.reserved);
-}
-
-void PrintReconGainInfoParameterData(
-    const ReconGainInfoParameterData& recon_gain_info_param_data,
-    const int num_layers) {
-  for (int l = 0; l < num_layers; l++) {
-    const auto& recon_gain_element =
-        recon_gain_info_param_data.recon_gain_elements[l];
-    LOG(INFO) << "    recon_gain_elements[" << l << "]:";
-    LOG(INFO) << "      recon_gain_flag= "
-              << recon_gain_element.recon_gain_flag;
-    for (int b = 0; b < recon_gain_element.recon_gain.size(); b++) {
-      LOG(INFO) << "      recon_gain[" << b
-                << "]= " << absl::StrCat(recon_gain_element.recon_gain[b]);
-    }
-  }
-}
-
-// Writes a `MixGainParameterData` within a Parameter Block OBU subblock.
-absl::Status WriteMixGainParamData(const MixGainParameterData& param,
-                                   WriteBitBuffer& wb) {
-  // Write the `animation_type` field.
-  RETURN_IF_NOT_OK(
-      wb.WriteUleb128(static_cast<DecodedUleb128>(param.animation_type)));
-
-  // Write the fields dependent on the `animation_type` field.
-  switch (param.animation_type) {
-    using enum MixGainParameterData::AnimationType;
-    case kAnimateStep:
-      RETURN_IF_NOT_OK(
-          std::get<AnimationStepInt16>(param.param_data).ValidateAndWrite(wb));
-      break;
-    case kAnimateLinear:
-      RETURN_IF_NOT_OK(std::get<AnimationLinearInt16>(param.param_data)
-                           .ValidateAndWrite(wb));
-      break;
-    case kAnimateBezier:
-      RETURN_IF_NOT_OK(std::get<AnimationBezierInt16>(param.param_data)
-                           .ValidateAndWrite(wb));
-      break;
-  }
-  return absl::OkStatus();
-}
-
-// Writes a `ReconGainInfoParameterData` within a Parameter Block OBU subblock.
-absl::Status WriteReconGainInfoParameterData(
-    const std::vector<bool>& recon_gain_is_present_flags,
-    const ReconGainInfoParameterData& param, WriteBitBuffer& wb) {
-  for (int i = 0; i < recon_gain_is_present_flags.size(); i++) {
-    // Each layer depends on the `recon_gain_is_present_flags` within the
-    // associated Audio Element OBU.
-    if (!recon_gain_is_present_flags[i]) continue;
-
-    const ReconGainElement* element = &param.recon_gain_elements[i];
-
-    RETURN_IF_NOT_OK(wb.WriteUleb128(element->recon_gain_flag));
-
-    const DecodedUleb128 recon_gain_flag = element->recon_gain_flag;
-    DecodedUleb128 mask = 1;
-
-    // Apply bitmask to examine each bit in the flag. Only write elements with
-    // the flag implying they should be written.
-    for (const auto& recon_gain : element->recon_gain) {
-      if (recon_gain_flag & mask) {
-        RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(recon_gain, 8));
-      }
-      mask <<= 1;
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-}  // namespace
-
-void AnimationStepInt16::Print() const {
-  LOG(INFO) << "     // Step";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
-}
-
-absl::Status AnimationStepInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteSigned16(start_point_value));
-  return absl::OkStatus();
-}
-
-absl::Status AnimationStepInt16::ReadAndValidate(ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
-  return absl::OkStatus();
-}
-
-void AnimationLinearInt16::Print() const {
-  LOG(INFO) << "     // Linear";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
-  LOG(INFO) << "     end_point_value= " << end_point_value;
-}
-
-absl::Status AnimationLinearInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteSigned16(start_point_value));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(end_point_value));
-  return absl::OkStatus();
-}
-
-absl::Status AnimationLinearInt16::ReadAndValidate(ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(end_point_value));
-  return absl::OkStatus();
-}
-
-void AnimationBezierInt16::Print() const {
-  LOG(INFO) << "     // Bezier";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
-  LOG(INFO) << "     end_point_value= " << end_point_value;
-  LOG(INFO) << "     control_point_value= " << control_point_value;
-  LOG(INFO) << "     control_point_relative_time= "
-            << control_point_relative_time;
-}
-
-absl::Status AnimationBezierInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteSigned16(start_point_value));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(end_point_value));
-  RETURN_IF_NOT_OK(wb.WriteSigned16(control_point_value));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(control_point_relative_time, 8));
-  return absl::OkStatus();
-}
-
-absl::Status AnimationBezierInt16::ReadAndValidate(ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(rb.ReadSigned16(start_point_value));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(end_point_value));
-  RETURN_IF_NOT_OK(rb.ReadSigned16(control_point_value));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, control_point_relative_time));
-
-  return absl::OkStatus();
-}
-
-absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
-  DecodedUleb128 animation_type_uleb;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
-  animation_type = static_cast<AnimationType>(animation_type_uleb);
-  switch (animation_type) {
-    using enum AnimationType;
-    case kAnimateStep:
-      AnimationStepInt16 step_param_data;
-      RETURN_IF_NOT_OK(step_param_data.ReadAndValidate(rb));
-      param_data = step_param_data;
-      return absl::OkStatus();
-    case kAnimateLinear:
-      AnimationLinearInt16 linear_param_data;
-      RETURN_IF_NOT_OK(linear_param_data.ReadAndValidate(rb));
-      param_data = linear_param_data;
-      return absl::OkStatus();
-    case kAnimateBezier:
-      AnimationBezierInt16 bezier_param_data;
-      RETURN_IF_NOT_OK(bezier_param_data.ReadAndValidate(rb));
-      param_data = bezier_param_data;
-      return absl::OkStatus();
-    default:
-      return absl::UnimplementedError(
-          absl::StrCat("Unknown animation type= ", animation_type_uleb));
-  }
-}
-
-absl::Status ReconGainInfoParameterData::ReadAndValidate(
-    const std::vector<bool>& recon_gain_is_present_flags, ReadBitBuffer& rb) {
-  for (int i = 0; i < recon_gain_is_present_flags.size(); i++) {
-    // Each layer depends on the `recon_gain_is_present_flags` within the
-    // associated Audio Element OBU. The size of `recon_gain_is_present_flags`
-    // is equal to the number of layers.
-    if (!recon_gain_is_present_flags[i]) continue;
-
-    ReconGainElement element;
-    RETURN_IF_NOT_OK(rb.ReadULeb128(element.recon_gain_flag));
-
-    const DecodedUleb128 recon_gain_flag = element.recon_gain_flag;
-    DecodedUleb128 mask = 1;
-
-    // Apply bitmask to examine each bit in the flag. Only read elements with
-    // the flag implying they should be read.
-    for (int j = 0; j < element.recon_gain.size(); j++) {
-      if (recon_gain_flag & mask) {
-        RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, element.recon_gain[j]));
-      } else {
-        element.recon_gain[j] = 0;
-      }
-      mask <<= 1;
-    }
-    recon_gain_elements.push_back(element);
-  }
-
-  return absl::OkStatus();
-}
-
-absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
+absl::StatusOr<std::unique_ptr<ParameterBlockObu>>
+ParameterBlockObu::CreateFromBuffer(
     const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
         parameter_id_to_metadata,
@@ -258,6 +48,7 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
   DecodedUleb128 parameter_id;
   int8_t encoded_uleb128_size = 0;
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id, encoded_uleb128_size));
+
   if (payload_size < encoded_uleb128_size) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Read beyond the end of the OBU for parameter_id=", parameter_id));
@@ -274,9 +65,12 @@ absl::StatusOr<ParameterBlockObu> ParameterBlockObu::CreateFromBuffer(
   //                    OBU. Update `ReadAndValidatePayload` to expect to read
   //                    `parameter_id`).
   const int64_t remaining_payload_size = payload_size - encoded_uleb128_size;
-  ParameterBlockObu parameter_block_obu(header, parameter_id, it->second);
+  auto parameter_block_obu =
+      absl::WrapUnique(new ParameterBlockObu(header, parameter_id, it->second));
+
+  // TODO(b/338474387): Test reading in extension parameters.
   RETURN_IF_NOT_OK(
-      parameter_block_obu.ReadAndValidatePayload(remaining_payload_size, rb));
+      parameter_block_obu->ReadAndValidatePayload(remaining_payload_size, rb));
   return parameter_block_obu;
 }
 
@@ -288,44 +82,44 @@ ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
       metadata_(metadata) {}
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
-    const MixGainParameterData& mix_gain_parameter_data, int32_t start_time,
+    const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
     int32_t end_time, int32_t target_time, int16_t& target_mix_gain) {
   return InterpolateMixGainValue(
-      mix_gain_parameter_data.animation_type,
+      mix_gain_parameter_data->animation_type,
       MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
       MixGainParameterData::kAnimateBezier,
       [&mix_gain_parameter_data]() {
-        return std::get<AnimationStepInt16>(mix_gain_parameter_data.param_data)
+        return std::get<AnimationStepInt16>(mix_gain_parameter_data->param_data)
             .start_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationLinearInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .start_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationLinearInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .end_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .start_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .end_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .control_point_value;
       },
       [&mix_gain_parameter_data]() {
         return std::get<AnimationBezierInt16>(
-                   mix_gain_parameter_data.param_data)
+                   mix_gain_parameter_data->param_data)
             .control_point_relative_time;
       },
       start_time, end_time, target_time, target_mix_gain);
@@ -449,8 +243,8 @@ absl::Status ParameterBlockObu::GetMixGain(int32_t obu_relative_time,
   }
 
   RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
-      std::get<MixGainParameterData>(
-          subblocks_[target_subblock_index].param_data),
+      static_cast<const MixGainParameterData*>(
+          subblocks_[target_subblock_index].param_data.get()),
       subblock_relative_start_time, subblock_relative_end_time,
       obu_relative_time, mix_gain));
 
@@ -463,9 +257,7 @@ absl::Status ParameterBlockObu::InitializeSubblocks(
   SetDuration(duration);
   SetConstantSubblockDuration(constant_subblock_duration);
   SetNumSubblocks(num_subblocks);
-
   subblocks_.resize(static_cast<size_t>(GetNumSubblocks()));
-
   init_status_ = absl::OkStatus();
   return init_status_;
 }
@@ -513,25 +305,7 @@ void ParameterBlockObu::PrintObu() const {
               << metadata_.param_definition_type;
     LOG(INFO) << "    // param_definition:";
     metadata_.param_definition.Print();
-    switch (metadata_.param_definition_type) {
-      using enum ParamDefinition::ParameterDefinitionType;
-      case kParameterDefinitionMixGain:
-        PrintMixGainParameterData(
-            std::get<MixGainParameterData>(subblock.param_data));
-        break;
-      case kParameterDefinitionDemixing:
-        PrintDemixingInfoParameterData(
-            std::get<DemixingInfoParameterData>(subblock.param_data));
-        break;
-      case kParameterDefinitionReconGain:
-        PrintReconGainInfoParameterData(
-            std::get<ReconGainInfoParameterData>(subblock.param_data),
-            static_cast<int>(metadata_.num_layers));
-        break;
-      default:
-        LOG(ERROR) << "Unknown parameter definition type: "
-                   << absl::StrCat(metadata_.param_definition_type) << ".";
-    }
+    subblock.param_data->Print();
   }
 }
 
@@ -601,45 +375,16 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
   for (int i = 0; i < num_subblocks; i++) {
     // `subblock_duration` is conditionally included based on
     // `param_definition_mode_` and `constant_subblock_duration_`.
+    const auto& subblock = subblocks_[i];
     if (metadata_.param_definition.param_definition_mode_ &&
         constant_subblock_duration_ == 0) {
-      RETURN_IF_NOT_OK(wb.WriteUleb128(subblocks_[i].subblock_duration));
+      RETURN_IF_NOT_OK(wb.WriteUleb128(subblock.subblock_duration));
       validate_total_subblock_durations = true;
-      total_subblock_durations += subblocks_[i].subblock_duration;
+      total_subblock_durations += subblock.subblock_duration;
     }
 
     // Write the specific parameter data depending on `param_definition_type`.
-    const auto& param_data = subblocks_[i].param_data;
-    switch (metadata_.param_definition_type) {
-      using enum ParamDefinition::ParameterDefinitionType;
-      case kParameterDefinitionMixGain:
-        RETURN_IF_NOT_OK(WriteMixGainParamData(
-            std::get<MixGainParameterData>(param_data), wb));
-        break;
-      case kParameterDefinitionDemixing:
-        RETURN_IF_NOT_OK(
-            std::get<DemixingInfoParameterData>(param_data).Write(wb));
-        break;
-      case kParameterDefinitionReconGain:
-        RETURN_IF_NOT_OK(WriteReconGainInfoParameterData(
-            metadata_.recon_gain_is_present_flags,
-            std::get<ReconGainInfoParameterData>(param_data), wb));
-        break;
-      default: {
-        // Write the `extension_parameter_data`.
-        const auto& extension_parameter_data =
-            std::get<ExtensionParameterData>(param_data);
-        RETURN_IF_NOT_OK(
-            wb.WriteUleb128(extension_parameter_data.parameter_data_size));
-        RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-            "parameter_data_bytes",
-            extension_parameter_data.parameter_data_bytes.size(),
-            extension_parameter_data.parameter_data_size));
-        RETURN_IF_NOT_OK(
-            wb.WriteUint8Vector(extension_parameter_data.parameter_data_bytes));
-        break;
-      }
-    }
+    RETURN_IF_NOT_OK(subblock.param_data->Write(metadata_, wb));
   }
 
   // Check total duration matches expected duration.
@@ -679,33 +424,31 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
   const bool validate_total_subblock_durations = include_subblock_duration;
 
   for (int i = 0; i < num_subblocks; i++) {
+    auto& subblock = subblocks_[i];
     if (include_subblock_duration) {
-      RETURN_IF_NOT_OK(rb.ReadULeb128(subblocks_[i].subblock_duration));
-      total_subblock_durations += subblocks_[i].subblock_duration;
+      RETURN_IF_NOT_OK(rb.ReadULeb128(subblock.subblock_duration));
+      total_subblock_durations += subblock.subblock_duration;
     }
 
     auto param_definition_type = metadata_.param_definition.GetType();
+    std::unique_ptr<ParameterData> parameter_data;
     if (!param_definition_type.has_value()) {
       return absl::InvalidArgumentError("Unknown parameter definition type.");
     } else if (*param_definition_type ==
                ParamDefinition::kParameterDefinitionMixGain) {
-      MixGainParameterData mix_gain_param_data;
-      RETURN_IF_NOT_OK(mix_gain_param_data.ReadAndValidate(rb));
-      subblocks_[i].param_data = mix_gain_param_data;
+      parameter_data = std::make_unique<MixGainParameterData>();
     } else if (*param_definition_type ==
                ParamDefinition::kParameterDefinitionReconGain) {
-      ReconGainInfoParameterData recon_gain_info_param_data;
-      RETURN_IF_NOT_OK(recon_gain_info_param_data.ReadAndValidate(
-          metadata_.recon_gain_is_present_flags, rb));
-      subblocks_[i].param_data = recon_gain_info_param_data;
+      parameter_data = std::make_unique<ReconGainInfoParameterData>();
     } else if (*param_definition_type ==
                ParamDefinition::kParameterDefinitionDemixing) {
-      DemixingInfoParameterData demixing_info_param_data;
-      RETURN_IF_NOT_OK(demixing_info_param_data.Read(rb));
-      subblocks_[i].param_data = demixing_info_param_data;
+      parameter_data = std::make_unique<DemixingInfoParameterData>();
     } else {
-      return absl::UnimplementedError("Unsupported parameter definition type.");
+      parameter_data = std::make_unique<ExtensionParameterData>();
     }
+
+    RETURN_IF_NOT_OK(parameter_data->ReadAndValidate(metadata_, rb));
+    subblock.param_data = std::move(parameter_data);
   }
 
   if (validate_total_subblock_durations &&

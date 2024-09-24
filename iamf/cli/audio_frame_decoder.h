@@ -23,8 +23,8 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 
 namespace iamf_tools {
 
@@ -43,8 +43,8 @@ struct DecodedAudioFrame {
   // Down-mixing parameters used to create this audio frame.
   DownMixingParams down_mixing_params;
 
-  // Recon gain parameters used to adjust the gain of this audio frame.
-  ReconGainInfoParameterData recon_gain_info_param_data;
+  // Recon gain info parameter data used to adjust the gain of this audio frame.
+  ReconGainInfoParameterData recon_gain_info_parameter_data;
 
   // The audio element with data associated with this frame.
   const AudioElementWithData* audio_element_with_data;

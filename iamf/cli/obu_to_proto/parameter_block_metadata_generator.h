@@ -15,6 +15,7 @@
 
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
+#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {
@@ -24,12 +25,14 @@ class ParameterBlockMetadataGenerator {
  public:
   /*!\brief Generates a proto representation of a `ParameterSubblock`
    *
-   * \param parameter_subblock The parameter subblock to convert to a proto.
-   * \return A proto representation of the parameter subblock or a specific
-   *     error on failure.
+   * \param param_definition_type Type of the parameter subblock.
+   * \param parameter_subblock Input parameter subblock to convert to a proto.
+   * \return Proto representation of the parameter subblock or a specific
+   *         error on failure.
    */
   static absl::StatusOr<iamf_tools_cli_proto::ParameterSubblock>
   GenerateParameterSubblockMetadata(
+      ParamDefinition::ParameterDefinitionType param_definition_type,
       const ParameterSubblock& parameter_subblock);
 };
 

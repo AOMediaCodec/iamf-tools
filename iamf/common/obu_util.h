@@ -231,42 +231,42 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
 
 /*!\brief Returns `absl::OkStatus()` if the arguments are equal.
  *
- * \param left First value to compare.
- * \param right Second value to compare.
+ * \param lhs First value to compare.
+ * \param rhs Second value to compare.
  * \param context Context to insert into the error message for debugging
  *     purposes.
  * \return `absl::OkStatus()` if the arguments are equal
  *     `absl::InvalidArgumentError()` if the arguments are not equal.
  */
 template <typename T>
-absl::Status ValidateEqual(const T& left, const T& right,
+absl::Status ValidateEqual(const T& lhs, const T& rhs,
                            const std::string& context) {
-  if (left == right) {
+  if (lhs == rhs) {
     return absl::OkStatus();
   }
 
-  return absl::InvalidArgumentError(absl::StrCat(
-      "Invalid ", context, ". Expected ", left, " == ", right, "."));
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid ", context, ". Expected ", lhs, " == ", rhs, "."));
 }
 
 /*!\brief Returns `absl::OkStatus()` if the arguments are not equal.
  *
- * \param left First value to compare.
- * \param right Second value to compare.
+ * \param lhs First value to compare.
+ * \param rhs Second value to compare.
  * \param context Context to insert into the error message for debugging
  *     purposes.
  * \return `absl::OkStatus()` if the arguments are not equal
  *     `absl::InvalidArgumentError()` if the arguments are equal.
  */
 template <typename T>
-absl::Status ValidateNotEqual(const T& left, const T& right,
+absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
                               const std::string& context) {
-  if (left != right) {
+  if (lhs != rhs) {
     return absl::OkStatus();
   }
 
-  return absl::InvalidArgumentError(absl::StrCat(
-      "Invalid ", context, ". Expected ", left, " != ", right, "."));
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid ", context, ". Expected ", lhs, " != ", rhs, "."));
 }
 
 /*!\brief Returns `absl::OkStatus()` if the argument has a value.

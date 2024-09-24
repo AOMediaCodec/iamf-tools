@@ -29,8 +29,8 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/demixing_info_param_data.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -62,7 +62,7 @@ struct LabeledFrame {
   uint32_t samples_to_trim_at_start;
   LabelSamplesMap label_to_samples;
   DownMixingParams demixing_params;
-  ReconGainInfoParameterData recon_gain_parameters;
+  ReconGainInfoParameterData recon_gain_info_parameter_data;
   // Vector of length `num_layers`. Only populated for scalable channel audio.
   std::vector<ChannelAudioLayerConfig::LoudspeakerLayout>
       loudspeaker_layout_per_layer;

@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/obu/demixing_info_param_data.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -22,6 +22,7 @@
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
 
@@ -88,7 +89,8 @@ absl::Status DemixingInfoParameterData::DMixPModeToDownMixingParams(
   return absl::OkStatus();
 }
 
-absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
+absl::Status DemixingInfoParameterData::Write(const PerIdParameterMetadata&,
+                                              WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(dmixp_mode, 3));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved, 5));
 
@@ -107,7 +109,8 @@ absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
   }
 }
 
-absl::Status DemixingInfoParameterData::Read(ReadBitBuffer& rb) {
+absl::Status DemixingInfoParameterData::ReadAndValidate(
+    const PerIdParameterMetadata&, ReadBitBuffer& rb) {
   uint8_t dmixp_mode_int;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, dmixp_mode_int));
   dmixp_mode = static_cast<DMixPMode>(dmixp_mode_int);
@@ -129,32 +132,36 @@ absl::Status DemixingInfoParameterData::Read(ReadBitBuffer& rb) {
 }
 
 void DemixingInfoParameterData::Print() const {
-  LOG(INFO) << "  dmixp_mode= " << absl::StrCat(dmixp_mode);
-  LOG(INFO) << "  reserved= " << absl::StrCat(reserved);
+  LOG(INFO) << "    dmixp_mode= " << absl::StrCat(dmixp_mode);
+  LOG(INFO) << "    reserved= " << absl::StrCat(reserved);
 }
 
-absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(DemixingInfoParameterData::Write(wb));
+absl::Status DefaultDemixingInfoParameterData::Write(
+    const PerIdParameterMetadata& per_id_metadata, WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(DemixingInfoParameterData::Write(per_id_metadata, wb));
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(default_w, 4));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_default, 4));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_for_future_use, 4));
 
   return absl::OkStatus();
 }
 
-absl::Status DefaultDemixingInfoParameterData::Read(ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(DemixingInfoParameterData::Read(rb));
+absl::Status DefaultDemixingInfoParameterData::ReadAndValidate(
+    const PerIdParameterMetadata& per_id_metadata, ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(
+      DemixingInfoParameterData::ReadAndValidate(per_id_metadata, rb));
 
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, default_w));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved_default));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved_for_future_use));
 
   return absl::OkStatus();
 }
 
 void DefaultDemixingInfoParameterData::Print() const {
   DemixingInfoParameterData::Print();
-  LOG(INFO) << "  default_w= " << absl::StrCat(default_w);
-  LOG(INFO) << "  reserved_default= " << absl::StrCat(reserved_default);
+  LOG(INFO) << "    default_w= " << absl::StrCat(default_w);
+  LOG(INFO) << "    reserved_for_future_use= "
+            << absl::StrCat(reserved_for_future_use);
 }
 
 }  // namespace iamf_tools
