@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
+#include <array>
 #include <cstdint>
 #include <list>
 #include <utility>
@@ -19,6 +20,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -50,6 +52,14 @@ using ::absl_testing::IsOkAndHolds;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
 constexpr uint32_t kSampleRate = 48000;
+
+constexpr auto kFrame0L2EightSamples = std::to_array<InternalSampleType>(
+    {1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16});
+constexpr auto kFrame0R2EightSamples = std::to_array<InternalSampleType>(
+    {65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16, 65531 << 16,
+     65530 << 16, 65529 << 16, 65528 << 16});
+constexpr std::array<InternalSampleType, 0> kEmptyFrame = {};
+
 // TODO(b/301490667): Add more tests. Include tests with samples trimmed at
 //                    the start and tests with multiple substreams. Include
 //                    tests to ensure the `*EncoderMetadata` are configured in
@@ -288,31 +298,31 @@ void GenerateAudioFrameWithEightSamples(
     return;
   }
 
-  // Add only one frame.
+  // Add only one frame with samples.
   int frame_count = 0;
-  const std::vector<InternalSampleType> frame_0_l2 = {
-      1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16};
-  const std::vector<InternalSampleType> frame_0_r2 = {
-      65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
-      65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
-  const std::vector<InternalSampleType> empty_frame;
 
-  // TODO(b/329375123): Test adding samples and outputing frames in different
+  const std::vector<absl::Span<const InternalSampleType>> kLeftFrames = {
+      kFrame0L2EightSamples, kEmptyFrame};
+  const std::vector<absl::Span<const InternalSampleType>> kRightFrames = {
+      kFrame0R2EightSamples, kEmptyFrame};
+
+  // TODO(b/329375123): Test adding samples and outputting frames in different
   //                    threads.
   while (audio_frame_generator.TakingSamples()) {
     for (const auto& audio_frame_metadata :
          user_metadata.audio_frame_metadata()) {
       const auto audio_element_id = audio_frame_metadata.audio_element_id();
-      EXPECT_THAT(audio_frame_generator.AddSamples(
-                      audio_element_id, ChannelLabel::kL2,
-                      frame_count == 0 ? frame_0_l2 : empty_frame),
-                  IsOk());
+      ASSERT_LE(frame_count, kLeftFrames.size());
+      EXPECT_THAT(
+          audio_frame_generator.AddSamples(audio_element_id, ChannelLabel::kL2,
+                                           kLeftFrames[frame_count]),
+          IsOk());
 
       // `AddSamples()` will trigger encoding once all samples for an
       // audio element have been added and thus may return a non-OK status.
+      ASSERT_LE(frame_count, kRightFrames.size());
       const auto add_samples_status = audio_frame_generator.AddSamples(
-          audio_element_id, ChannelLabel::kR2,
-          frame_count == 0 ? frame_0_r2 : empty_frame);
+          audio_element_id, ChannelLabel::kR2, kRightFrames[frame_count]);
       EXPECT_EQ(expected_add_samples_is_ok, add_samples_status.ok());
       if (!expected_add_samples_is_ok) {
         return;

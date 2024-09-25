@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <vector>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
@@ -24,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -140,7 +140,7 @@ class AudioFrameGenerator {
    */
   absl::Status AddSamples(DecodedUleb128 audio_element_id,
                           ChannelLabel::Label label,
-                          const std::vector<InternalSampleType>& samples);
+                          absl::Span<const InternalSampleType> samples);
 
   /*!\brief Finalizes the sample-adding process.
    *

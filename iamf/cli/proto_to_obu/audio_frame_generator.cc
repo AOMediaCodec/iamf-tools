@@ -32,6 +32,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
@@ -703,7 +704,7 @@ bool AudioFrameGenerator::TakingSamples() const {
 
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, ChannelLabel::Label label,
-    const std::vector<InternalSampleType>& samples) {
+    absl::Span<const InternalSampleType> samples) {
   const auto& audio_element_labels =
       audio_element_id_to_labels_.find(audio_element_id);
   if (audio_element_labels == audio_element_id_to_labels_.end()) {
@@ -713,7 +714,8 @@ absl::Status AudioFrameGenerator::AddSamples(
   }
 
   auto& labeled_samples = id_to_labeled_samples_[audio_element_id];
-  labeled_samples[label] = samples;
+  labeled_samples[label] =
+      std::vector<InternalSampleType>(samples.begin(), samples.end());
 
   const auto audio_element_iter = audio_elements_.find(audio_element_id);
   if (audio_element_iter == audio_elements_.end()) {
