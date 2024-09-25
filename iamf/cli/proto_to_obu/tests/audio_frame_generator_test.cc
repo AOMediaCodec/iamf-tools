@@ -902,6 +902,7 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
     absl::flat_hash_map<ChannelLabel::Label,
                         std::vector<absl::Span<const InternalSampleType>>>
         result;
+    result.reserve(kNumFrames);
     for (int i = 0; i < kNumFrames; ++i) {
       std::vector<InternalSampleType> samples(8, i << 16);
       result[ChannelLabel::kL2].push_back(samples);
