@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <numeric>
 #include <utility>
 #include <vector>
 
@@ -22,6 +23,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -736,6 +738,36 @@ TEST(GenerateParamIdToMetadataMapTest,
   auto param_id_to_metadata_map =
       GenerateParamIdToMetadataMap(param_definitions, audio_elements_with_data);
   EXPECT_FALSE(param_id_to_metadata_map.ok());
+}
+
+TEST(IsLogSpectralDistanceBelowThreshold, BelowThresholdSucceeds) {
+  std::vector<double> first_log_spectrum(10);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
+  std::vector<double> second_log_spectrum(10);
+  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
+  EXPECT_TRUE(IsLogSpectralDistanceBelowThreshold(
+      absl::MakeConstSpan(first_log_spectrum),
+      absl::MakeConstSpan(second_log_spectrum), 11.0));
+}
+
+TEST(IsLogSpectralDistanceBelowThreshold, AtThresholdSucceeds) {
+  std::vector<double> first_log_spectrum(10);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
+  std::vector<double> second_log_spectrum(10);
+  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
+  EXPECT_TRUE(IsLogSpectralDistanceBelowThreshold(
+      absl::MakeConstSpan(first_log_spectrum),
+      absl::MakeConstSpan(second_log_spectrum), 10.0));
+}
+
+TEST(ExpectLogSpectralDistanceBelowThreshold, AboveThresholdFails) {
+  std::vector<double> first_log_spectrum(10);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
+  std::vector<double> second_log_spectrum(10);
+  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
+  EXPECT_FALSE(IsLogSpectralDistanceBelowThreshold(
+      absl::MakeConstSpan(first_log_spectrum),
+      absl::MakeConstSpan(second_log_spectrum), 9.0));
 }
 
 }  // namespace

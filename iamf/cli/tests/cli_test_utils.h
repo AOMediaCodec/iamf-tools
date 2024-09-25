@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
@@ -189,6 +191,22 @@ std::string GetAndCleanupOutputFileName(absl::string_view suffix);
  * \return Unique file path based on the current unit test info.
  */
 std::string GetAndCreateOutputDirectory(absl::string_view suffix);
+
+/*!\brief Computes the log-spectral distance (LSD) between two spectra.
+ *
+ * The log-spectral distance (LSD) is a distance measure (expressed in dB)
+ * between two spectra.
+ *
+ * \param first_log_spectrum First log-spectrum to compare.
+ * \param second_log_spectrum Second log-spectrum to compare.
+ * \param threshold_db LSD threshold to compare against, in db.
+ * \return true if the log-spectral distance
+ *    between the two spectra is below the specified threshold, false otherwise.
+ */
+bool IsLogSpectralDistanceBelowThreshold(
+    const absl::Span<const InternalSampleType>& first_log_spectrum,
+    const absl::Span<const InternalSampleType>& second_log_spectrum,
+    double threshold_db);
 
 }  // namespace iamf_tools
 

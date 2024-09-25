@@ -12,6 +12,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <list>
@@ -23,9 +24,12 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/log.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -341,6 +345,23 @@ std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
   EXPECT_TRUE(
       std::filesystem::create_directories(output_directory, error_code));
   return output_directory;
+}
+
+bool IsLogSpectralDistanceBelowThreshold(
+    const absl::Span<const InternalSampleType>& first_log_spectrum,
+    const absl::Span<const InternalSampleType>& second_log_spectrum,
+    double threshold_db) {
+  const int num_samples = first_log_spectrum.size();
+  if (num_samples != second_log_spectrum.size()) {
+    LOG(ERROR) << "Spectrum sizes are not equal.";
+    return false;
+  }
+  double log_spectral_distance = 0.0;
+  for (int i = 0; i < num_samples; ++i) {
+    log_spectral_distance += (first_log_spectrum[i] - second_log_spectrum[i]) *
+                             (first_log_spectrum[i] - second_log_spectrum[i]);
+  }
+  return (10 * std::sqrt(log_spectral_distance / num_samples)) <= threshold_db;
 }
 
 }  // namespace iamf_tools
