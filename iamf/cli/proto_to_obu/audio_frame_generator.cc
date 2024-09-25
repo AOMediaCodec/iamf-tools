@@ -429,9 +429,15 @@ absl::Status EncodeFramesForAudioElement(
         }
         continue;
       }
+      auto& substream_data = substream_data_iter->second;
+      if (substream_data.samples_obu.empty()) {
+        // It's possible the user signalled to flush the stream, but it was
+        // already aligned. OK, there is nothing else to do.
+        continue;
+      }
+
       more_samples_to_encode = true;
 
-      auto& substream_data = substream_data_iter->second;
       // Encode.
       auto& encoder = substream_id_to_encoder.at(substream_id);
       if (substream_data.samples_encode.size() < num_samples_per_frame &&

@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <optional>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -319,17 +320,30 @@ void AddAllSamplesAndFinalizesExpectOk(
         ChannelLabel::Label, std::vector<absl::Span<const InternalSampleType>>>&
         label_to_frames,
     AudioFrameGenerator& audio_frame_generator) {
-  int frame_count = 0;
-  while (audio_frame_generator.TakingSamples()) {
+  // Avoid overflow below.
+  const int common_num_frames = label_to_frames.begin()->second.size();
+  for (const auto& [label, frames] : label_to_frames) {
+    ASSERT_EQ(common_num_frames, frames.size());
+  }
+
+  // Push in the user data.
+  for (int frame_count = 0; frame_count < common_num_frames; ++frame_count) {
+    EXPECT_TRUE((audio_frame_generator.TakingSamples()));
     for (const auto& [label, frames] : label_to_frames) {
-      ASSERT_LT(frame_count, frames.size());
       EXPECT_THAT(audio_frame_generator.AddSamples(audio_element_id, label,
                                                    frames[frame_count]),
                   IsOk());
     }
-    EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
-    frame_count++;
   }
+
+  for (const auto& [label, frames] : label_to_frames) {
+    EXPECT_THAT(
+        audio_frame_generator.AddSamples(audio_element_id, label, kEmptyFrame),
+        IsOk());
+  }
+
+  EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
+  EXPECT_FALSE(audio_frame_generator.TakingSamples());
 }
 
 // Safe to run simultaneously with `AddAllSamplesAndFinalizesExpectOk`.
@@ -366,14 +380,11 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
   // stream.
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
-      label_to_frames = {
-          {ChannelLabel::kL2, {kFrame0L2EightSamples, kEmptyFrame}},
-          {ChannelLabel::kR2, {kFrame0R2EightSamples, kEmptyFrame}}};
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
   ASSERT_FALSE(audio_elements.empty());
   const DecodedUleb128 audio_element_id = audio_elements.begin()->first;
 
-  // TODO(b/329375123): Test adding samples and outputting frames in different
-  //                    threads.
   AddAllSamplesAndFinalizesExpectOk(audio_element_id, label_to_frames,
                                     *audio_frame_generator);
   FlushAudioFrameGeneratorExpectOk(*audio_frame_generator, output_audio_frames);
@@ -756,9 +767,8 @@ TEST(AudioFrameGenerator, InvalidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
                                 parameters_manager, audio_frame_generator);
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
-      label_to_frames = {
-          {ChannelLabel::kL2, {kFrame0L2EightSamples, kEmptyFrame}},
-          {ChannelLabel::kR2, {kFrame0R2EightSamples, kEmptyFrame}}};
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
   AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
                                     *audio_frame_generator);
   std::list<AudioFrameWithData> unused_audio_frames;
@@ -810,6 +820,118 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
   std::list<AudioFrameWithData> audio_frames;
   FlushAudioFrameGeneratorExpectOk(*audio_frame_generator, audio_frames);
   EXPECT_TRUE(audio_frames.empty());
+}
+
+TEST(AudioFrameGenerator, FirstCallToAddSamplesMayBeEmpty) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                demixing_module, global_timing_module,
+                                parameters_manager, audio_frame_generator);
+  EXPECT_THAT(audio_frame_generator->AddSamples(kFirstAudioElementId,
+                                                ChannelLabel::kL2, kEmptyFrame),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(kFirstAudioElementId,
+                                                ChannelLabel::kR2, kEmptyFrame),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->Finalize(), IsOk());
+
+  std::list<AudioFrameWithData> audio_frames;
+  FlushAudioFrameGeneratorExpectOk(*audio_frame_generator, audio_frames);
+  EXPECT_TRUE(audio_frames.empty());
+}
+
+TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                demixing_module, global_timing_module,
+                                parameters_manager, audio_frame_generator);
+  constexpr int kNumFrames = 3;
+  const std::vector<absl::Span<const InternalSampleType>> kThreeFrames(
+      kNumFrames, kFrame0L2EightSamples);
+  const absl::flat_hash_map<ChannelLabel::Label,
+                            std::vector<absl::Span<const InternalSampleType>>>
+      label_to_frames = {{ChannelLabel::kL2, kThreeFrames},
+                         {ChannelLabel::kR2, kThreeFrames}};
+  AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
+                                    *audio_frame_generator);
+
+  std::list<AudioFrameWithData> audio_frames;
+  FlushAudioFrameGeneratorExpectOk(*audio_frame_generator, audio_frames);
+  EXPECT_EQ(audio_frames.size(), kNumFrames);
+}
+
+TEST(AudioFrameGenerator, ManyFramesThreaded) {
+  // Create a large number of frames, to increase the likelihood of exposing
+  // possible concurrency issues.
+  constexpr int kNumFrames = 1000;
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                demixing_module, global_timing_module,
+                                parameters_manager, audio_frame_generator);
+  const auto label_to_frames = []() -> auto {
+    absl::flat_hash_map<ChannelLabel::Label,
+                        std::vector<absl::Span<const InternalSampleType>>>
+        result;
+    for (int i = 0; i < kNumFrames; ++i) {
+      std::vector<InternalSampleType> samples(8, i << 16);
+      result[ChannelLabel::kL2].push_back(samples);
+      result[ChannelLabel::kR2].push_back(samples);
+    }
+    return result;
+  }();
+
+  std::thread sample_adder([&] {
+    AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
+                                      *audio_frame_generator);
+  });
+  std::list<AudioFrameWithData> output_audio_frames;
+  std::thread sample_collector([&] {
+    FlushAudioFrameGeneratorExpectOk(*audio_frame_generator,
+                                     output_audio_frames);
+  });
+
+  sample_adder.join();
+  sample_collector.join();
+  // We expect `kNumFrames` frames. The samples should count up incrementally.
+  EXPECT_EQ(output_audio_frames.size(), kNumFrames);
+  int index = 0;
+  for (const auto& audio_frame : output_audio_frames) {
+    EXPECT_EQ(audio_frame.start_timestamp, 8 * index);
+    const int32_t expected_sample = index << 16;
+    EXPECT_EQ(audio_frame.obu.audio_frame_[0], expected_sample & 0x00ff);
+    EXPECT_EQ(audio_frame.obu.audio_frame_[1], expected_sample & 0xff00);
+    index++;
+  }
 }
 
 }  // namespace
