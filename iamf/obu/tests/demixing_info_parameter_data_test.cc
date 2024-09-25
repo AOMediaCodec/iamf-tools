@@ -116,30 +116,35 @@ TEST(DMixPModeToDownMixingParams, InvalidWOffsetOver10) {
 }
 
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
-  DemixingInfoParameterData data(kDMixPMode1, 0);
+  constexpr auto kExpectedDMixPMode = kDMixPMode1;
+  DemixingInfoParameterData data(kExpectedDMixPMode, 0);
   WriteBitBuffer wb(1);
   EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
-  ValidateWriteResults(wb, {kDMixPMode1 << kDMixPModeBitShift});
+  ValidateWriteResults(wb, {kExpectedDMixPMode << kDMixPModeBitShift});
 }
 
 TEST(WriteDemixingInfoParameterData, WriteDMixPMode3) {
-  DemixingInfoParameterData data(kDMixPMode3, 0);
+  constexpr auto kExpectedDMixPMode = kDMixPMode3;
+  DemixingInfoParameterData data(kExpectedDMixPMode, 0);
   WriteBitBuffer wb(1);
   EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
-  ValidateWriteResults(wb, {kDMixPMode3 << kDMixPModeBitShift});
+  ValidateWriteResults(wb, {kExpectedDMixPMode << kDMixPModeBitShift});
 }
 
 TEST(WriteDemixingInfoParameterData, WriteReservedMax) {
+  constexpr auto kExpectedDMixPMode = kDMixPMode1;
   // The IAMF spec reserved a 5-bit value.
   const uint32_t kReservedMax = 31;
-  DemixingInfoParameterData data(kDMixPMode1, kReservedMax);
+  DemixingInfoParameterData data(kExpectedDMixPMode, kReservedMax);
   WriteBitBuffer wb(1);
   EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
-  ValidateWriteResults(wb, {kDMixPMode1 << kDMixPModeBitShift | kReservedMax});
+  ValidateWriteResults(
+      wb, {kExpectedDMixPMode << kDMixPModeBitShift | kReservedMax});
 }
 
 TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
-  DemixingInfoParameterData data(kDMixPModeReserved1, 0);
+  constexpr auto kReservedDMixPMode = kDMixPModeReserved1;
+  DemixingInfoParameterData data(kReservedDMixPMode, 0);
   WriteBitBuffer undetermined_wb(1);
   EXPECT_FALSE(data.Write(/*per_id_metadata=*/{}, undetermined_wb).ok());
 }

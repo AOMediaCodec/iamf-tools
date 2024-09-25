@@ -1,4 +1,3 @@
-build --linkopt=-lm
 # Runfiles are needed by several tests. Typically these are defaulted on for
 # non-Windows platforms.
 build --enable_runfiles
@@ -10,10 +9,12 @@ build --enable_bzlmod=false
 build --enable_platform_specific_config
 
 # Platform specific configuration.
+build:linux --linkopt=-lm
 build:linux --cxxopt=-std=c++20
 build:linux --cxxopt=-Wno-sign-compare
 
 build:macos --macos_minimum_os=12.0
+build:macos --linkopt=-lm
 build:macos --cxxopt=-std=c++20
 build:macos --cxxopt=-Wno-sign-compare
 

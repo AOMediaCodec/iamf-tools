@@ -195,7 +195,7 @@ class MixGainParamDefinition : public ParamDefinition {
    *
    * \return A deep clone of this param definition.
    */
-  virtual std::unique_ptr<ParamDefinition> Clone() {
+  std::unique_ptr<ParamDefinition> Clone() override {
     return std::make_unique<MixGainParamDefinition>(*this);
   };
 
