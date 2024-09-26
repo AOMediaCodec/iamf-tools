@@ -20,5 +20,5 @@ runs:
         fi
 
         # Run all unit tests.
-        bazelisk test -c opt iamf/...
+        bazelisk test -c opt  --test_output=errors iamf/...
 

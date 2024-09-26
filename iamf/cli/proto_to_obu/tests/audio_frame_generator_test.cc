@@ -11,6 +11,8 @@
  */
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
+#include <sys/stat.h>
+
 #include <array>
 #include <cstdint>
 #include <list>
@@ -898,15 +900,21 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
                                 codec_config_obus, audio_elements,
                                 demixing_module, global_timing_module,
                                 parameters_manager, audio_frame_generator);
-  const auto label_to_frames = []() -> auto {
+  // Vector backing the samples passed to `audio_frame_generator`.
+  const int kFrameSize = 8;
+  std::vector<std::vector<InternalSampleType>> all_samples(kNumFrames);
+  for (int i = 0; i < kNumFrames; ++i) {
+    all_samples[i].resize(kFrameSize, static_cast<InternalSampleType>(i));
+  }
+
+  const auto label_to_frames = [&]() -> auto {
     absl::flat_hash_map<ChannelLabel::Label,
                         std::vector<absl::Span<const InternalSampleType>>>
         result;
     result.reserve(kNumFrames);
     for (int i = 0; i < kNumFrames; ++i) {
-      std::vector<InternalSampleType> samples(8, i << 16);
-      result[ChannelLabel::kL2].push_back(samples);
-      result[ChannelLabel::kR2].push_back(samples);
+      result[ChannelLabel::kL2].push_back(absl::MakeConstSpan(all_samples[i]));
+      result[ChannelLabel::kR2].push_back(absl::MakeConstSpan(all_samples[i]));
     }
     return result;
   }();
@@ -927,10 +935,18 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   EXPECT_EQ(output_audio_frames.size(), kNumFrames);
   int index = 0;
   for (const auto& audio_frame : output_audio_frames) {
-    EXPECT_EQ(audio_frame.start_timestamp, 8 * index);
-    const int32_t expected_sample = index << 16;
-    EXPECT_EQ(audio_frame.obu.audio_frame_[0], expected_sample & 0x00ff);
-    EXPECT_EQ(audio_frame.obu.audio_frame_[1], expected_sample & 0xff00);
+    // Examine the first sample in each channel. We expect them to be in the
+    // same order as the input frames.
+    constexpr int kFirstSample = 0;
+    constexpr int kLeftChannel = 0;
+    constexpr int kRightChannel = 1;
+    const InternalSampleType expected_sample = all_samples[index][kFirstSample];
+    // The timestamp should count up by the number of samples in each frame.
+    EXPECT_EQ(audio_frame.start_timestamp, kFrameSize * index);
+    EXPECT_DOUBLE_EQ(audio_frame.raw_samples[kFirstSample][kLeftChannel],
+                     expected_sample);
+    EXPECT_DOUBLE_EQ(audio_frame.raw_samples[kFirstSample][kRightChannel],
+                     expected_sample);
     index++;
   }
 }
