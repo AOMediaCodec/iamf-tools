@@ -228,9 +228,10 @@ ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
   if (!metadata_subblock.ok()) {
     return metadata_subblock.status();
   }
-  metadata_subblock->set_subblock_duration(
-      parameter_subblock.subblock_duration);
-
+  if (parameter_subblock.subblock_duration.has_value()) {
+    metadata_subblock->set_subblock_duration(
+        *parameter_subblock.subblock_duration);
+  }
   return metadata_subblock;
 }
 

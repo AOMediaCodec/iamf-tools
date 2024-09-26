@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -33,9 +34,31 @@ namespace iamf_tools {
 
 /*!\brief An element of the Parameter Block OBU's `subblocks` vector. */
 struct ParameterSubblock {
+  /*!\brief Reads and validates the parameter subblock.
+   *
+   * \param per_id_metadata Per-ID parameter metadata.
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()`. Or a specific error code on failure.
+   */
+  absl::Status ReadAndValidate(const PerIdParameterMetadata& per_id_metadata,
+                               ReadBitBuffer& rb);
+
+  /*!\brief Validates and writes to a buffer.
+   *
+   * \param per_id_metadata Per-ID parameter metadata.
+   * \param wb Buffer to write to.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Write(const PerIdParameterMetadata& per_id_metadata,
+                     WriteBitBuffer& wb) const;
+
+  /*!\brief Prints the parameter subblock.
+   */
+  void Print() const;
+
   // `subblock_duration` is conditionally included based on
   // `param_definition_mode` and `constant_subblock_duration`.
-  DecodedUleb128 subblock_duration;
+  std::optional<DecodedUleb128> subblock_duration;
 
   // The active field depends on `param_definition_type` in the metadata.
   std::unique_ptr<ParameterData> param_data;
