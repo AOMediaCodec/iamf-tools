@@ -719,6 +719,28 @@ TEST_F(MixPresentationGeneratorTest, ReservedLayoutWithOneStereoAudioElement) {
   EXPECT_EQ(generated_obus_, expected_obus_);
 }
 
+TEST(CopySoundSystem, ValidSoundSystem) {
+  iamf_tools_cli_proto::SoundSystem input_sound_system =
+      iamf_tools_cli_proto::SOUND_SYSTEM_A_0_2_0;
+
+  LoudspeakersSsConventionLayout::SoundSystem output_sound_system;
+  EXPECT_THAT(MixPresentationGenerator::CopySoundSystem(input_sound_system,
+                                                        output_sound_system),
+              IsOk());
+  EXPECT_EQ(output_sound_system,
+            LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0);
+}
+
+TEST(CopySoundSystem, InvalidSoundSystem) {
+  iamf_tools_cli_proto::SoundSystem input_sound_system =
+      iamf_tools_cli_proto::SOUND_SYSTEM_INVALID;
+
+  LoudspeakersSsConventionLayout::SoundSystem output_sound_system;
+  EXPECT_FALSE(MixPresentationGenerator::CopySoundSystem(input_sound_system,
+                                                         output_sound_system)
+                   .ok());
+}
+
 TEST(CopyInfoType, Zero) {
   iamf_tools_cli_proto::LoudnessInfo user_loudness_info;
 

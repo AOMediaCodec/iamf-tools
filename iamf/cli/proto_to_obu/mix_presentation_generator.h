@@ -26,6 +26,16 @@ namespace iamf_tools {
 
 class MixPresentationGenerator {
  public:
+  /*!\brief Copies the sound system from the corresponding protocol buffer.
+   *
+   * \param input_sound_system Input protocol buffer.
+   * \param output_sound_system Result.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  static absl::Status CopySoundSystem(
+      const iamf_tools_cli_proto::SoundSystem& input_sound_system,
+      LoudspeakersSsConventionLayout::SoundSystem& output_sound_system);
+
   /*!\brief Copies the info type from the corresponding protocol buffer.
    *
    * \param input_loudness_info Input protocol buffer.
