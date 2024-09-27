@@ -34,7 +34,10 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/proto/mix_presentation.pb.h"
+#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
@@ -362,6 +365,42 @@ bool IsLogSpectralDistanceBelowThreshold(
                              (first_log_spectrum[i] - second_log_spectrum[i]);
   }
   return (10 * std::sqrt(log_spectral_distance / num_samples)) <= threshold_db;
+}
+
+std::vector<DecodeSpecification> GetDecodeSpecifications(
+    const iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  std::vector<DecodeSpecification> decode_specifications;
+  for (const auto& mix_presentation :
+       user_metadata.mix_presentation_metadata()) {
+    for (int i = 0; i < mix_presentation.num_sub_mixes(); ++i) {
+      for (int j = 0; j < mix_presentation.sub_mixes(i).num_layouts(); ++j) {
+        DecodeSpecification decode_specification;
+        decode_specification.mix_presentation_id =
+            mix_presentation.mix_presentation_id();
+        decode_specification.sub_mix_index = i;
+        if (mix_presentation.sub_mixes(i)
+                .layouts(j)
+                .loudness_layout()
+                .has_ss_layout()) {
+          auto sound_system_status = MixPresentationGenerator::CopySoundSystem(
+              mix_presentation.sub_mixes(i)
+                  .layouts(j)
+                  .loudness_layout()
+                  .ss_layout()
+                  .sound_system(),
+              decode_specification.sound_system);
+          if (!sound_system_status.ok()) {
+            LOG(ERROR) << "Failed to copy sound system: "
+                       << sound_system_status;
+            continue;
+          }
+        }
+        decode_specification.layout_index = j;
+        decode_specifications.push_back(decode_specification);
+      }
+    }
+  }
+  return decode_specifications;
 }
 
 }  // namespace iamf_tools

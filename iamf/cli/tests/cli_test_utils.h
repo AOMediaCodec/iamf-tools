@@ -24,6 +24,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
@@ -33,6 +34,16 @@
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+// A specification for a decode request. Currently used in the context of
+// extracting the relevant metadata from the UserMetadata proto associated
+// with a given test vector.
+struct DecodeSpecification {
+  uint32_t mix_presentation_id;
+  uint32_t sub_mix_index;
+  LoudspeakersSsConventionLayout::SoundSystem sound_system;
+  uint32_t layout_index;
+};
 
 /*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
  *
@@ -207,6 +218,17 @@ bool IsLogSpectralDistanceBelowThreshold(
     const absl::Span<const InternalSampleType>& first_log_spectrum,
     const absl::Span<const InternalSampleType>& second_log_spectrum,
     double threshold_db);
+
+/*!\brief Extracts the relevant metadata for a given test case.
+ *
+ * This is used to properly associate gold-standard wav files with the output of
+ * the decoder.
+ *
+ * \param user_metadata Proto associated with a given test vector.
+ * \return DecodeSpecification(s) for the given test case.
+ */
+std::vector<DecodeSpecification> GetDecodeSpecifications(
+    const iamf_tools_cli_proto::UserMetadata& user_metadata);
 
 }  // namespace iamf_tools
 
