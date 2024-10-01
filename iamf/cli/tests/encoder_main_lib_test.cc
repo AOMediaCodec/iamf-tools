@@ -173,17 +173,6 @@ struct TestVectorTestCase {
 
 using TestVector = ::testing::TestWithParam<TestVectorTestCase>;
 
-void ParseUserMetadataAssertSuccess(
-    const std::string& textproto_filename,
-    iamf_tools_cli_proto::UserMetadata& user_metadata) {
-  std::ifstream user_metadata_file(textproto_filename, std::ios::in);
-  std::ostringstream user_metadata_stream;
-  user_metadata_stream << user_metadata_file.rdbuf();
-
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      user_metadata_stream.str(), &user_metadata));
-}
-
 // Validate the "is_valid" field in a test vector textproto file is consistent
 // with the return value of `iamf_tools::TestMain()`.
 TEST_P(TestVector, ValidateTestSuite) {

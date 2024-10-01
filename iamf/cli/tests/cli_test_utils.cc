@@ -15,6 +15,8 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <ios>
 #include <list>
 #include <memory>
 #include <numeric>
@@ -51,6 +53,8 @@
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
+#include "src/google/protobuf/io/zero_copy_stream_impl.h"
+#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 
@@ -348,6 +352,16 @@ std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
   EXPECT_TRUE(
       std::filesystem::create_directories(output_directory, error_code));
   return output_directory;
+}
+
+void ParseUserMetadataAssertSuccess(
+    const std::string& textproto_filename,
+    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  ASSERT_TRUE(std::filesystem::exists(textproto_filename));
+  std::ifstream user_metadata_file(textproto_filename, std::ios::in);
+  google::protobuf::io::IstreamInputStream input_stream(&user_metadata_file);
+  ASSERT_TRUE(
+      google::protobuf::TextFormat::Parse(&input_stream, &user_metadata));
 }
 
 bool IsLogSpectralDistanceBelowThreshold(

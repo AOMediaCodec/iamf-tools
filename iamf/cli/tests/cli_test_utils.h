@@ -203,6 +203,17 @@ std::string GetAndCleanupOutputFileName(absl::string_view suffix);
  */
 std::string GetAndCreateOutputDirectory(absl::string_view suffix);
 
+/*!\brief Parses a textproto file into a `UserMetadata` proto.
+ *
+ * This function also asserts that the file exists and is readable.
+ *
+ * \param textproto_filename File to parse.
+ * \param user_metadata Proto to populate.
+ */
+void ParseUserMetadataAssertSuccess(
+    const std::string& textproto_filename,
+    iamf_tools_cli_proto::UserMetadata& user_metadata);
+
 /*!\brief Computes the log-spectral distance (LSD) between two spectra.
  *
  * The log-spectral distance (LSD) is a distance measure (expressed in dB)
