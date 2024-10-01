@@ -779,15 +779,17 @@ TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode0) {
   recon_gain_parameter_data_ = {
       {{{
             0,
-            // clang-format off
             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}  // clang-format on
+            // clang-format off
+            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+            // clang-format on
         },
         {
             ReconGainElement::kReconGainFlagR,
-            // clang-format off
             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}  // clang-format on
+            // clang-format off
+            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+            // clang-format on
         }}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 3};
@@ -807,15 +809,17 @@ TEST_F(ReconGainBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   recon_gain_parameter_data_ = {
       {{{
             0,
-            // clang-format off
             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}  // clang-format on
+            // clang-format off
+            {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+            // clang-format on
         },
         {
             ReconGainElement::kReconGainFlagR,
-            // clang-format off
             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}  // clang-format on
+            // clang-format off
+            {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+            // clang-format on
         }}}};
 
   // Configure the `LebGenerator`.
@@ -847,44 +851,50 @@ TEST_F(ReconGainBlockTest, MaxLayer7_1_4) {
                                                 true,  true, true};
   recon_gain_parameter_data_ = {
       {{{{
-             0,                         // Mono.
-                 // clang-format off
+             0,  // Mono.
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0}  // clang-format on
+             // clang-format off
+             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+             // clang-format on
          },
          {
              ReconGainElement::kReconGainFlagR,  // M + R stereo.
-                                                 // clang-format off
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0}           // clang-format on
+             // clang-format off
+             {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
+             // clang-format on
          },
          {
              ReconGainElement::kReconGainFlagRss |
                  ReconGainElement::kReconGainFlagLss,  // 5.1.0.
-                                                       // clang-format off
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  0,       2,       3,   0,   0,   0,   0,   0,   0,   0}                 // clang-format on
+             // clang-format off
+             {  0, 0,  0,       2,       3,   0,   0,   0,   0,   0,   0,   0},
+             // clang-format on
          },
          {
              ReconGainElement::kReconGainFlagLrs |
                  ReconGainElement::kReconGainFlagRrs,  // 7.1.0.
-                                                       // clang-format off
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  0,       0,       0,   0,   0,   4,   5,   0,   0,   0}                 // clang-format on
+             // clang-format off
+             {  0, 0,  0,       0,       0,   0,   0,   4,   5,   0,   0,   0},
+             // clang-format on
          },
          {
              ReconGainElement::kReconGainFlagLtf |
                  ReconGainElement::kReconGainFlagRtf,  // 7.1.2.
-                                                       // clang-format off
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  0,       0,       0,   6,   7,   0,   0,   0,   0,   0}                 // clang-format on
+             // clang-format off
+             {  0, 0,  0,       0,       0,   6,   7,   0,   0,   0,   0,   0},
+             // clang-format on
          },
          {
              ReconGainElement::kReconGainFlagLtb |
                  ReconGainElement::kReconGainFlagRtb,  // 7.1.4.
-                                                       // clang-format off
              // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   8,   9,   0}                 // clang-format on
+             // clang-format off
+             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   8,   9,   0},
+             // clang-format on
          }}}}};
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
