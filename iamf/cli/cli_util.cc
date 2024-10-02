@@ -45,6 +45,56 @@
 
 namespace iamf_tools {
 
+namespace {
+
+absl::Status GetPerIdMetadata(
+    const DecodedUleb128 parameter_id,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    const ParamDefinition* param_definition,
+    PerIdParameterMetadata& per_id_metadata) {
+  RETURN_IF_NOT_OK(ValidateHasValue(param_definition->GetType(),
+                                    "`param_definition_type`."));
+  // Initialize common fields.
+  per_id_metadata.param_definition_type = param_definition->GetType().value();
+  per_id_metadata.param_definition = *param_definition;
+
+  // Return early if this is not a recon gain parameter and the rest of the
+  // fields are not present.
+  if (per_id_metadata.param_definition_type !=
+      ParamDefinition::kParameterDefinitionReconGain) {
+    return absl::OkStatus();
+  }
+
+  const ReconGainParamDefinition* recon_gain_param_definition =
+      static_cast<const ReconGainParamDefinition*>(param_definition);
+  auto audio_element_iter =
+      audio_elements.find(recon_gain_param_definition->audio_element_id_);
+  if (audio_element_iter == audio_elements.end()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Audio Element ID: ", recon_gain_param_definition->audio_element_id_,
+        " associated with the recon gain parameter of ID: ", parameter_id,
+        " not found"));
+  }
+  per_id_metadata.audio_element_id = audio_element_iter->first;
+  const auto& channel_config = std::get<ScalableChannelLayoutConfig>(
+      audio_element_iter->second.obu.config_);
+  per_id_metadata.num_layers = channel_config.num_layers;
+  per_id_metadata.recon_gain_is_present_flags.resize(
+      per_id_metadata.num_layers);
+  for (int l = 0; l < per_id_metadata.num_layers; l++) {
+    per_id_metadata.recon_gain_is_present_flags[l] =
+        (channel_config.channel_audio_layer_configs[l]
+             .recon_gain_is_present_flag == 1);
+  }
+  per_id_metadata.channel_numbers_for_layers =
+      audio_element_iter->second.channel_numbers_for_layers;
+
+  return absl::OkStatus();
+}
+
+}  // namespace
+
 absl::Status CopyParamDefinition(
     const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
     ParamDefinition& param_definition) {
@@ -249,34 +299,17 @@ GenerateParamIdToMetadataMap(
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   for (const auto& [parameter_id, param_definition] : param_definitions) {
-    PerIdParameterMetadata metadata;
-    metadata.param_definition_type = param_definition->GetType().value();
-    metadata.param_definition = *param_definition;
-    if (metadata.param_definition_type ==
-        ParamDefinition::kParameterDefinitionReconGain) {
-      metadata.audio_element_id =
-          static_cast<const ReconGainParamDefinition&>(*param_definition)
-              .audio_element_id_;
-      auto audio_element_iter = audio_elements.find(metadata.audio_element_id);
-      if (audio_element_iter == audio_elements.end()) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Audio Element ID: ", metadata.audio_element_id,
-            " associated with the recon gain parameter of ID: ", parameter_id,
-            " not found"));
-      }
-      const auto& channel_config = std::get<ScalableChannelLayoutConfig>(
-          audio_element_iter->second.obu.config_);
-      metadata.num_layers = channel_config.num_layers;
-      metadata.recon_gain_is_present_flags.resize(metadata.num_layers);
-      for (int l = 0; l < metadata.num_layers; l++) {
-        metadata.recon_gain_is_present_flags[l] =
-            (channel_config.channel_audio_layer_configs[l]
-                 .recon_gain_is_present_flag == 1);
-      }
-      metadata.channel_numbers_for_layers =
-          audio_element_iter->second.channel_numbers_for_layers;
+    auto [iter, inserted] = parameter_id_to_metadata.insert(
+        {parameter_id, PerIdParameterMetadata()});
+    if (!inserted) {
+      // An entry corresponding to the same ID is already in the map.
+      continue;
     }
-    parameter_id_to_metadata.insert({parameter_id, metadata});
+
+    // Create a new entry.
+    auto& per_id_metadata = iter->second;
+    RETURN_IF_NOT_OK(GetPerIdMetadata(parameter_id, audio_elements,
+                                      param_definition, per_id_metadata));
   }
   return parameter_id_to_metadata;
 }
