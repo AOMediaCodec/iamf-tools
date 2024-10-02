@@ -11,8 +11,6 @@
  */
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
-#include <sys/stat.h>
-
 #include <array>
 #include <cstdint>
 #include <list>
