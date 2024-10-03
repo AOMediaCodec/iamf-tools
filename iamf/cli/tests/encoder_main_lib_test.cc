@@ -18,7 +18,7 @@
 #include <sstream>
 #include <string>
 
-// Placeholder for get runfiles header.
+// [internal] Placeholder for get runfiles header.
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"

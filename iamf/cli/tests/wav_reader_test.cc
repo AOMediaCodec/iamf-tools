@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-// Placeholder for get runfiles header.
+// [internal] Placeholder for get runfiles header.
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"

@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-// Placeholder for get runfiles header.
+// [internal] Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
