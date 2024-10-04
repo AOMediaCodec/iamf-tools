@@ -33,90 +33,100 @@ constexpr int kBitDepth24 = 24;
 constexpr int kBitDepth32 = 32;
 
 TEST(WavWriterTest, Construct16BitWavWriter) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth16);
-  EXPECT_EQ(wav_writer.bit_depth(), kBitDepth16);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth16);
+  ASSERT_NE(wav_writer, nullptr);
+  EXPECT_EQ(wav_writer->bit_depth(), kBitDepth16);
 }
 
 TEST(WavWriterTest, Construct16BitWavWriterWithoutHeader) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth16, /*write_header=*/false);
-  EXPECT_EQ(wav_writer.bit_depth(), kBitDepth16);
+  auto wav_writer =
+      WavWriter::Create(GetAndCleanupOutputFileName(".wav"), kNumChannels,
+                        kSampleRateHz, kBitDepth16, /*write_header=*/false);
+  ASSERT_NE(wav_writer, nullptr);
+  EXPECT_EQ(wav_writer->bit_depth(), kBitDepth16);
 }
 
 TEST(WavWriterTest, Construct24BitWavWriter) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth24);
-  EXPECT_EQ(wav_writer.bit_depth(), kBitDepth24);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth24);
+  ASSERT_NE(wav_writer, nullptr);
+  EXPECT_EQ(wav_writer->bit_depth(), kBitDepth24);
 }
 
 TEST(WavWriterTest, Construct32BitWavWriter) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth32);
-  EXPECT_EQ(wav_writer.bit_depth(), kBitDepth32);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth32);
+  ASSERT_NE(wav_writer, nullptr);
+  EXPECT_EQ(wav_writer->bit_depth(), kBitDepth32);
 }
 
-TEST(WavWriterTest, InvalidBitDepthFailsAtWriting) {
+TEST(WavWriterTest, InvalidBitDepthFailsAtCreation) {
   const int kInvalidBitDepth = 13;
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kInvalidBitDepth);
-
-  // `WriteSamples()` returning `false` means writing failed.
-  std::vector<uint8_t> samples(10, 0);
-  EXPECT_FALSE(wav_writer.WriteSamples(samples));
+  auto wav_writer =
+      WavWriter::Create(GetAndCleanupOutputFileName(".wav"), kNumChannels,
+                        kSampleRateHz, kInvalidBitDepth);
+  EXPECT_EQ(wav_writer, nullptr);
 }
 
 TEST(WavWriterTest, WriteEmptySamplesSucceeds) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth24);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth24);
+  ASSERT_NE(wav_writer, nullptr);
 
   std::vector<uint8_t> empty_samples(0);
-  EXPECT_TRUE(wav_writer.WriteSamples(empty_samples));
+  EXPECT_TRUE(wav_writer->WriteSamples(empty_samples));
 }
 
 TEST(WavWriterTest, WriteIntegerSamplesSucceeds) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth16);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth16);
+  ASSERT_NE(wav_writer, nullptr);
 
   // Bit depth = 16, and writing 6 bytes = 48 bits = 3 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  EXPECT_TRUE(wav_writer->WriteSamples(samples));
 }
 
 TEST(WavWriterTest, WriteNonIntegerNumberOfSamplesFails) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth16);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth16);
+  ASSERT_NE(wav_writer, nullptr);
 
   // Bit depth = 16, and writing 3 bytes = 24 bits = 1.5 samples fails.
   std::vector<uint8_t> samples(3, 0);
-  EXPECT_FALSE(wav_writer.WriteSamples(samples));
+  EXPECT_FALSE(wav_writer->WriteSamples(samples));
 }
 
 TEST(WavWriterTest, WriteIntegerSamplesSucceedsWithoutHeader) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth16, /*write_header=*/false);
+  auto wav_writer =
+      WavWriter::Create(GetAndCleanupOutputFileName(".wav"), kNumChannels,
+                        kSampleRateHz, kBitDepth16, /*write_header=*/false);
+  ASSERT_NE(wav_writer, nullptr);
 
   // Bit depth = 16, and writing 6 bytes = 48 bits = 3 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  EXPECT_TRUE(wav_writer->WriteSamples(samples));
 }
 
 TEST(WavWriterTest, Write24BitSamplesSucceeds) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth24);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth24);
+  ASSERT_NE(wav_writer, nullptr);
 
   // Bit depth = 24, and writing 6 bytes = 48 bits = 2 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  EXPECT_TRUE(wav_writer->WriteSamples(samples));
 }
 
 TEST(WavWriterTest, Write32BitSamplesSucceeds) {
-  WavWriter wav_writer(GetAndCleanupOutputFileName(".wav"), kNumChannels,
-                       kSampleRateHz, kBitDepth32);
+  auto wav_writer = WavWriter::Create(GetAndCleanupOutputFileName(".wav"),
+                                      kNumChannels, kSampleRateHz, kBitDepth32);
+  ASSERT_NE(wav_writer, nullptr);
 
   // Bit depth = 32, and writing 8 bytes = 64 bits = 2 samples succeeds.
   std::vector<uint8_t> samples = {1, 0, 0, 0, 2, 0, 0, 0};
-  EXPECT_TRUE(wav_writer.WriteSamples(samples));
+  EXPECT_TRUE(wav_writer->WriteSamples(samples));
 }
 
 TEST(WavWriterTest, FileExistsAndHasNonZeroSizeWithHeader) {
@@ -125,8 +135,8 @@ TEST(WavWriterTest, FileExistsAndHasNonZeroSizeWithHeader) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path.string(), kNumChannels, kSampleRateHz,
-                         kBitDepth16);
+    auto wav_writer = WavWriter::Create(output_file_path.string(), kNumChannels,
+                                        kSampleRateHz, kBitDepth16);
   }
 
   EXPECT_TRUE(std::filesystem::exists(output_file_path));
@@ -141,14 +151,16 @@ TEST(WavWriterTest, EmptyFileExistsAndHasZeroSizeWithoutHeader) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path.string(), kNumChannels, kSampleRateHz,
-                         kBitDepth16, /*write_header=*/false);
+    auto wav_writer =
+        WavWriter::Create(output_file_path.string(), kNumChannels,
+                          kSampleRateHz, kBitDepth16, /*write_header=*/false);
   }
 
   EXPECT_TRUE(std::filesystem::exists(output_file_path));
 
   std::error_code error_code;
-  EXPECT_EQ(std::filesystem::file_size(output_file_path, error_code), 0);
+  EXPECT_EQ(std::filesystem::file_size(output_file_path, error_code), 0)
+      << output_file_path;
   EXPECT_FALSE(error_code);
 }
 
@@ -159,10 +171,12 @@ TEST(WavWriterTest, OutputFileHasCorrectSizeWithoutHeader) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path.string(), kNumChannels, kSampleRateHz,
-                         kBitDepth16, /*write_header=*/false);
+    auto wav_writer =
+        WavWriter::Create(output_file_path.string(), kNumChannels,
+                          kSampleRateHz, kBitDepth16, /*write_header=*/false);
+    ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
-    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+    EXPECT_TRUE(wav_writer->WriteSamples(samples));
   }
 
   std::error_code error_code;
@@ -181,11 +195,12 @@ TEST(WavWriterTest, Output16BitWavFileHasCorrectData) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                         kBitDepth16);
+    auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                        kSampleRateHz, kBitDepth16);
+    ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+    EXPECT_TRUE(wav_writer->WriteSamples(samples));
   }
 
   auto wav_reader =
@@ -204,11 +219,12 @@ TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                         kBitDepth24);
+    auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                        kSampleRateHz, kBitDepth24);
+    ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+    EXPECT_TRUE(wav_writer->WriteSamples(samples));
   }
 
   auto wav_reader =
@@ -227,11 +243,12 @@ TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                         kBitDepth32);
+    auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                        kSampleRateHz, kBitDepth32);
+    ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer.WriteSamples(samples));
+    EXPECT_TRUE(wav_writer->WriteSamples(samples));
   }
 
   auto wav_reader =
@@ -246,8 +263,9 @@ TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {
   {
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                         kBitDepth32);
+    auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                        kSampleRateHz, kBitDepth32);
+    ASSERT_NE(wav_writer, nullptr);
   }
 
   auto wav_reader = CreateWavReaderExpectOk(output_file_path);
@@ -259,11 +277,14 @@ TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {
 TEST(WavWriterTest, OutputWavFileHasCorrectPropertiesAfterMoving) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   {
-    WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                         kBitDepth32);
+    auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                        kSampleRateHz, kBitDepth32);
+    ASSERT_NE(wav_writer, nullptr);
+
     // Create the writer in a small scope. It should be destroyed before
     // checking the results.
-    WavWriter new_wav_writer = std::move(wav_writer);
+    auto new_wav_writer = std::move(wav_writer);
+    ASSERT_NE(new_wav_writer, nullptr);
   }
 
   const auto wav_reader = CreateWavReaderExpectOk(output_file_path);
@@ -274,37 +295,14 @@ TEST(WavWriterTest, OutputWavFileHasCorrectPropertiesAfterMoving) {
 
 TEST(WavWriterTest, AbortDeletesOutputFile) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  WavWriter wav_writer(output_file_path, kNumChannels, kSampleRateHz,
-                       kBitDepth16);
-  wav_writer.Abort();
+  auto wav_writer = WavWriter::Create(output_file_path, kNumChannels,
+                                      kSampleRateHz, kBitDepth16);
+  ASSERT_NE(wav_writer, nullptr);
+  wav_writer->Abort();
 
   // Expect that the output file is deleted.
   EXPECT_FALSE(
       std::filesystem::exists(std::filesystem::path(output_file_path)));
-}
-
-TEST(WavWriterTest, MovingSucceeds) {
-  const std::filesystem::path output_file_path(
-      GetAndCleanupOutputFileName(".wav"));
-  WavWriter wav_writer(output_file_path.string(), kNumChannels, kSampleRateHz,
-                       kBitDepth16);
-
-  // Move.
-  WavWriter new_wav_writer = std::move(wav_writer);
-
-  // Expect that the new `wav_writer` has the same attributes as the original.
-  EXPECT_EQ(new_wav_writer.bit_depth(), kBitDepth16);
-
-  // Expect that the output file still exists.
-  EXPECT_TRUE(std::filesystem::exists(output_file_path));
-
-  // Expect the new `wav_writer` can write samples.
-  std::vector<uint8_t> samples(10, 0);
-  EXPECT_TRUE(new_wav_writer.WriteSamples(samples));
-
-  // Expect that aborting after moving deletes the output file.
-  new_wav_writer.Abort();
-  EXPECT_FALSE(std::filesystem::exists(output_file_path));
 }
 
 }  // namespace

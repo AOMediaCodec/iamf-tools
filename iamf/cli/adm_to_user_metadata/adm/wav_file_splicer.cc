@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -53,9 +54,9 @@ std::vector<std::vector<int32_t>> GetAudioTracksForAudioObjects(
 }
 
 void AbortAllWavWriters(
-    std::vector<WavWriter>& audio_object_index_to_wav_writer) {
+    std::vector<std::unique_ptr<WavWriter>>& audio_object_index_to_wav_writer) {
   for (auto& wav_writer : audio_object_index_to_wav_writer) {
-    wav_writer.Abort();
+    wav_writer->Abort();
   }
 }
 
@@ -88,19 +89,19 @@ absl::Status SpliceWavFilesFromAdm(
 
   // Construct the wav writers to use a file name of the form 'converted'
   // followed by the 1-indexed content.
-  std::vector<WavWriter> audio_object_index_to_wav_writer;
+  std::vector<std::unique_ptr<WavWriter>> audio_object_index_to_wav_writer;
   audio_object_index_to_wav_writer.reserve(
       audio_tracks_for_audio_objects.size());
   const FormatInfoChunk& wav_file_fmt = reader.format_info_;
   for (int audio_object_index = 0;
        audio_object_index < audio_tracks_for_audio_objects.size();
        ++audio_object_index) {
-    audio_object_index_to_wav_writer.emplace_back(
+    audio_object_index_to_wav_writer.emplace_back(WavWriter::Create(
         (output_file_path / absl::StrCat(file_prefix, "_converted",
                                          audio_object_index + 1, ".wav"))
             .string(),
         audio_tracks_for_audio_objects[audio_object_index].size(),
-        wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample);
+        wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample));
   }
 
   // Write audio samples into the corresponding output wav file(s).
@@ -149,7 +150,7 @@ absl::Status SpliceWavFilesFromAdm(
       // Occasionally flush the buffer to the corresponding wav writer.
       if (samples_for_audio_object.size() >= kSizeToFlush) {
         FlushToWavWriter(samples_for_audio_object,
-                         audio_object_index_to_wav_writer[audio_object_index]);
+                         *audio_object_index_to_wav_writer[audio_object_index]);
       }
     }
   }
@@ -159,7 +160,7 @@ absl::Status SpliceWavFilesFromAdm(
        audio_object_index < audio_tracks_for_audio_objects.size();
        ++audio_object_index) {
     FlushToWavWriter(interlaced_samples_for_audio_objects[audio_object_index],
-                     audio_object_index_to_wav_writer[audio_object_index]);
+                     *audio_object_index_to_wav_writer[audio_object_index]);
   }
   return absl::OkStatus();
 }

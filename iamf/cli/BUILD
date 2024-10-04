@@ -461,8 +461,10 @@ cc_library(
     srcs = ["wav_writer.cc"],
     hdrs = ["wav_writer.h"],
     deps = [
+        "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/memory",
         "@com_google_audio_to_tactile//:dsp",
     ],
 )

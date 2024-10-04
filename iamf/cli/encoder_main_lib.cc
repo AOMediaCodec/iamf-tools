@@ -60,8 +60,7 @@ std::unique_ptr<WavWriter> ProduceAllWavWriters(
   const auto wav_path = absl::StrCat(
       prefix.string(), "_rendered_id_", mix_presentation_id, "_sub_mix_",
       sub_mix_index, "_layout_", layout_index, ".wav");
-  return std::make_unique<WavWriter>(wav_path, num_channels, sample_rate,
-                                     bit_depth);
+  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth);
 }
 
 absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
