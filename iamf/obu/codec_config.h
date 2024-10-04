@@ -82,9 +82,6 @@ class CodecConfigObu : public ObuBase {
   static absl::StatusOr<CodecConfigObu> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb);
 
-  /*!\brief Move constructor.*/
-  CodecConfigObu(CodecConfigObu&& other) = default;
-
   /*!\brief Destructor. */
   ~CodecConfigObu() override = default;
 

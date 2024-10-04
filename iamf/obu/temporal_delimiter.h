@@ -49,9 +49,6 @@ class TemporalDelimiterObu : public ObuBase {
   explicit TemporalDelimiterObu(ObuHeader header)
       : ObuBase(header, kObuIaTemporalDelimiter) {}
 
-  /*!\brief Move constructor.*/
-  TemporalDelimiterObu(TemporalDelimiterObu&& other) = default;
-
   /*!\brief Destructor. */
   ~TemporalDelimiterObu() override = default;
 

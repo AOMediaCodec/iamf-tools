@@ -41,9 +41,6 @@ class ObuBase {
   ObuBase(ObuType obu_type) : ObuBase(ObuHeader(), obu_type) {}
   ObuBase() = default;
 
-  /*!\brief Copy constructor.*/
-  ObuBase(const ObuBase& other) = default;
-
   /*!\brief Destructor.*/
   virtual ~ObuBase() = 0;
 

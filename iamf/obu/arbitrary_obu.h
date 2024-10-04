@@ -69,9 +69,6 @@ class ArbitraryObu : public ObuBase {
         insertion_tick_(insertion_tick),
         invalidates_bitstream_(invalidates_bitstream) {}
 
-  /*!\brief Move constructor.*/
-  ArbitraryObu(ArbitraryObu&& other) = default;
-
   /*!\brief Destructor. */
   ~ArbitraryObu() override = default;
 

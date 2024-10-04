@@ -62,9 +62,6 @@ class AudioFrameObu : public ObuBase {
   AudioFrameObu(const ObuHeader& header, DecodedUleb128 substream_id,
                 const std::vector<uint8_t>& audio_frame);
 
-  /*!\brief Move constructor.*/
-  AudioFrameObu(AudioFrameObu&& other) = default;
-
   /*!\brief Destructor.*/
   ~AudioFrameObu() = default;
 

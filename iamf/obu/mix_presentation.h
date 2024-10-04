@@ -399,12 +399,6 @@ class MixPresentationObu : public ObuBase {
   static absl::StatusOr<MixPresentationObu> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb);
 
-  /*!\brief Move Constructor. */
-  MixPresentationObu(MixPresentationObu&& other) = default;
-
-  /*!\brief Copy Constructor. */
-  MixPresentationObu(const MixPresentationObu& other) = default;
-
   /*!\brief Destructor. */
   ~MixPresentationObu() override = default;
 
