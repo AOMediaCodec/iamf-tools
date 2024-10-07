@@ -26,8 +26,8 @@ namespace adm_to_user_metadata {
  *
  * \param xml_data XML data to parse.
  * \param importance_threshold Threshold for to determine which audio objects to
- *     ignore. Any `audioObject`s with a lower `importance` will be dropped from
- *     the output ADM.
+ *        ignore. Any `audioObject`s with a lower `importance` will be dropped
+ *        from the output ADM.
  * \return Output ADM on success. A specific error code on failure.
  */
 absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,

@@ -31,7 +31,7 @@ class WavReader {
    * \param wav_filename Filename of file to read.
    * \param num_samples_per_frame Maximum number of samples per frame to read.
    * \param `WavReader` on success. A specific error code if the file could not
-   *     be opened or was not detected to be a valid WAV file.
+   *        be opened or was not detected to be a valid WAV file.
    */
   static absl::StatusOr<WavReader> CreateFromFile(
       const std::string& wav_filename, size_t num_samples_per_frame);
@@ -88,7 +88,7 @@ class WavReader {
  private:
   /*!\brief Private constructor.
    *
-   *  Used by factory function.
+   * Used by factory function.
    */
   WavReader(size_t num_samples_per_frame, FILE* file, const ReadWavInfo& info);
 

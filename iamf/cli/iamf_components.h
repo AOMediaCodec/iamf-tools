@@ -32,9 +32,9 @@ namespace iamf_tools {
  *
  * \param file_name_prefix Prefix of output file name.
  * \param output_wav_file_bit_depth_override Override for the bit-depth of
- *     the rendered wav file.
+ *        the rendered wav file.
  * \param validate_loudness Whether to validate computed loudness matches the
- *     user-provided loudness.
+ *        user-provided loudness.
  * \return Unique pointer to the created Mix Presentation finalizer.
  */
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
@@ -49,7 +49,7 @@ std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
  * \param user_metadata Input user metadata.
  * \param output_iamf_directory Directory to output IAMF files to.
  * \param include_temporal_delimiters Whether the serialized data should
- *     include temporal delimiters.
+ *        include temporal delimiters.
  * \return Vector of unique pointers to the created OBU sequencers.
  */
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(

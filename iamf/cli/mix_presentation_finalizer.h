@@ -71,7 +71,7 @@ class MixPresentationFinalizerBase {
    *
    * \param audio_elements Input Audio Element OBUs with data.
    * \param id_to_time_to_labeled_frame Data structure of samples, keyed by
-   *     audio element ID, starting timestamp, and channel label.
+   *        audio element ID, starting timestamp, and channel label.
    * \param parameter_blocks Input Parameter Block OBUs.
    * \param wav_writer_factory Factory for creating output rendered wav files.
    * \param mix_presentation_obus Output list of OBUs to finalize.
@@ -108,7 +108,7 @@ class MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer
    * \param id_to_time_to_labeled_frame Data structure of samples.
    * \param parameter_blocks Input Parameter Block OBUs.
    * \param wav_writer_factory Factory for creating output rendered wav files
-   *     when the rendering succeeds.
+   *        when the rendering succeeds.
    * \param mix_presentation_obus Output list of OBUs to finalize.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */

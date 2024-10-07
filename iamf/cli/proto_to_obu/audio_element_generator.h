@@ -60,7 +60,7 @@ class AudioElementGenerator {
    * \param audio_element_obu Mono ambisonics config OBU to process.
    * \param substream_id_to_labels Output map of substream IDs to labels.
    * \return `absl::OkStatus()` on success. An error if the input OBU is not an
-   *     ambisonics config. A specific status on failure.
+   *         ambisonics config. A specific status on failure.
    */
   static absl::Status FinalizeAmbisonicsConfig(
       const AudioElementObu& audio_element_obu,

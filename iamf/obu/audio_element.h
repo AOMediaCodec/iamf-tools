@@ -109,7 +109,7 @@ struct ChannelAudioLayerConfig {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status Write(WriteBitBuffer& wb) const;
 
@@ -150,7 +150,7 @@ struct ScalableChannelLayoutConfig {
   /*!\brief Validates the configuration.
    *
    * \param num_substreams_in_audio_element Number of substreams in the
-   *     corresponding OBU.
+   *        corresponding OBU.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
@@ -174,7 +174,7 @@ struct AmbisonicsMonoConfig {
   /*!\brief Validates the configuration.
    *
    * \param num_substreams_in_audio_element Number of substreams in the
-   *     corresponding OBU.
+   *        corresponding OBU.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
@@ -194,7 +194,7 @@ struct AmbisonicsProjectionConfig {
   /*!\brief Validates the configuration.
    *
    * \param num_substreams_in_audio_element Number of substreams in the
-   *     corresponding OBU.
+   *        corresponding OBU.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
@@ -227,9 +227,9 @@ struct AmbisonicsConfig {
    *
    * \param requested_output_channel_count Requested number of channels.
    * \param next_valid_output_channel_count Minimum valid `output_channel_count`
-   *     that has at least the required number of channels.
+   *        that has at least the required number of channels.
    * \return `absl::OkStatus()` if successful. `kIamfInvalid` argument if
-   *     the input is too large.
+   *         the input is too large.
    */
   static absl::Status GetNextValidOutputChannelCount(
       uint8_t requested_output_channel_count,
@@ -298,7 +298,7 @@ class AudioElementObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `AudioElementObu` data is stored.
-   *     Data read from the buffer is consumed.
+   *        Data read from the buffer is consumed.
    * \return an `AudioElementObu` on success. A specific status on failure.
    */
   static absl::StatusOr<AudioElementObu> CreateFromBuffer(
@@ -380,7 +380,7 @@ class AudioElementObu : public ObuBase {
    * [`kAudioElementBeginReserved`, `kAudioElementEndReserved`].
    *
    * \param audio_element_config_size Size in bytes of the
-   *     `audio_element_config_bytes`.
+   *        `audio_element_config_bytes`.
    */
   void InitializeExtensionConfig(uint32_t audio_element_config_size);
 
@@ -423,7 +423,7 @@ class AudioElementObu : public ObuBase {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
@@ -432,7 +432,7 @@ class AudioElementObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

@@ -46,11 +46,11 @@ class CodecConfigGenerator {
    * debugging purposes.
    *
    * \param codec_config_obus Map of Codec Config ID to generated Codec Config
-   *     OBUs.
+   *        OBUs.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     invalid values of enumerations are used or if casting input fields
-   *     would result in lost information. `kIamfInvalidBitstream` if `codec_id`
-   *     is unrecognized.
+   *         invalid values of enumerations are used or if casting input fields
+   *         would result in lost information. `kIamfInvalidBitstream` if
+   *         `codec_id` is unrecognized.
    */
   absl::Status Generate(
       absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);

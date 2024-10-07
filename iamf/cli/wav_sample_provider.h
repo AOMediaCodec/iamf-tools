@@ -57,7 +57,7 @@ class WavSampleProvider {
   /*!\brief Read frames from WAV files corresponding to an Audio Element.
    *
    * \param audio_element_id ID of the Audio Element whose corresponding frames
-   *      are to be read from WAV files.
+   *        are to be read from WAV files.
    * \param labeled_samples Output samples organized by their channel labels.
    * \param finished_reading Whether the reading is finished.
    * \return `absl::OkStatus()` on success. A specific status on failure.

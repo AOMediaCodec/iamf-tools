@@ -76,8 +76,8 @@ class AudioFrameDecoder {
   /*!\brief Initialize codec decoders for each substream.
    *
    * \param substream_id_to_labels Substreams and their associated labels to
-   *     initialize. The number of channels is determined by the number of
-   *     labels.
+   *        initialize. The number of channels is determined by the number of
+   *        labels.
    * \param codec_config Codec Config OBU to use for all substreams.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */

@@ -50,7 +50,7 @@ class MixPresentationGenerator {
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
+   *        initialized.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status CopyUserIntegratedLoudnessAndPeaks(
@@ -61,7 +61,7 @@ class MixPresentationGenerator {
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
+   *        initialized.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status CopyUserAnchoredLoudness(
@@ -72,7 +72,7 @@ class MixPresentationGenerator {
    *
    * \param user_loudness User provided loudness information.
    * \param output_loudness Output loudness information with `info_type`
-   *     initialized.
+   *        initialized.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status CopyUserLayoutExtension(

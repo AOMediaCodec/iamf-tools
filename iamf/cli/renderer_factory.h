@@ -41,7 +41,7 @@ class RendererFactoryBase {
    * \param config Configuration of the audio element.
    * \param loudness_layout Layout to render to.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
-   *     known how to render the audio element.
+   *         known how to render the audio element.
    */
   virtual std::unique_ptr<AudioElementRendererBase> CreateRendererForLayout(
       const std::vector<DecodedUleb128>& audio_substream_ids,
@@ -71,7 +71,7 @@ class RendererFactory : public RendererFactoryBase {
    * \param config Configuration of the audio element.
    * \param loudness_layout Layout to render to.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
-   *     known how to render the audio element.
+   *         known how to render the audio element.
    */
   std::unique_ptr<AudioElementRendererBase> CreateRendererForLayout(
       const std::vector<DecodedUleb128>& audio_substream_ids,

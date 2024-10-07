@@ -40,7 +40,7 @@ class MixPresentationHandler {
    *
    * \param common_parameter_rate Common parameter rate for all generated OBUs.
    * \param audio_object_id_to_audio_element_id Mapping of audio object
-   *     reference IDs to audio element IDs.
+   *        reference IDs to audio element IDs.
    */
   MixPresentationHandler(uint32_t common_parameter_rate,
                          const std::map<std::string, uint32_t>&

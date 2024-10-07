@@ -35,7 +35,7 @@ class TemporalDelimiterObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `TemporalDelimiterObu` data is stored.
-   *     Data read from the buffer is consumed.
+   *        Data read from the buffer is consumed.
    * \return a `TemporalDelimiterObu` on success. A specific status on failure.
    */
   static absl::StatusOr<TemporalDelimiterObu> CreateFromBuffer(

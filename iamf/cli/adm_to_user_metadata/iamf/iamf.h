@@ -48,7 +48,7 @@ class IAMF {
    * \param file_prefix File prefix to use when naming output wav files.
    * \param adm ADM data to initialize with.
    * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
-   *     actual frame duration may be shorter due to rounding.
+   *        actual frame duration may be shorter due to rounding.
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
    * \return `IAMF` object or a specific error code on failure.
    */
@@ -73,9 +73,9 @@ class IAMF {
    *
    * \param file_prefix File prefix to use when naming output wav files.
    * \param mix_presentation_id_to_audio_objects_and_metadata Map of mix
-   *     presentation IDs to audio objects and metadata to initialize with.
+   *        presentation IDs to audio objects and metadata to initialize with.
    * \param audio_object_to_audio_element Map of audio object reference IDs to
-   *     audio element IDs.
+   *        audio element IDs.
    * \param num_samples_per_frame Number of samples per frame.
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
    * \param input_layouts Vector of iamf input layouts format ids.

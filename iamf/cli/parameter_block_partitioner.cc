@@ -75,11 +75,11 @@ absl::Status InterpolateMixGainParameterData(
  * \param subblock_start_time Start time of the subblock being partitioned.
  * \param subblock_end_time End time of the subblock being partitioned.
  * \param partition_start_time Start time of the output partitioned parameter
- *     block.
+ *        block.
  * \param partitioned_end_time End time of the output partitioned parameter
- *     block.
+ *        block.
  * \param partitioned_subblock Output argument with `MixGainParameterData`
- *     filled in.
+ *        filled in.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status PartitionMixGain(
@@ -164,12 +164,12 @@ absl::Status PartitionMixGain(
  *
  * \param full_parameter_block Input full parameter block.
  * \param partitioned_start_time Start time of the output partitioned parameter
- *     block.
+ *        block.
  * \param partitioned_end_time End time of the output partitioned parameter
- *     block.
+ *        block.
  * \param partitioned_subblocks Output partitioned subblocks.
  * \param constant_subblock_duration Output argument which corresponds to the
- *     value of `constant_subblock_duration` in the OBU or metadata.
+ *        value of `constant_subblock_duration` in the OBU or metadata.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status GetPartitionedSubblocks(

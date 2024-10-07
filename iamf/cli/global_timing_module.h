@@ -37,7 +37,7 @@ class GlobalTimingModule {
    * `GetNextParameterBlockTimestamps()`.
    *
    * \param audio_elements Audio Element OBUs with data to search for sample
-   *     rates.
+   *        rates.
    * \param param_definitions Parameter definitions keyed by parameter IDs.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -64,7 +64,7 @@ class GlobalTimingModule {
    *
    * \param parameter_id ID of the Parameter Block.
    * \param input_start_timestamp Start timestamp specified by the user. Will be
-   *     used to check if there are gaps.
+   *        used to check if there are gaps.
    * \param duration Duration of this Parameter Block measured in ticks.
    * \param start_timestamp Output start timestamp.
    * \param end_timestamp Output end timestamp.
@@ -84,7 +84,7 @@ class GlobalTimingModule {
    * (typically because the current temporal unit has not been processed fully).
    *
    * \param global_timestamp Global timestamp if it's shared by the current
-   *     Audio Frames; `std::nullopt` if not.
+   *        Audio Frames; `std::nullopt` if not.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GetGlobalAudioFrameTimestamp(

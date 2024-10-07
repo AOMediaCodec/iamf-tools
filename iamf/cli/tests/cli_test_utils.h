@@ -106,9 +106,9 @@ void AddScalableAudioElementWithSubstreamIds(
  * \param mix_presentation_id `mix_presentation_id` of the OBU to create.
  * \param audio_element_ids `audio_element_id`s of the OBU to create.
  * \param common_parameter_id `parameter_id` of all parameters within the
- *     created OBU.
+ *        created OBU.
  * \param common_parameter_rate `parameter_rate` of all parameters within the
- *     created OBU.
+ *        created OBU.
  * \param mix_presentations List to add OBU to.
  */
 void AddMixPresentationObuWithAudioElementIds(
@@ -122,9 +122,9 @@ void AddMixPresentationObuWithAudioElementIds(
  * \param parameter_id `parameter_id` of the `ParamDefinition` to create.
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to create.
  * \param duration `duration` and `constant_subblock_duration` of the
- *     `ParamDefinition` to create.
+ *        `ParamDefinition` to create.
  * \param param_definitions Map to add the `ParamDefinition` to keyed by
- *     `parameter_id`.
+ *        `parameter_id`.
  */
 void AddParamDefinitionWithMode0AndOneSubblock(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
@@ -137,10 +137,10 @@ void AddParamDefinitionWithMode0AndOneSubblock(
  * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.
  * \param duration `duration` and `constant_subblock_duration` of the
- *     `ParamDefinition` to add.
+ *        `ParamDefinition` to add.
  * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
  * \param param_definitions Output pointer to the map to add the
- *     `ParamDefinition*` to keyed by `parameter_id`.
+ *        `ParamDefinition*` to keyed by `parameter_id`.
  */
 void AddDemixingParamDefinition(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
@@ -153,10 +153,10 @@ void AddDemixingParamDefinition(
  * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
  * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.
  * \param duration `duration` and `constant_subblock_duration` of the
- *     `ParamDefinition` to add.
+ *        `ParamDefinition` to add.
  * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
  * \param param_definitions Output pointer to the map to add the
- *     `ParamDefinition*` to keyed by `parameter_id`.
+ *        `ParamDefinition*` to keyed by `parameter_id`.
  */
 void AddReconGainParamDefinition(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
@@ -168,7 +168,7 @@ void AddReconGainParamDefinition(
  *
  * \param filename Filename to forward to `CreateWavReader`.
  * \param num_samples_per_frame Number of samples per frame to forward to
- *     `CreateWavReader`.
+ *        `CreateWavReader`.
  * \return Unwrapped `WavReader` created by `CreateWavReader`.
  */
 WavReader CreateWavReaderExpectOk(const std::string& filename,
@@ -221,9 +221,10 @@ void ParseUserMetadataAssertSuccess(
  *
  * \param first_log_spectrum First log-spectrum to compare.
  * \param second_log_spectrum Second log-spectrum to compare.
- * \param threshold_db LSD threshold to compare against, in db.
- * \return true if the log-spectral distance
- *    between the two spectra is below the specified threshold, false otherwise.
+ * \param threshold_db LSD Threshold to compare against, in db.
+ * \return True if the log-spectral distance
+ *         between the two spectra is below the specified threshold, false
+ *         otherwise.
  */
 bool IsLogSpectralDistanceBelowThreshold(
     const absl::Span<const InternalSampleType>& first_log_spectrum,
@@ -236,7 +237,7 @@ bool IsLogSpectralDistanceBelowThreshold(
  * the decoder.
  *
  * \param user_metadata Proto associated with a given test vector.
- * \return DecodeSpecification(s) for the given test case.
+ * \return `DecodeSpecification`(s) for the given test case.
  */
 std::vector<DecodeSpecification> GetDecodeSpecifications(
     const iamf_tools_cli_proto::UserMetadata& user_metadata);

@@ -28,7 +28,7 @@ typedef absl::flat_hash_map<
 /*!\brief Fills precomputed gains matrices.
  *
  * \return Map from input layout name to output layout name to precomputed
- *     gains.
+ *         gains.
  */
 PrecomputedGains InitPrecomputedGains();
 

@@ -56,7 +56,7 @@ class ArbitraryObu : public ObuBase {
    * \param insertion_hook Hook describing when to insert the OBU.
    * \param insertion_tick Optional hook to describe the tick to insert the OBU.
    * \param invalidates_bitstream Whether writing the OBU invalidates the
-   *     bitstream.
+   *        bitstream.
    */
   ArbitraryObu(ObuType obu_type, const ObuHeader& header,
                const std::vector<uint8_t>& payload,
@@ -81,7 +81,7 @@ class ArbitraryObu : public ObuBase {
    * \param arbitrary_obus Arbitrary OBUs to write.
    * \param wb Write buffer to write to.
    * \return `absl::OkStatus()` on success. A specific status if
-   *     writing any of the OBUs fail.
+   *         writing any of the OBUs fail.
    */
   static absl::Status WriteObusWithHook(
       InsertionHook insertion_hook,
@@ -111,7 +111,7 @@ class ArbitraryObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

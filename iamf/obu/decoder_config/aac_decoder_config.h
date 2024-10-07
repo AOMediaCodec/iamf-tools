@@ -56,7 +56,7 @@ class AudioSpecificConfig {
   /*!\brief Validates and writes the `AudioSpecificConfig` to a buffer.
    *
    * \return `absl::OkStatus()` if the `AudioSpecificConfig` is valid. A
-   *     specific status on failure.
+   *         specific status on failure.
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
@@ -116,17 +116,17 @@ class AacDecoderConfig {
   /*!\brief Validates the `AacDecoderConfig`.
    *
    * \return `absl::OkStatus()` if the decoder config is valid. A specific
-   *     status on failure.
+   *         status on failure.
    */
   absl::Status Validate() const;
 
   /*!\brief Validates and writes the `AacDecoderConfig` to a buffer.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific
-   *     status on failure.
+   *         status on failure.
    */
   absl::Status ValidateAndWrite(int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
@@ -134,10 +134,10 @@ class AacDecoderConfig {
   /*!\brief Validates and reads the `AacDecoderConfig` from a buffer.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status ReadAndValidate(int16_t audio_roll_distance, ReadBitBuffer& rb);
 
@@ -145,7 +145,7 @@ class AacDecoderConfig {
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
-   *     if the metadata is an unrecognized type.
+   *         if the metadata is an unrecognized type.
    */
   absl::Status GetOutputSampleRate(uint32_t& output_sample_rate) const;
 
@@ -155,7 +155,7 @@ class AacDecoderConfig {
    * decoded to.
    *
    * \return Bit-depth of the PCM which will be used to measure loudness if the
-   *     OBU was initialized successfully.
+   *         OBU was initialized successfully.
    */
   static uint8_t GetBitDepthToMeasureLoudness();
 

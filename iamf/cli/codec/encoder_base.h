@@ -44,7 +44,7 @@ class EncoderBase {
    *   will fail.
    *
    * \param supports_partial_frames `true` for encoders that support encoding
-   *     frames shorter than `num_samples_per_frame_`. `false` otherwise.
+   *        frames shorter than `num_samples_per_frame_`. `false` otherwise.
    * \param codec_config Codec Config OBU for the encoder.
    * \num_channels Number of channels for the encoder.
    */
@@ -70,12 +70,12 @@ class EncoderBase {
    *
    * \param input_bit_depth Bit-depth of the input data.
    * \param samples Samples arranged in (time x channel) axes. The samples are
-   *     left-justified and stored in the upper `input_bit_depth` bits.
+   *        left-justified and stored in the upper `input_bit_depth` bits.
    * \param partial_audio_frame_with_data Unique pointer to take ownership of.
-   *     The underlying `audio_frame_` is modifed. All other fields are blindly
-   *     passed along.
+   *        The underlying `audio_frame_` is modified. All other fields are
+   *        blindly passed along.
    * \return `absl::OkStatus()` on success. Success does not necessarily mean
-   *     the frame was finished. A specific status on failure.
+   *         the frame was finished. A specific status on failure.
    */
   virtual absl::Status EncodeAudioFrame(
       int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,

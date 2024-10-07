@@ -117,7 +117,7 @@ class DemixingModule {
    *
    * \param user_metadata Input user metadata.
    * \param audio_elements Audio elements. Used only for `audio_element_id`,
-   *     `substream_id_to_labels`, and `label_to_output_gain`.
+   *        `substream_id_to_labels`, and `label_to_output_gain`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status InitializeForDownMixingAndReconstruction(
@@ -144,7 +144,7 @@ class DemixingModule {
    * \param label_to_samples Map of label to samples to search.
    * \param samples Output argument for the samples if found.
    * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the search
-   *     failed.
+   *         failed.
    */
   static absl::Status FindSamplesOrDemixedSamples(
       ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
@@ -154,11 +154,11 @@ class DemixingModule {
    *
    * \param audio_element_id Audio Element ID of these substreams.
    * \param down_mixing_params Down mixing parameters to use. Ignored when
-   *     there is no associated down-mixer.
+   *        there is no associated down-mixer.
    * \param input_label_to_samples Samples in input channels organized by the
-   *     channel labels.
+   *        channel labels.
    * \param substream_id_to_substream_data Mapping from substream IDs to
-   *     substream data.
+   *        substream data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DownMixSamplesToSubstreams(
@@ -174,7 +174,7 @@ class DemixingModule {
    * \param decoded_audio_frames Decoded Audio Frames.
    * \param id_to_labeled_frame Output data structure for samples.
    * \param id_to_labeled_decoded_frame Output data structure for decoded
-   *     samples.
+   *        samples.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DemixAudioSamples(

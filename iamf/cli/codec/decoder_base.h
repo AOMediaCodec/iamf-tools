@@ -50,8 +50,9 @@ class DecoderBase {
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)
-   *     axes.  That is to say, each inner vector has one sample for per channel
-   *     and the outer vector contains one inner vector for each time tick.
+   *        axes.  That is to say, each inner vector has one sample for per
+   *        channel and the outer vector contains one inner vector for each
+   *        time tick.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status DecodeAudioFrame(

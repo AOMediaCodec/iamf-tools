@@ -98,12 +98,12 @@ class FlacDecoderConfig {
   /*!\brief Validates and writes the `FlacDecoderConfig` to a buffer.
    *
    * \param num_samples_per_frame `num_samples_per_frame` in the associated
-   *     Codec Config OBU.
+   *        Codec Config OBU.
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific
-   *     status on failure.
+   *         status on failure.
    */
   absl::Status ValidateAndWrite(uint32_t num_samples_per_frame,
                                 int16_t audio_roll_distance,
@@ -113,8 +113,8 @@ class FlacDecoderConfig {
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful.  `absl::InvalidArgumentError()`
-   *    if the `FlacMetaBlockStreamInfo` cannot be found or if the retrieved
-   *    value is invalid.
+   *         if the `FlacMetaBlockStreamInfo` cannot be found or if the
+   *         retrieved value is invalid.
    */
   absl::Status GetOutputSampleRate(uint32_t& output_sample_rate) const;
 
@@ -124,10 +124,10 @@ class FlacDecoderConfig {
    * to.
    *
    * \param bit_depth_to_measure_loudness Bit-depth of the PCM which will be
-   *     used to measure loudness.
+   *        used to measure loudness.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
-   *     if the `FlacMetaBlockStreamInfo`  cannot be found or if the retrieved
-   *     value is invalid.
+   *         if the `FlacMetaBlockStreamInfo`  cannot be found or if the
+   *         retrieved value is invalid.
    */
   absl::Status GetBitDepthToMeasureLoudness(
       uint8_t& bit_depth_to_measure_loudness) const;
@@ -136,8 +136,8 @@ class FlacDecoderConfig {
    *
    * \param total_samples_in_stream Total samples in stream.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
-   *     if the `FlacMetaBlockStreamInfo`  cannot be found or if the retrieved
-   *     value is invalid.
+   *         if the `FlacMetaBlockStreamInfo`  cannot be found or if the
+   *         retrieved value is invalid.
    */
   absl::Status GetTotalSamplesInStream(uint64_t& total_samples_in_stream) const;
 

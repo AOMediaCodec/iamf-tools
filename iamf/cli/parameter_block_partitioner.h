@@ -59,11 +59,11 @@ class ParameterBlockPartitioner {
    *
    * \param full_parameter_block Input full parameter block OBU metadata.
    * \param partitioned_start_time Start time of the output partitioned
-   *     parameter block.
+   *        parameter block.
    * \param partitioned_end_time End time of the output partitioned parameter
-   *     block.
+   *        block.
    * \param partitioned_parameter_block Output partitioned parameter block OBU
-   *     metadata.
+   *        metadata.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status PartitionParameterBlock(
@@ -78,7 +78,7 @@ class ParameterBlockPartitioner {
    * \param partition_duration Duration of each partitioned parameter block.
    * \param full_parameter_block Input full parameter block.
    * \param partitioned_parameter_blocks Output list to append partitioned
-   *     parameter blocks to.
+   *        parameter blocks to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status PartitionFrameAligned(

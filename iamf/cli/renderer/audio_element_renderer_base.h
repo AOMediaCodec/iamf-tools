@@ -49,7 +49,7 @@ class AudioElementRendererBase {
    *
    * \param labeled_frame Labeled frame to render.
    * \return Number of ticks which will be rendered. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::StatusOr<int> RenderLabeledFrame(const LabeledFrame& labeled_frame);
 

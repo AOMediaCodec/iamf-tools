@@ -60,7 +60,7 @@ class IASequenceHeaderObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `IASequenceHeaderObu` data is stored.
-   *     Data read from the buffer is consumed.
+   *        Data read from the buffer is consumed.
    * \return a `IASequenceHeaderObu` on success. A specific status on failure.
    */
   static absl::StatusOr<IASequenceHeaderObu> CreateFromBuffer(
@@ -117,7 +117,7 @@ class IASequenceHeaderObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

@@ -47,7 +47,7 @@ class AudioFrameObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `AudioFrameObu` data is stored.
-   *     Data read from the buffer is consumed.
+   *        Data read from the buffer is consumed.
    * \return a `AudioFrameObu` on success. A specific status on failure.
    */
   static absl::StatusOr<AudioFrameObu> CreateFromBuffer(const ObuHeader& header,
@@ -91,7 +91,7 @@ class AudioFrameObu : public ObuBase {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
@@ -100,7 +100,7 @@ class AudioFrameObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

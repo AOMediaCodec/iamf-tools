@@ -65,14 +65,14 @@ struct ObuHeader {
   /*!\brief Validates and writes an `ObuHeader`.
    *
    * \param payload_serialized_size `payload_serialized_size` of the output OBU.
-   *     The value MUST be able to be cast to `uint32_t` without losing data.
+   *        The value MUST be able to be cast to `uint32_t` without losing data.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
-   *     if the fields are invalid or inconsistent or if writing the `Leb128`
-   *     representation of `obu_size` fails. `absl::InvalidArgumentError()` if
-   *     fields are set inconsistent with the IAMF specification or if the
-   *     calculated `obu_size_` larger than IAMF limitations. Or a specific
-   *     status if the write fails.
+   *         if the fields are invalid or inconsistent or if writing the
+   *         `Leb128` representation of `obu_size` fails.
+   *         `absl::InvalidArgumentError()` if fields are set inconsistent with
+   *         the IAMF specification or if the calculated `obu_size_` larger
+   *         than IAMF limitations. Or a specific status if the write fails.
    */
   absl::Status ValidateAndWrite(int64_t payload_serialized_size,
                                 WriteBitBuffer& wb) const;
@@ -82,10 +82,10 @@ struct ObuHeader {
    * \param rb Buffer to read from.
 
    * \param output_payload_serialized_size `output_payload_serialized_size` Size
-   *      of the payload of the OBU.
+   *        of the payload of the OBU.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
-   *      the fields are invalid or set in a manner that is inconsistent with
-   *      the IAMF specification.
+   *         the fields are invalid or set in a manner that is inconsistent with
+   *         the IAMF specification.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
@@ -94,7 +94,7 @@ struct ObuHeader {
    *
    * \param leb_generator `LebGenerator` to use when calculating `obu_size_`.
    * \param payload_serialized_size `payload_serialized_size` of the output OBU.
-   *     The value MUST be able to be cast to `uint32_t` without losing data.
+   *        The value MUST be able to be cast to `uint32_t` without losing data.
    */
   void Print(const LebGenerator& leb_generator,
              int64_t payload_serialized_size) const;

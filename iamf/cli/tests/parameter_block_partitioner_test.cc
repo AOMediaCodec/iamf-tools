@@ -72,7 +72,7 @@ MixGainParameterData CreateBezierMixGainParameterData(
  *
  * \param subblock_durations Input subblock durations.
  * \param mix_gain_parameter_data Input mix gain parameter datas or an empty
- *     vector to assume all gains as step with a value of 0.
+ *        vector to assume all gains as step with a value of 0.
  * \param full_parameter_block Output parameter block OBU metadata.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */

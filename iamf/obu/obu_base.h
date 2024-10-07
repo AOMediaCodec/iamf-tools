@@ -50,7 +50,7 @@ class ObuBase {
    *
    * \param final_wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ValidateAndWriteObu(WriteBitBuffer& final_wb) const;
 
@@ -78,7 +78,7 @@ class ObuBase {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   virtual absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const = 0;
 
@@ -90,7 +90,7 @@ class ObuBase {
    * \param payload_size Size of the remaining payload to read.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid and at least as large
-   *     as the claimed size. A specific status on failure.
+   *         as the claimed size. A specific status on failure.
    */
   absl::Status ReadAndValidatePayload(int64_t payload_size, ReadBitBuffer& rb);
 
@@ -108,10 +108,10 @@ class ObuBase {
    * expected to read an integral number of bytes.
    *
    * \param payload_size Size of the obu payload in bytes. Useful to determine
-   *     some fields whose presence or size are not directly signalled
+   *        some fields whose presence or size are not directly signalled
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   virtual absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                                      ReadBitBuffer& rb) = 0;

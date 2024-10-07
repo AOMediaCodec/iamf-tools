@@ -67,8 +67,8 @@ class ObuSequencerBase {
    * \param parameter_blocks Data about Parameter Block OBUs to write.
    * \param arbitrary_obus Arbitrary OBUs to write.
    * \param temporal_unit_map Output map of start timestamp -> `TemporalUnit`.
-   *     The `TemporalUnit` has the `audio_frames` vector with all audio
-   *     frames starting at that timestamp.
+   *        The `TemporalUnit` has the `audio_frames` vector with all audio
+   *        frames starting at that timestamp.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status GenerateTemporalUnitMap(
@@ -83,7 +83,7 @@ class ObuSequencerBase {
    * buffer.
    *
    * \param include_temporal_delimiters Whether the serialized data should
-   *     include a temporal delimiter.
+   *        include a temporal delimiter.
    * \param temporal_unit Temporal unit to write out.
    * \param wb Write buffer to write to.
    * \param num_samples Number of samples written out.
@@ -141,9 +141,9 @@ class ObuSequencerIamf : public ObuSequencerBase {
  public:
   /*!\brief Constructor.
    * \param iamf_filename Name of the output standalone .iamf file or an empty
-   *     string to disable output.
+   *        string to disable output.
    * \param include_temporal_delimiters Whether the serialized data should
-   *     include a temporal delimiter.
+   *        include a temporal delimiter.
    * \param leb_generator Leb generator to use when writing OBUs.
    */
   ObuSequencerIamf(const std::string& iamf_filename,

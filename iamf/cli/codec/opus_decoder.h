@@ -48,7 +48,7 @@ class OpusDecoder : public DecoderBase {
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)
-   *     axes.
+   *        axes.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DecodeAudioFrame(

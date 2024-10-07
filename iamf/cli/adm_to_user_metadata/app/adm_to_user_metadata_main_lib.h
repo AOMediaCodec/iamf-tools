@@ -26,9 +26,9 @@ namespace adm_to_user_metadata {
 /*!\brief Generates user metadata and splices wav files from an ADM stream.
  *
  * \param file_prefix File prefix to use when naming output wav files and in the
- *     output textproto.
+ *        output textproto.
  * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
- *     actual frame duration may be shorter due to rounding.
+ *        actual frame duration may be shorter due to rounding.
  * \param importance_threshold Threshold for to determine which audio objects to
  * \param output_path Directory to output wav files to.
  * \param input_adm_stream Input stream to process.

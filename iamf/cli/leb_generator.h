@@ -34,9 +34,9 @@ class LebGenerator {
    *
    * \param generation_mode Generation mode.
    * \param fixed_size Fixed size. When using `kGenerateLebFixedSize` mode it
-   *     MUST be in the range [1, 8]. When using other modes it is ignored.
+   *        MUST be in the range [1, 8]. When using other modes it is ignored.
    * \return Unique pointer to `LebGenerator` on success. `nullptr` if the mode
-   *     is unknown or `fixed_size` is invalid.
+   *         is unknown or `fixed_size` is invalid.
    */
   static std::unique_ptr<LebGenerator> Create(
       GenerationMode generation_mode = GenerationMode::kMinimum,
@@ -46,7 +46,7 @@ class LebGenerator {
    *
    * \param user_metadata Input user metadata.
    * \return Unique pointer to `LebGenerator` on success. `nullptr` if the input
-   *     is erroneous.
+   *         is erroneous.
    */
   static std::unique_ptr<LebGenerator> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata);
@@ -65,7 +65,7 @@ class LebGenerator {
    * \param input Input value.
    * \param buffer Buffer to serialize to.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     the generation fails.
+   *         the generation fails.
    */
   absl::Status Uleb128ToUint8Vector(DecodedUleb128 input,
                                     std::vector<uint8_t>& buffer) const;
@@ -81,7 +81,7 @@ class LebGenerator {
    * \param input Input value.
    * \param buffer Buffer to serialize to.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     the generation fails.
+   *         the generation fails.
    */
   absl::Status Sleb128ToUint8Vector(DecodedSleb128 input,
                                     std::vector<uint8_t>& buffer) const;
@@ -91,7 +91,7 @@ class LebGenerator {
    *
    * \param generation_mode Generation mode.
    * \param fixed_size Fixed size. When using `kGenerateLebFixedSize` mode it
-   *     MUST be in the range [1, 8]. When using other modes it is ignored.
+   *        MUST be in the range [1, 8]. When using other modes it is ignored.
    */
   LebGenerator(GenerationMode generation_mode, int8_t fixed_size);
 

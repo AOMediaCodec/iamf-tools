@@ -239,7 +239,7 @@ class ReconGainParamDefinition : public ParamDefinition {
   /*!\brief Constructor.
    *
    * \param audio_element_id ID of the Audio Element OBU that uses this
-   *     recon gain parameter.
+   *        recon gain parameter.
    */
   ReconGainParamDefinition(uint32_t audio_element_id)
       : ParamDefinition(kParameterDefinitionReconGain),

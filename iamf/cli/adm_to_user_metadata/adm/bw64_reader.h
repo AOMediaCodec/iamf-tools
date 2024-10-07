@@ -59,9 +59,9 @@ class Bw64Reader {
   /*!\brief Builds a `Bw64Reader` from a stream.
    *
    * \param importance_threshold Threshold below which the audio objects will be
-   *     ignored.
+   *        ignored.
    * \param buffer Stream to consume. which represents a valid RIFF WAV file
-   *     with an `axml` chunk.
+   *        with an `axml` chunk.
    * \return Initialized `Bw64Reader` or a specific error code on failure.
    */
   static absl::StatusOr<Bw64Reader> BuildFromStream(
@@ -71,7 +71,7 @@ class Bw64Reader {
    *
    * \chunk_name Chunk name to retrieve.
    * \return Chunk info or a `absl::FailedPreconditionError` error code if the
-   *     chunk name is not present.
+   *         chunk name is not present.
    */
   absl::StatusOr<ChunkInfo> GetChunkInfo(absl::string_view chunk_name) const;
 
@@ -84,7 +84,7 @@ class Bw64Reader {
    * \param adm ADM associated with the bw64 reader.
    * \param format_info FormatInfoChunk associated with the stream.
    * \param chunks_offset_map Chunk name to offset map associated with the
-   *     stream.
+   *        stream.
    */
   Bw64Reader(const ADM& adm, const FormatInfoChunk& format_info,
              const ChunksOffsetMap& chunks_offset_map)

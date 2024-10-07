@@ -37,7 +37,7 @@ class LoudnessCalculatorBase {
   /*!\brief Accumulates samples to be measured.
    *
    * \param rendered_samples Samples interleaved in IAMF canonical order to
-   *     measure loudness on.
+   *        measure loudness on.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status AccumulateLoudnessForSamples(
@@ -46,7 +46,7 @@ class LoudnessCalculatorBase {
   /*!\brief Outputs the measured loudness.
    *
    * \param rendered_samples Samples interleaved in IAMF canonical order to
-   *     measure loudness on.
+   *        measure loudness on.
    * \return Measured loudness on success. A specific status on failure.
    */
   virtual absl::StatusOr<LoudnessInfo> QueryLoudness() const = 0;

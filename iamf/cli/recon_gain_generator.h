@@ -26,7 +26,7 @@ class ReconGainGenerator {
    * \param label Label of the channel to compute.
    * \param label_to_samples Mapping from channel labels to original samples.
    * \param label_to_decoded_samples Mapping from channel labels to decoded
-   *     samples.
+   *        samples.
    * \param additional_logging Whether to enable additinal logging.
    * \param recon_gain Result in the range [0, 1].
    * \return `absl::OkStatus()` on success. A specific status on failure.

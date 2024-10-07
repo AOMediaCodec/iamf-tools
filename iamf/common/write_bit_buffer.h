@@ -42,12 +42,12 @@ class WriteBitBuffer {
    *
    * \param data Data to write.
    * \param num_bits Number of lower bits of the data to write. Maximum value of
-   *     32.
+   *        32.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     `num_bits > 32` or if `data >= 2^(num_bits)`.
-   *     `absl::Status::kResourceExhausted` if there is not enough room in the
-   *     write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
-   *     negative.
+   *         `num_bits > 32` or if `data >= 2^(num_bits)`.
+   *         `absl::Status::kResourceExhausted` if there is not enough room in
+   *         the write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
+   *         negative.
    */
   absl::Status WriteUnsignedLiteral(uint32_t data, int num_bits);
 
@@ -55,12 +55,12 @@ class WriteBitBuffer {
    *
    * \param data Data to write.
    * \param num_bits Number of lower bits of the data to write. Maximum value of
-   *     64.
+   *        64.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     `num_bits > 64` or if `data >= 2^(num_bits)`.
-   *     `absl::Status::kResourceExhausted` if there is not enough room in the
-   *     write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
-   *     negative.
+   *         `num_bits > 64` or if `data >= 2^(num_bits)`.
+   *         `absl::Status::kResourceExhausted` if there is not enough room in
+   *         the write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
+   *         negative.
    */
   absl::Status WriteUnsignedLiteral64(uint64_t data, int num_bits);
 
@@ -68,8 +68,8 @@ class WriteBitBuffer {
    *
    * \param data Data to write in standard two's complement form.
    * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *     if there is not enough room in the write buffer.
-   *     `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   *         if there is not enough room in the write buffer.
+   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
    */
   absl::Status WriteSigned8(int8_t data);
 
@@ -77,8 +77,8 @@ class WriteBitBuffer {
    *
    * \param data Data to write in standard two's complement form.
    * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *     if there is not enough room in the write buffer.
-   *     `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   *         if there is not enough room in the write buffer.
+   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
    */
   absl::Status WriteSigned16(int16_t data);
 
@@ -86,9 +86,9 @@ class WriteBitBuffer {
    *
    * \param data Data to write.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     the string is not terminated within `kIamfMaxStringSize` bytes.
-   *     `absl::Status::kResourceExhausted` if there is not enough room in the
-   *     write buffer. Other specific statuses on failure.
+   *         the string is not terminated within `kIamfMaxStringSize` bytes.
+   *         `absl::Status::kResourceExhausted` if there is not enough room in
+   *         the write buffer. Other specific statuses on failure.
    */
   absl::Status WriteString(const std::string& data);
 
@@ -96,8 +96,8 @@ class WriteBitBuffer {
    *
    * \param data Data to write.
    * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *     if there is not enough room in the write buffer.
-   *     `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   *         if there is not enough room in the write buffer.
+   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
    */
   absl::Status WriteUint8Vector(const std::vector<uint8_t>& data);
 
@@ -105,9 +105,9 @@ class WriteBitBuffer {
    *
    * \param data Data to write using the member `leb_generator_`.
    * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *     if there is not enough room in the write buffer.
-   *     `absl::InvalidArgumentError()` if the generation fails. Other specific
-   *     statuses on failure.
+   *         if there is not enough room in the write buffer.
+   *         `absl::InvalidArgumentError()` if the generation fails. Other
+   *         specific statuses on failure.
    */
   absl::Status WriteUleb128(DecodedUleb128 data);
 
@@ -115,9 +115,9 @@ class WriteBitBuffer {
    *
    * \param size_of_instance Size of the instance.
    * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *     if there is not enough room in the write buffer.
-   *    `absl::InvalidArgumentError()` if the generation fails. Other specific
-   *     statuses on failure.
+   *         if there is not enough room in the write buffer.
+   *         `absl::InvalidArgumentError()` if the generation fails. Other
+   *         specific statuses on failure.
    */
   absl::Status WriteIso14496_1Expanded(uint32_t size_of_instance);
 
@@ -125,8 +125,8 @@ class WriteBitBuffer {
    *
    * \param output_file File to write to. Or `std::nullopt` to omit writing.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     the buffer is not byte-aligned. `absl::UnknownError()` if the write
-   *     failed.
+   *         the buffer is not byte-aligned. `absl::UnknownError()` if the write
+   *         failed.
    */
   absl::Status FlushAndWriteToFile(std::optional<std::fstream>& output_file);
 
@@ -137,9 +137,9 @@ class WriteBitBuffer {
    *
    * \param output_file File to write to. Or `std::nullopt` to omit writing.
    * \return `absl::OkStatus()` on success. Success does not guarantee the
-   *     buffer was flushed or written to the file.
-   *     `absl::InvalidArgumentError()` if the buffer is not byte-aligned when
-   *     writing to a file. `absl::UnknownError()` if the write failed.
+   *         buffer was flushed or written to the file.
+   *         `absl::InvalidArgumentError()` if the buffer is not byte-aligned
+   *         when writing to a file. `absl::UnknownError()` if the write failed.
    */
   absl::Status MaybeFlushIfCloseToCapacity(
       std::optional<std::fstream>& output_file);

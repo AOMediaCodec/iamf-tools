@@ -44,7 +44,7 @@ class IaSequenceHeaderGenerator {
    *
    * \param ia_sequence_header_obu Output OBU.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     invalid values of enumerations are used.
+   *         invalid values of enumerations are used.
    */
   absl::Status Generate(
       std::optional<IASequenceHeaderObu>& ia_sequence_header_obu) const;

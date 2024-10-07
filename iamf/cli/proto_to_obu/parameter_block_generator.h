@@ -49,9 +49,9 @@ class ParameterBlockGenerator {
   /*!\brief Constructor.
    *
    * \param override_computed_recon_gains Whether to override recon gains
-   *     with user provided values.
+   *        with user provided values.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
-   *     parameter metadata.
+   *        parameter metadata.
    */
   ParameterBlockGenerator(
       bool override_computed_recon_gains,
@@ -88,7 +88,7 @@ class ParameterBlockGenerator {
   /*!\brief Generates a list of demixing parameter blocks with data.
    *
    * \param global_timing_module Global timing module to keep track of the
-   *     timestamps of the generated parameter blocks.
+   *        timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -99,7 +99,7 @@ class ParameterBlockGenerator {
   /*!\brief Generates a list of mix gain parameter blocks with data.
    *
    * \param global_timing_module Global timing module to keep track of the
-   *     timestamps of the generated parameter blocks.
+   *        timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -112,7 +112,7 @@ class ParameterBlockGenerator {
    * \param id_to_labeled_frame Data structure for samples.
    * \param id_to_labeled_decoded_frame Data structure for decoded samples.
    * \param global_timing_module Global timing module to keep track of the
-   *     timestamps of the generated parameter blocks.
+   *        timestamps of the generated parameter blocks.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -126,7 +126,7 @@ class ParameterBlockGenerator {
   /*!\brief Generates a list of parameter blocks with data.
    *
    * \param proto_metadata_list Input list of user-defined metadata about
-   *     parameter blocks.
+   *        parameter blocks.
    * \param global_timing_module Global Timing Module.
    * \param output_parameter_blocks Output list of parameter blocks with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.

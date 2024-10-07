@@ -43,19 +43,19 @@ class LpcmDecoderConfig {
   /*!\brief Validates the values in `LpcmDecoderConfig` and the roll distance.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status Validate(int16_t audio_roll_distance) const;
 
   /*!\brief Validates and writes the `LpcmDecoderConfig` to a buffer.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status ValidateAndWrite(int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
@@ -63,10 +63,10 @@ class LpcmDecoderConfig {
   /*!\brief Reads and validates the `LpcmDecoderConfig` to a buffer.
    *
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status ReadAndValidate(int16_t audio_roll_distance, ReadBitBuffer& rb);
 
@@ -74,7 +74,7 @@ class LpcmDecoderConfig {
    *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
-   *     if there is an unexpected sample rate.
+   *         if there is an unexpected sample rate.
    */
   absl::Status GetOutputSampleRate(uint32_t& output_sample_rate) const;
 
@@ -84,9 +84,9 @@ class LpcmDecoderConfig {
    * to.
    *
    * \param bit_depth_to_measure_loudness Bit-depth of the PCM which will be
-   *     used to measure loudness.
+   *        used to measure loudness.
    * \return `absl::OkStatus()` if successful.  `absl::InvalidArgumentError()`
-   *     if there is an unexpected bit-depth.
+   *         if there is an unexpected bit-depth.
    */
   absl::Status GetBitDepthToMeasureLoudness(
       uint8_t& bit_depth_to_measure_loudness) const;

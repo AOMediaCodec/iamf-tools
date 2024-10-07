@@ -53,12 +53,12 @@ struct Leb128 {
  *
  * \param val Leb128 to serialize.
  * \param min_size_encoding Controls whether the function writes the
- *     smallest possible representation of a LEB128. When false codes the
- *     LEB128 in `coded_size` bytes.
+ *        smallest possible representation of a LEB128. When false codes the
+ *        LEB128 in `coded_size` bytes.
  * \param buffer Buffer to serialize to.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
- *     if the initial `coded_size` was invalid. `absl::UnknownError()` if the
- *     `coded_size` was insufficient to encode the value.
+ *         if the initial `coded_size` was invalid. `absl::UnknownError()` if
+ *         the `coded_size` was insufficient to encode the value.
  */
 absl::Status Leb128ToUint8Vector(const Leb128& val, bool min_size_encoding,
                                  std::vector<uint8_t>& buffer) {

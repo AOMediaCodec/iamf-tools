@@ -31,11 +31,11 @@ static constexpr int kIamfMaxStringSize = 128;
  * \param allow_resizing Whether the buffer can be resized if need be.
  * \param num_bits Number of bits we'd like to write.
  * \param bit_offset Bit index representing where we'd like to start writing
- *     within `bit_buffer`.
+ *        within `bit_buffer`.
  * \param bit_buffer Buffer to write to.
  *
  * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
- * the `bit_buffer` does not have space to write `num_bites` and
+ *         the `bit_buffer` does not have space to write `num_bites` and
  * `allow_resizing` is false.
  */
 absl::Status CanWriteBits(bool allow_resizing, int num_bits, int64_t bit_offset,
@@ -46,11 +46,11 @@ absl::Status CanWriteBits(bool allow_resizing, int num_bits, int64_t bit_offset,
  * \param allow_resizing Whether the buffer can be resized if need be.
  * \param num_bytes Number of bytes we'd like to write.
  * \param bit_offset Bit index representing where we'd like to start writing
- *     within `bit_buffer`.
+ *        within `bit_buffer`.
  * \param bit_buffer Buffer to write to.
  *
  * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
- * the `bit_buffer` does not have space to write `num_bytes` and
+ *         the `bit_buffer` does not have space to write `num_bytes` and
  * `allow_resizing` is false.
  */
 absl::Status CanWriteBytes(bool allow_resizing, int num_bytes,

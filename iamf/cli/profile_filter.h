@@ -38,9 +38,9 @@ class ProfileFilter {
    * \param debugging_context Context to use for error messages.
    * \param audio_element_obu Audio element to filter based on.
    * \param profile_versions Profiles to filter. Unsupported profiles will be
-   *     removed from the set.
+   *        removed from the set.
    * \return `absl::OkStatus` if the audio element is supported by at least one
-   *     of the input profile. A specific error otherwise.
+   *         of the input profile. A specific error otherwise.
    */
   static absl::Status FilterProfilesForAudioElement(
       absl::string_view debugging_context,
@@ -52,9 +52,9 @@ class ProfileFilter {
    * \param audio_elements Audio elements in the IA sequence.
    * \param mix_presentation_obu Mix presentation to filter based on.
    * \param profile_versions Profiles to filter. Unsupported profiles will be
-   *     removed from the set.
+   *        removed from the set.
    * \return `absl::OkStatus` if the mix presentation is supported by at least
-   *     one of the input profile. A specific error otherwise.
+   *         one of the input profile. A specific error otherwise.
    */
   static absl::Status FilterProfilesForMixPresentation(
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,

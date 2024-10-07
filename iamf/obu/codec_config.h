@@ -76,7 +76,7 @@ class CodecConfigObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `CodecConfigObu` data is stored. Data
-   *    read from the buffer is consumed.
+   *        read from the buffer is consumed.
    * \return a `CodecConfigObu` on success. A specific status on failure.
    */
   static absl::StatusOr<CodecConfigObu> CreateFromBuffer(
@@ -133,7 +133,7 @@ class CodecConfigObu : public ObuBase {
    * decoded to.
    *
    * \return Bit-depth of the PCM which will be used to measure loudness if the
-   *     OBU was initialized successfully.
+   *         OBU was initialized successfully.
    */
   uint32_t GetBitDepthToMeasureLoudness() const {
     return bit_depth_to_measure_loudness_;
@@ -185,7 +185,7 @@ class CodecConfigObu : public ObuBase {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the OBU is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ValidateAndWritePayload(WriteBitBuffer& wb) const override;
 
@@ -194,7 +194,7 @@ class CodecConfigObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

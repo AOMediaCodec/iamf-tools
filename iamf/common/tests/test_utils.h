@@ -31,9 +31,9 @@ void ValidateWriteResults(const WriteBitBuffer& wb,
  *
  * \param wb Buffer to validate.
  * \param expected_header Expected OBU header that was written to the underlying
- *     buffer.
+ *        buffer.
  * \param expected_payload Expected OBU payload data that was written to the
- *     underlying buffer.
+ *        underlying buffer.
  */
 void ValidateObuWriteResults(const WriteBitBuffer& wb,
                              const std::vector<uint8_t>& expected_header,

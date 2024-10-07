@@ -109,7 +109,7 @@ class AudioFrameGenerator {
    * \param codec_config_metadata Codec config metadata.
    * \param codec_config Codec config.
    * \return Number of samples to delay at start on success. A specific status
-   *     on failure.
+   *         on failure.
    */
   static absl::StatusOr<uint32_t> GetNumberOfSamplesToDelayAtStart(
       const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,

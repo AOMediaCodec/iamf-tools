@@ -82,7 +82,7 @@ class IamfEncoder {
    *
    * \param ia_sequence_header_obu Generated IA Sequence Header OBU.
    * \param codec_config_obus Map of Codec Config ID to generated Codec Config
-   *     OBUs.
+   *        OBUs.
    * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
    * \param mix_presentation_obus List of generated Mix Presentation OBUs.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
@@ -137,11 +137,11 @@ class IamfEncoder {
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
    * \param audio_frames List of generated audio frames corresponding to this
-   *     temporal unit.
+   *        temporal unit.
    * \param parameter_blocks List of generated parameter block corresponding
-   *     to this temporal unit.
+   *        to this temporal unit.
    * \param id_to_labeled_frame Map of Audio Element IDs to labeld frames;
-   *     which is a data structure storing samples.
+   *        which is a data structure storing samples.
    * \param output_timestamp Output timestamp of this temporal unit.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */

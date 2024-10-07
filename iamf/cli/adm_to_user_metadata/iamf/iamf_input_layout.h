@@ -39,14 +39,14 @@ enum class IamfInputLayout {
  * represent the type of audio and 'xxxx' gives the description within a
  * particular type.
  *
- *  yyyy    typeDefinition
- *  0001    DirectSpeakers
- *  0002    Matrix
- *  0003    Objects
- *  0004    HOA
- *  0005    Binaural
+ * yyyy    typeDefinition
+ * 0001    DirectSpeakers
+ * 0002    Matrix
+ * 0003    Objects
+ * 0004    HOA
+ * 0005    Binaural
  *
- *  IAMF supports typeDefinitions ='DirectSpeakers'/'HOA'/'Binaural'.
+ * IAMF supports typeDefinitions ='DirectSpeakers'/'HOA'/'Binaural'.
  */
 absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
     absl::string_view audio_pack_format_id);

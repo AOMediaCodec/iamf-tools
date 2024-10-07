@@ -44,7 +44,7 @@ class ArbitraryObuGenerator {
    *
    * \param ArbitraryObu Output list of OBUs.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *     invalid values of enumerations are used.
+   *         invalid values of enumerations are used.
    */
   absl::Status Generate(std::list<ArbitraryObu>& arbitrary_obus_with_metadata);
 

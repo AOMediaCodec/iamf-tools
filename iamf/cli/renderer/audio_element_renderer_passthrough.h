@@ -50,7 +50,7 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
    * matches the playback layout, use it."
    *
    * \param scalable_channel_layout_config Config for the scalable channel
-   *     layout.
+   *        layout.
    * \param playback_layout Layout of the audio element to be rendered.
    * \return Render to use or `nullptr` if it would not be suitable for use.
    */

@@ -150,9 +150,9 @@ class ChannelLabel {
    *
    * \param input_labels_strings Container of strings to convert.
    * \param outpt_labels Container to fill with the converted labels. The
-   *     labels are inserted using the end iterator as a "hint".
+   *        labels are inserted using the end iterator as a "hint".
    * \return `absl::OkStatus()` on success. An error if any labels fail to be
-   *     converted. An error if any output labels are duplicate.
+   *         converted. An error if any output labels are duplicate.
    */
   template <class InputContainer, class OutputContainer>
   static absl::Status FillLabelsFromStrings(
@@ -186,7 +186,7 @@ class ChannelLabel {
   /*!\brief Gets the channel label for an ambisonics channel number.
    *
    * \param ambisonics_channel_number Ambisonics channel number to get the label
-   *    of.
+   *        of.
    * \return Converted label. A specific status on failure.
    */
   static absl::StatusOr<Label> AmbisonicsChannelNumberToLabel(
@@ -196,7 +196,7 @@ class ChannelLabel {
    *
    * \param label Label to get the demixed version of.
    * \return Converted label on success. A specific status if the channel is not
-   *     suitable for demixing. A specific status on other failures.
+   *         suitable for demixing. A specific status on other failures.
    */
   static absl::StatusOr<Label> GetDemixedLabel(Label label);
 
@@ -208,9 +208,9 @@ class ChannelLabel {
    *
    * \param loudspeaker_layout Layout to get the channel ordering from.
    * \param expanded_loudspeaker_layout Associated expanded loudspeaker layout
-   *     or `std::nullopt` when it is not relevant.
+   *        or `std::nullopt` when it is not relevant.
    * \return Channel ordering associated with the layout if known. Or a specific
-   *     status on failure.
+   *         status on failure.
    */
   static absl::StatusOr<std::vector<ChannelLabel::Label>>
   LookupEarChannelOrderFromScalableLoudspeakerLayout(
@@ -227,9 +227,9 @@ class ChannelLabel {
    *
    * \param loudspeaker_layout Layout to get the labels to reconstruct from.
    * \param expanded_loudspeaker_layout Associated expanded loudspeaker layout
-   *     or `std::nullopt` when it is not relevant.
+   *        or `std::nullopt` when it is not relevant.
    * \return Labels to reconstruct the associated layout if known. Or a specific
-   *     status on failure.
+   *         status on failure.
    */
   static absl::StatusOr<absl::flat_hash_set<ChannelLabel::Label>>
   LookupLabelsToReconstructFromScalableLoudspeakerLayout(

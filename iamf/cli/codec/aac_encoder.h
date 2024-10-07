@@ -62,10 +62,10 @@ class AacEncoder : public EncoderBase {
    *
    * \param input_bit_depth Bit-depth of the input data.
    * \param samples Samples arranged in (time x channel) axes. The samples are
-   *     left-justified and stored in the upper `input_bit_depth` bits.
+   *        left-justified and stored in the upper `input_bit_depth` bits.
    * \param partial_audio_frame_with_data Unique pointer to take ownership of.
-   *     The underlying `audio_frame_` is modifed. All other fields are blindly
-   *     passed along.
+   *        The underlying `audio_frame_` is modified. All other fields are
+   *        blindly passed along.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status EncodeAudioFrame(

@@ -39,7 +39,7 @@ namespace iamf_tools {
  * \param x_2 Second summand.
  * \param result Sum of the inputs on success.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` when
- *     the sum would cause an overflow in a `uint32_t`.
+ *         the sum would cause an overflow in a `uint32_t`.
  */
 absl::Status AddUint32CheckOverflow(uint32_t x_1, uint32_t x_2,
                                     uint32_t& result);
@@ -48,9 +48,9 @@ absl::Status AddUint32CheckOverflow(uint32_t x_1, uint32_t x_2,
  *
  * \param value Value to convert.
  * \param result Converted value if successful. The result is floored to the
- *     nearest Q7.8 value.
+ *        nearest Q7.8 value.
  * \return `absl::OkStatus()` if successful. `absl::UnknownError()` if the input
- *     is not valid in Q7.8 format.
+ *         is not valid in Q7.8 format.
  */
 absl::Status FloatToQ7_8(float value, int16_t& result);
 
@@ -68,9 +68,9 @@ float Q7_8ToFloat(int16_t value);
  *
  * \param value Value to convert.
  * \param result Converted value if successful. The result is floored to the
- *     nearest Q0.8 value.
+ *        nearest Q0.8 value.
  * \return `absl::OkStatus()` if successful. `absl::UnknownError()` if the input
- *     is not valid in Q0.8 format.
+ *         is not valid in Q0.8 format.
  */
 absl::Status FloatToQ0_8(float value, uint8_t& result);
 
@@ -103,7 +103,7 @@ float Int32ToNormalizedFloat(int32_t value);
  * \param value Normalized float to convert.
  * \param result Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the input is any type of NaN or infinity.
+ *         the input is any type of NaN or infinity.
  */
 absl::Status NormalizedFloatToInt32(float value, int32_t& result);
 
@@ -112,7 +112,7 @@ absl::Status NormalizedFloatToInt32(float value, int32_t& result);
  * \param input Value to convert.
  * \param output Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the input cannot be cast to a `uint8_t`.
+ *         the input cannot be cast to a `uint8_t`.
  */
 absl::Status Uint32ToUint8(uint32_t input, uint8_t& output);
 
@@ -121,7 +121,7 @@ absl::Status Uint32ToUint8(uint32_t input, uint8_t& output);
  * \param input Value to convert.
  * \param output Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the input cannot be cast to a `uint16_t`.
+ *         the input cannot be cast to a `uint16_t`.
  */
 absl::Status Uint32ToUint16(uint32_t input, uint16_t& output);
 
@@ -130,7 +130,7 @@ absl::Status Uint32ToUint16(uint32_t input, uint16_t& output);
  * \param input Value to convert.
  * \param output Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the input cannot be cast to a `int16_t`.
+ *         the input cannot be cast to a `int16_t`.
  */
 absl::Status Int32ToInt16(int32_t input, int16_t& output);
 
@@ -138,10 +138,10 @@ absl::Status Int32ToInt16(int32_t input, int16_t& output);
  *
  * \param bytes Bytes to convert.
  * \param output Converted value if successful. The result is left-justified;
- *     the upper `bytes.size()` bytes are set based on the input and the
- *     remaining lower bytes are 0.
+ *        the upper `bytes.size()` bytes are set based on the input and the
+ *        remaining lower bytes are 0.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the number of bytes is not in the range of [1, 4].
+ *         the number of bytes is not in the range of [1, 4].
  */
 absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
                                       int32_t& output);
@@ -150,10 +150,10 @@ absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
  *
  * \param bytes Bytes to convert.
  * \param output Converted value if successful. The result is left-justified;
- *     the upper `bytes.size()` bytes are set based on the input and the
- *     remaining lower bytes are 0.
+ *        the upper `bytes.size()` bytes are set based on the input and the
+ *        remaining lower bytes are 0.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the number of bytes is not in the range of [1, 4].
+ *         the number of bytes is not in the range of [1, 4].
  */
 absl::Status BigEndianBytesToInt32(absl::Span<const uint8_t> bytes,
                                    int32_t& output);
@@ -163,7 +163,7 @@ absl::Status BigEndianBytesToInt32(absl::Span<const uint8_t> bytes,
  * \param input Value to convert.
  * \param output Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *     the input is NaN.
+ *         the input is NaN.
  */
 absl::Status ClipDoubleToInt32(double input, int32_t& output);
 
@@ -175,12 +175,12 @@ absl::Status ClipDoubleToInt32(double input, int32_t& output);
  * \param sample Sample to write the upper `sample_size` bits of.
  * \param sample_size Sample size in bits. MUST be one of {8, 16, 24, 32}.
  * \param big_endian `true` to write the sample as big endian. `false` to write
- *     it as little endian.
+ *        it as little endian.
  * \param buffer Start of the buffer to write to.
  * \param write_position Offset of the buffer to write to. Incremented to one
- *     after the last byte written on success.
+ *        after the last byte written on success.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
- *     `sample_size` is invalid.
+ *         `sample_size` is invalid.
  */
 absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* buffer,
@@ -198,7 +198,7 @@ absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
 /*!\brief Gets the native byte order of the runtime system.
  *
  * \return `true` if the runtime system natively uses big endian, `false`
- *     otherwise.
+ *         otherwise.
  */
 bool IsNativeBigEndian();
 
@@ -211,7 +211,7 @@ bool IsNativeBigEndian();
  * \param vector_size Size of the vector.
  * \param obu_reported_size Size reported in the OBU.
  * \return `absl::OkStatus()` if the size arguments are equivalent.
- *     `absl::InvalidArgumentError()` otherwise.
+ *         `absl::InvalidArgumentError()` otherwise.
  */
 absl::Status ValidateVectorSizeEqual(const std::string& field_name,
                                      size_t vector_size,
@@ -234,9 +234,9 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
  * \param lhs First value to compare.
  * \param rhs Second value to compare.
  * \param context Context to insert into the error message for debugging
- *     purposes.
+ *        purposes.
  * \return `absl::OkStatus()` if the arguments are equal
- *     `absl::InvalidArgumentError()` if the arguments are not equal.
+ *         `absl::InvalidArgumentError()` if the arguments are not equal.
  */
 template <typename T>
 absl::Status ValidateEqual(const T& lhs, const T& rhs,
@@ -254,9 +254,9 @@ absl::Status ValidateEqual(const T& lhs, const T& rhs,
  * \param lhs First value to compare.
  * \param rhs Second value to compare.
  * \param context Context to insert into the error message for debugging
- *     purposes.
+ *        purposes.
  * \return `absl::OkStatus()` if the arguments are not equal
- *     `absl::InvalidArgumentError()` if the arguments are equal.
+ *         `absl::InvalidArgumentError()` if the arguments are equal.
  */
 template <typename T>
 absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
@@ -273,9 +273,9 @@ absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
  *
  * \param argument Argument to check.
  * \param context Context to insert into the error message for debugging
- *     purposes.
+ *        purposes.
  * \return `absl::OkStatus()` if the arguments has a value.
- *     `absl::InvalidArgumentError()` if the argument does not have a value.
+ *        `absl::InvalidArgumentError()` if the argument does not have a value.
  */
 template <typename T>
 absl::Status ValidateHasValue(const std::optional<T>& argument,
@@ -293,9 +293,9 @@ absl::Status ValidateHasValue(const std::optional<T>& argument,
  * \param first Iterator to start from.
  * \param last Iterator to stop before.
  * \param context Context to insert into the error message for debugging
- *     purposes.
+ *        purposes.
  * \return `absl::OkStatus()` if no duplicates are found while iterating.
- *      `absl::InvalidArgumentError()` if duplicates are found.
+ *        `absl::InvalidArgumentError()` if duplicates are found.
  */
 template <class InputIt>
 absl::Status ValidateUnique(InputIt first, InputIt last,
@@ -325,13 +325,13 @@ absl::Status ValidateUnique(InputIt first, InputIt last,
  * \param num_subblocks Number of subblocks.
  * \param constant_subblock_duration Constant subblock duration.
  * \param subblock_duration_getter_from_parameter_block Getter function
- *     that returns the subblock duration recorded inside a parameter block,
- *     indexed at `subblock_index`.
+ *        that returns the subblock duration recorded inside a parameter block,
+ *        indexed at `subblock_index`.
  * \param subblock_duration_getter_from_parameter_definition Getter function
- *     that returns the subblock duration recorded inside a parameter
- *     definition, indexed at `subblock_index`.
+ *        that returns the subblock duration recorded inside a parameter
+ *        definition, indexed at `subblock_index`.
  * \return Duration of the subblock or `absl::InvalidArgumentError()` on
- *     failure.
+ *         failure.
  */
 template <typename T>
 absl::StatusOr<T> GetParameterSubblockDuration(
@@ -378,19 +378,19 @@ absl::StatusOr<T> GetParameterSubblockDuration(
  * \param linear_enum Enum value representing a linear animation.
  * \param bezier_enum Enum value representing a Bezier animation.
  * \param step_start_point_getter Getter function of the start point value
- *     of a step animation.
+ *        of a step animation.
  * \param linear_start_point_getter Getter function of the start point value
- *     of a linear animation.
+ *        of a linear animation.
  * \param linear_end_point_getter Getter function of the end point value
- *     of a linear animation.
+ *        of a linear animation.
  * \param bezier_start_point_getter Getter function of the start point value
- *     of a Bezier animation.
+ *        of a Bezier animation.
  * \param bezier_end_point_getter Getter function of the end point value
- *     of a Bezier animation.
+ *        of a Bezier animation.
  * \param bezier_control_point_getter Getter function of the middle control
- *     point value of a Bezier animation.
+ *        point value of a Bezier animation.
  * \param bezier_control_point_relative_time_getter Getter function of the
- *     time of the middle control point of a Bezier animation.
+ *        time of the middle control point of a Bezier animation.
  * \param start_time Start time of the `MixGainParameterData`.
  * \param end_time End time of the `MixGainParameterData`.
  * \param target_time Target time to the get interpolated value of.

@@ -31,13 +31,13 @@ class UserMetadataGenerator {
   /*!\brief Writes a `UserMetadata` as a text proto to a file.
    *
    * \param write_binary_proto `true` to write a binary proto, `false` to write
-   *     a text proto.
+   *        a text proto.
    * \param path Path to write the data to.
    * \param user_metadata User metadata to write. The filename is determined by
-   *      the inner `file_name_prefix` field with a suffix of `.binpb` for
-   *      binary protos or `.textproto` for text protos.
+   *        the inner `file_name_prefix` field with a suffix of `.binpb` for
+   *        binary protos or `.textproto` for text protos.
    * \return `absl::OkStatus()` if the write was successful a specific error
-   *      otherwise.
+   *         otherwise.
    */
   static absl::Status WriteUserMetadataToFile(
       bool write_binary_proto, const std::filesystem::path& path,
@@ -48,7 +48,7 @@ class UserMetadataGenerator {
    * \param adm ADM to use.
    * \param format_info Format info chunk to use.
    * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
-   *     actual frame duration may be shorter due to rounding.
+   *        actual frame duration may be shorter due to rounding.
    */
   UserMetadataGenerator(const ADM& adm, const FormatInfoChunk& format_info,
                         int32_t max_frame_duration)
@@ -60,7 +60,7 @@ class UserMetadataGenerator {
    *
    * \param file_prefix File prefix to use when naming output wav files.
    * \return Proto based on the constructor arguments or a specific error code
-   *     on failure.
+   *         on failure.
    */
   absl::StatusOr<iamf_tools_cli_proto::UserMetadata> GenerateUserMetadata(
       absl::string_view file_prefix) const;

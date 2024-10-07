@@ -57,7 +57,7 @@ struct SubMixAudioElement {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     write fails.
+   *         write fails.
    */
   absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
 
@@ -179,7 +179,7 @@ struct LoudspeakersSsConventionLayout {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     write fails.
+   *         write fails.
    */
   absl::Status Write(bool& found_stereo_layout, WriteBitBuffer& wb) const;
 
@@ -187,7 +187,7 @@ struct LoudspeakersSsConventionLayout {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     read fails.
+   *         read fails.
    */
   absl::Status Read(ReadBitBuffer& rb);
 
@@ -213,7 +213,7 @@ struct LoudspeakersReservedOrBinauralLayout {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     write fails.
+   *         write fails.
    */
   absl::Status Write(WriteBitBuffer& wb) const;
 
@@ -221,7 +221,7 @@ struct LoudspeakersReservedOrBinauralLayout {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     read fails.
+   *         read fails.
    */
   absl::Status Read(ReadBitBuffer& rb);
 
@@ -251,7 +251,7 @@ struct Layout {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     read fails.
+   *         read fails.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
@@ -272,7 +272,7 @@ struct MixPresentationLayout {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
-   *     read fails.
+   *         read fails.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb);
 
@@ -289,7 +289,7 @@ struct MixPresentationSubMix {
    *
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the sub-mix is valid. A specific status if
-   *    the read fails.
+   *         the read fails.
    */
   absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
 
@@ -321,7 +321,7 @@ struct MixPresentationTags {
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the MixPresentationTags is valid. A specific
-   * status if the write fails.
+   *         status if the write fails.
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
@@ -349,7 +349,7 @@ class MixPresentationObu : public ObuBase {
    * \param loudness_layout `Layout` to process.
    * \param num_channels Number of channels for this layout if successful.
    * \return `absl::OkStatus()` if successful.  `absl::InvalidArgumentError()`
-   *     if the `layout_type` enum is a reserved or unknown value.
+   *         if the `layout_type` enum is a reserved or unknown value.
    */
   static absl::Status GetNumChannelsFromLayout(const Layout& loudness_layout,
                                                int32_t& num_channels);
@@ -363,9 +363,9 @@ class MixPresentationObu : public ObuBase {
    * \param mix_presentation_id `mix_presentation_id` in the OBU.
    * \param count_label `count_label` in the OBU.
    * \param annotations_language Vector representing all of the
-   *     `annotations_language`s in the OBU.
+   *        `annotations_language`s in the OBU.
    * \param localized_presentation_annotations Vector representing all of the
-   *     `localized_presentation_annotations`s in the OBU.
+   *        `localized_presentation_annotations`s in the OBU.
    * \param num_sub_mixes `num_sub_mixes` in the OBU.
    * \param sub_mixes Vector representing all of the sub mixes in the OBU.
    */
@@ -393,7 +393,7 @@ class MixPresentationObu : public ObuBase {
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
    * \param rb `ReadBitBuffer` where the `MixPresentationObu` data is stored.
-   *     Data read from the buffer is consumed.
+   *        Data read from the buffer is consumed.
    * \return A `MixPresentationObu` on success. A specific status on failure.
    */
   static absl::StatusOr<MixPresentationObu> CreateFromBuffer(
@@ -465,7 +465,7 @@ class MixPresentationObu : public ObuBase {
    * \param payload_size Size of the obu payload in bytes.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the payload is valid. A specific status on
-   *     failure.
+   *         failure.
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;

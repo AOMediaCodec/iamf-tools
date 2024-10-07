@@ -34,9 +34,9 @@ class OpusDecoderConfig {
   /*!\brief Returns the required audio roll distance.
    *
    * \param num_samples_per_frame `num_samples_per_frame` in the associated
-   *     Codec Config OBU.
+   *        Codec Config OBU.
    * \return Required audio roll distance, or an error if there would be a
-   *     divide by zero.
+   *         divide by zero.
    */
   static absl::StatusOr<int16_t> GetRequiredAudioRollDistance(
       uint32_t num_samples_per_frame);
@@ -44,12 +44,12 @@ class OpusDecoderConfig {
   /*!\brief Validates and writes the `OpusDecoderConfig` to a buffer.
    *
    * \param num_samples_per_frame `num_samples_per_frame` in the associated
-   *     Codec Config OBU.
+   *        Codec Config OBU.
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status ValidateAndWrite(uint32_t num_samples_per_frame,
                                 int16_t audio_roll_distance,
@@ -58,12 +58,12 @@ class OpusDecoderConfig {
   /*!\brief Validates and reads the `OpusDecoderConfig` from a buffer.
    *
    * \param num_samples_per_frame `num_samples_per_frame` in the associated
-   *     Codec Config OBU.
+   *        Codec Config OBU.
    * \param audio_roll_distance `audio_roll_distance` in the associated Codec
-   *     Config OBU.
+   *        Config OBU.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if the decoder config is valid. A specific error
-   *     code on failure.
+   *         code on failure.
    */
   absl::Status ReadAndValidate(uint32_t num_samples_per_frame,
                                int16_t audio_roll_distance, ReadBitBuffer& rb);
@@ -91,7 +91,7 @@ class OpusDecoderConfig {
    * a `float` in the range [-1, +1].
    *
    * \return Bit-depth of the PCM which will be used to measure loudness if the
-   *     OBU was initialized successfully.
+   *         OBU was initialized successfully.
    */
   static constexpr uint8_t GetBitDepthToMeasureLoudness() { return 32; }
 
