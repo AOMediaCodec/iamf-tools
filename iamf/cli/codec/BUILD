@@ -181,3 +181,15 @@ cc_library(
         "@libopus",
     ],
 )
+
+cc_library(
+    name = "flac_decoder",
+    srcs = ["flac_decoder.cc"],
+    hdrs = ["flac_decoder.h"],
+    deps = [
+        ":decoder_base",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "@com_google_absl//absl/status",
+    ],
+)
