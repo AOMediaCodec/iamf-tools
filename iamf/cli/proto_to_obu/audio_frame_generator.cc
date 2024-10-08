@@ -57,10 +57,13 @@ namespace iamf_tools {
 
 namespace {
 
+constexpr bool kValidateCodecDelay = true;
+
 absl::Status InitializeEncoder(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config, int num_channels,
-    std::unique_ptr<EncoderBase>& encoder, int substream_id = 0) {
+    std::unique_ptr<EncoderBase>& encoder, bool validate_codec_delay,
+    int substream_id = 0) {
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
@@ -85,7 +88,7 @@ absl::Status InitializeEncoder(
       return absl::InvalidArgumentError(absl::StrCat(
           "Unknown codec_id= ", codec_config.GetCodecConfig().codec_id));
   }
-  RETURN_IF_NOT_OK(encoder->Initialize());
+  RETURN_IF_NOT_OK(encoder->Initialize(validate_codec_delay));
   return absl::OkStatus();
 }
 
@@ -110,9 +113,10 @@ absl::Status GetEncodingDataAndInitializeEncoders(
           codec_config_obu.GetCodecConfigId()));
     }
 
-    RETURN_IF_NOT_OK(InitializeEncoder(
-        codec_config_metadata_iter->second, codec_config_obu, num_channels,
-        substream_id_to_encoder[substream_id], substream_id));
+    RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata_iter->second,
+                                       codec_config_obu, num_channels,
+                                       substream_id_to_encoder[substream_id],
+                                       kValidateCodecDelay, substream_id));
   }
 
   return absl::OkStatus();
@@ -619,9 +623,14 @@ absl::Status ValidateAndApplyUserTrimming(
 absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config) {
+  // This function is useful when querying what the codec delay should be. We
+  // don't want it to fail if the user-provided codec delay is wrong.
+  constexpr bool kDontValidateCodecDelay = false;
+
   std::unique_ptr<EncoderBase> encoder;
   RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata, codec_config,
-                                     /*num_channels=*/1, encoder));
+                                     /*num_channels=*/1, encoder,
+                                     kDontValidateCodecDelay));
   if (encoder == nullptr) {
     return absl::InvalidArgumentError("Failed to initialize encoder");
   }

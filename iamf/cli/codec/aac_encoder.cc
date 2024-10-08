@@ -295,7 +295,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
   return absl::OkStatus();
 }
 
-absl::Status AacEncoder::SetNumberOfSamplesToDelayAtStart() {
+absl::Status AacEncoder::SetNumberOfSamplesToDelayAtStart(
+    bool /*validate_codec_delay*/) {
   if (!encoder_) {
     LOG(ERROR) << "Expected `encoder_` to be initialized.";
   }

@@ -30,6 +30,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kIgnoredValidateCodecDelay = true;
+
 class FlacEncoderTest : public EncoderTestBase, public testing::Test {
  public:
   FlacEncoderTest() {
@@ -87,7 +89,7 @@ TEST_F(FlacEncoderTest,
 
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize().ok());
+  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidateCodecDelay).ok());
 }
 
 TEST_F(FlacEncoderTest, EncodeAudioFrameSucceeds) {

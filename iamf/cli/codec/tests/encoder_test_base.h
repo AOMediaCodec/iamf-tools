@@ -31,6 +31,8 @@ namespace iamf_tools {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kValidateCodecDelay = true;
+
 class EncoderTestBase {
  public:
   EncoderTestBase() = default;
@@ -41,7 +43,7 @@ class EncoderTestBase {
 
   void InitExpectOk() {
     ConstructEncoder();
-    EXPECT_THAT(encoder_->Initialize(), IsOk());
+    EXPECT_THAT(encoder_->Initialize(kValidateCodecDelay), IsOk());
   }
 
   void EncodeAudioFrame(const std::vector<std::vector<int32_t>>& raw_samples,

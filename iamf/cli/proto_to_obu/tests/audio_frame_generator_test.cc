@@ -101,7 +101,7 @@ void AddOpusCodecConfigWithIdAndPreSkip(
 }
 
 TEST(GetNumberOfSamplesToDelayAtStart,
-     ReturnsErrorWhenCodecConfigObuIsConfiguredIncorrectly) {
+     SucceedsWhenInputPreSkipIsIsConfiguredIncorrectly) {
   const uint16_t kInvalidPreSkip = 1000;
   iamf_tools_cli_proto::CodecConfig codec_config_metadata;
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -118,9 +118,10 @@ TEST(GetNumberOfSamplesToDelayAtStart,
   AddOpusCodecConfigWithIdAndPreSkip(kCodecConfigId, kInvalidPreSkip,
                                      codec_config_obus);
 
-  EXPECT_FALSE(AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-                   codec_config_metadata, codec_config_obus.at(kCodecConfigId))
-                   .ok());
+  const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+      codec_config_metadata, codec_config_obus.at(kCodecConfigId));
+  EXPECT_THAT(result, IsOk());
+  EXPECT_NE(*result, kInvalidPreSkip);
 }
 
 TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForOpus) {

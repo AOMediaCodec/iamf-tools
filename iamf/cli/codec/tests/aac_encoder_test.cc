@@ -30,6 +30,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kIgnoredValidatePreskip = true;
+
 class AacEncoderTest : public EncoderTestBase, public testing::Test {
  public:
   AacEncoderTest() {
@@ -103,14 +105,14 @@ TEST_F(AacEncoderTest, InitFailsWithInvalidBitrateMode) {
   aac_encoder_metadata_.set_bitrate_mode(-1);
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize().ok());
+  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidatePreskip).ok());
 }
 
 TEST_F(AacEncoderTest, InitFailsWithInvalidSignalingMode) {
   aac_encoder_metadata_.set_signaling_mode(-1);
   ConstructEncoder();
 
-  EXPECT_FALSE(encoder_->Initialize().ok());
+  EXPECT_FALSE(encoder_->Initialize(kIgnoredValidatePreskip).ok());
 }
 
 }  // namespace

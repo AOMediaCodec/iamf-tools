@@ -62,9 +62,11 @@ class EncoderBase {
 
   /*!\brief Initializes `EncoderBase`.
    *
+   * \param validate_codec_delay If true, validates the Codec Config OBU fields
+   *        related to codec delay agree with the encoder.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Initialize();
+  absl::Status Initialize(bool validate_codec_delay);
 
   /*!\brief Encodes an audio frame.
    *
@@ -156,9 +158,15 @@ class EncoderBase {
 
   /*!\brief Initializes `required_samples_to_delay_at_start_`.
    *
+   * \param validate_codec_delay If true, validates the Codec Config OBU fields
+   *        related to codec delay agree with the encoder.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  virtual absl::Status SetNumberOfSamplesToDelayAtStart() = 0;
+  virtual absl::Status SetNumberOfSamplesToDelayAtStart(
+      bool /*validate_codec_delay*/) {
+    required_samples_to_delay_at_start_ = 0;
+    return absl::OkStatus();
+  }
 
   /*!\brief Validates `Finalize()` has not yet been called.
    *

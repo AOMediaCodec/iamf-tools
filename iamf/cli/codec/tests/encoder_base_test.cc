@@ -35,6 +35,8 @@ using ::absl_testing::IsOk;
 using testing::Return;
 
 constexpr DecodedUleb128 kCodecConfigId = 159;
+constexpr bool kValidateCodecDelay = true;
+constexpr bool kDontValidateCodecDelay = false;
 
 class MockEncoder : public EncoderBase {
  public:
@@ -50,16 +52,17 @@ class MockEncoder : public EncoderBase {
       (override));
 
   MOCK_METHOD(absl::Status, InitializeEncoder, (), (override));
-  MOCK_METHOD(absl::Status, SetNumberOfSamplesToDelayAtStart, (), (override));
+  MOCK_METHOD(absl::Status, SetNumberOfSamplesToDelayAtStart,
+              (bool validate_codec_delay), (override));
 };
 
 TEST(EncoderBaseTest, InitializeSucceeds) {
   MockEncoder encoder;
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart())
+  EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay))
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_THAT(encoder.Initialize(), IsOk());
+  EXPECT_THAT(encoder.Initialize(kValidateCodecDelay), IsOk());
 }
 
 TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
@@ -67,17 +70,35 @@ TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
   EXPECT_CALL(encoder, InitializeEncoder())
       .WillOnce(Return(absl::UnknownError("")));
 
-  EXPECT_EQ(encoder.Initialize().code(), absl::StatusCode::kUnknown);
+  EXPECT_EQ(encoder.Initialize(kValidateCodecDelay).code(),
+            absl::StatusCode::kUnknown);
+}
+
+TEST(EncoderBaseTest,
+     InitializePropagatesValidatePreSkipToSetNumberOfSamplesToDelayAtStart) {
+  MockEncoder encoder;
+  EXPECT_CALL(encoder,
+              SetNumberOfSamplesToDelayAtStart(kDontValidateCodecDelay));
+
+  encoder.Initialize(kDontValidateCodecDelay).IgnoreError();
+}
+
+TEST(EncoderBaseTest, SetNumberOfSamplesToDelayAtStartDefaultsToSuccess) {
+  MockEncoder encoder;
+  EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay));
+
+  EXPECT_THAT(encoder.Initialize(kValidateCodecDelay), IsOk());
 }
 
 TEST(EncoderBaseTest,
      InitializeFailsWhenSetNumberOfSamplesToDelayAtStartFails) {
   MockEncoder encoder;
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart())
+  EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay))
       .WillOnce(Return(absl::UnknownError("")));
 
-  EXPECT_EQ(encoder.Initialize().code(), absl::StatusCode::kUnknown);
+  EXPECT_EQ(encoder.Initialize(kValidateCodecDelay).code(),
+            absl::StatusCode::kUnknown);
 }
 
 TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {

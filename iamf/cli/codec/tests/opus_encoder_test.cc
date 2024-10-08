@@ -29,6 +29,10 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kValidateCodecDelay = true;
+constexpr bool kDontValidateCodecDelay = false;
+constexpr uint16_t kIncorrectPreSkip = 999;
+
 class OpusEncoderTest : public EncoderTestBase, public testing::Test {
  public:
   OpusEncoderTest() {
@@ -114,6 +118,20 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes32BitFrameSucceeds) {
       num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42)));
 
   FinalizeAndValidateOrderOnly(1);
+}
+
+TEST_F(OpusEncoderTest, IgnoresPreSkipWhenValidateCodecDelayIsFalse) {
+  opus_decoder_config_.pre_skip_ = kIncorrectPreSkip;
+  ConstructEncoder();
+
+  EXPECT_THAT(encoder_->Initialize(kDontValidateCodecDelay), IsOk());
+}
+
+TEST_F(OpusEncoderTest, ChecksPreSkipWhenValidateCodecDelayIsTrue) {
+  opus_decoder_config_.pre_skip_ = kIncorrectPreSkip;
+  ConstructEncoder();
+
+  EXPECT_FALSE(encoder_->Initialize(kValidateCodecDelay).ok());
 }
 
 }  // namespace

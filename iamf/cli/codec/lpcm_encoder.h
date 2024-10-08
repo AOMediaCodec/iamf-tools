@@ -40,15 +40,6 @@ class LpcmEncoder : public EncoderBase {
    */
   absl::Status InitializeEncoder() override;
 
-  /*!\brief Initializes `required_samples_to_delay_at_start_`.
-   *
-   * \return `absl::OkStatus()` always.
-   */
-  absl::Status SetNumberOfSamplesToDelayAtStart() override {
-    required_samples_to_delay_at_start_ = 0;
-    return absl::OkStatus();
-  }
-
   /*!\brief Encodes an audio frame.
    *
    * \param input_bit_depth Ignored.

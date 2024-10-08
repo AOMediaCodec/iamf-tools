@@ -112,15 +112,6 @@ class FlacEncoder : public EncoderBase {
    */
   absl::Status InitializeEncoder() override;
 
-  /*!\brief Initializes `required_samples_to_delay_at_start_`.
-   *
-   * \return `absl::OkStatus()` always.
-   */
-  absl::Status SetNumberOfSamplesToDelayAtStart() override {
-    required_samples_to_delay_at_start_ = 0;
-    return absl::OkStatus();
-  }
-
   const iamf_tools_cli_proto::FlacEncoderMetadata encoder_metadata_;
   const FlacDecoderConfig decoder_config_;
 

@@ -23,12 +23,12 @@ namespace iamf_tools {
 
 EncoderBase::~EncoderBase() {}
 
-absl::Status EncoderBase::Initialize() {
+absl::Status EncoderBase::Initialize(bool validate_codec_delay) {
   RETURN_IF_NOT_OK(InitializeEncoder());
 
   // Some encoders depend on `InitializeEncoder` being called before
   // `SetNumberOfSamplesToDelayAtStart`.
-  RETURN_IF_NOT_OK(SetNumberOfSamplesToDelayAtStart());
+  RETURN_IF_NOT_OK(SetNumberOfSamplesToDelayAtStart(validate_codec_delay));
   return absl::OkStatus();
 }
 

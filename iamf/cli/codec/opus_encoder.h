@@ -55,9 +55,12 @@ class OpusEncoder : public EncoderBase {
    * This value may vary based on `encoder_metadata_`, num_channels_` or
    * settings in the associated Codec Config OBU.
    *
+   * \param validate_codec_delay If true, validates `pre_skip` agrees with the
+   *        encoder.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status SetNumberOfSamplesToDelayAtStart() override;
+  absl::Status SetNumberOfSamplesToDelayAtStart(
+      bool validate_codec_delay) override;
 
   /*!\brief Encodes an audio frame.
    *

@@ -104,21 +104,18 @@ absl::StatusOr<int> EncodeInt16(
 
 }  // namespace
 
-absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart() {
+absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart(
+    bool validate_codec_delay) {
   opus_int32 lookahead;
   opus_encoder_ctl(encoder_, OPUS_GET_LOOKAHEAD(&lookahead));
-  LOG(INFO) << "Opus lookahead=" << lookahead;
+  LOG_FIRST_N(INFO, 1) << "Opus lookahead=" << lookahead;
   // Opus calls the number of samples that should be trimmed/pre-skipped
   // `lookahead`.
   required_samples_to_delay_at_start_ = static_cast<uint32_t>(lookahead);
-
-  // TODO(b/309480119): Find a way to configure the OBU correctly before failing
-  //                    this check.
-  if (static_cast<uint32_t>(decoder_config_.pre_skip_) !=
-      required_samples_to_delay_at_start_) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Opus required `pre_skip` to be: ", required_samples_to_delay_at_start_,
-        " but it was configured to: ", decoder_config_.pre_skip_));
+  if (validate_codec_delay) {
+    return ValidateEqual(static_cast<uint32_t>(decoder_config_.pre_skip_),
+                         required_samples_to_delay_at_start_,
+                         "Opus `pre_skip`");
   }
 
   return absl::OkStatus();

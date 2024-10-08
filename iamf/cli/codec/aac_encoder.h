@@ -54,9 +54,11 @@ class AacEncoder : public EncoderBase {
    *
    * `InitializeEncoder` is required to be called before calling this function.
    *
+   * \param validate_codec_delay Ignored.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status SetNumberOfSamplesToDelayAtStart() override;
+  absl::Status SetNumberOfSamplesToDelayAtStart(
+      bool /*validate_codec_delay*/) override;
 
   /*!\brief Encodes an audio frame.
    *
