@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <variant>
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -252,6 +253,28 @@ absl::Status CodecConfigObu::Initialize() {
     PrintObu();
   }
   return init_status_;
+}
+
+absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
+  switch (codec_config_.codec_id) {
+    using enum CodecConfig::CodecId;
+    case kCodecIdLpcm:
+    case kCodecIdFlac:
+    case kCodecIdAacLc:
+      // Ok the `decoder_config` does not have a field for codec delay.
+      return absl::OkStatus();
+    case kCodecIdOpus: {
+      OpusDecoderConfig* opus_decoder_config =
+          std::get_if<OpusDecoderConfig>(&codec_config_.decoder_config);
+      if (opus_decoder_config == nullptr) {
+        return absl::InvalidArgumentError(
+            "OpusDecoderConfig is not set in CodecConfig.");
+      }
+      opus_decoder_config->pre_skip_ = codec_delay;
+      return absl::OkStatus();
+    }
+  }
+  LOG(FATAL) << "Unknown codec_id: " << codec_config_.codec_id;
 }
 
 bool CodecConfigObu::IsLossless() const {

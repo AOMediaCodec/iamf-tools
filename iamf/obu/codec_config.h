@@ -64,7 +64,7 @@ class CodecConfigObu : public ObuBase {
    * \param codec_config_id `codec_config_id` in the OBU.
    * \param codec_config `codec_config` in the OBU.
    */
-  CodecConfigObu(const ObuHeader& header, const DecodedUleb128 codec_config_id,
+  CodecConfigObu(const ObuHeader& header, DecodedUleb128 codec_config_id,
                  const CodecConfig& codec_config);
 
   /*!\brief Creates a `CodecConfigObu` from a `ReadBitBuffer`.
@@ -100,6 +100,17 @@ class CodecConfigObu : public ObuBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize();
+
+  /*!\brief Sets the codec delay in the underlying `decoder_config`.
+   *
+   * In some codecs, like Opus, the codec delay is called "pre-skip".
+   *
+   * \param codec_delay Codec delay to set in the underlying `decoder_config`.
+   * \return `absl::OkStatus()` on success. Succeed may be a no-op when the
+   *         underlying `decoder_config` does not have a field for codec delay.
+   *         A specific status on failure.
+   */
+  absl::Status SetCodecDelay(uint16_t codec_delay);
 
   /*!\brief Validates and writes the `DecoderConfig` portion of the OBU.
    *

@@ -43,9 +43,11 @@ codec_config_metadata {
     codec_id: CODEC_ID_OPUS
     num_samples_per_frame: 120
     audio_roll_distance: -32
+    # Prevent encoder from overriding the invalid `pre_skip` value.
+    automatically_override_codec_delay: false
     decoder_config_opus {
       version: 1
-      pre_skip: 0
+      pre_skip: 0  # Intentionally set to an invalid value.
       input_sample_rate: 48000
       opus_encoder_metadata {
         target_bitrate_per_channel: 48000

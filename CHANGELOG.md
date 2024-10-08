@@ -26,8 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     -   Deprecate `MixPresentationElementAnnotations` and
         `mix_presentation_element_annotations_array` in favor of
         `localized_element_annotations`.
-    - Deprecate `OutputMixConfig` and `output_mix_config` in favor of `output_mix_gain`.
-    - Deprecate `ElementMixConfig` and `element_mix_config` in favour of `element_mix_gain`.
+    -   Deprecate `OutputMixConfig` and `output_mix_config` in favor of
+        `output_mix_gain`.
+    -   Deprecate `ElementMixConfig` and `element_mix_config` in favour of
+        `element_mix_gain`.
 
 ### Removed
 
@@ -38,6 +40,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 -   Set sensible defaults for some proto fields.
+-   Default to automatically determining the correct
+    `OpusDecoderConfig::pre_skip`, instead of throwing an error when user input
+    was incorrect.
 -   Update Simple and Base profile to be based on [IAMF v1.0.0-errata].
 
 ### Fixed

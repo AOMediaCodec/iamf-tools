@@ -26,6 +26,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
@@ -38,6 +39,7 @@ namespace {
 using ::absl_testing::IsOk;
 
 constexpr DecodedUleb128 kCodecConfigId = 123;
+constexpr int16_t kArbitraryCodecDelay = 999;
 
 class CodecConfigTestBase : public ObuTestBase {
  public:
@@ -179,6 +181,12 @@ TEST_F(CodecConfigLpcmTest, IsAlwaysLossless) {
   InitExpectOk();
 
   EXPECT_TRUE(obu_->IsLossless());
+}
+
+TEST_F(CodecConfigLpcmTest, SetCodecDelayIsNoOp) {
+  InitExpectOk();
+
+  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
 }
 
 TEST_F(CodecConfigLpcmTest, ConstructorSetsObuTyoe) {
@@ -475,6 +483,16 @@ TEST_F(CodecConfigOpusTest,
 
 TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }
 
+TEST_F(CodecConfigOpusTest, SetCodecDelaySetsPreSkip) {
+  InitExpectOk();
+  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+
+  const auto decoder_config = obu_->GetCodecConfig().decoder_config;
+  ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
+  EXPECT_EQ(std::get<OpusDecoderConfig>(decoder_config).pre_skip_,
+            kArbitraryCodecDelay);
+}
+
 TEST_F(CodecConfigOpusTest, VarySeveralFields) {
   codec_config_id_ = 99;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).version_ = 15;
@@ -556,6 +574,38 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
             OpusDecoderConfig::kMappingFamily);
   EXPECT_FALSE(obu->IsLossless());
 };
+
+class CodecConfigAacTest : public CodecConfigTestBase, public testing::Test {
+ public:
+  CodecConfigAacTest()
+      : CodecConfigTestBase(
+            CodecConfig::kCodecIdAacLc,
+            AacDecoderConfig{
+                .buffer_size_db_ = 0,
+                .max_bitrate_ = 0,
+                .average_bit_rate_ = 0,
+                .decoder_specific_info_ =
+                    {.audio_specific_config =
+                         {.sample_frequency_index_ = AudioSpecificConfig::
+                              AudioSpecificConfig::kSampleFrequencyIndex64000}},
+            }) {
+    // Overwrite some default values to be more reasonable for AAC.
+    codec_config_.num_samples_per_frame = 1024;
+    codec_config_.audio_roll_distance = -1;
+  }
+};
+
+TEST_F(CodecConfigAacTest, IsNeverLossless) {
+  InitExpectOk();
+
+  EXPECT_FALSE(obu_->IsLossless());
+}
+
+TEST_F(CodecConfigAacTest, SetCodecDelayIsNoOp) {
+  InitExpectOk();
+
+  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+}
 
 TEST(CreateFromBuffer, AacLcDecoderConfig) {
   // A 7-bit mask representing `channel_configuration`, and all three fields in
@@ -651,6 +701,35 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
             AudioSpecificConfig::GaSpecificConfig::kExtensionFlag);
   EXPECT_FALSE(obu->IsLossless());
 };
+
+class CodecConfigFlacTest : public CodecConfigTestBase, public testing::Test {
+ public:
+  CodecConfigFlacTest()
+      : CodecConfigTestBase(
+            CodecConfig::kCodecIdFlac,
+            FlacDecoderConfig{
+                {{.header = {.last_metadata_block_flag = true,
+                             .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
+                             .metadata_data_block_length = 34},
+                  .payload = FlacMetaBlockStreamInfo{
+                      .minimum_block_size = 16,
+                      .maximum_block_size = 16,
+                      .sample_rate = 48000,
+                      .bits_per_sample = 15,
+                      .total_samples_in_stream = 0}}}}) {}
+};
+
+TEST_F(CodecConfigFlacTest, IsAlwaysLossless) {
+  InitExpectOk();
+
+  EXPECT_TRUE(obu_->IsLossless());
+}
+
+TEST_F(CodecConfigFlacTest, SetCodecDelayIsNoOp) {
+  InitExpectOk();
+
+  EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
+}
 
 // TODO(b/331831926): Add a test case for `FlacDecoderConfig`.
 TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {

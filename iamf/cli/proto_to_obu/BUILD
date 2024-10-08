@@ -95,6 +95,7 @@ cc_library(
     srcs = ["codec_config_generator.cc"],
     hdrs = ["codec_config_generator.h"],
     deps = [
+        ":audio_frame_generator",
         "//iamf/cli:cli_util",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common:macros",

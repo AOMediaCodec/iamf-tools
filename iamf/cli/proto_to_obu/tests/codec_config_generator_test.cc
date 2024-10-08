@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -88,6 +89,7 @@ void InitMetadataForOpus(
           codec_id: CODEC_ID_OPUS
           num_samples_per_frame: 120
           audio_roll_distance: -32
+          automatically_override_codec_delay: false
           decoder_config_opus {
             version: 1
             output_channel_count: 2
@@ -129,6 +131,7 @@ void InitMetadataForAac(
           codec_id: CODEC_ID_AAC_LC
           num_samples_per_frame: 1024
           audio_roll_distance: -1
+          automatically_override_codec_delay: false
           decoder_config_aac: {
             decoder_config_descriptor_tag: 0x04
             object_type_indication: 0x40
@@ -411,6 +414,48 @@ TEST_F(CodecConfigGeneratorTest, IamfOpusFixedFieldsMayBeOmitted) {
   ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
+}
+
+TEST_F(CodecConfigGeneratorTest,
+       AutomaticallyOverrideCodecDelayOverridesPreSkip) {
+  InitMetadataForOpus(codec_config_metadata_);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->mutable_decoder_config_opus()
+      ->clear_pre_skip();
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_automatically_override_codec_delay(true);
+
+  const auto output_obus = InitAndGenerate();
+  EXPECT_THAT(output_obus, IsOk());
+  const auto& decoder_config =
+      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config;
+  ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
+
+  EXPECT_NE(std::get<OpusDecoderConfig>(decoder_config).pre_skip_, 0);
+}
+
+TEST_F(CodecConfigGeneratorTest,
+       AutomaticallyOverrideCodecDelayOverridesIgnoresInputPreSkip) {
+  const uint16_t kInvalidInputPreSkip = 9999;
+  InitMetadataForOpus(codec_config_metadata_);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->mutable_decoder_config_opus()
+      ->set_pre_skip(kInvalidInputPreSkip);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_automatically_override_codec_delay(true);
+
+  const auto output_obus = InitAndGenerate();
+  EXPECT_THAT(output_obus, IsOk());
+  const auto& decoder_config =
+      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config;
+  ASSERT_TRUE(std::holds_alternative<OpusDecoderConfig>(decoder_config));
+
+  EXPECT_NE(std::get<OpusDecoderConfig>(decoder_config).pre_skip_,
+            kInvalidInputPreSkip);
 }
 
 TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputChannelCount) {

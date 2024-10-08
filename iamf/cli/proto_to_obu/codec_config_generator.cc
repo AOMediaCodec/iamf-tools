@@ -23,6 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/codec_config.h"
@@ -343,6 +344,19 @@ void LogCodecConfigObus(
   }
 }
 
+absl::Status OverrideCodecDelay(
+    const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
+    CodecConfigObu& codec_config_obu) {
+  const auto required_codec_delay =
+      AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+          codec_config_metadata, codec_config_obu);
+  if (!required_codec_delay.ok()) {
+    return required_codec_delay.status();
+  }
+
+  return codec_config_obu.SetCodecDelay(*required_codec_delay);
+}
+
 }  // namespace
 
 absl::Status CodecConfigGenerator::Generate(
@@ -395,6 +409,9 @@ absl::Status CodecConfigGenerator::Generate(
         GetHeaderFromMetadata(codec_config_metadata.obu_header()),
         codec_config_metadata.codec_config_id(), obu_codec_config);
     RETURN_IF_NOT_OK(obu.Initialize());
+    if (input_codec_config.automatically_override_codec_delay()) {
+      RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, obu));
+    }
 
     codec_config_obus.emplace(codec_config_metadata.codec_config_id(),
                               std::move(obu));

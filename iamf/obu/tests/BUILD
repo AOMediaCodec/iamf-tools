@@ -81,6 +81,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_absl//absl/status",

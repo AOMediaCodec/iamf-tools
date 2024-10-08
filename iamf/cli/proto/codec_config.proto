@@ -193,7 +193,12 @@ message CodecConfig {
     FlacDecoderConfig decoder_config_flac = 8;
   }
 
-  // Next ID: 11
+  // If true, the codec-delay related fields will be ignored and automatically
+  // determined. For example, the OpusDecoderConfig.pre_skip field will be
+  // ignored and set to the number of samples reported by the underlying encoder
+  // library.
+  optional bool automatically_override_codec_delay = 11 [default = true];
+  // Next ID: 12
 }
 
 message CodecConfigObuMetadata {
