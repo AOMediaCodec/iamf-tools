@@ -37,7 +37,6 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -45,24 +44,39 @@ namespace iamf_tools {
 /*!\brief A class that encodes an IA Sequence and generates OBUs.
  *
  * Descriptor OBUs are generated once at the beginning, and data OBUs are
- * generated iteratively for each temporal unit. The use pattern of this class
- * is:
+ * generated iteratively for each temporal unit (TU). The use pattern of this
+ * class is:
  *   IamfEncoder encoder(...);  // Call constructor.
  *
  *   encoder.GenerateDescriptorObus(...);
  *
- *   while (encoder.GeneratingDataObus()) {
- *     // For all audio elements and labels corresponding to this temporal unit:
- *     encoder.AddSamples(audio_element_id, label, samples);
+ *   while (input_data_is_available) {
+ *     // Prepare for the next temporal unit; clear state of the previous TU.
+ *     encoder.BeginTemporalUnit();
  *
- *     // When all samples are added:
- *     encoder.FinalizeAddSamples();
+ *     // For all audio elements and labels corresponding to this temporal unit:
+ *     for each audio element: {
+ *       for each channel label from the current element {
+ *         encoder.AddSamples(audio_element_id, label, samples);
+ *       }
+ *     }
  *
  *     // For all parameter block metadata corresponding to this temporal unit:
  *     encoder.AddParameterBlockMetadata(...);
  *
+ *     // Get OBUs for next encoded temporal unit.
  *     encoder.OutputTemporalUnit(...);
  *   }
+ *
+ *   // When all samples (for all temporal units) are added:
+ *   if (done_receiving_all_audio):
+ *     encoder.FinalizeAddSamples();
+ *
+ *   // "Flush" the encoder to produce remaining output temporal units.
+ *   while (encoder.GeneratingDataObus()) {
+ *     encoder.OutputTemporalUnit(...);
+ *   }
+ *
  *
  * Note the timestamps corresponding to `AddSamples()` and
  * `AddParameterBlockMetadata()` might be different from that of the output
@@ -97,7 +111,11 @@ class IamfEncoder {
    *
    * \return True if still generating data OBUs.
    */
-  bool GeneratingDataObus();
+  bool GeneratingDataObus() const;
+
+  /*!\brief Clears the state, e.g. accumulated samples for next temporal unit.
+   */
+  void BeginTemporalUnit();
 
   /*!\brief Gets the input timestamp of the data OBU generation iteration.
    *

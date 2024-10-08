@@ -145,17 +145,19 @@ absl::Status IamfEncoder::GenerateDescriptorObus(
   return absl::OkStatus();
 }
 
-bool IamfEncoder::GeneratingDataObus() {
+bool IamfEncoder::GeneratingDataObus() const {
+  return (audio_frame_generator_ != nullptr) &&
+         (audio_frame_generator_->TakingSamples() ||
+          audio_frame_generator_->GeneratingFrames());
+}
+
+void IamfEncoder::BeginTemporalUnit() {
   // Clear cached samples for this iteration of data OBU generation.
   for (auto& [audio_element_id, labeled_samples] : id_to_labeled_samples_) {
     for (auto& [label, samples] : labeled_samples) {
       samples.clear();
     }
   }
-
-  return (audio_frame_generator_ != nullptr) &&
-         (audio_frame_generator_->TakingSamples() ||
-          audio_frame_generator_->GeneratingFrames());
 }
 
 absl::Status IamfEncoder::GetInputTimestamp(int32_t& input_timestamp) {

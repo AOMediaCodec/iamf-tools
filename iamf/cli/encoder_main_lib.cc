@@ -188,6 +188,8 @@ absl::Status GenerateObus(
         << "\n\n============================= Generating Data OBUs Iter #"
         << data_obus_iteration++ << " =============================\n";
 
+    iamf_encoder.BeginTemporalUnit();
+
     int32_t input_timestamp = 0;
     RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));
 

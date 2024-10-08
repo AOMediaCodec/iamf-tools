@@ -243,6 +243,7 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   int32_t output_timestamp = 0;
   int iteration = 0;
   while (iamf_encoder.GeneratingDataObus()) {
+    iamf_encoder.BeginTemporalUnit();
     iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, zero_samples);
     iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, zero_samples);
 
