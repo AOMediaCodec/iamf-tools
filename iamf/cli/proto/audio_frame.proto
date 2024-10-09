@@ -12,6 +12,107 @@ syntax = "proto2";
 
 package iamf_tools_cli_proto;
 
+enum ChannelLabel {
+  CHANNEL_LABEL_INVALID = 0;
+  reserved 1;  // Reserved for potential "omitted" label.
+  // Mono channels.
+  CHANNEL_LABEL_MONO = 2;
+  // Stereo or binaural channels.
+  CHANNEL_LABEL_L_2 = 3;
+  CHANNEL_LABEL_R_2 = 4;
+  CHANNEL_LABEL_DEMIXED_R_2 = 5;
+  // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
+  CHANNEL_LABEL_CENTRE = 6;
+  // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
+  CHANNEL_LABEL_LFE = 7;
+  // 3.1.2 surround channels.
+  CHANNEL_LABEL_L_3 = 8;
+  CHANNEL_LABEL_R_3 = 9;
+  CHANNEL_LABEL_LTF_3 = 10;
+  CHANNEL_LABEL_RTF_3 = 11;
+  CHANNEL_LABEL_DEMIXED_L_3 = 12;
+  CHANNEL_LABEL_DEMIXED_R_3 = 13;
+  // 5.x.y surround channels.
+  CHANNEL_LABEL_L_5 = 14;
+  CHANNEL_LABEL_R_5 = 15;
+  CHANNEL_LABEL_LS_5 = 16;
+  CHANNEL_LABEL_RS_5 = 17;
+  CHANNEL_LABEL_DEMIXED_L_5 = 18;
+  CHANNEL_LABEL_DEMIXED_R_5 = 19;
+  CHANNEL_LABEL_DEMIXED_LS_5 = 20;
+  CHANNEL_LABEL_DEMIXED_RS_5 = 21;
+  // Common channels between 5.1.2 and 7.1.2.
+  CHANNEL_LABEL_LTF_2 = 22;
+  CHANNEL_LABEL_RTF_2 = 23;
+  CHANNEL_LABEL_DEMIXED_LTF_2 = 24;
+  CHANNEL_LABEL_DEMIXED_RTF_2 = 25;
+  // Common channels between 5.1.4 and 7.1.4.
+  CHANNEL_LABEL_LTF_4 = 26;
+  CHANNEL_LABEL_RTF_4 = 27;
+  CHANNEL_LABEL_LTB_4 = 28;
+  CHANNEL_LABEL_RTB_4 = 29;
+  CHANNEL_LABEL_DEMIXED_LTB_4 = 30;
+  CHANNEL_LABEL_DEMIXED_RTB_4 = 31;
+  // 7.x.y surround channels.
+  CHANNEL_LABEL_L_7 = 32;
+  CHANNEL_LABEL_R_7 = 33;
+  CHANNEL_LABEL_LSS_7 = 34;
+  CHANNEL_LABEL_RSS_7 = 35;
+  CHANNEL_LABEL_LRS_7 = 36;
+  CHANNEL_LABEL_RRS_7 = 37;
+  CHANNEL_LABEL_DEMIXED_L_7 = 38;
+  CHANNEL_LABEL_DEMIXED_R_7 = 39;
+  CHANNEL_LABEL_DEMIXED_LRS_7 = 40;
+  CHANNEL_LABEL_DEMIXED_RRS_7 = 41;
+  // 9.1.6 surround channels.
+  CHANNEL_LABEL_FLC = 42;
+  CHANNEL_LABEL_FC = 43;
+  CHANNEL_LABEL_FRC = 44;
+  CHANNEL_LABEL_FL = 45;
+  CHANNEL_LABEL_FR = 46;
+  CHANNEL_LABEL_SI_L = 47;
+  CHANNEL_LABEL_SI_R = 48;
+  CHANNEL_LABEL_BL = 49;
+  CHANNEL_LABEL_BR = 50;
+  CHANNEL_LABEL_TP_FL = 51;
+  CHANNEL_LABEL_TP_FR = 52;
+  CHANNEL_LABEL_TP_SI_L = 53;
+  CHANNEL_LABEL_TP_SI_R = 54;
+  CHANNEL_LABEL_TP_BL = 55;
+  CHANNEL_LABEL_TP_BR = 56;
+  // Reserved for channel-based labels.
+  reserved 57 to 999;
+
+  CHANNEL_LABEL_A_0 = 1000;
+  CHANNEL_LABEL_A_1 = 1001;
+  CHANNEL_LABEL_A_2 = 1002;
+  CHANNEL_LABEL_A_3 = 1003;
+  CHANNEL_LABEL_A_4 = 1004;
+  CHANNEL_LABEL_A_5 = 1005;
+  CHANNEL_LABEL_A_6 = 1006;
+  CHANNEL_LABEL_A_7 = 1007;
+  CHANNEL_LABEL_A_8 = 1008;
+  CHANNEL_LABEL_A_9 = 1009;
+  CHANNEL_LABEL_A_10 = 1010;
+  CHANNEL_LABEL_A_11 = 1011;
+  CHANNEL_LABEL_A_12 = 1012;
+  CHANNEL_LABEL_A_13 = 1013;
+  CHANNEL_LABEL_A_14 = 1014;
+  CHANNEL_LABEL_A_15 = 1015;
+  CHANNEL_LABEL_A_16 = 1016;
+  CHANNEL_LABEL_A_17 = 1017;
+  CHANNEL_LABEL_A_18 = 1018;
+  CHANNEL_LABEL_A_19 = 1019;
+  CHANNEL_LABEL_A_20 = 1020;
+  CHANNEL_LABEL_A_21 = 1021;
+  CHANNEL_LABEL_A_22 = 1022;
+  CHANNEL_LABEL_A_23 = 1023;
+  CHANNEL_LABEL_A_24 = 1024;
+  reserved 1025 to 1224;  // Reserved for future ambisonics channels.
+
+  // Next ID: 57 (channel-based) or 1025 (ambisonics).
+}
+
 message AudioFrameObuMetadata {
   reserved 2, 3;
 

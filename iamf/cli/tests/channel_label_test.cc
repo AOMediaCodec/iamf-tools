@@ -17,14 +17,16 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 
 namespace iamf_tools {
 namespace {
@@ -33,6 +35,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::IsEmpty;
 
+using enum iamf_tools_cli_proto::ChannelLabel;
 using enum ChannelLabel::Label;
 using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
@@ -44,6 +47,15 @@ using enum ReconGainElement::ReconGainFlagBitmask;
 
 TEST(StringToLabel, SucceedsForMonoInput) {
   EXPECT_THAT(ChannelLabel::StringToLabel("M"), IsOkAndHolds(kMono));
+}
+
+TEST(ProtoToLabel, SucceedsForMonoInput) {
+  EXPECT_THAT(ChannelLabel::ProtoToLabel(CHANNEL_LABEL_MONO),
+              IsOkAndHolds(kMono));
+}
+
+TEST(ProtoToLabel, FailsForInvalidInput) {
+  EXPECT_FALSE(ChannelLabel::ProtoToLabel(CHANNEL_LABEL_INVALID).ok());
 }
 
 TEST(StringToLabel, SucceedsForStereoInput) {
@@ -149,40 +161,141 @@ INSTANTIATE_TEST_SUITE_P(
          kA13, kA14, kA15, kA16, kA17, kA18, kA19, kA20, kA21, kA22, kA23,
          kA24}));
 
-TEST(FillLabelsFromStrings, OutputContainerHasSameOrderAsInputContainer) {
-  const std::vector<std::string> kInputLabels = {"L2", "R2", "C", "LFE"};
-  const std::vector<ChannelLabel::Label> kExpectedOrderedOutput = {
-      kL2, kR2, kCentre, kLFE};
-  std::vector<ChannelLabel::Label> ordered_output;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, ordered_output),
-              IsOk());
-
-  EXPECT_EQ(ordered_output, kExpectedOrderedOutput);
+template <class InputContainer, class OutputContainer>
+void ExpectConvertAndFillLabelsHasExpectedOutput(
+    const InputContainer& input_labels,
+    const OutputContainer& expected_output) {
+  OutputContainer converted_labels;
+  ASSERT_THAT(
+      ChannelLabel::ConvertAndFillLabels(input_labels, converted_labels),
+      IsOk());
+  EXPECT_EQ(converted_labels, expected_output);
 }
 
-TEST(FillLabelsFromStrings, AppendsToOutputContainer) {
+TEST(ConvertAndFillLabels, OutputContainerHasSameOrderAsInputContainer) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"L2", "R2", "C", "LFE"}),
+      std::vector<ChannelLabel::Label>({kL2, kR2, kCentre, kLFE}));
+}
+
+TEST(ConvertAndFillLabels, AppendsToOutputContainer) {
   const std::vector<std::string> kInputLabels = {"R2", "C", "LFE"};
   const std::vector<ChannelLabel::Label> kExpectedOutputVector = {
       kL2, kR2, kCentre, kLFE};
   std::vector<ChannelLabel::Label> output_vector = {kL2};
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, output_vector),
+  EXPECT_THAT(ChannelLabel::ConvertAndFillLabels(kInputLabels, output_vector),
               IsOk());
 
   EXPECT_EQ(output_vector, kExpectedOutputVector);
 }
 
-TEST(FillLabelsFromStrings, ValidWithUnorderedOutputContainers) {
+TEST(ConvertAndFillLabels, ValidWithUnorderedOutputContainers) {
   const std::vector<std::string> kInputLabels = {"L2", "R2", "C", "LFE"};
   const absl::flat_hash_set<ChannelLabel::Label> kExpectedOutputSet = {
       kL2, kR2, kCentre, kLFE};
   absl::flat_hash_set<ChannelLabel::Label> output_set;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(kInputLabels, output_set),
+  EXPECT_THAT(ChannelLabel::ConvertAndFillLabels(kInputLabels, output_set),
               IsOk());
 
   EXPECT_EQ(output_set, kExpectedOutputSet);
 }
 
-TEST(FillLabelsFromStrings, ValidWith7_1_4Labels) {
+TEST(ConvertAndFillLabels, ValidWithStereoProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_L_2, CHANNEL_LABEL_R_2}),
+      std::vector<ChannelLabel::Label>({kL2, kR2}));
+}
+
+TEST(ConvertAndFillLabels, ValidWith3_1_2ProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_L_3, CHANNEL_LABEL_R_3, CHANNEL_LABEL_CENTRE,
+           CHANNEL_LABEL_LFE, CHANNEL_LABEL_LTF_3, CHANNEL_LABEL_RTF_3}),
+      std::vector<ChannelLabel::Label>(
+          {kL3, kR3, kCentre, kLFE, kLtf3, kRtf3}));
+}
+
+TEST(ConvertAndFillLabels, ValidWith5_1_2ProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_L_5, CHANNEL_LABEL_R_5, CHANNEL_LABEL_CENTRE,
+           CHANNEL_LABEL_LFE, CHANNEL_LABEL_LS_5, CHANNEL_LABEL_RS_5,
+           CHANNEL_LABEL_LTF_2, CHANNEL_LABEL_RTF_2}),
+      std::vector<ChannelLabel::Label>(
+          {kL5, kR5, kCentre, kLFE, kLs5, kRs5, kLtf2, kRtf2}));
+}
+
+TEST(ConvertAndFillLabels, ValidWith7_1_4ProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_L_7, CHANNEL_LABEL_R_7, CHANNEL_LABEL_CENTRE,
+           CHANNEL_LABEL_LFE, CHANNEL_LABEL_LSS_7, CHANNEL_LABEL_RSS_7,
+           CHANNEL_LABEL_LRS_7, CHANNEL_LABEL_RRS_7, CHANNEL_LABEL_LTF_4,
+           CHANNEL_LABEL_RTF_4, CHANNEL_LABEL_LTB_4, CHANNEL_LABEL_RTB_4}),
+      std::vector<ChannelLabel::Label>({kL7, kR7, kCentre, kLFE, kLss7, kRss7,
+                                        kLrs7, kRrs7, kLtf4, kRtf4, kLtb4,
+                                        kRtb4}));
+}
+
+TEST(ConvertAndFillLabels, ValidWith9_1_6ProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_FLC, CHANNEL_LABEL_FC, CHANNEL_LABEL_FRC,
+           CHANNEL_LABEL_FL, CHANNEL_LABEL_FR, CHANNEL_LABEL_SI_L,
+           CHANNEL_LABEL_SI_R, CHANNEL_LABEL_BL, CHANNEL_LABEL_BR,
+           CHANNEL_LABEL_TP_FL, CHANNEL_LABEL_TP_FR, CHANNEL_LABEL_TP_SI_L,
+           CHANNEL_LABEL_TP_SI_R, CHANNEL_LABEL_TP_BL, CHANNEL_LABEL_TP_BR}),
+      std::vector<ChannelLabel::Label>({kFLc, kFC, kFRc, kFL, kFR, kSiL, kSiR,
+                                        kBL, kBR, kTpFL, kTpFR, kTpSiL, kTpSiR,
+                                        kTpBL, kTpBR}));
+}
+
+TEST(ConvertAndFillLabels, ValidWithDemixedLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_DEMIXED_R_2, CHANNEL_LABEL_DEMIXED_L_3,
+           CHANNEL_LABEL_DEMIXED_R_3, CHANNEL_LABEL_DEMIXED_L_5,
+           CHANNEL_LABEL_DEMIXED_R_5, CHANNEL_LABEL_DEMIXED_LS_5,
+           CHANNEL_LABEL_DEMIXED_RS_5, CHANNEL_LABEL_DEMIXED_LTF_2,
+           CHANNEL_LABEL_DEMIXED_RTF_2, CHANNEL_LABEL_DEMIXED_LTB_4,
+           CHANNEL_LABEL_DEMIXED_RTB_4, CHANNEL_LABEL_DEMIXED_L_7,
+           CHANNEL_LABEL_DEMIXED_R_7, CHANNEL_LABEL_DEMIXED_LRS_7,
+           CHANNEL_LABEL_DEMIXED_RRS_7}),
+      std::vector<ChannelLabel::Label>(
+          {kDemixedR2, kDemixedL3, kDemixedR3, kDemixedL5, kDemixedR5,
+           kDemixedLs5, kDemixedRs5, kDemixedLtf2, kDemixedRtf2, kDemixedLtb4,
+           kDemixedRtb4, kDemixedL7, kDemixedR7, kDemixedLrs7, kDemixedRrs7}));
+}
+
+TEST(ConvertAndFillLabels, ValidWithZerothOrderAmbisonicsProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>({CHANNEL_LABEL_A_0}),
+      std::vector<ChannelLabel::Label>({kA0}));
+}
+
+TEST(ConvertAndFillLabels, ValidWithFirstOrderAmbisonicsProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_A_1, CHANNEL_LABEL_A_2, CHANNEL_LABEL_A_3}),
+      std::vector<ChannelLabel::Label>({kA1, kA2, kA3}));
+}
+
+TEST(ConvertAndFillLabels, ValidWithThirdOrderAmbisonicsProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_A_9, CHANNEL_LABEL_A_15}),
+      std::vector<ChannelLabel::Label>({kA9, kA15}));
+}
+
+TEST(ConvertAndFillLabels, ValidWithFourthOrderAmbisonicsProtoLabels) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<iamf_tools_cli_proto::ChannelLabel>(
+          {CHANNEL_LABEL_A_16, CHANNEL_LABEL_A_24}),
+      std::vector<ChannelLabel::Label>({kA16, kA24}));
+}
+
+TEST(ConvertAndFillLabels, ValidWith7_1_4StringLabels) {
   const std::vector<std::string> k7_1_4InputLabels = {
       "L7",   "R7",   "C",    "LFE",  "Lss7", "Rss7",
       "Lrs7", "Rrs7", "Ltf4", "Rtf4", "Ltb4", "Rtb4"};
@@ -190,13 +303,13 @@ TEST(FillLabelsFromStrings, ValidWith7_1_4Labels) {
       kL7,   kR7,   kCentre, kLFE,  kLss7, kRss7,
       kLrs7, kRrs7, kLtf4,   kRtf4, kLtb4, kRtb4};
   std::vector<ChannelLabel::Label> output;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(k7_1_4InputLabels, output),
+  EXPECT_THAT(ChannelLabel::ConvertAndFillLabels(k7_1_4InputLabels, output),
               IsOk());
 
   EXPECT_EQ(output, kExpectedOutput);
 }
 
-TEST(FillLabelsFromStrings, ValidWith9_1_6Labels) {
+TEST(ConvertAndFillLabels, ValidWith9_1_6StringLabels) {
   const std::vector<std::string> k9_1_6InputLabels = {
       "FLc", "FC",   "FRc",  "FL",    "FR",    "SiL",  "SiR",  "BL",
       "BR",  "TpFL", "TpFR", "TpSiL", "TpSiR", "TpBL", "TpBR", "LFE"};
@@ -204,38 +317,37 @@ TEST(FillLabelsFromStrings, ValidWith9_1_6Labels) {
       kFLc, kFC,   kFRc,  kFL,    kFR,    kSiL,  kSiR,  kBL,
       kBR,  kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR, kLFE};
   std::vector<ChannelLabel::Label> output;
-  EXPECT_THAT(ChannelLabel::FillLabelsFromStrings(k9_1_6InputLabels, output),
+  EXPECT_THAT(ChannelLabel::ConvertAndFillLabels(k9_1_6InputLabels, output),
               IsOk());
 
   EXPECT_EQ(output, kExpectedOutput);
 }
 
-TEST(FillLabelsFromStrings,
-     InvalidWhenThereAreDuplicateLabelsWithOutputVector) {
+TEST(ConvertAndFillLabels, InvalidWhenThereAreDuplicateLabelsWithOutputVector) {
   const std::vector<std::string> kInputWithDuplicates = {"R2", "C", "L2"};
   std::vector<ChannelLabel::Label> output_vector = {kL2};
 
   EXPECT_FALSE(
-      ChannelLabel::FillLabelsFromStrings(kInputWithDuplicates, output_vector)
+      ChannelLabel::ConvertAndFillLabels(kInputWithDuplicates, output_vector)
           .ok());
 }
 
-TEST(FillLabelsFromStrings, InvalidWhenThereAreDuplicateLabelsWithOutputSet) {
+TEST(ConvertAndFillLabels, InvalidWhenThereAreDuplicateLabelsWithOutputSet) {
   const std::vector<std::string> kInputWithDuplicates = {"R2", "C", "L2"};
   absl::flat_hash_set<ChannelLabel::Label> output_set = {kL2};
 
   EXPECT_FALSE(
-      ChannelLabel::FillLabelsFromStrings(kInputWithDuplicates, output_set)
+      ChannelLabel::ConvertAndFillLabels(kInputWithDuplicates, output_set)
           .ok());
 }
 
-TEST(FillLabelsFromStrings, InvalidWhenThereAreUnknownLabels) {
+TEST(ConvertAndFillLabels, InvalidWhenThereAreUnknownLabels) {
   const std::vector<std::string> kInputWithDuplicates = {"L2", "R2", "C",
                                                          "InvalidLabel"};
   std::vector<ChannelLabel::Label> output;
 
   EXPECT_FALSE(
-      ChannelLabel::FillLabelsFromStrings(kInputWithDuplicates, output).ok());
+      ChannelLabel::ConvertAndFillLabels(kInputWithDuplicates, output).ok());
 }
 
 TEST(GetDemixedLabel, SucceedsForDemixedStereo) {

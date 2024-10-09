@@ -60,6 +60,7 @@ cc_library(
     srcs = ["channel_label.cc"],
     hdrs = ["channel_label.h"],
     deps = [
+        "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/obu:audio_element",

@@ -101,7 +101,7 @@ void ExpectLabelsAreConvertibleToChannelLabels(
     InputContainer labels,
     const std::vector<ChannelLabel::Label>& expected_labels) {
   std::vector<ChannelLabel::Label> converted_labels;
-  ASSERT_THAT(ChannelLabel::FillLabelsFromStrings(labels, converted_labels),
+  ASSERT_THAT(ChannelLabel::ConvertAndFillLabels(labels, converted_labels),
               IsOk());
   EXPECT_EQ(converted_labels, expected_labels);
 }

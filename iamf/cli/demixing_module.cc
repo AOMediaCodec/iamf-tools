@@ -806,7 +806,7 @@ absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
     }
 
     absl::flat_hash_set<ChannelLabel::Label> input_channel_labels;
-    RETURN_IF_NOT_OK(ChannelLabel::FillLabelsFromStrings(
+    RETURN_IF_NOT_OK(ChannelLabel::ConvertAndFillLabels(
         audio_frame_metadata.channel_labels(), input_channel_labels));
 
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
