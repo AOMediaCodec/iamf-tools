@@ -133,12 +133,14 @@ INSTANTIATE_TEST_SUITE_P(
          // 3.1.2 surround channels.
          kL3, kR3, kLtf3, kRtf3, kDemixedL3, kDemixedR3,
          // 5.x.y surround channels.
-         kL5, kR5, kLs5, kRs5, kLtf2, kRtf2, kDemixedL5, kDemixedR5,
-         kDemixedLs5, kDemixedRs5, kDemixedLtf2, kDemixedRtf2,
+         kL5, kR5, kLs5, kRs5, kDemixedL5, kDemixedR5, kDemixedLs5, kDemixedRs5,
+         // Common channels between 5.1.2 and 7.1.2.
+         kLtf2, kRtf2, kDemixedLtf2, kDemixedRtf2,
+         // Common channels between 5.1.4 and 7.1.4.
+         kLtf4, kRtf4, kLtb4, kRtb4, kDemixedLtb4, kDemixedRtb4,
          // 7.x.y surround channels.
-         kL7, kR7, kLss7, kRss7, kLrs7, kRrs7, kLtf4, kRtf4, kLtb4, kRtb4,
-         kDemixedL7, kDemixedR7, kDemixedLrs7, kDemixedRrs7, kDemixedLtb4,
-         kDemixedRtb4,
+         kL7, kR7, kLss7, kRss7, kLrs7, kRrs7, kDemixedL7, kDemixedR7,
+         kDemixedLrs7, kDemixedRrs7,
          // 9.1.6 surround channels.
          kFLc, kFC, kFRc, kFL, kFR, kSiL, kSiR, kBL, kBR, kTpFL, kTpFR, kTpSiL,
          kTpSiR, kTpBL, kTpBR,

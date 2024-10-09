@@ -44,8 +44,7 @@ class ChannelLabel {
     kL2,
     kR2,
     kDemixedR2,
-    // Centre channel common to several layouts
-    // (e.g. 3.1.2, 5.x.y, 7.x.y).
+    // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
     kCentre,
     // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
     kLFE,
@@ -61,14 +60,22 @@ class ChannelLabel {
     kR5,
     kLs5,
     kRs5,
-    kLtf2,
-    kRtf2,
     kDemixedL5,
     kDemixedR5,
     kDemixedLs5,
     kDemixedRs5,
+    // Common channels between 5.1.2 and 7.1.2.
+    kLtf2,
+    kRtf2,
     kDemixedLtf2,
     kDemixedRtf2,
+    // Common channels between 5.1.4 and 7.1.4.
+    kLtf4,
+    kRtf4,
+    kLtb4,
+    kRtb4,
+    kDemixedLtb4,
+    kDemixedRtb4,
     // 7.x.y surround channels.
     kL7,
     kR7,
@@ -76,16 +83,10 @@ class ChannelLabel {
     kRss7,
     kLrs7,
     kRrs7,
-    kLtf4,
-    kRtf4,
-    kLtb4,
-    kRtb4,
     kDemixedL7,
     kDemixedR7,
     kDemixedLrs7,
     kDemixedRrs7,
-    kDemixedLtb4,
-    kDemixedRtb4,
     // 9.1.6 surround channels.
     kFLc,
     kFC,

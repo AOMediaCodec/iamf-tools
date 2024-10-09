@@ -199,30 +199,30 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
           {"R5", kR5},
           {"Ls5", kLs5},
           {"Rs5", kRs5},
-          {"Ltf2", kLtf2},
-          {"Rtf2", kRtf2},
           {"DemixedL5", kDemixedL5},
           {"DemixedR5", kDemixedR5},
           {"DemixedLs5", kDemixedLs5},
           {"DemixedRs5", kDemixedRs5},
+          {"Ltf2", kLtf2},
+          {"Rtf2", kRtf2},
           {"DemixedRtf2", kDemixedRtf2},
           {"DemixedLtf2", kDemixedLtf2},
+          {"Ltf4", kLtf4},
+          {"Rtf4", kRtf4},
+          {"Ltb4", kLtb4},
+          {"Rtb4", kRtb4},
+          {"DemixedLtb4", kDemixedLtb4},
+          {"DemixedRtb4", kDemixedRtb4},
           {"L7", kL7},
           {"R7", kR7},
           {"Lss7", kLss7},
           {"Rss7", kRss7},
           {"Lrs7", kLrs7},
           {"Rrs7", kRrs7},
-          {"Ltf4", kLtf4},
-          {"Rtf4", kRtf4},
-          {"Ltb4", kLtb4},
-          {"Rtb4", kRtb4},
           {"DemixedL7", kDemixedL7},
           {"DemixedR7", kDemixedR7},
           {"DemixedLrs7", kDemixedLrs7},
           {"DemixedRrs7", kDemixedRrs7},
-          {"DemixedLtb4", kDemixedLtb4},
-          {"DemixedRtb4", kDemixedRtb4},
           {"FLc", kFLc},
           {"FC", kFC},
           {"FRc", kFRc},
@@ -310,10 +310,6 @@ std::string ChannelLabel::LabelToString(Label label) {
       return "Ls5";
     case kRs5:
       return "Rs5";
-    case kLtf2:
-      return "Ltf2";
-    case kRtf2:
-      return "Rtf2";
     case kDemixedL5:
       return "DemixedL5";
     case kDemixedR5:
@@ -322,10 +318,26 @@ std::string ChannelLabel::LabelToString(Label label) {
       return "DemixedLs5";
     case kDemixedRs5:
       return "DemixedRs5";
+    case kLtf2:
+      return "Ltf2";
+    case kRtf2:
+      return "Rtf2";
     case kDemixedRtf2:
       return "DemixedRtf2";
     case kDemixedLtf2:
       return "DemixedLtf2";
+    case kLtf4:
+      return "Ltf4";
+    case kRtf4:
+      return "Rtf4";
+    case kLtb4:
+      return "Ltb4";
+    case kRtb4:
+      return "Rtb4";
+    case kDemixedLtb4:
+      return "DemixedLtb4";
+    case kDemixedRtb4:
+      return "DemixedRtb4";
     case kL7:
       return "L7";
     case kR7:
@@ -338,14 +350,6 @@ std::string ChannelLabel::LabelToString(Label label) {
       return "Lrs7";
     case kRrs7:
       return "Rrs7";
-    case kLtf4:
-      return "Ltf4";
-    case kRtf4:
-      return "Rtf4";
-    case kLtb4:
-      return "Ltb4";
-    case kRtb4:
-      return "Rtb4";
     case kDemixedL7:
       return "DemixedL7";
     case kDemixedR7:
@@ -354,10 +358,6 @@ std::string ChannelLabel::LabelToString(Label label) {
       return "DemixedLrs7";
     case kDemixedRrs7:
       return "DemixedRrs7";
-    case kDemixedLtb4:
-      return "DemixedLtb4";
-    case kDemixedRtb4:
-      return "DemixedRtb4";
     case kFLc:
       return "FLc";
     case kFC:
@@ -458,12 +458,12 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::GetDemixedLabel(
                                    {kRs5, kDemixedRs5},
                                    {kLtf2, kDemixedLtf2},
                                    {kRtf2, kDemixedRtf2},
+                                   {kLtb4, kDemixedLtb4},
+                                   {kRtb4, kDemixedRtb4},
                                    {kL7, kDemixedL7},
                                    {kR7, kDemixedR7},
                                    {kLrs7, kDemixedLrs7},
-                                   {kRrs7, kDemixedRrs7},
-                                   {kLtb4, kDemixedLtb4},
-                                   {kRtb4, kDemixedRtb4}});
+                                   {kRrs7, kDemixedRrs7}});
 
   auto it = kChannelLabelToDemixedLabel->find(label);
   if (it == kChannelLabelToDemixedLabel->end()) {
