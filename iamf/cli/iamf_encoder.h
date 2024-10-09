@@ -50,7 +50,7 @@ namespace iamf_tools {
  *
  *   encoder.GenerateDescriptorObus(...);
  *
- *   while (input_data_is_available) {
+ *   while (encoder.GeneratingDataObus()) {
  *     // Prepare for the next temporal unit; clear state of the previous TU.
  *     encoder.BeginTemporalUnit();
  *
@@ -61,22 +61,17 @@ namespace iamf_tools {
  *       }
  *     }
  *
+ *     // When all samples (for all temporal units) are added:
+ *     if (done_receiving_all_audio) {
+ *       encoder.FinalizeAddSamples();
+ *     }
+ *
  *     // For all parameter block metadata corresponding to this temporal unit:
  *     encoder.AddParameterBlockMetadata(...);
  *
  *     // Get OBUs for next encoded temporal unit.
  *     encoder.OutputTemporalUnit(...);
  *   }
- *
- *   // When all samples (for all temporal units) are added:
- *   if (done_receiving_all_audio):
- *     encoder.FinalizeAddSamples();
- *
- *   // "Flush" the encoder to produce remaining output temporal units.
- *   while (encoder.GeneratingDataObus()) {
- *     encoder.OutputTemporalUnit(...);
- *   }
- *
  *
  * Note the timestamps corresponding to `AddSamples()` and
  * `AddParameterBlockMetadata()` might be different from that of the output
