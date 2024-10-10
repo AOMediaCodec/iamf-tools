@@ -135,11 +135,9 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
 }
 
 absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
-  if (audio_roll_distance != 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
-  }
-  return absl::OkStatus();
+  return ValidateEqual(audio_roll_distance,
+                       FlacDecoderConfig::GetRequiredAudioRollDistance(),
+                       "audio_roll_distance");
 }
 
 absl::Status WriteStreamInfo(const FlacMetaBlockStreamInfo& stream_info,

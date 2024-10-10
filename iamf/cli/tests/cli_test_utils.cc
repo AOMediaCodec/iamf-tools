@@ -60,6 +60,8 @@ namespace iamf_tools {
 
 namespace {
 
+constexpr bool kOverrideAudioRollDistance = true;
+
 void SetParamDefinitionCommonFields(DecodedUleb128 parameter_id,
                                     DecodedUleb128 parameter_rate,
                                     DecodedUleb128 duration,
@@ -107,12 +109,11 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdLpcm,
        .num_samples_per_frame = 8,
-       .audio_roll_distance = 0,
        .decoder_config = LpcmDecoderConfig{
            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
            .sample_size_ = 16,
            .sample_rate_ = sample_rate}});
-  EXPECT_THAT(obu.Initialize(), IsOk());
+  EXPECT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }
 
@@ -126,10 +127,9 @@ void AddOpusCodecConfigWithId(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdOpus,
        .num_samples_per_frame = 8,
-       .audio_roll_distance = -480,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
-  ASSERT_THAT(obu.Initialize(), IsOk());
+  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }
 
@@ -142,9 +142,8 @@ void AddAacCodecConfigWithId(
   CodecConfigObu obu(ObuHeader(), codec_config_id,
                      {.codec_id = CodecConfig::kCodecIdAacLc,
                       .num_samples_per_frame = 1024,
-                      .audio_roll_distance = -1,
                       .decoder_config = AacDecoderConfig{}});
-  ASSERT_THAT(obu.Initialize(), IsOk());
+  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }
 

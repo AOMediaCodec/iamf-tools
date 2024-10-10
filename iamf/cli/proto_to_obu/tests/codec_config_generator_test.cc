@@ -88,7 +88,7 @@ void InitMetadataForOpus(
         codec_config {
           codec_id: CODEC_ID_OPUS
           num_samples_per_frame: 120
-          audio_roll_distance: -32
+          automatically_override_audio_roll_distance: true
           automatically_override_codec_delay: false
           decoder_config_opus {
             version: 1
@@ -382,9 +382,11 @@ TEST_F(CodecConfigGeneratorTest, FailsWhenCodecIdIsMissing) {
 
 TEST_F(CodecConfigGeneratorTest, FailsWhenRollDistanceIsTooLarge) {
   InitMetadataForLpcm(codec_config_metadata_);
+  auto* codec_config = codec_config_metadata_.at(0).mutable_codec_config();
   // Roll distance must be castable to `int16_t`.
-  codec_config_metadata_.at(0).mutable_codec_config()->set_audio_roll_distance(
-      std::numeric_limits<int16_t>::max() + 1);
+  codec_config->set_automatically_override_audio_roll_distance(false);
+  codec_config->set_audio_roll_distance(std::numeric_limits<int16_t>::max() +
+                                        1);
 
   EXPECT_FALSE(InitAndGenerate().ok());
 }
@@ -414,6 +416,60 @@ TEST_F(CodecConfigGeneratorTest, IamfOpusFixedFieldsMayBeOmitted) {
   ASSERT_THAT(output_obus, IsOk());
 
   EXPECT_EQ(*output_obus, expected_obus_);
+}
+
+TEST_F(CodecConfigGeneratorTest,
+       RollDistanceIsAutomaticallyDeterminedByDefault) {
+  InitMetadataForOpus(codec_config_metadata_);
+  // Roll distance is mechanically determined by default.
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->clear_audio_roll_distance();
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->clear_automatically_override_codec_delay();
+
+  InitExpectedObuForOpus(expected_obus_);
+
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
+
+  EXPECT_NE(
+      output_obus->at(kCodecConfigId).GetCodecConfig().audio_roll_distance, 0);
+}
+
+TEST_F(CodecConfigGeneratorTest,
+       AutomaticOverrideRollDistanceFailsWhenNumSamplesPerFrameIsInvalid) {
+  constexpr uint32_t kInvalidNumSamplesPerFrame = 0;
+  InitMetadataForOpus(codec_config_metadata_);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_num_samples_per_frame(kInvalidNumSamplesPerFrame);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_automatically_override_codec_delay(true);
+
+  EXPECT_FALSE(InitAndGenerate().ok());
+}
+
+TEST_F(CodecConfigGeneratorTest, OverridesIncorrectAudioRollDistance) {
+  constexpr int16_t kInvalidAudioRollDistance = 100;
+  InitMetadataForOpus(codec_config_metadata_);
+  // Roll distance is mechanically determined by default.
+  codec_config_metadata_.at(0).mutable_codec_config()->set_audio_roll_distance(
+      kInvalidAudioRollDistance);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_automatically_override_audio_roll_distance(true);
+
+  InitExpectedObuForOpus(expected_obus_);
+
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
+
+  EXPECT_NE(
+      output_obus->at(kCodecConfigId).GetCodecConfig().audio_roll_distance,
+      kInvalidAudioRollDistance);
 }
 
 TEST_F(CodecConfigGeneratorTest,
@@ -456,6 +512,27 @@ TEST_F(CodecConfigGeneratorTest,
 
   EXPECT_NE(std::get<OpusDecoderConfig>(decoder_config).pre_skip_,
             kInvalidInputPreSkip);
+}
+
+TEST_F(CodecConfigGeneratorTest,
+       ObeysInvalidAudioRollDistanceWhenOverrideDistanceIsFalse) {
+  // IAMF requires specific audio roll distance values. The generator does not
+  // validate OBU requirements when not directed to override it with the correct
+  // value.
+  constexpr uint8_t kInvalidAudioRollDistance = 99;
+  InitMetadataForOpus(codec_config_metadata_);
+  codec_config_metadata_.at(0).mutable_codec_config()->set_audio_roll_distance(
+      kInvalidAudioRollDistance);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->set_automatically_override_audio_roll_distance(false);
+
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
+
+  EXPECT_EQ(
+      output_obus->at(kCodecConfigId).GetCodecConfig().audio_roll_distance,
+      kInvalidAudioRollDistance);
 }
 
 TEST_F(CodecConfigGeneratorTest, ObeysInvalidOpusOutputChannelCount) {

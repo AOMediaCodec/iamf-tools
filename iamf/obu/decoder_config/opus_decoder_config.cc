@@ -67,10 +67,10 @@ absl::Status ValidateAudioRollDistance(uint32_t num_samples_per_frame,
     return expected_roll_distance.status();
   }
 
-  return ValidateEqual(
-      audio_roll_distance, *expected_roll_distance,
-      absl::StrCat("actual vs expected for `num_samples_per_frame= ",
-                   num_samples_per_frame));
+  return ValidateEqual(audio_roll_distance, *expected_roll_distance,
+                       absl::StrCat("actual `audio_roll_distance` vs expected "
+                                    "when `num_samples_per_frame= ",
+                                    num_samples_per_frame));
 }
 
 }  // namespace

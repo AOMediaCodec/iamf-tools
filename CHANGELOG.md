@@ -41,6 +41,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 -   Set sensible defaults for some proto fields.
 -   Default to automatically determining the correct
+    `CodecConfig::audio_roll_distance`, instead of throwing an error when user
+    input was incorrect.
+-   Default to automatically determining the correct
     `OpusDecoderConfig::pre_skip`, instead of throwing an error when user input
     was incorrect.
 -   Update Simple and Base profile to be based on [IAMF v1.0.0-errata].

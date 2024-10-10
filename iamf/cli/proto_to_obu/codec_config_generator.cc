@@ -408,7 +408,8 @@ absl::Status CodecConfigGenerator::Generate(
     CodecConfigObu obu(
         GetHeaderFromMetadata(codec_config_metadata.obu_header()),
         codec_config_metadata.codec_config_id(), obu_codec_config);
-    RETURN_IF_NOT_OK(obu.Initialize());
+    RETURN_IF_NOT_OK(obu.Initialize(
+        input_codec_config.automatically_override_audio_roll_distance()));
     if (input_codec_config.automatically_override_codec_delay()) {
       RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, obu));
     }

@@ -38,6 +38,10 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr bool kOverrideAudioRollDistance = true;
+constexpr bool kDontOverrideAudioRollDistance = false;
+constexpr int16_t kInvalidAudioRollDistance = 123;
+constexpr int16_t kLpcmAudioRollDistance = 0;
 constexpr DecodedUleb128 kCodecConfigId = 123;
 constexpr int16_t kArbitraryCodecDelay = 999;
 
@@ -56,9 +60,13 @@ class CodecConfigTestBase : public ObuTestBase {
   ~CodecConfigTestBase() override = default;
 
  protected:
-  void InitExpectOk() override {
+  void ConstructObu() {
     obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
                                             codec_config_);
+  }
+
+  void InitExpectOk() override {
+    ConstructObu();
     EXPECT_THAT(obu_->Initialize(), IsOk());
   }
 
@@ -193,6 +201,35 @@ TEST_F(CodecConfigLpcmTest, ConstructorSetsObuTyoe) {
   InitExpectOk();
 
   EXPECT_EQ(obu_->header_.obu_type, kObuIaCodecConfig);
+}
+
+TEST_F(CodecConfigLpcmTest, ConstructorSetsAudioRollDistance) {
+  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
+  ConstructObu();
+
+  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
+            kInvalidAudioRollDistance);
+}
+
+TEST_F(CodecConfigLpcmTest, InitializeObeysInvalidAudioRollDistance) {
+  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
+  ConstructObu();
+
+  EXPECT_THAT(obu_->Initialize(kDontOverrideAudioRollDistance), IsOk());
+
+  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
+            kInvalidAudioRollDistance);
+}
+
+TEST_F(CodecConfigLpcmTest, InitializeMayOverrideAudioRollDistance) {
+  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
+  ConstructObu();
+
+  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
+            kInvalidAudioRollDistance);
+  EXPECT_THAT(obu_->Initialize(kOverrideAudioRollDistance), IsOk());
+
+  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance, kLpcmAudioRollDistance);
 }
 
 TEST_F(CodecConfigLpcmTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
@@ -473,12 +510,28 @@ TEST_F(CodecConfigOpusTest, InitializeFailsWithIllegalCodecId) {
 }
 
 TEST_F(CodecConfigOpusTest,
-       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
-  codec_config_.num_samples_per_frame = 0;
+       InitializeFailsWhenOverridingAudioRollDistanceFails) {
+  constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
+  codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
+  ConstructObu();
 
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  // Underlying Opus roll distance calculation would fail.
+  EXPECT_FALSE(obu_->Initialize(kOverrideAudioRollDistance).ok());
+}
+
+TEST_F(CodecConfigOpusTest,
+       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
+  constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
+  codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
+  ConstructObu();
+  // User does not request to calculate the roll distance, so the invalid
+  // `num_samples_per_frame` is not detected at initialization time.
+  EXPECT_THAT(obu_->Initialize(kDontOverrideAudioRollDistance), IsOk());
+
+  // But later the write fails because `num_samples_per_frame` is invalid and/or
+  // the roll distance is undefined.
+  WriteBitBuffer undefined_wb(0);
+  EXPECT_FALSE(obu_->ValidateAndWriteObu(undefined_wb).ok());
 }
 
 TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }

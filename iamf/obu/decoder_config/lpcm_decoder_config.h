@@ -37,6 +37,12 @@ class LpcmDecoderConfig {
   friend bool operator==(const LpcmDecoderConfig& lhs,
                          const LpcmDecoderConfig& rhs) = default;
 
+  /*!\brief Returns the required audio roll distance.
+   *
+   * \return Audio roll distance required by the IAMF spec.
+   */
+  static int16_t GetRequiredAudioRollDistance() { return 0; }
+
   /*!\brief Returns true if the samples are encoded in little-endian format.*/
   bool IsLittleEndian() const;
 

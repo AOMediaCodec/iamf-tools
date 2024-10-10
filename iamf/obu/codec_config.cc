@@ -42,6 +42,39 @@ absl::Status ValidateNumSamplesPerFrame(uint32_t num_samples_per_frame) {
   return absl::OkStatus();
 }
 
+absl::Status OverrideAudioRollDistance(CodecConfig::CodecId codec_id,
+                                       uint32_t num_samples_per_frame,
+                                       int16_t& output_audio_roll_distance) {
+  switch (codec_id) {
+    using enum CodecConfig::CodecId;
+    case CodecConfig::kCodecIdOpus: {
+      auto audio_roll_distance =
+          OpusDecoderConfig::GetRequiredAudioRollDistance(
+              num_samples_per_frame);
+      if (!audio_roll_distance.ok()) {
+        return audio_roll_distance.status();
+      }
+      output_audio_roll_distance = *audio_roll_distance;
+      return absl::OkStatus();
+    }
+    case kCodecIdLpcm:
+      output_audio_roll_distance =
+          LpcmDecoderConfig::GetRequiredAudioRollDistance();
+      return absl::OkStatus();
+    case kCodecIdFlac:
+      output_audio_roll_distance =
+          FlacDecoderConfig::GetRequiredAudioRollDistance();
+      return absl::OkStatus();
+    case kCodecIdAacLc:
+      output_audio_roll_distance =
+          AacDecoderConfig::GetRequiredAudioRollDistance();
+      return absl::OkStatus();
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown codec_id: ", codec_id));
+  }
+}
+
 absl::Status SetSampleRatesAndBitDepths(
     uint32_t codec_id, const DecoderConfig& decoder_config,
     uint32_t& output_sample_rate, uint32_t& input_sample_rate,
@@ -245,10 +278,18 @@ void CodecConfigObu::PrintObu() const {
             << absl::StrCat(bit_depth_to_measure_loudness_);
 }
 
-absl::Status CodecConfigObu::Initialize() {
+absl::Status CodecConfigObu::Initialize(
+    bool automatically_override_roll_distance) {
   init_status_ = SetSampleRatesAndBitDepths(
       codec_config_.codec_id, codec_config_.decoder_config, output_sample_rate_,
       input_sample_rate_, bit_depth_to_measure_loudness_);
+
+  if (automatically_override_roll_distance) {
+    init_status_.Update(OverrideAudioRollDistance(
+        codec_config_.codec_id, codec_config_.num_samples_per_frame,
+        codec_config_.audio_roll_distance));
+  }
+
   if (!init_status_.ok()) {
     PrintObu();
   }

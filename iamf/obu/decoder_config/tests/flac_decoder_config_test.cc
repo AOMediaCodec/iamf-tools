@@ -28,6 +28,13 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr int16_t kAudioRollDistance = 0;
+
+TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
+  EXPECT_EQ(FlacDecoderConfig::GetRequiredAudioRollDistance(),
+            kAudioRollDistance);
+}
+
 class FlacTest : public testing::Test {
  public:
   FlacTest()

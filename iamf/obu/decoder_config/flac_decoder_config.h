@@ -95,6 +95,12 @@ class FlacDecoderConfig {
   friend bool operator==(const FlacDecoderConfig& lhs,
                          const FlacDecoderConfig& rhs) = default;
 
+  /*!\brief Returns the required audio roll distance.
+   *
+   * \return Audio roll distance required by the IAMF spec.
+   */
+  static int16_t GetRequiredAudioRollDistance() { return 0; }
+
   /*!\brief Validates and writes the `FlacDecoderConfig` to a buffer.
    *
    * \param num_samples_per_frame `num_samples_per_frame` in the associated

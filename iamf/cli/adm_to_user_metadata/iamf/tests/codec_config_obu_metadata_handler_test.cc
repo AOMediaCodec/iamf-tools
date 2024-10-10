@@ -22,34 +22,51 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
+constexpr FormatInfoChunk kFormatInfo = {
+    .samples_per_sec = 48000,
+    .bits_per_sample = 16,
+};
+
+constexpr int64_t kNumSamplesPerFrame = 1024;
+
 // The following constants are fixed for every call to
 // GenerateLpcmCodecConfigObuMetadata.
 constexpr uint32_t kCodecConfigId = 0;
 constexpr auto kLpcmCodecId = iamf_tools_cli_proto::CODEC_ID_LPCM;
-constexpr uint32_t kAudioRollDistance = 0;
 constexpr auto kSampleFormatFlags = iamf_tools_cli_proto::LPCM_LITTLE_ENDIAN;
+// Ensure some automatic settings are enabled.
+constexpr bool kAutomaticallyOverrideAudioRollDistance = true;
+constexpr bool kAutomaticallyOverrideCodecDelay = true;
 
 TEST(CodecConfigObuMetadataHandlerTest, PopulatesCodecConfigObuMetadata) {
-  // Configure some constants that affect the output.
-  const FormatInfoChunk format_info{
-      .samples_per_sec = 48000,
-      .bits_per_sample = 16,
-  };
-  int64_t kNumSamplesPerFrame = 1024;
   iamf_tools_cli_proto::CodecConfigObuMetadata codec_config_obu_metadata;
 
-  GenerateLpcmCodecConfigObuMetadata(format_info, kNumSamplesPerFrame,
+  GenerateLpcmCodecConfigObuMetadata(kFormatInfo, kNumSamplesPerFrame,
                                      codec_config_obu_metadata);
 
   EXPECT_EQ(codec_config_obu_metadata.codec_config_id(), kCodecConfigId);
   const auto& codec_config = codec_config_obu_metadata.codec_config();
   EXPECT_EQ(codec_config.codec_id(), kLpcmCodecId);
   EXPECT_EQ(codec_config.num_samples_per_frame(), kNumSamplesPerFrame);
-  EXPECT_EQ(codec_config.audio_roll_distance(), kAudioRollDistance);
   const auto& decoder_config_lpcm = codec_config.decoder_config_lpcm();
   EXPECT_EQ(decoder_config_lpcm.sample_format_flags(), kSampleFormatFlags);
-  EXPECT_EQ(decoder_config_lpcm.sample_size(), format_info.bits_per_sample);
-  EXPECT_EQ(decoder_config_lpcm.sample_rate(), format_info.samples_per_sec);
+  EXPECT_EQ(decoder_config_lpcm.sample_size(), kFormatInfo.bits_per_sample);
+  EXPECT_EQ(decoder_config_lpcm.sample_rate(), kFormatInfo.samples_per_sec);
+}
+
+TEST(CodecConfigObuMetadataHandlerTest, UsesAutomaticOverrideFields) {
+  iamf_tools_cli_proto::CodecConfigObuMetadata codec_config_obu_metadata;
+
+  GenerateLpcmCodecConfigObuMetadata(kFormatInfo, kNumSamplesPerFrame,
+                                     codec_config_obu_metadata);
+
+  // Ensure the automatic configuration fields are set, instead of having to
+  // consider specific required values based on the codec.
+  const auto& codec_config = codec_config_obu_metadata.codec_config();
+  EXPECT_EQ(codec_config.automatically_override_audio_roll_distance(),
+            kAutomaticallyOverrideAudioRollDistance);
+  EXPECT_EQ(codec_config.automatically_override_codec_delay(),
+            kAutomaticallyOverrideCodecDelay);
 }
 
 }  // namespace

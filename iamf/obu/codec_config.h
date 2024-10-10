@@ -97,9 +97,11 @@ class CodecConfigObu : public ObuBase {
    * `GetBitDepthToMeasureLoudness` may return inaccurate values if this
    * function did not return `absl::OkStatus()`.
    *
+   * \param automatically_override_roll_distance If true, the roll distance will
+   *        be overridden to value required by the IAMF spec.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Initialize();
+  absl::Status Initialize(bool automatically_override_roll_distance = true);
 
   /*!\brief Sets the codec delay in the underlying `decoder_config`.
    *

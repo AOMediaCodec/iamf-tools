@@ -28,6 +28,13 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr int16_t kAudioRollDistance = 0;
+
+TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
+  EXPECT_EQ(LpcmDecoderConfig::GetRequiredAudioRollDistance(),
+            kAudioRollDistance);
+}
+
 TEST(LpcmDecoderConfigTest, IsLittleEndian_True) {
   LpcmDecoderConfig lpcm_decoder_config = {LpcmDecoderConfig::kLpcmLittleEndian,
                                            16, 48000};

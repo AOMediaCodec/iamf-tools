@@ -198,7 +198,12 @@ message CodecConfig {
   // ignored and set to the number of samples reported by the underlying encoder
   // library.
   optional bool automatically_override_codec_delay = 11 [default = true];
-  // Next ID: 12
+
+  // If true, the `audio_roll_distance` will be ignored and automatically be set
+  // to the correct value.
+  optional bool automatically_override_audio_roll_distance = 12
+      [default = true];
+  // Next ID: 13
 }
 
 message CodecConfigObuMetadata {

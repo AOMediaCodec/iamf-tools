@@ -29,7 +29,6 @@ void GenerateLpcmCodecConfigObuMetadata(
   // Set codec id as ipcm.
   codec_config->set_codec_id(iamf_tools_cli_proto::CODEC_ID_LPCM);
   codec_config->set_num_samples_per_frame(num_samples_per_frame);
-  codec_config->set_audio_roll_distance(0);
 
   auto* decode_config = codec_config->mutable_decoder_config_lpcm();
   decode_config->set_sample_format_flags(

@@ -113,6 +113,12 @@ class AacDecoderConfig {
   friend bool operator==(const AacDecoderConfig& lhs,
                          const AacDecoderConfig& rhs) = default;
 
+  /*!\brief Returns the required audio roll distance.
+   *
+   * \return Audio roll distance required by the IAMF spec.
+   */
+  static int16_t GetRequiredAudioRollDistance() { return -1; }
+
   /*!\brief Validates the `AacDecoderConfig`.
    *
    * \return `absl::OkStatus()` if the decoder config is valid. A specific

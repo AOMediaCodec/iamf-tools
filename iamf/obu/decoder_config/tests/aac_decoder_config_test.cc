@@ -27,6 +27,9 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr int16_t kAudioRollDistance = -1;
+constexpr int16_t kInvalidAudioRollDistance = 0;
+
 // A 7-bit mask representing `channel_configuration`, and all three fields in
 // the GA specific config.
 constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
@@ -38,6 +41,11 @@ constexpr uint8_t kChannelConfigurationAndGaSpecificConfigMask =
 constexpr uint8_t kStreamTypeUpstreamReserved =
     AacDecoderConfig::kStreamType << 2 | AacDecoderConfig::kUpstream << 1 |
     AacDecoderConfig::kReserved << 0;
+
+TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
+  EXPECT_EQ(AacDecoderConfig::GetRequiredAudioRollDistance(),
+            kAudioRollDistance);
+}
 
 AacDecoderConfig GetAacDecoderConfig() {
   return AacDecoderConfig{
@@ -217,9 +225,6 @@ TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
             AudioSpecificConfig::kSampleFrequencyIndexEscapeValue);
   EXPECT_EQ(audio_specific_config.sampling_frequency_, kSampleFrequency);
 }
-
-constexpr int16_t kAudioRollDistance = -1;
-constexpr int16_t kInvalidAudioRollDistance = 0;
 
 TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
   std::vector<uint8_t> data = {

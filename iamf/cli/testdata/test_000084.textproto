@@ -41,6 +41,8 @@ codec_config_metadata {
   codec_config {
     codec_id: CODEC_ID_FLAC
     num_samples_per_frame: 64
+    # Prevent encoder from overriding the invalid `audio_roll_distance` value.
+    automatically_override_audio_roll_distance: false
     audio_roll_distance: -1
     decoder_config_flac: {
       metadata_blocks: {

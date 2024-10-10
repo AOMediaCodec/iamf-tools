@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -71,11 +72,9 @@ absl::Status ValidatePayload(const LpcmDecoderConfig& decoder_config) {
 }
 
 absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
-  if (audio_roll_distance != 0) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
-  }
-  return absl::OkStatus();
+  return ValidateEqual(audio_roll_distance,
+                       LpcmDecoderConfig::GetRequiredAudioRollDistance(),
+                       "audio_roll_distance");
 }
 
 }  // namespace

@@ -40,11 +40,9 @@ constexpr int32_t kMaxClassSize = (1 << 28) - 1;
 constexpr int kInternalBufferSize = 32;
 
 absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
-  if (audio_roll_distance != -1) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid audio_roll_distance= ", audio_roll_distance));
-  }
-  return absl::OkStatus();
+  return ValidateEqual(audio_roll_distance,
+                       AacDecoderConfig::GetRequiredAudioRollDistance(),
+                       "audio_roll_distance");
 }
 
 // Copies all data from `original_wb` to `output_wb` with the corresponding ISO

@@ -39,6 +39,7 @@ cc_library(
     hdrs = ["lpcm_decoder_config.h"],
     deps = [
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
