@@ -41,8 +41,7 @@ constexpr bool kDontValidateCodecDelay = false;
 class MockEncoder : public EncoderBase {
  public:
   MockEncoder()
-      : EncoderBase(false,
-                    CodecConfigObu(ObuHeader(), kCodecConfigId, CodecConfig()),
+      : EncoderBase(CodecConfigObu(ObuHeader(), kCodecConfigId, CodecConfig()),
                     0) {}
 
   MOCK_METHOD(

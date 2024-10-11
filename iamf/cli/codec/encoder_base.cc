@@ -34,7 +34,7 @@ absl::Status EncoderBase::Initialize(bool validate_codec_delay) {
 
 absl::Status EncoderBase::ValidateInputSamples(
     const std::vector<std::vector<int32_t>>& samples) const {
-  if (!supports_partial_frames_ && samples.size() != num_samples_per_frame_) {
+  if (samples.size() != num_samples_per_frame_) {
     auto error_message = absl::StrCat("Found ", samples.size(),
                                       " samples per channels. Expected ",
                                       num_samples_per_frame_, ".");

@@ -27,7 +27,7 @@ namespace iamf_tools {
 class LpcmEncoder : public EncoderBase {
  public:
   LpcmEncoder(const CodecConfigObu& codec_config, int num_channels)
-      : EncoderBase(true, codec_config, num_channels),
+      : EncoderBase(codec_config, num_channels),
         decoder_config_(std::get<LpcmDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}
 

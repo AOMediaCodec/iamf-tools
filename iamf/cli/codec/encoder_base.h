@@ -43,15 +43,11 @@ class EncoderBase {
    *   After calling `Finalize()`, any subsequent call to `EncodeAudioFrame()`
    *   will fail.
    *
-   * \param supports_partial_frames `true` for encoders that support encoding
-   *        frames shorter than `num_samples_per_frame_`. `false` otherwise.
    * \param codec_config Codec Config OBU for the encoder.
    * \num_channels Number of channels for the encoder.
    */
-  EncoderBase(bool supports_partial_frames, const CodecConfigObu& codec_config,
-              int num_channels)
-      : supports_partial_frames_(supports_partial_frames),
-        num_samples_per_frame_(codec_config.GetNumSamplesPerFrame()),
+  EncoderBase(const CodecConfigObu& codec_config, int num_channels)
+      : num_samples_per_frame_(codec_config.GetNumSamplesPerFrame()),
         input_sample_rate_(codec_config.GetInputSampleRate()),
         output_sample_rate_(codec_config.GetOutputSampleRate()),
         input_pcm_bit_depth_(codec_config.GetBitDepthToMeasureLoudness()),
@@ -142,7 +138,6 @@ class EncoderBase {
     return required_samples_to_delay_at_start_;
   }
 
-  const bool supports_partial_frames_;
   const uint32_t num_samples_per_frame_;
   const uint32_t input_sample_rate_;
   const uint32_t output_sample_rate_;

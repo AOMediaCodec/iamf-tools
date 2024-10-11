@@ -12,6 +12,7 @@
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -443,28 +444,21 @@ absl::Status EncodeFramesForAudioElement(
       more_samples_to_encode = true;
 
       // Encode.
-      auto& encoder = substream_id_to_encoder.at(substream_id);
-      if (substream_data.samples_encode.size() < num_samples_per_frame &&
-          !encoder->supports_partial_frames_) {
-        // To support negative test-cases technically some encoders (such as
-        // LPCM) can encode partial frames. For other encoders wait until there
-        // is a whole frame of samples to encode.
-
-        // All frames corresponding to the same Audio Element should be skipped.
-        CHECK(!encoded_timestamp.has_value());
-
-        LOG(INFO) << "Skipping partial frames; samples_obu.size()="
+      if (substream_data.samples_encode.size() < num_samples_per_frame) {
+        // Wait until there is a whole frame of samples to encode.
+        LOG(INFO) << "Waiting for complete frame; samples_obu.size()="
                   << substream_data.samples_obu.size()
                   << " samples_encode.size()= "
                   << substream_data.samples_encode.size();
+
+        // All frames corresponding to the same Audio Element should be skipped.
+        CHECK(!encoded_timestamp.has_value());
         continue;
       }
 
       // Pop samples from the queues and arrange in (time, channel) axes.
-      // Take the minimum because some encoders support partial frames.
       const size_t num_samples_to_encode =
-          std::min(static_cast<size_t>(num_samples_per_frame),
-                   substream_data.samples_encode.size());
+          static_cast<size_t>(num_samples_per_frame);
       std::vector<std::vector<int32_t>> samples_encode(num_samples_to_encode);
       std::vector<std::vector<int32_t>> samples_obu(num_samples_to_encode);
 
@@ -511,8 +505,9 @@ absl::Status EncodeFramesForAudioElement(
               .audio_element_with_data = &audio_element_with_data});
 
       RETURN_IF_NOT_OK(
-          encoder->EncodeAudioFrame(encoder_input_pcm_bit_depth, samples_encode,
-                                    std::move(partial_audio_frame_with_data)));
+          substream_id_to_encoder.at(substream_id)
+              ->EncodeAudioFrame(encoder_input_pcm_bit_depth, samples_encode,
+                                 std::move(partial_audio_frame_with_data)));
       encoded_timestamp = start_timestamp;
     }
 

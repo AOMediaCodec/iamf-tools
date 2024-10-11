@@ -31,7 +31,7 @@ class OpusEncoder : public EncoderBase {
   OpusEncoder(
       const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
       const CodecConfigObu& codec_config, int num_channels, int substream_id)
-      : EncoderBase(false, codec_config, num_channels),
+      : EncoderBase(codec_config, num_channels),
         encoder_metadata_(opus_encoder_metadata),
         decoder_config_(std::get<OpusDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)),

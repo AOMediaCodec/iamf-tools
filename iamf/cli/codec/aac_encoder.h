@@ -36,7 +36,7 @@ class AacEncoder : public EncoderBase {
   AacEncoder(
       const iamf_tools_cli_proto::AacEncoderMetadata& aac_encoder_metadata,
       const CodecConfigObu& codec_config, int num_channels)
-      : EncoderBase(false, codec_config, num_channels),
+      : EncoderBase(codec_config, num_channels),
         encoder_metadata_(aac_encoder_metadata),
         decoder_config_(std::get<AacDecoderConfig>(
             codec_config.GetCodecConfig().decoder_config)) {}

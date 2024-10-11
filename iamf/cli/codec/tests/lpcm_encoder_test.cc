@@ -145,14 +145,12 @@ TEST_F(LpcmEncoderTest, EncodeAudioFrameFailsWhenThereAreNoSamples) {
                    /*expected_encode_frame_is_ok=*/false);
 }
 
-TEST_F(LpcmEncoderTest, SupportsPartialFrames) {
+TEST_F(LpcmEncoderTest, DoesNotSupportPartialFrames) {
+  constexpr bool kExpectEncodeFrameIsNotOk = false;
   num_samples_per_frame_ = 3;
   InitExpectOk();
 
-  EncodeAudioFrame({{0x11111111}, {0x22222222}});
-  expected_audio_frames_.push_back(
-      {0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22});
-  FinalizeAndValidate();
+  EncodeAudioFrame({{0x11111111}, {0x22222222}}, kExpectEncodeFrameIsNotOk);
 }
 
 TEST_F(LpcmEncoderTest, TwoChannels) {
