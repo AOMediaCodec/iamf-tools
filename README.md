@@ -14,9 +14,9 @@ format. These tools can be used as a complement to the `libiamf`
 ### Encoder
 
 The encoder can be used to encode a standalone IAMF Sequence (`.iamf`) file
-based on an input protocol buffer. See
-[Test suite](docs/build_instructions.md#Test-suite) for several example input
-files.
+based on an ADM-BWF file or an input protocol buffer. See
+[Test suite](docs/build_instructions.md#Test-suite) for several example
+input protocol buffer files.
 
 #### Building the encoder
 
@@ -41,7 +41,7 @@ bazel-bin/iamf/cli/encoder_main --user_metadata_filename=iamf/cli/testdata/test_
 If this example is successful the encoder will produce an output
 `test_000002.iamf` file in the current directory.
 
-#### Using the encoder with ADM input
+#### Using the encoder with ADM-BWF input
 
 Run the encoder. Specify the input file with `--adm_filename`. See the
 `adm_to_user_metadata` [README.md](iamf/cli/adm_to_user_metadata) for details on
@@ -58,6 +58,9 @@ Optional flags:
 ```
 bazel-bin/iamf/cli/encoder_main --adm_filename=path/to/adm.wav --output_iamf_directory=.
 ```
+
+The encoder will produce an output `.iamf` file in the output directory, where
+the underlying audio streams are encoded with PCM.
 
 ## Web demo
 
