@@ -14,9 +14,7 @@ format. These tools can be used as a complement to the `libiamf`
 ### Encoder
 
 The encoder can be used to encode a standalone IAMF Sequence (`.iamf`) file
-based on an ADM-BWF file or an input protocol buffer. See
-[Test suite](docs/build_instructions.md#Test-suite) for several example
-input protocol buffer files.
+based on an ADM-BWF file or an input protocol buffer.
 
 #### Building the encoder
 
@@ -24,12 +22,16 @@ See [Build instructions](docs/build_instructions.md) to build from source.
 
 #### Using the encoder with proto input
 
+Prepare up to two multichannel wav files and the input textproto file. See
+[Textproto templates](iamf/cli/textproto_templates) for some example input
+textprotos and details on how to customize them.
+
 Run the encoder. Specify the input file with `--user_metadata_filename`.
 
 Optional flags:
 
 -   `--input_wav_directory` controls the directory wav files are read from
-    (default iamf/cli/testdata/).
+    (default `iamf/cli/testdata/`).
 -   `--output_iamf_directory` controls the output directory of the IAMF files.
 
 Using the encoder:
