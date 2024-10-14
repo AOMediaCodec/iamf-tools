@@ -284,8 +284,6 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
       return kMono;
     case CHANNEL_LABEL_L_2:
       return kL2;
-    case CHANNEL_LABEL_DEMIXED_R_2:
-      return kDemixedR2;
     case CHANNEL_LABEL_R_2:
       return kR2;
     case CHANNEL_LABEL_CENTRE:
@@ -296,10 +294,6 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
       return kL3;
     case CHANNEL_LABEL_R_3:
       return kR3;
-    case CHANNEL_LABEL_DEMIXED_L_3:
-      return kDemixedL3;
-    case CHANNEL_LABEL_DEMIXED_R_3:
-      return kDemixedR3;
     case CHANNEL_LABEL_LTF_3:
       return kLtf3;
     case CHANNEL_LABEL_RTF_3:
@@ -312,22 +306,10 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
       return kLs5;
     case CHANNEL_LABEL_RS_5:
       return kRs5;
-    case CHANNEL_LABEL_DEMIXED_L_5:
-      return kDemixedL5;
-    case CHANNEL_LABEL_DEMIXED_R_5:
-      return kDemixedR5;
-    case CHANNEL_LABEL_DEMIXED_LS_5:
-      return kDemixedLs5;
-    case CHANNEL_LABEL_DEMIXED_RS_5:
-      return kDemixedRs5;
     case CHANNEL_LABEL_LTF_2:
       return kLtf2;
     case CHANNEL_LABEL_RTF_2:
       return kRtf2;
-    case CHANNEL_LABEL_DEMIXED_LTF_2:
-      return kDemixedLtf2;
-    case CHANNEL_LABEL_DEMIXED_RTF_2:
-      return kDemixedRtf2;
     case CHANNEL_LABEL_LTF_4:
       return kLtf4;
     case CHANNEL_LABEL_RTF_4:
@@ -336,10 +318,6 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
       return kLtb4;
     case CHANNEL_LABEL_RTB_4:
       return kRtb4;
-    case CHANNEL_LABEL_DEMIXED_LTB_4:
-      return kDemixedLtb4;
-    case CHANNEL_LABEL_DEMIXED_RTB_4:
-      return kDemixedRtb4;
     case CHANNEL_LABEL_L_7:
       return kL7;
     case CHANNEL_LABEL_R_7:
@@ -352,14 +330,6 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
       return kLrs7;
     case CHANNEL_LABEL_RRS_7:
       return kRrs7;
-    case CHANNEL_LABEL_DEMIXED_L_7:
-      return kDemixedL7;
-    case CHANNEL_LABEL_DEMIXED_R_7:
-      return kDemixedR7;
-    case CHANNEL_LABEL_DEMIXED_LRS_7:
-      return kDemixedLrs7;
-    case CHANNEL_LABEL_DEMIXED_RRS_7:
-      return kDemixedRrs7;
     case CHANNEL_LABEL_FLC:
       return kFLc;
     case CHANNEL_LABEL_FC:

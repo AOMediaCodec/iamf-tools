@@ -251,23 +251,6 @@ TEST(ConvertAndFillLabels, ValidWith9_1_6ProtoLabels) {
                                         kTpBL, kTpBR}));
 }
 
-TEST(ConvertAndFillLabels, ValidWithDemixedLabels) {
-  ExpectConvertAndFillLabelsHasExpectedOutput(
-      std::vector<iamf_tools_cli_proto::ChannelLabel>(
-          {CHANNEL_LABEL_DEMIXED_R_2, CHANNEL_LABEL_DEMIXED_L_3,
-           CHANNEL_LABEL_DEMIXED_R_3, CHANNEL_LABEL_DEMIXED_L_5,
-           CHANNEL_LABEL_DEMIXED_R_5, CHANNEL_LABEL_DEMIXED_LS_5,
-           CHANNEL_LABEL_DEMIXED_RS_5, CHANNEL_LABEL_DEMIXED_LTF_2,
-           CHANNEL_LABEL_DEMIXED_RTF_2, CHANNEL_LABEL_DEMIXED_LTB_4,
-           CHANNEL_LABEL_DEMIXED_RTB_4, CHANNEL_LABEL_DEMIXED_L_7,
-           CHANNEL_LABEL_DEMIXED_R_7, CHANNEL_LABEL_DEMIXED_LRS_7,
-           CHANNEL_LABEL_DEMIXED_RRS_7}),
-      std::vector<ChannelLabel::Label>(
-          {kDemixedR2, kDemixedL3, kDemixedR3, kDemixedL5, kDemixedR5,
-           kDemixedLs5, kDemixedRs5, kDemixedLtf2, kDemixedRtf2, kDemixedLtb4,
-           kDemixedRtb4, kDemixedL7, kDemixedR7, kDemixedLrs7, kDemixedRrs7}));
-}
-
 TEST(ConvertAndFillLabels, ValidWithZerothOrderAmbisonicsProtoLabels) {
   ExpectConvertAndFillLabelsHasExpectedOutput(
       std::vector<iamf_tools_cli_proto::ChannelLabel>({CHANNEL_LABEL_A_0}),

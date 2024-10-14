@@ -20,7 +20,6 @@ enum ChannelLabel {
   // Stereo or binaural channels.
   CHANNEL_LABEL_L_2 = 3;
   CHANNEL_LABEL_R_2 = 4;
-  CHANNEL_LABEL_DEMIXED_R_2 = 5;
   // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
   CHANNEL_LABEL_CENTRE = 6;
   // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
@@ -30,29 +29,19 @@ enum ChannelLabel {
   CHANNEL_LABEL_R_3 = 9;
   CHANNEL_LABEL_LTF_3 = 10;
   CHANNEL_LABEL_RTF_3 = 11;
-  CHANNEL_LABEL_DEMIXED_L_3 = 12;
-  CHANNEL_LABEL_DEMIXED_R_3 = 13;
   // 5.x.y surround channels.
   CHANNEL_LABEL_L_5 = 14;
   CHANNEL_LABEL_R_5 = 15;
   CHANNEL_LABEL_LS_5 = 16;
   CHANNEL_LABEL_RS_5 = 17;
-  CHANNEL_LABEL_DEMIXED_L_5 = 18;
-  CHANNEL_LABEL_DEMIXED_R_5 = 19;
-  CHANNEL_LABEL_DEMIXED_LS_5 = 20;
-  CHANNEL_LABEL_DEMIXED_RS_5 = 21;
   // Common channels between 5.1.2 and 7.1.2.
   CHANNEL_LABEL_LTF_2 = 22;
   CHANNEL_LABEL_RTF_2 = 23;
-  CHANNEL_LABEL_DEMIXED_LTF_2 = 24;
-  CHANNEL_LABEL_DEMIXED_RTF_2 = 25;
   // Common channels between 5.1.4 and 7.1.4.
   CHANNEL_LABEL_LTF_4 = 26;
   CHANNEL_LABEL_RTF_4 = 27;
   CHANNEL_LABEL_LTB_4 = 28;
   CHANNEL_LABEL_RTB_4 = 29;
-  CHANNEL_LABEL_DEMIXED_LTB_4 = 30;
-  CHANNEL_LABEL_DEMIXED_RTB_4 = 31;
   // 7.x.y surround channels.
   CHANNEL_LABEL_L_7 = 32;
   CHANNEL_LABEL_R_7 = 33;
@@ -60,10 +49,6 @@ enum ChannelLabel {
   CHANNEL_LABEL_RSS_7 = 35;
   CHANNEL_LABEL_LRS_7 = 36;
   CHANNEL_LABEL_RRS_7 = 37;
-  CHANNEL_LABEL_DEMIXED_L_7 = 38;
-  CHANNEL_LABEL_DEMIXED_R_7 = 39;
-  CHANNEL_LABEL_DEMIXED_LRS_7 = 40;
-  CHANNEL_LABEL_DEMIXED_RRS_7 = 41;
   // 9.1.6 surround channels.
   CHANNEL_LABEL_FLC = 42;
   CHANNEL_LABEL_FC = 43;
@@ -80,6 +65,8 @@ enum ChannelLabel {
   CHANNEL_LABEL_TP_SI_R = 54;
   CHANNEL_LABEL_TP_BL = 55;
   CHANNEL_LABEL_TP_BR = 56;
+  // Reserved for possible use of demixed labels.
+  reserved 5, 12, 13, 18 to 21, 24, 25, 30, 31, 38 to 41;
   // Reserved for channel-based labels.
   reserved 57 to 999;
 
