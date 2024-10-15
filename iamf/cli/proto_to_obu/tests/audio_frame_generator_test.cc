@@ -28,6 +28,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
@@ -55,6 +56,9 @@ using ::absl_testing::IsOkAndHolds;
 constexpr DecodedUleb128 kCodecConfigId = 99;
 constexpr uint32_t kSampleRate = 48000;
 
+constexpr uint32_t kAacNumSamplesPerFrame = 1024;
+constexpr uint32_t kAacNumSamplesToTrimAtStart = 2048;
+
 constexpr auto kFrame0L2EightSamples = std::to_array<InternalSampleType>(
     {1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16});
 constexpr auto kFrame0R2EightSamples = std::to_array<InternalSampleType>(
@@ -62,11 +66,10 @@ constexpr auto kFrame0R2EightSamples = std::to_array<InternalSampleType>(
      65530 << 16, 65529 << 16, 65528 << 16});
 constexpr std::array<InternalSampleType, 0> kEmptyFrame = {};
 
-// TODO(b/301490667): Add more tests. Include tests with samples trimmed at
-//                    the start and tests with multiple substreams. Include
-//                    tests to ensure the `*EncoderMetadata` are configured in
-//                    the encoder. Test encoders work as expected with multiple
-//                    Codec Config OBUs.
+// TODO(b/301490667): Add more tests. Include tests with multiple substreams.
+//                    Include tests to ensure the `*EncoderMetadata` are
+//                    configured in the encoder. Test encoders work as expected
+//                    with multiple Codec Config OBUs.
 
 TEST(GetNumberOfSamplesToDelayAtStart, ReturnsZeroForLpcm) {
   iamf_tools_cli_proto::CodecConfig kUnusedCodecConfigMetadata = {};
@@ -293,8 +296,11 @@ void InitializeAudioFrameGenerator(
   ASSERT_TRUE(audio_frame_generator.has_value());
 
   // Initialize.
-  EXPECT_EQ(audio_frame_generator->Initialize().ok(),
-            expected_initialize_is_ok);
+  if (expected_initialize_is_ok) {
+    EXPECT_THAT(audio_frame_generator->Initialize(), IsOk());
+  } else {
+    EXPECT_FALSE(audio_frame_generator->Initialize().ok());
+  }
 }
 
 void ExpectAudioFrameGeneratorInitializeIsNotOk(
@@ -337,14 +343,17 @@ void AddAllSamplesAndFinalizesExpectOk(
     }
   }
 
-  for (const auto& [label, frames] : label_to_frames) {
-    EXPECT_THAT(
-        audio_frame_generator.AddSamples(audio_element_id, label, kEmptyFrame),
-        IsOk());
-  }
+  // Flush out the remaining frames. Several flushes could be required if the
+  // codec delay is longer than a frame duration.
+  while (audio_frame_generator.TakingSamples()) {
+    for (const auto& [label, frames] : label_to_frames) {
+      EXPECT_THAT(audio_frame_generator.AddSamples(audio_element_id, label,
+                                                   kEmptyFrame),
+                  IsOk());
+    }
 
-  EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
-  EXPECT_FALSE(audio_frame_generator.TakingSamples());
+    EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
+  }
 }
 
 // Safe to run simultaneously with `AddAllSamplesAndFinalizesExpectOk`.
@@ -432,6 +441,31 @@ void AddStereoAudioElementAndAudioFrameMetadata(
   audio_element_metadata->set_audio_element_id(audio_element_id);
   audio_element_metadata->mutable_audio_substream_ids()->Add(
       audio_substream_id);
+}
+
+void ConfigureAacCodecConfigMetadata(
+    iamf_tools_cli_proto::CodecConfigObuMetadata& codec_config_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        codec_config_id: 200
+        codec_config {
+          codec_id: CODEC_ID_AAC_LC
+          automatically_override_audio_roll_distance: true
+          decoder_config_aac: {
+            decoder_specific_info {
+              sample_frequency_index: AAC_SAMPLE_FREQUENCY_INDEX_48000
+            }
+            aac_encoder_metadata {
+              bitrate_mode: 0  #  Constant bit rate mode.
+              enable_afterburner: true
+              signaling_mode: 2  # Explicit hierarchical signaling.
+            }
+          }
+        }
+      )pb",
+      &codec_config_metadata));
+  codec_config_metadata.mutable_codec_config()->set_num_samples_per_frame(
+      kAacNumSamplesPerFrame);
 }
 
 const uint32_t kFirstAudioElementId = 300;
@@ -797,6 +831,83 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {
 
   EXPECT_EQ(audio_frames.front().obu.header_.num_samples_to_trim_at_start, 4);
   EXPECT_TRUE(audio_frames.front().obu.header_.obu_trimming_status_flag);
+}
+
+TEST(AudioFrameGenerator, EncodingSucceedsWithFullFramesTrimmedAtStart) {
+  // The test is written under the assumption AAC has at least one full frame
+  // trimmed from the start.
+  ASSERT_GE(kAacNumSamplesToTrimAtStart, kAacNumSamplesPerFrame);
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureAacCodecConfigMetadata(
+      *user_metadata.mutable_codec_config_metadata()->Add());
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      kAacNumSamplesToTrimAtStart);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
+  ASSERT_FALSE(audio_frames.empty());
+
+  // Check the "cumulative" samples to trim from the start matches the requested
+  // value.
+  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
+  uint32_t unused_common_samples_to_trim_at_end = 0;
+  ASSERT_THAT(
+      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
+                               unused_common_samples_to_trim_at_end,
+                               observed_cumulative_samples_to_trim_at_start),
+      IsOk());
+  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
+            kAacNumSamplesToTrimAtStart);
+}
+
+TEST(AudioFrameGenerator, TrimsAdditionalSamplesAtStart) {
+  // Request more samples to be trimmed from the start than required by the
+  // codec delay. The output audio will have one fewer sample than the input
+  // audio.
+  constexpr uint32_t kNumSamplesToTrimAtStart = kAacNumSamplesToTrimAtStart + 1;
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureAacCodecConfigMetadata(
+      *user_metadata.mutable_codec_config_metadata()->Add());
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      kNumSamplesToTrimAtStart);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
+
+  // Check the "cumulative" samples to trim from the start matches the requested
+  // value.
+  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
+  uint32_t unused_common_samples_to_trim_at_end = 0;
+  ASSERT_THAT(
+      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
+                               unused_common_samples_to_trim_at_end,
+                               observed_cumulative_samples_to_trim_at_start),
+      IsOk());
+  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
+            kNumSamplesToTrimAtStart);
+}
+
+TEST(AudioFrameGenerator, InitFailsWithTooFewSamplesToTrimAtStart) {
+  const uint32_t kInvalidNumSamplesToTrimAtStart =
+      kAacNumSamplesToTrimAtStart - 1;
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureAacCodecConfigMetadata(
+      *user_metadata.mutable_codec_config_metadata()->Add());
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      kInvalidNumSamplesToTrimAtStart);
+
+  ExpectAudioFrameGeneratorInitializeIsNotOk(user_metadata);
 }
 
 TEST(AudioFrameGenerator, NoAudioFrames) {
