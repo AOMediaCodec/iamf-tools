@@ -559,6 +559,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(ParameterBlocksLongerDurationThanAudioFrames,
                          TestVector, testing::Values("test_000133.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(ExtensionsInIaSequenceHeader, TestVector,
+                         testing::Values("test_000134.textproto"));
+
 // ---- Test Set 2 -----
 
 INSTANTIATE_TEST_SUITE_P(BasicMonoLPCM, TestVector,
