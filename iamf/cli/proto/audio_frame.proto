@@ -110,10 +110,13 @@ message AudioFrameObuMetadata {
   //
   // When `true` `samples_to_trim_at_end` matches `num_samples_to_trim_at_end`
   // in the OBU header. If the actual value is too small to account for padding,
-  // then encoding will fail.
+  // then encoding will fail. This is useful to closely represent the value in
+  // the OBU (rarely needed).
   //
   // When `false` `num_samples_to_trim_at_end` will be incremented by the
-  // amount of required padding and may not match the OBU header value.
+  // amount of required padding and may not match the OBU header value. This is
+  // useful to closely represent the trimming applied to the original audio
+  // content (typically recommended).
   //
   // Typically the recommended settings are:
   //   - samples_to_trim_at_end_includes_padding: false
@@ -123,6 +126,28 @@ message AudioFrameObuMetadata {
   optional bool samples_to_trim_at_end_includes_padding = 9 [default = true];
   optional uint32 samples_to_trim_at_end = 4;
 
+  // Controls whether the number of samples required by codec delay for the
+  // initial first frames are automatically added to the
+  // `samples_to_trim_at_start` value.
+  //
+  // When `true` `samples_to_trim_at_start` relates directly to
+  // `samples_to_trim_at_start`s in the initial OBU header. If the actual
+  // value is too small to account for codec delay, then encoding will fail.
+  // This is useful to closely represent the values in the initial OBUs (rarely
+  // needed).
+  //
+  // When `false` `samples_to_trim_at_start` will be incremented by the
+  // amount of required for the codec delay and may not match the OBU header
+  // value. This is useful to closely represent the trimming applied to the
+  // original audio content (typically recommended).
+  //
+  // Typically the recommended settings are:
+  //   - samples_to_trim_at_start_includes_codec_delay: false
+  //   - samples_to_trim_at_start: 0
+  // These settings will automatically insert the correct codec delay to create
+  // a valid final frame and avoid trimming the original audio content.
+  optional bool samples_to_trim_at_start_includes_codec_delay = 10
+      [default = true];
   optional uint32 samples_to_trim_at_start = 5;
 
   // ID of the audio element whose substreams will be provided/mixed
@@ -139,5 +164,5 @@ message AudioFrameObuMetadata {
   // e.g. "A0", "A13". Must be of the same length as `channel_ids`.
   repeated string channel_labels = 8;
 
-  // Next ID: 10
+  // Next ID: 11
 }

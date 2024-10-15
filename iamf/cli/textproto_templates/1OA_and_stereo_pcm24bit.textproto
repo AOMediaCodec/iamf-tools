@@ -149,6 +149,7 @@ audio_frame_metadata: [
   {
     wav_filename: "TEMPLATE_FOA.wav"
     samples_to_trim_at_end_includes_padding: false
+    samples_to_trim_at_start_includes_codec_delay: false
     samples_to_trim_at_end: 0
     samples_to_trim_at_start: 0
     audio_element_id: 300
@@ -158,6 +159,7 @@ audio_frame_metadata: [
   {
     wav_filename: "TEMPLATE_stereo.wav"
     samples_to_trim_at_end_includes_padding: false
+    samples_to_trim_at_start_includes_codec_delay: false
     samples_to_trim_at_end: 0
     samples_to_trim_at_start: 0
     audio_element_id: 301

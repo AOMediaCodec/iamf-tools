@@ -59,6 +59,9 @@ constexpr uint32_t kSampleRate = 48000;
 constexpr uint32_t kAacNumSamplesPerFrame = 1024;
 constexpr uint32_t kAacNumSamplesToTrimAtStart = 2048;
 
+constexpr bool kSamplesToTrimAtStartIncludesCodecDelay = true;
+constexpr bool kSamplesToTrimAtStartExcludesCodecDelay = false;
+
 constexpr auto kFrame0L2EightSamples = std::to_array<InternalSampleType>(
     {1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16});
 constexpr auto kFrame0R2EightSamples = std::to_array<InternalSampleType>(
@@ -580,6 +583,7 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
   const uint32_t kCommonNumSamplesToTrimAtStart = 2;
   const uint32_t kCommonNumSamplesToTrimAtEnd = 1;
   const bool kCommonSamplesToTrimAtEndIncludesPadding = true;
+  const bool kCommonSamplesToTrimAtStartIncludesCodecDelay = true;
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
       kCommonNumSamplesToTrimAtStart);
   user_metadata.mutable_audio_frame_metadata(1)->set_samples_to_trim_at_start(
@@ -594,6 +598,12 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
   user_metadata.mutable_audio_frame_metadata(1)
       ->set_samples_to_trim_at_end_includes_padding(
           kCommonSamplesToTrimAtEndIncludesPadding);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(
+          kCommonSamplesToTrimAtStartIncludesCodecDelay);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_end_includes_padding(
+          kCommonSamplesToTrimAtStartIncludesCodecDelay);
 
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
@@ -648,6 +658,22 @@ TEST(AudioFrameGenerator,
       ->set_samples_to_trim_at_end_includes_padding(false);
   user_metadata.mutable_audio_frame_metadata(1)
       ->set_samples_to_trim_at_end_includes_padding(true);
+
+  ExpectAudioFrameGeneratorInitializeIsNotOk(user_metadata);
+}
+
+TEST(AudioFrameGenerator,
+     ErrorAudioElementsMustHaveSameSamplesToTrimAtStartIncludesCodecDelay) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  // IAMF requires that all audio elements have the same number of samples
+  // trimmed at the start.
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_start_includes_codec_delay(true);
 
   ExpectAudioFrameGeneratorInitializeIsNotOk(user_metadata);
 }
@@ -842,6 +868,9 @@ TEST(AudioFrameGenerator, EncodingSucceedsWithFullFramesTrimmedAtStart) {
       *user_metadata.mutable_codec_config_metadata()->Add());
   AddStereoAudioElementAndAudioFrameMetadata(
       user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(
+          kSamplesToTrimAtStartIncludesCodecDelay);
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
       kAacNumSamplesToTrimAtStart);
   user_metadata.mutable_audio_frame_metadata(0)
@@ -874,6 +903,9 @@ TEST(AudioFrameGenerator, TrimsAdditionalSamplesAtStart) {
       *user_metadata.mutable_codec_config_metadata()->Add());
   AddStereoAudioElementAndAudioFrameMetadata(
       user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(
+          kSamplesToTrimAtStartIncludesCodecDelay);
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
       kNumSamplesToTrimAtStart);
   user_metadata.mutable_audio_frame_metadata(0)
@@ -893,6 +925,40 @@ TEST(AudioFrameGenerator, TrimsAdditionalSamplesAtStart) {
       IsOk());
   EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
             kNumSamplesToTrimAtStart);
+}
+
+TEST(AudioFrameGenerator, AddsCodecDelayToSamplesToTrimAtStartWhenRequested) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureAacCodecConfigMetadata(
+      *user_metadata.mutable_codec_config_metadata()->Add());
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kFirstAudioElementId, kFirstSubstreamId);
+  // Request one sample to be trimmed. In addition to the codec delay.
+  constexpr uint32_t kNumSamplesToTrimAtStart = 1;
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(
+          kSamplesToTrimAtStartExcludesCodecDelay);
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
+      kNumSamplesToTrimAtStart);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+
+  std::list<AudioFrameWithData> audio_frames;
+  GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
+
+  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
+  uint32_t unused_common_samples_to_trim_at_end = 0;
+  ASSERT_THAT(
+      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
+                               unused_common_samples_to_trim_at_end,
+                               observed_cumulative_samples_to_trim_at_start),
+      IsOk());
+  // The actual cumulative trim values in the OBU include both the codec delay
+  // and the user requested trim.
+  constexpr uint32_t kExpectedNumSamplesToTrimAtStart =
+      kAacNumSamplesToTrimAtStart + kNumSamplesToTrimAtStart;
+  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
+            kExpectedNumSamplesToTrimAtStart);
 }
 
 TEST(AudioFrameGenerator, InitFailsWithTooFewSamplesToTrimAtStart) {

@@ -125,7 +125,7 @@ absl::Status GetEncodingDataAndInitializeEncoders(
 
 // Validates that the user requested number of samples to trim at start is
 // enough to cover the delay that the encoder needs.
-absl::Status ValidateUserStartTrim(
+absl::Status ValidateUserStartTrimIncludesCodecDelay(
     uint32_t user_samples_to_trim_at_start,
     uint32_t& encoder_required_samples_to_delay) {
   // Return an error. But obey the user when `-DNO_CHECK_ERROR` is set.
@@ -189,6 +189,7 @@ absl::Status InitializeSubstreamData(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
         substream_id_to_encoder,
+    bool user_samples_to_trim_at_start_includes_codec_delay,
     const uint32_t user_samples_to_trim_at_start,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
@@ -206,8 +207,10 @@ absl::Status InitializeSubstreamData(
 
     uint32_t encoder_required_samples_to_delay =
         encoder_iter->second->GetNumberOfSamplesToDelayAtStart();
-    RETURN_IF_NOT_OK(ValidateUserStartTrim(user_samples_to_trim_at_start,
-                                           encoder_required_samples_to_delay));
+    if (user_samples_to_trim_at_start_includes_codec_delay) {
+      RETURN_IF_NOT_OK(ValidateUserStartTrimIncludesCodecDelay(
+          user_samples_to_trim_at_start, encoder_required_samples_to_delay));
+    }
 
     // Initialize a `SubstreamData` with virtual samples for any delay
     // introduced by the encoder.
@@ -529,6 +532,7 @@ absl::Status EncodeFramesForAudioElement(
 absl::Status ValidateSubstreamsShareTrimming(
     const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
     bool common_samples_to_trim_at_end_includes_padding,
+    bool common_samples_to_trim_at_start_includes_codec_delay,
     int64_t common_samples_to_trim_at_start,
     int64_t common_samples_to_trim_at_end) {
   if (audio_frame_metadata.samples_to_trim_at_end() !=
@@ -536,7 +540,9 @@ absl::Status ValidateSubstreamsShareTrimming(
       audio_frame_metadata.samples_to_trim_at_start() !=
           common_samples_to_trim_at_start ||
       audio_frame_metadata.samples_to_trim_at_end_includes_padding() !=
-          common_samples_to_trim_at_end_includes_padding) {
+          common_samples_to_trim_at_end_includes_padding ||
+      audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay() !=
+          common_samples_to_trim_at_start_includes_codec_delay) {
     return absl::InvalidArgumentError(
         "Expected all substreams to have the same trimming information");
   }
@@ -644,6 +650,9 @@ absl::Status AudioFrameGenerator::Initialize() {
       static_cast<int64_t>(first_audio_frame_metadata.samples_to_trim_at_end());
   const bool common_samples_to_trim_at_end_includes_padding =
       first_audio_frame_metadata.samples_to_trim_at_end_includes_padding();
+  const bool common_samples_to_trim_at_start_includes_codec_delay =
+      first_audio_frame_metadata
+          .samples_to_trim_at_start_includes_codec_delay();
 
   for (const auto& [audio_element_id, audio_frame_metadata] :
        audio_frame_metadata_) {
@@ -669,11 +678,12 @@ absl::Status AudioFrameGenerator::Initialize() {
         substream_id_to_encoder_));
 
     // Intermediate data for all substreams belonging to an Audio Element.
-    RETURN_IF_NOT_OK(
-        InitializeSubstreamData(audio_element_with_data.substream_id_to_labels,
-                                substream_id_to_encoder_,
-                                audio_frame_metadata.samples_to_trim_at_start(),
-                                substream_id_to_substream_data_));
+    RETURN_IF_NOT_OK(InitializeSubstreamData(
+        audio_element_with_data.substream_id_to_labels,
+        substream_id_to_encoder_,
+        audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay(),
+        audio_frame_metadata.samples_to_trim_at_start(),
+        substream_id_to_substream_data_));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
@@ -691,16 +701,25 @@ absl::Status AudioFrameGenerator::Initialize() {
     // Validate the assumption that trimming is the same for all substreams.
     RETURN_IF_NOT_OK(ValidateSubstreamsShareTrimming(
         audio_frame_metadata, common_samples_to_trim_at_end_includes_padding,
+        common_samples_to_trim_at_start_includes_codec_delay,
         common_samples_to_trim_at_start, common_samples_to_trim_at_end));
 
     // Populate the map of trimming states with all substream ID.
     for (const auto& [substream_id, labels] :
          audio_element_with_data.substream_id_to_labels) {
+      // Add in the codec delay when it was not included in the user input.
+      const int64_t additional_samples_to_trim_at_start =
+          common_samples_to_trim_at_start_includes_codec_delay
+              ? 0
+              : substream_id_to_encoder_[substream_id]
+                    ->GetNumberOfSamplesToDelayAtStart();
       substream_id_to_trimming_state_[substream_id] = {
           .increment_samples_to_trim_at_end_by_padding =
               !audio_frame_metadata.samples_to_trim_at_end_includes_padding(),
           .user_samples_left_to_trim_at_end = common_samples_to_trim_at_end,
-          .user_samples_left_to_trim_at_start = common_samples_to_trim_at_start,
+          .user_samples_left_to_trim_at_start =
+              common_samples_to_trim_at_start +
+              additional_samples_to_trim_at_start,
       };
     }
   }

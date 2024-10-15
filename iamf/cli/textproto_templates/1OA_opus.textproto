@@ -109,8 +109,9 @@ mix_presentation_metadata {
 audio_frame_metadata {
   wav_filename: "TEMPLATE_FOA.wav"
   samples_to_trim_at_end_includes_padding: false
+  samples_to_trim_at_start_includes_codec_delay: false
   samples_to_trim_at_end: 0
-  samples_to_trim_at_start: 312
+  samples_to_trim_at_start: 0
   audio_element_id: 300
   channel_ids: [0, 1, 2, 3]
   channel_labels: ["A0", "A1", "A2", "A3"]

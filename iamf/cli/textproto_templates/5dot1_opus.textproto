@@ -127,8 +127,9 @@ mix_presentation_metadata {
 audio_frame_metadata {
   wav_filename: "TEMPLATE_5dot1.wav"
   samples_to_trim_at_end_includes_padding: false
+  samples_to_trim_at_start_includes_codec_delay: false
   samples_to_trim_at_end: 0
-  samples_to_trim_at_start: 312
+  samples_to_trim_at_start: 0
   audio_element_id: 300
   channel_ids: [0, 1, 2, 3, 4, 5]
   channel_labels: ["L5", "R5", "C", "LFE", "Ls5", "Rs5"]
