@@ -193,3 +193,14 @@ cc_library(
         "@com_google_absl//absl/status",
     ],
 )
+
+cc_library(
+    name = "flac_decoder_stream_callbacks",
+    srcs = ["flac_decoder_stream_callbacks.cc"],
+    hdrs = ["flac_decoder_stream_callbacks.h"],
+    deps = [
+        ":flac_decoder",
+        "@com_google_absl//absl/log",
+        "@flac//:src",
+    ],
+)

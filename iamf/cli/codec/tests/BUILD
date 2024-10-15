@@ -116,3 +116,17 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "flac_decoder_stream_callbacks_test",
+    srcs = ["flac_decoder_stream_callbacks_test.cc"],
+    deps = [
+        "//iamf/cli/codec:flac_decoder",
+        "//iamf/cli/codec:flac_decoder_stream_callbacks",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:obu_header",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "@com_google_googletest//:gtest_main",
+        "@flac//:src",
+    ],
+)

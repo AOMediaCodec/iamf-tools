@@ -41,7 +41,7 @@ class FlacDecoder : public DecoderBase {
    */
   absl::Status Initialize() override;
 
-  /*!\brief Decodes a Flac audio frame.
+  /*!\brief Decodes a FLAC audio frame.
    *
    * \param encoded_frame Frame to decode.
    * \param decoded_samples Output decoded frames arranged in (time, sample)
@@ -52,7 +52,22 @@ class FlacDecoder : public DecoderBase {
       const std::vector<uint8_t>& encoded_frame,
       std::vector<std::vector<int32_t>>& decoded_samples) override;
 
+  /*!\brief Sets an encoded FLAC frame in decoder.encoded_frame_.
+   *
+   * \param encoded_frame Encoded FLAC frame.
+   */
+  void SetEncodedFrame(const std::vector<uint8_t>& encoded_frame) {
+    encoded_frame_ = encoded_frame;
+  }
+
+  /*!\brief Retrieves the encoded frame in decoder.encoded_frame_.
+   *
+   * \return Vector of encoded FLAC bytes representing a single frame.
+   */
+  std::vector<uint8_t> GetEncodedFrame() const { return encoded_frame_; }
+
  private:
+  std::vector<uint8_t> encoded_frame_ = {};
   const FlacDecoderConfig decoder_config_;
 };
 
