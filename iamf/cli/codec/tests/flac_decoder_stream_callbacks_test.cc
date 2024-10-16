@@ -22,6 +22,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
 
@@ -74,6 +75,38 @@ TEST_F(FlacDecoderStreamCallbacksTest, ReadCallbackSuccess) {
   EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_CONTINUE);
   EXPECT_EQ(bytes, 1024);
   EXPECT_THAT(buffer, ElementsAreArray(encoded_frame));
+}
+
+TEST_F(FlacDecoderStreamCallbacksTest, WriteCallbackSuccess32BitSamples) {
+  FLAC__Frame frame;
+  frame.header.channels = 2;
+  frame.header.blocksize = 3;
+  frame.header.bits_per_sample = 32;
+  FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
+  FLAC__int32 channel_1[] = {2, 3, 4};
+  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  auto status = LibFlacWriteCallback(/*stream_decoder=*/nullptr, &frame, buffer,
+                                     &flac_decoder_);
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE);
+  EXPECT_THAT(flac_decoder_.GetDecodedFrame(),
+              ElementsAreArray(std::vector<std::vector<int32_t>>(
+                  {{1, 0x7fffffff, 3}, {2, 3, 4}})));
+}
+
+TEST_F(FlacDecoderStreamCallbacksTest, WriteCallbackSuccess16BitSamples) {
+  FLAC__Frame frame;
+  frame.header.channels = 2;
+  frame.header.blocksize = 2;
+  frame.header.bits_per_sample = 16;
+  FLAC__int32 channel_0[] = {0x11110000, 0x7fff0000};
+  FLAC__int32 channel_1[] = {0x01010000, 0x22220000};
+  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  auto status = LibFlacWriteCallback(/*stream_decoder=*/nullptr, &frame, buffer,
+                                     &flac_decoder_);
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE);
+  EXPECT_THAT(flac_decoder_.GetDecodedFrame(),
+              ElementsAreArray(std::vector<std::vector<int32_t>>(
+                  {{0x11110000, 0x7fff0000}, {0x01010000, 0x22220000}})));
 }
 
 }  // namespace

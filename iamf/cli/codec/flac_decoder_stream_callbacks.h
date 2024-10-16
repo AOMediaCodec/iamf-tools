@@ -15,6 +15,7 @@
 
 #include <cstddef>
 
+#include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
 
@@ -37,6 +38,28 @@ namespace iamf_tools {
 FLAC__StreamDecoderReadStatus LibFlacReadCallback(
     const FLAC__StreamDecoder* decoder, FLAC__byte buffer[], size_t* bytes,
     void* client_data);
+
+/*!\brief Writes a decoded flac frame to an instance of FlacDecoder.
+ *
+ * This callback function is used to write out a decoded frame from the libflac
+ * decoder.
+ *
+ * \param decoder Unused libflac stream decoder. This parameter is not used in
+ *        this implementation, but is included to override the libflac
+ *        signature.
+ * \param frame libflac encoded frame metadata.
+ * \param buffer Array of pointers to decoded channels of data. Each pointer
+ *        will point to an array of signed samples of length
+ *        `frame->header.blocksize`. Channels will be ordered according to the
+ *        FLAC specification.
+ * \param client_data Universal pointer, which in this case should point to
+ *        FlacDecoder.
+ *
+ * \return A libflac write status indicating whether the write was successful.
+ */
+FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
+    const FLAC__StreamDecoder* /*decoder*/, const FLAC__Frame* frame,
+    const FLAC__int32* const buffer[], void* client_data);
 
 }  // namespace iamf_tools
 

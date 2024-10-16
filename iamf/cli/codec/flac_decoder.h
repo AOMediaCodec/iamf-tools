@@ -66,8 +66,25 @@ class FlacDecoder : public DecoderBase {
    */
   std::vector<uint8_t> GetEncodedFrame() const { return encoded_frame_; }
 
+  /*!\brief Sets a decoded FLAC frame in decoder.decoded_frame_.
+   *
+   * \param decoded_frame Decoded FLAC frame.
+   */
+  void SetDecodedFrame(const std::vector<std::vector<int32_t>>& decoded_frame) {
+    decoded_frame_ = decoded_frame;
+  }
+
+  /*!\brief Retrieves the decoded FLAC frame in decoder.decoded_frame_.
+   *
+   * \return Vector of decoded FLAC samples.
+   */
+  std::vector<std::vector<int32_t>> GetDecodedFrame() const {
+    return decoded_frame_;
+  }
+
  private:
   std::vector<uint8_t> encoded_frame_ = {};
+  std::vector<std::vector<int32_t>> decoded_frame_ = {};
   const FlacDecoderConfig decoder_config_;
 };
 

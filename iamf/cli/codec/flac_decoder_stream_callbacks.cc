@@ -13,9 +13,12 @@
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 
 #include "absl/log/log.h"
 #include "iamf/cli/codec/flac_decoder.h"
+#include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
 
@@ -42,6 +45,25 @@ FLAC__StreamDecoderReadStatus LibFlacReadCallback(
   }
   *bytes = encoded_frame.size();
   return FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
+}
+
+FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
+    const FLAC__StreamDecoder* /*decoder*/, const FLAC__Frame* frame,
+    const FLAC__int32* const buffer[], void* client_data) {
+  std::vector<std::vector<int32_t>> decoded_samples(frame->header.channels);
+  auto* flac_decoder = static_cast<FlacDecoder*>(client_data);
+  const auto num_samples_per_channel = frame->header.blocksize;
+  // Note: libFLAC represents data in a planar fashion, so each channel is
+  // stored in a separate array.
+  for (int i = 0; i < frame->header.channels; ++i) {
+    decoded_samples[i].resize(num_samples_per_channel);
+    const FLAC__int32* const channel_buffer = buffer[i];
+    for (int j = 0; j < num_samples_per_channel; ++j) {
+      decoded_samples[i][j] = static_cast<int32_t>(channel_buffer[j]);
+    }
+  }
+  flac_decoder->SetDecodedFrame(decoded_samples);
+  return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 
 }  // namespace iamf_tools
