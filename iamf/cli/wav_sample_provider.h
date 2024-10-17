@@ -13,11 +13,15 @@
 #ifndef CLI_WAV_SAMPLE_PROVIDER_H_
 #define CLI_WAV_SAMPLE_PROVIDER_H_
 
+#include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
@@ -30,27 +34,17 @@ namespace iamf_tools {
 
 class WavSampleProvider {
  public:
-  /*!\brief Constructor.
+  /*!\brief Factory function.
    *
    * \param audio_frame_metadata Input audio frame metadata.
-   */
-  WavSampleProvider(
-      const ::google::protobuf::RepeatedPtrField<
-          iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata) {
-    for (const auto& audio_frame_obu_metadata : audio_frame_metadata) {
-      audio_frame_metadata_[audio_frame_obu_metadata.audio_element_id()] =
-          audio_frame_obu_metadata;
-    }
-  }
-
-  /*!\brief Initializes WAV readers that provide samples for the audio frames.
-   *
    * \param input_wav_directory Directory containing the input WAV files.
    * \param audio_elements Input Audio Element OBUs with data.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Initialize(
-      const std::string& input_wav_directory,
+  static absl::StatusOr<WavSampleProvider> Create(
+      const ::google::protobuf::RepeatedPtrField<
+          iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
+      absl::string_view input_wav_directory,
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
 
@@ -67,16 +61,32 @@ class WavSampleProvider {
                           bool& finished_reading);
 
  private:
+  /*!\brief Constructor.
+   *
+   * Used only by factory function. Moves from all input arguments.
+   *
+   * \param wav_readers Mapping from Audio Element ID to `WavReader`.
+   * \param audio_element_id_to_channel_ids Mapping from Audio Element ID to
+   *        channel IDs.
+   * \param audio_element_id_to_labels Mapping from Audio Element ID to channel
+   *        labels.
+   */
+  WavSampleProvider(
+      absl::flat_hash_map<DecodedUleb128, WavReader>&& wav_readers,
+      absl::flat_hash_map<DecodedUleb128, std::vector<uint32_t>>&&
+          audio_element_id_to_channel_ids,
+      absl::flat_hash_map<DecodedUleb128, std::vector<ChannelLabel::Label>>&&
+          audio_element_id_to_labels);
+
   // Mapping from Audio Element ID to `WavReader`.
   absl::flat_hash_map<DecodedUleb128, WavReader> wav_readers_;
 
-  // Mapping from Audio Element ID to audio frame metadata.
-  absl::flat_hash_map<DecodedUleb128,
-                      iamf_tools_cli_proto::AudioFrameObuMetadata>
-      audio_frame_metadata_;
+  // Mapping from Audio Element ID to channel IDs.
+  const absl::flat_hash_map<DecodedUleb128, std::vector<uint32_t>>
+      audio_element_id_to_channel_ids_;
 
   // Mapping from Audio Element ID to channel labels.
-  absl::flat_hash_map<DecodedUleb128, std::vector<ChannelLabel::Label>>
+  const absl::flat_hash_map<DecodedUleb128, std::vector<ChannelLabel::Label>>
       audio_element_id_to_labels_;
 };
 

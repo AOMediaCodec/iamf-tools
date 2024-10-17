@@ -169,9 +169,12 @@ absl::Status GenerateObus(
       ia_sequence_header_obu, codec_config_obus, audio_elements,
       mix_presentation_obus));
 
-  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
-  RETURN_IF_NOT_OK(
-      wav_sample_provider.Initialize(input_wav_directory, audio_elements));
+  auto wav_sample_provider =
+      WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
+                                input_wav_directory, audio_elements);
+  if (!wav_sample_provider.ok()) {
+    return wav_sample_provider.status();
+  }
 
   // Parameter blocks.
   TimeParameterBlockMetadataMap time_parameter_block_metadata;
@@ -197,7 +200,7 @@ absl::Status GenerateObus(
     absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples;
     bool no_more_real_samples = false;
     RETURN_IF_NOT_OK(CollectLabeledSamplesForAudioElements(
-        audio_elements, wav_sample_provider, id_to_labeled_samples,
+        audio_elements, *wav_sample_provider, id_to_labeled_samples,
         no_more_real_samples));
 
     for (const auto& [audio_element_id, labeled_samples] :

@@ -429,6 +429,8 @@ cc_test(
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:wav_sample_provider",
+        "//iamf/cli/proto:audio_element_cc_proto",
+        "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:codec_config",
         "//iamf/obu:types",
