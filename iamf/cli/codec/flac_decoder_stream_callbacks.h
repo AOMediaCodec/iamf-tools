@@ -61,6 +61,22 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
     const FLAC__StreamDecoder* /*decoder*/, const FLAC__Frame* frame,
     const FLAC__int32* const buffer[], void* client_data);
 
+/*!\brief Logs an error from the libflac decoder.
+ *
+ *  This function will be called whenever an error occurs during libflac
+ *  decoding.
+ *
+ * \param decoder libflac stream decoder
+ *        This parameter is not used in this implementation, but is included to
+ *        override the libflac signature.
+ * \param status The error encountered by the decoder.
+ * \param client_data Universal pointer, which in this case should point to
+ *        FlacDecoder. Unused in this implementation.
+ */
+void LibFlacErrorCallback(const FLAC__StreamDecoder* /*decoder*/,
+                          FLAC__StreamDecoderErrorStatus status,
+                          void* /*client_data*/);
+
 }  // namespace iamf_tools
 
 #endif  // CLI_CODEC_FLAC_DECODER_STREAM_CALLBACKS_H_

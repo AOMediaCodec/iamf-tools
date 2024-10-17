@@ -66,4 +66,26 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
   return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 
+void LibFlacErrorCallback(const FLAC__StreamDecoder* /*decoder*/,
+                          FLAC__StreamDecoderErrorStatus status,
+                          void* /*client_data*/) {
+  switch (status) {
+    case FLAC__STREAM_DECODER_ERROR_STATUS_LOST_SYNC:
+      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_LOST_SYNC";
+      break;
+    case FLAC__STREAM_DECODER_ERROR_STATUS_BAD_HEADER:
+      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_BAD_HEADER";
+      break;
+    case FLAC__STREAM_DECODER_ERROR_STATUS_FRAME_CRC_MISMATCH:
+      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_FRAME_CRC_MISMATCH";
+      break;
+    case FLAC__STREAM_DECODER_ERROR_STATUS_UNPARSEABLE_STREAM:
+      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_UNPARSEABLE_STREAM";
+      break;
+    default:
+      LOG(ERROR) << "Unknown error";
+      break;
+  }
+}
+
 }  // namespace iamf_tools
