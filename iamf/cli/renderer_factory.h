@@ -23,6 +23,10 @@
 
 namespace iamf_tools {
 
+// TODO(b/332567539): Add signalling to allow implementations to configure
+//                    rendering (`RenderingConfig` in spec). Plus a flag to
+//                    signal that binaural rendering is requested (i.e. "the
+//                    user is wearing headphones").
 /*!\brief Abstract class to create renderers.
  *
  * This class will be used when rendering the loudness of a mix presentation
@@ -57,9 +61,9 @@ class RendererFactoryBase {
 /*!\brief Factory which creates a renderers.
  *
  * This factory provides renderers in a best-effort manner according to the
- * recommendations in the IAMF specification. When a recommended renderer is not
- * implemented by `iamf-tools` the factory will fallback to returning a
- * `nullptr`.
+ * recommendations in the IAMF specification (section 7.3.2). When a recommended
+ * renderer is not implemented by `iamf-tools` the factory will fallback to
+ * returning a `nullptr`.
  */
 class RendererFactory : public RendererFactoryBase {
  public:

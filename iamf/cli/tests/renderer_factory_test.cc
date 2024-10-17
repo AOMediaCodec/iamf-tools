@@ -33,6 +33,10 @@ const Layout kMonoLayout = {
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem12_0_1_0}};
 const Layout kBinauralLayout = {.layout_type = Layout::kLayoutTypeBinaural};
 
+const ScalableChannelLayoutConfig kBinauralChannelLayoutConfig = {
+    .num_layers = 1,
+    .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
+
 const ScalableChannelLayoutConfig kMonoScalableChannelLayoutConfig = {
     .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutMono}}};
@@ -47,12 +51,45 @@ const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
                                               .substream_count = 1,
                                               .channel_mapping = {0}}};
 
-TEST(CreateRendererForLayout, ReturnsNullPtrForPassThroughRenderer) {
+const ExtensionConfig kExtensionConfig = {.audio_element_config_size = 0,
+                                          .audio_element_config_bytes = {}};
+
+TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
+  const RendererFactory factory;
+
+  EXPECT_NE(factory.CreateRendererForLayout(
+                {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
+                kMonoScalableChannelLayoutConfig, kMonoLayout),
+            nullptr);
+}
+
+TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
+  const RendererFactory factory;
+
+  EXPECT_NE(
+      factory.CreateRendererForLayout(
+          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
+          kBinauralChannelLayoutConfig, kBinauralLayout),
+      nullptr);
+}
+
+TEST(CreateRendererForLayout,
+     ReturnsNullPtrWhenTypeIsSceneBasedButConfigIsChannelBased) {
+  const RendererFactory factory;
+
+  EXPECT_EQ(factory.CreateRendererForLayout(
+                {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
+                kMonoScalableChannelLayoutConfig, kMonoLayout),
+            nullptr);
+}
+
+TEST(CreateRendererForLayout,
+     ReturnsNullPtrWhenTypeIsChannelBasedButConfigIsAmbisonics) {
   const RendererFactory factory;
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
-                kMonoScalableChannelLayoutConfig, kMonoLayout),
+                kFullZerothOrderAmbisonicsConfig, kMonoLayout),
             nullptr);
 }
 
@@ -62,6 +99,15 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToBinauralRenderer) {
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
                 kMonoScalableChannelLayoutConfig, kBinauralLayout),
+            nullptr);
+}
+
+TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
+  const RendererFactory factory;
+
+  EXPECT_EQ(factory.CreateRendererForLayout(
+                {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementEndReserved,
+                kExtensionConfig, kBinauralLayout),
             nullptr);
 }
 

@@ -416,9 +416,11 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
+        "@com_google_absl//absl/log",
     ],
 )
 
