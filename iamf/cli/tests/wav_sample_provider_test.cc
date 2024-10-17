@@ -98,6 +98,36 @@ TEST(Initialize, FailsForUnknownLabels) {
       wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
+TEST(Initialize, SucceedsForDuplicateChannelIds) {
+  constexpr uint32_t kDuplicateChannelId = 0;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitializeTestData(kSampleRate, user_metadata, audio_elements);
+  user_metadata.mutable_audio_frame_metadata(0)->set_channel_ids(
+      0, kDuplicateChannelId);
+  user_metadata.mutable_audio_frame_metadata(0)->set_channel_ids(
+      1, kDuplicateChannelId);
+  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
+
+  EXPECT_THAT(wav_sample_provider.Initialize(GetInputWavDir(), audio_elements),
+              IsOk());
+}
+
+TEST(Initialize, FailsForDuplicateChannelLabels) {
+  constexpr absl::string_view kDuplicateLabel = "L2";
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitializeTestData(kSampleRate, user_metadata, audio_elements);
+  user_metadata.mutable_audio_frame_metadata(0)->set_channel_labels(
+      0, kDuplicateLabel);
+  user_metadata.mutable_audio_frame_metadata(0)->set_channel_labels(
+      1, kDuplicateLabel);
+  WavSampleProvider wav_sample_provider(user_metadata.audio_frame_metadata());
+
+  EXPECT_FALSE(
+      wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
+}
+
 TEST(Initialize, FailsForChannelIdTooLarge) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
@@ -114,7 +144,7 @@ TEST(Initialize, FailsForChannelIdTooLarge) {
       wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
-TEST(WavSampleProviderTest, MismatchingChannelIdsAndLabels) {
+TEST(Initialize, FailsForDifferentSizedChannelIdsAndChannelLabels) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
@@ -128,7 +158,7 @@ TEST(WavSampleProviderTest, MismatchingChannelIdsAndLabels) {
       wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
-TEST(WavSampleProviderTest, BitDepthLowerThanFile) {
+TEST(Initialize, FailsForBitDepthLowerThanFile) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitializeTestData(kSampleRate, user_metadata, audio_elements);
@@ -143,7 +173,7 @@ TEST(WavSampleProviderTest, BitDepthLowerThanFile) {
       wav_sample_provider.Initialize(GetInputWavDir(), audio_elements).ok());
 }
 
-TEST(WavSampleProviderTest, MismatchingSampleRates) {
+TEST(Initialize, FailsForMismatchingSampleRates) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
 

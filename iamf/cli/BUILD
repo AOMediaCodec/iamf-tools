@@ -446,6 +446,7 @@ cc_library(
         ":wav_reader",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",

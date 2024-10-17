@@ -28,6 +28,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -45,6 +46,15 @@ absl::Status WavSampleProvider::Initialize(
                        audio_frame_metadata.channel_ids_size(), " vs ",
                        audio_frame_metadata.channel_labels_size(), ")"));
     }
+    if (!ValidateUnique(audio_frame_metadata.channel_ids().begin(),
+                        audio_frame_metadata.channel_ids().end(), "channel ids")
+             .ok()) {
+      // OK. The user is claiming some channel IDs are shared between labels.
+      // This is strange, but permitted.
+      LOG(WARNING) << "Usually channel labels should be unique. Did you use "
+                      "the same channel ID for different channels?";
+    }
+
     // Precompute the `ChannelLabel::Label` for each channel label string.
     RETURN_IF_NOT_OK(ChannelLabel::ConvertAndFillLabels(
         audio_frame_metadata.channel_labels(),
