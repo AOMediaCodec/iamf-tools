@@ -33,8 +33,8 @@ ABSL_FLAG(int32_t, frame_duration_ms, 10, "Frame duration in milliseconds");
 // Flags to control output files type and location.
 ABSL_FLAG(bool, write_binary_proto, true,
           "Whether to write the output as a binary proto or textproto");
-ABSL_FLAG(std::string, output_file_path, "",
-          "Path to write output spliced wav files and user metadata to");
+ABSL_FLAG(std::string, output_directory, "",
+          "Directory to write output spliced wav files and user metadata to");
 
 int main(int32_t argc, char* argv[]) {
   absl::SetProgramUsageMessage(argv[0]);
@@ -50,14 +50,14 @@ int main(int32_t argc, char* argv[]) {
   // Get the user metadata and write the wav files.
   const std::string file_prefix =
       std::filesystem::path(adm_filename).stem().string();
-  const std::filesystem::path output_file_path(
-      absl::GetFlag(FLAGS_output_file_path));
+  const std::filesystem::path output_directory(
+      absl::GetFlag(FLAGS_output_directory));
   std::ifstream adm_file(adm_filename, std::ios::binary | std::ios::in);
 
   const auto& user_metadata =
       iamf_tools::adm_to_user_metadata::GenerateUserMetadataAndSpliceWavFiles(
           file_prefix, absl::GetFlag(FLAGS_frame_duration_ms),
-          absl::GetFlag(FLAGS_importance_threshold), output_file_path,
+          absl::GetFlag(FLAGS_importance_threshold), output_directory,
           adm_file);
 
   if (!user_metadata.ok()) {
@@ -69,7 +69,7 @@ int main(int32_t argc, char* argv[]) {
   if (const auto& status =
           iamf_tools::adm_to_user_metadata::UserMetadataGenerator::
               WriteUserMetadataToFile(absl::GetFlag(FLAGS_write_binary_proto),
-                                      output_file_path, *user_metadata);
+                                      output_directory, *user_metadata);
       !status.ok()) {
     LOG(ERROR) << status;
     return status.raw_code();
