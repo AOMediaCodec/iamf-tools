@@ -182,3 +182,7 @@ select:focus {
   font-family: monospace;
   font-size: 14px;
 }
+
+#logBox pre {
+  margin: 0;
+}
