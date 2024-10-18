@@ -2,7 +2,10 @@
 
 # [internal] load cc_proto_library.bzl
 
-package(default_visibility = ["//iamf/cli:__subpackages__"])
+package(default_visibility = [
+    "//iamf/api:__subpackages__",
+    "//iamf/cli:__subpackages__",
+])
 
 proto_library(
     name = "arbitrary_obu_proto",
