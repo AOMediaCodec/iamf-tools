@@ -403,6 +403,26 @@ cc_test(
 )
 
 cc_test(
+    name = "textproto_templates_test",
+    srcs = ["textproto_templates_test.cc"],
+    data = [
+        "//iamf/cli/testdata:input_wav_files",
+        "//iamf/cli/textproto_templates:textprotos",
+    ],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:encoder_main_lib",
+        "//iamf/cli/proto:audio_frame_cc_proto",
+        "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "wav_reader_test",
     srcs = ["wav_reader_test.cc"],
     data = [
