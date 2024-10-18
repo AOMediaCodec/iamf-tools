@@ -16,16 +16,20 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/mix_presentation_finalizer.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/renderer_factory.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
 
 namespace iamf_tools {
 
@@ -36,11 +40,15 @@ constexpr absl::string_view kOmitIamfFile = "";
 }
 
 std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
-    const std::string& /*file_name_prefix*/,
-    std::optional<uint8_t> /*output_wav_file_bit_depth_override*/,
-    bool /*validate_loudness*/) {
-  return std::make_unique<
-      MeasureLoudnessOrFallbackToUserLoudnessMixPresentationFinalizer>();
+    const std::string& file_name_prefix,
+    std::optional<uint8_t> output_wav_file_bit_depth_override,
+    bool validate_loudness) {
+  std::unique_ptr<RendererFactoryBase> skip_rendering = nullptr;
+  std::unique_ptr<LoudnessCalculatorFactoryBase> preserve_user_loudness =
+      nullptr;
+  return std::make_unique<RenderingMixPresentationFinalizer>(
+      file_name_prefix, output_wav_file_bit_depth_override, validate_loudness,
+      std::move(skip_rendering), std::move(preserve_user_loudness));
 }
 
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(

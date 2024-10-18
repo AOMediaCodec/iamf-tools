@@ -378,6 +378,35 @@ cc_test(
 )
 
 cc_test(
+    name = "rendering_mix_presentation_finalizer_test",
+    srcs = ["rendering_mix_presentation_finalizer_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli:loudness_calculator_base",
+        "//iamf/cli:loudness_calculator_factory_base",
+        "//iamf/cli:renderer_factory",
+        "//iamf/cli:rendering_mix_presentation_finalizer",
+        "//iamf/cli:wav_reader",
+        "//iamf/cli:wav_writer",
+        "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "textproto_templates_test",
     srcs = ["textproto_templates_test.cc"],
     data = [
