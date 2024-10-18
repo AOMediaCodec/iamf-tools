@@ -9,13 +9,13 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_LOUDNESS_CALCULATOR_FACTORY_H_
-#define CLI_LOUDNESS_CALCULATOR_FACTORY_H_
+#ifndef CLI_LOUDNESS_CALCULATOR_FACTORY_BASE_H_
+#define CLI_LOUDNESS_CALCULATOR_FACTORY_BASE_H_
 
 #include <cstdint>
 #include <memory>
 
-#include "iamf/cli/loudness_calculator.h"
+#include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -46,40 +46,6 @@ class LoudnessCalculatorFactoryBase {
   virtual ~LoudnessCalculatorFactoryBase() = 0;
 };
 
-// TODO(b/302273947): Use this class to measure loudness when finalizing mix
-//                    presentations.
-/*!\brief Factory which always provides a fallback loudness calculator.
- *
- * This factory produces underlying loudness calculators which entirely ignore
- * all input samples. Those calculators are useful if the user does not wish to
- * provide samples to the calculator, or knows the samples they provide are
- * inaccurate or not valid for some reason.
- *
- * This factory is intended to be used when the user does not care about
- * "accurate" loudness measurement. One such case is if the user does not
- * support rendering to a layout that loudness should be measured on.
- *
- * This factory is also intended be used as a fallback when other loudness
- * factories fail to be created.
- */
-class LoudnessCalculatorFactoryUserProvidedLoudness
-    : public LoudnessCalculatorFactoryBase {
- public:
-  /*!\brief Creates a fallback loudness calculator.
-   *
-   * \param layout Layout to use when echoing loudness back.
-   * \param rendered_sample_rate Sample rate of the rendered audio to ignore.
-   * \param rendered_bit_depth Bit-depth of the rendered audio to ignore.
-   * \return Unique pointer to a loudness calculator.
-   */
-  std::unique_ptr<LoudnessCalculatorBase> CreateLoudnessCalculator(
-      const MixPresentationLayout& layout, int32_t /*rendered_sample_rate*/,
-      int32_t /*rendered_bit_depth*/) const override;
-
-  /*!\brief Destructor. */
-  ~LoudnessCalculatorFactoryUserProvidedLoudness() override = default;
-};
-
 }  // namespace iamf_tools
 
-#endif  // CLI_LOUDNESS_CALCULATOR_H_
+#endif  // CLI_LOUDNESS_CALCULATOR_FACTORY_BASE_H_

@@ -262,9 +262,9 @@ cc_library(
 )
 
 cc_library(
-    name = "loudness_calculator",
-    srcs = ["loudness_calculator.cc"],
-    hdrs = ["loudness_calculator.h"],
+    name = "loudness_calculator_base",
+    srcs = ["loudness_calculator_base.cc"],
+    hdrs = ["loudness_calculator_base.h"],
     deps = [
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/status",
@@ -273,11 +273,11 @@ cc_library(
 )
 
 cc_library(
-    name = "loudness_calculator_factory",
-    srcs = ["loudness_calculator_factory.cc"],
-    hdrs = ["loudness_calculator_factory.h"],
+    name = "loudness_calculator_factory_base",
+    srcs = ["loudness_calculator_factory_base.cc"],
+    hdrs = ["loudness_calculator_factory_base.h"],
     deps = [
-        ":loudness_calculator",
+        ":loudness_calculator_base",
         "//iamf/obu:mix_presentation",
     ],
 )

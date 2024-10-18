@@ -240,31 +240,6 @@ cc_test(
 )
 
 cc_test(
-    name = "loudness_calculator_factory_test",
-    srcs = ["loudness_calculator_factory_test.cc"],
-    deps = [
-        "//iamf/cli:loudness_calculator_factory",
-        "//iamf/cli/proto:obu_header_cc_proto",
-        "//iamf/cli/proto:parameter_data_cc_proto",
-        "//iamf/cli/proto:temporal_delimiter_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/obu:mix_presentation",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "loudness_calculator_test",
-    srcs = ["loudness_calculator_test.cc"],
-    deps = [
-        "//iamf/cli:loudness_calculator",
-        "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "mix_presentation_finalizer_test",
     srcs = ["mix_presentation_finalizer_test.cc"],
     deps = [

@@ -9,23 +9,10 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/loudness_calculator_factory.h"
-
-#include <cstdint>
-#include <memory>
-
-#include "iamf/cli/loudness_calculator.h"
-#include "iamf/obu/mix_presentation.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 
 namespace iamf_tools {
 
 LoudnessCalculatorFactoryBase::~LoudnessCalculatorFactoryBase() {}
-
-std::unique_ptr<LoudnessCalculatorBase>
-LoudnessCalculatorFactoryUserProvidedLoudness::CreateLoudnessCalculator(
-    const MixPresentationLayout& layout, int32_t, int32_t) const {
-  return std::make_unique<LoudnessCalculatorUserProvidedLoudness>(
-      layout.loudness);
-}
 
 }  // namespace iamf_tools

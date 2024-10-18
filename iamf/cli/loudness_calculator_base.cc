@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/loudness_calculator.h"
+#include "iamf/cli/loudness_calculator_base.h"
 
 namespace iamf_tools {
 

@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef CLI_LOUDNESS_CALCULATOR_H_
-#define CLI_LOUDNESS_CALCULATOR_H_
+#ifndef CLI_LOUDNESS_CALCULATOR_BASE_H_
+#define CLI_LOUDNESS_CALCULATOR_BASE_H_
 
 #include <cstdint>
 #include <vector>
@@ -56,43 +56,6 @@ class LoudnessCalculatorBase {
   LoudnessCalculatorBase() {}
 };
 
-/*!\brief Loudness calculator which always returns the user provided loudness.
- */
-class LoudnessCalculatorUserProvidedLoudness : public LoudnessCalculatorBase {
- public:
-  /*!\brief Constructor.
-   *
-   * \param user_provided_loudness User provided loudness to echo back.
-   */
-  LoudnessCalculatorUserProvidedLoudness(
-      const LoudnessInfo& user_provided_loudness)
-      : user_provided_loudness_(user_provided_loudness) {}
-
-  /*!\brief Destructor. */
-  ~LoudnessCalculatorUserProvidedLoudness() override = default;
-
-  /*!\brief Ignores the input samples.
-   *
-   * \param rendered_samples Samples to ignore.
-   * \return `absl::OkStatus()` always.
-   */
-  absl::Status AccumulateLoudnessForSamples(
-      const std::vector<int32_t>& /*rendered_samples*/) override {
-    return absl::OkStatus();
-  }
-
-  /*!\brief Outputs the user provided loudness.
-   *
-   * \return `LoudnessInfo` provided in the constructor.
-   */
-  absl::StatusOr<LoudnessInfo> QueryLoudness() const override {
-    return user_provided_loudness_;
-  }
-
- private:
-  const LoudnessInfo user_provided_loudness_;
-};
-
 }  // namespace iamf_tools
 
-#endif  // CLI_LOUDNESS_CALCULATOR_H_
+#endif  // CLI_LOUDNESS_CALCULATOR_BASE_H_
