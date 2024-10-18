@@ -41,7 +41,7 @@ int main(int32_t argc, char* argv[]) {
   absl::ParseCommandLine(argc, argv);
 
   const std::string adm_filename(absl::GetFlag(FLAGS_adm_filename));
-  if (adm_filename.empty() || std::filesystem::exists(adm_filename)) {
+  if (adm_filename.empty() || !std::filesystem::exists(adm_filename)) {
     LOG(ERROR) << "ADM filename was not provided or could not be opened. "
                   "Please provide a valid filename with --adm_filename.";
     return EXIT_FAILURE;

@@ -53,7 +53,7 @@ input format required to run the binary is as below:
  ./adm_to_user_metadata_main <options>
 
 options:
-  --adm_file_name (required) - ADM wav file to process.
+  --adm_filename (required) - ADM wav file to process.
   --importance_threshold (optional) - Used to reject objects whose importance is below the given threshold of range 0 to 10 (default 0).
   --frame_duration_ms (optional) - Target frame duration in ms. The actual output may be slightly lower due to rounding. (default 10).
   --write_binary_proto (optional) - Whether to write the output as a binary proto or a textproto (default true)
@@ -61,10 +61,10 @@ options:
 
 
   Example:
-    - ./adm_to_user_metadata_main --adm_file_name input.wav
-    - ./adm_to_user_metadata_main --write_binary_proto=false --adm_file_name input.wav
-    - ./adm_to_user_metadata_main --frame_duration_ms=20 --adm_file_name input.wav
-    - ./adm_to_user_metadata_main --importance_threshold=4 --adm_file_name input.wav
+    - ./adm_to_user_metadata_main --adm_filename input.wav
+    - ./adm_to_user_metadata_main --write_binary_proto=false --adm_filename input.wav
+    - ./adm_to_user_metadata_main --frame_duration_ms=20 --adm_filename input.wav
+    - ./adm_to_user_metadata_main --importance_threshold=4 --adm_filename input.wav
 ```
 
 ### Conversion details
