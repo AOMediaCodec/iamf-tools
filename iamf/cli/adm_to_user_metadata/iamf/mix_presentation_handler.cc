@@ -142,16 +142,8 @@ absl::Status SubMixAudioElementHandler(
     return input_layout.status();
   }
 
-  // Set 'headphones_rendering_mode' to HEADPHONES_RENDERING_MODE_BINAURAL if
-  // typeDefinition is binaural, else set it to
-  // HEADPHONES_RENDERING_MODE_STEREO.
-  if (*input_layout == IamfInputLayout::kBinaural) {
-    rendering_config->set_headphones_rendering_mode(
-        iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
-  } else {
-    rendering_config->set_headphones_rendering_mode(
-        iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_STEREO);
-  }
+  rendering_config->set_headphones_rendering_mode(
+      iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
 
   auto* mix_gain_param_definition =
       sub_mix_audio_element.mutable_element_mix_gain();

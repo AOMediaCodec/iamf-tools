@@ -124,7 +124,7 @@ TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
   EXPECT_EQ(submix.output_mix_gain().default_mix_gain(), 0);
 }
 
-TEST(PopulateMixPresentation, SetsStereoRenderingModeForStereoAudioObject) {
+TEST(PopulateMixPresentation, SetsBinauralRenderingModeForStereoAudioObject) {
   const auto& mix_presentation_metadata =
       GetMixObuMetataExpectOk({GetStereoAudioObject()});
 
@@ -132,7 +132,7 @@ TEST(PopulateMixPresentation, SetsStereoRenderingModeForStereoAudioObject) {
                 .audio_elements(0)
                 .rendering_config()
                 .headphones_rendering_mode(),
-            iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_STEREO);
+            iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
 }
 
 TEST(PopulateMixPresentation, SetsBinauralRenderingModeForBinauralAudioObject) {
