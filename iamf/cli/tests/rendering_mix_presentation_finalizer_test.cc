@@ -539,7 +539,7 @@ TEST(Finalize, SupportsFullyTrimmedFrames) {
 
 // =========== Tests for finalized OBUs ===========
 
-constexpr LoudnessInfo kExpectedMinimumLoudnessInfo = {
+const LoudnessInfo kExpectedMinimumLoudnessInfo = {
     .info_type = 0,
     .integrated_loudness = std::numeric_limits<int16_t>::min(),
     .digital_peak = std::numeric_limits<int16_t>::min(),
