@@ -100,6 +100,15 @@ enum ChannelLabel {
   // Next ID: 57 (channel-based) or 1025 (ambisonics).
 }
 
+message ChannelMetadata {
+  // Used to map the index of the channel in an ADM or WAV file. Ignored when
+  // data comes from other sources.
+  optional uint32 channel_id = 1;
+
+  // The IAMF-based channel label.
+  optional ChannelLabel channel_label = 2;
+}
+
 message AudioFrameObuMetadata {
   reserved 2, 3;
 
@@ -158,11 +167,14 @@ message AudioFrameObuMetadata {
   // for loudspeaker layouts or ACN order for ambisonics. May be fewer than
   // the total number of channels in the WAV file if only a subset is to be
   // used.
-  repeated uint32 channel_ids = 7 [packed = true];
+  repeated uint32 channel_ids = 7 [packed = true, deprecated = true];
 
   // Channel Labels, e.g. "L2", "Ls5". For ambisonics, use "A{ACN number}",
   // e.g. "A0", "A13". Must be of the same length as `channel_ids`.
-  repeated string channel_labels = 8;
+  repeated string channel_labels = 8 [deprecated = true];
 
-  // Next ID: 11
+  // Prefer `channel_metadata` over `channel_ids` and `channel_labels`.
+  repeated ChannelMetadata channel_metadatas = 11;
+
+  // Next ID: 12
 }

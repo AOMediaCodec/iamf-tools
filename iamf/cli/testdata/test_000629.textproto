@@ -199,10 +199,9 @@ audio_frame_metadata: [
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 301
-    channel_ids: [10, 11]
-    channel_labels: [
-      "Ltf4",  # TpFL in the original file.
-      "Rtf4"  # TpFR in the original file.
+    channel_metadatas: [
+      { channel_id: 10 channel_label: CHANNEL_LABEL_LTF_4 },  # TpFL in the original file.
+      { channel_id: 11 channel_label: CHANNEL_LABEL_RTF_4 }  # TpFR in the original file.
     ]
   }
 ]

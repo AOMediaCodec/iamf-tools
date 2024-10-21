@@ -659,9 +659,8 @@ absl::Status AudioFrameGenerator::Initialize() {
     absl::MutexLock lock(&mutex_);
 
     // Precompute the `ChannelLabel::Label` for each channel label string.
-    RETURN_IF_NOT_OK(ChannelLabel::ConvertAndFillLabels(
-        audio_frame_metadata.channel_labels(),
-        audio_element_id_to_labels_[audio_element_id]));
+    RETURN_IF_NOT_OK(ChannelLabel::SelectConvertAndFillLabels(
+        audio_frame_metadata, audio_element_id_to_labels_[audio_element_id]));
 
     // Find the Codec Config OBU for this mono or coupled stereo substream.
     const auto audio_elements_iter = audio_elements_.find(audio_element_id);

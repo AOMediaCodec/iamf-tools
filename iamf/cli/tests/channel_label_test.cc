@@ -333,6 +333,72 @@ TEST(ConvertAndFillLabels, InvalidWhenThereAreUnknownLabels) {
       ChannelLabel::ConvertAndFillLabels(kInputWithDuplicates, output).ok());
 }
 
+TEST(ConvertAndFillLabels, ValidWithChannelMetadatas) {
+  using iamf_tools_cli_proto::ChannelMetadata;
+  std::vector<ChannelMetadata> channel_metadatas;
+  channel_metadatas.emplace_back().set_channel_label(CHANNEL_LABEL_L_2);
+  channel_metadatas.emplace_back().set_channel_label(CHANNEL_LABEL_R_2);
+  const std::vector<ChannelLabel::Label> kExpectedOutput = {kL2, kR2};
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(ChannelLabel::ConvertAndFillLabels(channel_metadatas, output),
+              IsOk());
+
+  EXPECT_EQ(output, kExpectedOutput);
+}
+
+TEST(SelectConvertAndFillLabels, FillsBasedOnDeprecatedChannelLabels) {
+  iamf_tools_cli_proto::AudioFrameObuMetadata audio_frame_metadata;
+  audio_frame_metadata.add_channel_labels("L2");
+  audio_frame_metadata.add_channel_labels("R2");
+  const std::vector<ChannelLabel::Label> kExpectedOutput = {kL2, kR2};
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(
+      ChannelLabel::SelectConvertAndFillLabels(audio_frame_metadata, output),
+      IsOk());
+
+  EXPECT_EQ(output, kExpectedOutput);
+}
+
+TEST(SelectConvertAndFillLabels, SucceedsWithEmptyLabels) {
+  const iamf_tools_cli_proto::AudioFrameObuMetadata kEmptyAudioFrameMetadata;
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(ChannelLabel::SelectConvertAndFillLabels(kEmptyAudioFrameMetadata,
+                                                       output),
+              IsOk());
+
+  EXPECT_TRUE(output.empty());
+}
+
+TEST(SelectConvertAndFillLabels, FillsBasedOnChannelMetadatas) {
+  iamf_tools_cli_proto::AudioFrameObuMetadata audio_frame_metadata;
+  auto* channel_metadata = audio_frame_metadata.add_channel_metadatas();
+  channel_metadata->set_channel_label(CHANNEL_LABEL_L_2);
+  channel_metadata = audio_frame_metadata.add_channel_metadatas();
+  channel_metadata->set_channel_label(CHANNEL_LABEL_R_2);
+  const std::vector<ChannelLabel::Label> kExpectedOutput = {kL2, kR2};
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_THAT(
+      ChannelLabel::SelectConvertAndFillLabels(audio_frame_metadata, output),
+      IsOk());
+
+  EXPECT_EQ(output, kExpectedOutput);
+}
+
+TEST(SelectConvertAndFillLabels,
+     FailsWhenMixingChannelLabelsAndChannelMetadatas) {
+  iamf_tools_cli_proto::AudioFrameObuMetadata audio_frame_metadata;
+  auto* channel_metadata = audio_frame_metadata.add_channel_metadatas();
+  channel_metadata->set_channel_label(CHANNEL_LABEL_L_2);
+  audio_frame_metadata.add_channel_labels("R2");
+  std::vector<ChannelLabel::Label> output;
+
+  // Require upgrading all labels in the same `AudioFrameObuMetadata` proto,
+  // once one is upgraded.
+  EXPECT_FALSE(
+      ChannelLabel::SelectConvertAndFillLabels(audio_frame_metadata, output)
+          .ok());
+}
+
 TEST(GetDemixedLabel, SucceedsForDemixedStereo) {
   EXPECT_THAT(ChannelLabel::GetDemixedLabel(kR2), IsOkAndHolds(kDemixedR2));
 }

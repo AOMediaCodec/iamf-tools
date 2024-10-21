@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
         `output_mix_gain`.
     -   Deprecate `ElementMixConfig` and `element_mix_config` in favour of
         `element_mix_gain`.
+-   Deprecate `channel_ids` and `channel_labels` in `AudioElementObuMetadata` in
+    favor of `ChannelMetadata`.
 
 ### Removed
 
