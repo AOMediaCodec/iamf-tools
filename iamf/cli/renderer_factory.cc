@@ -27,8 +27,18 @@ namespace iamf_tools {
 
 namespace {
 
+bool IsAudioElementRenderedBinaural(
+    RenderingConfig::HeadphonesRenderingMode headphones_rendering_mode,
+    Layout::LayoutType layout_type) {
+  {
+    return headphones_rendering_mode ==
+               RenderingConfig::kHeadphonesRenderingModeBinaural &&
+           layout_type == Layout::kLayoutTypeBinaural;
+  }
+}
+
 std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
-    const AudioElementObu::AudioElementConfig& config) {
+    bool use_binaural, const AudioElementObu::AudioElementConfig& config) {
   const auto* ambisonics_config = std::get_if<AmbisonicsConfig>(&config);
   if (ambisonics_config == nullptr) {
     LOG(ERROR) << "Ambisonics config is inconsistent with audio element type.";
@@ -36,13 +46,13 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
   }
   // TODO(b/332567539): Create ambisonics to channel and binaural based
   //                    renderers.
-  LOG(WARNING) << "Skipping creating an Ambisonics to channel or binaural "
-                  "based renderer.";
+  LOG(WARNING) << "Skipping creating an Ambisonics to "
+               << (use_binaural ? "binaural" : "channel") << "-based renderer.";
   return nullptr;
 }
 
 std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
-    const AudioElementObu::AudioElementConfig& config,
+    bool use_binaural, const AudioElementObu::AudioElementConfig& config,
     const Layout& loudness_layout) {
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&config);
@@ -59,8 +69,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   }
   // TODO(b/332567539): Create channel to channel or binaural based
   //                    renderers .
-  LOG(WARNING) << "Skipping creating a Channel to channel or binaural "
-                  "based renderer.";
+  LOG(WARNING) << "Skipping creating an Ambisonics to "
+               << (use_binaural ? "binaural" : "channel") << "-based renderer.";
   return nullptr;
 }
 
@@ -73,13 +83,18 @@ RendererFactory::CreateRendererForLayout(
     const std::vector<DecodedUleb128>& /*audio_substream_ids*/,
     const SubstreamIdLabelsMap& /*substream_id_to_labels*/,
     AudioElementObu::AudioElementType audio_element_type,
-    const AudioElementObu::AudioElementConfig& config,
+    const AudioElementObu::AudioElementConfig& audio_element_config,
+    const RenderingConfig& rendering_config,
     const Layout& loudness_layout) const {
+  const bool use_binaural = IsAudioElementRenderedBinaural(
+      rendering_config.headphones_rendering_mode, loudness_layout.layout_type);
+
   switch (audio_element_type) {
     case AudioElementObu::kAudioElementSceneBased:
-      return MaybeCreateAmbisonicsRenderer(config);
+      return MaybeCreateAmbisonicsRenderer(use_binaural, audio_element_config);
     case AudioElementObu::kAudioElementChannelBased:
-      return MaybeCreateChannelRenderer(config, loudness_layout);
+      return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
+                                        loudness_layout);
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
       LOG(WARNING) << "Unsupported audio_element_type_= " << audio_element_type;

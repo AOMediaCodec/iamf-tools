@@ -79,7 +79,8 @@ class MockRendererFactory : public RendererFactoryBase {
               (const std::vector<DecodedUleb128>& audio_substream_ids,
                const SubstreamIdLabelsMap& substream_id_to_labels,
                AudioElementObu::AudioElementType audio_element_type,
-               const AudioElementObu::AudioElementConfig& config,
+               const AudioElementObu::AudioElementConfig& audio_element_config,
+               const RenderingConfig& rendering_config,
                const Layout& /*loudness_layout*/),
               (const, override));
 };
@@ -94,7 +95,8 @@ class AlwaysNullRendererFactory : public RendererFactoryBase {
       const std::vector<DecodedUleb128>& /*audio_substream_ids*/,
       const SubstreamIdLabelsMap& /*substream_id_to_labels*/,
       AudioElementObu::AudioElementType /*audio_element_type*/,
-      const AudioElementObu::AudioElementConfig& /*config*/,
+      const AudioElementObu::AudioElementConfig& /*audio_element_config*/,
+      const RenderingConfig& /*rendering_config*/,
       const Layout& /*loudness_layout*/) const override {
     return nullptr;
   }
@@ -273,14 +275,17 @@ TEST(Finalize, ForwardsArgumentsToRendererFactory) {
   // We expect arguments to be forwarded from the OBUs to the renderer factory.
   auto mock_renderer_factory = absl::WrapUnique(new MockRendererFactory());
   const auto& forwarded_audio_element = audio_elements.at(kAudioElementId);
-  const auto& forwarded_layout =
-      obus_to_finalize.front().sub_mixes_[0].layouts[0].loudness_layout;
-  EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(
-                  forwarded_audio_element.obu.audio_substream_ids_,
-                  forwarded_audio_element.substream_id_to_labels,
-                  forwarded_audio_element.obu.GetAudioElementType(),
-                  forwarded_audio_element.obu.config_, forwarded_layout));
+  const auto& forwarded_sub_mix = obus_to_finalize.front().sub_mixes_[0];
+  const auto& forwarded_rendering_config =
+      forwarded_sub_mix.audio_elements[0].rendering_config;
+  const auto& forwarded_layout = forwarded_sub_mix.layouts[0].loudness_layout;
+  EXPECT_CALL(
+      *mock_renderer_factory,
+      CreateRendererForLayout(forwarded_audio_element.obu.audio_substream_ids_,
+                              forwarded_audio_element.substream_id_to_labels,
+                              forwarded_audio_element.obu.GetAudioElementType(),
+                              forwarded_audio_element.obu.config_,
+                              forwarded_rendering_config, forwarded_layout));
   RenderingMixPresentationFinalizer finalizer(
       GetAndCreateOutputDirectory(""), kNoOverrideBitDepth,
       kDontValidateLoudness, std::move(mock_renderer_factory),
@@ -314,7 +319,7 @@ TEST(Finalize, ForwardsOrderedSamplesToRenderer) {
               RenderSamples(kExpectedTimeChannelOrderedSamples, _));
   auto mock_renderer_factory = absl::WrapUnique(new MockRendererFactory());
   ASSERT_NE(mock_renderer_factory, nullptr);
-  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _))
+  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   RenderingMixPresentationFinalizer finalizer(
       GetAndCreateOutputDirectory(""), kNoOverrideBitDepth,
@@ -345,7 +350,7 @@ TEST(Finalize, CreatesWavFileWhenRenderingIsSupported) {
   EXPECT_CALL(*mock_renderer, RenderSamples(_, _));
   auto mock_renderer_factory = absl::WrapUnique(new MockRendererFactory());
   ASSERT_NE(mock_renderer_factory, nullptr);
-  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _))
+  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   RenderingMixPresentationFinalizer finalizer(
       GetAndCreateOutputDirectory(""), kNoOverrideBitDepth,

@@ -23,10 +23,6 @@
 
 namespace iamf_tools {
 
-// TODO(b/332567539): Add signalling to allow implementations to configure
-//                    rendering (`RenderingConfig` in spec). Plus a flag to
-//                    signal that binaural rendering is requested (i.e. "the
-//                    user is wearing headphones").
 /*!\brief Abstract class to create renderers.
  *
  * This class will be used when rendering the loudness of a mix presentation
@@ -42,7 +38,8 @@ class RendererFactoryBase {
    * \param audio_substream_ids Audio susbtream IDs.
    * \param substream_id_to_labels Mapping of substream IDs to labels.
    * \param audio_element_type Type of the audio element.
-   * \param config Configuration of the audio element.
+   * \param audio_element_config Configuration of the audio element.
+   * \param rendering_config Configuration of the renderer.
    * \param loudness_layout Layout to render to.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
    *         known how to render the audio element.
@@ -51,7 +48,8 @@ class RendererFactoryBase {
       const std::vector<DecodedUleb128>& audio_substream_ids,
       const SubstreamIdLabelsMap& substream_id_to_labels,
       AudioElementObu::AudioElementType audio_element_type,
-      const AudioElementObu::AudioElementConfig& config,
+      const AudioElementObu::AudioElementConfig& audio_element_config,
+      const RenderingConfig& rendering_config,
       const Layout& loudness_layout) const = 0;
 
   /*!\brief Destructor. */
@@ -72,7 +70,8 @@ class RendererFactory : public RendererFactoryBase {
    * \param audio_substream_ids Audio susbtream IDs.
    * \param substream_id_to_labels Mapping of substream IDs to labels.
    * \param audio_element_type Type of the audio element.
-   * \param config Configuration of the audio element.
+   * \param audio_element_config Configuration of the audio element.
+   * \param rendering_config Configuration of the renderer.
    * \param loudness_layout Layout to render to.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
    *         known how to render the audio element.
@@ -81,7 +80,8 @@ class RendererFactory : public RendererFactoryBase {
       const std::vector<DecodedUleb128>& audio_substream_ids,
       const SubstreamIdLabelsMap& substream_id_to_labels,
       AudioElementObu::AudioElementType audio_element_type,
-      const AudioElementObu::AudioElementConfig& config,
+      const AudioElementObu::AudioElementConfig& audio_element_config,
+      const RenderingConfig& rendering_config,
       const Layout& loudness_layout) const override;
 
   /*!\brief Destructor. */

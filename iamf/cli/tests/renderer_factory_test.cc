@@ -54,12 +54,21 @@ const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
 const ExtensionConfig kExtensionConfig = {.audio_element_config_size = 0,
                                           .audio_element_config_bytes = {}};
 
+const RenderingConfig kHeadphonesAsStereoRenderingConfig = {
+    .headphones_rendering_mode =
+        RenderingConfig::kHeadphonesRenderingModeStereo};
+
+const RenderingConfig kHeadphonesAsBinauralRenderingConfig = {
+    .headphones_rendering_mode =
+        RenderingConfig::kHeadphonesRenderingModeBinaural};
+
 TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
   const RendererFactory factory;
 
   EXPECT_NE(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
-                kMonoScalableChannelLayoutConfig, kMonoLayout),
+                kMonoScalableChannelLayoutConfig,
+                kHeadphonesAsStereoRenderingConfig, kMonoLayout),
             nullptr);
 }
 
@@ -69,7 +78,8 @@ TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
   EXPECT_NE(
       factory.CreateRendererForLayout(
           {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
-          kBinauralChannelLayoutConfig, kBinauralLayout),
+          kBinauralChannelLayoutConfig, kHeadphonesAsBinauralRenderingConfig,
+          kBinauralLayout),
       nullptr);
 }
 
@@ -79,7 +89,8 @@ TEST(CreateRendererForLayout,
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
-                kMonoScalableChannelLayoutConfig, kMonoLayout),
+                kMonoScalableChannelLayoutConfig,
+                kHeadphonesAsStereoRenderingConfig, kMonoLayout),
             nullptr);
 }
 
@@ -89,7 +100,8 @@ TEST(CreateRendererForLayout,
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
-                kFullZerothOrderAmbisonicsConfig, kMonoLayout),
+                kFullZerothOrderAmbisonicsConfig,
+                kHeadphonesAsStereoRenderingConfig, kMonoLayout),
             nullptr);
 }
 
@@ -98,7 +110,8 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToBinauralRenderer) {
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
-                kMonoScalableChannelLayoutConfig, kBinauralLayout),
+                kMonoScalableChannelLayoutConfig,
+                kHeadphonesAsBinauralRenderingConfig, kBinauralLayout),
             nullptr);
 }
 
@@ -107,7 +120,8 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementEndReserved,
-                kExtensionConfig, kBinauralLayout),
+                kExtensionConfig, kHeadphonesAsStereoRenderingConfig,
+                kBinauralLayout),
             nullptr);
 }
 
@@ -117,7 +131,8 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToChannelRenderer) {
   EXPECT_EQ(
       factory.CreateRendererForLayout(
           {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
-          kStereoScalableChannelLayoutConfig, kMonoLayout),
+          kStereoScalableChannelLayoutConfig,
+          kHeadphonesAsStereoRenderingConfig, kMonoLayout),
       nullptr);
 }
 
@@ -126,7 +141,8 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToChannelRenderer) {
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
-                kFullZerothOrderAmbisonicsConfig, kMonoLayout),
+                kFullZerothOrderAmbisonicsConfig,
+                kHeadphonesAsStereoRenderingConfig, kMonoLayout),
             nullptr);
 }
 
@@ -135,7 +151,8 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToBinauralRenderer) {
 
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
-                kFullZerothOrderAmbisonicsConfig, kBinauralLayout),
+                kFullZerothOrderAmbisonicsConfig,
+                kHeadphonesAsBinauralRenderingConfig, kBinauralLayout),
             nullptr);
 }
 

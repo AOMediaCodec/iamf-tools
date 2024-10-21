@@ -110,6 +110,7 @@ struct AudioElementRenderingMetadata {
 absl::Status InitializeRenderingMetadata(
     const RendererFactoryBase& renderer_factory,
     const std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix,
+    const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
     const Layout& loudness_layout, const uint32_t common_sample_rate,
     const uint8_t common_bit_depth,
     std::vector<AudioElementRenderingMetadata>& rendering_metadata_array) {
@@ -125,7 +126,8 @@ absl::Status InitializeRenderingMetadata(
         sub_mix_audio_element.obu.audio_substream_ids_,
         sub_mix_audio_element.substream_id_to_labels,
         rendering_metadata.audio_element->GetAudioElementType(),
-        sub_mix_audio_element.obu.config_, loudness_layout);
+        sub_mix_audio_element.obu.config_,
+        sub_mix_audio_elements[i].rendering_config, loudness_layout);
 
     if (rendering_metadata.renderer == nullptr) {
       return absl::UnknownError("Unable to create renderer.");
@@ -525,8 +527,9 @@ absl::Status FillLoudnessInfo(
 
       std::vector<AudioElementRenderingMetadata> rendering_metadata_array;
       can_render_status.Update(InitializeRenderingMetadata(
-          renderer_factory, audio_elements_in_sub_mix, layout.loudness_layout,
-          common_sample_rate, common_bit_depth, rendering_metadata_array));
+          renderer_factory, audio_elements_in_sub_mix, sub_mix.audio_elements,
+          layout.loudness_layout, common_sample_rate, common_bit_depth,
+          rendering_metadata_array));
 
       if (!can_render_status.ok()) {
         LOG(WARNING) << "Rendering is not supported yet for this layout: "
