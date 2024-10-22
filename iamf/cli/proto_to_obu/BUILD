@@ -1,9 +1,6 @@
 # Files to create `iamf/obu` classes from proto definitions.
 
-package(default_visibility = [
-    "//iamf/api:__subpackages__",
-    "//iamf/cli:__subpackages__",
-])
+package(default_visibility = ["//iamf/cli:__subpackages__"])
 
 cc_library(
     name = "arbitrary_obu_generator",
