@@ -135,6 +135,14 @@ absl::Status FlacDecoder::Initialize() {
   return absl::OkStatus();
 }
 
+absl::Status FlacDecoder::Finalize() {
+  // Signal to `libflac` the decoder is finished.
+  if (!FLAC__stream_decoder_finish(decoder_)) {
+    return absl::InternalError("Failed to finalize Flac stream decoder.");
+  }
+  return absl::OkStatus();
+}
+
 absl::Status FlacDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame,
     std::vector<std::vector<int32_t>>& decoded_samples) {
