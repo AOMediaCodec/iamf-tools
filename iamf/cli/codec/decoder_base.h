@@ -30,7 +30,7 @@ class DecoderBase {
    * before using most functionality of the decoder.
    *
    * \param num_channels Number of channels for this stream.
-   * \param num_samples_per_channel Number of samplers per channel.
+   * \param num_samples_per_channel Number of samples per channel.
    */
   DecoderBase(int num_channels, int num_samples_per_channel)
       : num_channels_(num_channels),

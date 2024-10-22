@@ -54,14 +54,27 @@ FLAC__StreamDecoderReadStatus FlacDecoder::LibFlacReadCallback(
 FLAC__StreamDecoderWriteStatus FlacDecoder::LibFlacWriteCallback(
     const FLAC__StreamDecoder* /*decoder*/, const FLAC__Frame* frame,
     const FLAC__int32* const buffer[], void* client_data) {
-  std::vector<std::vector<int32_t>> decoded_samples(frame->header.channels);
-  auto flac_decoder = static_cast<FlacDecoder*>(client_data);
-  for (int i = 0; i < frame->header.channels; ++i) {
-    decoded_samples[i].resize(frame->header.blocksize);
-    const FLAC__int32* const channel_buffer = buffer[i];
-    for (int j = 0; j < frame->header.blocksize; ++j) {
-      // Assumes that bits_per_sample is 32.
-      decoded_samples[i][j] = channel_buffer[j];
+  auto* flac_decoder = static_cast<FlacDecoder*>(client_data);
+  const auto num_samples_per_channel = frame->header.blocksize;
+  if (flac_decoder->GetNumSamplesPerChannel() != frame->header.blocksize) {
+    LOG(ERROR) << "Frame blocksize " << frame->header.blocksize
+               << " does not match expected number of samples per channel "
+               << flac_decoder->GetNumSamplesPerChannel();
+    return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+  }
+  std::vector<std::vector<int32_t>> decoded_samples(
+      num_samples_per_channel, std::vector<int32_t>(frame->header.channels));
+  // Note: libFLAC represents data in a planar fashion, so each channel is
+  // stored in a separate array, and the elements within those arrays represent
+  // time ticks. However, we store samples in an interleaved fashion, which
+  // means that each outer entry in decoded_samples represents a time tick, and
+  // each element within represents a channel. So we need to transpose the data
+  // from libFLAC's planar format into our interleaved format.
+  for (int c = 0; c < frame->header.channels; ++c) {
+    const FLAC__int32* const channel_buffer = buffer[c];
+    for (int t = 0; t < num_samples_per_channel; ++t) {
+      decoded_samples[t][c] = channel_buffer[t]
+                              << (32 - frame->header.bits_per_sample);
     }
   }
   flac_decoder->SetDecodedFrame(decoded_samples);
@@ -125,7 +138,16 @@ absl::Status FlacDecoder::Initialize() {
 absl::Status FlacDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame,
     std::vector<std::vector<int32_t>>& decoded_samples) {
-  return absl::UnimplementedError("Not implemented.");
+  // Set the encoded frame to be decoded; the libflac decoder will copy the
+  // data using LibFlacReadCallback.
+  encoded_frame_ = encoded_frame;
+  if (!FLAC__stream_decoder_process_single(decoder_)) {
+    // More specific error information is logged in LibFlacErrorCallback.
+    return absl::InternalError("Failed to decode FLAC frame.");
+  }
+  // Get the decoded frame, which will have been set by LibFlacWriteCallback.
+  decoded_samples = decoded_frame_;
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools
