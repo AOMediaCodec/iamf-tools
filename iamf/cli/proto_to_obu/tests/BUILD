@@ -1,5 +1,3 @@
-package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
-
 cc_test(
     name = "arbitrary_obu_generator_test",
     srcs = ["arbitrary_obu_generator_test.cc"],
