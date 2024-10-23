@@ -830,5 +830,81 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
   EXPECT_TRUE(obu->IsLossless());
 }
 
+TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
+  constexpr DecodedUleb128 kNumSamplesPerFrame = 64;
+  constexpr int16_t kExpectedAudioRollDistance = 0;
+
+  std::vector<uint8_t> source_data = {
+      // `codec_config_id`.
+      kCodecConfigId,
+      // `codec_id`.
+      'f', 'L', 'a', 'C',
+      // `num_samples_per_frame`.
+      kNumSamplesPerFrame,
+      // `audio_roll_distance`.
+      0, 0,
+      // begin `FlacDecoderConfig`.
+      // `last_metadata_block_flag` and `block_type` fields.
+      1 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
+      // `metadata_data_block_length`.
+      0, 0, 34,
+      // `minimum_block_size`.
+      0, 64,
+      // `maximum_block_size`.
+      0, 64,
+      // `minimum_frame_size`.
+      0, 0, 0,
+      // `maximum_frame_size`.
+      0, 0, 0,
+      // `sample_rate` (20 bits)
+      0x0b, 0xb8,
+      (0 << 4) |
+          // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
+          FlacMetaBlockStreamInfo::kNumberOfChannels << 1,
+      7 << 4 |
+          // `total_samples_in_stream` (36 bits).
+          0,
+      0x00, 0x00, 0x00, 100,
+      // MD5 sum.
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00};
+  ReadBitBuffer buffer(1024, &source_data);
+  ObuHeader header;
+
+  absl::StatusOr<CodecConfigObu> obu =
+      CodecConfigObu::CreateFromBuffer(header, source_data.size(), buffer);
+
+  EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
+  EXPECT_EQ(obu->GetCodecConfig().codec_id, CodecConfig::kCodecIdFlac);
+  EXPECT_EQ(obu->GetNumSamplesPerFrame(), kNumSamplesPerFrame);
+  EXPECT_EQ(obu->GetCodecConfig().audio_roll_distance,
+            kExpectedAudioRollDistance);
+
+  ASSERT_TRUE(std::holds_alternative<FlacDecoderConfig>(
+      obu->GetCodecConfig().decoder_config));
+  const auto& flac_decoder_config =
+      std::get<FlacDecoderConfig>(obu->GetCodecConfig().decoder_config);
+  EXPECT_EQ(flac_decoder_config.metadata_blocks_.size(), 1);
+  FlacMetaBlockHeader flac_meta_block_header =
+      flac_decoder_config.metadata_blocks_[0].header;
+  EXPECT_EQ(flac_meta_block_header.block_type,
+            FlacMetaBlockHeader::kFlacStreamInfo);
+  EXPECT_EQ(flac_meta_block_header.metadata_data_block_length, 34);
+  FlacMetaBlockStreamInfo stream_info = std::get<FlacMetaBlockStreamInfo>(
+      flac_decoder_config.metadata_blocks_[0].payload);
+  EXPECT_EQ(stream_info.minimum_block_size, 64);
+  EXPECT_EQ(stream_info.maximum_block_size, 64);
+  EXPECT_EQ(stream_info.minimum_frame_size, 0);
+  EXPECT_EQ(stream_info.maximum_frame_size, 0);
+  EXPECT_EQ(stream_info.sample_rate, 48000);
+  EXPECT_EQ(stream_info.number_of_channels,
+            FlacMetaBlockStreamInfo::kNumberOfChannels);
+  EXPECT_EQ(stream_info.bits_per_sample, 7);
+  EXPECT_EQ(stream_info.total_samples_in_stream, 100);
+  EXPECT_EQ(stream_info.md5_signature, FlacMetaBlockStreamInfo::kMd5Signature);
+  EXPECT_TRUE(obu->IsLossless());
+}
+
 }  // namespace
 }  // namespace iamf_tools

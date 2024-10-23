@@ -216,8 +216,13 @@ absl::Status CodecConfigObu::ReadAndValidateDecoderConfig(ReadBitBuffer& rb) {
       codec_config_.decoder_config = aac_decoder_config;
       return absl::OkStatus();
     }
-    case kCodecIdFlac:
-      return absl::UnimplementedError("Flac is not supported.");
+    case kCodecIdFlac: {
+      FlacDecoderConfig flac_decoder_config;
+      RETURN_IF_NOT_OK(flac_decoder_config.ReadAndValidate(
+          num_samples_per_frame, audio_roll_distance, rb));
+      codec_config_.decoder_config = flac_decoder_config;
+      return absl::OkStatus();
+    }
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown codec_id: ", codec_config_.codec_id));
