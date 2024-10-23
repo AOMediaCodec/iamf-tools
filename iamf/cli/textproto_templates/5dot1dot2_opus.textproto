@@ -131,8 +131,16 @@ audio_frame_metadata {
   samples_to_trim_at_end: 0
   samples_to_trim_at_start: 0
   audio_element_id: 300
-  channel_ids: [0, 1, 2, 3, 4, 5, 6, 7]
-  channel_labels: ["L5", "R5", "C", "LFE", "Ls5", "Rs5", "Ltf2", "Rtf2"]
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_L_5 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_R_5 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_CENTRE },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_LFE },
+    { channel_id: 4 channel_label: CHANNEL_LABEL_LS_5 },
+    { channel_id: 5 channel_label: CHANNEL_LABEL_RS_5 },
+    { channel_id: 6 channel_label: CHANNEL_LABEL_LTF_2 },
+    { channel_id: 7 channel_label: CHANNEL_LABEL_RTF_2 }
+  ]
 }
 
 temporal_delimiter_metadata {

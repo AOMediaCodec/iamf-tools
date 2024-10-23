@@ -125,8 +125,9 @@ audio_frame_metadata {
   samples_to_trim_at_end: 640
   samples_to_trim_at_start: 0
   audio_element_id: 300
-  channel_ids: [0]
-  channel_labels: ["A0"]
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 }
+  ]
 }
 
 temporal_delimiter_metadata {

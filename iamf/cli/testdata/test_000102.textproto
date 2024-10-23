@@ -125,8 +125,17 @@ audio_frame_metadata {
   samples_to_trim_at_end: 640
   samples_to_trim_at_start: 0
   audio_element_id: 300
-  channel_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-  channel_labels: ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"]
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_A_1 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_A_2 },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_A_3 },
+    { channel_id: 4 channel_label: CHANNEL_LABEL_A_4 },
+    { channel_id: 5 channel_label: CHANNEL_LABEL_A_5 },
+    { channel_id: 6 channel_label: CHANNEL_LABEL_A_6 },
+    { channel_id: 7 channel_label: CHANNEL_LABEL_A_7 },
+    { channel_id: 8 channel_label: CHANNEL_LABEL_A_8 }
+  ]
 }
 
 temporal_delimiter_metadata {

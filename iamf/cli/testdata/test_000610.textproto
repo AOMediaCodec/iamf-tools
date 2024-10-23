@@ -185,24 +185,24 @@ audio_frame_metadata: [
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 300
-    channel_ids: [0]
-    channel_labels: ["A0"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 }
+    ]
   },
   {
     wav_filename: "Mechanism_5s.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 301
-    channel_ids: [4, 5, 8, 9, 10, 11]
     # Original wav file is really based on 7.1.4, but we can treat the labels as
     # 9.1.6 to work with Top-6ch.
-    channel_labels: [
-      "TpSiL",  # Lss7 in the original file.
-      "TpSiR",  # Rss7 in the original file.
-      "TpFL",  # Ltf4 in the original file.
-      "TpFR",  # Rtf4 in the original file.
-      "TpBL",  # Ltb4 in the original file.
-      "TpBR"  # Rtb4 in the original file.
+    channel_metadatas: [
+      { channel_id: 4 channel_label: CHANNEL_LABEL_TP_SI_L },  # Lss7 in the original file.
+      { channel_id: 5 channel_label: CHANNEL_LABEL_TP_SI_R },  # Rss7 in the original file.
+      { channel_id: 8 channel_label: CHANNEL_LABEL_TP_FL },  # Ltf4 in the original file.
+      { channel_id: 9 channel_label: CHANNEL_LABEL_TP_FR },  # Rtf4 in the original file.
+      { channel_id: 10 channel_label: CHANNEL_LABEL_TP_BL },  # Ltb4 in the original file.
+      { channel_id: 11 channel_label: CHANNEL_LABEL_TP_BR }  # Rtb4 in the original file.
     ]
   }
 ]

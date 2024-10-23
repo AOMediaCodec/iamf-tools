@@ -41,9 +41,11 @@ Set the following fields in the textproto template.
 
 Optionally, modify other fields in the textproto template as necessary.
 
-- `channel_labels`
+- `channel_metadatas`
 
-    This identifies the order of the channels in the input wav files.
+    Use custom `channel_ids` when the input wav file is in a different order. By
+    default they are configured for wav files using
+    [ITU-2051-3](https://www.itu.int/rec/R-REC-BS.2051) order.
 
 - `headphones_rendering_mode`
 

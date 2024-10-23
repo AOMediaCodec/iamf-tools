@@ -153,8 +153,9 @@ audio_frame_metadata {
   samples_to_trim_at_end: 648
   samples_to_trim_at_start: 312
   audio_element_id: 300
-  channel_ids: [2]  # Centre
-  channel_labels: ["M"]
+  channel_metadatas: [
+    { channel_id: 2 channel_label: CHANNEL_LABEL_MONO }  # Centre in the original file.
+  ]
 }
 
 temporal_delimiter_metadata {

@@ -199,8 +199,14 @@ audio_frame_metadata {
   samples_to_trim_at_end: 648
   samples_to_trim_at_start: 312
   audio_element_id: 300
-  channel_ids: [0, 1, 2, 3, 8, 9]
-  channel_labels: ["L3", "R3", "C", "LFE", "Ltf3", "Rtf3"]
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_L_3 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_R_3 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_CENTRE },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_LFE },
+    { channel_id: 8 channel_label: CHANNEL_LABEL_LTF_3 },
+    { channel_id: 9 channel_label: CHANNEL_LABEL_RTF_3 }
+  ]
 }
 
 parameter_block_metadata {

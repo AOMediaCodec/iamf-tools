@@ -1320,232 +1320,261 @@ audio_frame_metadata: [
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 300
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 301
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 302
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 303
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 304
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 305
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 306
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 307
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 308
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 309
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 310
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 311
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 312
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 313
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 314
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 315
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 316
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 317
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 318
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 319
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 320
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 321
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 322
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 323
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 324
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 325
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 326
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 327
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   },
   {
     wav_filename: "sine_1500_stereo_48khz_-15dBFS.wav"
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 328
-    channel_ids: [0]
-    channel_labels: ["M"]
+    channel_metadatas: [
+      { channel_id: 0 channel_label: CHANNEL_LABEL_MONO }
+    ]
   }
 ]
 

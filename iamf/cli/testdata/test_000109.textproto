@@ -132,8 +132,12 @@ audio_frame_metadata {
   samples_to_trim_at_end: 648
   samples_to_trim_at_start: 312
   audio_element_id: 300
-  channel_ids: [0, 1, 2, 3]
-  channel_labels: ["A0", "A1", "A2", "A3"]
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_A_1 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_A_2 },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_A_3 }
+  ]
 }
 
 temporal_delimiter_metadata {
