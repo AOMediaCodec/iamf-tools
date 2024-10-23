@@ -605,8 +605,11 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const WavWriterFactory& wav_writer_factory,
     std::list<MixPresentationObu>& mix_presentation_obus) {
-  if (!renderer_factory_) {
-    // Ok. Can't render.
+  if (renderer_factory_ == nullptr) {
+    // Ok. When rendering is disabled, there is nothing to finalize.
+    for (const auto& mix_presentation_obu : mix_presentation_obus) {
+      mix_presentation_obu.PrintObu();
+    }
     return absl::OkStatus();
   }
   // Find the minimum start timestamp and maximum end timestamp.
@@ -634,7 +637,7 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
     i++;
   }
 
-  // Examine Mix Presentation OBUs.
+  // Examine finalized Mix Presentation OBUs.
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     mix_presentation_obu.PrintObu();
   }
