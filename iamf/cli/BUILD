@@ -153,6 +153,7 @@ cc_library(
         ":obu_sequencer",
         ":parameter_block_partitioner",
         ":parameter_block_with_data",
+        ":rendering_mix_presentation_finalizer",
         ":wav_sample_provider",
         ":wav_writer",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
@@ -202,10 +203,8 @@ cc_library(
     deps = [
         ":leb_generator",
         ":loudness_calculator_factory_base",
-        ":mix_presentation_finalizer",
         ":obu_sequencer",
         ":renderer_factory",
-        ":rendering_mix_presentation_finalizer",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -282,25 +281,6 @@ cc_library(
     deps = [
         ":loudness_calculator_base",
         "//iamf/obu:mix_presentation",
-    ],
-)
-
-cc_library(
-    name = "mix_presentation_finalizer",
-    srcs = ["mix_presentation_finalizer.cc"],
-    hdrs = ["mix_presentation_finalizer.h"],
-    deps = [
-        ":audio_element_with_data",
-        ":demixing_module",
-        ":parameter_block_with_data",
-        ":wav_writer",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/obu:mix_presentation",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
     ],
 )
 
@@ -440,7 +420,6 @@ cc_library(
         ":demixing_module",
         ":loudness_calculator_base",
         ":loudness_calculator_factory_base",
-        ":mix_presentation_finalizer",
         ":parameter_block_with_data",
         ":renderer_factory",
         ":wav_writer",

@@ -240,20 +240,6 @@ cc_test(
 )
 
 cc_test(
-    name = "mix_presentation_finalizer_test",
-    srcs = ["mix_presentation_finalizer_test.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:mix_presentation_finalizer",
-        "//iamf/cli:wav_writer",
-        "//iamf/obu:mix_presentation",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "obu_sequencer_test",
     srcs = ["obu_sequencer_test.cc"],
     deps = [

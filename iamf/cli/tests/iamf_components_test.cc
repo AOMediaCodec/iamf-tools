@@ -12,9 +12,6 @@
 
 #include "iamf/cli/iamf_components.h"
 
-#include <cstdint>
-#include <optional>
-
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -24,14 +21,12 @@
 namespace iamf_tools {
 namespace {
 
-constexpr bool kValidateLoudness = true;
+TEST(IamfComponentsTest, CreateRendererFactoryReturnsNull) {
+  EXPECT_EQ(CreateRendererFactory(), nullptr);
+}
 
-TEST(IamfComponentsTest, CreateMixPresentationFinalizerReturnsNonNull) {
-  EXPECT_NE(CreateMixPresentationFinalizer(
-                /*file_name_prefix=*/"",
-                /*output_wav_file_bit_depth_override=*/std::nullopt,
-                kValidateLoudness),
-            nullptr);
+TEST(IamfComponentsTest, CreatreLoudnessCalculatorFactoryReturnsNull) {
+  EXPECT_EQ(CreateLoudnessCalculatorFactory(), nullptr);
 }
 
 TEST(IamfComponentsTest,
@@ -63,13 +58,6 @@ TEST(IamfComponentsTest, CanBeConfiguredWithFixedSizeLebGenerator) {
   for (auto& obu_sequencer : obu_sequencers) {
     EXPECT_NE(obu_sequencer, nullptr);
   }
-}
-
-TEST(IamfComponentsTest, CanBeConfiguredWithOutputWavFileBitDepthOverride) {
-  const uint8_t kOutputWavFileBitDepthOverride = 16;
-  EXPECT_NE(CreateMixPresentationFinalizer("", kOutputWavFileBitDepthOverride,
-                                           kValidateLoudness),
-            nullptr);
 }
 
 TEST(IamfComponentsTest, ReturnsEmptyListWhenLebGeneratorIsInvalid) {

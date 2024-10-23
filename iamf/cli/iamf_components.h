@@ -13,34 +13,36 @@
 #ifndef CLI_IAMF_COMPONENTS_H_
 #define CLI_IAMF_COMPONENTS_H_
 
-#include <cstdint>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
-#include "iamf/cli/mix_presentation_finalizer.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/renderer_factory.h"
 
 namespace iamf_tools {
 
-/*!\brief Creates an instance of `MixPresentationFinalizerBase`.
+/*!\brief Creates an instance of `RendererFactoryBase`.
  *
- * This is useful for binding different kinds of finalizers in an IAMF Encoder.
+ * This is useful for binding different kinds of renderer factories in an IAMF
+ * Encoder.
  *
- * \param file_name_prefix Prefix of output file name.
- * \param output_wav_file_bit_depth_override Override for the bit-depth of
- *        the rendered wav file.
- * \param validate_loudness Whether to validate computed loudness matches the
- *        user-provided loudness.
- * \return Unique pointer to the created Mix Presentation finalizer.
+ * \return Unique pointer to the created renderer factory
  */
-std::unique_ptr<MixPresentationFinalizerBase> CreateMixPresentationFinalizer(
-    const std::string& file_name_prefix,
-    std::optional<uint8_t> output_wav_file_bit_depth_override,
-    bool validate_loudness);
+std::unique_ptr<RendererFactoryBase> CreateRendererFactory();
+
+/*!\brief Creates an instance of `LoudnessCalculatorFactoryBase`.
+ *
+ * This is useful for binding different kinds of loudness calculator factories
+ * in an IAMF Encoder.
+ *
+ * \return Unique pointer to the created loudness calculator factory.
+ */
+std::unique_ptr<LoudnessCalculatorFactoryBase>
+CreateLoudnessCalculatorFactory();
 
 /*!\brief Creates instances of `ObuSequencerBase`.
  *

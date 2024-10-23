@@ -38,7 +38,6 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
-#include "iamf/cli/mix_presentation_finalizer.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -474,7 +473,8 @@ absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
 absl::Status FillLoudnessInfo(
     bool validate_loudness, const RendererFactoryBase& renderer_factory,
     const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
-    const MixPresentationFinalizerBase::WavWriterFactory& wav_writer_factory,
+    const RenderingMixPresentationFinalizer::WavWriterFactory&
+        wav_writer_factory,
     const std::filesystem::path& file_path_prefix,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,

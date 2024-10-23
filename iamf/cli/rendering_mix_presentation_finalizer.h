@@ -21,20 +21,47 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
-#include "iamf/cli/mix_presentation_finalizer.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/renderer_factory.h"
+#include "iamf/cli/wav_writer.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
-class RenderingMixPresentationFinalizer : public MixPresentationFinalizerBase {
+class RenderingMixPresentationFinalizer {
  public:
+  /*!\brief Factory for a wav writer.
+   *
+   * Used to control whether or not wav writers are created and control their
+   * filenames.
+   *
+   * For example, if the user only wants a particular layout (e.g. stereo), or a
+   * particular mix presentation to be rendered, then a factory could filter out
+   * irrelevant mix presentations or layouts.
+   *
+   * \param mix_presentation_id Mix presentation ID.
+   * \param sub_mix_index Index of the sub mix within the mix presentation.
+   * \param layout_index Index of the layout within the sub mix.
+   * \param layout Associated layout.
+   * \param prefix Prefix for the output file.
+   * \param num_channels Number of channels.
+   * \param sample_rate Sample rate.
+   * \param bit_depth Bit depth.
+   * \return Unique pointer to a wav writer or `nullptr` if none is desired.
+   */
+  typedef absl::AnyInvocable<std::unique_ptr<WavWriter>(
+      DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
+      const Layout& layout, const std::filesystem::path& prefix,
+      int num_channels, int sample_rate, int bit_depth) const>
+      WavWriterFactory;
+
   /*!\brief Constructor.
    *
    * \param mix_presentation_metadata Input mix presentation metadata. Only the
@@ -55,16 +82,11 @@ class RenderingMixPresentationFinalizer : public MixPresentationFinalizerBase {
       std::unique_ptr<RendererFactoryBase> renderer_factory,
       std::unique_ptr<LoudnessCalculatorFactoryBase>
           loudness_calculator_factory)
-      : MixPresentationFinalizerBase(),
-        file_path_prefix_(file_path_prefix),
+      : file_path_prefix_(file_path_prefix),
         output_wav_file_bit_depth_override_(output_wav_file_bit_depth_override),
         validate_loudness_(validate_loudness),
         renderer_factory_(std::move(renderer_factory)),
         loudness_calculator_factory_(std::move(loudness_calculator_factory)) {}
-
-  /*!\brief Destructor.
-   */
-  ~RenderingMixPresentationFinalizer() override = default;
 
   /*!\brief Finalizes the list of Mix Presentation OBUs.
    *
@@ -85,7 +107,7 @@ class RenderingMixPresentationFinalizer : public MixPresentationFinalizerBase {
       const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
       const std::list<ParameterBlockWithData>& parameter_blocks,
       const WavWriterFactory& wav_writer_factory,
-      std::list<MixPresentationObu>& mix_presentation_obus) override;
+      std::list<MixPresentationObu>& mix_presentation_obus);
 
  private:
   const std::filesystem::path file_path_prefix_;

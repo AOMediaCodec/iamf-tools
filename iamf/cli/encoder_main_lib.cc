@@ -36,6 +36,7 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/arbitrary_obu_generator.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
@@ -288,10 +289,11 @@ absl::Status GenerateObus(
        user_metadata.test_vector_metadata().file_name_prefix())
           .string();
   LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
-  auto mix_presentation_finalizer = CreateMixPresentationFinalizer(
+  RenderingMixPresentationFinalizer mix_presentation_finalizer(
       output_wav_file_prefix, output_wav_file_bit_depth_override,
-      user_metadata.test_vector_metadata().validate_user_loudness());
-  RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
+      user_metadata.test_vector_metadata().validate_user_loudness(),
+      CreateRendererFactory(), CreateLoudnessCalculatorFactory());
+  RETURN_IF_NOT_OK(mix_presentation_finalizer.Finalize(
       audio_elements, id_to_time_to_labeled_frame, parameter_blocks,
       ProduceAllWavWriters, mix_presentation_obus));
 
