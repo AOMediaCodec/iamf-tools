@@ -38,21 +38,28 @@ git_repository(
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 protobuf_deps()
 
-# Google Abseil Libs
+# Google Abseil Libraries.
 git_repository(
     name = "com_google_absl",
     remote = "https://github.com/abseil/abseil-cpp.git",
     commit = "7e149e40c7a2d8049ecd28d1f83f64cc197cc128",
 )
 
-# Google Audio-to-Tactile Lib
+# Google Audio-to-Tactile Library.
 git_repository(
     name = "com_google_audio_to_tactile",
     remote = "https://github.com/google/audio-to-tactile.git",
     commit = "d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15",
 )
 
-# Expat
+# Google Benchmark Library.
+git_repository(
+    name = "com_google_benchmark",
+    remote = "https://github.com/google/benchmark.git",
+    tag = "v1.9.0",
+)
+
+# Expat.
 git_repository(
     name = "libexpat",
     remote = "https://github.com/libexpat/libexpat.git",
@@ -82,4 +89,12 @@ git_repository(
     remote = "https://gitlab.xiph.org/xiph/opus.git",
     commit = "82ac57d9f1aaf575800cf17373348e45b7ce6c0d",
     build_file = "libopus.BUILD",
+)
+
+# Eigen.
+git_repository(
+    name = "eigen3",
+    commit = "3147391d946bb4b6c68edd901f2add6ac1f31f8c",
+    remote = "https://gitlab.com/libeigen/eigen.git",
+    build_file = "eigen.BUILD",
 )
