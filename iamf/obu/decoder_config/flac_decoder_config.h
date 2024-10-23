@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -114,6 +115,19 @@ class FlacDecoderConfig {
   absl::Status ValidateAndWrite(uint32_t num_samples_per_frame,
                                 int16_t audio_roll_distance,
                                 WriteBitBuffer& wb) const;
+
+  /*!\brief Reads and validates the `FlacDecoderConfig` from a buffer.
+   *
+   * \param num_samples_per_frame `num_samples_per_frame` in the associated
+   *        Codec Config OBU.
+   * \param audio_roll_distance `audio_roll_distance` in the associated Codec
+   *        Config OBU.
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the decoder config is valid. A specific error
+   *         code on failure.
+   */
+  absl::Status ReadAndValidate(uint32_t num_samples_per_frame,
+                               int16_t audio_roll_distance, ReadBitBuffer& rb);
 
   /*!\brief Gets the output sample rate represented within the decoder config.
    *

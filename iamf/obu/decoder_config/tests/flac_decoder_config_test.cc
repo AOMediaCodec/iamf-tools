@@ -20,6 +20,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
@@ -707,6 +708,92 @@ TEST_F(FlacTest, InvalidGetTotalNumSamplesInStreamWithNoStreamInfo) {
   EXPECT_FALSE(flac_decoder_config_
                    .GetTotalSamplesInStream(output_total_samples_in_stream)
                    .ok());
+}
+
+TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
+  std::vector<uint8_t> payload = {
+      // `last_metadata_block_flag` and `block_type` fields.
+      1 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
+      // `metadata_data_block_length`.
+      0, 0, 34,
+      // `minimum_block_size`.
+      0, 64,
+      // `maximum_block_size`.
+      0, 64,
+      // `minimum_frame_size`.
+      0, 0, 0,
+      // `maximum_frame_size`.
+      0, 0, 0,
+      // `sample_rate` (20 bits)
+      0x0b, 0xb8,
+      (0 << 4) |
+          // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
+          FlacMetaBlockStreamInfo::kNumberOfChannels << 1,
+      7 << 4 |
+          // `total_samples_in_stream` (36 bits).
+          0,
+      0x00, 0x00, 0x00, 100,
+      // MD5 sum.
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00};
+  ;
+  ReadBitBuffer rb(1024, &payload);
+  FlacDecoderConfig decoder_config;
+  EXPECT_THAT(decoder_config.ReadAndValidate(
+                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, rb),
+              IsOk());
+  EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
+  FlacMetaBlockHeader header = decoder_config.metadata_blocks_[0].header;
+  EXPECT_EQ(header.block_type, FlacMetaBlockHeader::kFlacStreamInfo);
+  EXPECT_EQ(header.metadata_data_block_length, 34);
+  FlacMetaBlockStreamInfo stream_info = std::get<FlacMetaBlockStreamInfo>(
+      decoder_config.metadata_blocks_[0].payload);
+  EXPECT_EQ(stream_info.minimum_block_size, 64);
+  EXPECT_EQ(stream_info.maximum_block_size, 64);
+  EXPECT_EQ(stream_info.minimum_frame_size, 0);
+  EXPECT_EQ(stream_info.maximum_frame_size, 0);
+  EXPECT_EQ(stream_info.sample_rate, 48000);
+  EXPECT_EQ(stream_info.number_of_channels,
+            FlacMetaBlockStreamInfo::kNumberOfChannels);
+  EXPECT_EQ(stream_info.bits_per_sample, 7);
+  EXPECT_EQ(stream_info.total_samples_in_stream, 100);
+  EXPECT_EQ(stream_info.md5_signature, FlacMetaBlockStreamInfo::kMd5Signature);
+}
+
+TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
+  std::vector<uint8_t> payload = {
+      // `last_metadata_block_flag` and `block_type` fields.
+      1 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
+      // `metadata_data_block_length`.
+      0, 0, 34,
+      // `minimum_block_size`.
+      0, 64,
+      // `maximum_block_size`.
+      0, 64,
+      // `minimum_frame_size`.
+      0, 0, 0,
+      // `maximum_frame_size`.
+      0, 0, 0,
+      // `sample_rate` (20 bits)
+      0x0b, 0xb8,
+      (0 << 4) |
+          // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
+          FlacMetaBlockStreamInfo::kNumberOfChannels << 1,
+      7 << 4 |
+          // `total_samples_in_stream` (36 bits).
+          0,
+      0x00, 0x00, 0x00, 100,
+      // MD5 sum (invalid bit at end)
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x01};
+  ;
+  ReadBitBuffer rb(1024, &payload);
+  FlacDecoderConfig decoder_config;
+  EXPECT_FALSE(
+      decoder_config
+          .ReadAndValidate(
+              /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, rb)
+          .ok());
 }
 
 }  // namespace

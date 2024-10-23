@@ -12,6 +12,7 @@
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/log/log.h"
@@ -19,6 +20,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -172,6 +174,25 @@ void PrintStreamInfo(const FlacMetaBlockStreamInfo& stream_info) {
             << stream_info.total_samples_in_stream;
 }
 
+absl::Status ReadStreamInfo(FlacMetaBlockStreamInfo& stream_info,
+                            ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(16, stream_info.minimum_block_size));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(16, stream_info.maximum_block_size));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, stream_info.minimum_frame_size));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, stream_info.maximum_frame_size));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(20, stream_info.sample_rate));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, stream_info.number_of_channels));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, stream_info.bits_per_sample));
+  RETURN_IF_NOT_OK(
+      rb.ReadUnsignedLiteral(36, stream_info.total_samples_in_stream));
+  std::vector<uint8_t> md5_signature;
+  RETURN_IF_NOT_OK(rb.ReadUint8Vector(16, md5_signature));
+  for (int i = 0; i < 16; ++i) {
+    stream_info.md5_signature[i] = md5_signature[i];
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
@@ -211,6 +232,45 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
     }
   }
 
+  return absl::OkStatus();
+}
+
+absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
+                                                int16_t audio_roll_distance,
+                                                ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
+
+  // We are not given a length field to indicate the number of metadata blocks
+  // to read. Instead, we must look at the `last_metadata_block_flag` to
+  // determine when to stop reading.
+  std::vector<FlacMetadataBlock> metadata_blocks;
+  bool is_last_metadata_block = false;
+  while (!is_last_metadata_block) {
+    FlacMetadataBlock metadata_block;
+    RETURN_IF_NOT_OK(
+        rb.ReadBoolean(metadata_block.header.last_metadata_block_flag));
+    is_last_metadata_block = metadata_block.header.last_metadata_block_flag;
+    uint8_t block_type;
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(7, block_type));
+    metadata_block.header.block_type =
+        static_cast<FlacMetaBlockHeader::FlacBlockType>(block_type);
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
+        24, metadata_block.header.metadata_data_block_length));
+
+    switch (metadata_block.header.block_type) {
+      case FlacMetaBlockHeader::kFlacStreamInfo:
+        RETURN_IF_NOT_OK(ReadStreamInfo(
+            std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), rb));
+        break;
+      default:
+        RETURN_IF_NOT_OK(rb.ReadUint8Vector(
+            metadata_block.header.metadata_data_block_length,
+            std::get<std::vector<uint8_t>>(metadata_block.payload)));
+        break;
+    }
+    metadata_blocks_.push_back(std::move(metadata_block));
+  }
+  RETURN_IF_NOT_OK(ValidatePayload(num_samples_per_frame, *this));
   return absl::OkStatus();
 }
 

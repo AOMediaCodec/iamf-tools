@@ -18,6 +18,7 @@ cc_test(
     name = "flac_decoder_config_test",
     srcs = ["flac_decoder_config_test.cc"],
     deps = [
+        "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/tests:test_utils",
         "//iamf/obu/decoder_config:flac_decoder_config",
