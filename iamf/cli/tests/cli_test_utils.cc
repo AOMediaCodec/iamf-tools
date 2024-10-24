@@ -45,6 +45,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -129,6 +130,30 @@ void AddOpusCodecConfigWithId(
        .num_samples_per_frame = 8,
        .decoder_config = OpusDecoderConfig{
            .version_ = 1, .pre_skip_ = 312, .input_sample_rate_ = 0}});
+  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
+  codec_config_obus.emplace(codec_config_id, std::move(obu));
+}
+
+void AddFlacCodecConfigWithId(
+    uint32_t codec_config_id,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+  // Initialize the Codec Config OBU.
+  ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
+
+  CodecConfigObu obu(
+      ObuHeader(), codec_config_id,
+      {.codec_id = CodecConfig::kCodecIdFlac,
+       .num_samples_per_frame = 16,
+       .decoder_config = FlacDecoderConfig(
+           {{{.header = {.last_metadata_block_flag = true,
+                         .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
+                         .metadata_data_block_length = 34},
+              .payload =
+                  FlacMetaBlockStreamInfo{.minimum_block_size = 16,
+                                          .maximum_block_size = 16,
+                                          .sample_rate = 48000,
+                                          .bits_per_sample = 15,
+                                          .total_samples_in_stream = 0}}}})});
   ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
 }

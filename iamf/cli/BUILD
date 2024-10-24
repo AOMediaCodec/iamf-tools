@@ -36,6 +36,7 @@ cc_library(
         ":audio_frame_with_data",
         "//iamf/cli/codec:aac_decoder",
         "//iamf/cli/codec:decoder_base",
+        "//iamf/cli/codec:flac_decoder",
         "//iamf/cli/codec:lpcm_decoder",
         "//iamf/cli/codec:opus_decoder",
         "//iamf/common:macros",

@@ -64,6 +64,15 @@ void AddOpusCodecConfigWithId(
     uint32_t codec_config_id,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
+/*!\brief Adds a configurable Flac `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddFlacCodecConfigWithId(
+    uint32_t codec_config_id,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
 /*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.

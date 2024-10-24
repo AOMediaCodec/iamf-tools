@@ -25,6 +25,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/aac_decoder.h"
 #include "iamf/cli/codec/decoder_base.h"
+#include "iamf/cli/codec/flac_decoder.h"
 #include "iamf/cli/codec/lpcm_decoder.h"
 #include "iamf/cli/codec/opus_decoder.h"
 #include "iamf/common/macros.h"
@@ -49,9 +50,7 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
       decoder = std::make_unique<AacDecoder>(codec_config, num_channels);
       break;
     case kCodecIdFlac:
-      // TODO(b/280490947): Support FLAC fully by decoding with `libflac`.
-      //                    Although since it is lossless it *should* be
-      //                    equivalent.
+      decoder = std::make_unique<FlacDecoder>(codec_config, num_channels);
       break;
     default:
       return absl::InvalidArgumentError(absl::StrCat(
@@ -81,17 +80,8 @@ absl::Status DecodeAudioFrame(const AudioFrameWithData& encoded_frame,
 
   // Decode the samples with the specific decoder associated with this
   // substream.
-  if (decoder != nullptr) {
-    RETURN_IF_NOT_OK(decoder->DecodeAudioFrame(
-        encoded_frame.obu.audio_frame_, decoded_audio_frame.decoded_samples));
-  } else {
-    // Currently `decoder` remains `nullptr` for FLAC, which is a lossless
-    // codec and the decoding is skipped.
-    // TODO(b/280490947): Support FLAC fully by decoding with `libflac`.
-    //                    Although since it is lossless it *should* be
-    //                    equivalent.
-    decoded_audio_frame.decoded_samples = encoded_frame.raw_samples;
-  }
+  RETURN_IF_NOT_OK(decoder->DecodeAudioFrame(
+      encoded_frame.obu.audio_frame_, decoded_audio_frame.decoded_samples));
 
   return absl::OkStatus();
 }

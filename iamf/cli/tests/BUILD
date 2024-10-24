@@ -52,6 +52,7 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_protobuf//:protobuf",
