@@ -14,16 +14,19 @@
 #define CLI_AMBISONIC_ENCODER_AMBISONIC_UTILS_H_
 
 #include <cmath>
+#include <numbers>
 
 #include "absl/log/check.h"
 
 // This code is forked from Resonance Audio's `misc_math.h`.
 namespace iamf_tools {
 // Defines conversion factor from degrees to radians.
-static const float kRadiansFromDegrees = static_cast<float>(M_PI / 180.0);
+inline constexpr float kRadiansFromDegrees =
+    static_cast<float>(std::numbers::pi_v<float> / 180.0);
 
 // Defines conversion factor from radians to degrees.
-static const float kDegreesFromRadians = static_cast<float>(180.0 / M_PI);
+inline constexpr float kDegreesFromRadians =
+    static_cast<float>(180.0 / std::numbers::pi_v<float>);
 
 /*!\brief Returns the factorial (!) of x. If x < 0, it returns 0.
  *
