@@ -221,14 +221,14 @@ bool IsNativeBigEndian() {
 absl::Status ValidateVectorSizeEqual(const std::string& field_name,
                                      size_t vector_size,
                                      DecodedUleb128 obu_reported_size) {
-  if (vector_size != obu_reported_size) {
-    auto error_message = absl::StrCat(
-        "Found inconsistency with `", field_name, ".size()`= ", vector_size,
-        ". Expected a value of ", obu_reported_size, ".");
-    LOG(ERROR) << error_message;
-    return absl::InvalidArgumentError(error_message);
+  if (vector_size == obu_reported_size) [[likely]] {
+    return absl::OkStatus();
   }
-  return absl::OkStatus();
+  auto error_message = absl::StrCat(
+      "Found inconsistency with `", field_name, ".size()`= ", vector_size,
+      ". Expected a value of ", obu_reported_size, ".");
+  LOG(ERROR) << error_message;
+  return absl::InvalidArgumentError(error_message);
 }
 
 }  // namespace iamf_tools

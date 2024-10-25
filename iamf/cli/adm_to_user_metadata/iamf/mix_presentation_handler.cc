@@ -53,11 +53,8 @@ LookupSoundSystemFromInputLayout(IamfInputLayout layout) {
           {k7_1_4, SOUND_SYSTEM_J_4_7_0},
       });
 
-  auto it = kInputLayoutToSoundSystem->find(layout);
-  if (it == kInputLayoutToSoundSystem->end()) {
-    return absl::NotFoundError("Sound system not found for input_layout");
-  }
-  return it->second;
+  return LookupInMap(*kInputLayoutToSoundSystem, layout,
+                     "`SoundSystem` for `IamfInputLayout`");
 }
 
 absl::Status CopyLoudness(const LoudnessMetadata& loudness_metadata,

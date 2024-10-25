@@ -432,14 +432,8 @@ absl::Status MixPresentationObu::GetNumChannelsFromLayout(
                                     loudness_layout.specific_layout)
                                     .sound_system;
 
-      if (!LookupInMap(*kSoundSystemToNumChannels, sound_system, num_channels)
-               .ok()) {
-        return absl::InvalidArgumentError(
-            absl::StrCat("Unknown number of channels for reserved or out of "
-                         "bounds sound_system= ",
-                         sound_system));
-      }
-      return absl::OkStatus();
+      return CopyFromMap(*kSoundSystemToNumChannels, sound_system,
+                         "Number of channels for `SoundSystem`", num_channels);
     }
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:

@@ -22,6 +22,7 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -49,12 +50,8 @@ absl::StatusOr<int32_t> LookupNumSubstreamsFromInputLayout(
           {kAmbisonicsOrder3, 16},
       });
 
-  auto it = kInputLayoutToNumSubstreams->find(input_layout);
-  if (it == kInputLayoutToNumSubstreams->end()) {
-    return absl::NotFoundError(absl::StrCat(
-        "Num substreams not found for input_layout= ", input_layout));
-  }
-  return it->second;
+  return LookupInMap(*kInputLayoutToNumSubstreams, input_layout,
+                     "Number of channels for `IamfInputLayout`");
 }
 
 absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
@@ -74,12 +71,8 @@ absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
           {kBinaural, 1},
       });
 
-  auto it = kInputLayoutToCoupledSubstreamCount->find(input_layout);
-  if (it == kInputLayoutToCoupledSubstreamCount->end()) {
-    return absl::NotFoundError(absl::StrCat(
-        "Coupled substream count not found for input_layout= ", input_layout));
-  }
-  return it->second;
+  return LookupInMap(*kInputLayoutToCoupledSubstreamCount, input_layout,
+                     "Coupled substream count for `IamfInputLayout`");
 }
 
 absl::StatusOr<iamf_tools_cli_proto::LoudspeakerLayout>
@@ -102,12 +95,8 @@ LookupLoudspeakerLayoutFromInputLayout(IamfInputLayout input_layout) {
           {kBinaural, LOUDSPEAKER_LAYOUT_BINAURAL},
       });
 
-  auto it = KInputLayoutToLoudspeakerLayout->find(input_layout);
-  if (it == KInputLayoutToLoudspeakerLayout->end()) {
-    return absl::NotFoundError(absl::StrCat(
-        "Loudspeaker layout not found for input_layout= ", input_layout));
-  }
-  return it->second;
+  return LookupInMap(*KInputLayoutToLoudspeakerLayout, input_layout,
+                     "Proto `LoudspeakerLayout` for `IamfInputLayout`");
 }
 
 absl::StatusOr<iamf_tools_cli_proto::AudioElementType>
@@ -133,12 +122,8 @@ LookupAudioElementTypeFromInputLayout(IamfInputLayout input_layout) {
           {kAmbisonicsOrder3, AUDIO_ELEMENT_SCENE_BASED},
       });
 
-  auto it = KInputLayoutToAudioElementType->find(input_layout);
-  if (it == KInputLayoutToAudioElementType->end()) {
-    return absl::NotFoundError(absl::StrCat(
-        "Loudspeaker layout not found for input_layout= ", input_layout));
-  }
-  return it->second;
+  return LookupInMap(*KInputLayoutToAudioElementType, input_layout,
+                     "Proto `AudioElementType` for `IamfInputLayout`");
 }
 
 absl::Status PopulateChannelBasedAudioElementMetadata(

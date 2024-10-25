@@ -217,16 +217,64 @@ absl::Status ValidateVectorSizeEqual(const std::string& field_name,
                                      size_t vector_size,
                                      DecodedUleb128 obu_reported_size);
 
+/*!\brief Looks up a key in a map and returns a status or value.
+ *
+ * When lookup fails the error message will contain the `context` string
+ * followed by "= $KEY", where $KEY is the stringified `key`.
+ *
+ * Some mapping have sufficient context in the typenames, for example:
+ *   - Input Map: A map of `PersonName` to `Birthday`.
+ *   - Typename-based context: "`Birthday` for `PersonName`".
+ *   - Output message: "`Birthday` for `PersonName`= John was not found in the
+ *                       map.".
+ *
+ * Some mappings provide insufficient context in the typenames. Or the typenames
+ * would be easily confused. Variable names or phrases should be used as
+ * context:
+ *   - Input Map: A map of `absl::string_view` names to `int` ages.
+ *   - Variable-based context: "`age` for `name`".
+ *   - Phrase-based context: or "Age for name".
+ * Or:
+ *   - Input Map: A map of `proto::Type` to `iamf_tools::Type`.
+ *   - Phrase-based context: "Internal version of proto `Type`".
+ *
+ * \param map Map to search.
+ * \param key Key to search for.
+ * \param context Context to insert into the error message for debugging
+ *        purposes.
+ * \return Associated value if lookup is successful. `absl::NotFoundError()`
+ *         when lookup fails.
+ */
 template <typename T, typename U>
-absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
-                         U& value) {
+absl::StatusOr<U> LookupInMap(const absl::flat_hash_map<T, U>& map,
+                              const T& key, absl::string_view context) {
   auto iter = map.find(key);
-  if (iter == map.end()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Key = ", key, " not found in the map."));
+  if (iter != map.end()) [[likely]] {
+    return iter->second;
   }
-  value = iter->second;
-  return absl::OkStatus();
+  return absl::NotFoundError(
+      absl::StrCat(context, "= ", key, " was not found in the map."));
+}
+
+/*!\brief Looks up a key in a map and copies the value to the output argument.
+ *
+ * \param map Map to search.
+ * \param key Key to search for.
+ * \param context Context to insert into the error message for debugging
+ *        purposes. Forwared to `LookupInMap` which has detailed documentation
+ *        on usage.
+ * \param value Output argument to write the value to.
+ * \return `absl::OkStatus()` if lookup is successful. `absl::NotFoundError()`
+ *         when lookup fails.
+ */
+template <typename T, typename U>
+absl::Status CopyFromMap(const absl::flat_hash_map<T, U>& map, const T& key,
+                         absl::string_view context, U& value) {
+  const auto& result = LookupInMap(map, key, context);
+  if (result.ok()) [[likely]] {
+    value = *result;
+  }
+  return result.status();
 }
 
 /*!\brief Returns `absl::OkStatus()` if the arguments are equal.
@@ -240,8 +288,8 @@ absl::Status LookupInMap(const absl::flat_hash_map<T, U>& map, T key,
  */
 template <typename T>
 absl::Status ValidateEqual(const T& lhs, const T& rhs,
-                           const std::string& context) {
-  if (lhs == rhs) {
+                           absl::string_view context) {
+  if (lhs == rhs) [[likely]] {
     return absl::OkStatus();
   }
 
@@ -260,8 +308,8 @@ absl::Status ValidateEqual(const T& lhs, const T& rhs,
  */
 template <typename T>
 absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
-                              const std::string& context) {
-  if (lhs != rhs) {
+                              absl::string_view context) {
+  if (lhs != rhs) [[likely]] {
     return absl::OkStatus();
   }
 
@@ -279,8 +327,8 @@ absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
  */
 template <typename T>
 absl::Status ValidateHasValue(const std::optional<T>& argument,
-                              const absl::string_view context) {
-  if (argument.has_value()) {
+                              absl::string_view context) {
+  if (argument.has_value()) [[likely]] {
     return absl::OkStatus();
   }
 
@@ -299,7 +347,7 @@ absl::Status ValidateHasValue(const std::optional<T>& argument,
  */
 template <class InputIt>
 absl::Status ValidateUnique(InputIt first, InputIt last,
-                            const std::string& context) {
+                            absl::string_view context) {
   absl::flat_hash_set<typename InputIt::value_type> seen_values;
 
   for (auto iter = first; iter != last; ++iter) {

@@ -66,13 +66,9 @@ absl::Status CopyCodecId(
           {CODEC_ID_LPCM, kCodecIdLpcm},
       });
 
-  if (!LookupInMap(*kInputCodecIdToOutputCodecId, input_codec_config.codec_id(),
-                   output_codec_id)
-           .ok()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Unknown codec with codec_id= ", input_codec_config.codec_id()));
-  }
-  return absl::OkStatus();
+  return CopyFromMap(*kInputCodecIdToOutputCodecId,
+                     input_codec_config.codec_id(),
+                     "Internal version of proto `CodecId`= ", output_codec_id);
 }
 
 absl::Status CopyFlacBlockType(
@@ -91,13 +87,9 @@ absl::Status CopyFlacBlockType(
            {FLAC_BLOCK_TYPE_CUESHEET, kFlacCuesheet},
            {FLAC_BLOCK_TYPE_PICTURE, kFlacPicture}});
 
-  if (!LookupInMap(*kInputFlacBlockTypeToOutputFlacBlockType,
-                   input_flac_block_type, output_flac_block_type)
-           .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown input_flac_block_type= ", input_flac_block_type));
-  }
-  return absl::OkStatus();
+  return CopyFromMap(
+      *kInputFlacBlockTypeToOutputFlacBlockType, input_flac_block_type,
+      "Internal version of proto `FlacBlockType`", output_flac_block_type);
 }
 
 absl::Status CopySampleFrequencyIndex(
@@ -131,14 +123,10 @@ absl::Status CopySampleFrequencyIndex(
            kSampleFrequencyIndexEscapeValue},
       });
 
-  if (!LookupInMap(*kInputSampleFrequencyIndexToOutputSampleFrequencyIndex,
-                   input_sample_frequency_index, output_sample_frequency_index)
-           .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown input_sample_frequency_index= ",
-                     input_sample_frequency_index));
-  }
-  return absl::OkStatus();
+  return CopyFromMap(*kInputSampleFrequencyIndexToOutputSampleFrequencyIndex,
+                     input_sample_frequency_index,
+                     "Internal version of proto `SampleFrequencyIndex`",
+                     output_sample_frequency_index);
 }
 
 absl::Status GenerateLpcmDecoderConfig(

@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <new>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -60,14 +59,13 @@ absl::StatusOr<bool> IsLoudspeakerLayoutEquivalentToSoundSystem(
           {kSoundSystem11_2_3_0, kLayout3_1_2_ch},
       });
 
-  const auto equivalent_loudspeaker_layout_iter =
-      kSoundSystemToLoudspeakerLayout->find(layout);
-  if (equivalent_loudspeaker_layout_iter ==
-      kSoundSystemToLoudspeakerLayout->end()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Sound system not found for layout= ", layout));
-  }
-  return equivalent_loudspeaker_layout_iter->second == loudspeaker_layout;
+  ChannelAudioLayerConfig::LoudspeakerLayout equivalent_loudspeaker_layout;
+  RETURN_IF_NOT_OK(
+      CopyFromMap(*kSoundSystemToLoudspeakerLayout, layout,
+                  "`LoudspeakerLayout` equivalent to `SoundSystem`",
+                  equivalent_loudspeaker_layout));
+
+  return equivalent_loudspeaker_layout == loudspeaker_layout;
 }
 
 // Several expanded layouts are defined as being based on a particular sound

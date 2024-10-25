@@ -25,6 +25,7 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -59,12 +60,8 @@ absl::StatusOr<std::vector<std::string>> LookupLabelsFromInputLayout(
             "A11", "A12", "A13", "A14", "A15"}},
       });
 
-  auto it = kInputLayoutToLabels->find(input_layout);
-  if (it == kInputLayoutToLabels->end()) {
-    return absl::NotFoundError(
-        absl::StrCat("Labels not found for input_layout= ", input_layout));
-  }
-  return it->second;
+  return LookupInMap(*kInputLayoutToLabels, input_layout,
+                     "String-based channels labels for `IamfInputLayout`");
 }
 
 }  // namespace

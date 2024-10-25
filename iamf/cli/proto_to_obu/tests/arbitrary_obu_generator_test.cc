@@ -216,19 +216,17 @@ class ArbitraryObuGeneratorTest : public testing::Test {
  public:
   ArbitraryObuGeneratorTest() {}
 
-  void InitAndTestGenerate() {
+  void InitAndTestGenerateExpectOk() {
     // Generate the OBUs.
     std::list<ArbitraryObu> output_obus;
     ArbitraryObuGenerator generator(arbitrary_obu_metadata_);
-    EXPECT_EQ(generator.Generate(output_obus).code(),
-              expected_generate_status_code_);
+    EXPECT_THAT(generator.Generate(output_obus), IsOk());
+
     EXPECT_EQ(output_obus, expected_obus_);
   }
 
  protected:
   ArbitraryObuMetadatas arbitrary_obu_metadata_;
-
-  absl::StatusCode expected_generate_status_code_ = absl::StatusCode::kOk;
 
   std::list<ArbitraryObu> expected_obus_;
 };
@@ -250,7 +248,7 @@ TEST_F(ArbitraryObuGeneratorTest, ReservedObu) {
   expected_obus_.emplace_back(kObuIaReserved24, ObuHeader(),
                               std::vector<uint8_t>({'a', 'b', 'c'}),
                               ArbitraryObu::kInsertionHookBeforeDescriptors);
-  InitAndTestGenerate();
+  InitAndTestGenerateExpectOk();
 }
 
 TEST_F(ArbitraryObuGeneratorTest, ObuWithExtensionHeader) {
@@ -276,7 +274,7 @@ TEST_F(ArbitraryObuGeneratorTest, ObuWithExtensionHeader) {
                 .extension_header_bytes = {'e', 'x', 't', 'r', 'a'}},
       std::vector<uint8_t>({'i', 'a', 'm', 'f', '\0', '\0'}),
       ArbitraryObu::kInsertionHookAfterDescriptors);
-  InitAndTestGenerate();
+  InitAndTestGenerateExpectOk();
 }
 
 TEST_F(ArbitraryObuGeneratorTest, InvalidObuType) {
@@ -292,9 +290,10 @@ TEST_F(ArbitraryObuGeneratorTest, InvalidObuType) {
         payload: ""
       )pb",
       arbitrary_obu_metadata_.Add()));
-  expected_generate_status_code_ = absl::StatusCode::kInvalidArgument;
+  std::list<ArbitraryObu> output_obus;
+  ArbitraryObuGenerator generator(arbitrary_obu_metadata_);
 
-  InitAndTestGenerate();
+  EXPECT_FALSE(generator.Generate(output_obus).ok());
 }
 
 }  // namespace

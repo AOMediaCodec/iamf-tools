@@ -20,7 +20,6 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
@@ -113,14 +112,9 @@ absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
           {kDMixPMode3_n, DMIXP_MODE_3_N},
           {kDMixPModeReserved2, DMIXP_MODE_RESERVED_B},
       });
-  if (!LookupInMap(*kObuDmixPModeToMetadataDMixPMode, obu_dmixp_mode,
-                   dmixp_mode)
-           .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown dmixp_mode = ", obu_dmixp_mode));
-  }
 
-  return absl::OkStatus();
+  return CopyFromMap(*kObuDmixPModeToMetadataDMixPMode, obu_dmixp_mode,
+                     "Proto version of internal `DMixPMode`", dmixp_mode);
 }
 
 // Gets the proto representation of the input `mix_gain_parameter_data`.

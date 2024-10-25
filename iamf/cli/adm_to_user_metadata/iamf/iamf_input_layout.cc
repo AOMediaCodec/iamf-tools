@@ -12,14 +12,11 @@
 
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 
-#include <string>
-
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -30,7 +27,7 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
   // loudspeaker layout in IAMF.
   using enum IamfInputLayout;
   static const absl::NoDestructor<
-      absl::flat_hash_map<std::string, IamfInputLayout>>
+      absl::flat_hash_map<absl::string_view, IamfInputLayout>>
       kAudioPackFormatIdToInputLayout({
           {"AP_00010001", IamfInputLayout::kMono},
           {"AP_00010002", IamfInputLayout::kStereo},
@@ -45,13 +42,8 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
           {"AP_00040003", IamfInputLayout::kAmbisonicsOrder3},
       });
 
-  auto it = kAudioPackFormatIdToInputLayout->find(audio_pack_format_id);
-  if (it == kAudioPackFormatIdToInputLayout->end()) {
-    return absl::NotFoundError(
-        absl::StrCat("Input layout not found for audio_pack_format_id= ",
-                     audio_pack_format_id));
-  }
-  return it->second;
+  return LookupInMap(*kAudioPackFormatIdToInputLayout, audio_pack_format_id,
+                     "`IamfInputLayout` for `audio_pack_format_id`");
 }
 
 }  // namespace adm_to_user_metadata

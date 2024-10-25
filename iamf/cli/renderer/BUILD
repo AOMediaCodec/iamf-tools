@@ -58,6 +58,7 @@ cc_library(
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",

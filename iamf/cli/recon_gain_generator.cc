@@ -18,7 +18,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
@@ -67,11 +66,10 @@ absl::Status FindRelevantMixedSamples(
                                   {kDemixedR2, kMono}});
 
   ChannelLabel::Label relevant_mixed_label;
-  if (!LookupInMap(*kLabelToRelevantMixedLabel, label, relevant_mixed_label)
-           .ok()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Failed to find relevant mixed label associated with label= ", label));
-  }
+  RETURN_IF_NOT_OK(
+      CopyFromMap(*kLabelToRelevantMixedLabel, label,
+                  "`relevant_mixed_label` for demixed `ChannelLabel::Label`",
+                  relevant_mixed_label));
 
   LOG_IF(INFO, additional_logging)
       << "Relevant mixed samples has label: " << relevant_mixed_label;

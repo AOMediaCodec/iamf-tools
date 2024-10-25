@@ -73,13 +73,9 @@ absl::Status CopyArbitraryObuType(
           {OBU_IA_SEQUENCE_HEADER, kObuIaSequenceHeader},
       });
 
-  if (!LookupInMap(*kArbitraryObuTypeToObuType, arbitrary_obu_type,
-                   output_obu_type)
-           .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown arbitrary_obu_type= ", arbitrary_obu_type));
-  }
-  return absl::OkStatus();
+  return CopyFromMap(*kArbitraryObuTypeToObuType, arbitrary_obu_type,
+                     "Internal version of proto `ArbitraryObuType`",
+                     output_obu_type);
 }
 }  // namespace
 

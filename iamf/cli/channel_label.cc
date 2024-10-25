@@ -13,7 +13,6 @@
 
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -60,12 +59,8 @@ LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
           {kLayoutBinaural, {kL2, kR2}},
       });
 
-  auto it = kSoundSystemToLoudspeakerLayout->find(loudspeaker_layout);
-  if (it == kSoundSystemToLoudspeakerLayout->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Channel order not found for layout= ", loudspeaker_layout));
-  }
-  return it->second;
+  return LookupInMap(*kSoundSystemToLoudspeakerLayout, loudspeaker_layout,
+                     "`ChannelLabel::Label` for `LoudspeakerLayout`");
 }
 
 void SetLabelsToOmittedExceptFor(
@@ -180,7 +175,7 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
     absl::string_view label) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<
-      absl::flat_hash_map<std::string, ChannelLabel::Label>>
+      absl::flat_hash_map<absl::string_view, ChannelLabel::Label>>
       kStringToChannelLabel({
           {"Omitted", kOmitted},
           {"M", kMono},
@@ -265,12 +260,8 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
           {"A24", kA24},
       });
 
-  auto it = kStringToChannelLabel->find(label);
-  if (it == kStringToChannelLabel->end()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown string-based label= ", label));
-  }
-  return it->second;
+  return LookupInMap(*kStringToChannelLabel, label,
+                     "`Channel::Label` for string-based label");
 }
 
 absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
@@ -607,13 +598,8 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::GetDemixedLabel(
                                    {kR7, kDemixedR7},
                                    {kLrs7, kDemixedLrs7},
                                    {kRrs7, kDemixedRrs7}});
-
-  auto it = kChannelLabelToDemixedLabel->find(label);
-  if (it == kChannelLabelToDemixedLabel->end()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Demixed label is not known or allowed for label= ", label));
-  }
-  return it->second;
+  return LookupInMap(*kChannelLabelToDemixedLabel, label,
+                     "Demixed label for `ChannelLabel::Label`");
 }
 
 absl::StatusOr<std::vector<ChannelLabel::Label>>

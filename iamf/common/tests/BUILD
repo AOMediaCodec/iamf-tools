@@ -19,6 +19,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:obu_util",
         "//iamf/common:write_bit_buffer",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings:string_view",

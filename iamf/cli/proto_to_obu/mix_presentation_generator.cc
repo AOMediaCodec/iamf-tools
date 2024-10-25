@@ -338,13 +338,9 @@ absl::Status MixPresentationGenerator::CopySoundSystem(
           {SOUND_SYSTEM_13_6_9_0, kSoundSystem13_6_9_0},
       });
 
-  if (!LookupInMap(*kInputSoundSystemToOutputSoundSystem, input_sound_system,
-                   output_sound_system)
-           .ok()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Unknown input_sound_system= ", input_sound_system));
-  }
-  return absl::OkStatus();
+  return CopyFromMap(
+      *kInputSoundSystemToOutputSoundSystem, input_sound_system,
+      "Internal version of proto `SoundSystem`= ", output_sound_system);
 }
 
 absl::Status MixPresentationGenerator::CopyInfoType(
@@ -384,14 +380,12 @@ absl::Status MixPresentationGenerator::CopyInfoType(
   uint8_t accumulated_info_type_bitmask = 0;
   for (int i = 0; i < input_loudness_info.info_type_bit_masks_size(); ++i) {
     LoudnessInfo::InfoTypeBitmask user_output_bit_mask;
-    if (!LookupInMap(
-             *kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask,
-             input_loudness_info.info_type_bit_masks(i), user_output_bit_mask)
-             .ok()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown info_type_bit_masks(", i,
-                       ")= ", input_loudness_info.info_type_bit_masks(i)));
-    }
+    RETURN_IF_NOT_OK(CopyFromMap(
+        *kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask,
+        input_loudness_info.info_type_bit_masks(i),
+        absl::StrCat("Internal version of proto `LoudnessInfoTypeBitMask(", i,
+                     ")= "),
+        user_output_bit_mask));
 
     // Track the accumulated bit mask.
     accumulated_info_type_bitmask |= static_cast<uint8_t>(user_output_bit_mask);

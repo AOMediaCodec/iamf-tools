@@ -20,6 +20,7 @@
 #include <optional>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -33,6 +34,10 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::absl_testing::StatusIs;
+
+constexpr absl::string_view kOmitContext = "";
 
 TEST(AddUint32CheckOverflow, SmallInput) {
   uint32_t result;
@@ -792,45 +797,81 @@ TEST(WritePcmSample, InvalidOver32Bits) {
             absl::StatusCode::kInvalidArgument);
 }
 
+TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  bool result;
+  EXPECT_THAT(CopyFromMap(kIntegerToIsPrime, 3, kOmitContext, result), IsOk());
+
+  EXPECT_TRUE(result);
+}
+
+TEST(CopyFromMap, ReturnsStatusNotFoundWhenLookupFails) {
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  bool undefined_result;
+  EXPECT_THAT(
+      CopyFromMap(kIntegerToIsPrime, -1, kOmitContext, undefined_result),
+      StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(LookupInMapStatusOr, OkIfLookupSucceeds) {
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  EXPECT_THAT(LookupInMap(kIntegerToIsPrime, 3, kOmitContext),
+              IsOkAndHolds(true));
+}
+
+TEST(LookupInMapStatusOr, ReturnsStatusNotFoundWhenLookupFails) {
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  EXPECT_THAT(LookupInMap(kIntegerToIsPrime, -1, kOmitContext),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
 TEST(ValidateEqual, OkIfArgsAreEqual) {
   const auto kLeftArg = 123;
   const auto kRightArg = 123;
-  EXPECT_THAT(ValidateEqual(kLeftArg, kRightArg, ""), IsOk());
+  EXPECT_THAT(ValidateEqual(kLeftArg, kRightArg, kOmitContext), IsOk());
 }
 
 TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
   const auto kLeftArg = 123;
   const auto kUnequalRightArg = 223;
-  EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, "").ok());
+  EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, kOmitContext).ok());
 }
 
 TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
   const auto kLeftArg = 123;
   const auto kRightArg = 124;
-  EXPECT_THAT(ValidateNotEqual(kLeftArg, kRightArg, ""), IsOk());
+  EXPECT_THAT(ValidateNotEqual(kLeftArg, kRightArg, kOmitContext), IsOk());
 }
 
 TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
   const auto kLeftArg = 123;
   const auto kEqualRightArg = 123;
-  EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, "").ok());
+  EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, kOmitContext).ok());
 }
 
 TEST(ValidateHasValue, OkIfArgHasValue) {
   constexpr std::optional<int> kArg = 123;
-  EXPECT_THAT(ValidateHasValue(kArg, ""), IsOk());
+  EXPECT_THAT(ValidateHasValue(kArg, kOmitContext), IsOk());
 }
 
 TEST(ValidateHasValue, NotOkIfArgDoesNotHaveValue) {
   constexpr std::optional<int> kArg = std::nullopt;
-  EXPECT_FALSE(ValidateHasValue(kArg, "").ok());
+  EXPECT_FALSE(ValidateHasValue(kArg, kOmitContext).ok());
 }
 
 TEST(ValidateUnique, OkIfArgsAreUnique) {
   const std::vector<int> kVectorWithUniqueValues = {1, 2, 3, 99};
 
   EXPECT_THAT(ValidateUnique(kVectorWithUniqueValues.begin(),
-                             kVectorWithUniqueValues.end(), ""),
+                             kVectorWithUniqueValues.end(), kOmitContext),
               IsOk());
 }
 
@@ -838,7 +879,7 @@ TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
   const std::vector<int> kVectorWithDuplicateValues = {1, 2, 3, 99, 1};
 
   EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
-                              kVectorWithDuplicateValues.end(), "")
+                              kVectorWithDuplicateValues.end(), kOmitContext)
                    .ok());
 }
 

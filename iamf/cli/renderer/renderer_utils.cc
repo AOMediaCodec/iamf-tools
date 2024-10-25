@@ -21,6 +21,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -147,12 +148,8 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
               {kSoundSystem13_6_9_0, "9.1.6"},
           });
 
-      auto it = kSoundSystemToOutputKey->find(sound_system);
-      if (it == kSoundSystemToOutputKey->end()) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Output key not found for sound_system= ", sound_system));
-      }
-      return it->second;
+      return LookupInMap(*kSoundSystemToOutputKey, sound_system,
+                         "Output key for `SoundSystem`");
     }
 
     case kLayoutTypeBinaural:

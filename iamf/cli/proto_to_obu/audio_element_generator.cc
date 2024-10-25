@@ -721,16 +721,10 @@ absl::Status CopyLoudspeakerLayout(
           {LOUDSPEAKER_LAYOUT_EXPANDED, kLayoutExpanded},
       });
 
-  if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
-                   input_channel_audio_layer_config.loudspeaker_layout(),
-                   output_loudspeaker_layout)
-           .ok()) {
-    return InvalidArgumentError(
-        StrCat("Unknown loudspeaker_layout= ",
-               input_channel_audio_layer_config.loudspeaker_layout()));
-  }
-
-  return absl::OkStatus();
+  return CopyFromMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+                     input_channel_audio_layer_config.loudspeaker_layout(),
+                     "Internal version of proto `LoudspeakerLayout`= ",
+                     output_loudspeaker_layout);
 }
 
 // Copies the `ExpandedLoudspeakerLayout` based on the input data.
@@ -760,15 +754,10 @@ absl::Status CopyExpandedLoudspeakerLayout(
           {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_6_CH, kExpandedLayoutTop6Ch},
       });
 
-  if (!LookupInMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
-                   input_expanded_loudspeaker_layout,
-                   output_expanded_loudspeaker_layout)
-           .ok()) {
-    return InvalidArgumentError(StrCat("Unknown expanded_loudspeaker_layout= ",
-                                       input_expanded_loudspeaker_layout));
-  }
-
-  return absl::OkStatus();
+  return CopyFromMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+                     input_expanded_loudspeaker_layout,
+                     "Internal version of proto `ExpandedLoudspeakerLayout`= ",
+                     output_expanded_loudspeaker_layout);
 }
 
 // Copies the `LoudspeakerLayout` and `ExpandedLoudspeakerLayout` based on the
