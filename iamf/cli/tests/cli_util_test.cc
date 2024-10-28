@@ -485,6 +485,16 @@ TEST(CopyDemixingInfoParameterData, Basic) {
   EXPECT_EQ(demixing_info_parameter_data.reserved, 0);
 }
 
+TEST(CopyDMixPMode, CopiesValue) {
+  constexpr auto kTestValue = DemixingInfoParameterData::kDMixPMode3;
+  constexpr auto kExpectedProtoValue = iamf_tools_cli_proto::DMIXP_MODE_3;
+
+  iamf_tools_cli_proto::DMixPMode output_dmixp_mode;
+  EXPECT_THAT(CopyDMixPMode(kTestValue, output_dmixp_mode), IsOk());
+
+  EXPECT_EQ(output_dmixp_mode, kExpectedProtoValue);
+}
+
 TEST(CopyObuHeader, Default) {
   iamf_tools_cli_proto::ObuHeaderMetadata obu_header_metadata;
   ObuHeader header_ = GetHeaderFromMetadata(obu_header_metadata);

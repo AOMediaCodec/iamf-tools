@@ -14,12 +14,10 @@
 #include <utility>
 #include <variant>
 
-#include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
@@ -93,28 +91,6 @@ AnimatedParameterDataInt16ToMetadata(
       ->mutable_bezier()
       ->set_control_point_relative_time(bezier.control_point_relative_time);
   return result;
-}
-
-// Copies the input `obu_dmixp_mode` to the output proto `dmixp_mode`.
-absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
-                           iamf_tools_cli_proto::DMixPMode& dmixp_mode) {
-  using enum DemixingInfoParameterData::DMixPMode;
-  using enum iamf_tools_cli_proto::DMixPMode;
-  static const absl::NoDestructor<absl::flat_hash_map<
-      DemixingInfoParameterData::DMixPMode, iamf_tools_cli_proto::DMixPMode>>
-      kObuDmixPModeToMetadataDMixPMode({
-          {kDMixPMode1, DMIXP_MODE_1},
-          {kDMixPMode2, DMIXP_MODE_2},
-          {kDMixPMode3, DMIXP_MODE_3},
-          {kDMixPModeReserved1, DMIXP_MODE_RESERVED_A},
-          {kDMixPMode1_n, DMIXP_MODE_1_N},
-          {kDMixPMode2_n, DMIXP_MODE_2_N},
-          {kDMixPMode3_n, DMIXP_MODE_3_N},
-          {kDMixPModeReserved2, DMIXP_MODE_RESERVED_B},
-      });
-
-  return CopyFromMap(*kObuDmixPModeToMetadataDMixPMode, obu_dmixp_mode,
-                     "Proto version of internal `DMixPMode`", dmixp_mode);
 }
 
 // Gets the proto representation of the input `mix_gain_parameter_data`.

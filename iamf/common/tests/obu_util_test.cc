@@ -11,6 +11,7 @@
  */
 #include "iamf/common/obu_util.h"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -18,6 +19,7 @@
 #include <ios>
 #include <limits>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -36,6 +38,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::testing::HasSubstr;
 
 constexpr absl::string_view kOmitContext = "";
 
@@ -817,6 +820,24 @@ TEST(CopyFromMap, ReturnsStatusNotFoundWhenLookupFails) {
       StatusIs(absl::StatusCode::kNotFound));
 }
 
+TEST(CopyFromMap, MessageContainsEmptyWhenMapIsEmpty) {
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+
+  bool undefined_result;
+  EXPECT_THAT(
+      CopyFromMap(kEmptyMap, 3, kOmitContext, undefined_result).message(),
+      HasSubstr("empty"));
+}
+
+TEST(CopyFromMap, MessageContainsContextOnError) {
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+  constexpr absl::string_view kContext = "User-specified context";
+
+  bool undefined_result;
+  EXPECT_THAT(CopyFromMap(kEmptyMap, 3, kContext, undefined_result).message(),
+              HasSubstr(kContext));
+}
+
 TEST(LookupInMapStatusOr, OkIfLookupSucceeds) {
   const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
       {1, false}, {2, true}, {3, true}, {4, false}};
@@ -831,6 +852,21 @@ TEST(LookupInMapStatusOr, ReturnsStatusNotFoundWhenLookupFails) {
 
   EXPECT_THAT(LookupInMap(kIntegerToIsPrime, -1, kOmitContext),
               StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(LookupInMapStatusOr, MessageContainsContextOnError) {
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+  constexpr absl::string_view kContext = "User-specified context";
+
+  EXPECT_THAT(LookupInMap(kEmptyMap, 3, kContext).status().message(),
+              HasSubstr(kContext));
+}
+
+TEST(LookupInMapStatusOr, MessageContainsEmptyWhenMapIsEmpty) {
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+
+  EXPECT_THAT(LookupInMap(kEmptyMap, 3, kOmitContext).status().message(),
+              HasSubstr("empty"));
 }
 
 TEST(ValidateEqual, OkIfArgsAreEqual) {
@@ -881,6 +917,88 @@ TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
   EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
                               kVectorWithDuplicateValues.end(), kOmitContext)
                    .ok());
+}
+
+TEST(BuildStaticMapFromPairs, SucceedsOnEmptyContainer) {
+  constexpr std::array<std::pair<int, float>, 0> kPairs;
+  static const auto kMap = BuildStaticMapFromPairs(kPairs);
+
+  EXPECT_TRUE(kMap->empty());
+}
+
+TEST(BuildStaticMapFromPairs, BuildsMap) {
+  constexpr std::array<std::pair<int, float>, 3> kPairs(
+      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}});
+  const absl::flat_hash_map<int, float> kExpectedMap = {
+      {1, 2.0f}, {3, 6.0f}, {5, 10.f}};
+
+  static const auto kMap = BuildStaticMapFromPairs(kPairs);
+
+  EXPECT_EQ(*kMap, kExpectedMap);
+}
+
+TEST(BuildStaticMapFromPairs, BuildsMapWithDuplicateValues) {
+  constexpr float kDuplicateValue = 2.0;
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond(
+      {{1, kDuplicateValue}, {3, kDuplicateValue}, {5, 10.f}});
+  const absl::flat_hash_map<int, float> kExpectedMap = {
+      {1, kDuplicateValue}, {3, kDuplicateValue}, {5, 10.f}};
+
+  static const auto kMap = BuildStaticMapFromPairs(kPairsWithDuplicateSecond);
+
+  EXPECT_EQ(*kMap, kExpectedMap);
+}
+
+TEST(BuildStaticMapFromPairs, ReturnsEmptyMapOnDuplicateKey) {
+  constexpr int kDuplicateKey = 1;
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst(
+      {{kDuplicateKey, 2.0f}, {kDuplicateKey, 6.0f}, {5, 10.f}});
+
+  static const auto kMap = BuildStaticMapFromPairs(kPairsWithDuplicateFirst);
+
+  EXPECT_TRUE(kMap->empty());
+}
+
+TEST(BuildStaticMapFromInvertedPairs, SucceedsOnEmptyContainer) {
+  constexpr std::array<std::pair<int, float>, 0> kPairs;
+  static const auto kMap = BuildStaticMapFromInvertedPairs(kPairs);
+
+  EXPECT_TRUE(kMap->empty());
+}
+
+TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMap) {
+  constexpr std::array<std::pair<int, float>, 3> kPairs(
+      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}});
+  const absl::flat_hash_map<float, int> kExpectedInvertedMap = {
+      {2.0f, 1}, {6.0f, 3}, {10.f, 5}};
+
+  static const auto kMap = BuildStaticMapFromInvertedPairs(kPairs);
+
+  EXPECT_EQ(*kMap, kExpectedInvertedMap);
+}
+
+TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMapWithDuplicateValues) {
+  constexpr int kDuplicateValue = 1;
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst(
+      {{kDuplicateValue, 2.0f}, {kDuplicateValue, 6.0f}, {5, 10.f}});
+  const absl::flat_hash_map<float, int> kExpectedInvertedMap = {
+      {2.0f, kDuplicateValue}, {6.0f, kDuplicateValue}, {10.f, 5}};
+
+  static const auto kMap =
+      BuildStaticMapFromInvertedPairs(kPairsWithDuplicateFirst);
+
+  EXPECT_EQ(*kMap, kExpectedInvertedMap);
+}
+
+TEST(BuildStaticMapFromInvertedPairs, ReturnsEmptyMapOnDuplicateKey) {
+  constexpr int kDuplicateKey = 1.0f;
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond(
+      {{1, kDuplicateKey}, {3, kDuplicateKey}, {5, 10.f}});
+
+  static const auto kMap =
+      BuildStaticMapFromInvertedPairs(kPairsWithDuplicateSecond);
+
+  EXPECT_TRUE(kMap->empty());
 }
 
 TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {

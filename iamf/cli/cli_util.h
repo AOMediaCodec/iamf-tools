@@ -27,6 +27,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -66,6 +67,15 @@ absl::Status CopyDemixingInfoParameterData(
     const iamf_tools_cli_proto::DemixingInfoParameterData&
         input_demixing_info_parameter_data,
     DemixingInfoParameterData& obu_demixing_param_data);
+
+/*!\brief Copies `DMixPMode` to the output protocol buffer.
+ *
+ * \param obu_dmixp_mode Input `DMixPMode`.
+ * \param dmixp_mode Reference to output protocol buffer.
+ * \return `absl::OkStatus()` on success. A specific status on failure.
+ */
+absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
+                           iamf_tools_cli_proto::DMixPMode& dmixp_mode);
 
 /*!\brief Checks whether temporal delimiters OBUs should be inserted.
  *

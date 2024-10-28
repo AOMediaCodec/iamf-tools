@@ -12,11 +12,13 @@
 #include "iamf/cli/cli_util.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <list>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -46,6 +48,21 @@
 namespace iamf_tools {
 
 namespace {
+
+static constexpr auto kProtoAndInternalDMixPModes = []() {
+  using enum DemixingInfoParameterData::DMixPMode;
+  using enum iamf_tools_cli_proto::DMixPMode;
+  return std::to_array<std::pair<iamf_tools_cli_proto::DMixPMode,
+                                 DemixingInfoParameterData::DMixPMode>>(
+      {{DMIXP_MODE_1, kDMixPMode1},
+       {DMIXP_MODE_2, kDMixPMode2},
+       {DMIXP_MODE_3, kDMixPMode3},
+       {DMIXP_MODE_RESERVED_A, kDMixPModeReserved1},
+       {DMIXP_MODE_1_N, kDMixPMode1_n},
+       {DMIXP_MODE_2_N, kDMixPMode2_n},
+       {DMIXP_MODE_3_N, kDMixPMode3_n},
+       {DMIXP_MODE_RESERVED_B, kDMixPModeReserved2}});
+}();
 
 absl::Status GetPerIdMetadata(
     const DecodedUleb128 parameter_id,
@@ -157,43 +174,27 @@ absl::Status CopyDemixingInfoParameterData(
     const iamf_tools_cli_proto::DemixingInfoParameterData&
         input_demixing_info_parameter_data,
     DemixingInfoParameterData& obu_demixing_param_data) {
-  auto& dmixp_mode = obu_demixing_param_data.dmixp_mode;
-  switch (input_demixing_info_parameter_data.dmixp_mode()) {
-    using enum iamf_tools_cli_proto::DMixPMode;
-    using enum DemixingInfoParameterData::DMixPMode;
-    case DMIXP_MODE_1:
-      dmixp_mode = kDMixPMode1;
-      break;
-    case DMIXP_MODE_2:
-      dmixp_mode = kDMixPMode2;
-      break;
-    case DMIXP_MODE_3:
-      dmixp_mode = kDMixPMode3;
-      break;
-    case DMIXP_MODE_RESERVED_A:
-      dmixp_mode = kDMixPModeReserved1;
-      break;
-    case DMIXP_MODE_1_N:
-      dmixp_mode = kDMixPMode1_n;
-      break;
-    case DMIXP_MODE_2_N:
-      dmixp_mode = kDMixPMode2_n;
-      break;
-    case DMIXP_MODE_3_N:
-      dmixp_mode = kDMixPMode3_n;
-      break;
-    case DMIXP_MODE_RESERVED_B:
-      dmixp_mode = kDMixPModeReserved2;
-      break;
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown dmixp_mode = ",
-                       input_demixing_info_parameter_data.dmixp_mode()));
-  }
+  static const auto kProtoToInternalDMixPMode =
+      BuildStaticMapFromPairs(kProtoAndInternalDMixPModes);
+
+  RETURN_IF_NOT_OK(CopyFromMap(*kProtoToInternalDMixPMode,
+                               input_demixing_info_parameter_data.dmixp_mode(),
+                               "Internal version of proto `dmixp_mode`",
+                               obu_demixing_param_data.dmixp_mode));
+
   RETURN_IF_NOT_OK(Uint32ToUint8(input_demixing_info_parameter_data.reserved(),
                                  obu_demixing_param_data.reserved));
 
   return absl::OkStatus();
+}
+
+absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
+                           iamf_tools_cli_proto::DMixPMode& dmixp_mode) {
+  static const auto kInternalToProtoDMixPMode =
+      BuildStaticMapFromInvertedPairs(kProtoAndInternalDMixPModes);
+
+  return CopyFromMap(*kInternalToProtoDMixPMode, obu_dmixp_mode,
+                     "Proto version of internal `DMixPMode`", dmixp_mode);
 }
 
 // Returns `true` if the profile fully supports temporal delimiter OBUs.
