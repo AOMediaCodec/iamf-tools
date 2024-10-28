@@ -1119,9 +1119,10 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
     const InternalSampleType expected_sample = all_samples[index][kFirstSample];
     // The timestamp should count up by the number of samples in each frame.
     EXPECT_EQ(audio_frame.start_timestamp, kFrameSize * index);
-    EXPECT_DOUBLE_EQ(audio_frame.raw_samples[kFirstSample][kLeftChannel],
+    ASSERT_TRUE(audio_frame.pcm_samples.has_value());
+    EXPECT_DOUBLE_EQ((*audio_frame.pcm_samples)[kFirstSample][kLeftChannel],
                      expected_sample);
-    EXPECT_DOUBLE_EQ(audio_frame.raw_samples[kFirstSample][kRightChannel],
+    EXPECT_DOUBLE_EQ((*audio_frame.pcm_samples)[kFirstSample][kRightChannel],
                      expected_sample);
     index++;
   }

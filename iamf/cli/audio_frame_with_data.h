@@ -14,6 +14,7 @@
 #define CLI_AUDIO_FRAME_WITH_DATA_H_
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "iamf/cli/audio_element_with_data.h"
@@ -32,7 +33,9 @@ struct AudioFrameWithData {
   int32_t end_timestamp;  // End time of this frame. Measured in ticks from the
                           // Global Timing Module.
 
-  std::vector<std::vector<int32_t>> raw_samples;
+  // The PCM samples to encode this audio frame, if known. This is useful to
+  // calculate recon gain.
+  std::optional<std::vector<std::vector<int32_t>>> pcm_samples;
 
   // Down-mixing parameters used to create this audio frame.
   DownMixingParams down_mixing_params;

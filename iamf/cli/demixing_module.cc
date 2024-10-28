@@ -601,14 +601,17 @@ uint32_t GetSubstreamId(const DecodedAudioFrame& audio_frame_with_data) {
   return audio_frame_with_data.substream_id;
 }
 
-const std::vector<std::vector<int32_t>>& GetSamples(
+const std::vector<std::vector<int32_t>>* GetSamples(
     const AudioFrameWithData& audio_frame_with_data) {
-  return audio_frame_with_data.raw_samples;
+  if (!audio_frame_with_data.pcm_samples.has_value()) {
+    return nullptr;
+  }
+  return &audio_frame_with_data.pcm_samples.value();
 }
 
-const std::vector<std::vector<int32_t>>& GetSamples(
+const std::vector<std::vector<int32_t>>* GetSamples(
     const DecodedAudioFrame& audio_frame_with_data) {
-  return audio_frame_with_data.decoded_samples;
+  return &audio_frame_with_data.decoded_samples;
 }
 
 // NOOP function if the frame is not a DecodedAudioFrame.
@@ -676,8 +679,12 @@ absl::Status StoreSamplesForAudioElementId(
     const auto& labels = substream_id_labels_iter->second;
     int channel_index = 0;
     for (const auto& label : labels) {
-      const auto& input_samples = GetSamples(audio_frame);
-      const size_t num_ticks = input_samples.size();
+      const auto* input_samples = GetSamples(audio_frame);
+      if (input_samples == nullptr) {
+        return absl::InvalidArgumentError(
+            "Input samples are not available for down-mixing.");
+      }
+      const size_t num_ticks = input_samples->size();
 
       ConfigureLabeledFrame(audio_frame, labeled_frame);
 
@@ -685,7 +692,7 @@ absl::Status StoreSamplesForAudioElementId(
       samples.resize(num_ticks, 0);
       for (int t = 0; t < samples.size(); t++) {
         samples[t] =
-            static_cast<InternalSampleType>(input_samples[t][channel_index]);
+            static_cast<InternalSampleType>((*input_samples)[t][channel_index]);
       }
       channel_index++;
     }

@@ -503,7 +503,7 @@ absl::Status EncodeFramesForAudioElement(
                   substream_id, {}),
               .start_timestamp = start_timestamp,
               .end_timestamp = end_timestamp,
-              .raw_samples = samples_obu,
+              .pcm_samples = samples_obu,
               .down_mixing_params = down_mixing_params,
               .audio_element_with_data = &audio_element_with_data});
 

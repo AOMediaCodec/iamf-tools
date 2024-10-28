@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <iterator>
 #include <list>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -940,7 +941,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
  public:
   void ConfigureLosslessAudioFrameAndDecodedAudioFrame(
       const std::list<ChannelLabel::Label>& labels,
-      const std::vector<std::vector<int32_t>>& raw_samples,
+      const std::vector<std::vector<int32_t>>& pcm_samples,
       DownMixingParams down_mixing_params = {
           .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25}) {
     // The substream ID itself does not matter. Generate a unique one.
@@ -953,7 +954,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .obu = AudioFrameObu(ObuHeader(), substream_id, {}),
         .start_timestamp = kStartTimestamp,
         .end_timestamp = kEndTimestamp,
-        .raw_samples = raw_samples,
+        .pcm_samples = pcm_samples,
         .down_mixing_params = down_mixing_params,
     });
 
@@ -963,7 +964,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
                           .end_timestamp = kEndTimestamp,
                           .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
                           .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                          .decoded_samples = raw_samples,
+                          .decoded_samples = pcm_samples,
                           .down_mixing_params = down_mixing_params});
 
     auto& expected_label_to_samples =
@@ -975,8 +976,8 @@ class DemixingModuleTest : public DemixingModuleTestBase,
     for (int channel = 0; channel < labels.size(); ++channel) {
       auto& samples_for_channel = expected_label_to_samples[*labels_iter];
 
-      samples_for_channel.reserve(raw_samples.size());
-      for (auto tick : raw_samples) {
+      samples_for_channel.reserve(pcm_samples.size());
+      for (auto tick : pcm_samples) {
         samples_for_channel.push_back(tick[channel]);
       }
       labels_iter++;
@@ -1075,6 +1076,24 @@ TEST_F(DemixingModuleTest, S1ToS2Demixer) {
   ConfiguredExpectedDemixingChannelFrame(kDemixedR2, {500, 1000});
 
   TestDemixing(1);
+}
+
+TEST_F(DemixingModuleTest,
+       DemixAudioSamplesReturnsErrorIfAudioFrameIsMissingPcmSamples) {
+  ConfigureAudioFrameMetadata("L2");
+  ConfigureAudioFrameMetadata("R2");
+  ConfigureLosslessAudioFrameAndDecodedAudioFrame({kMono}, {{750}, {1500}});
+  ConfigureLosslessAudioFrameAndDecodedAudioFrame({kL2}, {{1000}, {2000}});
+  IdLabeledFrameMap unused_id_to_labeled_frame, id_to_labeled_decoded_frame;
+  TestCreateDemixingModule(1);
+  // Destroy the raw samples.
+  audio_frames_.back().pcm_samples = std::nullopt;
+
+  EXPECT_FALSE(demixing_module_
+                   .DemixAudioSamples(audio_frames_, decoded_audio_frames_,
+                                      unused_id_to_labeled_frame,
+                                      id_to_labeled_decoded_frame)
+                   .ok());
 }
 
 TEST_F(DemixingModuleTest, S2ToS3Demixer) {

@@ -46,7 +46,7 @@ class EncoderTestBase {
     EXPECT_THAT(encoder_->Initialize(kValidateCodecDelay), IsOk());
   }
 
-  void EncodeAudioFrame(const std::vector<std::vector<int32_t>>& raw_samples,
+  void EncodeAudioFrame(const std::vector<std::vector<int32_t>>& pcm_samples,
                         bool expected_encode_frame_is_ok = true) {
     // `EncodeAudioFrame` only passes on most of the data in the input
     // `AudioFrameWithData`. Simulate the timestamp to ensure frames are
@@ -69,7 +69,7 @@ class EncoderTestBase {
 
     // Encode the frame as requested.
     EXPECT_EQ(encoder_
-                  ->EncodeAudioFrame(input_sample_size_, raw_samples,
+                  ->EncodeAudioFrame(input_sample_size_, pcm_samples,
                                      std::move(partial_audio_frame_with_data))
                   .ok(),
               expected_encode_frame_is_ok);

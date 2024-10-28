@@ -66,6 +66,8 @@ constexpr absl::string_view kOmitOutputIamfFile = "";
 constexpr bool kIncludeTemporalDelimiters = true;
 constexpr bool kDoNotIncludeTemporalDelimiters = false;
 
+constexpr std::nullopt_t kOriginalSamplesAreIrrelevant = std::nullopt;
+
 // TODO(b/302470464): Add test coverage `ObuSequencer::WriteTemporalUnit()` and
 //                    `ObuSequencer::PickAndPlace()` configured with minimal and
 //                    fixed-size leb generators.
@@ -81,7 +83,7 @@ void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
       .obu = AudioFrameObu(ObuHeader(), substream_id, {}),
       .start_timestamp = start_timestamp,
       .end_timestamp = end_timestamp,
-      .raw_samples = {},
+      .pcm_samples = kOriginalSamplesAreIrrelevant,
       .down_mixing_params = {.in_bitstream = false},
       .audio_element_with_data = &audio_elements.at(audio_element_id)});
 }
