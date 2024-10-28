@@ -11,8 +11,10 @@
  */
 #include "iamf/cli/channel_label.h"
 
+#include <array>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -31,6 +33,46 @@
 namespace iamf_tools {
 
 namespace {
+
+using enum iamf_tools_cli_proto::ChannelLabel;
+using enum ChannelLabel::Label;
+
+constexpr auto kProtoAndInternalLabel = std::to_array<
+    std::pair<iamf_tools_cli_proto::ChannelLabel, ChannelLabel::Label>>({
+    {CHANNEL_LABEL_MONO, kMono},     {CHANNEL_LABEL_L_2, kL2},
+    {CHANNEL_LABEL_R_2, kR2},        {CHANNEL_LABEL_CENTRE, kCentre},
+    {CHANNEL_LABEL_LFE, kLFE},       {CHANNEL_LABEL_L_3, kL3},
+    {CHANNEL_LABEL_R_3, kR3},        {CHANNEL_LABEL_LTF_3, kLtf3},
+    {CHANNEL_LABEL_RTF_3, kRtf3},    {CHANNEL_LABEL_L_5, kL5},
+    {CHANNEL_LABEL_R_5, kR5},        {CHANNEL_LABEL_LS_5, kLs5},
+    {CHANNEL_LABEL_RS_5, kRs5},      {CHANNEL_LABEL_LTF_2, kLtf2},
+    {CHANNEL_LABEL_RTF_2, kRtf2},    {CHANNEL_LABEL_LTF_4, kLtf4},
+    {CHANNEL_LABEL_RTF_4, kRtf4},    {CHANNEL_LABEL_LTB_4, kLtb4},
+    {CHANNEL_LABEL_RTB_4, kRtb4},    {CHANNEL_LABEL_L_7, kL7},
+    {CHANNEL_LABEL_R_7, kR7},        {CHANNEL_LABEL_LSS_7, kLss7},
+    {CHANNEL_LABEL_RSS_7, kRss7},    {CHANNEL_LABEL_LRS_7, kLrs7},
+    {CHANNEL_LABEL_RRS_7, kRrs7},    {CHANNEL_LABEL_FLC, kFLc},
+    {CHANNEL_LABEL_FC, kFC},         {CHANNEL_LABEL_FRC, kFRc},
+    {CHANNEL_LABEL_FL, kFL},         {CHANNEL_LABEL_FR, kFR},
+    {CHANNEL_LABEL_SI_L, kSiL},      {CHANNEL_LABEL_SI_R, kSiR},
+    {CHANNEL_LABEL_BL, kBL},         {CHANNEL_LABEL_BR, kBR},
+    {CHANNEL_LABEL_TP_FL, kTpFL},    {CHANNEL_LABEL_TP_FR, kTpFR},
+    {CHANNEL_LABEL_TP_SI_L, kTpSiL}, {CHANNEL_LABEL_TP_SI_R, kTpSiR},
+    {CHANNEL_LABEL_TP_BL, kTpBL},    {CHANNEL_LABEL_TP_BR, kTpBR},
+    {CHANNEL_LABEL_A_0, kA0},        {CHANNEL_LABEL_A_1, kA1},
+    {CHANNEL_LABEL_A_2, kA2},        {CHANNEL_LABEL_A_3, kA3},
+    {CHANNEL_LABEL_A_4, kA4},        {CHANNEL_LABEL_A_5, kA5},
+    {CHANNEL_LABEL_A_6, kA6},        {CHANNEL_LABEL_A_7, kA7},
+    {CHANNEL_LABEL_A_8, kA8},        {CHANNEL_LABEL_A_9, kA9},
+    {CHANNEL_LABEL_A_10, kA10},      {CHANNEL_LABEL_A_11, kA11},
+    {CHANNEL_LABEL_A_12, kA12},      {CHANNEL_LABEL_A_13, kA13},
+    {CHANNEL_LABEL_A_14, kA14},      {CHANNEL_LABEL_A_15, kA15},
+    {CHANNEL_LABEL_A_16, kA16},      {CHANNEL_LABEL_A_17, kA17},
+    {CHANNEL_LABEL_A_18, kA18},      {CHANNEL_LABEL_A_19, kA19},
+    {CHANNEL_LABEL_A_20, kA20},      {CHANNEL_LABEL_A_21, kA21},
+    {CHANNEL_LABEL_A_22, kA22},      {CHANNEL_LABEL_A_23, kA23},
+    {CHANNEL_LABEL_A_24, kA24},
+});
 
 absl::StatusOr<std::vector<ChannelLabel::Label>>
 LookupEarChannelOrderFromNonExpandedLoudspeakerLayout(
@@ -265,149 +307,24 @@ absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
 }
 
 absl::StatusOr<ChannelLabel::Label> ChannelLabel::ProtoToLabel(
-    iamf_tools_cli_proto::ChannelLabel label) {
-  using enum iamf_tools_cli_proto::ChannelLabel;
-  using enum ChannelLabel::Label;
-  switch (label) {
-    case CHANNEL_LABEL_INVALID:
-      return absl::InvalidArgumentError("Invalid channel label.");
-    case CHANNEL_LABEL_MONO:
-      return kMono;
-    case CHANNEL_LABEL_L_2:
-      return kL2;
-    case CHANNEL_LABEL_R_2:
-      return kR2;
-    case CHANNEL_LABEL_CENTRE:
-      return kCentre;
-    case CHANNEL_LABEL_LFE:
-      return kLFE;
-    case CHANNEL_LABEL_L_3:
-      return kL3;
-    case CHANNEL_LABEL_R_3:
-      return kR3;
-    case CHANNEL_LABEL_LTF_3:
-      return kLtf3;
-    case CHANNEL_LABEL_RTF_3:
-      return kRtf3;
-    case CHANNEL_LABEL_L_5:
-      return kL5;
-    case CHANNEL_LABEL_R_5:
-      return kR5;
-    case CHANNEL_LABEL_LS_5:
-      return kLs5;
-    case CHANNEL_LABEL_RS_5:
-      return kRs5;
-    case CHANNEL_LABEL_LTF_2:
-      return kLtf2;
-    case CHANNEL_LABEL_RTF_2:
-      return kRtf2;
-    case CHANNEL_LABEL_LTF_4:
-      return kLtf4;
-    case CHANNEL_LABEL_RTF_4:
-      return kRtf4;
-    case CHANNEL_LABEL_LTB_4:
-      return kLtb4;
-    case CHANNEL_LABEL_RTB_4:
-      return kRtb4;
-    case CHANNEL_LABEL_L_7:
-      return kL7;
-    case CHANNEL_LABEL_R_7:
-      return kR7;
-    case CHANNEL_LABEL_LSS_7:
-      return kLss7;
-    case CHANNEL_LABEL_RSS_7:
-      return kRss7;
-    case CHANNEL_LABEL_LRS_7:
-      return kLrs7;
-    case CHANNEL_LABEL_RRS_7:
-      return kRrs7;
-    case CHANNEL_LABEL_FLC:
-      return kFLc;
-    case CHANNEL_LABEL_FC:
-      return kFC;
-    case CHANNEL_LABEL_FRC:
-      return kFRc;
-    case CHANNEL_LABEL_FL:
-      return kFL;
-    case CHANNEL_LABEL_FR:
-      return kFR;
-    case CHANNEL_LABEL_SI_L:
-      return kSiL;
-    case CHANNEL_LABEL_SI_R:
-      return kSiR;
-    case CHANNEL_LABEL_BL:
-      return kBL;
-    case CHANNEL_LABEL_BR:
-      return kBR;
-    case CHANNEL_LABEL_TP_FL:
-      return kTpFL;
-    case CHANNEL_LABEL_TP_FR:
-      return kTpFR;
-    case CHANNEL_LABEL_TP_SI_L:
-      return kTpSiL;
-    case CHANNEL_LABEL_TP_SI_R:
-      return kTpSiR;
-    case CHANNEL_LABEL_TP_BL:
-      return kTpBL;
-    case CHANNEL_LABEL_TP_BR:
-      return kTpBR;
-    case CHANNEL_LABEL_A_0:
-      return kA0;
-    case CHANNEL_LABEL_A_1:
-      return kA1;
-    case CHANNEL_LABEL_A_2:
-      return kA2;
-    case CHANNEL_LABEL_A_3:
-      return kA3;
-    case CHANNEL_LABEL_A_4:
-      return kA4;
-    case CHANNEL_LABEL_A_5:
-      return kA5;
-    case CHANNEL_LABEL_A_6:
-      return kA6;
-    case CHANNEL_LABEL_A_7:
-      return kA7;
-    case CHANNEL_LABEL_A_8:
-      return kA8;
-    case CHANNEL_LABEL_A_9:
-      return kA9;
-    case CHANNEL_LABEL_A_10:
-      return kA10;
-    case CHANNEL_LABEL_A_11:
-      return kA11;
-    case CHANNEL_LABEL_A_12:
-      return kA12;
-    case CHANNEL_LABEL_A_13:
-      return kA13;
-    case CHANNEL_LABEL_A_14:
-      return kA14;
-    case CHANNEL_LABEL_A_15:
-      return kA15;
-    case CHANNEL_LABEL_A_16:
-      return kA16;
-    case CHANNEL_LABEL_A_17:
-      return kA17;
-    case CHANNEL_LABEL_A_18:
-      return kA18;
-    case CHANNEL_LABEL_A_19:
-      return kA19;
-    case CHANNEL_LABEL_A_20:
-      return kA20;
-    case CHANNEL_LABEL_A_21:
-      return kA21;
-    case CHANNEL_LABEL_A_22:
-      return kA22;
-    case CHANNEL_LABEL_A_23:
-      return kA23;
-    case CHANNEL_LABEL_A_24:
-      return kA24;
-  }
+    iamf_tools_cli_proto::ChannelLabel proto_label) {
+  static const auto kProtoToLabel =
+      BuildStaticMapFromPairs(kProtoAndInternalLabel);
 
-  // The above switch statement is exhaustive.
-  LOG(FATAL) << "Enum out of range.";
+  return LookupInMap(*kProtoToLabel, proto_label,
+                     "Internal version of proto `ChannelLabel`");
 }
 
-std::string ChannelLabel::LabelToString(Label label) {
+absl::StatusOr<iamf_tools_cli_proto::ChannelLabel> ChannelLabel::LabelToProto(
+    ChannelLabel::Label label) {
+  static const auto kLabelToProto =
+      BuildStaticMapFromInvertedPairs(kProtoAndInternalLabel);
+
+  return LookupInMap(*kLabelToProto, label,
+                     "Proto version of internal `ChannelLabel`");
+}
+
+std::string ChannelLabel::LabelToStringForDebugging(Label label) {
   using enum ChannelLabel::Label;
   switch (label) {
     case kOmitted:

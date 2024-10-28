@@ -121,11 +121,13 @@ TEST(StringToLabel, InvalidForFourteenthOrderAmbisonicsInput) {
 }
 
 using LabelTestCase = ::testing::TestWithParam<ChannelLabel::Label>;
-TEST_P(LabelTestCase, StringToLabelAndLabelToStringAreSymmetric) {
+TEST_P(LabelTestCase, StringToLabelAndLabelToStringForDebuggingAreSymmetric) {
   const ChannelLabel::Label label = GetParam();
-  const std::string label_string = ChannelLabel::LabelToString(label);
+  const std::string label_string_for_debugging =
+      ChannelLabel::LabelToStringForDebugging(label);
 
-  EXPECT_THAT(ChannelLabel::StringToLabel(label_string), IsOkAndHolds(label));
+  EXPECT_THAT(ChannelLabel::StringToLabel(label_string_for_debugging),
+              IsOkAndHolds(label));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -160,6 +162,58 @@ INSTANTIATE_TEST_SUITE_P(
          kA0, kA1, kA2, kA3, kA4, kA5, kA6, kA7, kA8, kA9, kA10, kA11, kA12,
          kA13, kA14, kA15, kA16, kA17, kA18, kA19, kA20, kA21, kA22, kA23,
          kA24}));
+
+using ProtoLabelTestCase =
+    ::testing::TestWithParam<iamf_tools_cli_proto::ChannelLabel>;
+TEST_P(ProtoLabelTestCase, ProtoToLabelAndLabelToProtoAreSymmetric) {
+  const iamf_tools_cli_proto::ChannelLabel proto_label = GetParam();
+  const auto channel_label = ChannelLabel::ProtoToLabel(proto_label);
+  EXPECT_THAT(channel_label, IsOk());
+
+  EXPECT_THAT(ChannelLabel::LabelToProto(*channel_label),
+              IsOkAndHolds(proto_label));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ProtoToLabelAndLabelToProtoAreSymmetric, ProtoLabelTestCase,
+    ::testing::ValuesIn<iamf_tools_cli_proto::ChannelLabel>(
+        {CHANNEL_LABEL_MONO,
+         // Stereo or binaural channels.
+         CHANNEL_LABEL_L_2, CHANNEL_LABEL_R_2,
+         // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
+         CHANNEL_LABEL_CENTRE,
+         // LFE channel common to several layouts
+         // (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
+         CHANNEL_LABEL_LFE,
+         // 3.1.2 surround channels.
+         CHANNEL_LABEL_L_3, CHANNEL_LABEL_R_3, CHANNEL_LABEL_LTF_3,
+         CHANNEL_LABEL_RTF_3,
+         // 5.x.y surround channels.
+         CHANNEL_LABEL_L_5, CHANNEL_LABEL_R_5, CHANNEL_LABEL_LS_5,
+         CHANNEL_LABEL_RS_5,
+         // Common channels between 5.1.2 and 7.1.2.
+         CHANNEL_LABEL_LTF_2, CHANNEL_LABEL_RTF_2,
+         // Common channels between 5.1.4 and 7.1.4.
+         CHANNEL_LABEL_LTF_4, CHANNEL_LABEL_RTF_4, CHANNEL_LABEL_LTB_4,
+         CHANNEL_LABEL_RTB_4,
+         // 7.x.y surround channels.
+         CHANNEL_LABEL_L_7, CHANNEL_LABEL_R_7, CHANNEL_LABEL_LSS_7,
+         CHANNEL_LABEL_RSS_7, CHANNEL_LABEL_LRS_7, CHANNEL_LABEL_RRS_7,
+         // 9.1.6 surround channels.
+         CHANNEL_LABEL_FLC, CHANNEL_LABEL_FC, CHANNEL_LABEL_FRC,
+         CHANNEL_LABEL_FL, CHANNEL_LABEL_FR, CHANNEL_LABEL_SI_L,
+         CHANNEL_LABEL_SI_R, CHANNEL_LABEL_BL, CHANNEL_LABEL_BR,
+         CHANNEL_LABEL_TP_FL, CHANNEL_LABEL_TP_FR, CHANNEL_LABEL_TP_SI_L,
+         CHANNEL_LABEL_TP_SI_R, CHANNEL_LABEL_TP_BL, CHANNEL_LABEL_TP_BR,
+         CHANNEL_LABEL_A_0, CHANNEL_LABEL_A_1, CHANNEL_LABEL_A_2,
+         CHANNEL_LABEL_A_3, CHANNEL_LABEL_A_4, CHANNEL_LABEL_A_5,
+         CHANNEL_LABEL_A_6, CHANNEL_LABEL_A_7, CHANNEL_LABEL_A_8,
+         CHANNEL_LABEL_A_9, CHANNEL_LABEL_A_10, CHANNEL_LABEL_A_11,
+         CHANNEL_LABEL_A_12, CHANNEL_LABEL_A_13, CHANNEL_LABEL_A_14,
+         CHANNEL_LABEL_A_15, CHANNEL_LABEL_A_16, CHANNEL_LABEL_A_17,
+         CHANNEL_LABEL_A_18, CHANNEL_LABEL_A_19, CHANNEL_LABEL_A_20,
+         CHANNEL_LABEL_A_21, CHANNEL_LABEL_A_22, CHANNEL_LABEL_A_23,
+         CHANNEL_LABEL_A_24}));
 
 template <class InputContainer, class OutputContainer>
 void ExpectConvertAndFillLabelsHasExpectedOutput(

@@ -136,7 +136,7 @@ class ChannelLabel {
 
   template <typename Sink>
   friend void AbslStringify(Sink& sink, Label e) {
-    sink.Append(LabelToString(e));
+    sink.Append(LabelToStringForDebugging(e));
   }
 
   /*!\brief Converts the input string to a `Label`.
@@ -148,15 +148,25 @@ class ChannelLabel {
    * \param label Label to convert.
    * \return Converted label on success. A specific status on failure.
    */
+  [[deprecated(
+      "Remove when `AudioFrameObuMetadata.channel_labels` is removed.")]]
   static absl::StatusOr<Label> StringToLabel(absl::string_view label);
 
   /*!\brief Converts the input proto enum to a `Label`.
    *
-   * \param label Label to convert.
+   * \param proto_label Label to convert.
    * \return Converted label on success. A specific status on failure.
    */
   static absl::StatusOr<Label> ProtoToLabel(
-      iamf_tools_cli_proto::ChannelLabel label);
+      iamf_tools_cli_proto::ChannelLabel proto_label);
+
+  /*!\brief Converts the input `ChanelLabel` to a proto enum
+   *
+   * \param label Label to convert.
+   * \return Converted label on success. A specific status on failure.
+   */
+  static absl::StatusOr<iamf_tools_cli_proto::ChannelLabel> LabelToProto(
+      Label label);
 
   /*!\brief Converts labels and fill the output container.
    *
@@ -241,12 +251,12 @@ class ChannelLabel {
     }
   }
 
-  /*!\brief Converts the `Label` to an output string.
+  /*!\brief Converts the `Label` to a debugging string.
    *
    * \param label Label to convert.
    * \return Converted label.
    */
-  static std::string LabelToString(Label label);
+  static std::string LabelToStringForDebugging(Label label);
 
   /*!\brief Gets the channel label for an ambisonics channel number.
    *

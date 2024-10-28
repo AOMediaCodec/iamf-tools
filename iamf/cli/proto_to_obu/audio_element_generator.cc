@@ -534,13 +534,13 @@ absl::Status AddSubstreamLabels(
        substream_index < substream_ids.size();) {
     const auto substream_id = substream_ids[substream_index++];
     auto& labels_for_substream_id = substream_id_to_labels[substream_id];
-    labels_for_substream_id.push_back(*iter++);
-    std::string concatenated_labels =
-        ChannelLabel::LabelToString(labels_for_substream_id.back());
-    labels_for_substream_id.push_back(*iter++);
-    absl::StrAppend(&concatenated_labels, "/", labels_for_substream_id.back());
+    const auto first_label = *iter++;
+    const auto second_label = *iter++;
+
+    labels_for_substream_id.push_back(first_label);
+    labels_for_substream_id.push_back(second_label);
     LOG(INFO) << "  substream_id_to_labels[" << substream_id
-              << "]: " << concatenated_labels;
+              << "]: " << first_label << "/" << second_label;
   }
 
   // Then add non-coupled substream labels.
