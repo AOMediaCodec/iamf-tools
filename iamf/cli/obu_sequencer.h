@@ -13,9 +13,7 @@
 #define CLI_OBU_SEQUENCER_H_
 
 #include <cstdint>
-#include <fstream>
 #include <list>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -150,11 +148,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
                    bool include_temporal_delimiters,
                    const LebGenerator& leb_generator)
       : ObuSequencerBase(leb_generator),
-        output_iamf_(
-            iamf_filename.empty()
-                ? std::nullopt
-                : std::make_optional<std::fstream>(
-                      iamf_filename, std::fstream::out | std::fstream::binary)),
+        iamf_filename_(iamf_filename),
         include_temporal_delimiters_(include_temporal_delimiters) {}
 
   ~ObuSequencerIamf() override = default;
@@ -180,7 +174,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
       const std::list<ArbitraryObu>& arbitrary_obus) override;
 
  private:
-  std::optional<std::fstream> output_iamf_;
+  const std::string iamf_filename_;
   const bool include_temporal_delimiters_;
 };
 

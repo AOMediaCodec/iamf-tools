@@ -51,7 +51,7 @@ namespace {
 using ::absl_testing::IsOk;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
-const uint32_t kSampleRate = 48000;
+constexpr uint32_t kSampleRate = 48000;
 constexpr DecodedUleb128 kFirstAudioElementId = 1;
 constexpr DecodedUleb128 kSecondAudioElementId = 2;
 constexpr DecodedUleb128 kFirstSubstreamId = 1;
@@ -59,7 +59,7 @@ constexpr DecodedUleb128 kSecondSubstreamId = 2;
 constexpr DecodedUleb128 kFirstMixPresentationId = 100;
 constexpr DecodedUleb128 kFirstDemixingParameterId = 998;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
-const uint32_t kCommonMixGainParameterRate = kSampleRate;
+constexpr uint32_t kCommonMixGainParameterRate = kSampleRate;
 
 constexpr absl::string_view kOmitOutputIamfFile = "";
 constexpr bool kIncludeTemporalDelimiters = true;
@@ -446,6 +446,21 @@ class ObuSequencerTest : public ::testing::Test {
     ASSERT_FALSE(mix_presentation_obus_.empty());
   }
 
+  void InitObusForOneFrameIaSequence() {
+    ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+                                    ProfileVersion::kIamfSimpleProfile,
+                                    ProfileVersion::kIamfSimpleProfile);
+    per_id_metadata_ =
+        CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
+    InitializeOneParameterBlockAndOneAudioFrame(
+        per_id_metadata_, parameter_blocks_, audio_frames_, codec_config_obus_,
+        audio_elements_);
+    AddMixPresentationObuWithAudioElementIds(
+        kFirstMixPresentationId, {audio_elements_.begin()->first},
+        kCommonMixGainParameterId, kCommonMixGainParameterRate,
+        mix_presentation_obus_);
+  }
+
   void ValidateWriteDescriptorObuSequence(
       const std::list<const ObuBase*>& expected_sequence) {
     WriteBitBuffer expected_wb(128);
@@ -469,6 +484,11 @@ class ObuSequencerTest : public ::testing::Test {
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements_;
   std::list<MixPresentationObu> mix_presentation_obus_;
+
+  PerIdParameterMetadata per_id_metadata_;
+  std::list<ParameterBlockWithData> parameter_blocks_;
+  std::list<AudioFrameWithData> audio_frames_;
+
   std::list<ArbitraryObu> arbitrary_obus_;
 };
 
@@ -737,6 +757,86 @@ TEST(ObuSequencerIamf, PickAndPlaceSucceedsWithEmptyOutputFile) {
                   /*audio_frames=*/{}, /*parameter_blocks=*/{},
                   /*arbitrary_obus=*/{}),
               IsOk());
+}
+
+TEST_F(ObuSequencerTest, PickAndPlaceCreatesFileWithOneFrameIaSequence) {
+  const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
+  InitObusForOneFrameIaSequence();
+  ObuSequencerIamf sequencer(kOutputIamfFilename,
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+
+  ASSERT_THAT(
+      sequencer.PickAndPlace(*ia_sequence_header_obu_, codec_config_obus_,
+                             audio_elements_, mix_presentation_obus_,
+                             audio_frames_, parameter_blocks_, arbitrary_obus_),
+      IsOk());
+
+  EXPECT_TRUE(std::filesystem::exists(kOutputIamfFilename));
+}
+
+TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenDescriptorsAreInvalid) {
+  constexpr uint32_t kInvalidIaCode = IASequenceHeaderObu::kIaCode + 1;
+  const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
+  InitObusForOneFrameIaSequence();
+  // Overwrite the IA Sequence Header with an invalid one.
+  ia_sequence_header_obu_ = IASequenceHeaderObu(
+      ObuHeader(), kInvalidIaCode, ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
+  ObuSequencerIamf sequencer(kOutputIamfFilename,
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+
+  ASSERT_FALSE(sequencer
+                   .PickAndPlace(*ia_sequence_header_obu_, codec_config_obus_,
+                                 audio_elements_, mix_presentation_obus_,
+                                 audio_frames_, parameter_blocks_,
+                                 arbitrary_obus_)
+                   .ok());
+
+  EXPECT_FALSE(std::filesystem::exists(kOutputIamfFilename));
+}
+
+TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenTemporalUnitsAreInvalid) {
+  constexpr bool kInvalidateTemporalUnit = true;
+  const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
+  InitObusForOneFrameIaSequence();
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterAudioFramesAtTick, 0,
+                   kInvalidateTemporalUnit));
+  ObuSequencerIamf sequencer(kOutputIamfFilename,
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+
+  ASSERT_FALSE(sequencer
+                   .PickAndPlace(*ia_sequence_header_obu_, codec_config_obus_,
+                                 audio_elements_, mix_presentation_obus_,
+                                 audio_frames_, parameter_blocks_,
+                                 arbitrary_obus_)
+                   .ok());
+
+  EXPECT_FALSE(std::filesystem::exists(kOutputIamfFilename));
+}
+
+TEST_F(ObuSequencerTest,
+       PickAndPlaceOnInvalidTemporalUnitFailsWhenOutputFileIsOmitted) {
+  constexpr bool kInvalidateTemporalUnit = true;
+  InitObusForOneFrameIaSequence();
+  arbitrary_obus_.emplace_back(
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterAudioFramesAtTick, 0,
+                   kInvalidateTemporalUnit));
+  ObuSequencerIamf sequencer(std::string(kOmitOutputIamfFile),
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+
+  ASSERT_FALSE(sequencer
+                   .PickAndPlace(*ia_sequence_header_obu_, codec_config_obus_,
+                                 audio_elements_, mix_presentation_obus_,
+                                 audio_frames_, parameter_blocks_,
+                                 arbitrary_obus_)
+                   .ok());
 }
 
 }  // namespace
