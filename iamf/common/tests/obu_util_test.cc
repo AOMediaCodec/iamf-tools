@@ -927,8 +927,8 @@ TEST(BuildStaticMapFromPairs, SucceedsOnEmptyContainer) {
 }
 
 TEST(BuildStaticMapFromPairs, BuildsMap) {
-  constexpr std::array<std::pair<int, float>, 3> kPairs(
-      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairs{
+      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}}};
   const absl::flat_hash_map<int, float> kExpectedMap = {
       {1, 2.0f}, {3, 6.0f}, {5, 10.f}};
 
@@ -939,8 +939,8 @@ TEST(BuildStaticMapFromPairs, BuildsMap) {
 
 TEST(BuildStaticMapFromPairs, BuildsMapWithDuplicateValues) {
   constexpr float kDuplicateValue = 2.0;
-  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond(
-      {{1, kDuplicateValue}, {3, kDuplicateValue}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond{
+      {{1, kDuplicateValue}, {3, kDuplicateValue}, {5, 10.f}}};
   const absl::flat_hash_map<int, float> kExpectedMap = {
       {1, kDuplicateValue}, {3, kDuplicateValue}, {5, 10.f}};
 
@@ -951,8 +951,8 @@ TEST(BuildStaticMapFromPairs, BuildsMapWithDuplicateValues) {
 
 TEST(BuildStaticMapFromPairs, ReturnsEmptyMapOnDuplicateKey) {
   constexpr int kDuplicateKey = 1;
-  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst(
-      {{kDuplicateKey, 2.0f}, {kDuplicateKey, 6.0f}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst{
+      {{kDuplicateKey, 2.0f}, {kDuplicateKey, 6.0f}, {5, 10.f}}};
 
   static const auto kMap = BuildStaticMapFromPairs(kPairsWithDuplicateFirst);
 
@@ -960,15 +960,15 @@ TEST(BuildStaticMapFromPairs, ReturnsEmptyMapOnDuplicateKey) {
 }
 
 TEST(BuildStaticMapFromInvertedPairs, SucceedsOnEmptyContainer) {
-  constexpr std::array<std::pair<int, float>, 0> kPairs;
-  static const auto kMap = BuildStaticMapFromInvertedPairs(kPairs);
+  constexpr std::array<std::pair<int, float>, 0> kEmptyPairs{};
+  static const auto kMap = BuildStaticMapFromInvertedPairs(kEmptyPairs);
 
   EXPECT_TRUE(kMap->empty());
 }
 
 TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMap) {
-  constexpr std::array<std::pair<int, float>, 3> kPairs(
-      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairs{
+      {{1, 2.0f}, {3, 6.0f}, {5, 10.f}}};
   const absl::flat_hash_map<float, int> kExpectedInvertedMap = {
       {2.0f, 1}, {6.0f, 3}, {10.f, 5}};
 
@@ -979,8 +979,8 @@ TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMap) {
 
 TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMapWithDuplicateValues) {
   constexpr int kDuplicateValue = 1;
-  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst(
-      {{kDuplicateValue, 2.0f}, {kDuplicateValue, 6.0f}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateFirst{
+      {{kDuplicateValue, 2.0f}, {kDuplicateValue, 6.0f}, {5, 10.f}}};
   const absl::flat_hash_map<float, int> kExpectedInvertedMap = {
       {2.0f, kDuplicateValue}, {6.0f, kDuplicateValue}, {10.f, 5}};
 
@@ -992,8 +992,8 @@ TEST(BuildStaticMapFromInvertedPairs, BuildsInvertedMapWithDuplicateValues) {
 
 TEST(BuildStaticMapFromInvertedPairs, ReturnsEmptyMapOnDuplicateKey) {
   constexpr int kDuplicateKey = 1.0f;
-  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond(
-      {{1, kDuplicateKey}, {3, kDuplicateKey}, {5, 10.f}});
+  constexpr std::array<std::pair<int, float>, 3> kPairsWithDuplicateSecond{
+      {{1, kDuplicateKey}, {3, kDuplicateKey}, {5, 10.f}}};
 
   static const auto kMap =
       BuildStaticMapFromInvertedPairs(kPairsWithDuplicateSecond);
