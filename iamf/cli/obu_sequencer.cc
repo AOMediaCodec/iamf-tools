@@ -27,6 +27,7 @@
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -211,9 +212,18 @@ absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
     return absl::InvalidArgumentError(
         "Every temporal unit must have an audio frame.");
   }
+  const auto& first_audio_frame = temporal_unit.audio_frames[0];
+  if (first_audio_frame->audio_element_with_data == nullptr ||
+      first_audio_frame->audio_element_with_data->codec_config == nullptr) {
+    return absl::InvalidArgumentError(
+        "Every temporal unit must have an audio frame with a codec config.");
+  }
+  const uint32_t num_samples_per_frame =
+      temporal_unit.audio_frames[0]
+          ->audio_element_with_data->codec_config->GetNumSamplesPerFrame();
 
   num_samples +=
-      (temporal_unit.audio_frames[0]->raw_samples.size() -
+      (num_samples_per_frame -
        (temporal_unit.audio_frames[0]
             ->obu.header_.num_samples_to_trim_at_start +
         temporal_unit.audio_frames[0]->obu.header_.num_samples_to_trim_at_end));

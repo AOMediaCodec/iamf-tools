@@ -598,19 +598,24 @@ absl::Status ApplyUserTrimForFrame(const bool from_start,
 // padding in the final audio frame. Then the rest will be applied to
 // consecutive OBUs from the end without modifying the underlying data.
 absl::Status ValidateAndApplyUserTrimming(
-    const uint32_t substream_id,  // For logging purposes only.
     const bool is_last_frame,
     AudioFrameGenerator::TrimmingState& trimming_state,
     AudioFrameWithData& audio_frame) {
+  CHECK_NE(audio_frame.audio_element_with_data, nullptr);
+  CHECK_NE(audio_frame.audio_element_with_data->codec_config, nullptr);
+  const uint32_t num_samples_in_frame =
+      audio_frame.audio_element_with_data->codec_config
+          ->GetNumSamplesPerFrame();
+
   RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
-      /*from_start=*/true, audio_frame.raw_samples.size(),
+      /*from_start=*/true, num_samples_in_frame,
       trimming_state.user_samples_left_to_trim_at_start,
       audio_frame.obu.header_.num_samples_to_trim_at_start,
       audio_frame.obu.header_.obu_trimming_status_flag));
 
   if (is_last_frame) {
     RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
-        /*from_start=*/false, audio_frame.raw_samples.size(),
+        /*from_start=*/false, num_samples_in_frame,
         trimming_state.user_samples_left_to_trim_at_end,
         audio_frame.obu.header_.num_samples_to_trim_at_end,
         audio_frame.obu.header_.obu_trimming_status_flag));
@@ -802,7 +807,7 @@ absl::Status AudioFrameGenerator::OutputFrames(
     if (encoder->FramesAvailable()) {
       RETURN_IF_NOT_OK(encoder->Pop(audio_frames));
       RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(
-          substream_id, /*is_last_frame=*/encoder->Finished(),
+          /*is_last_frame=*/encoder->Finished(),
           substream_id_to_trimming_state_.at(substream_id),
           audio_frames.back()));
     }
