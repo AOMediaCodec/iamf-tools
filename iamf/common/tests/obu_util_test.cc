@@ -31,6 +31,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -244,39 +245,48 @@ INSTANTIATE_TEST_SUITE_P(Basic, Q08ToFloatFormat,
                              {255, 0.99609375},
                          }));
 
-struct Int32ToNormalizedFloatSymmetryTestCase {
+struct Int32ToNormalizedFloatingPointSymmetryTestCase {
   int32_t test_val;
   int32_t symmetric_val;
 };
 
-using Int32ToNormalizedFloatSymmetry =
-    ::testing::TestWithParam<Int32ToNormalizedFloatSymmetryTestCase>;
+using Int32ToNormalizedFloatingPointSymmetry =
+    ::testing::TestWithParam<Int32ToNormalizedFloatingPointSymmetryTestCase>;
 
-TEST_P(Int32ToNormalizedFloatSymmetry, Int32ToNormalizedFloatSymmetry) {
+TEST_P(Int32ToNormalizedFloatingPointSymmetry, Int32ToNormalizedFloatSymmetry) {
   // `std::numeric_limits<int32_t>::min()` has no symmetric pair.
   ASSERT_NE(GetParam().test_val, std::numeric_limits<int32_t>::min());
 
   // All other values are symmetric with their negative.
   ASSERT_EQ(GetParam().symmetric_val, -GetParam().test_val);
 
-  EXPECT_EQ(Int32ToNormalizedFloat(GetParam().test_val),
-            -Int32ToNormalizedFloat(GetParam().symmetric_val));
+  EXPECT_EQ(Int32ToNormalizedFloatingPoint<float>(GetParam().test_val),
+            -Int32ToNormalizedFloatingPoint<float>(GetParam().symmetric_val));
+
+  EXPECT_EQ(Int32ToNormalizedFloatingPoint<double>(GetParam().test_val),
+            -Int32ToNormalizedFloatingPoint<double>(GetParam().symmetric_val));
+
+  EXPECT_EQ(
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(GetParam().test_val),
+      -Int32ToNormalizedFloatingPoint<InternalSampleType>(
+          GetParam().symmetric_val));
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    OneAndNegativeOne, Int32ToNormalizedFloatSymmetry,
-    testing::ValuesIn<Int32ToNormalizedFloatSymmetryTestCase>({{1, -1}}));
+    OneAndNegativeOne, Int32ToNormalizedFloatingPointSymmetry,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointSymmetryTestCase>({{1,
+                                                                        -1}}));
 
 // There is one more negative than positive `int32_t`.
 INSTANTIATE_TEST_SUITE_P(
-    MaxAndMinPlusOne, Int32ToNormalizedFloatSymmetry,
-    testing::ValuesIn<Int32ToNormalizedFloatSymmetryTestCase>(
+    MaxAndMinPlusOne, Int32ToNormalizedFloatingPointSymmetry,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointSymmetryTestCase>(
         {{std::numeric_limits<int32_t>::max(),
           std::numeric_limits<int32_t>::min() + 1}}));
 
 INSTANTIATE_TEST_SUITE_P(
-    ArbitraryXAndNegativeX, Int32ToNormalizedFloatSymmetry,
-    testing::ValuesIn<Int32ToNormalizedFloatSymmetryTestCase>({
+    ArbitraryXAndNegativeX, Int32ToNormalizedFloatingPointSymmetry,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointSymmetryTestCase>({
         {5, -5},
         {99, -99},
         {9999, -9999},
@@ -285,8 +295,9 @@ INSTANTIATE_TEST_SUITE_P(
     }));
 
 INSTANTIATE_TEST_SUITE_P(
-    NegativePowersOfTwoAndPositivePowersOfTwo, Int32ToNormalizedFloatSymmetry,
-    testing::ValuesIn<Int32ToNormalizedFloatSymmetryTestCase>({
+    NegativePowersOfTwoAndPositivePowersOfTwo,
+    Int32ToNormalizedFloatingPointSymmetry,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointSymmetryTestCase>({
         {-4, 4},
         {-64, 64},
         {-128, 128},
@@ -295,57 +306,66 @@ INSTANTIATE_TEST_SUITE_P(
         {-1073741824, 1073741824},
     }));
 
-struct Int32ToNormalizedFloatTestCase {
-  int32_t test_val;
-  float expected_val;
+struct Int32ToNormalizedFloatingPointTestCase {
+  int32_t input_val;
+  float expected_val_as_float;
+  double expected_val_as_double;
 };
 
-using Int32ToNormalizedFloatTest =
-    ::testing::TestWithParam<Int32ToNormalizedFloatTestCase>;
+using Int32ToNormalizedFloatingPointTest =
+    ::testing::TestWithParam<Int32ToNormalizedFloatingPointTestCase>;
 
-TEST_P(Int32ToNormalizedFloatTest, Int32ToNormalizedFloat) {
-  EXPECT_FLOAT_EQ(Int32ToNormalizedFloat(GetParam().test_val),
-                  GetParam().expected_val);
+TEST_P(Int32ToNormalizedFloatingPointTest, Int32ToNormalizedFloat) {
+  EXPECT_FLOAT_EQ(Int32ToNormalizedFloatingPoint<float>(GetParam().input_val),
+                  GetParam().expected_val_as_float);
+
+  EXPECT_NEAR(Int32ToNormalizedFloatingPoint<double>(GetParam().input_val),
+              GetParam().expected_val_as_double, .0000001);
 }
 
-INSTANTIATE_TEST_SUITE_P(MaxGetsSquishedToOne, Int32ToNormalizedFloatTest,
-                         testing::ValuesIn<Int32ToNormalizedFloatTestCase>(
-                             {{std::numeric_limits<int32_t>::max(), 1}}));
+INSTANTIATE_TEST_SUITE_P(
+    MaxGetsSquishedToOne, Int32ToNormalizedFloatingPointTest,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointTestCase>(
+        {{std::numeric_limits<int32_t>::max(), 1.0f, 1.0}}));
 
 INSTANTIATE_TEST_SUITE_P(
-    Zero, Int32ToNormalizedFloatTest,
-    testing::ValuesIn<Int32ToNormalizedFloatTestCase>({{0, 0.0}}));
+    Zero, Int32ToNormalizedFloatingPointTest,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointTestCase>({{0, 0.0f,
+                                                                0.0}}));
 
-INSTANTIATE_TEST_SUITE_P(PositivePowersOf2, Int32ToNormalizedFloatTest,
-                         testing::ValuesIn<Int32ToNormalizedFloatTestCase>({
-                             {1 << 30, std::pow(2.0f, -1.0f)},
-                             {1 << 29, std::pow(2.0f, -2.0f)},
-                             {1 << 27, std::pow(2.0f, -4.0f)},
-                             {1 << 23, std::pow(2.0f, -8.0f)},
-                             {1 << 15, std::pow(2.0f, -16.0f)},
-                             {1 << 6, std::pow(2.0f, -25.0f)},
-                             {1 << 1, std::pow(2.0f, -30.0f)},
-                             {1 << 0, std::pow(2.0f, -31.0f)},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    PositivePowersOf2, Int32ToNormalizedFloatingPointTest,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointTestCase>({
+        {1 << 30, std::pow(2.0f, -1.0f), std::pow(2.0, -1.0)},
+        {1 << 29, std::pow(2.0f, -2.0f), std::pow(2.0, -2.0)},
+        {1 << 27, std::pow(2.0f, -4.0f), std::pow(2.0, -4.0)},
+        {1 << 23, std::pow(2.0f, -8.0f), std::pow(2.0, -8.0)},
+        {1 << 15, std::pow(2.0f, -16.0f), std::pow(2.0, -16.0)},
+        {1 << 6, std::pow(2.0f, -25.0f), std::pow(2.0, -25.0)},
+        {1 << 1, std::pow(2.0f, -30.0f), std::pow(2.0, -30.0)},
+        {1 << 0, std::pow(2.0f, -31.0f), std::pow(2.0, -31.0)},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(MinMinusOneGetsSquishedToNegativeOne,
-                         Int32ToNormalizedFloatTest,
-                         testing::ValuesIn<Int32ToNormalizedFloatTestCase>(
-                             {{std::numeric_limits<int32_t>::min() + 1, -1}}));
+INSTANTIATE_TEST_SUITE_P(
+    MinMinusOneGetsSquishedToNegativeOne, Int32ToNormalizedFloatingPointTest,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointTestCase>(
+        {{std::numeric_limits<int32_t>::min() + 1, -1.0f, -1.0}}));
 
-INSTANTIATE_TEST_SUITE_P(Min, Int32ToNormalizedFloatTest,
-                         testing::ValuesIn<Int32ToNormalizedFloatTestCase>(
-                             {{std::numeric_limits<int32_t>::min(), -1}}));
+INSTANTIATE_TEST_SUITE_P(
+    Min, Int32ToNormalizedFloatingPointTest,
+    testing::ValuesIn<Int32ToNormalizedFloatingPointTestCase>(
+        {{std::numeric_limits<int32_t>::min(), -1.0f, -1.0}}));
 
-struct NormalizedFloatToInt32SymmetryTestCase {
+struct NormalizedFloatingPointToInt32SymmetryTestCase {
   float test_val;
   float symmetric_val;
 };
 
-using NormalizedFloatToInt32SymmetryTest =
-    ::testing::TestWithParam<NormalizedFloatToInt32SymmetryTestCase>;
+using NormalizedFloatingPointToInt32SymmetryTest =
+    ::testing::TestWithParam<NormalizedFloatingPointToInt32SymmetryTestCase>;
 
-TEST_P(NormalizedFloatToInt32SymmetryTest, NormalizedFloatToInt32SymmetryTest) {
+TEST_P(NormalizedFloatingPointToInt32SymmetryTest,
+       NormalizedFloatingPointToInt32SymmetryTest) {
   // +1.0 may have an irregular symmetric pair.
   ASSERT_NE(GetParam().test_val, -1.0f);
 
@@ -353,19 +373,20 @@ TEST_P(NormalizedFloatToInt32SymmetryTest, NormalizedFloatToInt32SymmetryTest) {
   ASSERT_EQ(GetParam().symmetric_val, -GetParam().test_val);
 
   int32_t test_val_result;
-  EXPECT_THAT(NormalizedFloatToInt32(GetParam().test_val, test_val_result),
-              IsOk());
-  int32_t symmetric_val_result;
   EXPECT_THAT(
-      NormalizedFloatToInt32(GetParam().symmetric_val, symmetric_val_result),
+      NormalizedFloatingPointToInt32(GetParam().test_val, test_val_result),
       IsOk());
+  int32_t symmetric_val_result;
+  EXPECT_THAT(NormalizedFloatingPointToInt32(GetParam().symmetric_val,
+                                             symmetric_val_result),
+              IsOk());
   EXPECT_EQ(test_val_result, -symmetric_val_result);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     PositivePowersOfTwoAndNegativePowersOfTwo,
-    NormalizedFloatToInt32SymmetryTest,
-    testing::ValuesIn<NormalizedFloatToInt32SymmetryTestCase>({
+    NormalizedFloatingPointToInt32SymmetryTest,
+    testing::ValuesIn<NormalizedFloatingPointToInt32SymmetryTestCase>({
         {std::pow(2.0f, -1.0f), -std::pow(2.0f, -1.0f)},
         {std::pow(2.0f, -2.0f), -std::pow(2.0f, -2.0f)},
         {std::pow(2.0f, -4.0f), -std::pow(2.0f, -4.0f)},
@@ -374,64 +395,84 @@ INSTANTIATE_TEST_SUITE_P(
     }));
 
 INSTANTIATE_TEST_SUITE_P(
-    Arbitrary, NormalizedFloatToInt32SymmetryTest,
-    testing::ValuesIn<NormalizedFloatToInt32SymmetryTestCase>({
+    Arbitrary, NormalizedFloatingPointToInt32SymmetryTest,
+    testing::ValuesIn<NormalizedFloatingPointToInt32SymmetryTestCase>({
         {0.01f, -0.01f},
         {0.12f, -0.12f},
         {0.34f, -0.34f},
         {0.99f, -0.99f},
     }));
 
-struct NormalizedFloatToInt32TestCase {
+struct NormalizedFloatingPointToInt32TestCase {
   float test_val;
   int32_t expected_val;
 };
 
-using NormalizedFloatToInt32Test =
-    ::testing::TestWithParam<NormalizedFloatToInt32TestCase>;
+using NormalizedFloatingPointToInt32Test =
+    ::testing::TestWithParam<NormalizedFloatingPointToInt32TestCase>;
 
-TEST_P(NormalizedFloatToInt32Test, NormalizedFloatToInt32Test) {
+TEST_P(NormalizedFloatingPointToInt32Test, NormalizedFloatingPointToInt32Test) {
   int32_t result;
-  EXPECT_THAT(NormalizedFloatToInt32(GetParam().test_val, result), IsOk());
+  EXPECT_THAT(NormalizedFloatingPointToInt32(GetParam().test_val, result),
+              IsOk());
   EXPECT_EQ(result, GetParam().expected_val);
 }
 
-INSTANTIATE_TEST_SUITE_P(One, NormalizedFloatToInt32Test,
-                         testing::ValuesIn<NormalizedFloatToInt32TestCase>(
-                             {{1.0, std::numeric_limits<int32_t>::max()}}));
+INSTANTIATE_TEST_SUITE_P(
+    One, NormalizedFloatingPointToInt32Test,
+    testing::ValuesIn<NormalizedFloatingPointToInt32TestCase>(
+        {{1.0, std::numeric_limits<int32_t>::max()}}));
 
-INSTANTIATE_TEST_SUITE_P(NegativeOne, NormalizedFloatToInt32Test,
-                         testing::ValuesIn<NormalizedFloatToInt32TestCase>(
-                             {{-1.0, std::numeric_limits<int32_t>::min()}}));
+INSTANTIATE_TEST_SUITE_P(
+    NegativeOne, NormalizedFloatingPointToInt32Test,
+    testing::ValuesIn<NormalizedFloatingPointToInt32TestCase>(
+        {{-1.0, std::numeric_limits<int32_t>::min()}}));
 
-INSTANTIATE_TEST_SUITE_P(ClipsOverMax, NormalizedFloatToInt32Test,
-                         testing::ValuesIn<NormalizedFloatToInt32TestCase>(
-                             {{2.0, std::numeric_limits<int32_t>::max()}}));
+INSTANTIATE_TEST_SUITE_P(
+    ClipsOverMax, NormalizedFloatingPointToInt32Test,
+    testing::ValuesIn<NormalizedFloatingPointToInt32TestCase>(
+        {{2.0, std::numeric_limits<int32_t>::max()}}));
 
-INSTANTIATE_TEST_SUITE_P(ClipsUnderMin, NormalizedFloatToInt32Test,
-                         testing::ValuesIn<NormalizedFloatToInt32TestCase>(
-                             {{-2.0, std::numeric_limits<int32_t>::min()}}));
+INSTANTIATE_TEST_SUITE_P(
+    ClipsUnderMin, NormalizedFloatingPointToInt32Test,
+    testing::ValuesIn<NormalizedFloatingPointToInt32TestCase>(
+        {{-2.0, std::numeric_limits<int32_t>::min()}}));
 
-INSTANTIATE_TEST_SUITE_P(PositivePowersOf2, NormalizedFloatToInt32Test,
-                         testing::ValuesIn<NormalizedFloatToInt32TestCase>(
-                             {{std::pow(2.0f, -1.0f), 1 << 30},
-                              {std::pow(2.0f, -2.0f), 1 << 29},
-                              {std::pow(2.0f, -4.0f), 1 << 27},
-                              {std::pow(2.0f, -8.0f), 1 << 23},
-                              {std::pow(2.0f, -16.0f), 1 << 15},
-                              {std::pow(2.0f, -25.0f), 1 << 6},
-                              {std::pow(2.0f, -30.0f), 1 << 1},
-                              {std::pow(2.0f, -31.0f), 1 << 0}}));
+INSTANTIATE_TEST_SUITE_P(
+    PositivePowersOf2, NormalizedFloatingPointToInt32Test,
+    testing::ValuesIn<NormalizedFloatingPointToInt32TestCase>(
+        {{std::pow(2.0f, -1.0f), 1 << 30},
+         {std::pow(2.0f, -2.0f), 1 << 29},
+         {std::pow(2.0f, -4.0f), 1 << 27},
+         {std::pow(2.0f, -8.0f), 1 << 23},
+         {std::pow(2.0f, -16.0f), 1 << 15},
+         {std::pow(2.0f, -25.0f), 1 << 6},
+         {std::pow(2.0f, -30.0f), 1 << 1},
+         {std::pow(2.0f, -31.0f), 1 << 0}}));
 
-TEST(NormalizedFloatToInt32MalformedInfoput, InvalidNan) {
-  int32_t unused_result;
-  EXPECT_FALSE(NormalizedFloatToInt32(std::nanf(""), unused_result).ok());
+TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidFloatNan) {
+  int32_t undefined_result;
+  EXPECT_FALSE(
+      NormalizedFloatingPointToInt32(std::nanf(""), undefined_result).ok());
 }
 
-TEST(NormalizedFloatToInt32MalformedInfoput, InvalidInfinity) {
-  int32_t unused_result;
-  EXPECT_FALSE(NormalizedFloatToInt32(std::numeric_limits<float>::infinity(),
-                                      unused_result)
+TEST(NormalizedFloatingPointToInt32MalformedInfoput, InvalidDoubleNan) {
+  int32_t undefined_result;
+  EXPECT_FALSE(
+      NormalizedFloatingPointToInt32(std::nan(""), undefined_result).ok());
+}
+
+TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidFloatInfinity) {
+  int32_t undefined_result;
+  EXPECT_FALSE(NormalizedFloatingPointToInt32(
+                   std::numeric_limits<float>::infinity(), undefined_result)
+                   .ok());
+}
+
+TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidDoubleInfinity) {
+  int32_t undefined_result;
+  EXPECT_FALSE(NormalizedFloatingPointToInt32(
+                   std::numeric_limits<double>::infinity(), undefined_result)
                    .ok());
 }
 
@@ -920,7 +961,7 @@ TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
 }
 
 TEST(BuildStaticMapFromPairs, SucceedsOnEmptyContainer) {
-  constexpr std::array<std::pair<int, float>, 0> kPairs;
+  constexpr std::array<std::pair<int, float>, 0> kPairs{};
   static const auto kMap = BuildStaticMapFromPairs(kPairs);
 
   EXPECT_TRUE(kMap->empty());

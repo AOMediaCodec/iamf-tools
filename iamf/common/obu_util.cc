@@ -11,7 +11,6 @@
  */
 #include "iamf/common/obu_util.h"
 
-#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -72,28 +71,6 @@ absl::Status FloatToQ0_8(float value, uint8_t& result) {
 
 float Q0_8ToFloat(uint8_t value) {
   return static_cast<float>(value) * 1.0f / 256.0f;
-}
-
-constexpr double kMaxInt32PlusOneAsDouble =
-    static_cast<double>(std::numeric_limits<int32_t>::max()) + 1.0;
-float Int32ToNormalizedFloat(int32_t value) {
-  // Perform calculations in double. The final cast to `float` will result in
-  // loss of precision. Note that casting `int32_t` to `double` is lossless;
-  // every `int32_t` can be exactly represented.
-  return static_cast<float>(static_cast<double>(value) /
-                            kMaxInt32PlusOneAsDouble);
-}
-
-absl::Status NormalizedFloatToInt32(float value, int32_t& result) {
-  if (std::isnan(value) || std::isinf(value)) {
-    return absl::InvalidArgumentError("Input is NaN or infinity.");
-  }
-
-  const double clamped_input =
-      std::clamp(static_cast<double>(value), -1.0, 1.0);
-  // Clip the result to be safe. Although only values near
-  // `std::numeric_limits<int32_t>::max() + 1` will be out of range.
-  return ClipDoubleToInt32(clamped_input * kMaxInt32PlusOneAsDouble, result);
 }
 
 absl::Status Uint32ToUint16(uint32_t input, uint16_t& output) {

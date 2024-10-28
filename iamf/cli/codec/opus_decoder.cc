@@ -116,8 +116,8 @@ absl::Status OpusDecoder::DecodeAudioFrame(
     std::vector<int32_t> time_sample(num_channels_, 0);
     // Grab samples in all channels associated with this time instant.
     for (int j = 0; j < num_channels_; ++j) {
-      RETURN_IF_NOT_OK(
-          NormalizedFloatToInt32(output_pcm_float[i + j], time_sample[j]));
+      RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(output_pcm_float[i + j],
+                                                      time_sample[j]));
     }
     decoded_samples.push_back(time_sample);
   }

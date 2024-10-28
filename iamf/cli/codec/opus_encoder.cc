@@ -63,7 +63,7 @@ absl::StatusOr<int> EncodeFloat(
   for (int t = 0; t < samples.size(); t++) {
     for (int c = 0; c < num_channels; ++c) {
       encoder_input_pcm[t * num_channels + c] =
-          Int32ToNormalizedFloat(samples[t][c]);
+          Int32ToNormalizedFloatingPoint<float>(samples[t][c]);
     }
   }
 

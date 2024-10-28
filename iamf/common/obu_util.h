@@ -12,10 +12,12 @@
 #ifndef COMMON_OBU_UTIL_H_
 #define COMMON_OBU_UTIL_H_
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <optional>
 #include <string>
 #include <vector>
@@ -83,32 +85,6 @@ absl::Status FloatToQ0_8(float value, uint8_t& result);
  */
 float Q0_8ToFloat(uint8_t value);
 
-/*!\brief Normalizes the input value to a `float` in the range [-1, +1].
- *
- * Normalizes the input from [std::numeric_limits<int32_t>::min(),
- * std::numeric_limits<int32_t>::max() + 1] to [-1, +1].
- *
- * \param value Value to normalize.
- * \return Normalized value.
- */
-float Int32ToNormalizedFloat(int32_t value);
-
-/*!\brief Converts normalized `float` input to an `int32_t`.
- *
- * Transforms the input from the range of [-1, +1] to the range of
- * [std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() +
- * 1].
- *
- * Input is clamped to [-1, +1] before processing. Output is clamped to the
- * full range of an `int32_t`.
- *
- * \param value Normalized float to convert.
- * \param result Converted value if successful.
- * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *         the input is any type of NaN or infinity.
- */
-absl::Status NormalizedFloatToInt32(float value, int32_t& result);
-
 /*!\brief Typecasts the input value and writes to the output argument if valid.
  *
  * \param input Value to convert.
@@ -168,6 +144,61 @@ absl::Status BigEndianBytesToInt32(absl::Span<const uint8_t> bytes,
  *         the input is NaN.
  */
 absl::Status ClipDoubleToInt32(double input, int32_t& output);
+
+namespace obu_util_internal {
+
+constexpr double kMaxInt32PlusOneAsDouble =
+    static_cast<double>(std::numeric_limits<int32_t>::max()) + 1.0;
+
+}
+
+/*!\brief Normalizes the input value to a floating point in the range [-1, +1].
+ *
+ * Normalizes the input from [std::numeric_limits<int32_t>::min(),
+ * std::numeric_limits<int32_t>::max() + 1] to [-1, +1].
+ *
+ * \param value Value to normalize.
+ * \return Normalized value.
+ */
+template <typename T>
+T Int32ToNormalizedFloatingPoint(int32_t value) {
+  using obu_util_internal::kMaxInt32PlusOneAsDouble;
+  static_assert(std::is_floating_point_v<T>);
+
+  // Perform calculations in double. The final cast to the output type, e.g.
+  // `float` could result in loss of precision. Note that casting `int32_t` to
+  // `double` is lossless; every `int32_t` can be exactly represented.
+  return static_cast<T>(static_cast<double>(value) / kMaxInt32PlusOneAsDouble);
+}
+
+/*!\brief Converts normalized floating point input to an `int32_t`.
+ *
+ * Transforms the input from the range of [-1, +1] to the range of
+ * [std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max() +
+ * 1].
+ *
+ * Input is clamped to [-1, +1] before processing. Output is clamped to the
+ * full range of an `int32_t`.
+ *
+ * \param value Normalized floating point value to convert.
+ * \param result Converted value if successful.
+ * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
+ *         the input is any type of NaN or infinity.
+ */
+template <typename T>
+absl::Status NormalizedFloatingPointToInt32(T value, int32_t& result) {
+  using obu_util_internal::kMaxInt32PlusOneAsDouble;
+  static_assert(std::is_floating_point_v<T>);
+  if (std::isnan(value) || std::isinf(value)) {
+    return absl::InvalidArgumentError("Input is NaN or infinity.");
+  }
+
+  const double clamped_input =
+      std::clamp(static_cast<double>(value), -1.0, 1.0);
+  // Clip the result to be safe. Although only values near
+  // `std::numeric_limits<int32_t>::max() + 1` will be out of range.
+  return ClipDoubleToInt32(clamped_input * kMaxInt32PlusOneAsDouble, result);
+}
 
 /*!\brief Writes the input PCM sample to a buffer.
  *
