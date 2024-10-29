@@ -869,6 +869,9 @@ INSTANTIATE_TEST_SUITE_P(InvalidWithMoreThanTwentyEightAudioElements,
 INSTANTIATE_TEST_SUITE_P(InvalidWithMoreThanTwentyEightChannels, TestVector,
                          testing::Values("test_000711.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseEnhancedProfileWithTemporalUnitObus, TestVector,
+                         testing::Values("test_000712.textproto"));
+
 // TODO(b/308385831): Add more tests.
 
 }  // namespace

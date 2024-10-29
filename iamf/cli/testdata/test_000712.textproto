@@ -1,4 +1,4 @@
-# Copyright (c) 2023, Alliance for Open Media. All rights reserved
+# Copyright (c) 2024, Alliance for Open Media. All rights reserved
 #
 # This source code is subject to the terms of the BSD 3-Clause Clear License
 # and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
@@ -13,31 +13,23 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A stereo Base profile IAMF stream with temporal "
-    " delimiters."
-  file_name_prefix: "test_000006"
+    "A Base-Enhanced IAMF stream with Temporal Delimiter"
+    " OBUs "
+  file_name_prefix: "test_000712"
   is_valid: true
   is_valid_to_decode: true
   validate_user_loudness: true
-  mp4_fixed_timestamp: "2023-04-19 00:00:00"
+  mp4_fixed_timestamp: "2024-10-28 00:00:00"
   test_repository_tags: [
-    "github/aomediacodec/libiamf/main",
-    "github/aomediacodec/libiamf/v1.0.0-errata"
+    "github/aomediacodec/libiamf/main"
   ]
-  primary_tested_spec_sections: [
-    "3.4/IA Sequence Header OBU Syntax and Semantics",
-    "3.10/Codec Specific",
-    "4.2/temporal_delimiter_obu",
-    "5.1/IA Sequence",
-    "5.1.2/IA Data OBUs",
-    "4.2/Temporal Delimiter OBU"
-  ]
+  primary_tested_spec_sections: ["3.10/Temporal Delimiter OBU"]
   base_test: "test_000005"
 }
 
 ia_sequence_header_metadata {
-  primary_profile: PROFILE_VERSION_BASE
-  additional_profile: PROFILE_VERSION_BASE
+  primary_profile: PROFILE_VERSION_BASE_ENHANCED
+  additional_profile: PROFILE_VERSION_BASE_ENHANCED
 }
 
 codec_config_metadata {
@@ -67,7 +59,8 @@ audio_element_metadata {
     reserved: 0
     channel_audio_layer_configs: [
       {
-        loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
+        loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
+        expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_S
         output_gain_is_present_flag: 0
         recon_gain_is_present_flag: 0
         reserved_a: 0
@@ -135,8 +128,8 @@ audio_frame_metadata {
   samples_to_trim_at_start: 0
   audio_element_id: 300
   channel_metadatas: [
-    { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
-    { channel_id: 1 channel_label: CHANNEL_LABEL_R_2 }
+    { channel_id: 0 channel_label: CHANNEL_LABEL_LS_5 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_RS_5 }
   ]
 }
 

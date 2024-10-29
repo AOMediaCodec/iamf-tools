@@ -32,14 +32,11 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto/temporal_delimiter.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -195,41 +192,6 @@ absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
 
   return CopyFromMap(*kInternalToProtoDMixPMode, obu_dmixp_mode,
                      "Proto version of internal `DMixPMode`", dmixp_mode);
-}
-
-// Returns `true` if the profile fully supports temporal delimiter OBUs.
-// Although profile that do not support them can safely ignore them.
-bool ProfileSupportsTemporalDelimiterObus(ProfileVersion profile) {
-  switch (profile) {
-    case ProfileVersion::kIamfSimpleProfile:
-    case ProfileVersion::kIamfBaseProfile:
-      return true;
-    default:
-      return false;
-  }
-}
-
-absl::Status GetIncludeTemporalDelimiterObus(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const IASequenceHeaderObu& ia_sequence_header_obu,
-    bool& include_temporal_delimiter) {
-  const bool input_include_temporal_delimiter =
-      user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters();
-
-  // Allow Temporal Delimiter OBUs as long as at least one of the profiles
-  // supports them. If one of the profiles (e.g. simple profile) does not
-  // "support" them they can be safely ignored.
-  if (input_include_temporal_delimiter &&
-      (!ProfileSupportsTemporalDelimiterObus(
-           ia_sequence_header_obu.GetPrimaryProfile()) &&
-       !ProfileSupportsTemporalDelimiterObus(
-           ia_sequence_header_obu.GetAdditionalProfile()))) {
-    return absl::InvalidArgumentError(
-        "Temporal Delimiter OBUs need either `primary_profile` or "
-        "`additional_profile` to support them.");
-  }
-  include_temporal_delimiter = input_include_temporal_delimiter;
-  return absl::OkStatus();
 }
 
 absl::Status CollectAndValidateParamDefinitions(

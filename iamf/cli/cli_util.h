@@ -28,10 +28,8 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -76,20 +74,6 @@ absl::Status CopyDemixingInfoParameterData(
  */
 absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
                            iamf_tools_cli_proto::DMixPMode& dmixp_mode);
-
-/*!\brief Checks whether temporal delimiters OBUs should be inserted.
- *
- * \param user_metadata User controlled metadata.
- * \param ia_sequence_header_obu IA Sequence Header OBU in the IA sequence.
- * \param include_temporal_delimiter_obus True when temporal delimiters should
- *        be included in the IA sequence.
- * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
- *         including temporal delimiters would be invalid.
- */
-absl::Status GetIncludeTemporalDelimiterObus(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const IASequenceHeaderObu& ia_sequence_header_obu,
-    bool& include_temporal_delimiter_obus);
 
 /*!\brief Collects and validates the parameter definitions against the spec.
  *

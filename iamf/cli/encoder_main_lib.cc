@@ -26,13 +26,13 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/arbitrary_obu_generator.h"
@@ -309,9 +309,8 @@ absl::Status WriteObus(
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const std::list<ArbitraryObu>& arbitrary_obus) {
-  bool include_temporal_delimiters;
-  RETURN_IF_NOT_OK(GetIncludeTemporalDelimiterObus(
-      user_metadata, ia_sequence_header_obu, include_temporal_delimiters));
+  const bool include_temporal_delimiters =
+      user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters();
 
   // TODO(b/349271859): Move the OBU sequencer inside `IamfEncoder`.
   auto obu_sequencers = CreateObuSequencers(

@@ -30,15 +30,12 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto/temporal_delimiter.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -58,69 +55,6 @@ constexpr DecodedUleb128 kParameterId = 99999;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kFirstSubstreamId = 31;
 constexpr DecodedUleb128 kSecondSubstreamId = 32;
-
-struct IncludeTemporalDelimitersTestCase {
-  ProfileVersion primary_profile;
-  ProfileVersion additional_profile;
-  bool enable_temporal_delimiters;
-  absl::StatusCode status_code;
-};
-
-using IncludeTemporalDelimiters =
-    ::testing::TestWithParam<IncludeTemporalDelimitersTestCase>;
-
-TEST_P(IncludeTemporalDelimiters, CliUtils) {
-  const IncludeTemporalDelimitersTestCase& test_case = GetParam();
-
-  // Initialize the arguments for `get_include_temporal_delimiter_obus`.
-  IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode, test_case.primary_profile,
-      test_case.additional_profile);
-
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  user_metadata.mutable_temporal_delimiter_metadata()
-      ->set_enable_temporal_delimiters(test_case.enable_temporal_delimiters);
-
-  // Call and validate results match expected.
-  bool result;
-  EXPECT_EQ(GetIncludeTemporalDelimiterObus(user_metadata,
-                                            ia_sequence_header_obu, result)
-                .code(),
-            test_case.status_code);
-  if (test_case.status_code == absl::StatusCode::kOk) {
-    EXPECT_EQ(result, test_case.enable_temporal_delimiters);
-  }
-}
-
-INSTANTIATE_TEST_SUITE_P(DisabledSimpleProfile, IncludeTemporalDelimiters,
-                         testing::ValuesIn<IncludeTemporalDelimitersTestCase>(
-                             {{ProfileVersion::kIamfSimpleProfile,
-                               ProfileVersion::kIamfSimpleProfile, false,
-                               absl::StatusCode::kOk}}));
-
-INSTANTIATE_TEST_SUITE_P(EnabledSimpleProfile, IncludeTemporalDelimiters,
-                         testing::ValuesIn<IncludeTemporalDelimitersTestCase>(
-                             {{ProfileVersion::kIamfSimpleProfile,
-                               ProfileVersion::kIamfSimpleProfile, true,
-                               absl::StatusCode::kOk}}));
-
-INSTANTIATE_TEST_SUITE_P(DisabledBaseProfile, IncludeTemporalDelimiters,
-                         testing::ValuesIn<IncludeTemporalDelimitersTestCase>(
-                             {{ProfileVersion::kIamfBaseProfile,
-                               ProfileVersion::kIamfBaseProfile, false,
-                               absl::StatusCode::kOk}}));
-
-INSTANTIATE_TEST_SUITE_P(EnabledBaseProfile, IncludeTemporalDelimiters,
-                         testing::ValuesIn<IncludeTemporalDelimitersTestCase>(
-                             {{ProfileVersion::kIamfBaseProfile,
-                               ProfileVersion::kIamfBaseProfile, true,
-                               absl::StatusCode::kOk}}));
-
-INSTANTIATE_TEST_SUITE_P(EnabledBaseAndSimpleProfile, IncludeTemporalDelimiters,
-                         testing::ValuesIn<IncludeTemporalDelimitersTestCase>(
-                             {{ProfileVersion::kIamfSimpleProfile,
-                               ProfileVersion::kIamfBaseProfile, true,
-                               absl::StatusCode::kOk}}));
 
 TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
   const size_t kExpectedSize = 12;  // 3 bytes per sample * 4 samples.
