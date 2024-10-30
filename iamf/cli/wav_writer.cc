@@ -36,7 +36,7 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
   LOG(INFO) << "Writer \"" << wav_filename << "\"";
   auto* file = std::fopen(wav_filename.c_str(), "wb");
   if (file == nullptr) {
-    LOG(ERROR) << "Error opening file \"" << wav_filename << "\"";
+    LOG(ERROR).WithPerror() << "Error opening file \"" << wav_filename << "\"";
     return nullptr;
   }
 
