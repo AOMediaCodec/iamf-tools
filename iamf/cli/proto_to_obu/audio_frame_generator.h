@@ -44,20 +44,34 @@ namespace iamf_tools {
  * The generation of audio frames can be done asynchronously, where
  * samples are added on one thread and completed frames are consumed on another.
  *
+ * Under the hood, the generator can be in three states:
+ * 1. `kTakingSamples`: The generator is expecting audio substreams and taking
+ *                      samples.
+ * 2. `kFinalizeCalled`: `Finalize()` has been called; no more "real samples"
+ *                       are coming, and the generator will soon (starting in
+ *                       the next iteration) be flusing the remaining samples.
+ * 3. `kFlushingRemaining`: The generator is flushing the remaining samples
+ *                          that are still in the underlying encoders.
+ *
  * The use pattern of this class is:
  *
  *   - Initialize (`Initialize()`).
+ *     - (This puts the generator in the `kTakingSamples` state.)
  *
  *   Thread 1:
  *   - Repeat until no new sample to add (by checking `TakingSamples()`):
  *     - Add samples for each audio element (`AddSamples()`).
  *   - Finalize the sample-adding process (`Finalize()`).
+ *     - (This puts the generator in the `kFinalizeCalled` state.)
  *
  *   Thread 2:
  *   - Repeat until no frame to generate (by checking `GeneratingFrames()`):
  *     - Output generated frames (`OutputFrames()`).
+ *       - If the generator is in the `kFlushingRemaining` state, the frames
+ *         might come from remaining samples in the underlying encoders.
  *     - If the output is empty, wait.
  *     - Otherwise, add the output of this round to the final result.
+ *
  */
 class AudioFrameGenerator {
  public:
@@ -88,21 +102,7 @@ class AudioFrameGenerator {
           audio_elements,
       const DemixingModule& demixing_module,
       ParametersManager& parameters_manager,
-      GlobalTimingModule& global_timing_module)
-      : audio_elements_(audio_elements),
-        demixing_module_(demixing_module),
-        parameters_manager_(parameters_manager),
-        global_timing_module_(global_timing_module) {
-    for (const auto& audio_frame_obu_metadata : audio_frame_metadata) {
-      audio_frame_metadata_[audio_frame_obu_metadata.audio_element_id()] =
-          audio_frame_obu_metadata;
-    }
-
-    for (const auto& codec_config_obu_metadata : codec_config_metadata) {
-      codec_config_metadata_[codec_config_obu_metadata.codec_config_id()] =
-          codec_config_obu_metadata.codec_config();
-    }
-  }
+      GlobalTimingModule& global_timing_module);
 
   /*!\brief Returns the number of samples to delay based on the codec config.
    *
@@ -129,9 +129,7 @@ class AudioFrameGenerator {
 
   /*!\brief Adds samples for an Audio Element and a channel label.
    *
-   * Calling this function with empty input `samples` will signal the
-   * underlying encoder that the a substream has ended. Eventually when all
-   * substreams are ended, `TakingSamples()` will return false.
+   * No effect if the generator is not in the `kTakingSamples` state.
    *
    * \param audio_element_id Audio Element ID that the added samples belong to.
    * \param label Channel label of the added samples.
@@ -144,8 +142,8 @@ class AudioFrameGenerator {
 
   /*!\brief Finalizes the sample-adding process.
    *
-   * This will signal all underlying encoders that there are no more samples
-   * to come.
+   * This puts the generator in the `kFinalizedCalled` state if it is in the
+   * `kTakingSamples` state. No effect if the generator is in other states.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
@@ -163,12 +161,24 @@ class AudioFrameGenerator {
    * The output frames all belong to the same temporal unit, sharing the same
    * start and end timestamps.
    *
+   * After `Finalize()` is called, all underlying encoders will be signalled
+   * to encode the remaining samples. Eventually when all substreams are
+   * are ended, encoders will be deleted and `GeneratingFrames()` will return
+   * false.
+   *
    * \param audio_frames Output list of audio frames.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status OutputFrames(std::list<AudioFrameWithData>& audio_frames);
 
  private:
+  // State of an audio frame generator.
+  enum GeneratorState {
+    kTakingSamples,
+    kFinalizedCalled,
+    kFlushingRemaining,
+  };
+
   // Mapping from Audio Element ID to audio frame metadata.
   absl::flat_hash_map<DecodedUleb128,
                       iamf_tools_cli_proto::AudioFrameObuMetadata>
@@ -204,6 +214,7 @@ class AudioFrameGenerator {
   const DemixingModule& demixing_module_;
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;
+  GeneratorState state_;
 
   // Mutex to protect data accessed in different threads.
   mutable absl::Mutex mutex_;

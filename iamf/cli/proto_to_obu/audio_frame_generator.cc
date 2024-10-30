@@ -53,6 +53,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/types.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
@@ -233,23 +234,22 @@ absl::Status InitializeSubstreamData(
 // An audio element may contain many channels, denoted by their labels;
 // this function returns whether all labels have their (same amount of)
 // samples ready.
-bool SamplesReadyForAudioElement(
-    const LabelSamplesMap& label_to_samples,
-    const absl::flat_hash_set<ChannelLabel::Label>& channel_labels) {
-  size_t common_num_samples = 0;
-  for (const auto& label : channel_labels) {
+bool SamplesReadyForAudioElement(const LabelSamplesMap& label_to_samples,
+                                 const absl::flat_hash_set<ChannelLabel::Label>&
+                                     channel_labels_for_audio_element) {
+  std::optional<size_t> common_num_samples;
+  for (const auto& label : channel_labels_for_audio_element) {
     const auto label_to_samples_iter = label_to_samples.find(label);
     if (label_to_samples_iter == label_to_samples.end()) {
       return false;
     }
 
     const auto num_samples = label_to_samples_iter->second.size();
-    if (common_num_samples == 0 && num_samples != 0) {
+    if (!common_num_samples.has_value()) {
       common_num_samples = num_samples;
-      continue;
     }
 
-    if (num_samples != common_num_samples) {
+    if (num_samples != *common_num_samples) {
       return false;
     }
   }
@@ -369,10 +369,14 @@ std::pair<uint32_t, uint32_t> GetNumSamplesToTrimForFrame(
                         frame_samples_to_trim_at_end);
 }
 
-absl::Status EncodeFramesForAudioElement(
+// Encode frames for an audio element if samples are ready.
+absl::Status MaybeEncodeFramesForAudioElement(
     const DecodedUleb128 audio_element_id,
     const AudioElementWithData& audio_element_with_data,
-    const DemixingModule& demixing_module, LabelSamplesMap& label_to_samples,
+    const DemixingModule& demixing_module,
+    const absl::flat_hash_set<ChannelLabel::Label>&
+        channel_labels_for_audio_element,
+    LabelSamplesMap& label_to_samples,
     absl::flat_hash_map<uint32_t, AudioFrameGenerator::TrimmingState>&
         substream_id_to_trimming_state,
     ParametersManager& parameters_manager,
@@ -381,6 +385,13 @@ absl::Status EncodeFramesForAudioElement(
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data,
     GlobalTimingModule& global_timing_module) {
+  if (!SamplesReadyForAudioElement(label_to_samples,
+                                   channel_labels_for_audio_element)) {
+    // Waiting for more samples belonging to the same audio element; return
+    // for now.
+    return absl::OkStatus();
+  }
+
   const CodecConfigObu& codec_config = *audio_element_with_data.codec_config;
 
   // Get some common information about this stream.
@@ -626,6 +637,34 @@ absl::Status ValidateAndApplyUserTrimming(
 
 }  // namespace
 
+AudioFrameGenerator::AudioFrameGenerator(
+    const ::google::protobuf::RepeatedPtrField<
+        iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
+    const ::google::protobuf::RepeatedPtrField<
+        iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    const DemixingModule& demixing_module,
+    ParametersManager& parameters_manager,
+    GlobalTimingModule& global_timing_module)
+    : audio_elements_(audio_elements),
+      demixing_module_(demixing_module),
+      parameters_manager_(parameters_manager),
+      global_timing_module_(global_timing_module),
+      // Set to a state NOT taking samples at first; may be changed to
+      // `kTakingSamples` once `Initialize()` is called.
+      state_(kFlushingRemaining) {
+  for (const auto& audio_frame_obu_metadata : audio_frame_metadata) {
+    audio_frame_metadata_[audio_frame_obu_metadata.audio_element_id()] =
+        audio_frame_obu_metadata;
+  }
+
+  for (const auto& codec_config_obu_metadata : codec_config_metadata) {
+    codec_config_metadata_[codec_config_obu_metadata.codec_config_id()] =
+        codec_config_obu_metadata.codec_config();
+  }
+}
+
 absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
     const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
     const CodecConfigObu& codec_config) {
@@ -728,19 +767,32 @@ absl::Status AudioFrameGenerator::Initialize() {
     }
   }
 
+  // If `substream_id_to_substream_data_` is not empty, meaning this generator
+  // is expecting audio substreams and is ready to take audio samples.
+  if (!substream_id_to_substream_data_.empty()) {
+    state_ = kTakingSamples;
+  }
+
   return absl::OkStatus();
 }
 
 bool AudioFrameGenerator::TakingSamples() const {
-  return !substream_id_to_substream_data_.empty();
+  return (state_ == kTakingSamples);
 }
 
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, ChannelLabel::Label label,
     absl::Span<const InternalSampleType> samples) {
-  const auto& audio_element_labels =
+  absl::MutexLock lock(&mutex_);
+  if (state_ != kTakingSamples) {
+    LOG_FIRST_N(WARNING, 3)
+        << "Calling `AddSamples()` after `Finalize()` has no effect.";
+    return absl::OkStatus();
+  }
+
+  const auto& audio_element_labels_iter =
       audio_element_id_to_labels_.find(audio_element_id);
-  if (audio_element_labels == audio_element_id_to_labels_.end()) {
+  if (audio_element_labels_iter == audio_element_id_to_labels_.end()) {
     return absl::InvalidArgumentError(
         absl::StrCat("No audio frame metadata found for Audio Element ID= ",
                      audio_element_id));
@@ -757,36 +809,20 @@ absl::Status AudioFrameGenerator::AddSamples(
   }
   const auto& audio_element_with_data = audio_element_iter->second;
 
-  if (SamplesReadyForAudioElement(labeled_samples,
-                                  audio_element_labels->second)) {
-    absl::MutexLock lock(&mutex_);
-    RETURN_IF_NOT_OK(EncodeFramesForAudioElement(
-        audio_element_id, audio_element_with_data, demixing_module_,
-        labeled_samples, substream_id_to_trimming_state_, parameters_manager_,
-        substream_id_to_encoder_, substream_id_to_substream_data_,
-        global_timing_module_));
-
-    labeled_samples.clear();
-  }
+  RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
+      audio_element_id, audio_element_with_data, demixing_module_,
+      audio_element_labels_iter->second, labeled_samples,
+      substream_id_to_trimming_state_, parameters_manager_,
+      substream_id_to_encoder_, substream_id_to_substream_data_,
+      global_timing_module_));
 
   return absl::OkStatus();
 }
 
 absl::Status AudioFrameGenerator::Finalize() {
   absl::MutexLock lock(&mutex_);
-  for (auto& [substream_id, encoder] : substream_id_to_encoder_) {
-    auto substream_data_iter =
-        substream_id_to_substream_data_.find(substream_id);
-    if (substream_data_iter == substream_id_to_substream_data_.end()) {
-      continue;
-    }
-
-    // Remove the substream data when there is no more sample to come, and the
-    // encoder can be finalized.
-    if (substream_data_iter->second.samples_obu.empty()) {
-      RETURN_IF_NOT_OK(encoder->Finalize());
-      substream_id_to_substream_data_.erase(substream_data_iter);
-    }
+  if (state_ == kTakingSamples) {
+    state_ = kFinalizedCalled;
   }
 
   return absl::OkStatus();
@@ -801,9 +837,43 @@ absl::Status AudioFrameGenerator::OutputFrames(
     std::list<AudioFrameWithData>& audio_frames) {
   absl::MutexLock lock(&mutex_);
 
+  if (state_ == kFlushingRemaining) {
+    // In this state, there might be some remaining samples queued in the
+    // encoders waiting to be encoded; continue to encode them one frame at a
+    // time.
+    for (const auto& [audio_element_id, audio_element_with_data] :
+         audio_elements_) {
+      RETURN_IF_NOT_OK(MaybeEncodeFramesForAudioElement(
+          audio_element_id, audio_element_with_data, demixing_module_,
+          audio_element_id_to_labels_.at(audio_element_id),
+          id_to_labeled_samples_[audio_element_id],
+          substream_id_to_trimming_state_, parameters_manager_,
+          substream_id_to_encoder_, substream_id_to_substream_data_,
+          global_timing_module_));
+    }
+  } else if (state_ == kFinalizedCalled) {
+    // The `Finalize()` has just been called, advance the state so that the
+    // remaining samples will be encoded in the next iteration.
+    state_ = kFlushingRemaining;
+  }
+
+  // Pop encoded audio frames from encoders.
   for (auto substream_id_to_encoder_iter = substream_id_to_encoder_.begin();
        substream_id_to_encoder_iter != substream_id_to_encoder_.end();) {
     auto& [substream_id, encoder] = *substream_id_to_encoder_iter;
+
+    // Remove the substream data when the generator is in the
+    // `kFlushingRemaining` state and the encoder can be finalized.
+    if (state_ == kFlushingRemaining) {
+      auto substream_data_iter =
+          substream_id_to_substream_data_.find(substream_id);
+      if (substream_data_iter != substream_id_to_substream_data_.end() &&
+          substream_data_iter->second.samples_obu.empty()) {
+        RETURN_IF_NOT_OK(encoder->Finalize());
+        substream_id_to_substream_data_.erase(substream_data_iter);
+      }
+    }
+
     if (encoder->FramesAvailable()) {
       RETURN_IF_NOT_OK(encoder->Pop(audio_frames));
       RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(

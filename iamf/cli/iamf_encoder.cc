@@ -174,6 +174,13 @@ absl::Status IamfEncoder::GetInputTimestamp(int32_t& input_timestamp) {
 void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
                              ChannelLabel::Label label,
                              const std::vector<InternalSampleType>& samples) {
+  if (add_samples_finalized_) {
+    LOG_FIRST_N(WARNING, 3)
+        << "Calling `AddSamples()` after `FinalizeAddSamples()` has no effect; "
+        << samples.size() << " input samples discarded.";
+    return;
+  }
+
   id_to_labeled_samples_[audio_element_id][label] = samples;
 }
 
@@ -213,6 +220,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
           audio_frame_generator_->AddSamples(audio_element_id, label, samples));
     }
   }
+
   if (add_samples_finalized_) {
     RETURN_IF_NOT_OK(audio_frame_generator_->Finalize());
   }

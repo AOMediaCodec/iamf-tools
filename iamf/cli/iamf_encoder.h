@@ -121,6 +121,10 @@ class IamfEncoder {
 
   /*!\brief Adds audio samples belonging to the same temporal unit.
    *
+   * The best practice is to not call this function after
+   * `FinalizeAddSamples()`. But it is OK if you do -- just that the added
+   * samples will be ignored and not encoded.
+   *
    * \param audio_element_id ID of the audio element to add samples to.
    * \param label Channel label to add samples to.
    * \param samples Audio samples to add.

@@ -337,26 +337,22 @@ void AddAllSamplesAndFinalizesExpectOk(
   }
 
   // Push in the user data.
-  for (int frame_count = 0; frame_count < common_num_frames; ++frame_count) {
-    EXPECT_TRUE((audio_frame_generator.TakingSamples()));
+  for (int i = 0; i < common_num_frames; ++i) {
+    // Before `Finalize()` is called, the generator is expected to be taking
+    // samples.
+    EXPECT_TRUE(audio_frame_generator.TakingSamples());
     for (const auto& [label, frames] : label_to_frames) {
-      EXPECT_THAT(audio_frame_generator.AddSamples(audio_element_id, label,
-                                                   frames[frame_count]),
-                  IsOk());
+      EXPECT_THAT(
+          audio_frame_generator.AddSamples(audio_element_id, label, frames[i]),
+          IsOk());
     }
   }
 
-  // Flush out the remaining frames. Several flushes could be required if the
-  // codec delay is longer than a frame duration.
-  while (audio_frame_generator.TakingSamples()) {
-    for (const auto& [label, frames] : label_to_frames) {
-      EXPECT_THAT(audio_frame_generator.AddSamples(audio_element_id, label,
-                                                   kEmptyFrame),
-                  IsOk());
-    }
+  // Call `Finalize()` after the last frame.
+  EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
 
-    EXPECT_THAT(audio_frame_generator.Finalize(), IsOk());
-  }
+  // Now expect that the generator to NOT be taking samples.
+  EXPECT_FALSE(audio_frame_generator.TakingSamples());
 }
 
 // Safe to run simultaneously with `AddAllSamplesAndFinalizesExpectOk`.
@@ -389,8 +385,7 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
                                 codec_config_obus, audio_elements,
                                 demixing_module, global_timing_module,
                                 parameters_manager, audio_frame_generator);
-  // Add only one "real" frame and an empty frame to signal the end of the
-  // stream.
+  // Add one "real" frame.
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
       label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
@@ -515,6 +510,55 @@ TEST(AudioFrameGenerator, OneStereoSubstreamOneFrame) {
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
   ValidateAudioFrames(audio_frames, expected_audio_frames);
+}
+
+TEST(AudioFrameGenerator, AddSamplesAfterFinalizeHasNoEffect) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  // For delayed initialization.
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                demixing_module, global_timing_module,
+                                parameters_manager, audio_frame_generator);
+
+  // First add one frame of samples and call finalize.
+  const absl::flat_hash_map<ChannelLabel::Label,
+                            std::vector<absl::Span<const InternalSampleType>>>
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
+  ASSERT_FALSE(audio_elements.empty());
+  const DecodedUleb128 audio_element_id = audio_elements.begin()->first;
+  AddAllSamplesAndFinalizesExpectOk(audio_element_id, label_to_frames,
+                                    *audio_frame_generator);
+
+  // Expect that one frame is generated.
+  std::list<AudioFrameWithData> first_round_audio_frames;
+  FlushAudioFrameGeneratorExpectOk(*audio_frame_generator,
+                                   first_round_audio_frames);
+  EXPECT_EQ(first_round_audio_frames.size(), 1);
+
+  // Add another frame, but since `Finalize()` has been called in the last
+  // round, this has no effect. Therefore we expect that no frame is generated.
+  std::list<AudioFrameWithData> second_round_audio_frames;
+  while (audio_frame_generator->TakingSamples()) {
+    for (const auto& [label, frames] : label_to_frames) {
+      EXPECT_THAT(audio_frame_generator->AddSamples(audio_element_id, label,
+                                                    frames.front()),
+                  IsOk());
+    }
+  }
+  FlushAudioFrameGeneratorExpectOk(*audio_frame_generator,
+                                   second_round_audio_frames);
+  EXPECT_TRUE(second_round_audio_frames.empty());
 }
 
 TEST(AudioFrameGenerator, AllowsOutputToHaveHigherBitDepthThanInput) {
