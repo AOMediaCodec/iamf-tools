@@ -16,6 +16,7 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -233,8 +234,13 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   // Decode the audio frames. They are required to determine the demixed
   // frames.
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  RETURN_IF_NOT_OK(
-      audio_frame_decoder_->Decode(audio_frames, decoded_audio_frames));
+  for (const auto& audio_frame : audio_frames) {
+    auto decoded_audio_frame = audio_frame_decoder_->Decode(audio_frame);
+    if (!decoded_audio_frame.ok()) {
+      return decoded_audio_frame.status();
+    }
+    decoded_audio_frames.emplace_back(*decoded_audio_frame);
+  }
 
   // Demix the audio frames.
   IdLabeledFrameMap id_to_labeled_decoded_frame;

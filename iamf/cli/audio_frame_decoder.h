@@ -13,12 +13,12 @@
 #define CLI_AUDIO_FRAME_DECODER_H_
 
 #include <cstdint>
-#include <list>
 #include <memory>
 #include <vector>
 
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -85,14 +85,13 @@ class AudioFrameDecoder {
       const SubstreamIdLabelsMap& substream_id_to_labels,
       const CodecConfigObu& codec_config);
 
-  /*!\brief Decodes a list of Audio Frame OBUs.
+  /*!\brief Decodes an Audio Frame OBU.
    *
-   * \param encoded_audio_frames Input Audio Frame OBUs.
-   * \param decoded_audio_frames Output decoded audio frames.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \param encoded_audio_frame Input Audio Frame OBU.
+   * \return Decoded audio frame on success. A specific status on failure.
    */
-  absl::Status Decode(const std::list<AudioFrameWithData>& encoded_audio_frames,
-                      std::list<DecodedAudioFrame>& decoded_audio_frames);
+  absl::StatusOr<DecodedAudioFrame> Decode(
+      const AudioFrameWithData& encoded_audio_frame);
 
  private:
   // A map of substream IDs to the relevant decoder and codec config. This is
