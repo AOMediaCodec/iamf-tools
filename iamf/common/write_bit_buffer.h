@@ -45,9 +45,7 @@ class WriteBitBuffer {
    *        32.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         `num_bits > 32` or if `data >= 2^(num_bits)`.
-   *         `absl::Status::kResourceExhausted` if there is not enough room in
-   *         the write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
-   *         negative.
+   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
    */
   absl::Status WriteUnsignedLiteral(uint32_t data, int num_bits);
 
@@ -58,8 +56,7 @@ class WriteBitBuffer {
    *        64.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         `num_bits > 64` or if `data >= 2^(num_bits)`.
-   *         `absl::Status::kResourceExhausted` if there is not enough room in
-   *         the write buffer. `absl::UnknownError()` if the `wb->bit_offset` is
+   *         `absl::UnknownError()` if the `wb->bit_offset` is
    *         negative.
    */
   absl::Status WriteUnsignedLiteral64(uint64_t data, int num_bits);
@@ -67,18 +64,16 @@ class WriteBitBuffer {
   /*!\brief Writes specified signed 8 bit integer to the write buffer.
    *
    * \param data Data to write in standard two's complement form.
-   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *         if there is not enough room in the write buffer.
-   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
    */
   absl::Status WriteSigned8(int8_t data);
 
   /*!\brief Writes the signed 16 bit integer to the write buffer.
    *
    * \param data Data to write in standard two's complement form.
-   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *         if there is not enough room in the write buffer.
-   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
    */
   absl::Status WriteSigned16(int16_t data);
 
@@ -87,37 +82,31 @@ class WriteBitBuffer {
    * \param data Data to write.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the string is not terminated within `kIamfMaxStringSize` bytes.
-   *         `absl::Status::kResourceExhausted` if there is not enough room in
-   *         the write buffer. Other specific statuses on failure.
+   *         Other specific statuses on failure.
    */
   absl::Status WriteString(const std::string& data);
 
   /*!\brief Writes a `std::vector<uint8_t>` to the write buffer.
    *
    * \param data Data to write.
-   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *         if there is not enough room in the write buffer.
-   *         `absl::UnknownError()` if the `wb->bit_offset` is negative.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
    */
   absl::Status WriteUint8Vector(const std::vector<uint8_t>& data);
 
   /*!\brief Writes a ULEB128 to the buffer using an implicit generator.
    *
    * \param data Data to write using the member `leb_generator_`.
-   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *         if there is not enough room in the write buffer.
-   *         `absl::InvalidArgumentError()` if the generation fails. Other
-   *         specific statuses on failure.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the generation fails. Other specific statuses on failure.
    */
   absl::Status WriteUleb128(DecodedUleb128 data);
 
   /*!\brief Writes the expandable size according to ISO 14496-1.
    *
    * \param size_of_instance Size of the instance.
-   * \return `absl::OkStatus()` on success. `absl::Status::kResourceExhausted`
-   *         if there is not enough room in the write buffer.
-   *         `absl::InvalidArgumentError()` if the generation fails. Other
-   *         specific statuses on failure.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the generation fails. Other specific statuses on failure.
    */
   absl::Status WriteIso14496_1Expanded(uint32_t size_of_instance);
 

@@ -31,18 +31,11 @@ namespace iamf_tools {
 
 namespace {
 
-absl::Status CanWriteBits(const bool allow_resizing, const int num_bits,
-                          const int64_t bit_offset,
-                          std::vector<uint8_t>& bit_buffer) {
+void MaybeResizeBufferToFitNumBits(int num_bits, int64_t bit_offset,
+                                   std::vector<uint8_t>& bit_buffer) {
   const int64_t size = static_cast<int64_t>(bit_buffer.size());
   if (bit_offset + num_bits <= size * 8) {
-    return absl::OkStatus();
-  }
-
-  if (!allow_resizing) {
-    return absl::ResourceExhaustedError(
-        "The buffer does not have enough capacity to write and cannot be "
-        "resized.");
+    return;
   }
 
   const int64_t required_bytes = ((bit_offset + num_bits) / 8) +
@@ -50,8 +43,6 @@ absl::Status CanWriteBits(const bool allow_resizing, const int num_bits,
 
   // Adjust the size of the buffer.
   bit_buffer.resize(required_bytes, 0);
-
-  return absl::OkStatus();
 }
 
 // Write one bit to the buffer using an AND or OR mask. All unwritten bits are
@@ -107,7 +98,7 @@ absl::Status InternalWriteUnsigned(int max_bits, uint64_t data, int num_bits,
   }
 
   // Expand the buffer and pad the input data with zeroes.
-  RETURN_IF_NOT_OK(CanWriteBits(true, num_bits, bit_offset, bit_buffer));
+  MaybeResizeBufferToFitNumBits(num_bits, bit_offset, bit_buffer);
 
   if (bit_offset % 8 == 0 && num_bits % 8 == 0) {
     // Short-circuit the common case of writing a byte-aligned input to a
@@ -259,7 +250,7 @@ absl::Status WriteBitBuffer::FlushAndWriteToFile(
     RETURN_IF_NOT_OK(WriteBufferToFile(bit_buffer_, *output_file));
   }
 
-  LOG(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
+  LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
   Reset();
   return absl::OkStatus();
 }
