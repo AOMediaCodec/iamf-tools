@@ -15,10 +15,11 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
@@ -27,26 +28,20 @@ namespace {
 absl::Status CopyProfileVersion(
     iamf_tools_cli_proto::ProfileVersion metadata_profile_version,
     ProfileVersion& obu_profile_version) {
-  switch (metadata_profile_version) {
-    using enum iamf_tools_cli_proto::ProfileVersion;
-    using enum ProfileVersion;
-    case PROFILE_VERSION_SIMPLE:
-      obu_profile_version = kIamfSimpleProfile;
-      return absl::OkStatus();
-    case PROFILE_VERSION_BASE:
-      obu_profile_version = kIamfBaseProfile;
-      return absl::OkStatus();
-    case PROFILE_VERSION_BASE_ENHANCED:
-      obu_profile_version = kIamfBaseEnhancedProfile;
-      return absl::OkStatus();
-    case PROFILE_VERSION_RESERVED_255:
-      obu_profile_version = kIamfReserved255Profile;
-      return absl::InvalidArgumentError(
-          "ProfileVersion::kIamfReserved255Profile is not supported.");
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unknown profile version= ", metadata_profile_version));
+  static const auto kProtoToInternalProfileVersion =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalProfileVersions);
+
+  RETURN_IF_NOT_OK(CopyFromMap(
+      *kProtoToInternalProfileVersion, metadata_profile_version,
+      "Internal version of proto `ProfileVersion`", obu_profile_version));
+
+  // Only the test suite should use the reserved profile version.
+  if (obu_profile_version == ProfileVersion::kIamfReserved255Profile) {
+    return absl::InvalidArgumentError(
+        "ProfileVersion::kIamfReserved255Profile is not supported.");
   }
+
+  return absl::OkStatus();
 }
 
 }  // namespace

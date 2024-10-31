@@ -24,6 +24,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
@@ -314,32 +315,13 @@ absl::Status FillMixPresentationTags(
 }  // namespace
 
 absl::Status MixPresentationGenerator::CopySoundSystem(
-    const iamf_tools_cli_proto::SoundSystem& input_sound_system,
+    iamf_tools_cli_proto::SoundSystem input_sound_system,
     LoudspeakersSsConventionLayout::SoundSystem& output_sound_system) {
-  using enum iamf_tools_cli_proto::SoundSystem;
-  using enum LoudspeakersSsConventionLayout::SoundSystem;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::SoundSystem,
-                          LoudspeakersSsConventionLayout::SoundSystem>>
-      kInputSoundSystemToOutputSoundSystem({
-          {SOUND_SYSTEM_A_0_2_0, kSoundSystemA_0_2_0},
-          {SOUND_SYSTEM_B_0_5_0, kSoundSystemB_0_5_0},
-          {SOUND_SYSTEM_C_2_5_0, kSoundSystemC_2_5_0},
-          {SOUND_SYSTEM_D_4_5_0, kSoundSystemD_4_5_0},
-          {SOUND_SYSTEM_E_4_5_1, kSoundSystemE_4_5_1},
-          {SOUND_SYSTEM_F_3_7_0, kSoundSystemF_3_7_0},
-          {SOUND_SYSTEM_G_4_9_0, kSoundSystemG_4_9_0},
-          {SOUND_SYSTEM_H_9_10_3, kSoundSystemH_9_10_3},
-          {SOUND_SYSTEM_I_0_7_0, kSoundSystemI_0_7_0},
-          {SOUND_SYSTEM_J_4_7_0, kSoundSystemJ_4_7_0},
-          {SOUND_SYSTEM_10_2_7_0, kSoundSystem10_2_7_0},
-          {SOUND_SYSTEM_11_2_3_0, kSoundSystem11_2_3_0},
-          {SOUND_SYSTEM_12_0_1_0, kSoundSystem12_0_1_0},
-          {SOUND_SYSTEM_13_6_9_0, kSoundSystem13_6_9_0},
-      });
+  static const auto kProtoToInternalSoundSystem =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalSoundSystems);
 
   return CopyFromMap(
-      *kInputSoundSystemToOutputSoundSystem, input_sound_system,
+      *kProtoToInternalSoundSystem, input_sound_system,
       "Internal version of proto `SoundSystem`= ", output_sound_system);
 }
 
@@ -361,27 +343,14 @@ absl::Status MixPresentationGenerator::CopyInfoType(
         "LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS]`\n");
   }
 
-  using enum iamf_tools_cli_proto::LoudnessInfoTypeBitMask;
-  using enum LoudnessInfo::InfoTypeBitmask;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::LoudnessInfoTypeBitMask,
-                          LoudnessInfo::InfoTypeBitmask>>
-      kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask({
-          {LOUDNESS_INFO_TYPE_TRUE_PEAK, kTruePeak},
-          {LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS, kAnchoredLoudness},
-          {LOUDNESS_INFO_TYPE_RESERVED_4, kInfoTypeBitMask4},
-          {LOUDNESS_INFO_TYPE_RESERVED_8, kInfoTypeBitMask8},
-          {LOUDNESS_INFO_TYPE_RESERVED_16, kInfoTypeBitMask16},
-          {LOUDNESS_INFO_TYPE_RESERVED_32, kInfoTypeBitMask32},
-          {LOUDNESS_INFO_TYPE_RESERVED_64, kInfoTypeBitMask64},
-          {LOUDNESS_INFO_TYPE_RESERVED_128, kInfoTypeBitMask128},
-      });
+  static const auto kProtoToInternalInfoTypeBitmask =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalInfoTypeBitmasks);
 
   uint8_t accumulated_info_type_bitmask = 0;
   for (int i = 0; i < input_loudness_info.info_type_bit_masks_size(); ++i) {
     LoudnessInfo::InfoTypeBitmask user_output_bit_mask;
     RETURN_IF_NOT_OK(CopyFromMap(
-        *kInputLoudnessInfoTypeBitMaskToOutputLoudnessInfoTypeBitMask,
+        *kProtoToInternalInfoTypeBitmask,
         input_loudness_info.info_type_bit_masks(i),
         absl::StrCat("Internal version of proto `LoudnessInfoTypeBitMask(", i,
                      ")= "),

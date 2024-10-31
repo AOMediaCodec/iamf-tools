@@ -8,13 +8,13 @@ cc_library(
     hdrs = ["arbitrary_obu_generator.h"],
     deps = [
         "//iamf/cli:cli_util",
+        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:arbitrary_obu_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:obu_header",
         "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -30,6 +30,7 @@ cc_library(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:cli_util",
+        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/common:macros",
@@ -97,6 +98,7 @@ cc_library(
     deps = [
         ":audio_frame_generator",
         "//iamf/cli:cli_util",
+        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
@@ -120,12 +122,13 @@ cc_library(
     hdrs = ["ia_sequence_header_generator.h"],
     deps = [
         "//iamf/cli:cli_util",
+        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/common:macros",
+        "//iamf/common:obu_util",
         "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -135,6 +138,7 @@ cc_library(
     hdrs = ["mix_presentation_generator.h"],
     deps = [
         "//iamf/cli:cli_util",
+        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",

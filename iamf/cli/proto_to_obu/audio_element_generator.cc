@@ -29,6 +29,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/common/macros.h"
@@ -670,7 +671,7 @@ absl::Status ValidateReconGainDefined(
 
 // Copies the `LoudspeakerLayout` based on the input data.
 absl::Status CopyLoudspeakerLayout(
-    const iamf_tools_cli_proto::ChannelAudioLayerConfig
+    const iamf_tools_cli_proto::ChannelAudioLayerConfig&
         input_channel_audio_layer_config,
     ChannelAudioLayerConfig::LoudspeakerLayout& output_loudspeaker_layout) {
   if (input_channel_audio_layer_config.has_deprecated_loudspeaker_layout()) {
@@ -700,28 +701,10 @@ absl::Status CopyLoudspeakerLayout(
         "LOUDSPEAKER_LAYOUT_BINAURAL`\n");
   }
 
-  using enum iamf_tools_cli_proto::LoudspeakerLayout;
-  using enum ChannelAudioLayerConfig::LoudspeakerLayout;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::LoudspeakerLayout,
-                          ChannelAudioLayerConfig::LoudspeakerLayout>>
-      kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
-          {LOUDSPEAKER_LAYOUT_MONO, kLayoutMono},
-          {LOUDSPEAKER_LAYOUT_STEREO, kLayoutStereo},
-          {LOUDSPEAKER_LAYOUT_5_1_CH, kLayout5_1_ch},
-          {LOUDSPEAKER_LAYOUT_5_1_2_CH, kLayout5_1_2_ch},
-          {LOUDSPEAKER_LAYOUT_5_1_4_CH, kLayout5_1_4_ch},
-          {LOUDSPEAKER_LAYOUT_7_1_CH, kLayout7_1_ch},
-          {LOUDSPEAKER_LAYOUT_7_1_2_CH, kLayout7_1_2_ch},
-          {LOUDSPEAKER_LAYOUT_7_1_4_CH, kLayout7_1_4_ch},
-          {LOUDSPEAKER_LAYOUT_3_1_2_CH, kLayout3_1_2_ch},
-          {LOUDSPEAKER_LAYOUT_BINAURAL, kLayoutBinaural},
-          {LOUDSPEAKER_LAYOUT_RESERVED_10, kLayoutReserved10},
-          {LOUDSPEAKER_LAYOUT_RESERVED_14, kLayoutReserved14},
-          {LOUDSPEAKER_LAYOUT_EXPANDED, kLayoutExpanded},
-      });
+  static const auto kProtoToInternalLoudspeakerLayout = BuildStaticMapFromPairs(
+      LookupTables::kProtoAndInternalLoudspeakerLayouts);
 
-  return CopyFromMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+  return CopyFromMap(*kProtoToInternalLoudspeakerLayout,
                      input_channel_audio_layer_config.loudspeaker_layout(),
                      "Internal version of proto `LoudspeakerLayout`= ",
                      output_loudspeaker_layout);
@@ -729,32 +712,15 @@ absl::Status CopyLoudspeakerLayout(
 
 // Copies the `ExpandedLoudspeakerLayout` based on the input data.
 absl::Status CopyExpandedLoudspeakerLayout(
-    const iamf_tools_cli_proto::ExpandedLoudspeakerLayout
+    iamf_tools_cli_proto::ExpandedLoudspeakerLayout
         input_expanded_loudspeaker_layout,
     ChannelAudioLayerConfig::ExpandedLoudspeakerLayout&
         output_expanded_loudspeaker_layout) {
-  using enum iamf_tools_cli_proto::ExpandedLoudspeakerLayout;
-  using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::ExpandedLoudspeakerLayout,
-                          ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>>
-      kInputLoudspeakerLayoutToOutputLoudspeakerLayout({
-          {EXPANDED_LOUDSPEAKER_LAYOUT_LFE, kExpandedLayoutLFE},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_S, kExpandedLayoutStereoS},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_SS, kExpandedLayoutStereoSS},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_RS, kExpandedLayoutStereoRS},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TF, kExpandedLayoutStereoTF},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TB, kExpandedLayoutStereoTB},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_4_CH, kExpandedLayoutTop4Ch},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_3_0_CH, kExpandedLayout3_0_ch},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_9_1_6_CH, kExpandedLayout9_1_6_ch},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_F, kExpandedLayoutStereoF},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_SI, kExpandedLayoutStereoSi},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TP_SI, kExpandedLayoutStereoTpSi},
-          {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_6_CH, kExpandedLayoutTop6Ch},
-      });
+  static const auto kProtoToInternalExpandedLoudspeakerLayout =
+      BuildStaticMapFromPairs(
+          LookupTables::kProtoAndInternalExpandedLoudspeakerLayouts);
 
-  return CopyFromMap(*kInputLoudspeakerLayoutToOutputLoudspeakerLayout,
+  return CopyFromMap(*kProtoToInternalExpandedLoudspeakerLayout,
                      input_expanded_loudspeaker_layout,
                      "Internal version of proto `ExpandedLoudspeakerLayout`= ",
                      output_expanded_loudspeaker_layout);

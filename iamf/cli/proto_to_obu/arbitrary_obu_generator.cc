@@ -18,11 +18,11 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
@@ -33,47 +33,12 @@ namespace iamf_tools {
 
 namespace {
 absl::Status CopyArbitraryObuType(
-    const iamf_tools_cli_proto::ArbitraryObuType arbitrary_obu_type,
+    iamf_tools_cli_proto::ArbitraryObuType arbitrary_obu_type,
     ObuType& output_obu_type) {
-  using enum iamf_tools_cli_proto::ArbitraryObuType;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::ArbitraryObuType, ObuType>>
-      kArbitraryObuTypeToObuType({
-          {OBU_IA_CODEC_CONFIG, kObuIaCodecConfig},
-          {OBU_IA_AUDIO_ELEMENT, kObuIaAudioElement},
-          {OBU_IA_MIX_PRESENTATION, kObuIaMixPresentation},
-          {OBU_IA_PARAMETER_BLOCK, kObuIaParameterBlock},
-          {OBU_IA_TEMPORAL_DELIMITER, kObuIaTemporalDelimiter},
-          {OBU_IA_AUDIO_FRAME, kObuIaAudioFrame},
-          {OBU_IA_AUDIO_FRAME_ID_0, kObuIaAudioFrameId0},
-          {OBU_IA_AUDIO_FRAME_ID_1, kObuIaAudioFrameId1},
-          {OBU_IA_AUDIO_FRAME_ID_2, kObuIaAudioFrameId2},
-          {OBU_IA_AUDIO_FRAME_ID_3, kObuIaAudioFrameId3},
-          {OBU_IA_AUDIO_FRAME_ID_4, kObuIaAudioFrameId4},
-          {OBU_IA_AUDIO_FRAME_ID_5, kObuIaAudioFrameId5},
-          {OBU_IA_AUDIO_FRAME_ID_6, kObuIaAudioFrameId6},
-          {OBU_IA_AUDIO_FRAME_ID_7, kObuIaAudioFrameId7},
-          {OBU_IA_AUDIO_FRAME_ID_8, kObuIaAudioFrameId8},
-          {OBU_IA_AUDIO_FRAME_ID_9, kObuIaAudioFrameId9},
-          {OBU_IA_AUDIO_FRAME_ID_10, kObuIaAudioFrameId10},
-          {OBU_IA_AUDIO_FRAME_ID_11, kObuIaAudioFrameId11},
-          {OBU_IA_AUDIO_FRAME_ID_12, kObuIaAudioFrameId12},
-          {OBU_IA_AUDIO_FRAME_ID_13, kObuIaAudioFrameId13},
-          {OBU_IA_AUDIO_FRAME_ID_14, kObuIaAudioFrameId14},
-          {OBU_IA_AUDIO_FRAME_ID_15, kObuIaAudioFrameId15},
-          {OBU_IA_AUDIO_FRAME_ID_16, kObuIaAudioFrameId16},
-          {OBU_IA_AUDIO_FRAME_ID_17, kObuIaAudioFrameId17},
-          {OBU_IA_RESERVED_24, kObuIaReserved24},
-          {OBU_IA_RESERVED_25, kObuIaReserved25},
-          {OBU_IA_RESERVED_26, kObuIaReserved26},
-          {OBU_IA_RESERVED_27, kObuIaReserved27},
-          {OBU_IA_RESERVED_28, kObuIaReserved28},
-          {OBU_IA_RESERVED_29, kObuIaReserved29},
-          {OBU_IA_RESERVED_30, kObuIaReserved30},
-          {OBU_IA_SEQUENCE_HEADER, kObuIaSequenceHeader},
-      });
+  static const auto kProtoArbitraryObuTypeToObuType = BuildStaticMapFromPairs(
+      LookupTables::kProtoArbitraryObuTypeAndInternalObuTypes);
 
-  return CopyFromMap(*kArbitraryObuTypeToObuType, arbitrary_obu_type,
+  return CopyFromMap(*kProtoArbitraryObuTypeToObuType, arbitrary_obu_type,
                      "Internal version of proto `ArbitraryObuType`",
                      output_obu_type);
 }

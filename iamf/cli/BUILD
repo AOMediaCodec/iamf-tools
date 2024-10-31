@@ -88,6 +88,7 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
+        ":lookup_tables",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
@@ -259,6 +260,29 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "lookup_tables",
+    hdrs = ["lookup_tables.h"],
+    deps = [
+        "//iamf/cli/proto:arbitrary_obu_cc_proto",
+        "//iamf/cli/proto:audio_element_cc_proto",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:mix_presentation_cc_proto",
+        "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
     ],
 )
 

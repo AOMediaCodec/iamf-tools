@@ -29,6 +29,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
@@ -45,21 +46,6 @@
 namespace iamf_tools {
 
 namespace {
-
-static constexpr auto kProtoAndInternalDMixPModes = []() {
-  using enum DemixingInfoParameterData::DMixPMode;
-  using enum iamf_tools_cli_proto::DMixPMode;
-  return std::to_array<std::pair<iamf_tools_cli_proto::DMixPMode,
-                                 DemixingInfoParameterData::DMixPMode>>(
-      {{DMIXP_MODE_1, kDMixPMode1},
-       {DMIXP_MODE_2, kDMixPMode2},
-       {DMIXP_MODE_3, kDMixPMode3},
-       {DMIXP_MODE_RESERVED_A, kDMixPModeReserved1},
-       {DMIXP_MODE_1_N, kDMixPMode1_n},
-       {DMIXP_MODE_2_N, kDMixPMode2_n},
-       {DMIXP_MODE_3_N, kDMixPMode3_n},
-       {DMIXP_MODE_RESERVED_B, kDMixPModeReserved2}});
-}();
 
 absl::Status GetPerIdMetadata(
     const DecodedUleb128 parameter_id,
@@ -172,7 +158,7 @@ absl::Status CopyDemixingInfoParameterData(
         input_demixing_info_parameter_data,
     DemixingInfoParameterData& obu_demixing_param_data) {
   static const auto kProtoToInternalDMixPMode =
-      BuildStaticMapFromPairs(kProtoAndInternalDMixPModes);
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalDMixPModes);
 
   RETURN_IF_NOT_OK(CopyFromMap(*kProtoToInternalDMixPMode,
                                input_demixing_info_parameter_data.dmixp_mode(),
@@ -187,8 +173,8 @@ absl::Status CopyDemixingInfoParameterData(
 
 absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
                            iamf_tools_cli_proto::DMixPMode& dmixp_mode) {
-  static const auto kInternalToProtoDMixPMode =
-      BuildStaticMapFromInvertedPairs(kProtoAndInternalDMixPModes);
+  static const auto kInternalToProtoDMixPMode = BuildStaticMapFromInvertedPairs(
+      LookupTables::kProtoAndInternalDMixPModes);
 
   return CopyFromMap(*kInternalToProtoDMixPMode, obu_dmixp_mode,
                      "Proto version of internal `DMixPMode`", dmixp_mode);

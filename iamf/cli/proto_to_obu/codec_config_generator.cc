@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
+#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 #include "iamf/common/macros.h"
@@ -55,75 +56,32 @@ absl::Status CopyCodecId(
     return absl::InvalidArgumentError("Missing `codec_id` field.");
   }
 
-  using enum iamf_tools_cli_proto::CodecId;
-  using enum CodecConfig::CodecId;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::CodecId, CodecConfig::CodecId>>
-      kInputCodecIdToOutputCodecId({
-          {CODEC_ID_OPUS, kCodecIdOpus},
-          {CODEC_ID_FLAC, kCodecIdFlac},
-          {CODEC_ID_AAC_LC, kCodecIdAacLc},
-          {CODEC_ID_LPCM, kCodecIdLpcm},
-      });
+  static const auto kProtoToInternalCodecId =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalCodecIds);
 
-  return CopyFromMap(*kInputCodecIdToOutputCodecId,
-                     input_codec_config.codec_id(),
+  return CopyFromMap(*kProtoToInternalCodecId, input_codec_config.codec_id(),
                      "Internal version of proto `CodecId`= ", output_codec_id);
 }
 
 absl::Status CopyFlacBlockType(
-    const iamf_tools_cli_proto::FlacBlockType input_flac_block_type,
+    iamf_tools_cli_proto::FlacBlockType input_flac_block_type,
     FlacMetaBlockHeader::FlacBlockType& output_flac_block_type) {
-  using enum iamf_tools_cli_proto::FlacBlockType;
-  using enum FlacMetaBlockHeader::FlacBlockType;
-  static const absl::NoDestructor<absl::flat_hash_map<
-      iamf_tools_cli_proto::FlacBlockType, FlacMetaBlockHeader::FlacBlockType>>
-      kInputFlacBlockTypeToOutputFlacBlockType(
-          {{FLAC_BLOCK_TYPE_STREAMINFO, kFlacStreamInfo},
-           {FLAC_BLOCK_TYPE_PADDING, kFlacPadding},
-           {FLAC_BLOCK_TYPE_APPLICATION, kFlacApplication},
-           {FLAC_BLOCK_TYPE_SEEKTABLE, kFlacSeektable},
-           {FLAC_BLOCK_TYPE_VORBIS_COMMENT, kFlacVorbisComment},
-           {FLAC_BLOCK_TYPE_CUESHEET, kFlacCuesheet},
-           {FLAC_BLOCK_TYPE_PICTURE, kFlacPicture}});
+  static const auto kProtoToInternalFlacBlockType =
+      BuildStaticMapFromPairs(LookupTables::kProtoAndInternalFlacBlockTypes);
 
-  return CopyFromMap(
-      *kInputFlacBlockTypeToOutputFlacBlockType, input_flac_block_type,
-      "Internal version of proto `FlacBlockType`", output_flac_block_type);
+  return CopyFromMap(*kProtoToInternalFlacBlockType, input_flac_block_type,
+                     "Internal version of proto `FlacBlockType`",
+                     output_flac_block_type);
 }
 
 absl::Status CopySampleFrequencyIndex(
-    const iamf_tools_cli_proto::SampleFrequencyIndex
-        input_sample_frequency_index,
+    iamf_tools_cli_proto::SampleFrequencyIndex input_sample_frequency_index,
     AudioSpecificConfig::SampleFrequencyIndex& output_sample_frequency_index) {
-  using enum iamf_tools_cli_proto::SampleFrequencyIndex;
-  using enum AudioSpecificConfig::SampleFrequencyIndex;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<iamf_tools_cli_proto::SampleFrequencyIndex,
-                          AudioSpecificConfig::SampleFrequencyIndex>>
-      kInputSampleFrequencyIndexToOutputSampleFrequencyIndex({
-          {AAC_SAMPLE_FREQUENCY_INDEX_96000, kSampleFrequencyIndex96000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_88200, kSampleFrequencyIndex88200},
-          {AAC_SAMPLE_FREQUENCY_INDEX_64000, kSampleFrequencyIndex64000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_48000, kSampleFrequencyIndex48000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_44100, kSampleFrequencyIndex44100},
-          {AAC_SAMPLE_FREQUENCY_INDEX_32000, kSampleFrequencyIndex32000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_23000, kSampleFrequencyIndex23000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_22050, kSampleFrequencyIndex22050},
-          {AAC_SAMPLE_FREQUENCY_INDEX_16000, kSampleFrequencyIndex16000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_12000, kSampleFrequencyIndex12000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_11025, kSampleFrequencyIndex11025},
-          {AAC_SAMPLE_FREQUENCY_INDEX_8000, kSampleFrequencyIndex8000},
-          {AAC_SAMPLE_FREQUENCY_INDEX_7350, kSampleFrequencyIndex7350},
-          {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_A,
-           kSampleFrequencyIndexReservedA},
-          {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B,
-           kSampleFrequencyIndexReservedB},
-          {AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE,
-           kSampleFrequencyIndexEscapeValue},
-      });
+  static const auto kProtoToInternalSampleFrequencyIndex =
+      BuildStaticMapFromPairs(
+          LookupTables::kProtoAndInternalSampleFrequencyIndices);
 
-  return CopyFromMap(*kInputSampleFrequencyIndexToOutputSampleFrequencyIndex,
+  return CopyFromMap(*kProtoToInternalSampleFrequencyIndex,
                      input_sample_frequency_index,
                      "Internal version of proto `SampleFrequencyIndex`",
                      output_sample_frequency_index);
