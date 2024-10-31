@@ -230,15 +230,11 @@ void ParseUserMetadataAssertSuccess(
  *
  * \param first_log_spectrum First log-spectrum to compare.
  * \param second_log_spectrum Second log-spectrum to compare.
- * \param threshold_db LSD Threshold to compare against, in db.
- * \return True if the log-spectral distance
- *         between the two spectra is below the specified threshold, false
- *         otherwise.
+ * \return Log-spectral distance between the two spectra.
  */
-bool IsLogSpectralDistanceBelowThreshold(
+double GetLogSpectralDistance(
     const absl::Span<const InternalSampleType>& first_log_spectrum,
-    const absl::Span<const InternalSampleType>& second_log_spectrum,
-    double threshold_db);
+    const absl::Span<const InternalSampleType>& second_log_spectrum);
 
 /*!\brief Extracts the relevant metadata for a given test case.
  *

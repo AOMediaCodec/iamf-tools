@@ -684,34 +684,24 @@ TEST(GenerateParamIdToMetadataMapTest,
   EXPECT_FALSE(param_id_to_metadata_map.ok());
 }
 
-TEST(IsLogSpectralDistanceBelowThreshold, BelowThresholdSucceeds) {
+TEST(GetLogSpectralDistance, ReturnsCorrectValue) {
   std::vector<double> first_log_spectrum(10);
   std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
   std::vector<double> second_log_spectrum(10);
   std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
-  EXPECT_TRUE(IsLogSpectralDistanceBelowThreshold(
-      absl::MakeConstSpan(first_log_spectrum),
-      absl::MakeConstSpan(second_log_spectrum), 11.0));
+  EXPECT_EQ(GetLogSpectralDistance(absl::MakeConstSpan(first_log_spectrum),
+                                   absl::MakeConstSpan(second_log_spectrum)),
+            10.0);
 }
 
-TEST(IsLogSpectralDistanceBelowThreshold, AtThresholdSucceeds) {
+TEST(ExpectLogSpectralDistanceBelowThreshold, ReturnsZeroWhenEqual) {
   std::vector<double> first_log_spectrum(10);
-  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 1);
   std::vector<double> second_log_spectrum(10);
   std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
-  EXPECT_TRUE(IsLogSpectralDistanceBelowThreshold(
-      absl::MakeConstSpan(first_log_spectrum),
-      absl::MakeConstSpan(second_log_spectrum), 10.0));
-}
-
-TEST(ExpectLogSpectralDistanceBelowThreshold, AboveThresholdFails) {
-  std::vector<double> first_log_spectrum(10);
-  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
-  std::vector<double> second_log_spectrum(10);
-  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
-  EXPECT_FALSE(IsLogSpectralDistanceBelowThreshold(
-      absl::MakeConstSpan(first_log_spectrum),
-      absl::MakeConstSpan(second_log_spectrum), 9.0));
+  EXPECT_EQ(GetLogSpectralDistance(absl::MakeConstSpan(first_log_spectrum),
+                                   absl::MakeConstSpan(second_log_spectrum)),
+            0.0);
 }
 
 }  // namespace

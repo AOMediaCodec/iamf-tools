@@ -388,10 +388,9 @@ void ParseUserMetadataAssertSuccess(
       google::protobuf::TextFormat::Parse(&input_stream, &user_metadata));
 }
 
-bool IsLogSpectralDistanceBelowThreshold(
+double GetLogSpectralDistance(
     const absl::Span<const InternalSampleType>& first_log_spectrum,
-    const absl::Span<const InternalSampleType>& second_log_spectrum,
-    double threshold_db) {
+    const absl::Span<const InternalSampleType>& second_log_spectrum) {
   const int num_samples = first_log_spectrum.size();
   if (num_samples != second_log_spectrum.size()) {
     LOG(ERROR) << "Spectrum sizes are not equal.";
@@ -402,7 +401,7 @@ bool IsLogSpectralDistanceBelowThreshold(
     log_spectral_distance += (first_log_spectrum[i] - second_log_spectrum[i]) *
                              (first_log_spectrum[i] - second_log_spectrum[i]);
   }
-  return (10 * std::sqrt(log_spectral_distance / num_samples)) <= threshold_db;
+  return (10 * std::sqrt(log_spectral_distance / num_samples));
 }
 
 std::vector<DecodeSpecification> GetDecodeSpecifications(
