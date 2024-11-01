@@ -1,5 +1,6 @@
 # Protos for IAMF data.
 
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 # [internal] load cc_proto_library.bzl
 
 package(default_visibility = [
