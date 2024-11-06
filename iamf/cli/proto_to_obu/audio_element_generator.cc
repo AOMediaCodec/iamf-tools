@@ -1232,7 +1232,6 @@ absl::Status AudioElementGenerator::Generate(
                                               new_audio_element_iter->second));
         break;
       default:
-        // TODO(b/289541186): Support the extension fields here.
         return InvalidArgumentError(
             StrCat("Unrecognized audio_element_type= ",
                    new_audio_element_iter->second.obu.GetAudioElementType()));

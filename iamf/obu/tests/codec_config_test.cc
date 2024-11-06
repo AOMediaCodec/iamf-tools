@@ -784,7 +784,6 @@ TEST_F(CodecConfigFlacTest, SetCodecDelayIsNoOp) {
   EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
 }
 
-// TODO(b/331831926): Add a test case for `FlacDecoderConfig`.
 TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
   constexpr DecodedUleb128 kNumSamplesPerFrame = 64;
   constexpr int16_t kExpectedAudioRollDistance = 0;

@@ -712,11 +712,7 @@ TEST_F(DemixingParameterBlockTest, DMixPMode2) {
 }
 
 TEST_F(DemixingParameterBlockTest,
-       ValidateAndWriteObuFailsWhenParamDefinitionMode1TooManySubblocks) {
-  // TODO(b/295173212): Modify this test case when the restriction of
-  //                    `num_subblocks` on recon gain parameter blocks
-  //                    is enforced. Current it is only enforced when
-  //                    `param_definition_mode == 1`.
+       ValidateAndWriteObuFailsWhenParamDefinitionMode1HasTooManySubblocks) {
   metadata_args_.param_definition_mode = true;
 
   duration_args_ = {

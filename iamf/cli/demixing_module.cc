@@ -651,7 +651,7 @@ absl::Status PassThroughReconGainData(
   return absl::OkStatus();
 }
 
-// TODO(b/339037792): Unify `AudioFrameWithData` and `DecodedAudioFrame`.
+// TODO(b/377553811): Unify `AudioFrameWithData` and `DecodedAudioFrame`.
 template <typename T>
 absl::Status StoreSamplesForAudioElementId(
     const std::list<T>& audio_frames_or_decoded_audio_frames,
