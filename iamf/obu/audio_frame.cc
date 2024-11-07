@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -42,9 +43,9 @@ ObuType GetObuType(uint32_t substream_id) {
 
 AudioFrameObu::AudioFrameObu(const ObuHeader& header,
                              DecodedUleb128 substream_id,
-                             const std::vector<uint8_t>& audio_frame)
+                             absl::Span<const uint8_t> audio_frame)
     : ObuBase(header, GetObuType(substream_id)),
-      audio_frame_(audio_frame),
+      audio_frame_(audio_frame.begin(), audio_frame.end()),
       audio_substream_id_(substream_id) {}
 
 absl::StatusOr<AudioFrameObu> AudioFrameObu::CreateFromBuffer(

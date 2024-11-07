@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -58,9 +59,10 @@ class AudioFrameObu : public ObuBase {
    *
    * \param header `ObuHeader` of the OBU.
    * \param substream_id Substream ID.
+   * \param audio_frame Audio frame.
    */
   AudioFrameObu(const ObuHeader& header, DecodedUleb128 substream_id,
-                const std::vector<uint8_t>& audio_frame);
+                absl::Span<const uint8_t> audio_frame);
 
   /*!\brief Destructor.*/
   ~AudioFrameObu() = default;
