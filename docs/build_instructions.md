@@ -75,6 +75,7 @@ documentation.
         *   `testdata/` - Sample input files to the encoder. See also
             [Test Suite](#Test-Suite).
         *   `tests/` - Unit tests for files under `iamf/cli/`.
+        *   `user_metadata_builder/` - Files to help build a `UserMetadata`.
     *   `obu/` - Files relating to IAMF Open Bitstream Units (OBU)s.
         *   `decoder_config/` - Files relating codec-specific decoder configs.
             *   `tests/` - Unit tests for files under `decoder_config/`.

@@ -25,15 +25,20 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/codec_config_obu_metadata_handler.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/ia_sequence_header_obu_metadata_handler.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/iamf.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/mix_presentation_handler.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/test_vector_metadata_handler.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
+
+namespace {
+constexpr DecodedUleb128 kCodecConfigId = 0;
+}
 
 absl::Status UserMetadataGenerator::WriteUserMetadataToFile(
     bool write_binary_proto, const std::filesystem::path& file_path,
@@ -86,9 +91,11 @@ UserMetadataGenerator::GenerateUserMetadata(
       *user_metadata.add_ia_sequence_header_metadata());
 
   // Generate codec config obu metadata.
-  GenerateLpcmCodecConfigObuMetadata(
-      format_info_, iamf->num_samples_per_frame_,
-      *user_metadata.add_codec_config_metadata());
+  user_metadata.mutable_codec_config_metadata()->Add(
+      CodecConfigObuMetadataBuilder::GetLpcmCodecConfigObuMetadata(
+          kCodecConfigId, iamf->num_samples_per_frame_,
+          format_info_.bits_per_sample, format_info_.samples_per_sec));
+
   // Mapping of audio element
   constexpr int32_t kFirstAudioElementId = 0;
   if (adm_.audio_programmes.empty()) {

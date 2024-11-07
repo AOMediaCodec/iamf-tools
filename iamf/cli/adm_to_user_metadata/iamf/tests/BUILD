@@ -25,17 +25,6 @@ cc_test(
 )
 
 cc_test(
-    name = "codec_config_obu_metadata_handler_test",
-    srcs = ["codec_config_obu_metadata_handler_test.cc"],
-    deps = [
-        "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
-        "//iamf/cli/adm_to_user_metadata/iamf:codec_config_obu_metadata_handler",
-        "//iamf/cli/proto:codec_config_cc_proto",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "ia_sequence_header_obu_metadata_handler_test",
     srcs = ["ia_sequence_header_obu_metadata_handler_test.cc"],
     deps = [

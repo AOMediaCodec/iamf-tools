@@ -40,18 +40,6 @@ cc_library(
 )
 
 cc_library(
-    name = "codec_config_obu_metadata_handler",
-    srcs = ["codec_config_obu_metadata_handler.cc"],
-    hdrs = [
-        "codec_config_obu_metadata_handler.h",
-    ],
-    deps = [
-        "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
-        "//iamf/cli/proto:codec_config_cc_proto",
-    ],
-)
-
-cc_library(
     name = "ia_sequence_header_obu_metadata_handler",
     srcs = [
         "ia_sequence_header_obu_metadata_handler.cc",
@@ -140,7 +128,6 @@ cc_library(
         "//iamf/cli/adm_to_user_metadata/iamf/tests:__pkg__",
     ],
     deps = [
-        ":codec_config_obu_metadata_handler",
         ":ia_sequence_header_obu_metadata_handler",
         ":iamf",
         ":mix_presentation_handler",
@@ -148,6 +135,8 @@ cc_library(
         "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
