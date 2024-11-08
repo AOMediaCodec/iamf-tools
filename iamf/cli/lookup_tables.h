@@ -103,25 +103,22 @@ class LookupTables {
     using enum AudioSpecificConfig::SampleFrequencyIndex;
     return std::to_array<std::pair<iamf_tools_cli_proto::SampleFrequencyIndex,
                                    AudioSpecificConfig::SampleFrequencyIndex>>(
-        {{AAC_SAMPLE_FREQUENCY_INDEX_96000, kSampleFrequencyIndex96000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_88200, kSampleFrequencyIndex88200},
-         {AAC_SAMPLE_FREQUENCY_INDEX_64000, kSampleFrequencyIndex64000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_48000, kSampleFrequencyIndex48000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_44100, kSampleFrequencyIndex44100},
-         {AAC_SAMPLE_FREQUENCY_INDEX_32000, kSampleFrequencyIndex32000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_23000, kSampleFrequencyIndex23000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_22050, kSampleFrequencyIndex22050},
-         {AAC_SAMPLE_FREQUENCY_INDEX_16000, kSampleFrequencyIndex16000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_12000, kSampleFrequencyIndex12000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_11025, kSampleFrequencyIndex11025},
-         {AAC_SAMPLE_FREQUENCY_INDEX_8000, kSampleFrequencyIndex8000},
-         {AAC_SAMPLE_FREQUENCY_INDEX_7350, kSampleFrequencyIndex7350},
-         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_A,
-          kSampleFrequencyIndexReservedA},
-         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B,
-          kSampleFrequencyIndexReservedB},
-         {AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE,
-          kSampleFrequencyIndexEscapeValue}});
+        {{AAC_SAMPLE_FREQUENCY_INDEX_96000, k96000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_88200, k88200},
+         {AAC_SAMPLE_FREQUENCY_INDEX_64000, k64000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_48000, k48000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_44100, k44100},
+         {AAC_SAMPLE_FREQUENCY_INDEX_32000, k32000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_23000, k23000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_22050, k22050},
+         {AAC_SAMPLE_FREQUENCY_INDEX_16000, k16000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_12000, k12000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_11025, k11025},
+         {AAC_SAMPLE_FREQUENCY_INDEX_8000, k8000},
+         {AAC_SAMPLE_FREQUENCY_INDEX_7350, k7350},
+         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_A, kReservedA},
+         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B, kReservedB},
+         {AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE, kEscapeValue}});
   }();
 
   inline static constexpr auto kProtoAndInternalLoudspeakerLayouts = []() {

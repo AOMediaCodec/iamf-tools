@@ -11,6 +11,8 @@
  */
 #include "iamf/obu/codec_config.h"
 
+#include <sys/stat.h>
+
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -44,6 +46,17 @@ constexpr int16_t kInvalidAudioRollDistance = 123;
 constexpr int16_t kLpcmAudioRollDistance = 0;
 constexpr DecodedUleb128 kCodecConfigId = 123;
 constexpr int16_t kArbitraryCodecDelay = 999;
+
+// Despite being represented in 4-bits the AAC Sampling Frequency Index 64000 is
+// serialized across a byte boundary.
+constexpr uint8_t kUpperByteSerializedSamplingFrequencyIndex64000 =
+    (static_cast<uint8_t>(AudioSpecificConfig::SampleFrequencyIndex::k64000) &
+     0x0e) >>
+    1;
+constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndex64000 =
+    (static_cast<uint8_t>(AudioSpecificConfig::SampleFrequencyIndex::k64000) &
+     0x01)
+    << 7;
 
 class CodecConfigTestBase : public ObuTestBase {
  public:
@@ -640,7 +653,7 @@ class CodecConfigAacTest : public CodecConfigTestBase, public testing::Test {
                 .decoder_specific_info_ =
                     {.audio_specific_config =
                          {.sample_frequency_index_ = AudioSpecificConfig::
-                              AudioSpecificConfig::kSampleFrequencyIndex64000}},
+                              SampleFrequencyIndex::k64000}},
             }) {
     // Overwrite some default values to be more reasonable for AAC.
     codec_config_.num_samples_per_frame = 1024;
@@ -699,11 +712,11 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   ReadBitBuffer buffer(1024, &source_data);
   ObuHeader header;
@@ -738,7 +751,7 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
             AudioSpecificConfig::kAudioObjectType);
   EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
                 .sample_frequency_index_,
-            AudioSpecificConfig::kSampleFrequencyIndex64000);
+            AudioSpecificConfig::SampleFrequencyIndex::k64000);
   EXPECT_EQ(obu->GetOutputSampleRate(), 64000);
   EXPECT_EQ(aac_decoder_config.decoder_specific_info_.audio_specific_config
                 .channel_configuration_,

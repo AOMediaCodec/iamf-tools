@@ -179,7 +179,7 @@ void InitExpectedObuForAac(
                .decoder_specific_info_{
                    .audio_specific_config =
                        {.sample_frequency_index_ =
-                            AudioSpecificConfig::kSampleFrequencyIndex48000}},
+                            AudioSpecificConfig::SampleFrequencyIndex::k48000}},
            }}));
   ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
 }
@@ -818,7 +818,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithExplicitSamplingFrequency) {
           output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config;
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
-            AudioSpecificConfig::kSampleFrequencyIndexEscapeValue);
+            AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue);
   EXPECT_EQ(audio_specific_config.sampling_frequency_, 9876);
 }
 

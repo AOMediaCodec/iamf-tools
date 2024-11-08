@@ -263,7 +263,7 @@ absl::Status GenerateAacDecoderConfig(
       aac_metadata.decoder_specific_info().sample_frequency_index(),
       audio_specific_config.sample_frequency_index_));
   if (audio_specific_config.sample_frequency_index_ ==
-      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue) {
+      AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue) {
     // The `sampling_frequency` is directly included in the stream.
     audio_specific_config.sampling_frequency_ =
         aac_metadata.decoder_specific_info().sampling_frequency();

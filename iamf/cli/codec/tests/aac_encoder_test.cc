@@ -68,7 +68,7 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
       .decoder_specific_info_ =
           {.audio_specific_config =
                {.sample_frequency_index_ =
-                    AudioSpecificConfig::kSampleFrequencyIndex64000}},
+                    AudioSpecificConfig::SampleFrequencyIndex::k64000}},
   };
   iamf_tools_cli_proto::AacEncoderMetadata aac_encoder_metadata_ = {};
 };  // namespace iamf_tools

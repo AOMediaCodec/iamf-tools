@@ -31,6 +31,8 @@ namespace iamf_tools {
 
 namespace {
 
+using SampleFrequencyIndex = AudioSpecificConfig::SampleFrequencyIndex;
+
 // ISO 14496:1 limits the max size of `DecoderConfigDescriptor` and
 // `DecoderSpecificInfo` to 2^28 - 1 bits.
 constexpr int32_t kMaxClassSize = (1 << 28) - 1;
@@ -163,7 +165,7 @@ absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(audio_object_type_, 5));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint32_t>(sample_frequency_index_), 4));
-  if (sample_frequency_index_ == kSampleFrequencyIndexEscapeValue) {
+  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sampling_frequency_, 24));
   }
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(channel_configuration_, 4));
@@ -185,7 +187,7 @@ absl::Status AudioSpecificConfig::Read(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, sample_frequency_index_uint8));
   sample_frequency_index_ =
       static_cast<SampleFrequencyIndex>(sample_frequency_index_uint8);
-  if (sample_frequency_index_ == kSampleFrequencyIndexEscapeValue) {
+  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, sampling_frequency_));
   }
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, channel_configuration_));
@@ -273,50 +275,40 @@ absl::Status AacDecoderConfig::GetOutputSampleRate(
   using enum AudioSpecificConfig::SampleFrequencyIndex;
   static const absl::NoDestructor<
       absl::flat_hash_map<AudioSpecificConfig::SampleFrequencyIndex, uint32_t>>
-      kSampleFrequencyIndexToSampleFrequency(
-          {{kSampleFrequencyIndex96000, 96000},
-           {kSampleFrequencyIndex88200, 88200},
-           {kSampleFrequencyIndex64000, 64000},
-           {kSampleFrequencyIndex48000, 48000},
-           {kSampleFrequencyIndex44100, 44100},
-           {kSampleFrequencyIndex32000, 32000},
-           {kSampleFrequencyIndex23000, 23000},
-           {kSampleFrequencyIndex22050, 22050},
-           {kSampleFrequencyIndex16000, 16000},
-           {kSampleFrequencyIndex12000, 12000},
-           {kSampleFrequencyIndex11025, 11025},
-           {kSampleFrequencyIndex8000, 8000},
-           {kSampleFrequencyIndex7350, 7350}});
+      kSampleFrequencyIndexToSampleFrequency({{k96000, 96000},
+                                              {k88200, 88200},
+                                              {k64000, 64000},
+                                              {k48000, 48000},
+                                              {k44100, 44100},
+                                              {k32000, 32000},
+                                              {k23000, 23000},
+                                              {k22050, 22050},
+                                              {k16000, 16000},
+                                              {k12000, 12000},
+                                              {k11025, 11025},
+                                              {k8000, 8000},
+                                              {k7350, 7350}});
 
   const auto sample_frequency_index =
       decoder_specific_info_.audio_specific_config.sample_frequency_index_;
 
-  if (sample_frequency_index == kSampleFrequencyIndexEscapeValue) {
+  if (sample_frequency_index == SampleFrequencyIndex::kEscapeValue) {
     // Accept the value directly from the bitstream.
     output_sample_rate =
         decoder_specific_info_.audio_specific_config.sampling_frequency_;
     return absl::OkStatus();
   }
 
-  if (sample_frequency_index == kSampleFrequencyIndexReservedA ||
-      sample_frequency_index == kSampleFrequencyIndexReservedB) {
+  if (sample_frequency_index == SampleFrequencyIndex::kReservedA ||
+      sample_frequency_index == SampleFrequencyIndex::kReservedB) {
     // Reject values reserved by the AAC spec.
     return absl::UnimplementedError(absl::StrCat(
         "Reserved sample_frequency_index= ", sample_frequency_index));
   }
 
-  auto sample_frequency_index_iter =
-      kSampleFrequencyIndexToSampleFrequency->find(sample_frequency_index);
-  if (sample_frequency_index_iter ==
-      kSampleFrequencyIndexToSampleFrequency->end()) {
-    // Reject anything else not in the map.
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Unknown `sample_frequency_index`: ", sample_frequency_index));
-  }
-
-  // Accept the value from the map.
-  output_sample_rate = sample_frequency_index_iter->second;
-  return absl::OkStatus();
+  return CopyFromMap(
+      *kSampleFrequencyIndexToSampleFrequency, sample_frequency_index,
+      "Sample rate for AAC Sampling Frequency Index", output_sample_rate);
 }
 
 uint8_t AacDecoderConfig::GetBitDepthToMeasureLoudness() {
@@ -330,7 +322,7 @@ void AudioSpecificConfig::Print() const {
             << absl::StrCat(audio_object_type_);
   LOG(INFO) << "        sample_frequency_index= "
             << absl::StrCat(sample_frequency_index_);
-  if (sample_frequency_index_ == kSampleFrequencyIndexEscapeValue) {
+  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
     LOG(INFO) << "        sampling_frequency= " << sampling_frequency_;
   }
   LOG(INFO) << "        channel_configuration= "

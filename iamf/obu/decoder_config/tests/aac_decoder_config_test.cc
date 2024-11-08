@@ -27,8 +27,22 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+using SampleFrequencyIndex = AudioSpecificConfig::SampleFrequencyIndex;
+
 constexpr int16_t kAudioRollDistance = -1;
 constexpr int16_t kInvalidAudioRollDistance = 0;
+
+// Despite being represented in 4-bits the AAC Sampling Frequency Index 64000 is
+// serialized across a byte boundary.
+constexpr uint8_t kUpperByteSerializedSamplingFrequencyIndex64000 =
+    (static_cast<uint8_t>(SampleFrequencyIndex::k64000) & 0x0e) >> 1;
+constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndex64000 =
+    (static_cast<uint8_t>(SampleFrequencyIndex::k64000) & 0x01) << 7;
+
+constexpr uint8_t kUpperByteSerializedSamplingFrequencyIndexEscape =
+    (static_cast<uint8_t>(SampleFrequencyIndex::kEscapeValue) & 0x0e) >> 1;
+constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndexEscape =
+    (static_cast<uint8_t>(SampleFrequencyIndex::kEscapeValue) & 0x01) << 7;
 
 // A 7-bit mask representing `channel_configuration`, and all three fields in
 // the GA specific config.
@@ -53,9 +67,8 @@ AacDecoderConfig GetAacDecoderConfig() {
       .max_bitrate_ = 0,
       .average_bit_rate_ = 0,
       .decoder_specific_info_ =
-          {.audio_specific_config =
-               {.sample_frequency_index_ = AudioSpecificConfig::
-                    AudioSpecificConfig::kSampleFrequencyIndex64000}},
+          {.audio_specific_config = {.sample_frequency_index_ =
+                                         SampleFrequencyIndex::k64000}},
   };
 }
 
@@ -69,8 +82,7 @@ TEST(AacDecoderConfig, ValidateWithManyVaryingValues) {
   aac_decoder_config.max_bitrate_ = 1;
   aac_decoder_config.average_bit_rate_ = 1;
   aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue;
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
   aac_decoder_config.decoder_specific_info_.audio_specific_config
       .sampling_frequency_ = 48;
 
@@ -176,11 +188,11 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency) {
   std::vector<uint8_t> data = {
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
   ReadBitBuffer rb(1024, &data);
@@ -190,7 +202,7 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency) {
   EXPECT_EQ(audio_specific_config.audio_object_type_,
             AudioSpecificConfig::kAudioObjectType);
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
-            AudioSpecificConfig::kSampleFrequencyIndex64000);
+            SampleFrequencyIndex::k64000);
   EXPECT_EQ(audio_specific_config.channel_configuration_,
             AudioSpecificConfig::kChannelConfiguration);
   EXPECT_EQ(audio_specific_config.ga_specific_config_.frame_length_flag,
@@ -206,10 +218,10 @@ TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
   std::vector<uint8_t> data = {
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndexEscape,
       // lower bit of `sample_frequency_index`, upper 7 bits of
       // `sampling_rate`.
-      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndexEscape |
           ((kSampleFrequency & 0xe00000) >> 17),
       // Next 16 bits of `sampling_rate`.
       ((kSampleFrequency & 0x1fe00) >> 9), ((kSampleFrequency & 0x1fe) >> 1),
@@ -222,7 +234,7 @@ TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
   EXPECT_THAT(audio_specific_config.Read(rb), IsOk());
 
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
-            AudioSpecificConfig::kSampleFrequencyIndexEscapeValue);
+            SampleFrequencyIndex::kEscapeValue);
   EXPECT_EQ(audio_specific_config.sampling_frequency_, kSampleFrequency);
 }
 
@@ -248,11 +260,11 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
       2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
   ReadBitBuffer rb(1024, &data);
@@ -300,10 +312,10 @@ TEST(AacDecoderConfig, ReadAndValidateWithExplicitSampleFrequency) {
       5,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndexEscape,
       // lower bit of `sample_frequency_index`, upper 7 bits of
       // `sampling_rate`.
-      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndexEscape |
           ((48000 & 0xe00000) >> 17),
       // Next 16 bits of `sampling_rate`.
       ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
@@ -342,11 +354,11 @@ TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
       3,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
   ReadBitBuffer rb(1024, &data);
@@ -376,11 +388,11 @@ TEST(AacDecoderConfig, ReadExtensions) {
       5,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask,
       'd', 'e', 'f', 'a', 'b', 'c'};
   AacDecoderConfig decoder_config;
@@ -417,11 +429,11 @@ TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
       2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
   ReadBitBuffer rb(1024, &data);
@@ -497,11 +509,11 @@ TEST_F(AacTest, DefaultWriteDecoderConfig) {
       2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
 }
@@ -533,11 +545,11 @@ TEST_F(AacTest, WritesWithExtension) {
       5,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask,
       'c', 'd', 'e', 'a', 'b', 'c'};
   TestWriteDecoderConfig();
@@ -546,19 +558,18 @@ TEST_F(AacTest, WritesWithExtension) {
 TEST_F(AacTest, DefaultWriteAudioSpecificConfig) {
   expected_audio_specific_config_ = {
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-      2 << 3 | ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+      2 << 3 | kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteAudioSpecificConfig();
 }
 
 TEST_F(AacTest, ExplicitSampleRate) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue;
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .sampling_frequency_ = 48000;
 
@@ -583,10 +594,10 @@ TEST_F(AacTest, ExplicitSampleRate) {
       5,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndexEscape,
       // lower bit of `sample_frequency_index`, upper 7 bits of
       // `sampling_rate`.
-      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndexEscape |
           ((48000 & 0xe00000) >> 17),
       // Next 16 bits of `sampling_rate`.
       ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
@@ -602,18 +613,16 @@ TEST_F(AacTest, ExplicitSampleRate) {
 
 TEST_F(AacTest, ExplicitSampleRateAudioSpecificConfig) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue;
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .sampling_frequency_ = 48000;
 
   expected_audio_specific_config_ = {
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-      2 << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x0e) >> 1),
+      2 << 3 | kUpperByteSerializedSamplingFrequencyIndexEscape,
       // lower bit of `sample_frequency_index`, upper 7 bits of
       // `sampling_rate`.
-      (AudioSpecificConfig::kSampleFrequencyIndexEscapeValue & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndexEscape |
           ((48000 & 0xe00000) >> 17),
       // Next 16 bits of `sampling_rate`.
       ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
@@ -653,11 +662,11 @@ TEST_F(AacTest, MaxBufferSizeDb) {
       2,
       // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
       AudioSpecificConfig::kAudioObjectType << 3 |
-          ((AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x0e) >> 1),
+          kUpperByteSerializedSamplingFrequencyIndex64000,
       // lower bit of `sample_frequency_index`,
       // `channel_configuration`, `frame_length_flag`,
       // `depends_on_core_coder`, `extension_flag`.
-      (AudioSpecificConfig::kSampleFrequencyIndex64000 & 0x01) << 7 |
+      kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   TestWriteDecoderConfig();
 }
@@ -673,8 +682,7 @@ TEST_F(AacTest, OverflowBufferSizeDbOver24Bits) {
 
 TEST_F(AacTest, GetImplicitSampleRate) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndex64000;
+      .sample_frequency_index_ = SampleFrequencyIndex::k64000;
 
   uint32_t output_sample_rate;
   EXPECT_THAT(aac_decoder_config_.GetOutputSampleRate(output_sample_rate),
@@ -685,8 +693,7 @@ TEST_F(AacTest, GetImplicitSampleRate) {
 
 TEST_F(AacTest, GetExplicitSampleRate) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndexEscapeValue;
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
       .sampling_frequency_ = 1234;
 
@@ -698,19 +705,7 @@ TEST_F(AacTest, GetExplicitSampleRate) {
 
 TEST_F(AacTest, InvalidReservedSampleRate) {
   aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      AudioSpecificConfig::kSampleFrequencyIndexReservedA;
-
-  uint32_t undetermined_output_sample_rate;
-  EXPECT_FALSE(
-      aac_decoder_config_.GetOutputSampleRate(undetermined_output_sample_rate)
-          .ok());
-}
-
-TEST_F(AacTest, InvalidSampleFrequencyIndexIsFourBits) {
-  aac_decoder_config_.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ =
-      static_cast<AudioSpecificConfig::SampleFrequencyIndex>(16);
+      .sample_frequency_index_ = SampleFrequencyIndex::kReservedA;
 
   uint32_t undetermined_output_sample_rate;
   EXPECT_FALSE(

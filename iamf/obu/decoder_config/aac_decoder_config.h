@@ -28,23 +28,23 @@ class AudioSpecificConfig {
    *
    * See `extensionSamplingFrequencyIndex` in ISO-14496.
    */
-  enum SampleFrequencyIndex {
-    kSampleFrequencyIndex96000 = 0,
-    kSampleFrequencyIndex88200 = 1,
-    kSampleFrequencyIndex64000 = 2,
-    kSampleFrequencyIndex48000 = 3,
-    kSampleFrequencyIndex44100 = 4,
-    kSampleFrequencyIndex32000 = 5,
-    kSampleFrequencyIndex23000 = 6,
-    kSampleFrequencyIndex22050 = 7,
-    kSampleFrequencyIndex16000 = 8,
-    kSampleFrequencyIndex12000 = 9,
-    kSampleFrequencyIndex11025 = 10,
-    kSampleFrequencyIndex8000 = 11,
-    kSampleFrequencyIndex7350 = 12,
-    kSampleFrequencyIndexReservedA = 13,
-    kSampleFrequencyIndexReservedB = 14,
-    kSampleFrequencyIndexEscapeValue = 15
+  enum class SampleFrequencyIndex {
+    k96000 = 0,
+    k88200 = 1,
+    k64000 = 2,
+    k48000 = 3,
+    k44100 = 4,
+    k32000 = 5,
+    k23000 = 6,
+    k22050 = 7,
+    k16000 = 8,
+    k12000 = 9,
+    k11025 = 10,
+    k8000 = 11,
+    k7350 = 12,
+    kReservedA = 13,
+    kReservedB = 14,
+    kEscapeValue = 15
   };
 
   static constexpr uint8_t kAudioObjectType = 2;
