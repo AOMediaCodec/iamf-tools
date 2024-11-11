@@ -33,10 +33,13 @@ namespace iamf_tools {
  * corresponding to the same frame (with the same start/end timestamps).
  *
  * For each frame:
- *   - Parameter blocks are added via `AddDemixingParameterBlock()`,
- *   - Parameter values can be queried via `GetDownMixingParameters()`.
+ *   - Parameter blocks are added via `AddDemixingParameterBlock()` or
+ *     `AddReconGainParameterBlock()`.
+ *   - Parameter values can be queried via `GetDownMixingParameters()` or
+ *     `GetReconGainInfoParameterData()`.
  *   - Caller (usually the audio frame generator) is responsible to tell this
- *     manager to advance to the next frame via `UpdateDemixingState()`.
+ *     manager to advance to the next frame via `UpdateDemixingState()` or
+ *     `UpdateReconGainState()`.
  */
 class ParametersManager {
  public:
@@ -106,12 +109,12 @@ class ParametersManager {
    *
    * \param audio_element_id Audio Element ID whose corresponding demixing
    *        state are to be updated.
-   * \param expected_timestamp Expected timestamp of the next set of
+   * \param expected_next_timestamp Expected timestamp of the upcoming set of
    *        demixing parameter blocks.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateDemixingState(DecodedUleb128 audio_element_id,
-                                   int32_t expected_timestamp);
+                                   int32_t expected_next_timestamp);
 
   /*!\brief Updates the state of recon gain parameters for an audio element.
    *
@@ -119,12 +122,12 @@ class ParametersManager {
    *
    * \param audio_element_id Audio Element ID whose corresponding recon gain
    *        state are to be updated.
-   * \param expected_timestamp Expected timestamp of the next set of
+   * \param expected_new_timestamp Expected timestamp of the upcoming set of
    *        recon gain parameter blocks.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateReconGainState(DecodedUleb128 audio_element_id,
-                                    int32_t expected_timestamp);
+                                    int32_t expected_next_timestamp);
 
  private:
   // State used when generating demixing parameters for an audio element.

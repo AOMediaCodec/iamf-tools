@@ -44,6 +44,7 @@ constexpr DecodedUleb128 kAudioElementId = 157;
 constexpr DecodedUleb128 kParameterId = 995;
 constexpr DecodedUleb128 kSecondParameterId = 996;
 constexpr DecodedUleb128 kDuration = 8;
+
 constexpr DemixingInfoParameterData::DMixPMode kDMixPMode =
     DemixingInfoParameterData::kDMixPMode3_n;
 
@@ -297,10 +298,10 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0].recon_gain[0],
             0);
 
-  EXPECT_THAT(
-      parameters_manager_->UpdateReconGainState(kAudioElementId,
-                                                /*expected_timestamp=*/0),
-      IsOk());
+  EXPECT_THAT(parameters_manager_->UpdateReconGainState(
+                  kAudioElementId,
+                  /*expected_next_timestamp=*/kDuration),
+              IsOk());
 
   // Second recon gain parameter block.
   ASSERT_THAT(AddOneReconGainParameterBlock(
@@ -326,7 +327,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   // offset by the duration of the parameter block.
   EXPECT_THAT(parameters_manager_->UpdateReconGainState(
                   kAudioElementId,
-                  /*expected_timestamp=*/kDuration),
+                  /*expected_next_timestamp=*/kDuration + kDuration),
               IsOk());
 }
 
@@ -384,10 +385,10 @@ TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
                                                            down_mixing_params),
               IsOk());
 
-  EXPECT_THAT(
-      parameters_manager_->UpdateDemixingState(kAudioElementId,
-                                               /*expected_timestamp=*/0),
-      IsOk());
+  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+                  kAudioElementId,
+                  /*expected_next_timestamp=*/kDuration),
+              IsOk());
 
   // Get the parameters for the second time. Since there is only one
   // parameter block and is already used up the previous time, the function
@@ -406,12 +407,13 @@ TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
   EXPECT_EQ(down_mixing_params.w_idx_used, 10);
   EXPECT_FLOAT_EQ(down_mixing_params.w, 0.5);
 
-  // `UpdateDemixingState()` also succeeds, because technically there's
-  // nothing to update.
-  EXPECT_THAT(
-      parameters_manager_->UpdateDemixingState(kAudioElementId,
-                                               /*expected_timestanmp=*/8),
-      IsOk());
+  // `UpdateDemixingState()` also succeeds with some arbitrary timestamp,
+  // because technically there's nothing to update.
+  const DecodedUleb128 kArbitraryTimestamp = 972;
+  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+                  kAudioElementId,
+                  /*expected_next_timestamp=*/kArbitraryTimestamp),
+              IsOk());
 }
 
 TEST_F(ParametersManagerTest, ParameterIdNotFoundReturnsDefault) {
@@ -465,10 +467,10 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceDifferentW) {
   ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
                                                            down_mixing_params),
               IsOk());
-  EXPECT_THAT(
-      parameters_manager_->UpdateDemixingState(kAudioElementId,
-                                               /*expected_timestamp=*/0),
-      IsOk());
+  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+                  kAudioElementId,
+                  /*expected_next_timestamp=*/kDuration),
+              IsOk());
 
   // The first time `w_idx` is 0, and the corresponding `w` is 0.
   const double kWFirst = 0.0;
@@ -572,10 +574,10 @@ TEST_F(ParametersManagerTest,
   ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
                                                            down_mixing_params),
               IsOk());
-  EXPECT_THAT(
-      parameters_manager_->UpdateDemixingState(kAudioElementId,
-                                               /*expected_timestamp=*/0),
-      IsOk());
+  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+                  kAudioElementId,
+                  /*expected_next_timestamp=*/kDuration),
+              IsOk());
   EXPECT_FLOAT_EQ(down_mixing_params.w, kWFirst);
 
   // Add the parameter block for the first audio element corresponding to the
@@ -614,7 +616,9 @@ TEST_F(ParametersManagerTest, DemixingParamDefinitionIsNotAvailableForWrongId) {
               IsOk());
 
   // `UpdateDemixingState()` also succeeds.
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(kWrongAudioElementId, 0),
+  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+                  kWrongAudioElementId,
+                  /*expected_next_timestamp=*/kDuration),
               IsOk());
 }
 
@@ -624,12 +628,12 @@ TEST_F(ParametersManagerTest, UpdateFailsWithWrongTimestamps) {
   parameters_manager_->AddDemixingParameterBlock(
       &demixing_parameter_blocks_[0]);
 
-  // The first frame starts with timestamp = 0, so updating with a different
+  // The second frame starts with timestamp = 8, so updating with a different
   // timestamp fails.
-  const int32_t kWrongTimestamp = 8;
-  EXPECT_FALSE(
-      parameters_manager_->UpdateDemixingState(kAudioElementId, kWrongTimestamp)
-          .ok());
+  const int32_t kWrongNextTimestamp = 17;
+  EXPECT_FALSE(parameters_manager_
+                   ->UpdateDemixingState(kAudioElementId, kWrongNextTimestamp)
+                   .ok());
 }
 
 TEST_F(ParametersManagerTest, UpdateNotValidatingWhenParameterIdNotFound) {

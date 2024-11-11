@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
@@ -21,6 +22,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -34,13 +36,14 @@ namespace iamf_tools {
 
 namespace {
 
-template <typename StateType, typename StateUpdater>
+template <typename StateType>
 absl::Status UpdateParameterState(
-    DecodedUleb128 audio_element_id, int32_t expected_timestamp,
+    DecodedUleb128 audio_element_id, int32_t expected_next_timestamp,
     absl::flat_hash_map<DecodedUleb128, StateType>& parameter_states,
     absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
         parameter_blocks,
-    absl::string_view parameter_name, StateUpdater additional_state_updater) {
+    absl::string_view parameter_name,
+    std::optional<StateType*>& parameter_state) {
   const auto parameter_states_iter = parameter_states.find(audio_element_id);
   if (parameter_states_iter == parameter_states.end()) {
     // No parameter definition found for the audio element ID, so
@@ -49,35 +52,32 @@ absl::Status UpdateParameterState(
   }
 
   // Validate the timestamps before updating.
-  auto& parameter_state = parameter_states_iter->second;
+  parameter_state = &parameter_states_iter->second;
 
   // Using `.at()` here is safe because if the parameter state exists for the
   // `audio_element_id`, an entry in `parameter_blocks` with the key
-  // `parameter_state.param_definition->parameter_id_` has already been
+  // `parameter_state->param_definition->parameter_id_` has already been
   // created during `Initialize()`.
   auto& parameter_block =
-      parameter_blocks.at(parameter_state.param_definition->parameter_id_);
+      parameter_blocks.at((*parameter_state)->param_definition->parameter_id_);
   if (parameter_block == nullptr) {
     // No parameter block found for this ID. Do not validate the timestamp
-    // or update anything else.
+    // or update anything else. Setting `parameter_state` to `std::nullopt`
+    // prevents the state being updated later.
+    parameter_state = std::nullopt;
     return absl::OkStatus();
   }
 
-  if (expected_timestamp != parameter_state.next_timestamp) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Mismatching timestamps for ", parameter_name, " parameters: (",
-        parameter_state.next_timestamp, " vs ", expected_timestamp, ")"));
-  }
-
   // Update the next timestamp for the next frame.
-  parameter_state.next_timestamp = parameter_block->end_timestamp;
+  (*parameter_state)->next_timestamp = parameter_block->end_timestamp;
+  RETURN_IF_NOT_OK(CompareTimestamps(
+      expected_next_timestamp, (*parameter_state)->next_timestamp,
+      absl::StrCat("When updating states for ", parameter_name,
+                   " parameters: ")));
 
   // Clear out the parameter block, which should not be used before a new
   // one is added via `Add*ParameterBlock()`.
   parameter_block = nullptr;
-
-  // Additional update steps.
-  additional_state_updater(parameter_state);
 
   return absl::OkStatus();
 }
@@ -179,9 +179,9 @@ absl::Status ParametersManager::GetDownMixingParameters(
   }
   auto& demixing_state = demixing_states_iter->second;
   const auto* param_definition = demixing_state.param_definition;
-  const auto* parameter_block =
+  const auto* demixing_parameter_block =
       demixing_parameter_blocks_.at(param_definition->parameter_id_);
-  if (parameter_block == nullptr) {
+  if (demixing_parameter_block == nullptr) {
     // Failed to find a parameter block that overlaps this frame. Use the
     // default value from the parameter definition. This is OK when there are
     // no parameter blocks covering this substream. If there is only partial
@@ -196,17 +196,14 @@ absl::Status ParametersManager::GetDownMixingParameters(
     return absl::OkStatus();
   }
 
-  if (parameter_block->start_timestamp != demixing_state.next_timestamp) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Mismatching timestamps for down-mixing parameters for "
-        "audio element ID= ",
-        audio_element_id, ": expecting", demixing_state.next_timestamp,
-        " but got ", parameter_block->start_timestamp));
-  }
+  RETURN_IF_NOT_OK(CompareTimestamps(
+      demixing_state.next_timestamp, demixing_parameter_block->start_timestamp,
+      absl::StrCat("Getting down-mixing parameters for audio element ID= ",
+                   audio_element_id, ": ")));
 
   RETURN_IF_NOT_OK(DemixingInfoParameterData::DMixPModeToDownMixingParams(
       static_cast<DemixingInfoParameterData*>(
-          parameter_block->obu->subblocks_[0].param_data.get())
+          demixing_parameter_block->obu->subblocks_[0].param_data.get())
           ->dmixp_mode,
       demixing_state.previous_w_idx, demixing_state.update_rule,
       down_mixing_params));
@@ -262,14 +259,11 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
     return absl::OkStatus();
   }
 
-  if (recon_gain_parameter_block->start_timestamp !=
-      recon_gain_state.next_timestamp) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Mismatching timestamps for recon gain parameters for "
-        "audio element ID= ",
-        audio_element_id, ": expecting", recon_gain_state.next_timestamp,
-        " but got ", recon_gain_parameter_block->start_timestamp));
-  }
+  RETURN_IF_NOT_OK(CompareTimestamps(
+      recon_gain_state.next_timestamp,
+      recon_gain_parameter_block->start_timestamp,
+      absl::StrCat("Getting recon gain parameters for audio element ID= ",
+                   audio_element_id, ": ")));
 
   auto recon_gain_info_parameter_data_in_obu =
       static_cast<ReconGainInfoParameterData*>(
@@ -293,32 +287,33 @@ void ParametersManager::AddReconGainParameterBlock(
 
 absl::Status ParametersManager::UpdateDemixingState(
     DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
-  // Additional updating steps to perform at the end of
-  // `UpdateParameterState()`.
-  auto demixing_state_updater = [](DemixingState& demixing_state) {
+  std::optional<DemixingState*> demixing_state = std::nullopt;
+  RETURN_IF_NOT_OK(UpdateParameterState(
+      audio_element_id, expected_timestamp, demixing_states_,
+      demixing_parameter_blocks_, "down-mixing", demixing_state));
+
+  // Additional updating steps to perform after `UpdateParameterState()`.
+  if (demixing_state.has_value()) {
     // Update `previous_w_idx` for the next frame.
-    demixing_state.previous_w_idx = demixing_state.w_idx;
+    (*demixing_state)->previous_w_idx = (*demixing_state)->w_idx;
 
     // Update the `update_rule` of the first frame to be "normally updating".
-    if (demixing_state.update_rule == DemixingInfoParameterData::kFirstFrame) {
-      demixing_state.update_rule = DemixingInfoParameterData::kNormal;
+    if ((*demixing_state)->update_rule ==
+        DemixingInfoParameterData::kFirstFrame) {
+      (*demixing_state)->update_rule = DemixingInfoParameterData::kNormal;
     }
-  };
-
-  return UpdateParameterState(audio_element_id, expected_timestamp,
-                              demixing_states_, demixing_parameter_blocks_,
-                              "down-mixing", demixing_state_updater);
-
+  }
   return absl::OkStatus();
 }
 
 absl::Status ParametersManager::UpdateReconGainState(
     DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
-  return UpdateParameterState(
-      audio_element_id, expected_timestamp, recon_gain_states_,
-      recon_gain_parameter_blocks_, "recon gain",
-      [](auto& state) {}  // No additional updating needed.
-  );
+  std::optional<ReconGainState*> recon_gain_state = std::nullopt;
+
+  // No additional updating needed.
+  return UpdateParameterState(audio_element_id, expected_timestamp,
+                              recon_gain_states_, recon_gain_parameter_blocks_,
+                              "down-mixing", recon_gain_state);
 }
 
 }  // namespace iamf_tools

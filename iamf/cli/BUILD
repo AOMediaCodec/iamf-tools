@@ -367,6 +367,7 @@ cc_library(
     hdrs = ["parameters_manager.h"],
     deps = [
         ":audio_element_with_data",
+        ":cli_util",
         ":parameter_block_with_data",
         "//iamf/common:macros",
         "//iamf/obu:demixing_param_definition",

@@ -530,10 +530,10 @@ absl::Status MaybeEncodeFramesForAudioElement(
   } while (!encoded_timestamp.has_value() && more_samples_to_encode);
 
   if (encoded_timestamp.has_value()) {
-    // An audio frame has been encoded, update the parameter manager to use
-    // the next frame of parameters.
+    // All audio frames corresponding to the audio element have been encoded;
+    // update the parameter manager to use the next frame of parameters.
     RETURN_IF_NOT_OK(parameters_manager.UpdateDemixingState(
-        audio_element_id, *encoded_timestamp));
+        audio_element_id, *encoded_timestamp + num_samples_per_frame));
   }
 
   return absl::OkStatus();

@@ -829,7 +829,7 @@ absl::Status FinalizeAmbisonicsMonoConfig(
     if (obu_substream_index ==
         AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
       LOG(INFO) << "Detected mixed-order ambisonics with  A"
-                << ambisonics_channel_number << "dropped.";
+                << ambisonics_channel_number << " dropped.";
       continue;
     }
     const DecodedUleb128 substream_id =
