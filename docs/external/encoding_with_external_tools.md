@@ -21,7 +21,7 @@ underlying audio elements at 64 kbps per channel.
 >
 > If a different channel order is used, change the input channel indices
 > indicated by `channelmap`. The [IAMF specification (Coupled stereo
-> channels)](https://aomediacodec.github.io/iamf/v1.0.0-errata.html#coupled_substream_count)
+> channels)](https://aomediacodec.github.io/iamf/v1.1.0.html#coupled_substream_count)
 > requires that the result groups specific channels as either a stereo pair or
 > a mono channel, and additionally that they follow a specific order. In the
 > ffmpeg command, this is defined by the order of the `-map "[]"` options.

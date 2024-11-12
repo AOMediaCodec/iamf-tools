@@ -327,7 +327,7 @@ absl::Status ParameterBlockPartitioner::FindPartitionDuration(
   if (primary_profile != PROFILE_VERSION_SIMPLE &&
       primary_profile != PROFILE_VERSION_BASE &&
       primary_profile != PROFILE_VERSION_BASE_ENHANCED) {
-    // This function only implements limitations described in IAMF V1.1 are for
+    // This function only implements limitations described in IAMF v1.1.0 for
     // simple, base, base-enhanced profile.
     return absl::InvalidArgumentError(
         absl::StrCat("FindPartitionDuration() only works with Simple, Base, or "

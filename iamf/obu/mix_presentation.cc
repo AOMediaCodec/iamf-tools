@@ -222,7 +222,7 @@ absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
     // Reserved layouts are identical to binaural layouts as of IAMF
-    // v1.0-errata aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout.
+    // v1.1.0 aomediacodec.github.io/iamf/v1.1.0.html#syntax-layout.
     case kLayoutTypeBinaural:
       specific_layout = LoudspeakersReservedOrBinauralLayout();
       return std::get<LoudspeakersReservedOrBinauralLayout>(specific_layout)

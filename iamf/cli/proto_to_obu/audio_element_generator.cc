@@ -744,7 +744,8 @@ absl::Status CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
         expanded_loudspeaker_layout));
     output_expanded_loudspeaker_layout = expanded_loudspeaker_layout;
   } else {
-    // Ignore user input since it would not be in the bitstream as of IAMF v1.1.
+    // Ignore user input since it would not be in the bitstream as of IAMF
+    // v1.1.0.
     output_expanded_loudspeaker_layout = std::nullopt;
   }
 

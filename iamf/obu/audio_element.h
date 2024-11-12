@@ -58,7 +58,7 @@ struct AudioElementParam {
 /*!\brief An element of the `ScalableChannelLayoutConfig` vector.
  *
  * Implements the `ChannelAudioLayerConfig` as defined by section 3.6.2 of
- * https://aomediacodec.github.io/iamf/v1.0.0-errata.html.
+ * https://aomediacodec.github.io/iamf/v1.1.0.html.
  */
 struct ChannelAudioLayerConfig {
   /*!\brief A 4-bit enum for the type of layout. */

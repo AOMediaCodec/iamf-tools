@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -46,7 +45,7 @@ void FillAnnotationsLanguageAndAnnotations(
   count_label = mix_presentation_metadata.count_label();
 
   annotations_language.reserve(mix_presentation_metadata.count_label());
-  // Prioritize the `annotations_language` field from version 1.1.
+  // Prioritize the `annotations_language` field from IAMF v1.1.0.
   if (!mix_presentation_metadata.annotations_language().empty()) {
     for (const auto& language :
          mix_presentation_metadata.annotations_language()) {
@@ -63,7 +62,8 @@ void FillAnnotationsLanguageAndAnnotations(
 
   localized_presentation_annotations.reserve(
       mix_presentation_metadata.count_label());
-  // Prioritize the `localized_presentation_annotations` field from version 1.1.
+  // Prioritize the `localized_presentation_annotations` field from
+  // IAMF v1.1.0.
   if (!mix_presentation_metadata.localized_presentation_annotations().empty()) {
     for (const auto& localized_presentation_annotation :
          mix_presentation_metadata.localized_presentation_annotations()) {
@@ -168,8 +168,9 @@ absl::Status FillRenderingConfig(
   return absl::OkStatus();
 }
 
-// Prefers selecting `element_mix_gain` (V1.1 field) if it present over
-// `element_mix_config.mix_gain` (deprecated in the proto based on V1.0 spec).
+// Prefers selecting `element_mix_gain` (IAMF v1.1.0 field) if it present over
+// `element_mix_config.mix_gain` (deprecated in the proto based on IAMF v1.0
+// spec).
 const iamf_tools_cli_proto::MixGainParamDefinition& SelectElementMixConfig(
     const iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
   if (sub_mix_audio_element.has_element_mix_gain()) {
@@ -181,9 +182,9 @@ const iamf_tools_cli_proto::MixGainParamDefinition& SelectElementMixConfig(
   }
 }
 
-// Prefers selecting `output_mix_gain` (V1.1 field) if it present over
-// `output_mix_config.output_mix_gain` (deprecated in the proto based on V1.0
-// spec).
+// Prefers selecting `output_mix_gain` (IAMF v1.1.0 field) if it present over
+// `output_mix_config.output_mix_gain` (deprecated in the proto based on IAMF
+// v1.0 spec).
 const iamf_tools_cli_proto::MixGainParamDefinition& SelectOutputMixConfig(
     const iamf_tools_cli_proto::MixPresentationSubMix&
         mix_presentation_sub_mix) {

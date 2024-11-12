@@ -145,7 +145,7 @@ struct LoudnessInfo {
 /*!\brief Layout is defined using the sound system convention of ITU2051-3.
  *
  * Implements syntax and utility functions when the `Layout` defined in
- * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout is
+ * https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-layout is
  * `LOUDSPEAKERS_SS_CONVENTION`.
  */
 struct LoudspeakersSsConventionLayout {
@@ -201,7 +201,7 @@ struct LoudspeakersSsConventionLayout {
 /*!\brief Layout is binaural or reserved.
  *
  * Implements syntax and utility functions when the `Layout` defined in
- * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout is
+ * https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-layout is
  * `BINAURAL` or `RESERVED`.
  */
 struct LoudspeakersReservedOrBinauralLayout {
@@ -234,7 +234,7 @@ struct LoudspeakersReservedOrBinauralLayout {
 /*!\brief Specifies either a binaural system or physical loudspeaker positions.
  *
  * Implements syntax and utility functions related to the `Layout` defined in
- * https://aomediacodec.github.io/iamf/v1.0.0-errata.html#syntax-layout.
+ * https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-layout.
  */
 struct Layout {
   /*!\brief A 2-bit enum for the type of layout. */
@@ -430,7 +430,7 @@ class MixPresentationObu : public ObuBase {
 
   std::vector<MixPresentationSubMix> sub_mixes_;
 
-  // Implicitly included based on `obu_size` after writing the v1.0.0-errata
+  // Implicitly included based on `obu_size` after writing the IAMF v1.1.0
   // payload.
   std::optional<MixPresentationTags> mix_presentation_tags_;
 

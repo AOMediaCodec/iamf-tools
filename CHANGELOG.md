@@ -12,13 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Add support for ADM input in the encoder.
 -   Add support for binary proto input in the encoder.
 -   Add support for encoding [Standalone IAMF Representation] for Base-Enhanced
-    profile based on
-    [IAMF v1.1 latest draft]("Expanded" layouts, Mix Presentation Tags).
+    profile based on [IAMF v1.1.0]("Expanded" layouts, Mix Presentation Tags).
 
 ### Deprecated
 
--   Deprecate several fields and prefer using field names based on
-    [IAMF v1.1 latest draft]:
+-   Deprecate several fields and prefer using field names based on [IAMF v1.1.0]:
     -   Deprecate `language_labels` in favor of `annotations_language`.
     -   Deprecate `MixPresentationAnnotations` and
         `mix_presentation_annotations_array` in favor of
@@ -86,4 +84,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 [Standalone IAMF Representation]: https://aomediacodec.github.io/iamf/#standalone
 [IAMF v1.0.0]: https://aomediacodec.github.io/iamf/v1.0.0.html
 [IAMF v1.0.0-errata]: https://aomediacodec.github.io/iamf/v1.0.0.html
-[IAMF v1.1 Latest Draft]: https://aomediacodec.github.io/iamf/latest-draft.html
+[IAMF v1.1.0]: https://aomediacodec.github.io/iamf/v1.1.0.html

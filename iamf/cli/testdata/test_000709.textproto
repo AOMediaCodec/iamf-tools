@@ -19,7 +19,7 @@ test_vector_metadata {
   file_name_prefix: "test_000709"
   # The encoder typically would not produce files with reserved profile values.
   is_valid: false
-  # As of V1.1, profile 255 is not defined.
+  # As of IAMF v1.1.0, profile 255 is not defined.
   is_valid_to_decode: false
   validate_user_loudness: true
   mp4_fixed_timestamp: "2024-08-14 00:00:00"

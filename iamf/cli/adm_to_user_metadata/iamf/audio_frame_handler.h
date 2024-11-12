@@ -29,7 +29,7 @@ namespace adm_to_user_metadata {
  * In `iamf-tools` this metadata is typically associated in a 1:1 mapping with
  * an audio element.
  *
- * IAMF v1.0 REQUIRES certain fields to be consistent across all audio
+ * IAMF v1.1.0 REQUIRES certain fields to be consistent across all audio
  * substreams in a given IAMF stream (e.g. `num_samples_to_trim_at_end`,
  * `num_samples_to_trim_at_start`). This class helps enforce that by
  * generating consistent audio frame metadata.

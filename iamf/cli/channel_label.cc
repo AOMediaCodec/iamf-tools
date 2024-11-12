@@ -544,7 +544,7 @@ ChannelLabel::LookupLabelsToReconstructFromScalableLoudspeakerLayout(
     RETURN_IF_NOT_OK(ValidateHasValue(expanded_loudspeaker_layout,
                                       "expanded_loudspeaker_layout"));
     // OK. Expanded layouts may only exist in a single-layer and thus never need
-    // to be reconstructed as of IAMF v1.1.
+    // to be reconstructed as of IAMF v1.1.0.
     return absl::flat_hash_set<ChannelLabel::Label>{};
   }
   // Reconstruct the highest layer.

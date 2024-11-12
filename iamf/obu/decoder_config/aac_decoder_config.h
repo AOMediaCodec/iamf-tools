@@ -97,7 +97,7 @@ class AudioSpecificConfig {
 
 /*!\brief The `CodecConfig` `decoder_config` field for AAC.
  *
- * As defined in IAMF v1.0.0-errata section 3.11.2
+ * As defined in IAMF v1.1.0 section 3.11.2
  * https://aomediacodec.github.io/iamf/#aac-lc-specific. Many fields are fixed
  * by the IAMF spec and should typically never be changed from their default
  * values.
