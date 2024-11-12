@@ -683,6 +683,7 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
 }
 
 absl::Status AudioFrameGenerator::Initialize() {
+  absl::MutexLock lock(&mutex_);
   if (audio_frame_metadata_.empty()) {
     return absl::OkStatus();
   }
@@ -700,8 +701,6 @@ absl::Status AudioFrameGenerator::Initialize() {
 
   for (const auto& [audio_element_id, audio_frame_metadata] :
        audio_frame_metadata_) {
-    absl::MutexLock lock(&mutex_);
-
     // Precompute the `ChannelLabel::Label` for each channel label string.
     RETURN_IF_NOT_OK(ChannelLabel::SelectConvertAndFillLabels(
         audio_frame_metadata, audio_element_id_to_labels_[audio_element_id]));
@@ -777,6 +776,7 @@ absl::Status AudioFrameGenerator::Initialize() {
 }
 
 bool AudioFrameGenerator::TakingSamples() const {
+  absl::MutexLock lock(&mutex_);
   return (state_ == kTakingSamples);
 }
 

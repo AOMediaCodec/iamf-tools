@@ -215,7 +215,7 @@ class AudioFrameGenerator {
   const DemixingModule& demixing_module_;
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;
-  GeneratorState state_;
+  GeneratorState state_ ABSL_GUARDED_BY(mutex_);
 
   // Mutex to protect data accessed in different threads.
   mutable absl::Mutex mutex_;
