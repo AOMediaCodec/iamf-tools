@@ -133,7 +133,8 @@ class AudioFrameGenerator {
    *
    * \param audio_element_id Audio Element ID that the added samples belong to.
    * \param label Channel label of the added samples.
-   * \param samples Samples to add.
+   * \param samples Samples to add. Should not be of zero length before
+   *        `Finalize()` is called.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status AddSamples(DecodedUleb128 audio_element_id,

@@ -217,6 +217,10 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   for (const auto& [audio_element_id, labeled_samples] :
        id_to_labeled_samples_) {
     for (const auto& [label, samples] : labeled_samples) {
+      // Skip adding empty `samples` to the audio frame generator.
+      if (samples.empty()) {
+        continue;
+      }
       RETURN_IF_NOT_OK(
           audio_frame_generator_->AddSamples(audio_element_id, label, samples));
     }

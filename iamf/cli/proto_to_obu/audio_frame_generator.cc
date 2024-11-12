@@ -790,6 +790,12 @@ absl::Status AudioFrameGenerator::AddSamples(
     return absl::OkStatus();
   }
 
+  if (samples.empty()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Adding emptry frames is not allowed before `Finalize()` ",
+                     "has been called. audio_element_id= ", audio_element_id));
+  }
+
   const auto& audio_element_labels_iter =
       audio_element_id_to_labels_.find(audio_element_id);
   if (audio_element_labels_iter == audio_element_id_to_labels_.end()) {
