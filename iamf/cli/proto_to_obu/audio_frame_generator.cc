@@ -129,7 +129,8 @@ absl::Status GetEncodingDataAndInitializeEncoders(
 absl::Status ValidateUserStartTrimIncludesCodecDelay(
     uint32_t user_samples_to_trim_at_start,
     uint32_t& encoder_required_samples_to_delay) {
-  // Return an error. But obey the user when `-DNO_CHECK_ERROR` is set.
+  // Return an error. But obey the user when
+  // `-DIGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is set.
   if (user_samples_to_trim_at_start < encoder_required_samples_to_delay) {
     // Only pad up to what the user requests.
     const auto message =

@@ -208,7 +208,7 @@ absl::Status WriteObusWithHook(
 absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
                                   int& num_samples) {
   if (temporal_unit.audio_frames.empty()) {
-    // Exit early even when `NO_CHECK_ERROR` is set.
+    // Exit early even when `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is set.
     return absl::InvalidArgumentError(
         "Every temporal unit must have an audio frame.");
   }

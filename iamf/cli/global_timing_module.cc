@@ -37,8 +37,8 @@ absl::Status GlobalTimingModule::GetTimestampsForId(
     int32_t& start_timestamp, int32_t& end_timestamp) {
   auto timing_data_iter = id_to_timing_data.find(id);
   if (timing_data_iter == id_to_timing_data.end()) {
-    // This allows generating timing information when `NO_CHECK_ERROR` is
-    // defined.
+    // This allows generating timing information when
+    // `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is defined.
     // TODO(b/278865608): Find better solutions to generate negative test
     //                    vectors.
     start_timestamp = 0;

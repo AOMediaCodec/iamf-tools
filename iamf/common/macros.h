@@ -14,10 +14,13 @@
 
 namespace iamf_tools {
 
-// For propagating errors when calling a function. Beware that defining
-// `NO_CHECK_ERROR` is not thoroughly tested and may result in unexpected
-// behavior.
-#ifdef NO_CHECK_ERROR
+// For propagating errors when calling a function.
+//
+// Beware that defining `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is not
+// thoroughly tested and may result in unexpected behavior. This define should
+// only be used when creating test files which intentionally violate the IAMF
+// spec.
+#ifdef IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE
 #define RETURN_IF_NOT_OK(...)    \
   do {                           \
     (__VA_ARGS__).IgnoreError(); \
