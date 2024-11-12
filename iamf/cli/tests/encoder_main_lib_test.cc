@@ -229,7 +229,7 @@ INSTANTIATE_TEST_SUITE_P(InvalidDanglingFromDescriptorParameterBlock,
 INSTANTIATE_TEST_SUITE_P(InvalidParameterBlockNotFullCoveringEnd, TestVector,
                          testing::Values("test_000016.textproto"));
 
-INSTANTIATE_TEST_SUITE_P(MultipleTrimmedFrames, TestVector,
+INSTANTIATE_TEST_SUITE_P(FullFrameTrimmedAtEnd, TestVector,
                          testing::Values("test_000017.textproto"));
 
 INSTANTIATE_TEST_SUITE_P(ExplicitAudioSubstreamID, TestVector,
@@ -561,6 +561,9 @@ INSTANTIATE_TEST_SUITE_P(ParameterBlocksLongerDurationThanAudioFrames,
 
 INSTANTIATE_TEST_SUITE_P(ExtensionsInIaSequenceHeader, TestVector,
                          testing::Values("test_000134.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(MultipleFramesTrimmedAtEnd, TestVector,
+                         testing::Values("test_000135.textproto"));
 
 // ---- Test Set 2 -----
 

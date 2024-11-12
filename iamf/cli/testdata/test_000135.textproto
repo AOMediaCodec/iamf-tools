@@ -1,4 +1,4 @@
-# Copyright (c) 2023, Alliance for Open Media. All rights reserved
+# Copyright (c) 2024, Alliance for Open Media. All rights reserved
 #
 # This source code is subject to the terms of the BSD 3-Clause Clear License
 # and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
@@ -13,22 +13,24 @@
 
 test_vector_metadata {
   human_readable_description:
-    "A stereo IAMF stream. It has one frame of samples fully trimmed off the "
-    "end."
-  file_name_prefix: "test_000017"
-  is_valid: true
-  is_valid_to_decode: true
+    "An invalid IAMF stream. A substream has more than a full frame of "
+    "samples trimmed from the end."
+  file_name_prefix: "test_000135"
+  # The encoder will not normally encode data with multiple frames trimmed at
+  # the end.
+  is_valid: false
+  is_valid_to_decode: false
+  partition_mix_gain_parameter_blocks: false
   validate_user_loudness: true
-  mp4_fixed_timestamp: "2023-04-19 00:00:00"
+  mp4_fixed_timestamp: "2024-11-11 00:00:00"
   test_repository_tags: [
     "github/aomediacodec/libiamf/main",
     "github/aomediacodec/libiamf/v1.0.0-errata"
   ]
   primary_tested_spec_sections: [
-    "3.2/num_samples_to_trim_at_end",
-    "3.5/num_samples_per_frame"
+    "3.2/num_samples_to_trim_at_end"
   ]
-  base_test: "test_000005"
+  base_test: "test_000130"
 }
 
 ia_sequence_header_metadata {
@@ -37,15 +39,15 @@ ia_sequence_header_metadata {
 }
 
 codec_config_metadata {
-  codec_config_id: 200
+  codec_config_id: 0x22
   codec_config {
     codec_id: CODEC_ID_LPCM
-    num_samples_per_frame: 64
+    num_samples_per_frame: 8
     audio_roll_distance: 0
     decoder_config_lpcm {
       sample_format_flags: LPCM_LITTLE_ENDIAN
       sample_size: 16
-      sample_rate: 16000
+      sample_rate: 48000
     }
   }
 }
@@ -54,7 +56,7 @@ audio_element_metadata {
   audio_element_id: 300
   audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
   reserved: 0
-  codec_config_id: 200
+  codec_config_id: 0x22
   num_substreams: 1
   audio_substream_ids: [0]
   num_parameters: 0
@@ -91,7 +93,7 @@ mix_presentation_metadata {
       element_mix_gain {
         param_definition {
           parameter_id: 100
-          parameter_rate: 16000
+          parameter_rate: 48000
           param_definition_mode: 1
           reserved: 0
         }
@@ -101,7 +103,7 @@ mix_presentation_metadata {
     output_mix_gain {
       param_definition {
         parameter_id: 100
-        parameter_rate: 16000
+        parameter_rate: 48000
         param_definition_mode: 1
         reserved: 0
       }
@@ -118,16 +120,16 @@ mix_presentation_metadata {
       }
       loudness {
         info_type_bit_masks: []
-        integrated_loudness: -13743
-        digital_peak: -12879
+        integrated_loudness: -32768
+        digital_peak: -32768
       }
     }
   }
 }
 
 audio_frame_metadata {
-  wav_filename: "sawtooth_100_stereo.wav"
-  samples_to_trim_at_end: 64  # Trimming a full frame.
+  wav_filename: "stereo_8_samples_48khz_s16le.wav"
+  samples_to_trim_at_end: 1
   samples_to_trim_at_start: 0
   audio_element_id: 300
   channel_metadatas: [
@@ -136,25 +138,19 @@ audio_frame_metadata {
   ]
 }
 
-parameter_block_metadata {
-  parameter_id: 100
-  start_timestamp: 0
-  duration: 8000
-  num_subblocks: 1
-  constant_subblock_duration: 8000
-  subblocks: [
-    {
-      mix_gain_parameter_data {
-        animation_type: ANIMATE_STEP
-        param_data {
-          step {
-            start_point_value: 0
-          }
-        }
-      }
+arbitrary_obu_metadata: [
+  {
+    # The previous frame already had samples trimmed.
+    invalidates_bitstream: true
+    insertion_hook: INSERTION_HOOK_AFTER_AUDIO_FRAMES_AT_TICK
+    insertion_tick: 8
+    obu_type: OBU_IA_AUDIO_FRAME_ID_0
+    obu_header: {
+      num_samples_to_trim_at_end: 8
     }
-  ]
-}
+    payload: "somedata"
+  }
+]
 
 temporal_delimiter_metadata {
   enable_temporal_delimiters: false

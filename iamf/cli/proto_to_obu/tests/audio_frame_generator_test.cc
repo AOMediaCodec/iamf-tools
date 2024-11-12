@@ -887,7 +887,7 @@ TEST(AudioFrameGenerator, UserMayRequestAdditionalSamplesToTrimAtEnd) {
             kRequestedNumSamplesToTrimAtEnd);
 }
 
-TEST(AudioFrameGenerator, InvalidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
+TEST(AudioFrameGenerator, ValidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
   iamf_tools_cli_proto::UserMetadata user_metadata = {};
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
   // Reconfigure `num_samples_per_frame` to result in two frames.
@@ -915,8 +915,70 @@ TEST(AudioFrameGenerator, InvalidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
                                     *audio_frame_generator);
   std::list<AudioFrameWithData> unused_audio_frames;
   EXPECT_THAT(audio_frame_generator->OutputFrames(unused_audio_frames), IsOk());
+  EXPECT_THAT(audio_frame_generator->OutputFrames(unused_audio_frames), IsOk());
+}
 
-  // Preparing the final frame reveals the user requested a fully trimmed frame.
+TEST(AudioFrameGenerator,
+     InitializationFailsWhenMoreThanOneFrameAtEndIsRequestedToBeTrimmed) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  const uint32_t kTooManySamplesToTrimAtEnd = 9;
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(
+      kTooManySamplesToTrimAtEnd);
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+
+  constexpr bool kExpectInitializeIsOk = false;
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      demixing_module, global_timing_module, parameters_manager,
+      audio_frame_generator, kExpectInitializeIsOk);
+}
+
+TEST(AudioFrameGenerator,
+     EncodingFailsWhenMoreThanOneFrameAtEndIsRequestedToBeTrimmed) {
+  iamf_tools_cli_proto::UserMetadata user_metadata = {};
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  // Reconfigure `num_samples_per_frame` to result in two frames. The last frame
+  // would automatically get two samples of padding at the end.
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(5);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+  // Request four additional samples to be trimmed from the end. When accounting
+  // for the automatic padding, this would result in trimming two frames from
+  // the end.
+  user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(4);
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
+  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+      param_definitions = {};
+  DemixingModule demixing_module;
+  GlobalTimingModule global_timing_module;
+  std::optional<ParametersManager> parameters_manager;
+  std::optional<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                demixing_module, global_timing_module,
+                                parameters_manager, audio_frame_generator);
+  const absl::flat_hash_map<ChannelLabel::Label,
+                            std::vector<absl::Span<const InternalSampleType>>>
+      label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
+                         {ChannelLabel::kR2, {kFrame0R2EightSamples}}};
+  AddAllSamplesAndFinalizesExpectOk(kFirstAudioElementId, label_to_frames,
+                                    *audio_frame_generator);
+  std::list<AudioFrameWithData> unused_audio_frames;
+  EXPECT_THAT(audio_frame_generator->OutputFrames(unused_audio_frames), IsOk());
+
+  // Preparing the final frame reveals the automatic padding and plus the user's
+  // request would result in more than one frame being trimmed from the end.
   EXPECT_FALSE(audio_frame_generator->OutputFrames(unused_audio_frames).ok());
 }
 

@@ -592,13 +592,10 @@ absl::Status ApplyUserTrimForFrame(const bool from_start,
     obu_trimming_status_flag = true;
   }
 
-  if (frame_samples_to_trim == num_samples_in_frame) {
-    // Obey the user when `NO_CHECK_ERROR` is set. But the spec never allows
-    // fully trimmed frames from the end.
-    if (!from_start) {
-      return absl::InvalidArgumentError(
-          "The spec disallows trimming entire frames from the end");
-    }
+  if (user_trim_left > 0 && !from_start) {
+    // Automatic padding, plus user requested trim, exceeds the size of a frame.
+    return absl::InvalidArgumentError(
+        "The spec disallows trimming multiple frames from the end.");
   }
 
   return absl::OkStatus();
@@ -715,6 +712,11 @@ absl::Status AudioFrameGenerator::Initialize() {
     // Create an encoder for each substream.
     const AudioElementWithData& audio_element_with_data =
         audio_elements_iter->second;
+    if (audio_frame_metadata.samples_to_trim_at_end() >
+        audio_element_with_data.codec_config->GetNumSamplesPerFrame()) {
+      return absl::InvalidArgumentError(
+          "The spec disallows trimming multiple frames from the end.");
+    }
     RETURN_IF_NOT_OK(GetEncodingDataAndInitializeEncoders(
         codec_config_metadata_, audio_element_with_data,
         substream_id_to_encoder_));
