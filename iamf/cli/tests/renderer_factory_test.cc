@@ -105,6 +105,7 @@ TEST(CreateRendererForLayout,
             nullptr);
 }
 
+// TODO(b/282877209): Support channel-based to binaural renderer.
 TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToBinauralRenderer) {
   const RendererFactory factory;
 
@@ -125,10 +126,10 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
             nullptr);
 }
 
-TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToChannelRenderer) {
+TEST(CreateRendererForLayout, SupportsChannelToChannelRenderer) {
   const RendererFactory factory;
 
-  EXPECT_EQ(
+  EXPECT_NE(
       factory.CreateRendererForLayout(
           {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
           kStereoScalableChannelLayoutConfig,
@@ -136,16 +137,17 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToChannelRenderer) {
       nullptr);
 }
 
-TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToChannelRenderer) {
+TEST(CreateRendererForLayout, SupportsAmbisonicsToChannelRenderer) {
   const RendererFactory factory;
 
-  EXPECT_EQ(factory.CreateRendererForLayout(
+  EXPECT_NE(factory.CreateRendererForLayout(
                 {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
                 kFullZerothOrderAmbisonicsConfig,
                 kHeadphonesAsStereoRenderingConfig, kMonoLayout),
             nullptr);
 }
 
+// TODO(b/282877209): Support ambisonics to binaural renderer.
 TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToBinauralRenderer) {
   const RendererFactory factory;
 

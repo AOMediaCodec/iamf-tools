@@ -425,7 +425,9 @@ cc_library(
     hdrs = ["renderer_factory.h"],
     deps = [
         ":audio_element_with_data",
+        "//iamf/cli/renderer:audio_element_renderer_ambisonics_to_channel",
         "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/cli/renderer:audio_element_renderer_channel_to_channel",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
