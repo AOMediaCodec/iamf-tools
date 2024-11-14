@@ -11,10 +11,12 @@
  */
 #include "iamf/obu/obu_header.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -113,26 +115,22 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
 }
 
 // IAMF imposes two restrictions on the size of an entire OBU.
-//   - IAMF V1 imposes a maximum size of an entire OBU must be 2 MB or less.
-//   - IAMF V1 also imposes a maximum size of `obu_size` must be 2^21 - 4 or
+//   - IAMF v1.1.0 imposes a maximum size of an entire OBU must be 2 MB or less.
+//   - IAMF v1.1.0 also imposes a maximum size of `obu_size` must be 2^21 - 4 or
 //     less.
 //
 // The second restriction is equivalent when `obu_size` is written using the
 // minimal number of bytes. It is less strict than the first restriction if
 // `obu_size` is written using padded bytes. Therefore the second restriction is
 // irrelevant.
-absl::Status ValidateObuIsUnderTwoMegabytes(const DecodedUleb128& obu_size,
-                                            const LebGenerator& leb_generator) {
+absl::Status ValidateObuIsUnderTwoMegabytes(DecodedUleb128 obu_size,
+                                            size_t size_of_obu_size) {
+  CHECK_LE(size_of_obu_size, kMaxLeb128Size);
   constexpr uint32_t kEntireObuSizeTwoMegabytes = (1 << 21);
 
-  // Calculate how many bytes `obu_size` will take up based on the current leb
-  // generator.
-  WriteBitBuffer temp_wb_obu_size_only(8, leb_generator);
-  RETURN_IF_NOT_OK(temp_wb_obu_size_only.WriteUleb128(obu_size));
-
   // Subtract out `obu_size` and all preceding data (one byte).
-  const uint32_t max_obu_size = kEntireObuSizeTwoMegabytes - 1 -
-                                temp_wb_obu_size_only.bit_buffer().size();
+  const uint32_t max_obu_size =
+      kEntireObuSizeTwoMegabytes - 1 - size_of_obu_size;
 
   if (obu_size > max_obu_size) {
     return absl::InvalidArgumentError(
@@ -143,11 +141,21 @@ absl::Status ValidateObuIsUnderTwoMegabytes(const DecodedUleb128& obu_size,
   return absl::OkStatus();
 }
 
+absl::Status GetSizeOfEncodedLeb128(const LebGenerator& leb_generator,
+                                    DecodedUleb128 leb128, size_t& size) {
+  // Calculate how many bytes `obu_size` will take up based on the current leb
+  // generator.
+  WriteBitBuffer temp_wb_obu_size_only(8, leb_generator);
+  RETURN_IF_NOT_OK(temp_wb_obu_size_only.WriteUleb128(leb128));
+  size = temp_wb_obu_size_only.bit_buffer().size();
+  return absl::OkStatus();
+}
+
 // Validates the header and initializes the output argument. On success
 // `obu_size` is set to imply the associated payload has a size of
 // `payload_serialized_size`.
 absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
-                                   const ObuHeader& header, ObuType obu_type,
+                                   const ObuHeader& header,
                                    int64_t payload_serialized_size,
                                    DecodedUleb128& obu_size) {
   // Validate to avoid issues with the `static_cast` below.
@@ -183,7 +191,12 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
         static_cast<uint32_t>(fields_after_obu_size),
         static_cast<uint32_t>(payload_serialized_size), obu_size));
 
-    RETURN_IF_NOT_OK(ValidateObuIsUnderTwoMegabytes(obu_size, leb_generator));
+    size_t size_of_obu_size;
+    RETURN_IF_NOT_OK(
+        GetSizeOfEncodedLeb128(leb_generator, obu_size, size_of_obu_size));
+
+    RETURN_IF_NOT_OK(
+        ValidateObuIsUnderTwoMegabytes(obu_size, size_of_obu_size));
   }
 
   // Validate the OBU.
@@ -210,7 +223,7 @@ int64_t GetObuPayloadSize(const DecodedUleb128& obu_size,
 absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
                                          WriteBitBuffer& wb) const {
   DecodedUleb128 obu_size;
-  RETURN_IF_NOT_OK(GetObuSizeAndValidate(wb.leb_generator_, *this, obu_type,
+  RETURN_IF_NOT_OK(GetObuSizeAndValidate(wb.leb_generator_, *this,
                                          payload_serialized_size, obu_size));
 
   // Write the OBU Header to the buffer.
@@ -241,7 +254,9 @@ absl::Status ObuHeader::ReadAndValidate(
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_trimming_status_flag));
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_extension_flag));
   DecodedUleb128 obu_size;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(obu_size));
+  int8_t size_of_obu_size = 0;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(obu_size, size_of_obu_size));
+  RETURN_IF_NOT_OK(ValidateObuIsUnderTwoMegabytes(obu_size, size_of_obu_size));
   int8_t num_samples_to_trim_at_end_size = 0;
   int8_t num_samples_to_trim_at_start_size = 0;
   if (obu_trimming_status_flag) {
@@ -272,8 +287,8 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
   // Generate the header. Solely for the purpose of getting the correct
   // `obu_size`.
   DecodedUleb128 obu_size;
-  if (!GetObuSizeAndValidate(leb_generator, *this, obu_type,
-                             payload_serialized_size, obu_size)
+  if (!GetObuSizeAndValidate(leb_generator, *this, payload_serialized_size,
+                             obu_size)
            .ok()) {
     LOG(ERROR) << "Error printing OBU header";
     return;

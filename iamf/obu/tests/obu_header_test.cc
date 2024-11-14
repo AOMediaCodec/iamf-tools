@@ -33,6 +33,12 @@ using ::absl_testing::IsOk;
 // Max value of a decoded ULEB128.
 constexpr uint32_t kMaxUlebDecoded = UINT32_MAX;
 
+// The spec serializes several fields into the first byte of the OBU header.
+// `obu type` (5 bits), `obu_redundant_copy` (1 bit), `obu_trimming_status_flag`
+// (1 bit), `obu_extension_flag` (1 bit).
+constexpr uint8_t kUnimportantFirstByte = 0x00;
+constexpr uint8_t kAudioFrameId0WithTrim = 0b00110010;
+
 class ObuHeaderTest : public testing::Test {
  public:
   ObuHeaderTest()
@@ -163,12 +169,12 @@ TEST_F(ObuHeaderTest, LowerEdgeObuSizeTwoByteLeb128) {
   TestGenerateAndWrite();
 }
 
-constexpr uint32_t kMaxObuSizeIamfV1WithMinimalLeb = 2097148;
-constexpr uint32_t kMaxObuSizeIamfV1WithFixedSizeLebEight = 2097143;
+constexpr uint32_t kMaxObuSizeIamfV1_1_0WithMinimalLeb = 2097148;
+constexpr uint32_t kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight = 2097143;
 
-TEST_F(ObuHeaderTest, TwoMegaByteObuWithMinimalLebIamfV1) {
+TEST_F(ObuHeaderTest, TwoMegaByteObuWithMinimalLebIamfV1_1_0) {
   obu_header_.obu_type = kObuIaCodecConfig;
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithMinimalLeb;
   expected_data_ = {// `obu_type`, `obu_redundant_copy`,
                     // `obu_trimming_status_flag, `obu_extension_flag`.
                     kObuIaCodecConfig << kObuTypeBitShift,
@@ -177,16 +183,16 @@ TEST_F(ObuHeaderTest, TwoMegaByteObuWithMinimalLebIamfV1) {
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithMinimalLebIamfV1) {
+TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithMinimalLebIamfV1_1_0) {
   obu_header_.obu_type = kObuIaCodecConfig;
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb + 1;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithMinimalLeb + 1;
 
   TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
 }
 
-TEST_F(ObuHeaderTest, TwoMegaByteObuWithFixedSizeLeb8IamfV1) {
+TEST_F(ObuHeaderTest, TwoMegaByteObuWithFixedSizeLeb8IamfV1_1_0) {
   obu_header_.obu_type = kObuIaCodecConfig;
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight;
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
 
@@ -199,9 +205,9 @@ TEST_F(ObuHeaderTest, TwoMegaByteObuWithFixedSizeLeb8IamfV1) {
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithFixedSizeLeb8IamfV1) {
+TEST_F(ObuHeaderTest, InvalidOverTwoMegaByteObuWithFixedSizeLeb8IamfV1_1_0) {
   obu_header_.obu_type = kObuIaCodecConfig;
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight + 1;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight + 1;
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
 
@@ -213,7 +219,7 @@ TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalTrim) {
   obu_header_.obu_trimming_status_flag = true;
   obu_header_.num_samples_to_trim_at_end = 0;
   obu_header_.num_samples_to_trim_at_start = 0;
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithMinimalLeb - 2;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithMinimalLeb - 2;
 
   expected_data_ = {
       // `obu_type`, `obu_redundant_copy`,
@@ -238,7 +244,7 @@ TEST_F(ObuHeaderTest,
   obu_header_.num_samples_to_trim_at_start = 0;
 
   // Obu size includes the trim fields. This reduce the maximum payload.
-  payload_serialized_size_ = kMaxObuSizeIamfV1WithFixedSizeLebEight - 16;
+  payload_serialized_size_ = kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight - 16;
 
   expected_data_ = {
       // `obu_type`, `obu_redundant_copy`,
@@ -690,85 +696,91 @@ TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeTwoByteLeb128) {
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
 }
 
-TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeFourByteLeb128) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00000000,
-      // `obu_size == 268435456 - 1`
-      0xff, 0xff, 0xff, 0x7f};
+TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FourByteObuSize) {
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 268435456 - 1`
+                                      0xff, 0xff, 0xff, 0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_THAT(
-      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
-      IsOk());
-
-  // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
-
-  EXPECT_EQ(payload_serialized_size_, (1 << 28) - 1);
-
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
-
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_FALSE(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
+          .ok());
 }
 
-TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeFiveByteLeb128) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00000000,
-      // `obu_size == 268435456`
-      0x80, 0x80, 0x80, 0x80, 0x01};
+TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FiveByteObuSize) {
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 268435456`
+                                      0x80, 0x80, 0x80, 0x80, 0x01};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
-  EXPECT_THAT(
-      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
-      IsOk());
-
-  // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
-
-  EXPECT_EQ(payload_serialized_size_, (1 << 28));
-
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
-
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_FALSE(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
+          .ok());
 }
 
-TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeFullPayload) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00000000,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f};
+TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_MaxByteObuSize) {
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 4294967295`
+                                      0xff, 0xff, 0xff, 0xff, 0x0f};
+  ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
+  EXPECT_FALSE(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
+          .ok());
+}
+
+TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalLeb128) {
+  // When the size field is encoded using three bytes, the maximum value it can
+  // represent is (2 megabytes - 4 bytes).
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 2 megabytes - 4`
+                                      0xfc, 0xff, 0x7f};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
       obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaCodecConfig);
 
-  EXPECT_EQ(payload_serialized_size_, 4294967295);
+  EXPECT_EQ(payload_serialized_size_, kMaxObuSizeIamfV1_1_0WithMinimalLeb);
+}
 
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithMinimalLeb128) {
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 2 megabytes - 3`
+                                      0xfd, 0xff, 0x7f};
+  ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
 
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
-  EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_FALSE(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
+          .ok());
+}
+
+TEST_F(ObuHeaderTest, MaxObuSizeWithFixesSizeLebEightBytes) {
+  // When the size field is encoded using eight bytes, the maximum value it can
+  // represent is (2 megabytes - 9 bytes).
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 2 megabytes - 9`
+                                      0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
+                                      0x00};
+  ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
+      IsOk());
+
+  // Validate all OBU Header fields.
+
+  EXPECT_EQ(payload_serialized_size_,
+            kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight);
+}
+
+TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithFixedSizeLebEightBytes) {
+  std::vector<uint8_t> source_data = {kUnimportantFirstByte,
+                                      // `obu_size == 2 megabytes - 8`
+                                      0xf8, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
+                                      0x00};
+  ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
+
+  EXPECT_FALSE(
+      obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_)
+          .ok());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
@@ -776,8 +788,8 @@ TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
       0b00110010,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f,
+      // `obu_size`
+      2,
       // `num_samples_to_trim_at_end`.
       0x00,
       // `num_samples_to_trim_at_start`.
@@ -790,8 +802,8 @@ TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
   // Validate all OBU Header fields.
   EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
 
-  // 4294967295 - 2 = 4294967293
-  EXPECT_EQ(payload_serialized_size_, 4294967293);
+  // The obu header consumes the two bytes of the `obu_size` field.
+  EXPECT_EQ(payload_serialized_size_, 0);
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
@@ -809,8 +821,8 @@ TEST_F(ObuHeaderTest,
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
       // `obu_extension_flag`
       0b11111010,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f,
+      // `obu_size`
+      2,
       // `num_samples_to_trim_at_end`.
       0x00,
       // `num_samples_to_trim_at_start`.
@@ -821,32 +833,29 @@ TEST_F(ObuHeaderTest,
           .ok());
 }
 
+void ValidateAudioFrameId0WithTrim(const ObuHeader& header) {
+  EXPECT_EQ(header.obu_type, kObuIaAudioFrameId0);
+  EXPECT_EQ(header.obu_redundant_copy, false);
+  EXPECT_EQ(header.obu_trimming_status_flag, true);
+  EXPECT_EQ(header.obu_extension_flag, false);
+}
+
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00110010,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f,
-      // `num_samples_to_trim_at_end`.
-      0x01,
-      // `num_samples_to_trim_at_start`.
-      0x00};
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size`
+                                      2,
+                                      // `num_samples_to_trim_at_end`.
+                                      0x01,
+                                      // `num_samples_to_trim_at_start`.
+                                      0x00};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
       obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
-
-  // 4294967295 - 2 = 4294967293
-  EXPECT_EQ(payload_serialized_size_, 4294967293);
-
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
-
+  ValidateAudioFrameId0WithTrim(obu_header_);
+  EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
   EXPECT_EQ(obu_header_.extension_header_size, 0);
@@ -854,31 +863,21 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00110010,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f,
-      // `num_samples_to_trim_at_end`.
-      0x00,
-      // `num_samples_to_trim_at_start`.
-      0x02};
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size`
+                                      2,
+                                      // `num_samples_to_trim_at_end`.
+                                      0x00,
+                                      // `num_samples_to_trim_at_start`.
+                                      0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
       obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
-
-  // 4294967295 - 2 = 4294967293
-  EXPECT_EQ(payload_serialized_size_, 4294967293);
-
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
-
+  ValidateAudioFrameId0WithTrim(obu_header_);
+  EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 2);
   EXPECT_EQ(obu_header_.extension_header_size, 0);
@@ -886,31 +885,21 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
-  std::vector<uint8_t> source_data = {
-      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
-      // `obu_extension_flag`
-      0b00110010,
-      // `obu_size == 4294967295`
-      0xff, 0xff, 0xff, 0xff, 0x0f,
-      // `num_samples_to_trim_at_end`.
-      0x01,
-      // `num_samples_to_trim_at_start`.
-      0x02};
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size`
+                                      2,
+                                      // `num_samples_to_trim_at_end`.
+                                      0x01,
+                                      // `num_samples_to_trim_at_start`.
+                                      0x02};
   ReadBitBuffer read_bit_buffer = ReadBitBuffer(1024, &source_data);
   EXPECT_THAT(
       obu_header_.ReadAndValidate(read_bit_buffer, payload_serialized_size_),
       IsOk());
 
   // Validate all OBU Header fields.
-  EXPECT_EQ(obu_header_.obu_type, kObuIaAudioFrameId0);
-
-  // 4294967295 - 2 = 4294967293
-  EXPECT_EQ(payload_serialized_size_, 4294967293);
-
-  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
-
+  ValidateAudioFrameId0WithTrim(obu_header_);
+  EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 2);
   EXPECT_EQ(obu_header_.extension_header_size, 0);

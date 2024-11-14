@@ -170,6 +170,7 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
     ],
