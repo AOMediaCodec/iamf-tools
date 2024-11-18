@@ -470,6 +470,95 @@ absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
   return absl::OkStatus();
 }
 
+// Contains rendering metadata for all audio elements in a given layout.
+struct LayoutRenderingMetadata {
+  // Controlled by the WavWriterFactory; may be nullptr if the user does not
+  // want a wav file written for this layout.
+  std::unique_ptr<WavWriter> wav_writer;
+  // Controlled by the LoudnessCalculatorFactory; may be nullptr if the user
+  // does not want loudness calculated for this layout.
+  std::unique_ptr<LoudnessCalculatorBase> loudness_calculator;
+  std::vector<AudioElementRenderingMetadata> audio_element_rendering_metadata;
+};
+
+// We need to store rendering metadata for each submix, layout, and audio
+// element. This metadata will then be used to render the audio frames at each
+// timestamp. Some metadata is common to all audio elements and all layouts
+// within a submix. We also want to optionally support writing to a wav file
+// and/or calculating loudness based on the rendered output.
+struct SubmixRenderingMetadata {
+  uint32_t common_sample_rate;
+  uint8_t common_bit_depth;
+  // This vector will contain one LayoutRenderingMetadata per layout in the
+  // submix.
+  std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
+};
+
+absl::Status GenerateRenderingMetadataForLayouts(
+    uint32_t output_bit_depth,
+    std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
+  return absl::UnimplementedError("Not implemented yet.");
+}
+
+// We generate one rendering metadata object for each submix. Once this
+// metadata is generated, we will loop through it to render all submixes
+// for a given timestamp. Within a submix, there can be many different audio
+// elements and layouts that need to be rendered as well. Not all of these
+// need to be rendered; only the ones that either have a wav writer or a
+// loudness calculator.
+absl::Status GenerateRenderingMetadataForSubmixes(  // NOLINT
+    const RendererFactoryBase& renderer_factory,
+    const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
+    const RenderingMixPresentationFinalizer::WavWriterFactory&
+        wav_writer_factory,
+    const std::filesystem::path& file_path_prefix,
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const std::optional<uint32_t> output_wav_file_bit_depth_override,
+    MixPresentationObu& mix_presentation_obu,
+    std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
+  for (int sub_mix_index = 0;
+       sub_mix_index < mix_presentation_obu.sub_mixes_.size();
+       ++sub_mix_index) {
+    SubmixRenderingMetadata& submix_rendering_metadata =
+        output_rendering_metadata[sub_mix_index];
+    MixPresentationSubMix& sub_mix =
+        mix_presentation_obu.sub_mixes_[sub_mix_index];
+
+    // Pointers to audio elements in this sub mix; useful later.
+    std::vector<const AudioElementWithData*> audio_elements_in_sub_mix;
+    RETURN_IF_NOT_OK(CollectAudioElementsInSubMix(
+        audio_elements, sub_mix.audio_elements, audio_elements_in_sub_mix));
+
+    // Data common to all audio elements and layouts.
+    bool requires_resampling;
+    RETURN_IF_NOT_OK(GetCommonSampleRateAndBitDepthFromAudioElementIds(
+        audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
+        submix_rendering_metadata.common_bit_depth, requires_resampling));
+    if (requires_resampling) {
+      // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
+      return absl::UnimplementedError(
+          "This implementation does not support mixing different sample rates "
+          "or bit-depths.");
+    }
+    const auto output_wav_file_bit_depth =
+        output_wav_file_bit_depth_override.has_value()
+            ? *output_wav_file_bit_depth_override
+            : submix_rendering_metadata.common_bit_depth;
+    std::vector<LayoutRenderingMetadata>& layout_rendering_metadata =
+        submix_rendering_metadata.layout_rendering_metadata;
+    RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
+        output_wav_file_bit_depth, layout_rendering_metadata));
+  }
+  return absl::OkStatus();
+}
+
+// TODO(b/379727145): This function should be split up into smaller functions.
+// It is rendering and then optionally writing to a wav file and/or calculating
+// loudness based on the rendered output. We should split up the rendering part
+// from the loudness calculation part ideally and rename accordingly. It also
+// does this for each submix, each layout within a submix, and each audio
+// element at every timestamp. We want to change it such that it does similar
+// behavior for only one timestamp at a time.
 absl::Status FillLoudnessInfo(
     bool validate_loudness, const RendererFactoryBase& renderer_factory,
     const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
