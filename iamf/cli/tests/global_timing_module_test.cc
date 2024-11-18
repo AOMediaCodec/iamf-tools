@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -39,7 +38,6 @@ const DecodedUleb128 kSampleRate = 48000;
 const DecodedUleb128 kFirstAudioElementId = 0;
 const DecodedUleb128 kFirstAudioFrameId = 1000;
 const DecodedUleb128 kFirstParameterId = 0;
-const DecodedUleb128 kParameterIdForLoggingPurposes = kFirstParameterId;
 
 class GlobalTimingModuleTest : public ::testing::Test {
  protected:
@@ -47,8 +45,8 @@ class GlobalTimingModuleTest : public ::testing::Test {
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_config_obus_);
     AddAmbisonicsMonoAudioElementWithSubstreamIds(
-        kFirstAudioElementId, kCodecConfigId, {1000}, codec_config_obus_,
-        audio_elements_);
+        kFirstAudioElementId, kCodecConfigId, {kFirstAudioFrameId},
+        codec_config_obus_, audio_elements_);
     EXPECT_THAT(Initialize(), IsOk());
 
     TestGetNextAudioFrameStamps(kFirstAudioFrameId, 512, 0, 512);
@@ -128,14 +126,15 @@ TEST_F(GlobalTimingModuleTest, OneSubstream) {
 }
 
 TEST_F(GlobalTimingModuleTest, InvalidUnknownSubstreamId) {
+  constexpr DecodedUleb128 kSubstreamId = 9999;
+  constexpr DecodedUleb128 kUnknownSubstreamId = 10000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus_);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId, {0}, codec_config_obus_,
+      kFirstAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus_,
       audio_elements_);
   EXPECT_THAT(Initialize(), IsOk());
 
-  const DecodedUleb128 kUnknownSubstreamId = 9999;
   TestGetNextAudioFrameStamps(kUnknownSubstreamId, 128, 0, 128,
                               absl::StatusCode::kInvalidArgument);
 }
@@ -152,22 +151,24 @@ TEST_F(GlobalTimingModuleTest, InvalidDuplicateSubstreamIds) {
 }
 
 TEST_F(GlobalTimingModuleTest, TwoAudioElements) {
+  constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
+  constexpr DecodedUleb128 kSecondSubstreamId = 2000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus_);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId, {kFirstAudioFrameId},
+      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
       codec_config_obus_, audio_elements_);
   const DecodedUleb128 kSecondAudioElementId = 1;
   ASSERT_NE(kFirstAudioElementId, kSecondAudioElementId);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kSecondAudioElementId, kCodecConfigId, {2000}, codec_config_obus_,
-      audio_elements_);
+      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
+      codec_config_obus_, audio_elements_);
   EXPECT_THAT(Initialize(), IsOk());
 
   // All subtreams have separate time keeping functionality.
-  TestGetNextAudioFrameStamps(kFirstAudioFrameId, 128, 0, 128);
-  TestGetNextAudioFrameStamps(kFirstAudioFrameId, 128, 128, 256);
-  TestGetNextAudioFrameStamps(kFirstAudioFrameId, 128, 256, 384);
+  TestGetNextAudioFrameStamps(kFirstSubstreamId, 128, 0, 128);
+  TestGetNextAudioFrameStamps(kFirstSubstreamId, 128, 128, 256);
+  TestGetNextAudioFrameStamps(kFirstSubstreamId, 128, 256, 384);
 
   TestGetNextAudioFrameStamps(2000, 256, 0, 256);
   TestGetNextAudioFrameStamps(2000, 256, 256, 512);

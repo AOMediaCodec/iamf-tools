@@ -273,12 +273,13 @@ TEST(InitializeForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
 
 TEST(InitializeForReconstruction, CreatesNoDemixersForAmbisonics) {
   const DecodedUleb128 kCodecConfigId = 0;
+  constexpr std::array<DecodedUleb128, 4> kAmbisonicsSubstreamIds{0, 1, 2, 3};
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, 48000, codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                                {0, 1, 2, 3}, codec_configs,
-                                                audio_elements);
+                                                kAmbisonicsSubstreamIds,
+                                                codec_configs, audio_elements);
   DemixingModule demixing_module;
   EXPECT_THAT(demixing_module.InitializeForReconstruction(audio_elements),
               IsOk());

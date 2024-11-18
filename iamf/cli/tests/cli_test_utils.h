@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -92,7 +91,7 @@ void AddAacCodecConfigWithId(
  */
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    const std::vector<DecodedUleb128>& substream_ids,
+    absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
 
@@ -106,7 +105,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
  */
 void AddScalableAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    const std::vector<DecodedUleb128>& substream_ids,
+    absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
 

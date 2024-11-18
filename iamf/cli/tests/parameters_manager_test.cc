@@ -41,6 +41,8 @@ using ::absl_testing::IsOk;
 constexpr DecodedUleb128 kCodecConfigId = 1450;
 constexpr DecodedUleb128 kSampleRate = 16000;
 constexpr DecodedUleb128 kAudioElementId = 157;
+constexpr DecodedUleb128 kFirstSubstreamId = 0;
+constexpr DecodedUleb128 kSecondSubstreamId = 1;
 constexpr DecodedUleb128 kParameterId = 995;
 constexpr DecodedUleb128 kSecondParameterId = 996;
 constexpr DecodedUleb128 kDuration = 8;
@@ -112,8 +114,8 @@ class ParametersManagerTest : public testing::Test {
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_config_obus_);
     AddAmbisonicsMonoAudioElementWithSubstreamIds(
-        kAudioElementId, kCodecConfigId,
-        /*substream_ids=*/{100}, codec_config_obus_, audio_elements_);
+        kAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+        codec_config_obus_, audio_elements_);
 
     auto& audio_element_obu = audio_elements_.at(kAudioElementId).obu;
     AddDemixingParamDefinition(kParameterId, kSampleRate, kDuration,
@@ -554,8 +556,8 @@ TEST_F(ParametersManagerTest,
   // Add a second audio element sharing the same demixing parameter.
   constexpr DecodedUleb128 kAudioElementId2 = kAudioElementId + 1;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kAudioElementId2, kCodecConfigId,
-      /*substream_ids=*/{200}, codec_config_obus_, audio_elements_);
+      kAudioElementId2, kCodecConfigId, {kSecondSubstreamId},
+      codec_config_obus_, audio_elements_);
   auto& second_audio_element_obu = audio_elements_.at(kAudioElementId2).obu;
   AddDemixingParamDefinition(kParameterId, kSampleRate, kDuration,
                              second_audio_element_obu,

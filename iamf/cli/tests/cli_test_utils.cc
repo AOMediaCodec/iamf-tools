@@ -174,7 +174,7 @@ void AddAacCodecConfigWithId(
 
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    const std::vector<DecodedUleb128>& substream_ids,
+    absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
   // Check the `codec_config_id` is known and this is a new
@@ -187,10 +187,9 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
   AudioElementObu obu = AudioElementObu(
       ObuHeader(), audio_element_id, AudioElementObu::kAudioElementSceneBased,
       0, codec_config_id);
-  obu.audio_substream_ids_ = substream_ids;
   obu.InitializeParams(0);
   obu.InitializeAudioSubstreams(substream_ids.size());
-  obu.audio_substream_ids_ = substream_ids;
+  obu.audio_substream_ids_.assign(substream_ids.begin(), substream_ids.end());
 
   // Initialize to n-th order ambisonics. Choose the lowest order that can fit
   // all `substream_ids`. This may result in mixed-order ambisonics.
@@ -226,7 +225,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
 // Adds a scalable Audio Element OBU based on the input arguments.
 void AddScalableAudioElementWithSubstreamIds(
     DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    const std::vector<DecodedUleb128>& substream_ids,
+    absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
   // Check the `codec_config_id` is known and this is a new
@@ -239,7 +238,8 @@ void AddScalableAudioElementWithSubstreamIds(
   AudioElementObu obu(ObuHeader(), audio_element_id,
                       AudioElementObu::kAudioElementChannelBased, 0,
                       codec_config_id);
-  obu.audio_substream_ids_ = substream_ids;
+  obu.InitializeAudioSubstreams(substream_ids.size());
+  obu.audio_substream_ids_.assign(substream_ids.begin(), substream_ids.end());
   obu.InitializeParams(0);
 
   EXPECT_THAT(obu.InitializeScalableChannelLayout(1, 0), IsOk());

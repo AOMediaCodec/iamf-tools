@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/cli_util.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <list>
@@ -55,6 +56,8 @@ constexpr DecodedUleb128 kParameterId = 99999;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kFirstSubstreamId = 31;
 constexpr DecodedUleb128 kSecondSubstreamId = 32;
+constexpr std::array<DecodedUleb128, 1> kZerothOrderAmbisonicsSubstreamId{
+    kFirstSubstreamId};
 
 TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
   const size_t kExpectedSize = 12;  // 3 bytes per sample * 4 samples.
@@ -525,8 +528,8 @@ TEST(CollectAndValidateParamDefinitions,
   const std::list<MixPresentationObu> kNoMixPresentationObus = {};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
-      audio_elements);
+      kAudioElementId, kCodecConfigId, kZerothOrderAmbisonicsSubstreamId,
+      input_codec_configs, audio_elements);
   auto& audio_element = audio_elements.at(kAudioElementId);
   audio_element.obu.InitializeParams(1);
   audio_element.obu.audio_element_params_[0] = AudioElementParam{
@@ -547,8 +550,8 @@ TEST(CollectAndValidateParamDefinitions,
   const std::list<MixPresentationObu> kNoMixPresentationObus = {};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
-      audio_elements);
+      kAudioElementId, kCodecConfigId, kZerothOrderAmbisonicsSubstreamId,
+      input_codec_configs, audio_elements);
 
   // Add an extension param definition to the audio element. It is not possible
   // to determine the ID to store it or to use further processing.

@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -175,12 +176,12 @@ constexpr uint8_t kCodecConfigBitDepth = 16;
 void InitPrerequisiteObusForStereoInput(
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_configs,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
-  const std::vector<DecodedUleb128> kStereoSubstreamIds = {0};
+  constexpr std::array<DecodedUleb128, 1> kStereoSubstreamId{0};
 
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_configs);
   AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          kStereoSubstreamIds, codec_configs,
+                                          kStereoSubstreamId, codec_configs,
                                           audio_elements);
 
   // Fill in the first layer correctly for stereo input.
@@ -195,12 +196,12 @@ void InitPrerequisiteObusForStereoInput(
 void InitPrerequisiteObusForMonoInput(
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_configs,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
-  const std::vector<DecodedUleb128> kMonoSubstreamIds = {0};
+  constexpr std::array<DecodedUleb128, 1> kMonoSubstreamId{0};
 
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_configs);
   AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          kMonoSubstreamIds, codec_configs,
+                                          kMonoSubstreamId, codec_configs,
                                           audio_elements);
 
   // Fill in the first layer correctly for mono input.

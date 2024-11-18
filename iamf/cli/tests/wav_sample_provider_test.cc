@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
-#include <vector>
 
 // [internal] Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
@@ -43,6 +42,7 @@ using testing::DoubleEq;
 using testing::Pointwise;
 
 constexpr DecodedUleb128 kAudioElementId = 300;
+constexpr DecodedUleb128 kSubstreamId = 0;
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr uint32_t kSampleRate = 48000;
 
@@ -102,9 +102,8 @@ void InitializeTestData(
   codec_config_obus.clear();
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, sample_rate,
                                         codec_config_obus);
-  const std::vector<DecodedUleb128> kSubstreamIds = {0};
   AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          kSubstreamIds, codec_config_obus,
+                                          {kSubstreamId}, codec_config_obus,
                                           audio_elements);
 }
 

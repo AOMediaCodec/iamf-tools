@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/profile_filter.h"
 
+#include <array>
 #include <cstdint>
 #include <initializer_list>
 #include <list>
@@ -54,7 +55,8 @@ const uint32_t kCommonMixGainParameterRate = kSampleRate;
 const uint8_t kAudioElementReserved = 0;
 const int kOneLayer = 1;
 
-const std::vector<DecodedUleb128> kSubstreamIdsForFourthOrderAmbisonics = {
+constexpr std::array<DecodedUleb128, 1> kZerothOrderAmbisonicsSubstreamId{100};
+constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
     13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
 
@@ -369,7 +371,7 @@ void InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      kFirstAudioElementId, kCodecConfigId, kZerothOrderAmbisonicsSubstreamId,
       codec_config_obus, audio_elements);
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
@@ -384,8 +386,8 @@ void InitializeDescriptorObusForOneFourthOrderAmbisonicsAudioElement(
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId,
-      kSubstreamIdsForFourthOrderAmbisonics, codec_config_obus, audio_elements);
+      kFirstAudioElementId, kCodecConfigId, kFourthOrderAmbisonicsSubstreamIds,
+      codec_config_obus, audio_elements);
 
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
