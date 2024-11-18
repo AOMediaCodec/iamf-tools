@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/types.h"
@@ -88,10 +89,9 @@ class AudioElementRendererBase {
    * \param ordered_labels Ordered list of channel labels to render.
    * \param num_output_channels Number of output channels.
    */
-  AudioElementRendererBase(
-      const std::vector<ChannelLabel::Label>& ordered_labels,
-      const size_t num_output_channels)
-      : ordered_labels_(ordered_labels),
+  AudioElementRendererBase(absl::Span<const ChannelLabel::Label> ordered_labels,
+                           const size_t num_output_channels)
+      : ordered_labels_(ordered_labels.begin(), ordered_labels.end()),
         num_output_channels_(num_output_channels) {}
 
   /*!\brief Renders samples.
