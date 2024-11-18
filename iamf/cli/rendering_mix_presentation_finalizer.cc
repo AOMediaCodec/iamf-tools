@@ -494,10 +494,55 @@ struct SubmixRenderingMetadata {
   std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
 };
 
+// Generates rendering metadata for all layouts within a submix. This includes
+// optionally creating a wav writer and/or a loudness calculator for each
+// layout.
 absl::Status GenerateRenderingMetadataForLayouts(
-    uint32_t output_bit_depth,
+    const RendererFactoryBase& renderer_factory,
+    const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
+    const RenderingMixPresentationFinalizer::WavWriterFactory&
+        wav_writer_factory,
+    const std::filesystem::path& file_path_prefix,
+    const DecodedUleb128 mix_presentation_id, MixPresentationSubMix& sub_mix,
+    int sub_mix_index,
+    std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
+    uint32_t common_sample_rate, uint8_t common_bit_depth,
     std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
-  return absl::UnimplementedError("Not implemented yet.");
+  for (int layout_index = 0; layout_index < sub_mix.layouts.size();
+       layout_index++) {
+    LayoutRenderingMetadata& layout_rendering_metadata =
+        output_layout_rendering_metadata[layout_index];
+    MixPresentationLayout& layout = sub_mix.layouts[layout_index];
+
+    int32_t num_channels = 0;
+    auto can_render_status = MixPresentationObu::GetNumChannelsFromLayout(
+        layout.loudness_layout, num_channels);
+
+    can_render_status.Update(InitializeRenderingMetadata(
+        renderer_factory, audio_elements_in_sub_mix, sub_mix.audio_elements,
+        layout.loudness_layout, common_sample_rate, common_bit_depth,
+        layout_rendering_metadata.audio_element_rendering_metadata));
+
+    if (!can_render_status.ok()) {
+      LOG(WARNING) << "Rendering is not supported yet for this layout: "
+                   << can_render_status
+                   << ". Skipping rendering and loudness calculation.";
+      continue;
+    }
+    if (loudness_calculator_factory != nullptr) {
+      // Optionally create a loudness calculator.
+      layout_rendering_metadata.loudness_calculator =
+          loudness_calculator_factory->CreateLoudnessCalculator(
+              layout, common_sample_rate, common_bit_depth);
+    }
+    // Optionally create a wav writer.
+    layout_rendering_metadata.wav_writer =
+        wav_writer_factory(mix_presentation_id, sub_mix_index, layout_index,
+                           layout.loudness_layout, file_path_prefix,
+                           num_channels, common_sample_rate, common_bit_depth);
+  }
+
+  return absl::OkStatus();
 }
 
 // We generate one rendering metadata object for each submix. Once this
@@ -516,6 +561,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(  // NOLINT
     const std::optional<uint32_t> output_wav_file_bit_depth_override,
     MixPresentationObu& mix_presentation_obu,
     std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
+  const auto mix_presentation_id = mix_presentation_obu.GetMixPresentationId();
   for (int sub_mix_index = 0;
        sub_mix_index < mix_presentation_obu.sub_mixes_.size();
        ++sub_mix_index) {
@@ -547,6 +593,9 @@ absl::Status GenerateRenderingMetadataForSubmixes(  // NOLINT
     std::vector<LayoutRenderingMetadata>& layout_rendering_metadata =
         submix_rendering_metadata.layout_rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
+        renderer_factory, loudness_calculator_factory, wav_writer_factory,
+        file_path_prefix, mix_presentation_id, sub_mix, sub_mix_index,
+        audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
         output_wav_file_bit_depth, layout_rendering_metadata));
   }
   return absl::OkStatus();
@@ -595,7 +644,8 @@ absl::Status FillLoudnessInfo(
     if (requires_resampling) {
       // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
       return absl::UnknownError(
-          "This implementation does not support mixing different sample rates "
+          "This implementation does not support mixing different sample "
+          "rates "
           "or bit-depths.");
     }
     const auto output_wav_file_bit_depth =
