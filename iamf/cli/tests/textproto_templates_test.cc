@@ -60,12 +60,12 @@ TEST_P(TextprotoTemplate, ValidateTextprotos) {
   user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
   LOG(INFO) << "Testing with " << test_case.textproto_filename;
 
-  // Replace the wav filenames
-  user_metadata.mutable_audio_frame_metadata(0)->set_wav_filename(
-      test_case.wav_filenames[0]);
-  if (test_case.wav_filenames.size() == 2) {
-    user_metadata.mutable_audio_frame_metadata(1)->set_wav_filename(
-        test_case.wav_filenames[1]);
+  // Replace the wav filenames.
+  ASSERT_EQ(user_metadata.audio_frame_metadata_size(),
+            test_case.wav_filenames.size());
+  for (int i = 0; i < test_case.wav_filenames.size(); ++i) {
+    user_metadata.mutable_audio_frame_metadata(i)->set_wav_filename(
+        test_case.wav_filenames[i]);
   }
 
   // Call encoder and check that the encoding was successful.

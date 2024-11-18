@@ -144,7 +144,7 @@ cc_test(
         "//iamf/cli/testdata:input_wav_files",
         "//iamf/cli/testdata:test_vectors",
     ],
-    shard_count = 16,
+    shard_count = 32,
     deps = [
         ":cli_test_utils",
         "//iamf/cli:encoder_main_lib",
@@ -397,6 +397,7 @@ cc_test(
         "//iamf/cli/testdata:input_wav_files",
         "//iamf/cli/textproto_templates:textprotos",
     ],
+    shard_count = 4,
     deps = [
         ":cli_test_utils",
         "//iamf/cli:encoder_main_lib",
