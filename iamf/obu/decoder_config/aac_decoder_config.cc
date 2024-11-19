@@ -21,6 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -108,8 +109,8 @@ absl::Status AdvanceBufferToPosition(absl::string_view debugging_context,
     return absl::OkStatus();
   } else if (actual_position < expected_position) {
     // Advance and consume the extension.
-    return rb.ReadUint8Vector((expected_position - actual_position) / 8,
-                              extension);
+    extension.resize((expected_position - actual_position) / 8);
+    return rb.ReadUint8Span(absl::MakeSpan(extension));
   } else {
     // The buffer is already past the position.
     return absl::OutOfRangeError(

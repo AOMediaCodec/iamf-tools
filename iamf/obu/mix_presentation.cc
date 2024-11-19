@@ -21,6 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -268,9 +269,10 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   // Conditionally read `layout_extension` based on `info_type`.
   if (loudness.info_type & LoudnessInfo::kAnyLayoutExtension) {
     RETURN_IF_NOT_OK(rb.ReadULeb128(loudness.layout_extension.info_type_size));
-    RETURN_IF_NOT_OK(
-        rb.ReadUint8Vector(loudness.layout_extension.info_type_size,
-                           loudness.layout_extension.info_type_bytes));
+    loudness.layout_extension.info_type_bytes.resize(
+        loudness.layout_extension.info_type_size);
+    RETURN_IF_NOT_OK(rb.ReadUint8Span(
+        absl::MakeSpan(loudness.layout_extension.info_type_bytes)));
   }
 
   return absl::OkStatus();
@@ -298,9 +300,10 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
   rendering_config.reserved = reserved;
   RETURN_IF_NOT_OK(
       rb.ReadULeb128(rendering_config.rendering_config_extension_size));
-  RETURN_IF_NOT_OK(
-      rb.ReadUint8Vector(rendering_config.rendering_config_extension_size,
-                         rendering_config.rendering_config_extension_bytes));
+  rendering_config.rendering_config_extension_bytes.resize(
+      rendering_config.rendering_config_extension_size);
+  RETURN_IF_NOT_OK(rb.ReadUint8Span(
+      absl::MakeSpan(rendering_config.rendering_config_extension_bytes)));
 
   RETURN_IF_NOT_OK(element_mix_gain.ReadAndValidate(rb));
   return absl::OkStatus();

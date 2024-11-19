@@ -18,6 +18,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -90,7 +91,8 @@ absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
     }
     const int64_t num_bytes_to_read =
         (expected_final_position - final_position) / 8;
-    return rb.ReadUint8Vector(num_bytes_to_read, footer_);
+    footer_.resize(num_bytes_to_read);
+    return rb.ReadUint8Span(absl::MakeSpan(footer_));
   } else {
     // The dispatched function read past the end of the payload. Something could
     // be inconsistent between the parsing logic and the claimed OBU size.

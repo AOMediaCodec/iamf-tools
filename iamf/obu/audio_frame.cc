@@ -76,9 +76,9 @@ absl::Status AudioFrameObu::ReadAndValidatePayloadDerived(int64_t payload_size,
   } else {
     audio_substream_id_ = header_.obu_type - kObuIaAudioFrameId0;
   }
-  RETURN_IF_NOT_OK(
-      rb.ReadUint8Vector(payload_size - encoded_uleb128_size, audio_frame_));
-  return absl::OkStatus();
+
+  audio_frame_.resize(payload_size - encoded_uleb128_size);
+  return rb.ReadUint8Span(absl::MakeSpan(audio_frame_));
 }
 
 void AudioFrameObu::PrintObu() const {

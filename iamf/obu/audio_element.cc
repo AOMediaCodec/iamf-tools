@@ -26,6 +26,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -315,8 +316,9 @@ absl::Status ReadAndValidateAmbisonicsMonoConfig(
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.output_channel_count));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, mono_config.substream_count));
   const size_t channel_mapping_size = mono_config.output_channel_count;
+  mono_config.channel_mapping.resize(channel_mapping_size);
   RETURN_IF_NOT_OK(
-      rb.ReadUint8Vector(channel_mapping_size, mono_config.channel_mapping));
+      rb.ReadUint8Span(absl::MakeSpan(mono_config.channel_mapping)));
   RETURN_IF_NOT_OK(mono_config.Validate(num_substreams));
   return OkStatus();
 }

@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/macros.h"
@@ -166,8 +167,8 @@ TEST(ObuBaseTest, ReadDoesNotOverflowWhenBufferIsLarge) {
   source_data.insert(source_data.end() - kObu.size(), kObu.begin(), kObu.end());
   ReadBitBuffer rb(1024, &source_data);
   // Advance the buffer to just before the OBU of interest.
-  std::vector<uint8_t> junk_data;
-  ASSERT_THAT(rb.ReadUint8Vector(kJunkDataSize, junk_data), IsOk());
+  std::vector<uint8_t> junk_data(kJunkDataSize);
+  ASSERT_THAT(rb.ReadUint8Span(absl::MakeSpan(junk_data)), IsOk());
 
   EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), 1, rb), IsOk());
 }

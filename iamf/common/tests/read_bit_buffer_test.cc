@@ -11,6 +11,8 @@
  */
 #include "iamf/common/read_bit_buffer.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -19,6 +21,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/bit_buffer_util.h"
@@ -31,6 +34,7 @@ using absl::StatusCode::kResourceExhausted;
 using testing::ElementsAreArray;
 
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 
 constexpr int kBitsPerByte = 8;
 constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
@@ -504,58 +508,56 @@ TEST(ReadIso14496_1Expanded, InvalidWhenInputDataSignalsMoreThan8Bytes) {
   EXPECT_FALSE(rb.ReadIso14496_1Expanded(kMaxUint32, unused_output).ok());
 }
 
-// --- ReadUint8Vector tests ---
+// --- `ReadUint8Span` tests ---
 
-// Successful ReadUint8Vector reads
-TEST_F(ReadBitBufferTest, ReadUint8VectorRead5Bytes) {
-  source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
-  rb_capacity_ = 1024;
-  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_THAT(rb_->LoadBits(40), IsOk());
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
-  std::vector<uint8_t> output = {};
-  EXPECT_THAT(rb_->ReadUint8Vector(5, output), IsOk());
-  for (int i = 0; i < output.size(); ++i) {
-    EXPECT_EQ(output[i], source_data_[i]);
-  }
+// Successful usage of `ReadUint8Span`.
+TEST(ReadUint8Span, SucceedsWithAlignedBuffer) {
+  constexpr size_t kOutputSize = 5;
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data);
+
+  std::vector<uint8_t> output(kOutputSize);
+  EXPECT_THAT(rb.ReadUint8Span(absl::MakeSpan(output)), IsOk());
+
   // Expect to read 40 bits.
-  EXPECT_EQ(rb_->buffer_bit_offset(), 40);
+  EXPECT_EQ(output, source_data);
+  EXPECT_EQ(rb.buffer_bit_offset(), 40);
 }
 
-TEST_F(ReadBitBufferTest, ReadUint8VectorReadBytesMisalignedBuffer) {
-  source_data_ = {0b10000001, 0b10000011, 0b10000001, 0b10000011, 0b00001111};
-  rb_capacity_ = 1024;
-  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_THAT(rb_->LoadBits(40), IsOk());
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
-  uint64_t literal = 0;
-  EXPECT_THAT(rb_->ReadUnsignedLiteral(2, literal), IsOk());
-  // Bit buffer offset is now misaligned, but ReadUint8Vector should still work.
-  EXPECT_EQ(rb_->buffer_bit_offset(), 2);
-  std::vector<uint8_t> output = {};
-  EXPECT_THAT(rb_->ReadUint8Vector(4, output), IsOk());
-  // Expected output starts reading at bit 2 instead of at 0.
-  std::vector<uint8_t> expected_output = {0b00000110, 0b00001110, 0b00000110,
-                                          0b00001100};
-  for (int i = 0; i < output.size(); ++i) {
-    EXPECT_EQ(output[i], expected_output[i]);
-  }
-  // Expect to read 32 bits (5 bytes) + the 2 we initially read.
-  EXPECT_EQ(rb_->buffer_bit_offset(), 34);
+TEST(ReadUint8Span, SucceedsWithMisalignedBuffer) {
+  // Prepare the buffer with source data, but where partial bytes have been
+  // read, so later reads are not on byte boundaries.
+  std::vector<uint8_t> source_data = {0xab, 0xcd, 0xef, 0x01, 0x23};
+  constexpr size_t kOffsetBits = 4;
+  constexpr std::array<uint8_t, 4> kExpectedOutput{0xbc, 0xde, 0xf0, 0x12};
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data);
+  // Read a 4-bit literal to misalign the buffer.
+  uint8_t literal = 0;
+  EXPECT_THAT(rb.ReadUnsignedLiteral(kOffsetBits, literal), IsOk());
+  EXPECT_EQ(rb.buffer_bit_offset(), kOffsetBits);
+
+  std::vector<uint8_t> output(4);
+  EXPECT_THAT(rb.ReadUint8Span(absl::MakeSpan(output)), IsOk());
+
+  // Expect to read 32 bits (4 bytes) + the 4 we initially read.
+  EXPECT_THAT(output, testing::ElementsAreArray(kExpectedOutput));
+  EXPECT_EQ(rb.buffer_bit_offset(), 36);
 }
 
-// ReadUint8Vector Errors
-TEST_F(ReadBitBufferTest, ReadUint8VectorNotEnoughDataInBufferOrSource) {
-  source_data_ = {0x80, 0x80, 0x80, 0x80};
-  rb_capacity_ = 1024;
-  std::unique_ptr<ReadBitBuffer> rb_ = CreateReadBitBuffer();
-  EXPECT_THAT(rb_->LoadBits(32), IsOk());
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
-  std::vector<uint8_t> output = {};
-  EXPECT_EQ(rb_->ReadUint8Vector(5, output).code(), kResourceExhausted);
+// `ReadUint8Span` errors.
+TEST(ReadUint8Span, InvalidWhenNotEnoughDataInBufferToFillSpan) {
+  constexpr size_t kSourceSize = 4;
+  constexpr size_t kOutputSizeTooLarge = 5;
+  std::vector<uint8_t> source_data(kSourceSize);
+  ReadBitBuffer rb = CreateReadBitBufferAndLoadBitsExpectOk(source_data);
+
+  std::vector<uint8_t> output(kOutputSizeTooLarge);
+  EXPECT_THAT(rb.ReadUint8Span(absl::MakeSpan(output)),
+              StatusIs(kResourceExhausted));
+
   // Expect to buffer_bit_offset to be reset if there is not enough data in
   // the buffer.
-  EXPECT_EQ(rb_->buffer_bit_offset(), 0);
+  EXPECT_EQ(rb.buffer_bit_offset(), 0);
 }
 
 // --- ReadBoolean tests ---

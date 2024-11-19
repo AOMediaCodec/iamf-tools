@@ -16,6 +16,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -327,8 +328,8 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   // This class does not read the base class's data, i.e. it doesn't call
   // `ParamDefinition::ReadAndWrite(wb)`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size_));
-  RETURN_IF_NOT_OK(
-      rb.ReadUint8Vector(param_definition_size_, param_definition_bytes_));
+  param_definition_bytes_.resize(param_definition_size_);
+  RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
 
   return absl::OkStatus();
 }

@@ -20,6 +20,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
@@ -269,8 +270,8 @@ absl::Status ObuHeader::ReadAndValidate(
   if (obu_extension_flag) {
     RETURN_IF_NOT_OK(
         rb.ReadULeb128(extension_header_size, extension_header_size_size));
-    RETURN_IF_NOT_OK(
-        rb.ReadUint8Vector(extension_header_size, extension_header_bytes));
+    extension_header_bytes.resize(extension_header_size);
+    RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(extension_header_bytes)));
   }
   output_payload_serialized_size = GetObuPayloadSize(
       obu_size, num_samples_to_trim_at_end_size,

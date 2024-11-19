@@ -18,6 +18,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -185,12 +186,7 @@ absl::Status ReadStreamInfo(FlacMetaBlockStreamInfo& stream_info,
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, stream_info.bits_per_sample));
   RETURN_IF_NOT_OK(
       rb.ReadUnsignedLiteral(36, stream_info.total_samples_in_stream));
-  std::vector<uint8_t> md5_signature;
-  RETURN_IF_NOT_OK(rb.ReadUint8Vector(16, md5_signature));
-  for (int i = 0; i < 16; ++i) {
-    stream_info.md5_signature[i] = md5_signature[i];
-  }
-  return absl::OkStatus();
+  return rb.ReadUint8Span(absl::MakeSpan(stream_info.md5_signature));
 }
 
 }  // namespace
@@ -262,11 +258,12 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
         RETURN_IF_NOT_OK(ReadStreamInfo(
             std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), rb));
         break;
-      default:
-        RETURN_IF_NOT_OK(rb.ReadUint8Vector(
-            metadata_block.header.metadata_data_block_length,
-            std::get<std::vector<uint8_t>>(metadata_block.payload)));
+      default: {
+        auto& payload = std::get<std::vector<uint8_t>>(metadata_block.payload);
+        payload.resize(metadata_block.header.metadata_data_block_length);
+        RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(payload)));
         break;
+      }
     }
     metadata_blocks_.push_back(std::move(metadata_block));
   }

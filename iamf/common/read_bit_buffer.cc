@@ -12,7 +12,6 @@
 
 #include "iamf/common/read_bit_buffer.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -21,6 +20,7 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/bit_buffer_util.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/types.h"
@@ -265,13 +265,9 @@ absl::Status ReadBitBuffer::ReadIso14496_1Expanded(uint32_t max_class_size,
       unused_encoded_size);
 }
 
-absl::Status ReadBitBuffer::ReadUint8Vector(const int& count,
-                                            std::vector<uint8_t>& output) {
-  output.reserve(count);
-  for (size_t i = 0; i < count; ++i) {
-    uint64_t byte;
+absl::Status ReadBitBuffer::ReadUint8Span(absl::Span<uint8_t> output) {
+  for (auto& byte : output) {
     RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, byte));
-    output.push_back(static_cast<uint8_t>(byte));
   }
   return absl::OkStatus();
 }

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -159,16 +160,15 @@ class ReadBitBuffer {
   absl::Status ReadIso14496_1Expanded(uint32_t max_class_size,
                                       uint32_t& size_of_instance);
 
-  /*!\brief Reads an uint8 vector from buffer into `output`.
+  /*!\brief Reads `uint8_t`s into the output span.
    *
-   * \param count Number of uint8s to read from the buffer.
-   * \param output uint8 vector from buffer is written here.
+   * \param output Span of `uint8_t`s to write to.
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
    *         the buffer runs out of data and cannot get more from source before
-   *         the desired `count` uint8s are read. `absl::UnknownError()` if the
-   *         `rb->bit_offset` is negative.
+   *         filling the span. `absl::UnknownError()` if the `rb->bit_offset` is
+   *         negative.
    */
-  absl::Status ReadUint8Vector(const int& count, std::vector<uint8_t>& output);
+  absl::Status ReadUint8Span(absl::Span<uint8_t> output);
 
   /*!\brief Reads a boolean from buffer into `output`.
    *
