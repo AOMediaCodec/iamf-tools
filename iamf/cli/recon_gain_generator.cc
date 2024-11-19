@@ -94,13 +94,14 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   // Level Ok in the Spec.
   const double original_power = ComputeSignalPower(*original_samples);
 
+  // TODO(b/289064747): Investigate if the recon gain mismatches are resolved
+  //                    after we switched to representing data in [-1, +1].
   // If 10*log10(level Ok / maxL^2) is less than the first threshold value
   // (e.g. -80dB), Recon_Gain (k, i) = 0. Where, maxL = 32767 for 16bits.
-  // TODO(b/289064747): Investigate `max_l_squared`. The input to
-  //                    `ComputeReconGain` is left-justified `int32_t`. Maybe it
-  //                    should be changed from (2^15)^2 to (2^31)^2?
-  const double max_l_squared = 32767 * 32767;
-  const double original_power_db = 10 * log10(original_power / max_l_squared);
+  // In this codebase we represent the `InternalSampleType` as a `double` in the
+  // range of [-1, +1], so we use maxL = 1.0 instead.
+  constexpr InternalSampleType kMaxLSquared = 1.0 * 1.0;
+  const double original_power_db = 10 * log10(original_power / kMaxLSquared);
   LOG_IF(INFO, additional_logging) << "Level OK (dB) " << original_power_db;
   if (original_power_db < -80) {
     recon_gain = 0;
@@ -118,8 +119,7 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   // Level Mk in the Spec.
   const double relevant_mixed_power =
       ComputeSignalPower(*relevant_mixed_samples);
-  const double mixed_power_db =
-      10 * log10(relevant_mixed_power / max_l_squared);
+  const double mixed_power_db = 10 * log10(relevant_mixed_power / kMaxLSquared);
   LOG_IF(INFO, additional_logging) << "Level MK (dB) " << mixed_power_db;
 
   // If 10*log10(level Ok / level Mk ) is less than the second threshold

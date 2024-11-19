@@ -628,8 +628,9 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
 TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
-  const std::vector<int32_t> kExpectedPassthroughSamples = {0, 1};
-  const std::vector<InternalSampleType> kInputSamples = {0, 1};
+  const std::vector<int32_t> kExpectedPassthroughSamples = {
+      0, std::numeric_limits<int32_t>::max()};
+  const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};

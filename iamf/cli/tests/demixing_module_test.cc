@@ -32,6 +32,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -420,10 +421,14 @@ TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
 
   // Examine the demixed frame.
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
-  EXPECT_THAT(labeled_frame.label_to_samples.at(kMono),
-              Pointwise(DoubleEq(), {1.0, 2.0, 3.0}));
-  EXPECT_THAT(labeled_frame.label_to_samples.at(kL2),
-              Pointwise(DoubleEq(), {9.0, 10.0, 11.0}));
+  constexpr std::array<int32_t, 3> kExpectedMonoSamples = {1, 2, 3};
+  constexpr std::array<int32_t, 3> kExpectedL2Samples = {9, 10, 11};
+  EXPECT_THAT(
+      labeled_frame.label_to_samples.at(kMono),
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedMonoSamples));
+  EXPECT_THAT(
+      labeled_frame.label_to_samples.at(kL2),
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedL2Samples));
 }
 
 TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
@@ -466,7 +471,7 @@ TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
   const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
   // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
   EXPECT_THAT(labeled_frame.label_to_samples.at(kDemixedR2),
-              Pointwise(DoubleEq(), {500}));
+              Pointwise(InternalSampleMatchesIntegralSample(), {500}));
 }
 
 TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
@@ -605,14 +610,13 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     }
   }
 
-  void ConfigureInputChannel(
-      ChannelLabel::Label label,
-      const std::vector<InternalSampleType>& input_samples) {
+  void ConfigureInputChannel(ChannelLabel::Label label,
+                             absl::Span<const int32_t> input_samples) {
     ConfigureAudioFrameMetadata({label});
 
-    auto [unused_iter, inserted] =
-        input_label_to_samples_.emplace(label, input_samples);
-
+    auto [iter, inserted] = input_label_to_samples_.emplace(
+        label, std::vector<InternalSampleType>(input_samples.size(), 0));
+    Int32ToInternalSampleType(input_samples, absl::MakeSpan(iter->second));
     // This function should not be called with the same label twice.
     ASSERT_TRUE(inserted);
   }
@@ -985,7 +989,8 @@ class DemixingModuleTest : public DemixingModuleTestBase,
 
       samples_for_channel.reserve(pcm_samples.size());
       for (auto tick : pcm_samples) {
-        samples_for_channel.push_back(tick[channel]);
+        samples_for_channel.push_back(
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(tick[channel]));
       }
       labels_iter++;
     }
@@ -993,11 +998,19 @@ class DemixingModuleTest : public DemixingModuleTestBase,
 
   void ConfiguredExpectedDemixingChannelFrame(
       ChannelLabel::Label label,
-      std::vector<InternalSampleType> expected_demixed_samples) {
+      const std::vector<int32_t>& expected_demixed_samples) {
+    std::vector<InternalSampleType> expected_demixed_samples_as_internal_type;
+    expected_demixed_samples_as_internal_type.reserve(
+        expected_demixed_samples.size());
+    for (int32_t sample : expected_demixed_samples) {
+      expected_demixed_samples_as_internal_type.push_back(
+          Int32ToNormalizedFloatingPoint<InternalSampleType>(sample));
+    }
+
     // Configure the expected demixed channels. Typically the input `label`
     // should have a "D_" prefix.
     expected_id_to_labeled_decoded_frame_[kAudioElementId]
-        .label_to_samples[label] = expected_demixed_samples;
+        .label_to_samples[label] = expected_demixed_samples_as_internal_type;
   }
 
   void TestDemixing(int expected_number_of_down_mixers) {
@@ -1107,15 +1120,15 @@ TEST_F(DemixingModuleTest, S2ToS3Demixer) {
                                                   {{70, 70}, {1700, 1700}});
 
   // 3.1.2 as the next layer.
-  ConfigureLosslessAudioFrameAndDecodedAudioFrame({kCentre}, {{100}, {1000}});
+  ConfigureLosslessAudioFrameAndDecodedAudioFrame({kCentre}, {{2000}, {1000}});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame(
       {kLtf3, kRtf3}, {{99999, 99998}, {99999, 99998}});
 
   // L3/R3 get demixed from the lower layers.
   // L3 = L2 - (C - 3 dB).
   // R3 = R2 - (C - 3 dB).
-  ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {-0.7, 993});
-  ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {-0.7, 993});
+  ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {-1344, 993});
+  ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {-1344, 993});
 
   TestDemixing(1);
 }

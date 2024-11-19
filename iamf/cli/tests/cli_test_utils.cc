@@ -440,4 +440,11 @@ std::vector<DecodeSpecification> GetDecodeSpecifications(
   return decode_specifications;
 }
 
+std::vector<InternalSampleType> Int32ToInternalSampleType(
+    absl::Span<const int32_t> samples) {
+  std::vector<InternalSampleType> result(samples.size());
+  Int32ToInternalSampleType(samples, absl::MakeSpan(result));
+  return result;
+}
+
 }  // namespace iamf_tools

@@ -161,7 +161,7 @@ constexpr double kMaxInt32PlusOneAsDouble =
  * \return Normalized value.
  */
 template <typename T>
-T Int32ToNormalizedFloatingPoint(int32_t value) {
+constexpr T Int32ToNormalizedFloatingPoint(int32_t value) {
   using obu_util_internal::kMaxInt32PlusOneAsDouble;
   static_assert(std::is_floating_point_v<T>);
 

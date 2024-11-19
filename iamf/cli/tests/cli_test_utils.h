@@ -12,6 +12,7 @@
 #ifndef CLI_TESTS_CLI_TEST_UTILS_H_
 #define CLI_TESTS_CLI_TEST_UTILS_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -21,11 +22,13 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "gmock/gmock.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
@@ -245,6 +248,50 @@ double GetLogSpectralDistance(
  */
 std::vector<DecodeSpecification> GetDecodeSpecifications(
     const iamf_tools_cli_proto::UserMetadata& user_metadata);
+
+/*!\brief Converts a span of `int32_t` to a span of `InternalSampleType`.
+ *
+ * Useful because some test data is more readable as `int32_t`s, than in the
+ * canonical `InternalSampleType` format.
+ *
+ * \param samples Span of `int32_t`s to convert.
+ * \param result Span of `InternalSampleType`s to write to.
+ */
+constexpr void Int32ToInternalSampleType(
+    absl::Span<const int32_t> samples, absl::Span<InternalSampleType> result) {
+  std::transform(samples.begin(), samples.end(), result.begin(),
+                 Int32ToNormalizedFloatingPoint<InternalSampleType>);
+}
+
+/*!\brief Converts a span of `int32_t` to a span of `InternalSampleType`.
+ *
+ * Useful because some test data is more readable as `int32_t`s, than in the
+ * canonical `InternalSampleType` format.
+ *
+ * \param samples Span of `int32_t`s to convert.
+ * \return Output vector of `InternalSampleType`s.
+ */
+std::vector<InternalSampleType> Int32ToInternalSampleType(
+    absl::Span<const int32_t> samples);
+
+/*!\brief Matches an `InternalSampleType` to an `int32_t`..
+ *
+ * Used with a tuple of `InternalSampleType` and `int32_t`.
+ *
+ * For example:
+ *    std::vector<InternalSampleType> samples;
+ *    std::vector<int32_t> expected_samples;
+ *    EXPECT_THAT(samples,
+ *                Pointwise(InternalSampleMatchesIntegralSample(),
+ *                          expected_samples));
+ */
+MATCHER(InternalSampleMatchesIntegralSample, "") {
+  int32_t equivalent_integral_sample;
+  return NormalizedFloatingPointToInt32(testing::get<0>(arg),
+                                        equivalent_integral_sample)
+             .ok() &&
+         equivalent_integral_sample == testing::get<1>(arg);
+}
 
 }  // namespace iamf_tools
 

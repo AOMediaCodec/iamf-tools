@@ -39,6 +39,7 @@
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
@@ -62,11 +63,26 @@ constexpr uint32_t kAacNumSamplesToTrimAtStart = 2048;
 constexpr bool kSamplesToTrimAtStartIncludesCodecDelay = true;
 constexpr bool kSamplesToTrimAtStartExcludesCodecDelay = false;
 
-constexpr auto kFrame0L2EightSamples = std::to_array<InternalSampleType>(
-    {1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16});
-constexpr auto kFrame0R2EightSamples = std::to_array<InternalSampleType>(
-    {65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16, 65531 << 16,
-     65530 << 16, 65529 << 16, 65528 << 16});
+constexpr std::array<int32_t, 8> kFrame0L2EightSamplesInt{
+    1 << 16, 2 << 16, 3 << 16, 4 << 16, 5 << 16, 6 << 16, 7 << 16, 8 << 16};
+constexpr auto kFrame0L2EightSamples = []() -> auto {
+  std::array<InternalSampleType, 8> result;
+  Int32ToInternalSampleType(absl::MakeConstSpan(kFrame0L2EightSamplesInt),
+                            absl::MakeSpan(result));
+  return result;
+}();
+
+constexpr std::array<int32_t, 8> kFrame0R2EightSamplesInt{
+    65535 << 16, 65534 << 16, 65533 << 16, 65532 << 16,
+    65531 << 16, 65530 << 16, 65529 << 16, 65528 << 16};
+
+constexpr auto kFrame0R2EightSamples = []() -> auto {
+  std::array<InternalSampleType, 8> result;
+  Int32ToInternalSampleType(absl::MakeConstSpan(kFrame0R2EightSamplesInt),
+                            absl::MakeSpan(result));
+  return result;
+}();
+
 constexpr std::array<InternalSampleType, 0> kEmptyFrame = {};
 
 // TODO(b/301490667): Add more tests. Include tests with multiple substreams.
@@ -1194,8 +1210,11 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   // Vector backing the samples passed to `audio_frame_generator`.
   const int kFrameSize = 8;
   std::vector<std::vector<InternalSampleType>> all_samples(kNumFrames);
-  for (int i = 0; i < kNumFrames; ++i) {
-    all_samples[i].resize(kFrameSize, static_cast<InternalSampleType>(i));
+  std::vector<std::vector<int32_t>> expected_samples(kNumFrames);
+  for (int32_t i = 0; i < kNumFrames; ++i) {
+    expected_samples[i].resize(kFrameSize, i);
+    all_samples[i].resize(
+        kFrameSize, Int32ToNormalizedFloatingPoint<InternalSampleType>(i));
   }
 
   const auto label_to_frames = [&]() -> auto {
@@ -1231,14 +1250,14 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
     constexpr int kFirstSample = 0;
     constexpr int kLeftChannel = 0;
     constexpr int kRightChannel = 1;
-    const InternalSampleType expected_sample = all_samples[index][kFirstSample];
+    const int32_t expected_sample = expected_samples[index][kFirstSample];
     // The timestamp should count up by the number of samples in each frame.
     EXPECT_EQ(audio_frame.start_timestamp, kFrameSize * index);
     ASSERT_TRUE(audio_frame.pcm_samples.has_value());
-    EXPECT_DOUBLE_EQ((*audio_frame.pcm_samples)[kFirstSample][kLeftChannel],
-                     expected_sample);
-    EXPECT_DOUBLE_EQ((*audio_frame.pcm_samples)[kFirstSample][kRightChannel],
-                     expected_sample);
+    EXPECT_EQ((*audio_frame.pcm_samples)[kFirstSample][kLeftChannel],
+              expected_sample);
+    EXPECT_EQ((*audio_frame.pcm_samples)[kFirstSample][kRightChannel],
+              expected_sample);
     index++;
   }
 }

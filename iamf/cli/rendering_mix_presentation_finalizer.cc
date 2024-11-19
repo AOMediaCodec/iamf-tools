@@ -398,7 +398,7 @@ absl::Status RenderNextFrameForLayout(
   rendered_samples.reserve(rendered_samples_internal.size());
   for (const InternalSampleType sample : rendered_samples_internal) {
     int32_t sample_int32;
-    RETURN_IF_NOT_OK(ClipDoubleToInt32(sample, sample_int32));
+    RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(sample, sample_int32));
     rendered_samples.push_back(sample_int32);
   }
 

@@ -26,7 +26,10 @@ typedef uint32_t DecodedUleb128;
 /*!\brief Decoded `sleb128` in IAMF. */
 typedef int32_t DecodedSleb128;
 
-/*!\brief Type of audio samples for internal computation. */
+/*!\brief Type of audio samples for internal computation.
+ *
+ * Typically this should be used as a value in the range of [-1.0, 1.0].
+ */
 typedef double InternalSampleType;
 
 }  // namespace iamf_tools

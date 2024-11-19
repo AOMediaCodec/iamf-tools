@@ -13,15 +13,16 @@
 #include "iamf/cli/recon_gain_generator.h"
 
 #include <cstdint>
-#include <limits>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -31,18 +32,18 @@ using ::absl_testing::IsOk;
 
 using enum ChannelLabel::Label;
 
-const InternalSampleType kArbitrarySample =
-    static_cast<InternalSampleType>(std::numeric_limits<int32_t>::max());
+constexpr InternalSampleType kArbitrarySample = 1.0;
 
 void TestComputeReconGainForOneChannelLrs7(
-    const std::vector<InternalSampleType>& original_channel,
-    const std::vector<InternalSampleType>& mixed_channel,
-    const std::vector<InternalSampleType>& demixed_channel,
+    absl::Span<const int32_t> original_channel_int,
+    absl::Span<const int32_t> mixed_channel_int,
+    absl::Span<const int32_t> demixed_channel_int,
     const double expected_recon_gain) {
-  const LabelSamplesMap label_to_samples{{kDemixedLrs7, original_channel},
-                                         {kLs5, mixed_channel}};
+  const LabelSamplesMap label_to_samples{
+      {kDemixedLrs7, Int32ToInternalSampleType(original_channel_int)},
+      {kLs5, Int32ToInternalSampleType(mixed_channel_int)}};
   const LabelSamplesMap label_to_decoded_samples{
-      {kDemixedLrs7, demixed_channel}};
+      {kDemixedLrs7, Int32ToInternalSampleType(demixed_channel_int)}};
 
   double recon_gain;
   EXPECT_THAT(ReconGainGenerator::ComputeReconGain(

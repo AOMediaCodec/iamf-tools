@@ -54,6 +54,7 @@ cc_test(
         "//iamf/cli/proto_to_obu:audio_frame_generator",
         "//iamf/cli/proto_to_obu:codec_config_generator",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/common:obu_util",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",

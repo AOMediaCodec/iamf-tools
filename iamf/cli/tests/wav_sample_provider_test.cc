@@ -38,7 +38,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
-using testing::DoubleEq;
 using testing::Pointwise;
 
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -373,8 +372,12 @@ TEST(WavSampleProviderTest, ReadFrameSucceedsWithDeprecatedChannelLabels) {
   ReadOneFrameExpectFinished(*wav_sample_provider, labeled_samples);
 
   // Validate samples read from the WAV file.
-  EXPECT_THAT(labeled_samples[kL2], Pointwise(DoubleEq(), kExpectedSamplesL2));
-  EXPECT_THAT(labeled_samples[kR2], Pointwise(DoubleEq(), kExpectedSamplesR2));
+  EXPECT_THAT(
+      labeled_samples[kL2],
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedSamplesL2));
+  EXPECT_THAT(
+      labeled_samples[kR2],
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedSamplesR2));
 }
 
 TEST(WavSampleProviderTest, ReadFrameSucceedsWithChannelMetadatas) {
@@ -391,8 +394,12 @@ TEST(WavSampleProviderTest, ReadFrameSucceedsWithChannelMetadatas) {
   ReadOneFrameExpectFinished(*wav_sample_provider, labeled_samples);
 
   // Validate samples read from the WAV file.
-  EXPECT_THAT(labeled_samples[kL2], Pointwise(DoubleEq(), kExpectedSamplesL2));
-  EXPECT_THAT(labeled_samples[kR2], Pointwise(DoubleEq(), kExpectedSamplesR2));
+  EXPECT_THAT(
+      labeled_samples[kL2],
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedSamplesL2));
+  EXPECT_THAT(
+      labeled_samples[kR2],
+      Pointwise(InternalSampleMatchesIntegralSample(), kExpectedSamplesR2));
 }
 
 TEST(WavSampleProviderTest, ReadFrameFailsWithWrongAudioElementId) {

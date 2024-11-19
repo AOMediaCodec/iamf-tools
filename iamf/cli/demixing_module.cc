@@ -691,8 +691,8 @@ absl::Status StoreSamplesForAudioElementId(
       auto& samples = labeled_frame.label_to_samples[label];
       samples.resize(num_ticks, 0);
       for (int t = 0; t < samples.size(); t++) {
-        samples[t] =
-            static_cast<InternalSampleType>((*input_samples)[t][channel_index]);
+        samples[t] = Int32ToNormalizedFloatingPoint<InternalSampleType>(
+            (*input_samples)[t][channel_index]);
       }
       channel_index++;
     }
@@ -880,7 +880,7 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
             "Samples do not exist for channel: ", output_channel_label));
       }
       for (int t = 0; t < num_time_ticks; t++) {
-        RETURN_IF_NOT_OK(ClipDoubleToInt32(
+        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
             iter->second[t], substream_samples[t][channel_index]));
       }
 
@@ -913,9 +913,12 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
       // Apply output gains to the samples going to the encoder.
       std::vector<int32_t> attenuated_channel_samples(channel_samples.size());
       for (int i = 0; i < channel_samples.size(); ++i) {
-        RETURN_IF_NOT_OK(ClipDoubleToInt32(
-            static_cast<double>(channel_samples[i]) / output_gains_linear[i],
-            attenuated_channel_samples[i]));
+        // Intermediate computation is a `double`. But both `channel_samples`
+        // and `attenuated_channel_samples` are `int32_t`.
+        const double attenuated_sample =
+            static_cast<double>(channel_samples[i]) / output_gains_linear[i];
+        RETURN_IF_NOT_OK(ClipDoubleToInt32(attenuated_sample,
+                                           attenuated_channel_samples[i]));
       }
       substream_data.samples_encode.push_back(attenuated_channel_samples);
     }
