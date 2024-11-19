@@ -23,7 +23,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -148,7 +148,8 @@ TEST(InitializeForDownMixingAndReconstruction,
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         audio_element_id: 137
-        channel_labels: [ "L2", "R2" ]
+        channel_metadatas: { channel_label: CHANNEL_LABEL_L_2 }
+        channel_metadatas: { channel_label: CHANNEL_LABEL_R_2 }
       )pb",
       user_metadata.add_audio_frame_metadata()));
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
@@ -173,7 +174,8 @@ TEST(InitializeForDownMixingAndReconstruction, InvalidWhenMissingAudioElement) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         audio_element_id: 137
-        channel_labels: [ "L2", "R2" ]
+        channel_metadatas: { channel_label: CHANNEL_LABEL_L_2 }
+        channel_metadatas: { channel_label: CHANNEL_LABEL_R_2 }
       )pb",
       user_metadata.add_audio_frame_metadata()));
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -562,8 +564,14 @@ class DemixingModuleTestBase {
   }
 
  protected:
-  void ConfigureAudioFrameMetadata(absl::string_view label) {
-    audio_frame_metadata_.add_channel_labels(label);
+  void ConfigureAudioFrameMetadata(
+      absl::Span<const ChannelLabel::Label> labels) {
+    for (const auto& label : labels) {
+      auto proto_label = ChannelLabel::LabelToProto(label);
+      ASSERT_TRUE(proto_label.ok());
+      audio_frame_metadata_.add_channel_metadatas()->set_channel_label(
+          *proto_label);
+    }
   }
 
   iamf_tools_cli_proto::AudioFrameObuMetadata audio_frame_metadata_;
@@ -598,14 +606,12 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
   }
 
   void ConfigureInputChannel(
-      absl::string_view label_string,
+      ChannelLabel::Label label,
       const std::vector<InternalSampleType>& input_samples) {
-    ConfigureAudioFrameMetadata(label_string);
-    auto label = ChannelLabel::StringToLabel(label_string);
-    ASSERT_TRUE(label.ok());
+    ConfigureAudioFrameMetadata({label});
 
     auto [unused_iter, inserted] =
-        input_label_to_samples_.emplace(*label, input_samples);
+        input_label_to_samples_.emplace(label, input_samples);
 
     // This function should not be called with the same label twice.
     ASSERT_TRUE(inserted);
@@ -633,8 +639,8 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
 };
 
 TEST_F(DownMixingModuleTest, OneLayerStereoHasNoDownMixers) {
-  ConfigureInputChannel("L2", {});
-  ConfigureInputChannel("R2", {});
+  ConfigureInputChannel(kL2, {});
+  ConfigureInputChannel(kR2, {});
 
   ConfigureOutputChannel({kL2, kR2}, {{}});
 
@@ -643,18 +649,18 @@ TEST_F(DownMixingModuleTest, OneLayerStereoHasNoDownMixers) {
 
 TEST_F(DownMixingModuleTest, OneLayer7_1_4HasNoDownMixers) {
   // Initialize arguments for single layer 7.1.4.
-  ConfigureInputChannel("L7", {});
-  ConfigureInputChannel("R7", {});
-  ConfigureInputChannel("C", {});
-  ConfigureInputChannel("LFE", {});
-  ConfigureInputChannel("Lss7", {});
-  ConfigureInputChannel("Rss7", {});
-  ConfigureInputChannel("Lrs7", {});
-  ConfigureInputChannel("Rrs7", {});
-  ConfigureInputChannel("Ltf4", {});
-  ConfigureInputChannel("Rtf4", {});
-  ConfigureInputChannel("Ltb4", {});
-  ConfigureInputChannel("Rtb4", {});
+  ConfigureInputChannel(kL7, {});
+  ConfigureInputChannel(kR7, {});
+  ConfigureInputChannel(kCentre, {});
+  ConfigureInputChannel(kLFE, {});
+  ConfigureInputChannel(kLss7, {});
+  ConfigureInputChannel(kRss7, {});
+  ConfigureInputChannel(kLrs7, {});
+  ConfigureInputChannel(kRrs7, {});
+  ConfigureInputChannel(kLtf4, {});
+  ConfigureInputChannel(kRtf4, {});
+  ConfigureInputChannel(kLtb4, {});
+  ConfigureInputChannel(kRtb4, {});
 
   ConfigureOutputChannel({kCentre}, {{}});
   ConfigureOutputChannel({kL7, kR7}, {});
@@ -668,10 +674,10 @@ TEST_F(DownMixingModuleTest, OneLayer7_1_4HasNoDownMixers) {
 }
 
 TEST_F(DownMixingModuleTest, AmbisonicsHasNoDownMixers) {
-  ConfigureInputChannel("A0", {});
-  ConfigureInputChannel("A1", {});
-  ConfigureInputChannel("A2", {});
-  ConfigureInputChannel("A3", {});
+  ConfigureInputChannel(kA0, {});
+  ConfigureInputChannel(kA1, {});
+  ConfigureInputChannel(kA2, {});
+  ConfigureInputChannel(kA3, {});
 
   ConfigureOutputChannel({kA0}, {{}});
   ConfigureOutputChannel({kA1}, {{}});
@@ -682,8 +688,8 @@ TEST_F(DownMixingModuleTest, AmbisonicsHasNoDownMixers) {
 }
 
 TEST_F(DownMixingModuleTest, OneLayerStereo) {
-  ConfigureInputChannel("L2", {0, 1, 2, 3});
-  ConfigureInputChannel("R2", {100, 101, 102, 103});
+  ConfigureInputChannel(kL2, {0, 1, 2, 3});
+  ConfigureInputChannel(kR2, {100, 101, 102, 103});
 
   // Down-mix to stereo as the highest layer. The highest layer always matches
   // the original input.
@@ -693,8 +699,8 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
 }
 
 TEST_F(DownMixingModuleTest, S2ToS1DownMixer) {
-  ConfigureInputChannel("L2", {0, 100, 500, 1000});
-  ConfigureInputChannel("R2", {100, 0, 500, 500});
+  ConfigureInputChannel(kL2, {0, 100, 500, 1000});
+  ConfigureInputChannel(kR2, {100, 0, 500, 500});
 
   // Down-mix to stereo as the highest layer. The highest layer always matches
   // the original input.
@@ -708,11 +714,11 @@ TEST_F(DownMixingModuleTest, S2ToS1DownMixer) {
 }
 
 TEST_F(DownMixingModuleTest, S3ToS2DownMixer) {
-  ConfigureInputChannel("L3", {0, 100});
-  ConfigureInputChannel("R3", {0, 100});
-  ConfigureInputChannel("C", {100, 100});
-  ConfigureInputChannel("Ltf3", {99999, 99999});
-  ConfigureInputChannel("Rtf3", {99998, 99998});
+  ConfigureInputChannel(kL3, {0, 100});
+  ConfigureInputChannel(kR3, {0, 100});
+  ConfigureInputChannel(kCentre, {100, 100});
+  ConfigureInputChannel(kLtf3, {99999, 99999});
+  ConfigureInputChannel(kRtf3, {99998, 99998});
 
   // Down-mix to 3.1.2 as the highest layer. The highest layer always matches
   // the original input.
@@ -728,12 +734,12 @@ TEST_F(DownMixingModuleTest, S3ToS2DownMixer) {
 }
 
 TEST_F(DownMixingModuleTest, S5ToS3ToS2DownMixer) {
-  ConfigureInputChannel("L5", {100});
-  ConfigureInputChannel("R5", {200});
-  ConfigureInputChannel("C", {1000});
-  ConfigureInputChannel("Ls5", {2000});
-  ConfigureInputChannel("Rs5", {3000});
-  ConfigureInputChannel("LFE", {6});
+  ConfigureInputChannel(kL5, {100});
+  ConfigureInputChannel(kR5, {200});
+  ConfigureInputChannel(kCentre, {1000});
+  ConfigureInputChannel(kLs5, {2000});
+  ConfigureInputChannel(kRs5, {3000});
+  ConfigureInputChannel(kLFE, {6});
 
   // Down-mix to 5.1 as the highest layer. The highest layer always matches the
   // original input.
@@ -751,14 +757,14 @@ TEST_F(DownMixingModuleTest, S5ToS3ToS2DownMixer) {
 }
 
 TEST_F(DownMixingModuleTest, S5ToS3ToDownMixer) {
-  ConfigureInputChannel("L5", {1000});
-  ConfigureInputChannel("R5", {2000});
-  ConfigureInputChannel("C", {3});
-  ConfigureInputChannel("Ls5", {4000});
-  ConfigureInputChannel("Rs5", {8000});
-  ConfigureInputChannel("Ltf2", {1000});
-  ConfigureInputChannel("Rtf2", {2000});
-  ConfigureInputChannel("LFE", {8});
+  ConfigureInputChannel(kL5, {1000});
+  ConfigureInputChannel(kR5, {2000});
+  ConfigureInputChannel(kCentre, {3});
+  ConfigureInputChannel(kLs5, {4000});
+  ConfigureInputChannel(kRs5, {8000});
+  ConfigureInputChannel(kLtf2, {1000});
+  ConfigureInputChannel(kRtf2, {2000});
+  ConfigureInputChannel(kLFE, {8});
 
   // Down-mix to 5.1.2 as the highest layer. The highest layer always matches
   // the original input.
@@ -778,16 +784,16 @@ TEST_F(DownMixingModuleTest, S5ToS3ToDownMixer) {
 }
 
 TEST_F(DownMixingModuleTest, T4ToT2DownMixer) {
-  ConfigureInputChannel("L5", {1});
-  ConfigureInputChannel("R5", {2});
-  ConfigureInputChannel("C", {3});
-  ConfigureInputChannel("Ls5", {4});
-  ConfigureInputChannel("Rs5", {5});
-  ConfigureInputChannel("Ltf4", {1000});
-  ConfigureInputChannel("Rtf4", {2000});
-  ConfigureInputChannel("Ltb4", {1000});
-  ConfigureInputChannel("Rtb4", {2000});
-  ConfigureInputChannel("LFE", {10});
+  ConfigureInputChannel(kL5, {1});
+  ConfigureInputChannel(kR5, {2});
+  ConfigureInputChannel(kCentre, {3});
+  ConfigureInputChannel(kLs5, {4});
+  ConfigureInputChannel(kRs5, {5});
+  ConfigureInputChannel(kLtf4, {1000});
+  ConfigureInputChannel(kRtf4, {2000});
+  ConfigureInputChannel(kLtb4, {1000});
+  ConfigureInputChannel(kRtb4, {2000});
+  ConfigureInputChannel(kLFE, {10});
 
   // Down-mix to 5.1.4 as the highest layer. The highest layer always matches
   // the original input.
@@ -805,14 +811,14 @@ TEST_F(DownMixingModuleTest, T4ToT2DownMixer) {
 }
 
 TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithoutT0) {
-  ConfigureInputChannel("L7", {1});
-  ConfigureInputChannel("R7", {2});
-  ConfigureInputChannel("C", {3});
-  ConfigureInputChannel("Lss7", {1000});
-  ConfigureInputChannel("Rss7", {2000});
-  ConfigureInputChannel("Lrs7", {3000});
-  ConfigureInputChannel("Rrs7", {4000});
-  ConfigureInputChannel("LFE", {8});
+  ConfigureInputChannel(kL7, {1});
+  ConfigureInputChannel(kR7, {2});
+  ConfigureInputChannel(kCentre, {3});
+  ConfigureInputChannel(kLss7, {1000});
+  ConfigureInputChannel(kRss7, {2000});
+  ConfigureInputChannel(kLrs7, {3000});
+  ConfigureInputChannel(kRrs7, {4000});
+  ConfigureInputChannel(kLFE, {8});
 
   // Down-mix to 7.1.0 as the highest layer. The highest layer always matches
   // the original input.
@@ -829,16 +835,16 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithoutT0) {
 }
 
 TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT2) {
-  ConfigureInputChannel("L7", {1});
-  ConfigureInputChannel("R7", {2});
-  ConfigureInputChannel("C", {3});
-  ConfigureInputChannel("Lss7", {1000});
-  ConfigureInputChannel("Rss7", {2000});
-  ConfigureInputChannel("Lrs7", {3000});
-  ConfigureInputChannel("Rrs7", {4000});
-  ConfigureInputChannel("Ltf2", {8});
-  ConfigureInputChannel("Rtf2", {9});
-  ConfigureInputChannel("LFE", {10});
+  ConfigureInputChannel(kL7, {1});
+  ConfigureInputChannel(kR7, {2});
+  ConfigureInputChannel(kCentre, {3});
+  ConfigureInputChannel(kLss7, {1000});
+  ConfigureInputChannel(kRss7, {2000});
+  ConfigureInputChannel(kLrs7, {3000});
+  ConfigureInputChannel(kRrs7, {4000});
+  ConfigureInputChannel(kLtf2, {8});
+  ConfigureInputChannel(kRtf2, {9});
+  ConfigureInputChannel(kLFE, {10});
 
   // Down-mix to 7.1.2 as the highest layer. The highest layer always matches
   // the original input.
@@ -856,18 +862,18 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT2) {
 }
 
 TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT4) {
-  ConfigureInputChannel("L7", {1});
-  ConfigureInputChannel("R7", {2});
-  ConfigureInputChannel("C", {3});
-  ConfigureInputChannel("Lss7", {1000});
-  ConfigureInputChannel("Rss7", {2000});
-  ConfigureInputChannel("Lrs7", {3000});
-  ConfigureInputChannel("Rrs7", {4000});
-  ConfigureInputChannel("Ltf4", {8});
-  ConfigureInputChannel("Rtf4", {9});
-  ConfigureInputChannel("Ltb4", {10});
-  ConfigureInputChannel("Rtb4", {11});
-  ConfigureInputChannel("LFE", {12});
+  ConfigureInputChannel(kL7, {1});
+  ConfigureInputChannel(kR7, {2});
+  ConfigureInputChannel(kCentre, {3});
+  ConfigureInputChannel(kLss7, {1000});
+  ConfigureInputChannel(kRss7, {2000});
+  ConfigureInputChannel(kLrs7, {3000});
+  ConfigureInputChannel(kRrs7, {4000});
+  ConfigureInputChannel(kLtf4, {8});
+  ConfigureInputChannel(kRtf4, {9});
+  ConfigureInputChannel(kLtb4, {10});
+  ConfigureInputChannel(kRtb4, {11});
+  ConfigureInputChannel(kLFE, {12});
 
   // Down-mix to 7.1.4 as the highest layer. The highest layer always matches
   // the original input.
@@ -886,18 +892,18 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT4) {
 }
 
 TEST_F(DownMixingModuleTest, SixLayer7_1_4) {
-  ConfigureInputChannel("L7", {1000});
-  ConfigureInputChannel("R7", {2000});
-  ConfigureInputChannel("C", {1000});
-  ConfigureInputChannel("Lss7", {1000});
-  ConfigureInputChannel("Rss7", {2000});
-  ConfigureInputChannel("Lrs7", {3000});
-  ConfigureInputChannel("Rrs7", {4000});
-  ConfigureInputChannel("Ltf4", {1000});
-  ConfigureInputChannel("Rtf4", {2000});
-  ConfigureInputChannel("Ltb4", {1000});
-  ConfigureInputChannel("Rtb4", {2000});
-  ConfigureInputChannel("LFE", {12});
+  ConfigureInputChannel(kL7, {1000});
+  ConfigureInputChannel(kR7, {2000});
+  ConfigureInputChannel(kCentre, {1000});
+  ConfigureInputChannel(kLss7, {1000});
+  ConfigureInputChannel(kRss7, {2000});
+  ConfigureInputChannel(kLrs7, {3000});
+  ConfigureInputChannel(kRrs7, {4000});
+  ConfigureInputChannel(kLtf4, {1000});
+  ConfigureInputChannel(kRtf4, {2000});
+  ConfigureInputChannel(kLtb4, {1000});
+  ConfigureInputChannel(kRtb4, {2000});
+  ConfigureInputChannel(kLFE, {12});
 
   // There are different paths to have six-layers, choose 7.1.2, 5.1.2, 3.1.2,
   // stereo, mono to avoid dropping the height channels for as many steps as
@@ -1049,10 +1055,7 @@ TEST_F(DemixingModuleTest, DemixingAudioSamplesSucceedsWithEmptyInputs) {
 }
 
 TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {
-  ConfigureAudioFrameMetadata("A0");
-  ConfigureAudioFrameMetadata("A1");
-  ConfigureAudioFrameMetadata("A2");
-  ConfigureAudioFrameMetadata("A3");
+  ConfigureAudioFrameMetadata({kA0, kA1, kA2, kA3});
 
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kA0}, {{1}});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kA1}, {{1}});
@@ -1064,8 +1067,7 @@ TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {
 
 TEST_F(DemixingModuleTest, S1ToS2Demixer) {
   // The highest layer is stereo.
-  ConfigureAudioFrameMetadata("L2");
-  ConfigureAudioFrameMetadata("R2");
+  ConfigureAudioFrameMetadata({kL2, kR2});
 
   // Mono is the lowest layer.
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kMono}, {{750}, {1500}});
@@ -1081,8 +1083,7 @@ TEST_F(DemixingModuleTest, S1ToS2Demixer) {
 
 TEST_F(DemixingModuleTest,
        DemixAudioSamplesReturnsErrorIfAudioFrameIsMissingPcmSamples) {
-  ConfigureAudioFrameMetadata("L2");
-  ConfigureAudioFrameMetadata("R2");
+  ConfigureAudioFrameMetadata({kL2, kR2});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kMono}, {{750}, {1500}});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kL2}, {{1000}, {2000}});
   IdLabeledFrameMap unused_id_to_labeled_frame, id_to_labeled_decoded_frame;
@@ -1099,11 +1100,7 @@ TEST_F(DemixingModuleTest,
 
 TEST_F(DemixingModuleTest, S2ToS3Demixer) {
   // The highest layer is 3.1.2.
-  ConfigureAudioFrameMetadata("L3");
-  ConfigureAudioFrameMetadata("R3");
-  ConfigureAudioFrameMetadata("C");
-  ConfigureAudioFrameMetadata("Ltf3");
-  ConfigureAudioFrameMetadata("Rtf3");
+  ConfigureAudioFrameMetadata({kL3, kR3, kCentre, kLtf3, kRtf3});
 
   // Stereo is the lowest layer.
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kL2, kR2},
@@ -1127,11 +1124,7 @@ TEST_F(DemixingModuleTest, S3ToS5AndTf2ToT2Demixers) {
   // Adding a (valid) layer on top of 3.1.2 will always result in both S3ToS5
   // and Tf2ToT2 demixers.
   // The highest layer is 5.1.2.
-  ConfigureAudioFrameMetadata("L5");
-  ConfigureAudioFrameMetadata("R5");
-  ConfigureAudioFrameMetadata("C");
-  ConfigureAudioFrameMetadata("Ltf2");
-  ConfigureAudioFrameMetadata("Rtf2");
+  ConfigureAudioFrameMetadata({kL5, kR5, kCentre, kLtf2, kRtf2});
 
   const DownMixingParams kDownMixingParams = {.delta = .866, .w = 0.25};
 
@@ -1164,13 +1157,7 @@ TEST_F(DemixingModuleTest, S3ToS5AndTf2ToT2Demixers) {
 
 TEST_F(DemixingModuleTest, S5ToS7Demixer) {
   // The highest layer is 7.1.0.
-  ConfigureAudioFrameMetadata("L7");
-  ConfigureAudioFrameMetadata("R7");
-  ConfigureAudioFrameMetadata("C");
-  ConfigureAudioFrameMetadata("Lss7");
-  ConfigureAudioFrameMetadata("Rss7");
-  ConfigureAudioFrameMetadata("Lrs7");
-  ConfigureAudioFrameMetadata("Rrs7");
+  ConfigureAudioFrameMetadata({kL7, kR7, kCentre, kLss7, kRss7, kLrs7, kRrs7});
 
   const DownMixingParams kDownMixingParams = {.alpha = 0.866, .beta = .866};
 
@@ -1203,11 +1190,7 @@ TEST_F(DemixingModuleTest, S5ToS7Demixer) {
 
 TEST_F(DemixingModuleTest, T2ToT4Demixer) {
   // The highest layer is 5.1.4.
-  ConfigureAudioFrameMetadata("L5");
-  ConfigureAudioFrameMetadata("R5");
-  ConfigureAudioFrameMetadata("C");
-  ConfigureAudioFrameMetadata("Ltf4");
-  ConfigureAudioFrameMetadata("Rtf4");
+  ConfigureAudioFrameMetadata({kL5, kR5, kCentre, kLtf4, kRtf4});
 
   const DownMixingParams kDownMixingParams = {.gamma = .866};
 
