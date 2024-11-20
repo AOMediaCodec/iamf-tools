@@ -250,7 +250,9 @@ absl::Status WriteBitBuffer::FlushAndWriteToFile(
     RETURN_IF_NOT_OK(WriteBufferToFile(bit_buffer_, *output_file));
   }
 
-  LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
+  if (bit_offset_ > 0) {
+    LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
+  }
   Reset();
   return absl::OkStatus();
 }
