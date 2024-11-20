@@ -193,10 +193,41 @@ absl::Status RenderLabeledFrameToLayout(
                                      rendered_samples);
 }
 
+absl::Status GetParameterBlockMixGainsPerTick(
+    uint32_t common_sample_rate, const ParameterBlockWithData& parameter_block,
+    const MixGainParamDefinition& mix_gain,
+    std::vector<int16_t>& mix_gain_per_tick) {
+  if (mix_gain.parameter_rate_ != common_sample_rate) {
+    // TODO(b/283281856): Support resampling parameter blocks.
+    return absl::UnimplementedError(
+        "Parameter blocks that require resampling are not supported yet.");
+  }
+
+  const int16_t default_mix_gain = mix_gain.default_mix_gain_;
+  // Initialize to the default gain value.
+  std::fill(mix_gain_per_tick.begin(), mix_gain_per_tick.end(),
+            default_mix_gain);
+
+  int32_t cur_tick = parameter_block.start_timestamp;
+  // Process as many ticks as possible until all are found or the parameter
+  // block ends.
+  while (cur_tick < parameter_block.end_timestamp &&
+         (cur_tick - parameter_block.start_timestamp) <
+             mix_gain_per_tick.size()) {
+    RETURN_IF_NOT_OK(parameter_block.obu->GetMixGain(
+        cur_tick - parameter_block.start_timestamp,
+        mix_gain_per_tick[cur_tick - parameter_block.start_timestamp]));
+    cur_tick++;
+  }
+  return absl::OkStatus();
+}
+
 // Fills in the output `mix_gains` with the gain in Q7.8 format to apply at each
 // tick.
 // TODO(b/288073842): Consider improving computational efficiency instead of
 //                    searching through all parameter blocks for each frame.
+// TODO(b/379961928): Remove this function once the new
+// GetParameterBlockMixGainsPerTick is in use.
 absl::Status GetParameterBlockMixGainsPerTick(
     uint32_t common_sample_rate, int32_t start_timestamp, int32_t end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
@@ -257,6 +288,42 @@ absl::Status ApplyMixGain(int16_t mix_gain, InternalSampleType& sample) {
   return absl::OkStatus();
 }
 
+absl::Status GetAndApplyMixGain(  // NOLINT
+    uint32_t common_sample_rate, const ParameterBlockWithData& parameter_block,
+    const MixGainParamDefinition& mix_gain, int32_t num_channels,
+    std::vector<InternalSampleType>& rendered_samples) {
+  if (rendered_samples.size() % num_channels != 0) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected an integer number of interlaced channels. "
+        "renderered_samples.size()= ",
+        rendered_samples.size(), ", num_channels= ", num_channels));
+  }
+
+  // Get the mix gain on a per tick basis from the parameter block.
+  std::vector<int16_t> mix_gain_per_tick(rendered_samples.size() /
+                                         num_channels);
+  RETURN_IF_NOT_OK(GetParameterBlockMixGainsPerTick(
+      common_sample_rate, parameter_block, mix_gain, mix_gain_per_tick));
+
+  if (!mix_gain_per_tick.empty()) {
+    LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
+                         << mix_gain_per_tick.front();
+  }
+
+  for (int tick = 0; tick < mix_gain_per_tick.size(); tick++) {
+    for (int channel = 0; channel < num_channels; channel++) {
+      // Apply the same mix gain to all `num_channels` associated with this
+      // tick.
+      RETURN_IF_NOT_OK(
+          ApplyMixGain(mix_gain_per_tick[tick],
+                       rendered_samples[tick * num_channels + channel]));
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+// TODO(b/379961928): Remove once the new GetAndApplyMixGain is in use.
 absl::Status GetAndApplyMixGain(
     uint32_t common_sample_rate, int32_t start_timestamp, int32_t end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
