@@ -685,66 +685,41 @@ bool CanRenderAnyLayout(
   return false;
 }
 
-// Renders all submixxes, layouts, and audio elements at all timestamps. It then
-// optionally writes the rendered samples to a wav file and/or calculates the
-// loudness of the rendered samples and updates the loudness information in the
-// Mix Presentation OBU.
-absl::Status RenderWriteAndCalculateLoudness(
-    bool validate_loudness, const RendererFactoryBase& renderer_factory,
-    const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
-    const RenderingMixPresentationFinalizer::WavWriterFactory&
-        wav_writer_factory,
-    const std::filesystem::path& file_path_prefix,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+// Renders all submixes, layouts, and audio elements at a given timestamp. It
+// then optionally writes the rendered samples to a wav file and/or calculates
+// the loudness of the rendered samples.
+absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
     const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-    const int32_t min_start_time, const int32_t max_end_time,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::optional<uint32_t> output_wav_file_bit_depth_override,
-    MixPresentationObu& mix_presentation_obu) {
-  std::vector<SubmixRenderingMetadata> rendering_metadata;
-  RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
-      renderer_factory, loudness_calculator_factory, wav_writer_factory,
-      file_path_prefix, audio_elements, output_wav_file_bit_depth_override,
-      mix_presentation_obu, rendering_metadata));
-
-  if (!CanRenderAnyLayout(rendering_metadata)) {
-    LOG(INFO) << "No layouts can be rendered";
-    return absl::OkStatus();
-  }
-
-  int32_t overall_start_timestamp = min_start_time;
-  while (overall_start_timestamp != max_end_time) {
-    LOG(INFO) << "Rendering timestamp: " << overall_start_timestamp;
-    for (auto& submix_rendering_metadata : rendering_metadata) {
-      for (auto& layout_rendering_metadata :
-           submix_rendering_metadata.layout_rendering_metadata) {
-        if (!layout_rendering_metadata.can_render) {
-          continue;
-        }
-        std::vector<int32_t> rendered_samples;
-        RETURN_IF_NOT_OK(RenderAllFramesForLayout(
-            layout_rendering_metadata.num_channels,
-            submix_rendering_metadata.audio_elements_in_sub_mix,
-            submix_rendering_metadata.mix_gain, id_to_time_to_labeled_frame,
-            layout_rendering_metadata.audio_element_rendering_metadata,
-            parameter_blocks, submix_rendering_metadata.common_sample_rate,
-            layout_rendering_metadata.start_timestamp, rendered_samples));
-        overall_start_timestamp = layout_rendering_metadata.start_timestamp;
-        if (layout_rendering_metadata.wav_writer != nullptr) {
-          RETURN_IF_NOT_OK(WriteRenderedSamples(
-              rendered_samples, submix_rendering_metadata.common_bit_depth,
-              *layout_rendering_metadata.wav_writer));
-        }
-        if (layout_rendering_metadata.loudness_calculator != nullptr) {
-          RETURN_IF_NOT_OK(
-              layout_rendering_metadata.loudness_calculator
-                  ->AccumulateLoudnessForSamples(rendered_samples));
-        }
+    std::vector<SubmixRenderingMetadata>& rendering_metadata,
+    int32_t& start_timestamp) {
+  LOG(INFO) << "Rendering timestamp: " << start_timestamp;
+  for (auto& submix_rendering_metadata : rendering_metadata) {
+    for (auto& layout_rendering_metadata :
+         submix_rendering_metadata.layout_rendering_metadata) {
+      if (!layout_rendering_metadata.can_render) {
+        continue;
+      }
+      std::vector<int32_t> rendered_samples;
+      RETURN_IF_NOT_OK(RenderAllFramesForLayout(
+          layout_rendering_metadata.num_channels,
+          submix_rendering_metadata.audio_elements_in_sub_mix,
+          submix_rendering_metadata.mix_gain, id_to_time_to_labeled_frame,
+          layout_rendering_metadata.audio_element_rendering_metadata,
+          parameter_blocks, submix_rendering_metadata.common_sample_rate,
+          layout_rendering_metadata.start_timestamp, rendered_samples));
+      start_timestamp = layout_rendering_metadata.start_timestamp;
+      if (layout_rendering_metadata.wav_writer != nullptr) {
+        RETURN_IF_NOT_OK(WriteRenderedSamples(
+            rendered_samples, submix_rendering_metadata.common_bit_depth,
+            *layout_rendering_metadata.wav_writer));
+      }
+      if (layout_rendering_metadata.loudness_calculator != nullptr) {
+        RETURN_IF_NOT_OK(layout_rendering_metadata.loudness_calculator
+                             ->AccumulateLoudnessForSamples(rendered_samples));
       }
     }
   }
-  RETURN_IF_NOT_OK(UpdateLoudnessInfo(validate_loudness, rendering_metadata,
-                                      mix_presentation_obu));
   return absl::OkStatus();
 }
 }  // namespace
@@ -777,12 +752,24 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
 
   int i = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
-    RETURN_IF_NOT_OK(RenderWriteAndCalculateLoudness(
-        validate_loudness_, *renderer_factory_,
-        loudness_calculator_factory_.get(), wav_writer_factory,
-        file_path_prefix_, audio_elements, id_to_time_to_labeled_frame,
-        min_start_time, max_end_time, parameter_blocks,
-        output_wav_file_bit_depth_override_, mix_presentation_obu));
+    std::vector<SubmixRenderingMetadata> rendering_metadata;
+    RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
+        *renderer_factory_, loudness_calculator_factory_.get(),
+        wav_writer_factory, file_path_prefix_, audio_elements,
+        output_wav_file_bit_depth_override_, mix_presentation_obu,
+        rendering_metadata));
+    if (!CanRenderAnyLayout(rendering_metadata)) {
+      LOG(INFO) << "No layouts can be rendered";
+      return absl::OkStatus();
+    }
+    int32_t overall_start_timestamp = min_start_time;
+    while (overall_start_timestamp != max_end_time) {
+      RETURN_IF_NOT_OK(RenderWriteAndCalculateLoudnessForTemporalUnit(
+          id_to_time_to_labeled_frame, parameter_blocks, rendering_metadata,
+          overall_start_timestamp));
+      RETURN_IF_NOT_OK(UpdateLoudnessInfo(
+          validate_loudness_, rendering_metadata, mix_presentation_obu));
+    }
     i++;
   }
 
