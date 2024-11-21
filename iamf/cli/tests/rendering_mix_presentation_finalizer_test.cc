@@ -46,6 +46,9 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -252,6 +255,18 @@ class FinalizerTest : public ::testing::Test {
                       .label_to_samples = label_to_samples}}};
   }
 
+  void AddLabeledFrame(DecodedUleb128 audio_element_id,
+                       const LabelSamplesMap& label_to_samples,
+                       uint32_t samples_to_trim_at_end = 0,
+                       uint32_t samples_to_trim_at_start = 0) {
+    IdLabeledFrameMap id_to_labeled_frame;
+    id_to_labeled_frame[audio_element_id] = {
+        .samples_to_trim_at_end = samples_to_trim_at_end,
+        .samples_to_trim_at_start = samples_to_trim_at_start,
+        .label_to_samples = label_to_samples};
+    ordered_labeled_frames_.push_back(id_to_labeled_frame);
+  }
+
   void PrepareObusForOneSamplePassThroughMono() {
     InitPrerequisiteObusForMonoInput(kAudioElementId);
     AddMixPresentationObuForMonoOutput(kMixPresentationId);
@@ -294,6 +309,7 @@ class FinalizerTest : public ::testing::Test {
       ProduceNoWavWriters;
 
   IdTimeLabeledFrameMap stream_to_render_;
+  std::vector<IdLabeledFrameMap> ordered_labeled_frames_;
 };
 
 // === Tests that the constructor does not crash with various modes disabled ===
@@ -776,6 +792,37 @@ TEST_F(FinalizerTest, InitializeSucceedsWithValidInput) {
   EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
                                    obus_to_finalize_),
               IsOk());
+}
+
+// =========== Tests for PushTemporalUnit ===========
+// TODO(b/380110994): Add more tests for PushTemporalUnit. Check that rendered
+// output is written to wav file appropriately.
+TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples);
+
+  PerIdParameterMetadata common_mix_gain_parameter_metadata = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition =
+          obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
+  ParameterBlockWithData parameter_block_with_data = {
+      .obu = std::make_unique<ParameterBlockObu>(
+          ObuHeader(), /*common_parameter_id=*/999,
+          common_mix_gain_parameter_metadata)};
+
+  ASSERT_EQ(ordered_labeled_frames_.size(), 1);
+  wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
+                                   obus_to_finalize_),
+              IsOk());
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(audio_elements_, ordered_labeled_frames_[0],
+                                 parameter_block_with_data, obus_to_finalize_),
+      IsOk());
 }
 
 }  // namespace
