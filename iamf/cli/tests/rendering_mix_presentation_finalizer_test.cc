@@ -766,5 +766,17 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
       audio_elements_, stream_to_render_, finalizer, obus_to_finalize_);
 }
 
+TEST_F(FinalizerTest, InitializeSucceedsWithValidInput) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
+                                   obus_to_finalize_),
+              IsOk());
+}
+
 }  // namespace
 }  // namespace iamf_tools

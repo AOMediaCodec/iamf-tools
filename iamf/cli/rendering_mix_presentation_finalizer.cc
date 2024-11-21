@@ -96,16 +96,8 @@ absl::Status GetCommonSampleRateAndBitDepthFromAudioElementIds(
   return absl::OkStatus();
 }
 
-// Common metadata for rendering an audio element and independent of
-// each frame.
-struct AudioElementRenderingMetadata {
-  std::unique_ptr<AudioElementRendererBase> renderer;
-
-  // Pointers to the audio element and the associated codec config. They
-  // contain useful information for rendering.
-  const AudioElementObu* audio_element;
-  const CodecConfigObu* codec_config;
-};
+using AudioElementRenderingMetadata =
+    RenderingMixPresentationFinalizer::AudioElementRenderingMetadata;
 
 absl::Status InitializeRenderingMetadata(
     const RendererFactoryBase& renderer_factory,
@@ -558,38 +550,10 @@ absl::Status UpdateLoudnessInfoForLayout(
   return absl::OkStatus();
 }
 
-// Contains rendering metadata for all audio elements in a given layout.
-struct LayoutRenderingMetadata {
-  bool can_render;
-  // Controlled by the WavWriterFactory; may be nullptr if the user does not
-  // want a wav file written for this layout.
-  std::unique_ptr<WavWriter> wav_writer;
-  // Controlled by the LoudnessCalculatorFactory; may be nullptr if the user
-  // does not want loudness calculated for this layout.
-  std::unique_ptr<LoudnessCalculatorBase> loudness_calculator;
-  std::vector<AudioElementRenderingMetadata> audio_element_rendering_metadata;
-  // The number of channels in this layout.
-  int32_t num_channels;
-  // The start time stamp of the current frames to be rendered within this
-  // layout.
-  int32_t start_timestamp;
-};
-
-// We need to store rendering metadata for each submix, layout, and audio
-// element. This metadata will then be used to render the audio frames at each
-// timestamp. Some metadata is common to all audio elements and all layouts
-// within a submix. We also want to optionally support writing to a wav file
-// and/or calculating loudness based on the rendered output.
-struct SubmixRenderingMetadata {
-  uint32_t common_sample_rate;
-  uint8_t common_bit_depth;
-  std::vector<SubMixAudioElement> audio_elements_in_sub_mix;
-  // Mix gain applied to the entire submix.
-  MixGainParamDefinition mix_gain;
-  // This vector will contain one LayoutRenderingMetadata per layout in the
-  // submix.
-  std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
-};
+using LayoutRenderingMetadata =
+    RenderingMixPresentationFinalizer::LayoutRenderingMetadata;
+using SubmixRenderingMetadata =
+    RenderingMixPresentationFinalizer::SubmixRenderingMetadata;
 
 // Generates rendering metadata for all layouts within a submix. This includes
 // optionally creating a wav writer and/or a loudness calculator for each
@@ -790,6 +754,28 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
   return absl::OkStatus();
 }
 }  // namespace
+
+absl::Status RenderingMixPresentationFinalizer::Initialize(
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const WavWriterFactory& wav_writer_factory,
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  for (auto& mix_presentation_obu : mix_presentation_obus) {
+    std::vector<SubmixRenderingMetadata> rendering_metadata;
+    RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
+        *renderer_factory_, loudness_calculator_factory_.get(),
+        wav_writer_factory, file_path_prefix_, audio_elements,
+        output_wav_file_bit_depth_override_, mix_presentation_obu,
+        rendering_metadata));
+    MixPresentationRenderingMetadata mix_presentation_rendering_metadata;
+    mix_presentation_rendering_metadata.mix_presentation_id =
+        mix_presentation_obu.GetMixPresentationId();
+    mix_presentation_rendering_metadata.submix_rendering_metadata =
+        std::move(rendering_metadata);
+    rendering_metadata_.push_back(
+        std::move(mix_presentation_rendering_metadata));
+  }
+  return absl::OkStatus();
+}
 
 absl::Status RenderingMixPresentationFinalizer::Finalize(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,

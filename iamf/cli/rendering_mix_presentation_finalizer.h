@@ -19,24 +19,82 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
+#include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/wav_writer.h"
+#include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 class RenderingMixPresentationFinalizer {
  public:
+  // -- Rendering Metadata struct definitions --
+
+  // Common metadata for rendering an audio element and independent of
+  // each frame.
+  struct AudioElementRenderingMetadata {
+    std::unique_ptr<AudioElementRendererBase> renderer;
+
+    // Pointers to the audio element and the associated codec config. They
+    // contain useful information for rendering.
+    const AudioElementObu* audio_element;
+    const CodecConfigObu* codec_config;
+  };
+
+  // Contains rendering metadata for all audio elements in a given layout.
+  struct LayoutRenderingMetadata {
+    bool can_render;
+    // Controlled by the WavWriterFactory; may be nullptr if the user does not
+    // want a wav file written for this layout.
+    std::unique_ptr<WavWriter> wav_writer;
+    // Controlled by the LoudnessCalculatorFactory; may be nullptr if the user
+    // does not want loudness calculated for this layout.
+    std::unique_ptr<LoudnessCalculatorBase> loudness_calculator;
+    std::vector<AudioElementRenderingMetadata> audio_element_rendering_metadata;
+    // The number of channels in this layout.
+    int32_t num_channels;
+    // The start time stamp of the current frames to be rendered within this
+    // layout.
+    int32_t start_timestamp;
+  };
+
+  // We need to store rendering metadata for each submix, layout, and audio
+  // element. This metadata will then be used to render the audio frames at each
+  // timestamp. Some metadata is common to all audio elements and all layouts
+  // within a submix. We also want to optionally support writing to a wav file
+  // and/or calculating loudness based on the rendered output.
+  struct SubmixRenderingMetadata {
+    uint32_t common_sample_rate;
+    uint8_t common_bit_depth;
+    std::vector<SubMixAudioElement> audio_elements_in_sub_mix;
+    // Mix gain applied to the entire submix.
+    MixGainParamDefinition mix_gain;
+    // This vector will contain one LayoutRenderingMetadata per layout in the
+    // submix.
+    std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
+  };
+
+  // Contains rendering metadata for all submixes in a given mix presentation.
+  struct MixPresentationRenderingMetadata {
+    DecodedUleb128 mix_presentation_id;
+    std::vector<SubmixRenderingMetadata> submix_rendering_metadata;
+  };
+
   /*!\brief Factory for a wav writer.
    *
    * Used to control whether or not wav writers are created and control their
@@ -88,6 +146,40 @@ class RenderingMixPresentationFinalizer {
         renderer_factory_(std::move(renderer_factory)),
         loudness_calculator_factory_(std::move(loudness_calculator_factory)) {}
 
+  /*!\brief Initializes the rendering mix presentation finalizer.
+   *
+   * Rendering metadata is extracted from the mix presentation OBUs, which will
+   * be used to render the mix presentations in PushTemporalUnit. This must be
+   * called before PushTemporalUnit or Finalize.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status Initialize(
+      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const WavWriterFactory& wav_writer_factory,
+      std::list<MixPresentationObu>& mix_presentation_obus);
+
+  /*!\brief Renders and writes a single temporal unit.
+   *
+   * Renders a single temporal unit for all mix presentations. It also computes
+   * the loudness of the rendered samples which can be used once Finalize() is
+   * called.
+   *
+   * \param audio_elements Input Audio Element OBUs with data.
+   * \param id_to_labeled_frame Data structure of samples for a given timestamp,
+   *        keyed by audio element ID and channel label.
+   * \param parameter_block Input Parameter Block OBU associated with this
+   *        temporal unit.
+   * \param mix_presentation_obus Output list of OBUs to finalize with initial
+   *        user-provided loudness information.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushTemporalUnit(
+      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const IdLabeledFrameMap& id_to_labeled_frame,
+      const ParameterBlockWithData& parameter_block,
+      std::list<MixPresentationObu>& mix_presentation_obus);
+
   /*!\brief Finalizes the list of Mix Presentation OBUs.
    *
    * Populates the loudness information for each Mix Presentation OBU. This
@@ -117,6 +209,8 @@ class RenderingMixPresentationFinalizer {
   const std::unique_ptr<RendererFactoryBase> renderer_factory_;
   const std::unique_ptr<LoudnessCalculatorFactoryBase>
       loudness_calculator_factory_;
+
+  std::list<MixPresentationRenderingMetadata> rendering_metadata_;
 };
 
 }  // namespace iamf_tools
