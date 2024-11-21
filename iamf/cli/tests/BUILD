@@ -387,6 +387,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",

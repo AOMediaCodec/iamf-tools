@@ -45,6 +45,7 @@
 #include "iamf/cli/wav_writer.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -810,7 +811,16 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
   ParameterBlockWithData parameter_block_with_data = {
       .obu = std::make_unique<ParameterBlockObu>(
           ObuHeader(), /*common_parameter_id=*/999,
-          common_mix_gain_parameter_metadata)};
+          common_mix_gain_parameter_metadata),
+      .start_timestamp = 0,
+      .end_timestamp = 10};
+  EXPECT_THAT(parameter_block_with_data.obu->InitializeSubblocks(10, 10, 1),
+              IsOk());
+  parameter_block_with_data.obu->subblocks_[0].param_data =
+      std::make_unique<MixGainParameterData>(MixGainParameterData::kAnimateStep,
+                                             AnimationStepInt16{0});
+  std::list<ParameterBlockWithData> parameter_blocks;
+  parameter_blocks.push_back(std::move(parameter_block_with_data));
 
   ASSERT_EQ(ordered_labeled_frames_.size(), 1);
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
@@ -821,7 +831,8 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
               IsOk());
   EXPECT_THAT(
       finalizer.PushTemporalUnit(audio_elements_, ordered_labeled_frames_[0],
-                                 parameter_block_with_data, obus_to_finalize_),
+                                 parameter_blocks.begin(),
+                                 parameter_blocks.end(), obus_to_finalize_),
       IsOk());
 }
 
