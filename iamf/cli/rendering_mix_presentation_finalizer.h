@@ -80,7 +80,8 @@ class RenderingMixPresentationFinalizer {
   // and/or calculating loudness based on the rendered output.
   struct SubmixRenderingMetadata {
     uint32_t common_sample_rate;
-    uint8_t common_bit_depth;
+    uint8_t wav_file_bit_depth;
+    uint8_t loudness_calculator_bit_depth;
     std::vector<SubMixAudioElement> audio_elements_in_sub_mix;
     // Mix gain applied to the entire submix.
     MixGainParamDefinition mix_gain;

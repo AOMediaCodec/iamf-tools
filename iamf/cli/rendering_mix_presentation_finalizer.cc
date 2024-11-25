@@ -680,7 +680,8 @@ absl::Status GenerateRenderingMetadataForLayouts(
     const DecodedUleb128 mix_presentation_id, MixPresentationSubMix& sub_mix,
     int sub_mix_index,
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
-    uint32_t common_sample_rate, uint8_t common_bit_depth,
+    uint32_t common_sample_rate, uint8_t loudness_calculator_bit_depth,
+    uint8_t wav_file_bit_depth,
     std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
   output_layout_rendering_metadata.resize(sub_mix.layouts.size());
   for (int layout_index = 0; layout_index < sub_mix.layouts.size();
@@ -709,13 +710,13 @@ absl::Status GenerateRenderingMetadataForLayouts(
       // Optionally create a loudness calculator.
       layout_rendering_metadata.loudness_calculator =
           loudness_calculator_factory->CreateLoudnessCalculator(
-              layout, common_sample_rate, common_bit_depth);
+              layout, common_sample_rate, loudness_calculator_bit_depth);
     }
     // Optionally create a wav writer.
-    layout_rendering_metadata.wav_writer =
-        wav_writer_factory(mix_presentation_id, sub_mix_index, layout_index,
-                           layout.loudness_layout, file_path_prefix,
-                           num_channels, common_sample_rate, common_bit_depth);
+    layout_rendering_metadata.wav_writer = wav_writer_factory(
+        mix_presentation_id, sub_mix_index, layout_index,
+        layout.loudness_layout, file_path_prefix, num_channels,
+        common_sample_rate, wav_file_bit_depth);
   }
 
   return absl::OkStatus();
@@ -760,24 +761,29 @@ absl::Status GenerateRenderingMetadataForSubmixes(  // NOLINT
     bool requires_resampling;
     RETURN_IF_NOT_OK(GetCommonSampleRateAndBitDepthFromAudioElementIds(
         audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
-        submix_rendering_metadata.common_bit_depth, requires_resampling));
+        submix_rendering_metadata.loudness_calculator_bit_depth,
+        requires_resampling));
     if (requires_resampling) {
       // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
       return absl::UnimplementedError(
           "This implementation does not support mixing different sample rates "
           "or bit-depths.");
     }
-    submix_rendering_metadata.common_bit_depth =
+    // TODO(b/380487606): Add test coverage for the case where we have
+    // differing bit depths for the wav file and loudness calculator.
+    submix_rendering_metadata.wav_file_bit_depth =
         output_wav_file_bit_depth_override.has_value()
             ? *output_wav_file_bit_depth_override
-            : submix_rendering_metadata.common_bit_depth;
+            : submix_rendering_metadata.loudness_calculator_bit_depth;
     std::vector<LayoutRenderingMetadata>& layout_rendering_metadata =
         submix_rendering_metadata.layout_rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
         renderer_factory, loudness_calculator_factory, wav_writer_factory,
         file_path_prefix, mix_presentation_id, sub_mix, sub_mix_index,
         audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
-        submix_rendering_metadata.common_bit_depth, layout_rendering_metadata));
+        submix_rendering_metadata.loudness_calculator_bit_depth,
+        submix_rendering_metadata.wav_file_bit_depth,
+        layout_rendering_metadata));
   }
   return absl::OkStatus();
 }
@@ -855,7 +861,7 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
           submix_rendering_metadata.common_sample_rate, rendered_samples));
       if (layout_rendering_metadata.wav_writer != nullptr) {
         RETURN_IF_NOT_OK(WriteRenderedSamples(
-            rendered_samples, submix_rendering_metadata.common_bit_depth,
+            rendered_samples, submix_rendering_metadata.wav_file_bit_depth,
             *layout_rendering_metadata.wav_writer));
       }
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
@@ -892,7 +898,7 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
       start_timestamp = layout_rendering_metadata.start_timestamp;
       if (layout_rendering_metadata.wav_writer != nullptr) {
         RETURN_IF_NOT_OK(WriteRenderedSamples(
-            rendered_samples, submix_rendering_metadata.common_bit_depth,
+            rendered_samples, submix_rendering_metadata.wav_file_bit_depth,
             *layout_rendering_metadata.wav_writer));
       }
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
@@ -991,9 +997,9 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
       RETURN_IF_NOT_OK(RenderWriteAndCalculateLoudnessForTemporalUnit(
           id_to_time_to_labeled_frame, parameter_blocks, rendering_metadata,
           overall_start_timestamp));
-      RETURN_IF_NOT_OK(UpdateLoudnessInfo(
-          validate_loudness_, rendering_metadata, mix_presentation_obu));
     }
+    RETURN_IF_NOT_OK(UpdateLoudnessInfo(validate_loudness_, rendering_metadata,
+                                        mix_presentation_obu));
     i++;
   }
 
