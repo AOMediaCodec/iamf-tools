@@ -42,6 +42,7 @@ using ::absl_testing::StatusIs;
 using ::testing::HasSubstr;
 
 constexpr absl::string_view kOmitContext = "";
+constexpr absl::string_view kCustomUserContext = "Custom User Context";
 
 TEST(AddUint32CheckOverflow, SmallInput) {
   uint32_t result;
@@ -476,106 +477,144 @@ TEST(NormalizedFloatingPointToInt32MalformedOutput, InvalidDoubleInfinity) {
                    .ok());
 }
 
-struct Uint32ToUint8FormatTestCase {
+TEST(StaticCastIfInRange, SucceedsIfStaticCastSucceeds) {
+  constexpr int8_t input = 1;
+  int output;
+
+  EXPECT_THAT((StaticCastIfInRange<int8_t, int>(kOmitContext, input, output)),
+              IsOk());
+  EXPECT_EQ(output, input);
+}
+
+TEST(StaticCastIfInRange, FailsIfStaticCastWouldFail) {
+  constexpr int input = std::numeric_limits<int8_t>::max() + 1;
+  int8_t output;
+
+  EXPECT_FALSE(
+      (StaticCastIfInRange<int, int8_t>(kOmitContext, input, output)).ok());
+}
+
+TEST(StaticCastIfInRange, MessageContainsContextOnError) {
+  constexpr int input = std::numeric_limits<int8_t>::max() + 1;
+  int8_t output;
+
+  EXPECT_THAT(
+      (StaticCastIfInRange<int, int8_t>(kCustomUserContext, input, output))
+          .message(),
+      HasSubstr(kCustomUserContext));
+}
+
+struct StaticCastIfInRangeUint32ToUint8TestCase {
   uint32_t test_val;
   uint8_t expected_val;
   absl::StatusCode expected_status_code;
 };
 
-using Uint32ToUint8Format =
-    ::testing::TestWithParam<Uint32ToUint8FormatTestCase>;
+using StaticCastIfInRangeUint32ToUint8Test =
+    ::testing::TestWithParam<StaticCastIfInRangeUint32ToUint8TestCase>;
 
-TEST_P(Uint32ToUint8Format, TestUint32ToUint8) {
-  const Uint32ToUint8FormatTestCase& test_case = GetParam();
+TEST_P(StaticCastIfInRangeUint32ToUint8Test, TestUint32ToUint8) {
+  const StaticCastIfInRangeUint32ToUint8TestCase& test_case = GetParam();
 
   uint8_t result;
-  EXPECT_EQ(Uint32ToUint8(test_case.test_val, result).code(),
+  EXPECT_EQ((StaticCastIfInRange<uint32_t, uint8_t>(kOmitContext,
+                                                    test_case.test_val, result)
+                 .code()),
             test_case.expected_status_code);
   if (test_case.expected_status_code == absl::StatusCode::kOk) {
     EXPECT_EQ(result, test_case.expected_val);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Valid, Uint32ToUint8Format,
-                         testing::ValuesIn<Uint32ToUint8FormatTestCase>({
-                             {0, 0, absl::StatusCode::kOk},
-                             {255, 255, absl::StatusCode::kOk},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeUint32ToUint8Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToUint8TestCase>({
+        {0, 0, absl::StatusCode::kOk},
+        {255, 255, absl::StatusCode::kOk},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(Invalid, Uint32ToUint8Format,
-                         testing::ValuesIn<Uint32ToUint8FormatTestCase>({
-                             {256, 0, absl::StatusCode::kInvalidArgument},
-                             {UINT32_MAX, 0,
-                              absl::StatusCode::kInvalidArgument},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeUint32ToUint8Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToUint8TestCase>({
+        {256, 0, absl::StatusCode::kInvalidArgument},
+        {UINT32_MAX, 0, absl::StatusCode::kInvalidArgument},
+    }));
 
-struct Uint32ToUint16FormatTestCase {
+struct StaticCastIfInRangeUint32ToUint16TestCase {
   uint32_t test_val;
   uint16_t expected_val;
   absl::StatusCode expected_status_code;
 };
 
-using Uint32ToUint16Format =
-    ::testing::TestWithParam<Uint32ToUint16FormatTestCase>;
+using StaticCastIfInRangeUint32ToUint16Test =
+    ::testing::TestWithParam<StaticCastIfInRangeUint32ToUint16TestCase>;
 
-TEST_P(Uint32ToUint16Format, TestUint32ToUint16) {
-  const Uint32ToUint16FormatTestCase& test_case = GetParam();
+TEST_P(StaticCastIfInRangeUint32ToUint16Test, TestUint32ToUint16) {
+  const StaticCastIfInRangeUint32ToUint16TestCase& test_case = GetParam();
 
   uint16_t result;
-  EXPECT_EQ(Uint32ToUint16(test_case.test_val, result).code(),
+  EXPECT_EQ((StaticCastIfInRange<uint32_t, uint16_t>(kOmitContext,
+                                                     test_case.test_val, result)
+                 .code()),
             test_case.expected_status_code);
   if (test_case.expected_status_code == absl::StatusCode::kOk) {
     EXPECT_EQ(result, test_case.expected_val);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Valid, Uint32ToUint16Format,
-                         testing::ValuesIn<Uint32ToUint16FormatTestCase>({
-                             {0, 0, absl::StatusCode::kOk},
-                             {65535, 65535, absl::StatusCode::kOk},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeUint32ToUint16Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToUint16TestCase>({
+        {0, 0, absl::StatusCode::kOk},
+        {65535, 65535, absl::StatusCode::kOk},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(Invalid, Uint32ToUint16Format,
-                         testing::ValuesIn<Uint32ToUint16FormatTestCase>({
-                             {65536, 0, absl::StatusCode::kInvalidArgument},
-                             {UINT32_MAX, 0,
-                              absl::StatusCode::kInvalidArgument},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeUint32ToUint16Test,
+    testing::ValuesIn<StaticCastIfInRangeUint32ToUint16TestCase>({
+        {65536, 0, absl::StatusCode::kInvalidArgument},
+        {UINT32_MAX, 0, absl::StatusCode::kInvalidArgument},
+    }));
 
-struct Int32ToInt16FormatTestCase {
+struct StaticCastIfInRangeInt32ToInt16TestCase {
   int32_t test_val;
   int16_t expected_val;
   absl::StatusCode expected_status_code;
 };
 
-using Int32ToInt16Format = ::testing::TestWithParam<Int32ToInt16FormatTestCase>;
+using StaticCastIfInRangeInt32ToInt16Test =
+    ::testing::TestWithParam<StaticCastIfInRangeInt32ToInt16TestCase>;
 
-TEST_P(Int32ToInt16Format, TestInt32ToInt16) {
-  const Int32ToInt16FormatTestCase& test_case = GetParam();
+TEST_P(StaticCastIfInRangeInt32ToInt16Test, TestInt32ToInt16) {
+  const StaticCastIfInRangeInt32ToInt16TestCase& test_case = GetParam();
 
   int16_t result;
-  EXPECT_EQ(Int32ToInt16(test_case.test_val, result).code(),
+  EXPECT_EQ((StaticCastIfInRange<int32_t, int16_t>(kOmitContext,
+                                                   test_case.test_val, result)
+                 .code()),
             test_case.expected_status_code);
   if (test_case.expected_status_code == absl::StatusCode::kOk) {
     EXPECT_EQ(result, test_case.expected_val);
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Valid, Int32ToInt16Format,
-                         testing::ValuesIn<Int32ToInt16FormatTestCase>({
-                             {-32768, -32768, absl::StatusCode::kOk},
-                             {-1, -1, absl::StatusCode::kOk},
-                             {0, 0, absl::StatusCode::kOk},
-                             {32767, 32767, absl::StatusCode::kOk},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Valid, StaticCastIfInRangeInt32ToInt16Test,
+    testing::ValuesIn<StaticCastIfInRangeInt32ToInt16TestCase>({
+        {-32768, -32768, absl::StatusCode::kOk},
+        {-1, -1, absl::StatusCode::kOk},
+        {0, 0, absl::StatusCode::kOk},
+        {32767, 32767, absl::StatusCode::kOk},
+    }));
 
-INSTANTIATE_TEST_SUITE_P(Invalid, Int32ToInt16Format,
-                         testing::ValuesIn<Int32ToInt16FormatTestCase>({
-                             {INT32_MIN, 0, absl::StatusCode::kInvalidArgument},
-                             {-32769, 0, absl::StatusCode::kInvalidArgument},
-                             {32768, 0, absl::StatusCode::kInvalidArgument},
-                             {INT32_MAX, 0, absl::StatusCode::kInvalidArgument},
-                         }));
+INSTANTIATE_TEST_SUITE_P(
+    Invalid, StaticCastIfInRangeInt32ToInt16Test,
+    testing::ValuesIn<StaticCastIfInRangeInt32ToInt16TestCase>({
+        {INT32_MIN, 0, absl::StatusCode::kInvalidArgument},
+        {-32769, 0, absl::StatusCode::kInvalidArgument},
+        {32768, 0, absl::StatusCode::kInvalidArgument},
+        {INT32_MAX, 0, absl::StatusCode::kInvalidArgument},
+    }));
 
 TEST(LittleEndianBytesToInt32Test, InvalidTooManyBytes) {
   int32_t unused_result = 0;
@@ -872,11 +911,11 @@ TEST(CopyFromMap, MessageContainsEmptyWhenMapIsEmpty) {
 
 TEST(CopyFromMap, MessageContainsContextOnError) {
   const absl::flat_hash_map<int, bool> kEmptyMap = {};
-  constexpr absl::string_view kContext = "User-specified context";
 
   bool undefined_result;
-  EXPECT_THAT(CopyFromMap(kEmptyMap, 3, kContext, undefined_result).message(),
-              HasSubstr(kContext));
+  EXPECT_THAT(
+      CopyFromMap(kEmptyMap, 3, kCustomUserContext, undefined_result).message(),
+      HasSubstr(kCustomUserContext));
 }
 
 TEST(LookupInMapStatusOr, OkIfLookupSucceeds) {
@@ -897,10 +936,9 @@ TEST(LookupInMapStatusOr, ReturnsStatusNotFoundWhenLookupFails) {
 
 TEST(LookupInMapStatusOr, MessageContainsContextOnError) {
   const absl::flat_hash_map<int, bool> kEmptyMap = {};
-  constexpr absl::string_view kContext = "User-specified context";
 
-  EXPECT_THAT(LookupInMap(kEmptyMap, 3, kContext).status().message(),
-              HasSubstr(kContext));
+  EXPECT_THAT(LookupInMap(kEmptyMap, 3, kCustomUserContext).status().message(),
+              HasSubstr(kCustomUserContext));
 }
 
 TEST(LookupInMapStatusOr, MessageContainsEmptyWhenMapIsEmpty) {

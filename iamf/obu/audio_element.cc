@@ -645,8 +645,10 @@ absl::Status AudioElementObu::InitializeScalableChannelLayout(
   }
 
   ScalableChannelLayoutConfig config;
-  RETURN_IF_NOT_OK(Uint32ToUint8(num_layers, config.num_layers));
-  RETURN_IF_NOT_OK(Uint32ToUint8(reserved, config.reserved));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "ScalableChannelLayoutConfig.num_layers", num_layers, config.num_layers));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "ScalableChannelLayoutConfig.reserved", reserved, config.reserved));
   config.channel_audio_layer_configs.resize(num_layers);
   config_ = config;
   return absl::OkStatus();
@@ -667,9 +669,12 @@ absl::Status AudioElementObu::InitializeAmbisonicsMono(
   config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono;
 
   AmbisonicsMonoConfig mono_config;
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(output_channel_count, mono_config.output_channel_count));
-  RETURN_IF_NOT_OK(Uint32ToUint8(substream_count, mono_config.substream_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsMonoConfig.output_channel_count", output_channel_count,
+      mono_config.output_channel_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsMonoConfig.substream_count", substream_count,
+      mono_config.substream_count));
   mono_config.channel_mapping.resize(output_channel_count);
   config.ambisonics_config = mono_config;
   config_ = config;
@@ -693,12 +698,15 @@ absl::Status AudioElementObu::InitializeAmbisonicsProjection(
   config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection;
 
   AmbisonicsProjectionConfig projection_config;
-  RETURN_IF_NOT_OK(Uint32ToUint8(output_channel_count,
-                                 projection_config.output_channel_count));
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(substream_count, projection_config.substream_count));
-  RETURN_IF_NOT_OK(Uint32ToUint8(coupled_substream_count,
-                                 projection_config.coupled_substream_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.output_channel_count", output_channel_count,
+      projection_config.output_channel_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.substream_count", substream_count,
+      projection_config.substream_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.coupled_substream_count",
+      coupled_substream_count, projection_config.coupled_substream_count));
   const size_t num_elements = GetNumDemixingMatrixElements(projection_config);
   projection_config.demixing_matrix.resize(num_elements);
   config.ambisonics_config = projection_config;

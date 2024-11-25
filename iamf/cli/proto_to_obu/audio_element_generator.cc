@@ -146,11 +146,13 @@ absl::Status GenerateParameterDefinitions(
             demixing_param_definition->default_demixing_info_parameter_data_));
         // Copy the extension portion of `DefaultDemixingInfoParameterData` in
         // the IAMF spec.
-        RETURN_IF_NOT_OK(Uint32ToUint8(
+        RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+            "DemixingParamDefinition.default_w",
             user_data_parameter.demixing_param().default_w(),
             demixing_param_definition->default_demixing_info_parameter_data_
                 .default_w));
-        RETURN_IF_NOT_OK(Uint32ToUint8(
+        RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+            "DemixingParamDefinition.reserved",
             user_data_parameter.demixing_param().reserved(),
             demixing_param_definition->default_demixing_info_parameter_data_
                 .reserved_for_future_use));
@@ -784,26 +786,36 @@ absl::Status FillScalableChannelLayoutConfig(
     RETURN_IF_NOT_OK(CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
         input_layer_config, layer_config->loudspeaker_layout,
         layer_config->expanded_loudspeaker_layout));
-    RETURN_IF_NOT_OK(
-        Uint32ToUint8(input_layer_config.output_gain_is_present_flag(),
-                      layer_config->output_gain_is_present_flag));
-    RETURN_IF_NOT_OK(
-        Uint32ToUint8(input_layer_config.recon_gain_is_present_flag(),
-                      layer_config->recon_gain_is_present_flag));
-    RETURN_IF_NOT_OK(Uint32ToUint8(input_layer_config.reserved_a(),
-                                   layer_config->reserved_a));
-    RETURN_IF_NOT_OK(Uint32ToUint8(input_layer_config.substream_count(),
-                                   layer_config->substream_count));
-    RETURN_IF_NOT_OK(Uint32ToUint8(input_layer_config.coupled_substream_count(),
-                                   layer_config->coupled_substream_count));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "ChannelAudioLayerConfig.output_gain_is_present_flag",
+        input_layer_config.output_gain_is_present_flag(),
+        layer_config->output_gain_is_present_flag));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "ChannelAudioLayerConfig.recon_gain_is_present_flag",
+        input_layer_config.recon_gain_is_present_flag(),
+        layer_config->recon_gain_is_present_flag));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "ChannelAudioLayerConfig.reserved_a", input_layer_config.reserved_a(),
+        layer_config->reserved_a));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "ChannelAudioLayerConfig.substream_count",
+        input_layer_config.substream_count(), layer_config->substream_count));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "ChannelAudioLayerConfig.coupled_substream_count",
+        input_layer_config.coupled_substream_count(),
+        layer_config->coupled_substream_count));
 
     if (layer_config->output_gain_is_present_flag == 1) {
-      RETURN_IF_NOT_OK(Uint32ToUint8(input_layer_config.output_gain_flag(),
-                                     layer_config->output_gain_flag));
-      RETURN_IF_NOT_OK(Uint32ToUint8(input_layer_config.reserved_b(),
-                                     layer_config->reserved_b));
-      RETURN_IF_NOT_OK(Int32ToInt16(input_layer_config.output_gain(),
-                                    layer_config->output_gain));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+          "ChannelAudioLayerConfig.output_gain_flag",
+          input_layer_config.output_gain_flag(),
+          layer_config->output_gain_flag));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+          "ChannelAudioLayerConfig.reserved_b", input_layer_config.reserved_b(),
+          layer_config->reserved_b));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "ChannelAudioLayerConfig.output_gain",
+          input_layer_config.output_gain(), layer_config->output_gain));
     }
   }
 
@@ -906,8 +918,9 @@ absl::Status FillAmbisonicsMonoConfig(
   }
 
   for (int i = 0; i < input_mono_config.channel_mapping_size(); ++i) {
-    RETURN_IF_NOT_OK(Uint32ToUint8(input_mono_config.channel_mapping(i),
-                                   mono_config.channel_mapping[i]));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "AmbisonicsMonoConfig.channel_mapping",
+        input_mono_config.channel_mapping(i), mono_config.channel_mapping[i]));
   }
 
   // Validate the mono config. This ensures no substream indices should be out
@@ -951,8 +964,10 @@ absl::Status FillAmbisonicsProjectionConfig(
   }
 
   for (int i = 0; i < input_projection_config.demixing_matrix_size(); ++i) {
-    RETURN_IF_NOT_OK(Int32ToInt16(input_projection_config.demixing_matrix(i),
-                                  projection_config.demixing_matrix[i]));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+        absl::StrCat("AmbisonicsProjectionConfig.demixing_matrix[", i, "]"),
+        input_projection_config.demixing_matrix(i),
+        projection_config.demixing_matrix[i]));
   }
   RETURN_IF_NOT_OK(FinalizeAmbisonicsProjectionConfig(
       audio_element_obu, projection_config, substream_id_to_labels));
@@ -1183,8 +1198,9 @@ absl::Status AudioElementGenerator::Generate(
                    audio_element_metadata.audio_element_type()));
     }
     uint8_t reserved;
-    RETURN_IF_NOT_OK(
-        Uint32ToUint8(audio_element_metadata.reserved(), reserved));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+        "AudioElementObuMetadata.reserved", audio_element_metadata.reserved(),
+        reserved));
     const auto codec_config_id = audio_element_metadata.codec_config_id();
 
     AudioElementObu audio_element_obu(

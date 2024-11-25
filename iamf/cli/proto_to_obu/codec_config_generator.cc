@@ -110,8 +110,9 @@ absl::Status GenerateLpcmDecoderConfig(
   }
 
   obu_decoder_config.sample_rate_ = lpcm_metadata.sample_rate();
-  RETURN_IF_NOT_OK(Uint32ToUint8(lpcm_metadata.sample_size(),
-                                 obu_decoder_config.sample_size_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "LpcmDecoderConfig.sample_size", lpcm_metadata.sample_size(),
+      obu_decoder_config.sample_size_));
 
   return absl::OkStatus();
 }
@@ -124,35 +125,48 @@ absl::Status GenerateOpusDecoderConfig(
   }
   const auto& opus_metadata = user_codec_config.decoder_config_opus();
 
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(opus_metadata.version(), obu_decoder_config.version_));
-  RETURN_IF_NOT_OK(Uint32ToUint8(opus_metadata.output_channel_count(),
-                                 obu_decoder_config.output_channel_count_));
-  RETURN_IF_NOT_OK(
-      Uint32ToUint16(opus_metadata.pre_skip(), obu_decoder_config.pre_skip_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "OpusDecoderConfig.version", opus_metadata.version(),
+      obu_decoder_config.version_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "OpusDecoderConfig.output_channel_count",
+      opus_metadata.output_channel_count(),
+      obu_decoder_config.output_channel_count_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
+      "OpusDecoderConfig.pre_skip", opus_metadata.pre_skip(),
+      obu_decoder_config.pre_skip_));
   obu_decoder_config.input_sample_rate_ = opus_metadata.input_sample_rate();
-  RETURN_IF_NOT_OK(Int32ToInt16(opus_metadata.output_gain(),
-                                obu_decoder_config.output_gain_));
-  RETURN_IF_NOT_OK(Uint32ToUint8(opus_metadata.mapping_family(),
-                                 obu_decoder_config.mapping_family_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+      "OpusDecoderConfig.output_gain", opus_metadata.output_gain(),
+      obu_decoder_config.output_gain_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "OpusDecoderConfig.mapping_family", opus_metadata.mapping_family(),
+      obu_decoder_config.mapping_family_));
   return absl::OkStatus();
 }
 
 absl::Status CopyStreamInfo(
     const iamf_tools_cli_proto::FlacMetaBlockStreamInfo& user_stream_info,
     FlacMetaBlockStreamInfo& obu_stream_info) {
-  RETURN_IF_NOT_OK(Uint32ToUint16(user_stream_info.minimum_block_size(),
-                                  obu_stream_info.minimum_block_size));
-  RETURN_IF_NOT_OK(Uint32ToUint16(user_stream_info.maximum_block_size(),
-                                  obu_stream_info.maximum_block_size));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
+      "FlacMetaBlockStreamInfo.minimum_block_size",
+      user_stream_info.minimum_block_size(),
+      obu_stream_info.minimum_block_size));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint16_t>(
+      "FlacMetaBlockStreamInfo.maximum_block_size",
+      user_stream_info.maximum_block_size(),
+      obu_stream_info.maximum_block_size));
   obu_stream_info.minimum_frame_size = user_stream_info.minimum_frame_size();
   obu_stream_info.maximum_frame_size = user_stream_info.maximum_frame_size();
   obu_stream_info.sample_rate = user_stream_info.sample_rate();
 
-  RETURN_IF_NOT_OK(Uint32ToUint8(user_stream_info.number_of_channels(),
-                                 obu_stream_info.number_of_channels));
-  RETURN_IF_NOT_OK(Uint32ToUint8(user_stream_info.bits_per_sample(),
-                                 obu_stream_info.bits_per_sample));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "FlacMetaBlockStreamInfo.number_of_channels",
+      user_stream_info.number_of_channels(),
+      obu_stream_info.number_of_channels));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "FlacMetaBlockStreamInfo.bits_per_sample",
+      user_stream_info.bits_per_sample(), obu_stream_info.bits_per_sample));
   obu_stream_info.total_samples_in_stream =
       user_stream_info.total_samples_in_stream();
   if (user_stream_info.md5_signature().size() !=
@@ -234,13 +248,17 @@ absl::Status GenerateAacDecoderConfig(
   }
   const auto& aac_metadata = user_codec_config.decoder_config_aac();
 
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(aac_metadata.decoder_config_descriptor_tag(),
-                    obu_decoder_config.decoder_config_descriptor_tag_));
-  RETURN_IF_NOT_OK(Uint32ToUint8(aac_metadata.object_type_indication(),
-                                 obu_decoder_config.object_type_indication_));
-  RETURN_IF_NOT_OK(Uint32ToUint8(aac_metadata.stream_type(),
-                                 obu_decoder_config.stream_type_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.decoder_config_descriptor_tag",
+      aac_metadata.decoder_config_descriptor_tag(),
+      obu_decoder_config.decoder_config_descriptor_tag_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.object_type_indication",
+      aac_metadata.object_type_indication(),
+      obu_decoder_config.object_type_indication_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.stream_type", aac_metadata.stream_type(),
+      obu_decoder_config.stream_type_));
   obu_decoder_config.upstream_ = aac_metadata.upstream();
   obu_decoder_config.reserved_ = aac_metadata.reserved();
   obu_decoder_config.buffer_size_db_ = aac_metadata.buffer_size_db();
@@ -250,15 +268,17 @@ absl::Status GenerateAacDecoderConfig(
   if (!aac_metadata.has_decoder_specific_info()) {
     return absl::InvalidArgumentError("Missing AAC decoder specific info.");
   }
-  RETURN_IF_NOT_OK(Uint32ToUint8(
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.decoder_specific_info_descriptor_tag",
       aac_metadata.decoder_specific_info()
           .decoder_specific_info_descriptor_tag(),
       obu_decoder_config.decoder_specific_info_.decoder_specific_info_tag));
   auto& audio_specific_config =
       obu_decoder_config.decoder_specific_info_.audio_specific_config;
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(aac_metadata.decoder_specific_info().audio_object_type(),
-                    audio_specific_config.audio_object_type_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.audio_object_type",
+      aac_metadata.decoder_specific_info().audio_object_type(),
+      audio_specific_config.audio_object_type_));
   RETURN_IF_NOT_OK(CopySampleFrequencyIndex(
       aac_metadata.decoder_specific_info().sample_frequency_index(),
       audio_specific_config.sample_frequency_index_));
@@ -269,7 +289,8 @@ absl::Status GenerateAacDecoderConfig(
         aac_metadata.decoder_specific_info().sampling_frequency();
   }
 
-  RETURN_IF_NOT_OK(Uint32ToUint8(
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AacDecoderConfig.channel_configuration",
       aac_metadata.decoder_specific_info().channel_configuration(),
       audio_specific_config.channel_configuration_));
 
@@ -320,8 +341,10 @@ absl::Status CodecConfigGenerator::Generate(
         .codec_id = obu_codec_id,
         .num_samples_per_frame = input_codec_config.num_samples_per_frame()};
 
-    RETURN_IF_NOT_OK(Int32ToInt16(input_codec_config.audio_roll_distance(),
-                                  obu_codec_config.audio_roll_distance));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+        "CodecConfigObu.audio_roll_distance",
+        input_codec_config.audio_roll_distance(),
+        obu_codec_config.audio_roll_distance));
 
     // Process the codec-specific `decoder_config` field.
     if (obu_codec_id == CodecConfig::kCodecIdLpcm) {

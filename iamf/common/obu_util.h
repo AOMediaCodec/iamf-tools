@@ -87,30 +87,30 @@ float Q0_8ToFloat(uint8_t value);
 
 /*!\brief Typecasts the input value and writes to the output argument if valid.
  *
- * \param input Value to convert.
- * \param output Converted value if successful.
- * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *         the input cannot be cast to a `uint8_t`.
- */
-absl::Status Uint32ToUint8(uint32_t input, uint8_t& output);
-
-/*!\brief Typecasts the input value and writes to the output argument if valid.
+ * The custom `field_name` is used to create a more descriptive error message.
+ * This is inserted surrounded by backticks. When this refers to a user facing
+ * field (i.e. related to `UserMetadata` protos) this should refer to the
+ * user-facing field name.
  *
+ * \param field_name Field name to insert into the error message.
  * \param input Value to convert.
  * \param output Converted value if successful.
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *         the input cannot be cast to a `uint16_t`.
+ *         the input is outside the expected range.
  */
-absl::Status Uint32ToUint16(uint32_t input, uint16_t& output);
-
-/*!\brief Typecasts the input value and writes to the output argument if valid.
- *
- * \param input Value to convert.
- * \param output Converted value if successful.
- * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
- *         the input cannot be cast to a `int16_t`.
- */
-absl::Status Int32ToInt16(int32_t input, int16_t& output);
+template <typename T, typename U>
+absl::Status StaticCastIfInRange(absl::string_view field_name, T input,
+                                 U& output) {
+  constexpr U kMinOutput = std::numeric_limits<U>::min();
+  constexpr U kMaxOutput = std::numeric_limits<U>::max();
+  if (input < kMinOutput || kMaxOutput < input) [[unlikely]] {
+    return absl::InvalidArgumentError(
+        absl::StrCat(field_name, " is outside the expected range of [",
+                     kMinOutput, ", ", kMaxOutput, "]"));
+  }
+  output = static_cast<U>(input);
+  return absl::OkStatus();
+}
 
 /*!\brief Creates a 32-bit signed integer from the [1, 4] input `bytes`.
  *

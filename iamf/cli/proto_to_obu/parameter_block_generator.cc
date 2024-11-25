@@ -37,7 +37,6 @@
 #include "iamf/cli/recon_gain_generator.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
@@ -61,8 +60,10 @@ absl::Status GenerateMixGainSubblock(
       mix_gain_parameter_data->animation_type =
           MixGainParameterData::kAnimateStep;
       AnimationStepInt16 obu_animation;
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.start_point_value(),
-                                    obu_animation.start_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationStepInt16.start_point_value",
+          metadata_animation.start_point_value(),
+          obu_animation.start_point_value));
       mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
@@ -73,10 +74,13 @@ absl::Status GenerateMixGainSubblock(
           MixGainParameterData::kAnimateLinear;
 
       AnimationLinearInt16 obu_animation;
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.start_point_value(),
-                                    obu_animation.start_point_value));
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.end_point_value(),
-                                    obu_animation.end_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationLinearInt16.start_point_value",
+          metadata_animation.start_point_value(),
+          obu_animation.start_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationLinearInt16.end_point_value",
+          metadata_animation.end_point_value(), obu_animation.end_point_value));
       mix_gain_parameter_data->param_data = obu_animation;
       break;
     }
@@ -86,15 +90,21 @@ absl::Status GenerateMixGainSubblock(
       mix_gain_parameter_data->animation_type =
           MixGainParameterData::kAnimateBezier;
       AnimationBezierInt16 obu_animation;
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.start_point_value(),
-                                    obu_animation.start_point_value));
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.end_point_value(),
-                                    obu_animation.end_point_value));
-      RETURN_IF_NOT_OK(Int32ToInt16(metadata_animation.control_point_value(),
-                                    obu_animation.control_point_value));
-      RETURN_IF_NOT_OK(
-          Uint32ToUint8(metadata_animation.control_point_relative_time(),
-                        obu_animation.control_point_relative_time));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationBezierInt16.start_point_value",
+          metadata_animation.start_point_value(),
+          obu_animation.start_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationBezierInt16.end_point_value",
+          metadata_animation.end_point_value(), obu_animation.end_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+          "AnimationBezierInt16.control_point_value",
+          metadata_animation.control_point_value(),
+          obu_animation.control_point_value));
+      RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+          "AnimationBezierInt16.control_point_relative_time",
+          metadata_animation.control_point_relative_time(),
+          obu_animation.control_point_relative_time));
       mix_gain_parameter_data->param_data = obu_animation;
       break;
     }

@@ -103,8 +103,9 @@ absl::Status CopyParamDefinition(
 
   param_definition.param_definition_mode_ =
       input_param_definition.param_definition_mode();
-  RETURN_IF_NOT_OK(Uint32ToUint8(input_param_definition.reserved(),
-                                 param_definition.reserved_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "ParamDefinition.reserved", input_param_definition.reserved(),
+      param_definition.reserved_));
   param_definition.duration_ = input_param_definition.duration();
   param_definition.constant_subblock_duration_ =
       input_param_definition.constant_subblock_duration();
@@ -165,8 +166,10 @@ absl::Status CopyDemixingInfoParameterData(
                                "Internal version of proto `dmixp_mode`",
                                obu_demixing_param_data.dmixp_mode));
 
-  RETURN_IF_NOT_OK(Uint32ToUint8(input_demixing_info_parameter_data.reserved(),
-                                 obu_demixing_param_data.reserved));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "DemixingInfoParameterData.reserved",
+      input_demixing_info_parameter_data.reserved(),
+      obu_demixing_param_data.reserved));
 
   return absl::OkStatus();
 }

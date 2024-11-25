@@ -172,7 +172,6 @@ cc_library(
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
-        "//iamf/obu:audio_element",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",

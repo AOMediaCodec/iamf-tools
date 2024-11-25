@@ -151,8 +151,9 @@ absl::Status FillRenderingConfig(
                        input_rendering_config.headphones_rendering_mode()));
   }
 
-  RETURN_IF_NOT_OK(Uint32ToUint8(input_rendering_config.reserved(),
-                                 rendering_config.reserved));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "RenderingConfig.reserved", input_rendering_config.reserved(),
+      rendering_config.reserved));
 
   rendering_config.rendering_config_extension_size =
       input_rendering_config.rendering_config_extension_size();
@@ -201,8 +202,9 @@ absl::Status FillMixConfig(
     MixGainParamDefinition& mix_gain) {
   RETURN_IF_NOT_OK(
       CopyParamDefinition(input_mix_gain.param_definition(), mix_gain));
-  RETURN_IF_NOT_OK(Int32ToInt16(input_mix_gain.default_mix_gain(),
-                                mix_gain.default_mix_gain_));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+      "MixGainParamDefinition.default_mix_gain",
+      input_mix_gain.default_mix_gain(), mix_gain.default_mix_gain_));
 
   return absl::OkStatus();
 }
@@ -214,8 +216,10 @@ absl::Status CopyReservedOrBinauralLayout(
     Layout& obu_layout) {
   obu_layout.layout_type = layout;
   LoudspeakersReservedOrBinauralLayout obu_reserved_or_binaural_layout;
-  RETURN_IF_NOT_OK(Uint32ToUint8(reserved_or_binaural_layout.reserved(),
-                                 obu_reserved_or_binaural_layout.reserved));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "LoudspeakersReservedOrBinauralLayout.reserved",
+      reserved_or_binaural_layout.reserved(),
+      obu_reserved_or_binaural_layout.reserved));
 
   obu_layout.specific_layout = obu_reserved_or_binaural_layout;
   return absl::OkStatus();
@@ -269,9 +273,10 @@ absl::Status FillLayouts(
         RETURN_IF_NOT_OK(MixPresentationGenerator::CopySoundSystem(
             input_loudness_layout.ss_layout().sound_system(),
             obu_ss_layout.sound_system));
-        RETURN_IF_NOT_OK(
-            Uint32ToUint8(input_loudness_layout.ss_layout().reserved(),
-                          obu_ss_layout.reserved));
+        RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+            "LoudspeakersSsConventionLayout.reserved",
+            input_loudness_layout.ss_layout().reserved(),
+            obu_ss_layout.reserved));
         layout.loudness_layout.specific_layout = obu_ss_layout;
         break;
       }
@@ -301,8 +306,9 @@ absl::Status FillMixPresentationTags(
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
   obu_mix_presentation_tags = MixPresentationTags{};
-  RETURN_IF_NOT_OK(Uint32ToUint8(mix_presentation_tags.num_tags(),
-                                 obu_mix_presentation_tags->num_tags));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "MixPresentationTags.num_tags", mix_presentation_tags.num_tags(),
+      obu_mix_presentation_tags->num_tags));
   for (const auto& input_tag : mix_presentation_tags.tags()) {
     obu_mix_presentation_tags->tags.push_back(MixPresentationTags::Tag{
         .tag_name = input_tag.tag_name(),
@@ -368,14 +374,17 @@ absl::Status MixPresentationGenerator::CopyInfoType(
 absl::Status MixPresentationGenerator::CopyUserIntegratedLoudnessAndPeaks(
     const iamf_tools_cli_proto::LoudnessInfo& user_loudness,
     LoudnessInfo& output_loudness) {
-  RETURN_IF_NOT_OK(Int32ToInt16(user_loudness.integrated_loudness(),
-                                output_loudness.integrated_loudness));
-  RETURN_IF_NOT_OK(
-      Int32ToInt16(user_loudness.digital_peak(), output_loudness.digital_peak));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+      "LoudnessInfo.integrated_loudness", user_loudness.integrated_loudness(),
+      output_loudness.integrated_loudness));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+      "LoudnessInfo.digital_peak", user_loudness.digital_peak(),
+      output_loudness.digital_peak));
 
   if ((output_loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
-    RETURN_IF_NOT_OK(
-        Int32ToInt16(user_loudness.true_peak(), output_loudness.true_peak));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+        "LoudnessInfo.true_peak", user_loudness.true_peak(),
+        output_loudness.true_peak));
   }
 
   return absl::OkStatus();
@@ -389,9 +398,10 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     return absl::OkStatus();
   }
 
-  RETURN_IF_NOT_OK(
-      Uint32ToUint8(user_loudness.anchored_loudness().num_anchored_loudness(),
-                    output_loudness.anchored_loudness.num_anchored_loudness));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "LoudnessInfo.anchored_loudness.num_anchored_loudness",
+      user_loudness.anchored_loudness().num_anchored_loudness(),
+      output_loudness.anchored_loudness.num_anchored_loudness));
 
   for (const auto& metadata_anchor_element :
        user_loudness.anchored_loudness().anchor_elements()) {
@@ -415,8 +425,9 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     }
 
     int16_t obu_anchored_loudness;
-    RETURN_IF_NOT_OK(Int32ToInt16(metadata_anchor_element.anchored_loudness(),
-                                  obu_anchored_loudness));
+    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
+        "AnchorElement.anchored_loudness",
+        metadata_anchor_element.anchored_loudness(), obu_anchored_loudness));
     output_loudness.anchored_loudness.anchor_elements.push_back(
         {obu_anchor_element, obu_anchored_loudness});
   }

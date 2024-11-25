@@ -73,32 +73,6 @@ float Q0_8ToFloat(uint8_t value) {
   return static_cast<float>(value) * 1.0f / 256.0f;
 }
 
-absl::Status Uint32ToUint16(uint32_t input, uint16_t& output) {
-  if (std::numeric_limits<uint16_t>::max() < input) {
-    return absl::InvalidArgumentError("Input is too large for uint16_t.");
-  }
-  output = static_cast<uint16_t>(input);
-  return absl::OkStatus();
-}
-
-absl::Status Uint32ToUint8(uint32_t input, uint8_t& output) {
-  if (std::numeric_limits<uint8_t>::max() < input) {
-    return absl::InvalidArgumentError("Input is too large for uint8_t.");
-  }
-  output = static_cast<uint8_t>(input);
-  return absl::OkStatus();
-}
-
-absl::Status Int32ToInt16(int32_t input, int16_t& output) {
-  if (input < std::numeric_limits<int16_t>::min() ||
-      std::numeric_limits<int16_t>::max() < input) {
-    return absl::InvalidArgumentError(
-        "Input is outside the range of an int16_t.");
-  }
-  output = static_cast<int16_t>(input);
-  return absl::OkStatus();
-}
-
 absl::Status LittleEndianBytesToInt32(absl::Span<const uint8_t> bytes,
                                       int32_t& output) {
   // If we have bytes A, B, C, D, then we need to read them as:
