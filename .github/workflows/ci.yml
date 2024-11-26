@@ -22,7 +22,7 @@ jobs:
         with:
           platform: macos
   macos-amd64:
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
