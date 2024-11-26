@@ -1,4 +1,34 @@
 cc_test(
+    name = "ia_sequence_header_metadata_generator_test",
+    srcs = ["ia_sequence_header_metadata_generator_test.cc"],
+    deps = [
+        "//iamf/cli/obu_to_proto:ia_sequence_header_metadata_generator",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_to_obu:ia_sequence_header_generator",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:obu_header",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "obu_header_metadata_generator_test",
+    srcs = ["obu_header_metadata_generator_test.cc"],
+    deps = [
+        "//iamf/cli:cli_util",
+        "//iamf/cli/obu_to_proto:obu_header_metadata_generator",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "parameter_block_metadata_generator_test",
     srcs = ["parameter_block_metadata_generator_test.cc"],
     deps = [

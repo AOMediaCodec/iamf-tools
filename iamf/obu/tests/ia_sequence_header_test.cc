@@ -31,11 +31,29 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr uint32_t kInvalidIACode = 0xff;
+
 TEST(IaSequenceHeaderConstructor, SetsObuType) {
   IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
                           ProfileVersion::kIamfSimpleProfile,
                           ProfileVersion::kIamfSimpleProfile);
   EXPECT_EQ(obu.header_.obu_type, kObuIaSequenceHeader);
+}
+
+TEST(IaSequenceHeaderConstructor, SetsIaCode) {
+  IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
+                          ProfileVersion::kIamfSimpleProfile,
+                          ProfileVersion::kIamfSimpleProfile);
+
+  EXPECT_EQ(obu.GetIaCode(), IASequenceHeaderObu::kIaCode);
+}
+
+TEST(IaSequenceHeaderConstructor, SetsInvalidIaCode) {
+  IASequenceHeaderObu obu({}, kInvalidIACode,
+                          ProfileVersion::kIamfSimpleProfile,
+                          ProfileVersion::kIamfSimpleProfile);
+
+  EXPECT_EQ(obu.GetIaCode(), kInvalidIACode);
 }
 
 TEST(Validate, SucceedsWithSimpleProfile) {

@@ -81,6 +81,12 @@ class IASequenceHeaderObu : public ObuBase {
    */
   absl::Status Validate() const;
 
+  /*!\brief Gets the IA Code of the OBU.
+   *
+   * \return IA Code of the OBU.
+   */
+  uint32_t GetIaCode() const { return ia_code_; }
+
   /*!\brief Gets the primary profile of the OBU.
    *
    * \return primary profile of the OBU.
