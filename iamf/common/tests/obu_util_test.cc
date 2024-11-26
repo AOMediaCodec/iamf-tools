@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -39,6 +40,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
 
 constexpr absl::string_view kOmitContext = "";
@@ -904,6 +906,54 @@ TEST(ValidateContainerSizeEqual, MessageContainsContextOnError) {
                                          kInaccurateSizeFive)
                   .message(),
               HasSubstr(kCustomUserContext));
+}
+
+TEST(StaticCastSpanIfInRange, SucceedsIfArgsAreEqualSize) {
+  constexpr std::array<uint8_t, 4> kContainer = {1, 2, 3, 4};
+  constexpr std::array<char, 4> kExpectedResult = {0x01, 0x02, 0x03, 0x04};
+
+  std::vector<char> result(kContainer.size());
+  EXPECT_THAT(
+      StaticCastSpanIfInRange(kOmitContext, absl::MakeConstSpan(kContainer),
+                              absl::MakeSpan(result)),
+      IsOk());
+
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
+}
+
+TEST(StaticCastSpanIfInRange, FailsIfArgsAreNotEqualSize) {
+  constexpr size_t kMismatchedSize = 3;
+  constexpr std::array<uint8_t, 4> kContainer = {1, 2, 3, 4};
+
+  std::vector<char> result(kMismatchedSize);
+  EXPECT_FALSE(StaticCastSpanIfInRange(kOmitContext,
+                                       absl::MakeConstSpan(kContainer),
+                                       absl::MakeSpan(result))
+                   .ok());
+}
+
+TEST(StaticCastSpanIfInRange, FailsIfStaticCastWouldBeOutOfRange) {
+  constexpr std::array<int16_t, 1> kContainerWithOutOfRangeValue = {256};
+
+  std::vector<char> char_based_result(kContainerWithOutOfRangeValue.size());
+  EXPECT_FALSE(StaticCastSpanIfInRange(
+                   kOmitContext,
+                   absl::MakeConstSpan(kContainerWithOutOfRangeValue),
+                   absl::MakeSpan(char_based_result))
+                   .ok());
+}
+
+TEST(StaticCastSpanIfInRange, MessageContainsContextOnError) {
+  constexpr size_t kMismatchedSize = 3;
+  constexpr std::array<uint8_t, 4> kContainer = {1, 2, 3, 4};
+  const absl::string_view kFieldName = "user-specified field name";
+
+  std::vector<char> result(kMismatchedSize);
+  EXPECT_THAT(
+      StaticCastSpanIfInRange(kFieldName, absl::MakeConstSpan(kContainer),
+                              absl::MakeSpan(result))
+          .message(),
+      HasSubstr(kFieldName));
 }
 
 TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {

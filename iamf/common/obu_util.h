@@ -18,6 +18,8 @@
 #include <filesystem>
 #include <limits>
 #include <optional>
+#include <string>
+#include <type_traits>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -101,9 +103,14 @@ absl::Status StaticCastIfInRange(absl::string_view field_name, T input,
   constexpr U kMinOutput = std::numeric_limits<U>::min();
   constexpr U kMaxOutput = std::numeric_limits<U>::max();
   if (input < kMinOutput || kMaxOutput < input) [[unlikely]] {
-    return absl::InvalidArgumentError(
-        absl::StrCat(field_name, " is outside the expected range of [",
-                     kMinOutput, ", ", kMaxOutput, "]"));
+    std::string message =
+        absl::StrCat(field_name, " is outside the expected range of ");
+    if constexpr (std::is_same_v<U, char> || std::is_same_v<U, unsigned char>) {
+      absl::StrAppend(&message, "[0, 255]");
+    } else {
+      absl::StrAppend(&message, "[", kMinOutput, ", ", kMaxOutput, "]");
+    }
+    return absl::InvalidArgumentError(message);
   }
   output = static_cast<U>(input);
   return absl::OkStatus();
@@ -256,6 +263,35 @@ absl::Status ValidateContainerSizeEqual(absl::string_view field_name,
   return absl::InvalidArgumentError(absl::StrCat(
       "Found inconsistency with `", field_name, ".size()`= ", actual_size,
       ". Expected a value of ", reported_size, "."));
+}
+
+/*!\brief Casts and copies the input span to the output span.
+ *
+ * \param field_name Field name of the vector to insert into the error message.
+ * \param vector_size Size of the vector.
+ * \param reported_size Size reported by associated fields (e.g. "*_size" fields
+ *                      in the OBU).
+ * \return `absl::OkStatus()` if the size arguments are equivalent.
+ *         `absl::InvalidArgumentError()` otherwise.
+ */
+template <typename T, typename U>
+absl::Status StaticCastSpanIfInRange(absl::string_view field_name,
+                                     absl::Span<const T> input_data,
+                                     absl::Span<U> output_data) {
+  if (const auto status = ValidateContainerSizeEqual(field_name, input_data,
+                                                     output_data.size());
+      !status.ok()) [[unlikely]] {
+    return status;
+  }
+
+  for (int i = 0; i < input_data.size(); ++i) {
+    const auto status =
+        StaticCastIfInRange(field_name, input_data[i], output_data[i]);
+    if (!status.ok()) [[unlikely]] {
+      return status;
+    }
+  }
+  return absl::OkStatus();
 }
 
 /*!\brief Looks up a key in a map and returns a status or value.

@@ -22,6 +22,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -155,18 +156,15 @@ absl::Status FillRenderingConfig(
       "RenderingConfig.reserved", input_rendering_config.reserved(),
       rendering_config.reserved));
 
-  rendering_config.rendering_config_extension_size =
+  const auto user_size =
       input_rendering_config.rendering_config_extension_size();
-
-  rendering_config.rendering_config_extension_bytes.reserve(
-      input_rendering_config.rendering_config_extension_size());
-  for (const char& c :
-       input_rendering_config.rendering_config_extension_bytes()) {
-    rendering_config.rendering_config_extension_bytes.push_back(
-        static_cast<uint8_t>(c));
-  }
-
-  return absl::OkStatus();
+  rendering_config.rendering_config_extension_size = user_size;
+  rendering_config.rendering_config_extension_bytes.resize(user_size);
+  return StaticCastSpanIfInRange(
+      "rendering_config_extension_bytes",
+      absl::MakeConstSpan(
+          input_rendering_config.rendering_config_extension_bytes()),
+      absl::MakeSpan(rendering_config.rendering_config_extension_bytes));
 }
 
 // Prefers selecting `element_mix_gain` (IAMF v1.1.0 field) if it present over
@@ -442,16 +440,13 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
     // Not using layout extension.
     return absl::OkStatus();
   }
-
-  output_loudness.layout_extension.info_type_size =
-      user_loudness.info_type_size();
-  output_loudness.layout_extension.info_type_bytes.reserve(
-      user_loudness.info_type_bytes().size());
-  for (const char& c : user_loudness.info_type_bytes()) {
-    output_loudness.layout_extension.info_type_bytes.push_back(
-        static_cast<uint8_t>(c));
-  }
-  return absl::OkStatus();
+  auto user_size = user_loudness.info_type_size();
+  output_loudness.layout_extension.info_type_size = user_size;
+  output_loudness.layout_extension.info_type_bytes.resize(user_size);
+  return StaticCastSpanIfInRange(
+      "layout_extension_bytes",
+      absl::MakeConstSpan(user_loudness.info_type_bytes()),
+      absl::MakeSpan(output_loudness.layout_extension.info_type_bytes));
 }
 
 absl::Status MixPresentationGenerator::Generate(

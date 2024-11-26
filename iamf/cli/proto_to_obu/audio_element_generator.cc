@@ -26,6 +26,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
@@ -192,26 +193,24 @@ absl::Status GenerateParameterDefinitions(
         return InvalidArgumentError(
             "Mix gain parameters are not permitted in audio elements.");
       default: {
-        auto extended_param_definition =
+        const auto& user_param_definition =
+            user_data_parameter.param_definition_extension();
+        auto metadata_param_definition =
             std::make_unique<ExtendedParamDefinition>(
                 audio_element_param.param_definition_type);
-        extended_param_definition->param_definition_size_ =
-            user_data_parameter.param_definition_extension()
-                .param_definition_size();
-
-        auto& metadata_extension_bytes =
-            user_data_parameter.param_definition_extension()
-                .param_definition_bytes();
-
-        extended_param_definition->param_definition_bytes_.reserve(
-            metadata_extension_bytes.size());
-        for (const char& c : metadata_extension_bytes) {
-          extended_param_definition->param_definition_bytes_.push_back(
-              static_cast<uint8_t>(c));
-        }
+        // Copy the extension bytes.
+        metadata_param_definition->param_definition_size_ =
+            user_param_definition.param_definition_size();
+        metadata_param_definition->param_definition_bytes_.resize(
+            user_param_definition.param_definition_size());
+        RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
+            "param_definition_bytes",
+            absl::MakeConstSpan(user_param_definition.param_definition_bytes()),
+            absl::MakeSpan(
+                metadata_param_definition->param_definition_bytes_)));
 
         audio_element_param.param_definition =
-            std::move(extended_param_definition);
+            std::move(metadata_param_definition);
       } break;
     }
   }
