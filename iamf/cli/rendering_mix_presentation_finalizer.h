@@ -166,9 +166,10 @@ class RenderingMixPresentationFinalizer {
    * the loudness of the rendered samples which can be used once Finalize() is
    * called.
    *
-   * \param audio_elements Input Audio Element OBUs with data.
    * \param id_to_labeled_frame Data structure of samples for a given timestamp,
    *        keyed by audio element ID and channel label.
+   * \param start_timestamp Start timestamp of this temporal unit.
+   * \param end_timestamp End timestamp of this temporal unit.
    * \param parameter_blocks_start Start of the Input Parameter Block OBUs
    *        associated with this temporal unit.
    * \param parameter_blocks_end End of the Input Parameter Block OBUs
@@ -178,8 +179,8 @@ class RenderingMixPresentationFinalizer {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PushTemporalUnit(
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const IdLabeledFrameMap& id_to_labeled_frame,
+      const IdLabeledFrameMap& id_to_labeled_frame, int32_t start_timestamp,
+      int32_t end_timestamp,
       const std::list<ParameterBlockWithData>::const_iterator&
           parameter_blocks_start,
       const std::list<ParameterBlockWithData>::const_iterator&

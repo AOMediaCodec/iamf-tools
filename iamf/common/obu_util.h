@@ -150,7 +150,7 @@ namespace obu_util_internal {
 constexpr double kMaxInt32PlusOneAsDouble =
     static_cast<double>(std::numeric_limits<int32_t>::max()) + 1.0;
 
-}
+}  // namespace obu_util_internal
 
 /*!\brief Normalizes the input value to a floating point in the range [-1, +1].
  *
