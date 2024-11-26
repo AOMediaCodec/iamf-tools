@@ -19,7 +19,6 @@
 #include <fstream>
 #include <ios>
 #include <limits>
-#include <string>
 #include <vector>
 
 #include "absl/log/check.h"
@@ -27,7 +26,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -167,19 +165,6 @@ bool IsNativeBigEndian() {
   } else {
     CHECK(false) << "Mixed-endian systems are not supported.";
   }
-}
-
-absl::Status ValidateVectorSizeEqual(const std::string& field_name,
-                                     size_t vector_size,
-                                     DecodedUleb128 obu_reported_size) {
-  if (vector_size == obu_reported_size) [[likely]] {
-    return absl::OkStatus();
-  }
-  auto error_message = absl::StrCat(
-      "Found inconsistency with `", field_name, ".size()`= ", vector_size,
-      ". Expected a value of ", obu_reported_size, ".");
-  LOG(ERROR) << error_message;
-  return absl::InvalidArgumentError(error_message);
 }
 
 }  // namespace iamf_tools

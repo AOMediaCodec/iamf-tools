@@ -281,9 +281,8 @@ absl::Status RenderAmbisonicsToLoudspeakers(
                 ambisonics_config.ambisonics_config)
                 .output_channel_count;
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-      "gains", gains.size(),
-      static_cast<DecodedUleb128>(output_channel_count)));
+  RETURN_IF_NOT_OK(
+      ValidateContainerSizeEqual("gains", gains, output_channel_count));
 
   RenderSamplesUsingGains(input_samples, gains,
                           is_mono ? nullptr

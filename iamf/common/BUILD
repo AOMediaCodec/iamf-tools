@@ -18,7 +18,6 @@ cc_library(
     hdrs = ["obu_util.h"],
     deps = [
         ":macros",
-        "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",

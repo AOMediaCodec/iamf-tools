@@ -33,11 +33,11 @@ absl::Status ExtensionParameterData::ReadAndValidate(
 }
 
 absl::Status ExtensionParameterData::Write(
-    const PerIdParameterMetadata& per_id_metadata, WriteBitBuffer& wb) const {
+    const PerIdParameterMetadata& /*per_id_metadata*/,
+    WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_data_size));
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("parameter_data_bytes",
-                                           parameter_data_bytes.size(),
-                                           parameter_data_size));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+      "parameter_data_bytes", parameter_data_bytes, parameter_data_size));
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(parameter_data_bytes));
   return absl::OkStatus();
 }

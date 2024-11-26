@@ -14,12 +14,10 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -33,7 +31,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -237,18 +234,29 @@ bool IsNativeBigEndian();
 
 /*!\brief Returns an error if the size arguments are not equivalent.
  *
- * Intended to be used in OBUs to ensure the reported and actual size of vectors
- * are equivalent.
+ * Intended to be used in OBUs to ensure the reported and actual size of
+ * containers are equivalent.
  *
- * \param field_name Value to insert into the error message.
- * \param vector_size Size of the vector.
- * \param obu_reported_size Size reported in the OBU.
+ * \param field_name Field name of the container to insert into the error
+ *                   message.
+ * \param container Container to check the size of.
+ * \param reported_size Size reported by associated fields (e.g. "*_size" fields
+ *                      in the OBU).
  * \return `absl::OkStatus()` if the size arguments are equivalent.
  *         `absl::InvalidArgumentError()` otherwise.
  */
-absl::Status ValidateVectorSizeEqual(const std::string& field_name,
-                                     size_t vector_size,
-                                     DecodedUleb128 obu_reported_size);
+template <typename Container, typename ReportedSize>
+absl::Status ValidateContainerSizeEqual(absl::string_view field_name,
+                                        const Container& container,
+                                        ReportedSize reported_size) {
+  const auto actual_size = container.size();
+  if (actual_size == reported_size) [[likely]] {
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Found inconsistency with `", field_name, ".size()`= ", actual_size,
+      ". Expected a value of ", reported_size, "."));
+}
 
 /*!\brief Looks up a key in a map and returns a status or value.
  *

@@ -67,10 +67,10 @@ absl::Status ValidateAndWriteSubMixAudioElement(
     WriteBitBuffer& wb) {
   // Write the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(element.audio_element_id));
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       absl::StrCat("localized_element_annotations with audio_element_id= ",
                    element.audio_element_id),
-      element.localized_element_annotations.size(), count_label));
+      element.localized_element_annotations, count_label));
   for (const auto& localized_element_annotation :
        element.localized_element_annotations) {
     RETURN_IF_NOT_OK(wb.WriteString(localized_element_annotation));
@@ -84,9 +84,9 @@ absl::Status ValidateAndWriteSubMixAudioElement(
       static_cast<uint8_t>(element.rendering_config.reserved), 6));
   RETURN_IF_NOT_OK(wb.WriteUleb128(
       element.rendering_config.rendering_config_extension_size));
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "rendering_config_extension_bytes",
-      element.rendering_config.rendering_config_extension_bytes.size(),
+      element.rendering_config.rendering_config_extension_bytes,
       element.rendering_config.rendering_config_extension_size));
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(
       element.rendering_config.rendering_config_extension_bytes));
@@ -138,9 +138,9 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
         layout.loudness.anchored_loudness;
     RETURN_IF_NOT_OK(
         wb.WriteUnsignedLiteral(anchored_loudness.num_anchored_loudness, 8));
-    RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-        "anchor_elements", anchored_loudness.anchor_elements.size(),
-        static_cast<uint32_t>(anchored_loudness.num_anchored_loudness)));
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+        "anchor_elements", anchored_loudness.anchor_elements,
+        anchored_loudness.num_anchored_loudness));
     for (const auto& anchor_element : anchored_loudness.anchor_elements) {
       RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
           static_cast<uint8_t>(anchor_element.anchor_element), 8));
@@ -151,9 +151,8 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   if ((layout.loudness.info_type & LoudnessInfo::kAnyLayoutExtension) != 0) {
     RETURN_IF_NOT_OK(
         wb.WriteUleb128(layout.loudness.layout_extension.info_type_size));
-    RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-        "info_type_bytes",
-        layout.loudness.layout_extension.info_type_bytes.size(),
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+        "info_type_bytes", layout.loudness.layout_extension.info_type_bytes,
         layout.loudness.layout_extension.info_type_size));
     RETURN_IF_NOT_OK(
         wb.WriteUint8Vector(layout.loudness.layout_extension.info_type_bytes));
@@ -173,9 +172,8 @@ absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
   RETURN_IF_NOT_OK(wb.WriteUleb128(sub_mix.num_audio_elements));
 
   // Loop to write the `audio_elements` array.
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("audio_elements",
-                                           sub_mix.audio_elements.size(),
-                                           sub_mix.num_audio_elements));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+      "audio_elements", sub_mix.audio_elements, sub_mix.num_audio_elements));
   for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
     RETURN_IF_NOT_OK(ValidateAndWriteSubMixAudioElement(
         count_label, sub_mix_audio_element, wb));
@@ -186,8 +184,8 @@ absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
 
   // Loop to write the `layouts` array.
   bool found_stereo_layout = false;
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("layouts", sub_mix.layouts.size(),
-                                           sub_mix.num_layouts));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("layouts", sub_mix.layouts,
+                                              sub_mix.num_layouts));
   for (const auto& layout : sub_mix.layouts) {
     RETURN_IF_NOT_OK(ValidateAndWriteLayout(layout, found_stereo_layout, wb));
   }
@@ -347,7 +345,7 @@ absl::Status ValidateCompliesWithIso639_2(absl::string_view string) {
 
 absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_tags, 8));
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("tags", tags.size(), num_tags));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("tags", tags, num_tags));
 
   int count_content_language_tag = 0;
 
@@ -459,17 +457,17 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
       annotations_language_.begin(), annotations_language_.end(),
       absl::StrCat("annotations_language", with_mix_presentation_id)));
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       absl::StrCat("annotations_language", with_mix_presentation_id),
-      annotations_language_.size(), count_label_));
+      annotations_language_, count_label_));
   for (const auto& annotations_language : annotations_language_) {
     RETURN_IF_NOT_OK(wb.WriteString(annotations_language));
   }
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       absl::StrCat("localized_presentation_annotation",
                    with_mix_presentation_id),
-      localized_presentation_annotations_.size(), count_label_));
+      localized_presentation_annotations_, count_label_));
   for (const auto& localized_presentation_annotation :
        localized_presentation_annotations_) {
     RETURN_IF_NOT_OK(wb.WriteString(localized_presentation_annotation));
@@ -481,7 +479,7 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes_));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
   RETURN_IF_NOT_OK(
-      ValidateVectorSizeEqual("sub_mixes", sub_mixes_.size(), num_sub_mixes_));
+      ValidateContainerSizeEqual("sub_mixes", sub_mixes_, num_sub_mixes_));
   for (const auto& sub_mix : sub_mixes_) {
     RETURN_IF_NOT_OK(ValidateAndWriteSubMix(count_label_, sub_mix, wb));
   }

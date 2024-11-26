@@ -231,8 +231,8 @@ absl::Status ParamDefinition::Validate() const {
 
     // Check if the `subblock_durations` is included.
     if (IncludeSubblockDurationArray()) {
-      RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-          "subblock_durations", subblock_durations_.size(), num_subblocks_));
+      RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+          "subblock_durations", subblock_durations_, num_subblocks_));
 
       // Loop to add cumulative durations.
       uint32_t total_subblock_durations = 0;
@@ -316,9 +316,9 @@ absl::Status ExtendedParamDefinition::ValidateAndWrite(
   // This class does not write the base class's data, i.e. it doesn't call
   // `ParamDefinition::ValidateAndWrite(wb)`.
   RETURN_IF_NOT_OK(wb.WriteUleb128(param_definition_size_));
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("param_definition_bytes_",
-                                           param_definition_bytes_.size(),
-                                           param_definition_size_));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("param_definition_bytes_",
+                                              param_definition_bytes_,
+                                              param_definition_size_));
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(param_definition_bytes_));
 
   return absl::OkStatus();

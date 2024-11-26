@@ -43,6 +43,7 @@ using ::testing::HasSubstr;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
+constexpr std::array<int, 4> kFourTestValues = {1, 2, 3, 4};
 
 TEST(AddUint32CheckOverflow, SmallInput) {
   uint32_t result;
@@ -878,6 +879,31 @@ TEST(WritePcmSample, InvalidOver32Bits) {
                            write_position)
                 .code(),
             absl::StatusCode::kInvalidArgument);
+}
+
+TEST(ValidateContainerSizeEqual, OkIfArgsAreEqual) {
+  constexpr uint8_t kReportedSizeFour = 4;
+
+  EXPECT_THAT(ValidateContainerSizeEqual(kOmitContext, kFourTestValues,
+                                         kReportedSizeFour),
+              IsOk());
+}
+
+TEST(ValidateContainerSizeEqual, NotOkIfArgsAreNotEquals) {
+  constexpr uint8_t kInaccurateSizeFive = 5;
+
+  EXPECT_FALSE(
+      ValidateContainerSizeEqual("", kFourTestValues, kInaccurateSizeFive)
+          .ok());
+}
+
+TEST(ValidateContainerSizeEqual, MessageContainsContextOnError) {
+  constexpr uint8_t kInaccurateSizeFive = 5;
+
+  EXPECT_THAT(ValidateContainerSizeEqual(kCustomUserContext, kFourTestValues,
+                                         kInaccurateSizeFive)
+                  .message(),
+              HasSubstr(kCustomUserContext));
 }
 
 TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {

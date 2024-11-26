@@ -73,9 +73,9 @@ absl::Status Validate(const ObuHeader& header) {
         "but `extension_header_size_` indicates there is one.");
   }
 
-  RETURN_IF_NOT_OK(ValidateVectorSizeEqual("extension_header_bytes_",
-                                           header.extension_header_bytes.size(),
-                                           header.extension_header_size));
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("extension_header_bytes_",
+                                              header.extension_header_bytes,
+                                              header.extension_header_size));
 
   // Validate IAMF imposed requirements.
   if (header.obu_redundant_copy && !IsRedundantCopyAllowed(header.obu_type)) {
@@ -106,9 +106,9 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
   // These fields are conditionally in the OBU.
   if (header.obu_extension_flag) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.extension_header_size));
-    RETURN_IF_NOT_OK(ValidateVectorSizeEqual(
-        "extension_header_bytes_", header.extension_header_bytes.size(),
-        header.extension_header_size));
+    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("extension_header_bytes_",
+                                                header.extension_header_bytes,
+                                                header.extension_header_size));
     RETURN_IF_NOT_OK(wb.WriteUint8Vector(header.extension_header_bytes));
   }
 
