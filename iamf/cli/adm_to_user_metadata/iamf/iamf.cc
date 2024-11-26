@@ -221,8 +221,7 @@ absl::Status ComputeNumSamplesPerFrame(uint32_t max_frame_duration_ms,
 
 }  // namespace
 
-IAMF::IAMF(absl::string_view file_prefix,
-           const std::map<int32_t, AudioObjectsAndMetadata>&
+IAMF::IAMF(const std::map<int32_t, AudioObjectsAndMetadata>&
                mix_presentation_id_to_audio_objects_and_metadata,
            const std::map<std::string, uint32_t>& audio_object_to_audio_element,
            int64_t num_samples_per_frame, uint32_t samples_per_sec,
@@ -232,12 +231,10 @@ IAMF::IAMF(absl::string_view file_prefix,
       audio_object_to_audio_element_(audio_object_to_audio_element),
       num_samples_per_frame_(num_samples_per_frame),
       input_layouts_(input_layouts),
-      audio_frame_handler_(file_prefix),
       mix_presentation_handler_(samples_per_sec,
                                 audio_object_to_audio_element) {}
 
-absl::StatusOr<IAMF> IAMF::Create(absl::string_view file_prefix, const ADM& adm,
-                                  int32_t max_frame_duration_ms,
+absl::StatusOr<IAMF> IAMF::Create(const ADM& adm, int32_t max_frame_duration_ms,
                                   uint32_t samples_per_sec) {
   int64_t num_samples_per_frame;
   if (const auto status = ComputeNumSamplesPerFrame(
@@ -265,7 +262,7 @@ absl::StatusOr<IAMF> IAMF::Create(absl::string_view file_prefix, const ADM& adm,
                           mix_presentation_id_to_audio_objects_and_metadata,
                           audio_object_to_audio_element);
 
-  return IAMF(file_prefix, mix_presentation_id_to_audio_objects_and_metadata,
+  return IAMF(mix_presentation_id_to_audio_objects_and_metadata,
               audio_object_to_audio_element, num_samples_per_frame,
               samples_per_sec, input_layouts);
 }

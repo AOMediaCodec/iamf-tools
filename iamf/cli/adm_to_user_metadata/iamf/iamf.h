@@ -19,9 +19,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/audio_frame_handler.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/mix_presentation_handler.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
@@ -45,15 +43,13 @@ class IAMF {
 
   /*!\brief Creates an `IAMF` object.
    *
-   * \param file_prefix File prefix to use when naming output wav files.
    * \param adm ADM data to initialize with.
    * \param max_frame_duration_ms Maximum frame duration in milliseconds. The
    *        actual frame duration may be shorter due to rounding.
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
    * \return `IAMF` object or a specific error code on failure.
    */
-  static absl::StatusOr<IAMF> Create(absl::string_view file_prefix,
-                                     const ADM& adm, int32_t frame_duration_ms,
+  static absl::StatusOr<IAMF> Create(const ADM& adm, int32_t frame_duration_ms,
                                      uint32_t samples_per_sec);
 
   const std::map<int32_t, AudioObjectsAndMetadata>
@@ -65,13 +61,11 @@ class IAMF {
   const std::vector<IamfInputLayout> input_layouts_;
 
   AudioElementMetadataBuilder audio_element_metadata_builder_;
-  const AudioFrameHandler audio_frame_handler_;
   MixPresentationHandler mix_presentation_handler_;
 
  private:
   /*!\brief Constructor.
    *
-   * \param file_prefix File prefix to use when naming output wav files.
    * \param mix_presentation_id_to_audio_objects_and_metadata Map of mix
    *        presentation IDs to audio objects and metadata to initialize with.
    * \param audio_object_to_audio_element Map of audio object reference IDs to
@@ -80,8 +74,7 @@ class IAMF {
    * \param samples_per_sec Sample rate of the input audio files in Hertz.
    * \param input_layouts Vector of iamf input layouts format ids.
    */
-  IAMF(absl::string_view file_prefix,
-       const std::map<int32_t, AudioObjectsAndMetadata>&
+  IAMF(const std::map<int32_t, AudioObjectsAndMetadata>&
            mix_presentation_id_to_audio_objects_and_metadata,
        const std::map<std::string, uint32_t>& audio_object_to_audio_element,
        int64_t num_samples_per_frame, uint32_t samples_per_sec,

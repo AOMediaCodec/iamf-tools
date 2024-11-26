@@ -1,18 +1,4 @@
 cc_test(
-    name = "audio_frame_handler_test",
-    srcs = ["audio_frame_handler_test.cc"],
-    deps = [
-        "//iamf/cli:channel_label",
-        "//iamf/cli/adm_to_user_metadata/iamf:audio_frame_handler",
-        "//iamf/cli/proto:audio_frame_cc_proto",
-        "//iamf/cli/user_metadata_builder:iamf_input_layout",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "ia_sequence_header_obu_metadata_handler_test",
     srcs = ["ia_sequence_header_obu_metadata_handler_test.cc"],
     deps = [

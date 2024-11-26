@@ -10,11 +10,10 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_ADM_TO_USER_METADATA_IAMF_AUDIO_FRAME_HANDLER_H_
-#define CLI_ADM_TO_USER_METADATA_IAMF_AUDIO_FRAME_HANDLER_H_
+#ifndef CLI_USER_METADATA_BUILDER_AUDIO_FRAME_METADATA_BUILDER_H_
+#define CLI_USER_METADATA_BUILDER_AUDIO_FRAME_METADATA_BUILDER_H_
 
 #include <cstdint>
-#include <string>
 
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
@@ -22,48 +21,35 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 namespace iamf_tools {
-namespace adm_to_user_metadata {
 
 /*!\brief Helps create consistent audio frame metadatas for an IAMF stream.
  *
  * In `iamf-tools` this metadata is typically associated in a 1:1 mapping with
  * an audio element.
  *
- * IAMF v1.1.0 REQUIRES certain fields to be consistent across all audio
- * substreams in a given IAMF stream (e.g. `num_samples_to_trim_at_end`,
- * `num_samples_to_trim_at_start`). This class helps enforce that by
- * generating consistent audio frame metadata.
- *
  * `PopulateAudioFrameMetadata()` will generate a single audio frame metadata.
  * It can be called multiple times to generate additional audio frame
  * metadatas.
+ *
+ * The generated metadatas have a channel mapping consistent with an ITU-2051-3
+ * layout.
  */
-class AudioFrameHandler {
+class AudioFrameMetadataBuilder {
  public:
-  /*!\brief Constructor.
-   *
-   * \param file_prefix Prefix for associated wav files.
-   */
-  AudioFrameHandler(absl::string_view file_prefix)
-      : file_prefix_(file_prefix) {};
-
   /*!\brief Populates a `AudioFrameMetadata`.
    *
+   * \param wav_filename Name of the associated wav file.
    * \param audio_element_id ID of the associated audio element.
    * \param input_layout Input layout of the associated audio element.
    * \param file_suffix Suffix to include in the file name
    * \param audio_frame_metadata Data to populate.
    */
-  absl::Status PopulateAudioFrameMetadata(
-      absl::string_view file_suffix, int32_t audio_element_id,
+  static absl::Status PopulateAudioFrameMetadata(
+      absl::string_view wav_filename, uint32_t audio_element_id,
       IamfInputLayout input_layout,
-      iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_obu_metadata)
-      const;
-
-  const std::string file_prefix_;
+      iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_obu_metadata);
 };
 
-}  // namespace adm_to_user_metadata
 }  // namespace iamf_tools
 
-#endif  // CLI_ADM_TO_USER_METADATA_IAMF_AUDIO_FRAME_HANDLER_H_
+#endif  // CLI_USER_METADATA_BUILDER_AUDIO_FRAME_METADATA_BUILDER_H_
