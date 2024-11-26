@@ -21,11 +21,11 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/audio_element_handler.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/audio_frame_handler.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/mix_presentation_handler.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -64,7 +64,7 @@ class IAMF {
   const int64_t num_samples_per_frame_;
   const std::vector<IamfInputLayout> input_layouts_;
 
-  AudioElementHandler audio_element_handler_;
+  AudioElementMetadataBuilder audio_element_metadata_builder_;
   const AudioFrameHandler audio_frame_handler_;
   MixPresentationHandler mix_presentation_handler_;
 

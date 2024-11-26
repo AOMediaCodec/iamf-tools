@@ -22,9 +22,9 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {

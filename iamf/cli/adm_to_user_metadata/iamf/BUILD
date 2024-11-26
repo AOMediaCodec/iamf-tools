@@ -3,33 +3,15 @@ package(default_visibility = [
 ])
 
 cc_library(
-    name = "audio_element_handler",
-    srcs = ["audio_element_handler.cc"],
-    hdrs = ["audio_element_handler.h"],
-    deps = [
-        ":iamf_input_layout",
-        "//iamf/cli/proto:audio_element_cc_proto",
-        "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/common:obu_util",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
     name = "audio_frame_handler",
     srcs = ["audio_frame_handler.cc"],
     hdrs = [
         "audio_frame_handler.h",
     ],
     deps = [
-        ":iamf_input_layout",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:obu_util",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -59,12 +41,12 @@ cc_library(
     hdrs = ["iamf.h"],
     visibility = ["//iamf/cli/adm_to_user_metadata/iamf/tests:__pkg__"],
     deps = [
-        ":audio_element_handler",
         ":audio_frame_handler",
-        ":iamf_input_layout",
         ":mix_presentation_handler",
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -74,28 +56,15 @@ cc_library(
 )
 
 cc_library(
-    name = "iamf_input_layout",
-    srcs = ["iamf_input_layout.cc"],
-    hdrs = ["iamf_input_layout.h"],
-    deps = [
-        "//iamf/common:obu_util",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
     name = "mix_presentation_handler",
     srcs = ["mix_presentation_handler.cc"],
     hdrs = ["mix_presentation_handler.h"],
     deps = [
-        ":iamf_input_layout",
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:obu_util",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",

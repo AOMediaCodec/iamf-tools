@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -19,7 +19,6 @@
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
-namespace adm_to_user_metadata {
 
 absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
     absl::string_view audio_pack_format_id) {
@@ -28,7 +27,7 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
   using enum IamfInputLayout;
   static const absl::NoDestructor<
       absl::flat_hash_map<absl::string_view, IamfInputLayout>>
-      kAudioPackFormatIdToInputLayout({
+      kAudioPackFormatIdToIamfInputLayoutInputLayout({
           {"AP_00010001", IamfInputLayout::kMono},
           {"AP_00010002", IamfInputLayout::kStereo},
           {"AP_00010003", IamfInputLayout::k5_1},
@@ -42,9 +41,9 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
           {"AP_00040003", IamfInputLayout::kAmbisonicsOrder3},
       });
 
-  return LookupInMap(*kAudioPackFormatIdToInputLayout, audio_pack_format_id,
+  return LookupInMap(*kAudioPackFormatIdToIamfInputLayoutInputLayout,
+                     audio_pack_format_id,
                      "`IamfInputLayout` for `audio_pack_format_id`");
 }
 
-}  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

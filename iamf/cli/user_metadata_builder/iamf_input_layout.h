@@ -10,15 +10,19 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_ADM_TO_USER_METADATA_IAMF_IAMF_INPUT_LAYOUT_H_
-#define CLI_ADM_TO_USER_METADATA_IAMF_IAMF_INPUT_LAYOUT_H_
+#ifndef CLI_USER_METADATA_BUILDER_IAMF_INPUT_LAYOUT_H_
+#define CLI_USER_METADATA_BUILDER_IAMF_INPUT_LAYOUT_H_
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 namespace iamf_tools {
-namespace adm_to_user_metadata {
 
-/*!\brief Input layout of an IAMF Audio Element. */
+/*!\brief Input layout of an IAMF Audio Element.
+ *
+ * Used as a generalization of types an audio element can represent. Even when
+ * the OBU may represent them using different structures (i.e. this type
+ * captures both `AUDIO_ELEMENT_CHANNEL_BASED` and `AUDIO_ELEMENT_SCENE_BASED`).
+ */
 enum class IamfInputLayout {
   kMono,
   kStereo,
@@ -51,7 +55,6 @@ enum class IamfInputLayout {
 absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
     absl::string_view audio_pack_format_id);
 
-}  // namespace adm_to_user_metadata
 }  // namespace iamf_tools
 
-#endif  // CLI_ADM_TO_USER_METADATA_IAMF_IAMF_INPUT_LAYOUT_H_
+#endif  // CLI_USER_METADATA_BUILDER_IAMF_INPUT_LAYOUT_H_

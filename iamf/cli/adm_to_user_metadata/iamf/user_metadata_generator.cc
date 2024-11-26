@@ -100,8 +100,8 @@ UserMetadataGenerator::GenerateUserMetadata(
   constexpr int32_t kFirstAudioElementId = 0;
   if (adm_.audio_programmes.empty()) {
     if (const auto status =
-            iamf->audio_element_handler_.PopulateAudioElementMetadata(
-                kFirstAudioElementId, iamf->input_layouts_[0],
+            iamf->audio_element_metadata_builder_.PopulateAudioElementMetadata(
+                kFirstAudioElementId, kCodecConfigId, iamf->input_layouts_[0],
                 *user_metadata.add_audio_element_metadata());
         !status.ok()) {
       return status;
@@ -110,9 +110,11 @@ UserMetadataGenerator::GenerateUserMetadata(
     for (const auto& [unused_audio_object_id, audio_element_id] :
          iamf->audio_object_to_audio_element_) {
       if (const auto status =
-              iamf->audio_element_handler_.PopulateAudioElementMetadata(
-                  audio_element_id, iamf->input_layouts_[audio_element_id],
-                  *user_metadata.add_audio_element_metadata());
+              iamf->audio_element_metadata_builder_
+                  .PopulateAudioElementMetadata(
+                      audio_element_id, kCodecConfigId,
+                      iamf->input_layouts_[audio_element_id],
+                      *user_metadata.add_audio_element_metadata());
           !status.ok()) {
         return status;
       }

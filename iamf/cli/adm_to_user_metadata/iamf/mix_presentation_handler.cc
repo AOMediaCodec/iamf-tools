@@ -24,10 +24,10 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
@@ -122,7 +122,7 @@ absl::Status SetDefaultLoudnessLayout(
   return CopyLoudness(loudness_metadata, *layout->mutable_loudness());
 }
 
-absl::Status SubMixAudioElementHandler(
+absl::Status SubMixAudioElementMetadataBuilder(
     const AudioObject& audio_object, uint32_t audio_element_id,
     uint32_t common_parameter_rate,
     iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
@@ -226,7 +226,7 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
       *mix_presentation_obu_metadata.add_sub_mixes();
   mix_presentation_sub_mix.set_num_audio_elements(audio_objects.size());
   for (const auto& audio_object : audio_objects) {
-    const auto status = SubMixAudioElementHandler(
+    const auto status = SubMixAudioElementMetadataBuilder(
         audio_object, audio_object_id_to_audio_element_id_[audio_object.id],
         common_parameter_rate_, *mix_presentation_sub_mix.add_audio_elements());
     if (!status.ok()) {

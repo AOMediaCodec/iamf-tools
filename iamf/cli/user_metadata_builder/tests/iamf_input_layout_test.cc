@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"

@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/adm_to_user_metadata/iamf/audio_element_handler.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 
 #include <cstdint>
 
@@ -19,13 +19,12 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
-namespace adm_to_user_metadata {
 
 namespace {
 
@@ -130,7 +129,8 @@ absl::Status PopulateChannelBasedAudioElementMetadata(
     IamfInputLayout input_layout, int32_t num_substreams,
     iamf_tools_cli_proto::ScalableChannelLayoutConfig&
         scalable_channel_layout_config) {
-  // 'num_layers' is  set to 1 as ADM does not support scalable channels.
+  // Simplistically choose one layer. This most closely matches other popular
+  // formats (e.g. ADM).
   scalable_channel_layout_config.set_num_layers(1);
 
   auto* channel_audio_layer_config =
@@ -143,8 +143,8 @@ absl::Status PopulateChannelBasedAudioElementMetadata(
   }
   channel_audio_layer_config->set_loudspeaker_layout(*loudspeaker_layout);
 
-  // Set 'output_gain_is_present_flag' and 'recon_gain_is_present_flag' to 0
-  // as ADM does not support scalable channels.
+  // Set 'output_gain_is_present_flag' and 'recon_gain_is_present_flag' to agree
+  // with the single-layer assumption.
   channel_audio_layer_config->set_output_gain_is_present_flag(0);
   channel_audio_layer_config->set_recon_gain_is_present_flag(0);
 
@@ -189,11 +189,12 @@ void PopulateSceneBasedAudioElementMetadata(
 }  // namespace
 
 // Sets the required textproto fields for audio_element_metadata.
-absl::Status AudioElementHandler::PopulateAudioElementMetadata(
-    const int32_t audio_element_id, const IamfInputLayout input_layout,
+absl::Status AudioElementMetadataBuilder::PopulateAudioElementMetadata(
+    uint32_t audio_element_id, uint32_t codec_config_id,
+    const IamfInputLayout input_layout,
     iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_obu_metadata) {
   audio_element_obu_metadata.set_audio_element_id(audio_element_id);
-  audio_element_obu_metadata.set_codec_config_id(0);
+  audio_element_obu_metadata.set_codec_config_id(codec_config_id);
 
   const auto num_substreams = LookupNumSubstreamsFromInputLayout(input_layout);
   if (!num_substreams.ok()) {
@@ -210,8 +211,7 @@ absl::Status AudioElementHandler::PopulateAudioElementMetadata(
     ++audio_stream_id_counter_;
   }
 
-  // Set 'num_parameters' to zero as ADM does not have the concept of scalable
-  // channels.
+  // Simplistically set 'num_parameters' to zero.
   audio_element_obu_metadata.set_num_parameters(0);
 
   const auto audio_element_type =
@@ -237,5 +237,4 @@ absl::Status AudioElementHandler::PopulateAudioElementMetadata(
   }
 }
 
-}  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

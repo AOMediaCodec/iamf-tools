@@ -10,15 +10,16 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/adm_to_user_metadata/iamf/audio_element_handler.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 
 #include <cstdint>
+#include <limits>
 
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_element.pb.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -26,28 +27,54 @@ namespace {
 
 using ::absl_testing::IsOk;
 
-const int32_t kAudioElementId = 999;
+constexpr uint32_t kLargeAudioElementId = std::numeric_limits<uint32_t>::max();
+constexpr uint32_t kAudioElementId = 999;
+constexpr uint32_t kCodecConfigId = 1000;
 
 TEST(PopulateAudioElementMetadata, SetsAudioElementId) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
-  AudioElementHandler audio_element_handler;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
 
-  EXPECT_THAT(
-      audio_element_handler.PopulateAudioElementMetadata(
-          kAudioElementId, IamfInputLayout::kStereo, audio_element_metadata),
-      IsOk());
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
+                  audio_element_metadata),
+              IsOk());
 
   EXPECT_EQ(audio_element_metadata.audio_element_id(), kAudioElementId);
 }
 
+TEST(PopulateAudioElementMetadata, SetsLargeAudioElementId) {
+  iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
+
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kLargeAudioElementId, kCodecConfigId,
+                  IamfInputLayout::kStereo, audio_element_metadata),
+              IsOk());
+
+  EXPECT_EQ(audio_element_metadata.audio_element_id(), kLargeAudioElementId);
+}
+
+TEST(PopulateAudioElementMetadata, SetsCodecConfigId) {
+  iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
+
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
+                  audio_element_metadata),
+              IsOk());
+
+  EXPECT_EQ(audio_element_metadata.codec_config_id(), kCodecConfigId);
+}
+
 TEST(PopulateAudioElementMetadata, ConfiguresStereo) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
-  AudioElementHandler audio_element_handler;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
 
-  EXPECT_THAT(
-      audio_element_handler.PopulateAudioElementMetadata(
-          kAudioElementId, IamfInputLayout::kStereo, audio_element_metadata),
-      IsOk());
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
+                  audio_element_metadata),
+              IsOk());
 
   EXPECT_EQ(audio_element_metadata.num_substreams(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 1);
@@ -71,12 +98,12 @@ TEST(PopulateAudioElementMetadata, ConfiguresStereo) {
 
 TEST(PopulateAudioElementMetadata, ConfiguresLoudspeakerLayoutForBinaural) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
-  AudioElementHandler audio_element_handler;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
 
-  EXPECT_THAT(
-      audio_element_handler.PopulateAudioElementMetadata(
-          kAudioElementId, IamfInputLayout::kBinaural, audio_element_metadata),
-      IsOk());
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kBinaural,
+                  audio_element_metadata),
+              IsOk());
   ASSERT_TRUE(audio_element_metadata.has_scalable_channel_layout_config());
 
   EXPECT_EQ(audio_element_metadata.scalable_channel_layout_config()
@@ -87,11 +114,11 @@ TEST(PopulateAudioElementMetadata, ConfiguresLoudspeakerLayoutForBinaural) {
 
 TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
-  AudioElementHandler audio_element_handler;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
 
-  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
-                  kAudioElementId, IamfInputLayout::kAmbisonicsOrder1,
-                  audio_element_metadata),
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId,
+                  IamfInputLayout::kAmbisonicsOrder1, audio_element_metadata),
               IsOk());
 
   EXPECT_EQ(audio_element_metadata.num_substreams(), 4);
@@ -119,13 +146,13 @@ TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
 TEST(PopulateAudioElementMetadata, GeneratesUniqueSubstreamIds) {
   iamf_tools_cli_proto::AudioElementObuMetadata first_audio_element_metadata;
   iamf_tools_cli_proto::AudioElementObuMetadata second_audio_element_metadata;
-  AudioElementHandler audio_element_handler;
-  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
-                  kAudioElementId, IamfInputLayout::kStereo,
+  AudioElementMetadataBuilder audio_element_metadata_builder;
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
                   first_audio_element_metadata),
               IsOk());
-  EXPECT_THAT(audio_element_handler.PopulateAudioElementMetadata(
-                  kAudioElementId + 1, IamfInputLayout::kStereo,
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId + 1, kCodecConfigId, IamfInputLayout::kStereo,
                   second_audio_element_metadata),
               IsOk());
 

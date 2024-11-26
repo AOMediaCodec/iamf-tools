@@ -18,8 +18,8 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/adm_to_user_metadata/iamf/iamf_input_layout.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
