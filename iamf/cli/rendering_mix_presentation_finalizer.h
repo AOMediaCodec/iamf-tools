@@ -84,7 +84,7 @@ class RenderingMixPresentationFinalizer {
     uint8_t loudness_calculator_bit_depth;
     std::vector<SubMixAudioElement> audio_elements_in_sub_mix;
     // Mix gain applied to the entire submix.
-    MixGainParamDefinition mix_gain;
+    std::unique_ptr<MixGainParamDefinition> mix_gain;
     // This vector will contain one LayoutRenderingMetadata per layout in the
     // submix.
     std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
