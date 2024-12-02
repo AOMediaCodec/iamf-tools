@@ -192,7 +192,7 @@ TEST(ObuBaseTest, ReadsFooterWhenObuSizeIsTooLarge) {
   const auto obu =
       OneByteObu::CreateFromBuffer(ObuHeader(), kSizeWithExtraData, rb);
 
-  EXPECT_EQ(rb.buffer_bit_offset(), 32);
+  EXPECT_EQ(rb.Tell(), kSizeWithExtraData * 8);
   ASSERT_THAT(obu, IsOk());
   EXPECT_EQ(obu->footer_, kExtraData);
 }

@@ -42,10 +42,10 @@ class ReadBitBuffer {
    *        64.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 64`. `absl::ResourceExhaustedError()` if the buffer
+   *         `num_bits > 64` or the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer
    *         runs out of data and cannot get more from source before the desired
-   *         `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset`
-   *         is negative.
+   *         `num_bits` are read.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint64_t& output);
 
@@ -55,10 +55,10 @@ class ReadBitBuffer {
    *        32.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 32`. `absl::ResourceExhaustedError()` if the buffer
+   *         `num_bits > 32` or the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer
    *         runs out of data and cannot get more from source before the desired
-   *         `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset`
-   *         is negative.
+   *         `num_bits` are read.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint32_t& output);
 
@@ -68,10 +68,10 @@ class ReadBitBuffer {
    *        16.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 16`. `absl::ResourceExhaustedError()` if the buffer
-   *         runs out of data and cannot get more from source before the desired
-   *         `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset`
-   *         is negative.
+   *         `num_bits > 16` or the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer runs out of data
+   *         and cannot get more from source before the desired `num_bits` are
+   *         read.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint16_t& output);
 
@@ -81,10 +81,10 @@ class ReadBitBuffer {
    *        8.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 8`. `absl::ResourceExhaustedError()` if the buffer runs
+   *         `num_bits > 8` or the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer runs
    *         out of data and cannot get more from source before the desired
-   *         `num_bits` are read.`absl::UnknownError()` if the `rb->bit_offset`
-   *         is negative.
+   *         `num_bits` are read.
    */
   absl::Status ReadUnsignedLiteral(int num_bits, uint8_t& output);
 
@@ -94,7 +94,7 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success.  `absl::ResourceExhaustedError()` if
    *         the buffer is exhausted before the signed 16 is fully read and
    *         source does not have the requisite data to complete the signed 16.
-   *         `absl::UnknownError()` if the `rb->bit_offset` is negative.
+   *         `absl::InvalidArgumentError()` if the `rb->bit_offset` is negative.
    */
   absl::Status ReadSigned16(int16_t& output);
 
@@ -105,8 +105,8 @@ class ReadBitBuffer {
    *         the string is not terminated within `kIamfMaxStringSize` bytes.
    *         `absl::Status::kResourceExhausted` if the buffer is exhausted
    *         before the string is terminated and source does not have the
-   *        requisite data to complete the string. Other specific statuses on
-   *        failure.
+   *         requisite data to complete the string. Other specific statuses on
+   *         failure.
    */
   absl::Status ReadString(std::string& output);
 
@@ -119,10 +119,10 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bits of
    *         uleb128, or if the data in the buffer requires that we read more
-   *         than `kMaxLeb128Size` bytes. `absl::ResourceExhaustedError()` if
-   *         the buffer is exhausted before the uleb128 is fully read and source
-   *         does not have the requisite data to complete the uleb128.
-   *        `absl::UnknownError()` if the `rb->bit_offset` is negative.
+   *         than `kMaxLeb128Size` bytes, or the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer is exhausted before
+   *         the uleb128 is fully read and source does not have the requisite
+   *         data to complete the uleb128.
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128);
 
@@ -137,10 +137,10 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bits of
    *         uleb128, or if the data in the buffer requires that we read more
-   *         than `kMaxLeb128Size` bytes. `absl::ResourceExhaustedError()` if
+   *         than `kMaxLeb128Size` bytes, the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if
    *         the buffer is exhausted before the uleb128 is fully read and
    *         source does not have the requisite data to complete the uleb128.
-   *         `absl::UnknownError()` if the `rb->bit_offset` is negative.
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128,
                            int8_t& encoded_uleb128_size);
@@ -152,10 +152,10 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bit
    *         output, or if the data encoded is larger than the `max_class_size`
-   *         bits. `absl::ResourceExhaustedError()` if the buffer is exhausted
+   *         bits, the `rb->bit_offset` is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer is exhausted
    *         before the expanded field is fully read and source does not have
    *         the requisite data to complete the expanded field.
-   *         `absl::UnknownError()` if the `rb->bit_offset` is negative.
    */
   absl::Status ReadIso14496_1Expanded(uint32_t max_class_size,
                                       uint32_t& size_of_instance);
@@ -165,8 +165,8 @@ class ReadBitBuffer {
    * \param output Span of `uint8_t`s to write to.
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
    *         the buffer runs out of data and cannot get more from source before
-   *         filling the span. `absl::UnknownError()` if the `rb->bit_offset` is
-   *         negative.
+   *         filling the span. `absl::InvalidArgumentError()` if the
+   *         `rb->bit_offset` is negative.
    */
   absl::Status ReadUint8Span(absl::Span<uint8_t> output);
 
@@ -175,68 +175,45 @@ class ReadBitBuffer {
    * \param output Boolean bit from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
    *         the buffer runs out of data and cannot get more from source before
-   *         the desired boolean is read. `absl::UnknownError()` if the
+   *         the desired boolean is read. `absl::InvalidArgumentError()` if the
    *         `rb->bit_offset` is negative.
    */
   absl::Status ReadBoolean(bool& output);
 
-  /*!\brief Returns a `const` pointer to the underlying buffer.
+  /*!\brief Checks whether there is any data left in the buffer or source.
    *
-   * \return A `const` pointer to the underlying buffer.
+   * \return `true` if there is some data left in the buffer or source that has
+   *         not been consumed yet. `false` otherwise.
    */
-  const std::vector<uint8_t>& bit_buffer() const { return bit_buffer_; }
+  bool IsDataAvailable() const;
 
-  /*!\brief Gets the offset in bits of the buffer.
+  /*!\brief Returns the next reading position of the source in bits.
    *
-   * \return Offset in bits of the read buffer.
+   * \return Next reading position of the source in bits.
    */
-  int64_t buffer_bit_offset() const { return buffer_bit_offset_; }
+  int64_t Tell() const {
+    return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;
+  }
 
-  /*!\brief Gets the size in bits of the buffer.
-   *
-   * \return Size in bits of the read buffer.
-   */
-  int64_t buffer_size() const { return buffer_size_; }
-
-  /*!\brief Checks whether the current data in the buffer is byte-aligned.
-   *
-   * \return `true` when the current data in the buffer is byte-aligned.
-   */
-  bool IsByteAligned() const { return buffer_bit_offset_ % 8 == 0; }
-
-  /*!\brief Gets the offset in bits of the source.
-   *
-   * \return Offset in bits of the source.
-   */
-  int64_t source_bit_offset() const { return source_bit_offset_; }
+ private:
+  absl::Status ReadUnsignedLiteralInternal(const int num_bits,
+                                           const int max_num_bits,
+                                           uint64_t& output);
 
   /*!\brief Loads data from source into the read buffer.
    *
    * \param required_num_bits Number of bits that must be loaded from `source_`
    *        into `bit_buffer_`.
-   * \param fill_to_capacity If true, this function will try to fill the buffer
-   *        to its capacity, provided there is enough source data.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()`if
    *         `required_num_bits` > bit_buffer_.capacity().
    *         `absl::ResourceExhaustedError()` if we are unable to load
    *         `required_num_bits` from source.
    */
-  absl::Status LoadBits(int32_t required_num_bits,
-                        bool fill_to_capacity = true);
-
-  /*!\brief Checks whether there is any data left in the buffer or source.
-   *
-   * Has no effect on the state of the buffer.
-   *
-   * \return `true` if there is some data left in the buffer or source that has
-   *         not been consumed yet. `false` otherwise.
-   */
-  bool IsDataAvailable();
+  absl::Status LoadBits(int32_t required_num_bits);
 
   /*!\brief Empties the buffer.*/
   void DiscardAllBits();
 
- private:
   // Read buffer.
   std::vector<uint8_t> bit_buffer_;
   // Specifies the next bit to consume in the `bit_buffer_`.
@@ -247,10 +224,6 @@ class ReadBitBuffer {
   std::vector<uint8_t>* source_;
   // Specifies the next bit to consume from the source data `source_`.
   int64_t source_bit_offset_ = 0;
-
-  absl::Status ReadUnsignedLiteralInternal(const int num_bits,
-                                           const int max_num_bits,
-                                           uint64_t& output);
 };
 
 }  // namespace iamf_tools

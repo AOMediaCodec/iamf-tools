@@ -89,9 +89,7 @@ absl::Status GetExpectedPositionFromIso14496_1Expanded(
     ReadBitBuffer& rb, int64_t& expected_position) {
   uint32_t size;
   RETURN_IF_NOT_OK(rb.ReadIso14496_1Expanded(kMaxClassSize, size));
-  expected_position =
-      (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset())) +
-      (size * 8);
+  expected_position = rb.Tell() + (static_cast<int64_t>(size) * 8);
   return absl::OkStatus();
 }
 
@@ -100,10 +98,9 @@ absl::Status GetExpectedPositionFromIso14496_1Expanded(
 // to go backwards.
 absl::Status AdvanceBufferToPosition(absl::string_view debugging_context,
                                      ReadBitBuffer& rb,
-                                     int32_t expected_position,
+                                     const int64_t expected_position,
                                      std::vector<uint8_t>& extension) {
-  const int actual_position =
-      (rb.source_bit_offset() - (rb.buffer_size() - rb.buffer_bit_offset()));
+  const int64_t actual_position = rb.Tell();
   if (actual_position == expected_position) {
     // Ok no extension is present.
     return absl::OkStatus();

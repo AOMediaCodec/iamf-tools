@@ -143,39 +143,6 @@ ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source)
   bit_buffer_.reserve(capacity);
 }
 
-absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
-                                                        const int max_num_bits,
-                                                        uint64_t& output) {
-  if (num_bits > max_num_bits) {
-    return absl::InvalidArgumentError("num_bits must be <= max_num_bits.");
-  }
-  if (buffer_bit_offset_ < 0) {
-    return absl::UnknownError("buffer_bit_offset_ must be >= 0.");
-  }
-  output = 0;
-  int remaining_bits_to_read = num_bits;
-  if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
-    ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
-                             remaining_bits_to_read, output);
-  } else {
-    ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
-                            remaining_bits_to_read, output);
-  }
-  if (remaining_bits_to_read != 0) {
-    RETURN_IF_NOT_OK(LoadBits(remaining_bits_to_read));
-    // Guaranteed to have enough bits to read the unsigned literal at this
-    // point.
-    if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
-      ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
-                               remaining_bits_to_read, output);
-    } else {
-      ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
-                              remaining_bits_to_read, output);
-    }
-  }
-  return absl::OkStatus();
-}
-
 // Reads n = `num_bits` bits from the buffer. These are the upper n bits of
 // `bit_buffer_`. n must be <= 64. The read data is consumed, meaning
 // `buffer_bit_offset_` is incremented by n as a side effect of this fxn.
@@ -279,23 +246,61 @@ absl::Status ReadBitBuffer::ReadBoolean(bool& output) {
   return absl::OkStatus();
 }
 
+bool ReadBitBuffer::IsDataAvailable() const {
+  bool valid_data_in_buffer =
+      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
+  bool valid_data_in_source =
+      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_->size());
+  return valid_data_in_buffer || valid_data_in_source;
+}
+
+absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
+                                                        const int max_num_bits,
+                                                        uint64_t& output) {
+  if (num_bits > max_num_bits) {
+    return absl::InvalidArgumentError("num_bits must be <= max_num_bits.");
+  }
+  if (buffer_bit_offset_ < 0) {
+    return absl::InvalidArgumentError("buffer_bit_offset_ must be >= 0.");
+  }
+  output = 0;
+  int remaining_bits_to_read = num_bits;
+  if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
+    ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
+                             remaining_bits_to_read, output);
+  } else {
+    ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
+                            remaining_bits_to_read, output);
+  }
+  if (remaining_bits_to_read != 0) {
+    RETURN_IF_NOT_OK(LoadBits(remaining_bits_to_read));
+    // Guaranteed to have enough bits to read the unsigned literal at this
+    // point.
+    if (CanReadByteAligned(buffer_bit_offset_, num_bits)) {
+      ReadUnsignedLiteralBytes(buffer_bit_offset_, bit_buffer_,
+                               remaining_bits_to_read, output);
+    } else {
+      ReadUnsignedLiteralBits(buffer_bit_offset_, bit_buffer_, buffer_size_,
+                              remaining_bits_to_read, output);
+    }
+  }
+  return absl::OkStatus();
+}
+
 // Loads enough bits from source such that there are at least n =
 // `required_num_bits` in `bit_buffer_` after completion. Returns an error if
 // there are not enough bits in `source_` to fulfill this request. If `source_`
 // contains enough data, this function will fill the read buffer completely.
-absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits,
-                                     const bool fill_to_capacity) {
+absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
   DiscardAllBits();
   int num_bits_to_load = required_num_bits;
-  if (fill_to_capacity) {
-    int bit_capacity = bit_buffer_.capacity() * 8;
-    if (required_num_bits > bit_capacity) {
-      return absl::InvalidArgumentError(
-          "required_num_bits must be <= capacity.");
-    } else {
-      num_bits_to_load = bit_capacity;
-    }
+  const int bit_capacity = bit_buffer_.capacity() * 8;
+  if (required_num_bits > bit_capacity) {
+    return absl::InvalidArgumentError("required_num_bits must be <= capacity.");
+  } else {
+    num_bits_to_load = bit_capacity;
   }
+
   int bits_loaded = 0;
   int original_source_offset = source_bit_offset_;
   int64_t bit_buffer_write_offset = 0;
@@ -327,14 +332,6 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits,
     return absl::ResourceExhaustedError("Not enough bits in source.");
   }
   return absl::OkStatus();
-}
-
-bool ReadBitBuffer::IsDataAvailable() {
-  bool valid_data_in_buffer =
-      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
-  bool valid_data_in_source =
-      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_->size());
-  return valid_data_in_buffer || valid_data_in_source;
 }
 
 void ReadBitBuffer::DiscardAllBits() {
