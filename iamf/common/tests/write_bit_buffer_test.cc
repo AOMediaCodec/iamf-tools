@@ -146,6 +146,16 @@ TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralOverNumBitsOver32) {
             absl::StatusCode::kInvalidArgument);
 }
 
+TEST_F(WriteBitBufferTest, UnsignedLiteralZeroNumBits) {
+  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/0), IsOk());
+  EXPECT_THAT(wb_->bit_offset(), 0);
+}
+
+TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralNegativeNumBits) {
+  EXPECT_EQ(wb_->WriteUnsignedLiteral(0, /*num_bits=*/-1).code(),
+            absl::StatusCode::kInvalidArgument);
+}
+
 TEST_F(WriteBitBufferTest, UnsignedLiteral64OneByteZero) {
   EXPECT_THAT(wb_->WriteUnsignedLiteral64(0x00, 8), IsOk());
   ValidateWriteResults(*wb_, {0x00});

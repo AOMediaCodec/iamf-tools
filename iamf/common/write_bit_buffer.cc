@@ -74,6 +74,12 @@ absl::Status WriteBit(int bit, int64_t& bit_offset,
 absl::Status InternalWriteUnsigned(int max_bits, uint64_t data, int num_bits,
                                    int64_t& bit_offset,
                                    std::vector<uint8_t>& bit_buffer) {
+  if (num_bits < 0) {
+    return absl::InvalidArgumentError("num_bits cannot be negative.");
+  }
+  if (num_bits == 0) {
+    return absl::OkStatus();
+  }
   // The `uint64` input limits this function to only write 64 bits at a time.
   if (max_bits > 64) {
     return absl::InvalidArgumentError("max_bits cannot be greater than 64.");
