@@ -12,6 +12,7 @@
 
 #include "iamf/common/read_bit_buffer.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -29,10 +30,9 @@ namespace iamf_tools {
 
 namespace {
 
-bool ShouldRead(const int64_t& source_offset,
-                const std::vector<uint8_t>& source,
-                const int32_t& remaining_bits_to_read) {
-  const bool valid_bit_offset = (source_offset / 8) < source.size();
+bool ShouldRead(const int64_t source_offset, const int64_t source_size,
+                const int32_t remaining_bits_to_read) {
+  const bool valid_bit_offset = (source_offset / 8) < source_size;
   const bool bits_to_read = remaining_bits_to_read > 0;
   return valid_bit_offset && bits_to_read;
 }
@@ -138,9 +138,9 @@ absl::Status AccumulateUleb128OrIso14496_1Internal(
 
 }  // namespace
 
-ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source)
-    : source_(source) {
+ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source) {
   bit_buffer_.reserve(capacity);
+  source_.swap(*source);
 }
 
 // Reads n = `num_bits` bits from the buffer. These are the upper n bits of
@@ -250,8 +250,44 @@ bool ReadBitBuffer::IsDataAvailable() const {
   bool valid_data_in_buffer =
       (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
   bool valid_data_in_source =
-      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_->size());
+      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_.size());
   return valid_data_in_buffer || valid_data_in_source;
+}
+
+int64_t ReadBitBuffer::Tell() const {
+  return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;
+}
+
+absl::Status ReadBitBuffer::Seek(const int64_t position) {
+  if (position < 0 || position >= source_.size() * 8) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid source position: ", position));
+  }
+
+  // Simply move the `buffer_bit_offset_` if the requested position lies within
+  // the current buffer.
+  if ((source_bit_offset_ - buffer_size_ <= position) &&
+      (position < source_bit_offset_)) {
+    buffer_bit_offset_ = position - (source_bit_offset_ - buffer_size_);
+    return absl::OkStatus();
+  }
+
+  // Load the data from the source, starting from the byte that the requested
+  // position is at.
+  const int64_t starting_byte = position / 8;
+  buffer_bit_offset_ = position % 8;
+  const int64_t ending_byte =
+      std::min((starting_byte + bit_buffer_.capacity()), source_.size());
+
+  bit_buffer_.resize(ending_byte - starting_byte);
+  std::copy(source_.begin() + starting_byte, source_.begin() + ending_byte,
+            bit_buffer_.begin());
+
+  // Update other bookkeeping data.
+  source_bit_offset_ = ending_byte * 8;
+  buffer_size_ = bit_buffer_.size() * 8;
+
+  return absl::OkStatus();
 }
 
 absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
@@ -304,13 +340,13 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
   int bits_loaded = 0;
   int original_source_offset = source_bit_offset_;
   int64_t bit_buffer_write_offset = 0;
-  while (ShouldRead(source_bit_offset_, *source_,
+  while (ShouldRead(source_bit_offset_, source_.size(),
                     (num_bits_to_load - bits_loaded)) &&
          (bit_buffer_.size() != bit_buffer_.capacity())) {
     if ((num_bits_to_load - bits_loaded) % 8 != 0 ||
         source_bit_offset_ % 8 != 0 || bit_buffer_write_offset % 8 != 0) {
       // Load bit by bit
-      uint8_t loaded_bit = GetUpperBit(source_bit_offset_, *source_);
+      uint8_t loaded_bit = GetUpperBit(source_bit_offset_, source_);
       RETURN_IF_NOT_OK(
           CanWriteBits(true, 1, bit_buffer_write_offset, bit_buffer_));
       RETURN_IF_NOT_OK(
@@ -320,7 +356,7 @@ absl::Status ReadBitBuffer::LoadBits(const int32_t required_num_bits) {
       bits_loaded++;
     } else {
       // Load byte by byte
-      bit_buffer_.push_back(source_->at(source_bit_offset_ / 8));
+      bit_buffer_.push_back(source_.at(source_bit_offset_ / 8));
       source_bit_offset_ += 8;
       buffer_size_ += 8;
       bits_loaded += 8;

@@ -58,6 +58,45 @@ TEST_F(ReadBitBufferTest, ReadBitBufferConstructor) {
   EXPECT_NE(rb_, nullptr);
 }
 
+// ---- Seek and Tell Tests -----
+TEST_F(ReadBitBufferTest, SeekAndTellMatch) {
+  source_data_ = {0xab, 0xcd, 0xef};
+  rb_capacity_ = 1024;
+  CreateReadBitBuffer();
+
+  // Start at position 0.
+  EXPECT_EQ(rb_->Tell(), 0);
+
+  // Move to various positions and expect that the positions are updated.
+  EXPECT_THAT(rb_->Seek(3), IsOk());
+  EXPECT_EQ(rb_->Tell(), 3);
+
+  EXPECT_THAT(rb_->Seek(17), IsOk());
+  EXPECT_EQ(rb_->Tell(), 17);
+
+  EXPECT_THAT(rb_->Seek(23), IsOk());
+  EXPECT_EQ(rb_->Tell(), 23);
+
+  EXPECT_THAT(rb_->Seek(10), IsOk());
+  EXPECT_EQ(rb_->Tell(), 10);
+}
+
+TEST_F(ReadBitBufferTest, SeekFailsWithNegativePosition) {
+  source_data_ = {0xab, 0xcd, 0xef};
+  rb_capacity_ = 1024;
+  CreateReadBitBuffer();
+
+  EXPECT_THAT(rb_->Seek(-1), StatusIs(kInvalidArgument));
+}
+
+TEST_F(ReadBitBufferTest, SeekFailsWithPositionTooLarge) {
+  source_data_ = {0xab, 0xcd, 0xef};
+  rb_capacity_ = 1024;
+  CreateReadBitBuffer();
+
+  EXPECT_THAT(rb_->Seek(24), StatusIs(kInvalidArgument));
+}
+
 // ---- ReadUnsignedLiteral Tests -----
 TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedAllBits) {
   source_data_ = {0xab, 0xcd, 0xef};
@@ -138,6 +177,25 @@ TEST_F(ReadBitBufferTest, ReadUnsignedLiteralRequestTooLarge) {
   uint64_t output_literal = 0;
   EXPECT_THAT(rb_->ReadUnsignedLiteral(65, output_literal),
               StatusIs(kInvalidArgument));
+}
+
+TEST_F(ReadBitBufferTest, ReadUnsignedLiteralAfterSeek) {
+  source_data_ = {0b00000111, 0b10000000};
+  rb_capacity_ = 1024;
+  CreateReadBitBuffer();
+
+  // Move the position to the 6-th bit, which points to the first "1".
+  EXPECT_THAT(rb_->Seek(5), IsOk());
+  EXPECT_EQ(rb_->Tell(), 5);
+
+  // Read in 4 bits, which are all "1"s.
+  uint64_t output_literal = 0;
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(4, output_literal), IsOk());
+  EXPECT_EQ(output_literal, 0b1111);
+
+  // Read in another 7 bits, which are all "0"s.
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(7, output_literal), IsOk());
+  EXPECT_EQ(output_literal, 0b0000000);
 }
 
 // ---- ReadULeb128 Tests -----
@@ -338,11 +396,12 @@ TEST(ReadIso14496_1Expanded, InvalidWhenInputDataSignalsMoreThan8Bytes) {
 TEST(ReadUint8Span, SucceedsWithAlignedBuffer) {
   constexpr size_t kOutputSize = 5;
   std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
+  const auto source_data_copy = source_data;
   ReadBitBuffer rb(source_data.size() * kBitsPerByte, &source_data);
 
   std::vector<uint8_t> output(kOutputSize);
   EXPECT_THAT(rb.ReadUint8Span(absl::MakeSpan(output)), IsOk());
-  EXPECT_EQ(output, source_data);
+  EXPECT_EQ(output, source_data_copy);
   EXPECT_EQ(rb.Tell(), 40);
 }
 

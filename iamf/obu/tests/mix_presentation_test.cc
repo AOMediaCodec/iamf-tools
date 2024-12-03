@@ -966,10 +966,11 @@ TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
 // --- Begin CreateFromBuffer tests ---
 TEST(CreateFromBufferTest, RejectEmptyBitstream) {
   std::vector<uint8_t> source;
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
   EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
+      MixPresentationObu::CreateFromBuffer(header, payload_size, buffer).ok());
 }
 
 TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
@@ -987,10 +988,11 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
       0,
       // End Mix OBU.
   };
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
   EXPECT_FALSE(
-      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer).ok());
+      MixPresentationObu::CreateFromBuffer(header, payload_size, buffer).ok());
 }
 
 TEST(CreateFromBuffer, ReadsOneSubMix) {
@@ -1032,10 +1034,10 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       // End SubMix.
       // End Mix OBU.
   };
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu =
-      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = MixPresentationObu::CreateFromBuffer(header, payload_size, buffer);
   ASSERT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaMixPresentation);
   EXPECT_EQ(obu->GetMixPresentationId(), 10);
@@ -1080,10 +1082,10 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
   };
   source.insert(source.end(), kMixPresentationTags.begin(),
                 kMixPresentationTags.end());
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu =
-      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = MixPresentationObu::CreateFromBuffer(header, payload_size, buffer);
   ASSERT_THAT(obu, IsOk());
 
   EXPECT_FALSE(obu->mix_presentation_tags_.has_value());
@@ -1128,10 +1130,10 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
   };
   source.insert(source.end(), kDuplicateContentLanguageTags.begin(),
                 kDuplicateContentLanguageTags.end());
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu =
-      MixPresentationObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = MixPresentationObu::CreateFromBuffer(header, payload_size, buffer);
   ASSERT_THAT(obu, IsOk());
 
   EXPECT_FALSE(obu->mix_presentation_tags_.has_value());

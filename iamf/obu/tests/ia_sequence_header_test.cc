@@ -158,11 +158,12 @@ TEST(CreateFromBuffer, SimpleAndBaseProfile) {
       static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
-      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer);
+      IASequenceHeaderObu::CreateFromBuffer(header, payload_size, buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfSimpleProfile);
@@ -177,11 +178,12 @@ TEST(CreateFromBuffer, BaseEnhancedProfile) {
       static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile),
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile)};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
-      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer);
+      IASequenceHeaderObu::CreateFromBuffer(header, payload_size, buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseEnhancedProfile);
@@ -197,12 +199,12 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs3) {
       3,
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
   EXPECT_FALSE(
-      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer)
-          .ok());
+      IASequenceHeaderObu::CreateFromBuffer(header, payload_size, buffer).ok());
 }
 
 TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
@@ -213,12 +215,12 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
       static_cast<uint8_t>(ProfileVersion::kIamfReserved255Profile),
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
 
   EXPECT_FALSE(
-      IASequenceHeaderObu::CreateFromBuffer(header, source.size(), buffer)
-          .ok());
+      IASequenceHeaderObu::CreateFromBuffer(header, payload_size, buffer).ok());
 }
 
 struct IASequenceHeaderInitArgs {

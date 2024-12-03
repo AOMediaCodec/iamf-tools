@@ -1879,8 +1879,7 @@ TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  EXPECT_FALSE(
-      AudioElementObu::CreateFromBuffer(header, source.size(), buffer).ok());
+  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, 0, buffer).ok());
 }
 
 TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
@@ -1924,9 +1923,10 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
       1 << 2,
       // `output_gain`.
       0, 1};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -2000,9 +2000,10 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
       1,
       // `coupled_substream_count`.
       1};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
 
   EXPECT_FALSE(obu.ok());
 }
@@ -2029,9 +2030,10 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
       4,          // `substream_count`
       0, 1, 2, 3  // `channel_mapping`, one per `output_channel_count`.
   };
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -2076,9 +2078,10 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
       0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00, 0x05, 0x00, 0x06,
       0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c,
       0x00, 0x0d, 0x00, 0x0e, 0x00, 0x0f, 0x00, 0x10};
+  const int64_t payload_size = source.size();
   ReadBitBuffer buffer(1024, &source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, source.size(), buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());

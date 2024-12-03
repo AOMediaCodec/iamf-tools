@@ -71,7 +71,7 @@ absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
                                              ReadBitBuffer& rb) {
   const int64_t expected_final_position = rb.Tell() + (payload_size_bytes * 8);
 
-  // Read the known portion of the payload
+  // Read the known portion of the payload.
   RETURN_IF_NOT_OK(ReadAndValidatePayloadDerived(payload_size_bytes, rb));
   const int64_t final_position = rb.Tell();
 

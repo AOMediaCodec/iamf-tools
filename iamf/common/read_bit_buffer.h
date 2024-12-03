@@ -29,7 +29,8 @@ class ReadBitBuffer {
    *
    * \param capacity Capacity of the internal buffer in bytes.
    * \param source Pointer to the data source from which the read buffer will
-   *        iteratively load data.
+   *        load data. The entire content will be moved into the constructed
+   *        instance.
    */
   ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source);
 
@@ -191,9 +192,15 @@ class ReadBitBuffer {
    *
    * \return Next reading position of the source in bits.
    */
-  int64_t Tell() const {
-    return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;
-  }
+  int64_t Tell() const;
+
+  /*!\brief Moves the next reading position in bits of the source.
+   *
+   * \param position Requested position in bits to move to.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the requested position is illegal.
+   */
+  absl::Status Seek(int64_t position);
 
  private:
   absl::Status ReadUnsignedLiteralInternal(const int num_bits,
@@ -216,12 +223,16 @@ class ReadBitBuffer {
 
   // Read buffer.
   std::vector<uint8_t> bit_buffer_;
+
   // Specifies the next bit to consume in the `bit_buffer_`.
   int64_t buffer_bit_offset_ = 0;
+
   // Size of the valid data in the buffer in bits.
   int64_t buffer_size_ = 0;
-  // Pointer to the source data.
-  std::vector<uint8_t>* source_;
+
+  // Source data.
+  std::vector<uint8_t> source_;
+
   // Specifies the next bit to consume from the source data `source_`.
   int64_t source_bit_offset_ = 0;
 };
