@@ -197,8 +197,9 @@ class ReadBitBuffer {
   /*!\brief Moves the next reading position in bits of the source.
    *
    * \param position Requested position in bits to move to.
-   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         the requested position is illegal.
+   * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
+   *         the buffer runs out of data. `absl::InvalidArgumentError()` if
+   *         the requested position is negative.
    */
   absl::Status Seek(int64_t position);
 
@@ -206,20 +207,6 @@ class ReadBitBuffer {
   absl::Status ReadUnsignedLiteralInternal(const int num_bits,
                                            const int max_num_bits,
                                            uint64_t& output);
-
-  /*!\brief Loads data from source into the read buffer.
-   *
-   * \param required_num_bits Number of bits that must be loaded from `source_`
-   *        into `bit_buffer_`.
-   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()`if
-   *         `required_num_bits` > bit_buffer_.capacity().
-   *         `absl::ResourceExhaustedError()` if we are unable to load
-   *         `required_num_bits` from source.
-   */
-  absl::Status LoadBits(int32_t required_num_bits);
-
-  /*!\brief Empties the buffer.*/
-  void DiscardAllBits();
 
   // Read buffer.
   std::vector<uint8_t> bit_buffer_;

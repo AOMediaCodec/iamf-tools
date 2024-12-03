@@ -94,10 +94,21 @@ TEST_F(ReadBitBufferTest, SeekFailsWithPositionTooLarge) {
   rb_capacity_ = 1024;
   CreateReadBitBuffer();
 
-  EXPECT_THAT(rb_->Seek(24), StatusIs(kInvalidArgument));
+  EXPECT_THAT(rb_->Seek(24), StatusIs(kResourceExhausted));
 }
 
 // ---- ReadUnsignedLiteral Tests -----
+TEST_F(ReadBitBufferTest, ReadZeroBitsFromEmptySourceSucceeds) {
+  source_data_ = {};
+  rb_capacity_ = 1024;
+  CreateReadBitBuffer();
+
+  uint64_t output_literal = 0;
+  EXPECT_THAT(rb_->ReadUnsignedLiteral(0, output_literal), IsOk());
+  EXPECT_EQ(output_literal, 0);
+  EXPECT_EQ(rb_->Tell(), 0);
+}
+
 TEST_F(ReadBitBufferTest, ReadUnsignedLiteralByteAlignedAllBits) {
   source_data_ = {0xab, 0xcd, 0xef};
   rb_capacity_ = 1024;
