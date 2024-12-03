@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -954,6 +955,94 @@ TEST(StaticCastSpanIfInRange, MessageContainsContextOnError) {
                               absl::MakeSpan(result))
           .message(),
       HasSubstr(kFieldName));
+}
+
+const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+    kIdentityTransform = [](int32_t input, int32_t& output) {
+      output = input;
+      return absl::OkStatus();
+    };
+
+TEST(ConvertInterleavedToTimeChannel, FailsIfSamplesIsNotAMultipleOfChannels) {
+  constexpr std::array<int32_t, 4> kFourTestValues = {1, 2, 3, 4};
+  constexpr size_t kNumChannels = 3;
+  std::vector<std::vector<int32_t>> undefined_result;
+
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kFourTestValues), kNumChannels,
+                  kIdentityTransform, undefined_result),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ConvertInterleavedToTimeChannel, PropagatesError) {
+  const absl::Status kError = absl::InternalError("Test error");
+  const size_t kNumChannels = 2;
+  constexpr std::array<int32_t, 4> kSamples{1, 2, 3, 4};
+  const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+      kAlwaysErrorTransform =
+          [kError](int32_t input, int32_t& output) { return kError; };
+  std::vector<std::vector<int32_t>> undefined_result;
+
+  EXPECT_EQ(ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kSamples),
+                                            kNumChannels, kAlwaysErrorTransform,
+                                            undefined_result),
+            kError);
+}
+
+TEST(ConvertInterleavedToTimeChannel, SucceedsOnEmptySamples) {
+  constexpr std::array<int32_t, 0> kEmptySamples{};
+  constexpr size_t kNumChannels = 2;
+  std::vector<std::vector<int32_t>> result;
+
+  EXPECT_THAT(
+      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kEmptySamples),
+                                      kNumChannels, kIdentityTransform, result),
+      IsOk());
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(ConvertInterleavedToTimeChannel, ClearsOutputVector) {
+  constexpr size_t kNumChannels = 2;
+  constexpr std::array<int32_t, 0> kEmptySamples{};
+  std::vector<std::vector<int32_t>> result = {{1, 2}, {3, 4}};
+
+  EXPECT_THAT(
+      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kEmptySamples),
+                                      kNumChannels, kIdentityTransform, result),
+      IsOk());
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(ConvertInterleavedToTimeChannel, InterleavesResults) {
+  constexpr size_t kNumChannels = 3;
+  constexpr std::array<int32_t, 6> kTwoTicksOfThreeChannels{1, 2, 3, 4, 5, 6};
+  const std::vector<std::vector<int32_t>> kExpectedTwoTicksForThreeChannels = {
+      {1, 2, 3}, {4, 5, 6}};
+  std::vector<std::vector<int32_t>> result;
+
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kTwoTicksOfThreeChannels), kNumChannels,
+                  kIdentityTransform, result),
+              IsOk());
+  EXPECT_EQ(result, kExpectedTwoTicksForThreeChannels);
+}
+
+TEST(ConvertInterleavedToTimeChannel, AppliesTransform) {
+  const size_t kNumChannels = 2;
+  constexpr std::array<int32_t, 4> kSamples = {1, 2, 3, 4};
+  const std::vector<std::vector<int32_t>> kExpectedResult = {{2, 4}, {6, 8}};
+  const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+      kDoublingTransform = [](int32_t input, int32_t& output) {
+        output = input * 2;
+        return absl::OkStatus();
+      };
+  std::vector<std::vector<int32_t>> result;
+
+  EXPECT_THAT(
+      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kSamples),
+                                      kNumChannels, kDoublingTransform, result),
+      IsOk());
+  EXPECT_EQ(result, kExpectedResult);
 }
 
 TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {

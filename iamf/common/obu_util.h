@@ -14,11 +14,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -278,6 +280,46 @@ absl::Status StaticCastSpanIfInRange(absl::string_view field_name,
         StaticCastIfInRange(field_name, input_data[i], output_data[i]);
     if (!status.ok()) [[unlikely]] {
       return status;
+    }
+  }
+  return absl::OkStatus();
+}
+
+/*!\brief Arranges the input samples by time and channel.
+ *
+ * \param samples Interleaved samples to arrange.
+ * \param num_channels Number of channels.
+ * \param transform_samples Function to transform each sample to the output
+ *        type.
+ * \param output Output vector to write the samples to.
+ * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
+ *         number of samples is not a multiple of the number of channels. An
+ *         error propagated from `transform_samples` if it fails.
+ */
+template <typename InputType, typename OutputType>
+absl::Status ConvertInterleavedToTimeChannel(
+    absl::Span<const InputType> samples, size_t num_channels,
+    const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
+        transform_samples,
+    std::vector<std::vector<OutputType>>& output) {
+  if (samples.size() % num_channels != 0) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Number of samples must be a multiple of the number of "
+        "channels. Found ",
+        samples.size(), " samples and ", num_channels, " channels."));
+  }
+
+  const size_t num_ticks = samples.size() / num_channels;
+  output.clear();
+  output.resize(num_ticks,
+                std::vector<OutputType>(num_channels, OutputType{0}));
+  for (int t = 0; t < num_ticks; ++t) {
+    for (int c = 0; c < num_channels; ++c) {
+      const auto status =
+          transform_samples(samples[t * num_channels + c], output[t][c]);
+      if (!status.ok()) [[unlikely]] {
+        return status;
+      }
     }
   }
   return absl::OkStatus();

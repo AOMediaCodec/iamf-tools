@@ -15,9 +15,11 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/opus_utils.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -108,21 +110,12 @@ absl::Status OpusDecoder::DecodeAudioFrame(
   LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
                        << " samples per channel. With " << num_channels_
                        << " channels.";
-  // Convert data to channels arranged in (time, channel) axes. There can only
-  // be one or two channels.
-  decoded_samples.reserve(decoded_samples.size() +
-                          output_pcm_float.size() / num_channels_);
-  for (int i = 0; i < output_pcm_float.size(); i += num_channels_) {
-    std::vector<int32_t> time_sample(num_channels_, 0);
-    // Grab samples in all channels associated with this time instant.
-    for (int j = 0; j < num_channels_; ++j) {
-      RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(output_pcm_float[i + j],
-                                                      time_sample[j]));
-    }
-    decoded_samples.push_back(time_sample);
-  }
-
-  return absl::OkStatus();
+  // Convert the interleaved data to (time, channel) axes.
+  return ConvertInterleavedToTimeChannel(
+      absl::MakeConstSpan(output_pcm_float), num_channels_,
+      absl::AnyInvocable<absl::Status(float, int32_t&) const>(
+          NormalizedFloatingPointToInt32<float>),
+      decoded_samples);
 }
 
 }  // namespace iamf_tools
