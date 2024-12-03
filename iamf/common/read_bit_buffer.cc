@@ -13,6 +13,7 @@
 #include "iamf/common/read_bit_buffer.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -281,7 +282,8 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
   const int64_t starting_byte = position / 8;
   buffer_bit_offset_ = position % 8;
   const int64_t ending_byte =
-      std::min((starting_byte + bit_buffer_.capacity()), source_.size());
+      std::min((static_cast<size_t>(starting_byte) + bit_buffer_.capacity()),
+               source_.size());
 
   bit_buffer_.resize(ending_byte - starting_byte);
   std::copy(source_.begin() + starting_byte, source_.begin() + ending_byte,
