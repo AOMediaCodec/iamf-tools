@@ -759,10 +759,10 @@ TEST(ChannelAudioLayerConfig, ReadsBinauralLayer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutBinaural << kLoudspeakerLayoutBitShift, 1,
       1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutBinaural);
@@ -777,10 +777,10 @@ TEST(ChannelAudioLayerConfig, ReadsReserved10Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved10 << kLoudspeakerLayoutBitShift,
       1, 1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutReserved10);
@@ -790,10 +790,10 @@ TEST(ChannelAudioLayerConfig, ReadsReserved11Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved11 << kLoudspeakerLayoutBitShift,
       1, 1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutReserved11);
@@ -803,10 +803,10 @@ TEST(ChannelAudioLayerConfig, ReadsReserved12Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved12 << kLoudspeakerLayoutBitShift,
       1, 1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutReserved12);
@@ -816,10 +816,10 @@ TEST(ChannelAudioLayerConfig, ReadsReserved13Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved13 << kLoudspeakerLayoutBitShift,
       1, 1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutReserved13);
@@ -829,10 +829,10 @@ TEST(ChannelAudioLayerConfig, ReadsReserved14Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved14 << kLoudspeakerLayoutBitShift,
       1, 1};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutReserved14);
@@ -842,10 +842,10 @@ TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutLFE) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1, ChannelAudioLayerConfig::kExpandedLayoutLFE};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutExpanded);
@@ -859,20 +859,20 @@ TEST(ChannelAudioLayerConfig,
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1
       /*`expanded_loudspeaker_layout` is omitted*/};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_FALSE(config.Read(buffer).ok());
+  EXPECT_FALSE(config.Read(*buffer).ok());
 }
 
 TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutReserved13) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1, ChannelAudioLayerConfig::kExpandedLayoutReserved13};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.loudspeaker_layout,
             ChannelAudioLayerConfig::kLayoutExpanded);
@@ -893,10 +893,10 @@ TEST(ChannelAudioLayerConfig, ReadsOutputGainIsPresentRelatedFields) {
       kOutputGainFlag << kOutputGainIsPresentFlagBitShift | kReservedB,
       0,
       5};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.output_gain_is_present_flag, kOutputGainIsPresent);
   EXPECT_EQ(config.output_gain_flag, kOutputGainFlag);
@@ -910,10 +910,10 @@ TEST(ChannelAudioLayerConfig, ReadsReconGainIsPresent) {
       ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
           kReconGainIsPresent << kReconGainIsPresentBitShift,
       1, 0};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.recon_gain_is_present_flag, kReconGainIsPresent);
 }
@@ -924,10 +924,10 @@ TEST(ChannelAudioLayerConfig, ReadsFirstReservedField) {
       ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
           kReservedField,
       1, 0};
-  ReadBitBuffer buffer(1024, &data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
   ChannelAudioLayerConfig config;
 
-  EXPECT_THAT(config.Read(buffer), IsOk());
+  EXPECT_THAT(config.Read(*buffer), IsOk());
 
   EXPECT_EQ(config.reserved_a, kReservedField);
 }
@@ -1791,9 +1791,9 @@ TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
       // Constant Subblock Duration.
       64};
 
-  ReadBitBuffer buffer(1024, &bitstream);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, bitstream);
   AudioElementParam param;
-  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
 }
 
 TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
@@ -1810,9 +1810,9 @@ TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
       64,
       // Constant Subblock Duration.
       64};
-  ReadBitBuffer buffer(1024, &bitstream);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, bitstream);
   AudioElementParam param;
-  EXPECT_FALSE(param.ReadAndValidate(kAudioElementId, buffer).ok());
+  EXPECT_FALSE(param.ReadAndValidate(kAudioElementId, *buffer).ok());
 }
 
 TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
@@ -1833,9 +1833,9 @@ TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
       DemixingInfoParameterData::kDMixPMode2 << 5,
       // `default_w`.
       0};
-  ReadBitBuffer buffer(1024, &bitstream);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, bitstream);
   AudioElementParam param;
-  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
   EXPECT_NE(param.param_definition, nullptr);
   ASSERT_TRUE(param.param_definition->GetType().has_value());
 
@@ -1859,9 +1859,9 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
       0x01,
       // param_definition_bytes.
       99};
-  ReadBitBuffer buffer(1024, &bitstream);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, bitstream);
   AudioElementParam param;
-  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, buffer), IsOk());
+  EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
   ASSERT_NE(param.param_definition, nullptr);
   ASSERT_TRUE(param.param_definition->GetType().has_value());
 
@@ -1877,9 +1877,9 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
 // --- Begin CreateFromBuffer tests ---
 TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
-  ReadBitBuffer buffer(1024, &source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
   ObuHeader header;
-  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, 0, buffer).ok());
+  EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, 0, *buffer).ok());
 }
 
 TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
@@ -1924,9 +1924,9 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
       // `output_gain`.
       0, 1};
   const int64_t payload_size = source.size();
-  ReadBitBuffer buffer(1024, &source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -2001,9 +2001,9 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
       // `coupled_substream_count`.
       1};
   const int64_t payload_size = source.size();
-  ReadBitBuffer buffer(1024, &source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
   EXPECT_FALSE(obu.ok());
 }
@@ -2031,9 +2031,9 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
       0, 1, 2, 3  // `channel_mapping`, one per `output_channel_count`.
   };
   const int64_t payload_size = source.size();
-  ReadBitBuffer buffer(1024, &source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());
@@ -2079,9 +2079,9 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
       0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c,
       0x00, 0x0d, 0x00, 0x0e, 0x00, 0x0f, 0x00, 0x10};
   const int64_t payload_size = source.size();
-  ReadBitBuffer buffer(1024, &source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
   ObuHeader header;
-  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, buffer);
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
   // Validate
   EXPECT_THAT(obu, IsOk());

@@ -615,11 +615,11 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
                                       // `mapping_family`.
                                       OpusDecoderConfig::kMappingFamily};
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, payload_size, buffer);
+      CodecConfigObu::CreateFromBuffer(header, payload_size, *buffer);
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
@@ -720,11 +720,11 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, payload_size, buffer);
+      CodecConfigObu::CreateFromBuffer(header, payload_size, *buffer);
   EXPECT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
@@ -821,11 +821,11 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
                                       // `sample_rate`.
                                       0, 0, 0xbb, 0x80};
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, payload_size, buffer);
+      CodecConfigObu::CreateFromBuffer(header, payload_size, *buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);
@@ -884,11 +884,11 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00};
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
-      CodecConfigObu::CreateFromBuffer(header, payload_size, buffer);
+      CodecConfigObu::CreateFromBuffer(header, payload_size, *buffer);
 
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->GetCodecConfigId(), kCodecConfigId);

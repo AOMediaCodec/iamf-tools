@@ -27,6 +27,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
+#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -362,10 +363,17 @@ void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
 std::string GetAndCleanupOutputFileName(absl::string_view suffix) {
   const testing::TestInfo* const test_info =
       testing::UnitTest::GetInstance()->current_test_info();
-  const std::filesystem::path test_specific_file_name =
-      std::filesystem::path(::testing::TempDir()) /
+  std::string file_name =
       absl::StrCat(test_info->name(), "-", test_info->test_suite_name(), "-",
                    test_info->test_case_name(), suffix);
+
+  // It is possible that the test suite name and test case name contain the '/'
+  // character. Replace it with '-' to form a legal file name.
+  std::transform(file_name.begin(), file_name.end(), file_name.begin(),
+                 [](char c) { return (c == '/') ? '-' : c; });
+  const std::filesystem::path test_specific_file_name =
+      std::filesystem::path(::testing::TempDir()) / file_name;
+
   std::filesystem::remove(test_specific_file_name);
   return test_specific_file_name.string();
 }
@@ -445,6 +453,23 @@ std::vector<InternalSampleType> Int32ToInternalSampleType(
   std::vector<InternalSampleType> result(samples.size());
   Int32ToInternalSampleType(samples, absl::MakeSpan(result));
   return result;
+}
+
+absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
+                             std::vector<uint8_t>& buffer) {
+  if (!std::filesystem::exists(file_path)) {
+    return absl::NotFoundError("File not found.");
+  }
+  std::ifstream ifs(file_path, std::ios::binary | std::ios::in);
+
+  // Increase the size of the buffer. Write to the original end (before
+  // resizing).
+  const auto file_size = std::filesystem::file_size(file_path);
+  const auto original_buffer_size = buffer.size();
+  buffer.resize(original_buffer_size + file_size);
+  ifs.read(reinterpret_cast<char*>(buffer.data() + original_buffer_size),
+           file_size);
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

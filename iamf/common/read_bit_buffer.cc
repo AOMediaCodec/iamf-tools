@@ -15,13 +15,20 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <ios>
 #include <limits>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -137,11 +144,6 @@ absl::Status AccumulateUleb128OrIso14496_1Internal(
 
 }  // namespace
 
-ReadBitBuffer::ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source) {
-  bit_buffer_.reserve(capacity);
-  source_.swap(*source);
-}
-
 // Reads n = `num_bits` bits from the buffer. These are the upper n bits of
 // `bit_buffer_`. n must be <= 64. The read data is consumed, meaning
 // `buffer_bit_offset_` is incremented by n as a side effect of this fxn.
@@ -245,11 +247,18 @@ absl::Status ReadBitBuffer::ReadBoolean(bool& output) {
   return absl::OkStatus();
 }
 
+ReadBitBuffer::ReadBitBuffer(size_t capacity, int64_t source_size)
+    : bit_buffer_(capacity),
+      buffer_bit_offset_(0),
+      buffer_size_(0),
+      source_size_(source_size),
+      source_bit_offset_(0) {}
+
 bool ReadBitBuffer::IsDataAvailable() const {
-  bool valid_data_in_buffer =
+  const bool valid_data_in_buffer =
       (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
-  bool valid_data_in_source =
-      (source_bit_offset_ >= 0 && (source_bit_offset_ / 8) < source_.size());
+  const bool valid_data_in_source =
+      (source_bit_offset_ >= 0 && source_bit_offset_ < source_size_);
   return valid_data_in_buffer || valid_data_in_source;
 }
 
@@ -263,10 +272,10 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
         absl::StrCat("Invalid source position: ", position));
   }
 
-  if (position >= source_.size() * 8) {
+  if (position >= source_size_) {
     return absl::ResourceExhaustedError(
         absl::StrCat("Not enough bits in source: position= ", position,
-                     " >= #(source bits)= ", source_.size() * 8));
+                     " >= #(bits in source)= ", source_size_));
   }
 
   // Simply move the `buffer_bit_offset_` if the requested position lies within
@@ -280,18 +289,16 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
   // Load the data from the source, starting from the byte that the requested
   // position is at.
   const int64_t starting_byte = position / 8;
-  buffer_bit_offset_ = position % 8;
-  const int64_t ending_byte =
-      std::min((static_cast<size_t>(starting_byte) + bit_buffer_.capacity()),
-               source_.size());
+  const int64_t num_bytes =
+      std::min(static_cast<int64_t>(bit_buffer_.capacity()),
+               source_size_ / 8 - starting_byte);
 
-  bit_buffer_.resize(ending_byte - starting_byte);
-  std::copy(source_.begin() + starting_byte, source_.begin() + ending_byte,
-            bit_buffer_.begin());
+  RETURN_IF_NOT_OK(LoadBytesToBuffer(starting_byte, num_bytes));
 
   // Update other bookkeeping data.
-  source_bit_offset_ = ending_byte * 8;
-  buffer_size_ = bit_buffer_.size() * 8;
+  buffer_bit_offset_ = position % 8;
+  source_bit_offset_ = (starting_byte + num_bytes) * 8;
+  buffer_size_ = num_bytes * 8;
 
   return absl::OkStatus();
 }
@@ -357,5 +364,72 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
   return absl::OkStatus();
 }
+
+// ----- MemoryBasedReadBitBuffer -----
+
+std::unique_ptr<MemoryBasedReadBitBuffer>
+MemoryBasedReadBitBuffer::CreateFromVector(int64_t capacity,
+                                           const std::vector<uint8_t>& source) {
+  return absl::WrapUnique(new MemoryBasedReadBitBuffer(capacity, source));
+}
+
+absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
+                                                         int64_t num_bytes) {
+  if (starting_byte > source_vector_.size() ||
+      (starting_byte + num_bytes) > source_vector_.size()) {
+    return absl::InvalidArgumentError(
+        "Invalid starting or ending position to read from the vector");
+  }
+
+  std::copy(source_vector_.begin() + starting_byte,
+            source_vector_.begin() + starting_byte + num_bytes,
+            bit_buffer_.begin());
+  return absl::OkStatus();
+}
+
+MemoryBasedReadBitBuffer::MemoryBasedReadBitBuffer(
+    size_t capacity, const std::vector<uint8_t>& source)
+    : ReadBitBuffer(capacity, static_cast<int64_t>(source.size()) * 8),
+      source_vector_(source) {}
+
+// ----- FileBasedReadBitBuffer -----
+
+std::unique_ptr<FileBasedReadBitBuffer>
+FileBasedReadBitBuffer::CreateFromFilePath(
+    const int64_t capacity, const std::filesystem::path& file_path) {
+  if (!std::filesystem::exists(file_path)) {
+    LOG(ERROR) << "File not found: " << file_path;
+    return nullptr;
+  }
+  std::ifstream ifs(file_path, std::ios::binary | std::ios::in);
+  ifs.seekg(0, ifs.end);
+  const auto file_size = static_cast<size_t>(ifs.tellg());
+  ifs.seekg(0, ifs.beg);
+  if (!ifs.good()) {
+    LOG(ERROR) << "Error accessing " << file_path;
+    return nullptr;
+  }
+
+  // File size is in bytes, `source_size` is in bits.
+  return absl::WrapUnique(
+      new FileBasedReadBitBuffer(capacity, file_size * 8, std::move(ifs)));
+}
+
+absl::Status FileBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
+                                                       int64_t num_bytes) {
+  source_ifs_.seekg(starting_byte);
+  source_ifs_.read(reinterpret_cast<char*>(bit_buffer_.data()), num_bytes);
+  if (!source_ifs_.good()) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("File reading failed. State= ", source_ifs_.rdstate()));
+  }
+
+  return absl::OkStatus();
+}
+
+FileBasedReadBitBuffer::FileBasedReadBitBuffer(size_t capacity,
+                                               int64_t source_size,
+                                               std::ifstream&& ifs)
+    : ReadBitBuffer(capacity, source_size), source_ifs_(std::move(ifs)) {}
 
 }  // namespace iamf_tools

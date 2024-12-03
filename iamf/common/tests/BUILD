@@ -33,6 +33,7 @@ cc_test(
     name = "read_bit_buffer_test",
     srcs = ["read_bit_buffer_test.cc"],
     deps = [
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:bit_buffer_util",
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:types",

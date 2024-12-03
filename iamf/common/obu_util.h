@@ -15,12 +15,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <filesystem>
 #include <limits>
 #include <optional>
 #include <string>
 #include <type_traits>
-#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -222,15 +220,6 @@ absl::Status NormalizedFloatingPointToInt32(T value, int32_t& result) {
 absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* buffer,
                             int& write_position);
-
-/*!\brief Reads the contents of the file and appends it to `buffer`.
- *
- * \param file_path Path of file to read.
- * \param buffer Buffer to append the contents of the file to.
- * \return `absl::OkStatus()` on success. A specific error code on failure.
- */
-absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
-                             std::vector<uint8_t>& buffer);
 
 /*!\brief Gets the native byte order of the runtime system.
  *

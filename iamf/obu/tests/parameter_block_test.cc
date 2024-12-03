@@ -67,7 +67,7 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   };
   const int64_t kCorrectObuSize = source_data.size();
   constexpr int64_t kIncorrectObuSize = 1;
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -81,13 +81,13 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   // Sanity check that the OBU is valid.
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, kCorrectObuSize,
-                  per_id_metadata, buffer),
+                  per_id_metadata, *buffer),
               IsOk());
 
   // But it would be invalid if the OBU size is too small.
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   kIncorrectObuSize, per_id_metadata, buffer)
+                   kIncorrectObuSize, per_id_metadata, *buffer)
                    .ok());
 }
 
@@ -125,7 +125,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
       0x44,
   };
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -137,7 +137,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      per_id_metadata, buffer);
+      per_id_metadata, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data.
@@ -184,7 +184,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
       0x44,
   };
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -203,7 +203,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      per_id_metadata, buffer);
+      per_id_metadata, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
@@ -252,7 +252,7 @@ TEST(ParameterBlockObu,
       0x88,
   };
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -265,7 +265,7 @@ TEST(ParameterBlockObu,
 
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   per_id_metadata, buffer)
+                   per_id_metadata, *buffer)
                    .ok());
 }
 
@@ -285,7 +285,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
       0x88,
   };
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
@@ -296,15 +296,16 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
   per_id_metadata[kParameterId].param_definition.param_definition_mode_ = 1;
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                  per_id_metadata, buffer),
+                  per_id_metadata, *buffer),
               IsOk());
 
   // When there is no matching metadata, the parameter block cannot be created.
   per_id_metadata.erase(kParameterId);
-  ReadBitBuffer buffer_to_use_without_metadata(1024, &source_data);
+  auto buffer_to_use_without_metadata =
+      MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   per_id_metadata, buffer_to_use_without_metadata)
+                   per_id_metadata, *buffer_to_use_without_metadata)
                    .ok());
 }
 
@@ -315,7 +316,7 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
                                       // `dmixp_mode`.
                                       kDMixPMode2 << 5};
   const int64_t payload_size = source_data.size();
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -331,7 +332,7 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
   param_definition.InitializeSubblockDurations(1);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      per_id_metadata, buffer);
+      per_id_metadata, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data

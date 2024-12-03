@@ -166,18 +166,18 @@ TEST(WriteDefaultDemixingInfoParameterData, Writes) {
 
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
   std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift};
-  ReadBitBuffer rb(1024, &source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 0);
 }
 
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode3) {
   std::vector<uint8_t> source_data = {kDMixPMode3 << kDMixPModeBitShift};
-  ReadBitBuffer rb(1024, &source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode3);
   EXPECT_EQ(data.reserved, 0);
 }
@@ -186,9 +186,9 @@ TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
   const uint32_t kReservedMax = 31;
   std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift |
                                       kReservedMax};
-  ReadBitBuffer rb(1024, &source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 31);
 }
@@ -201,9 +201,9 @@ TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
   std::vector<uint8_t> source_data = {
       kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
       kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault};
-  ReadBitBuffer rb(1024, &source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   DefaultDemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kExpectedDMixPMode);
   EXPECT_EQ(data.reserved, kExpectedReserved);
   EXPECT_EQ(data.default_w, kExpectedDefaultW);

@@ -14,12 +14,14 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <list>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -273,6 +275,15 @@ constexpr void Int32ToInternalSampleType(
  */
 std::vector<InternalSampleType> Int32ToInternalSampleType(
     absl::Span<const int32_t> samples);
+
+/*!\brief Reads the contents of the file and appends it to `buffer`.
+ *
+ * \param file_path Path of file to read.
+ * \param buffer Buffer to append the contents of the file to.
+ * \return `absl::OkStatus()` on success. A specific error code on failure.
+ */
+absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
+                             std::vector<uint8_t>& buffer);
 
 /*!\brief Matches an `InternalSampleType` to an `int32_t`..
  *

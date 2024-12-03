@@ -36,11 +36,11 @@ TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
       // Layer 0 is omitted due to `recon_gain_is_present_flags`.
       // `layer[1]`.
       ReconGainElement::kReconGainFlagR, 1};
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
-      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, buffer),
+      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, *buffer),
       IsOk());
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
   EXPECT_EQ(
@@ -75,11 +75,11 @@ TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
       (ReconGainElement::kReconGainFlagLtb >> 7) |
           (ReconGainElement::kReconGainFlagRtb >> 7),
       8, 9};
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
-      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, buffer),
+      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, *buffer),
       IsOk());
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 5);
 

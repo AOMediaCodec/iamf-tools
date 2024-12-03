@@ -195,9 +195,9 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_THAT(audio_specific_config.Read(rb), IsOk());
+  EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
 
   EXPECT_EQ(audio_specific_config.audio_object_type_,
             AudioSpecificConfig::kAudioObjectType);
@@ -229,9 +229,9 @@ TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
       ((kSampleFrequency & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_THAT(audio_specific_config.Read(rb), IsOk());
+  EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
 
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
             SampleFrequencyIndex::kEscapeValue);
@@ -267,9 +267,9 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
   EXPECT_EQ(decoder_config.decoder_config_descriptor_tag_,
             AacDecoderConfig::kDecoderConfigDescriptorTag);
@@ -323,9 +323,9 @@ TEST(AacDecoderConfig, ReadAndValidateWithExplicitSampleFrequency) {
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
       ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
   uint32_t sample_frequency;
   EXPECT_THAT(decoder_config.GetOutputSampleRate(sample_frequency), IsOk());
@@ -361,9 +361,9 @@ TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_FALSE(decoder_config.ReadAndValidate(kAudioRollDistance, rb).ok());
+  EXPECT_FALSE(decoder_config.ReadAndValidate(kAudioRollDistance, *rb).ok());
 }
 
 TEST(AacDecoderConfig, ReadExtensions) {
@@ -396,9 +396,9 @@ TEST(AacDecoderConfig, ReadExtensions) {
           kChannelConfigurationAndGaSpecificConfigMask,
       'd', 'e', 'f', 'a', 'b', 'c'};
   AacDecoderConfig decoder_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, rb), IsOk());
+  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
   EXPECT_EQ(
       decoder_config.decoder_specific_info_.decoder_specific_info_extension,
@@ -436,10 +436,10 @@ TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  ReadBitBuffer rb(1024, &data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, data);
 
   EXPECT_FALSE(
-      decoder_config.ReadAndValidate(kInvalidAudioRollDistance, rb).ok());
+      decoder_config.ReadAndValidate(kInvalidAudioRollDistance, *rb).ok());
 }
 
 class AacTest : public testing::Test {

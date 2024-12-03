@@ -737,10 +737,10 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00};
   ;
-  ReadBitBuffer rb(1024, &payload);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, payload);
   FlacDecoderConfig decoder_config;
   EXPECT_THAT(decoder_config.ReadAndValidate(
-                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, rb),
+                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
               IsOk());
   EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
   FlacMetaBlockHeader header = decoder_config.metadata_blocks_[0].header;
@@ -787,12 +787,12 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x01};
   ;
-  ReadBitBuffer rb(1024, &payload);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, payload);
   FlacDecoderConfig decoder_config;
   EXPECT_FALSE(
       decoder_config
           .ReadAndValidate(
-              /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, rb)
+              /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb)
           .ok());
 }
 

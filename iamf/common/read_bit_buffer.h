@@ -12,7 +12,11 @@
 #ifndef COMMON_READ_BIT_BUFFER_H_
 #define COMMON_READ_BIT_BUFFER_H_
 
+#include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,20 +26,16 @@
 
 namespace iamf_tools {
 
-/*!\brief Holds a buffer and tracks the next bit to be read from. */
+/*!\brief Abstract class representing a buffer to read bit from.
+ *
+ * Concrete subclasses should hold the actual storage of the data and
+ * implement `LoadBytesToBuffer()` to handle how data are loaded from the
+ * storage to the internal buffer.
+ */
 class ReadBitBuffer {
  public:
-  /*!\brief Constructor.
-   *
-   * \param capacity Capacity of the internal buffer in bytes.
-   * \param source Pointer to the data source from which the read buffer will
-   *        load data. The entire content will be moved into the constructed
-   *        instance.
-   */
-  ReadBitBuffer(int64_t capacity, std::vector<uint8_t>* source);
-
   /*!\brief Destructor.*/
-  ~ReadBitBuffer() = default;
+  virtual ~ReadBitBuffer() = default;
 
   /*!\brief Reads upper `num_bits` from buffer to lower `num_bits` of `output`.
    *
@@ -43,7 +43,7 @@ class ReadBitBuffer {
    *        64.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 64` or the `rb->bit_offset` is negative.
+   *         `num_bits > 64` or the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if the buffer
    *         runs out of data and cannot get more from source before the desired
    *         `num_bits` are read.
@@ -56,7 +56,7 @@ class ReadBitBuffer {
    *        32.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 32` or the `rb->bit_offset` is negative.
+   *         `num_bits > 32` or the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if the buffer
    *         runs out of data and cannot get more from source before the desired
    *         `num_bits` are read.
@@ -69,7 +69,7 @@ class ReadBitBuffer {
    *        16.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 16` or the `rb->bit_offset` is negative.
+   *         `num_bits > 16` or the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if the buffer runs out of data
    *         and cannot get more from source before the desired `num_bits` are
    *         read.
@@ -82,7 +82,7 @@ class ReadBitBuffer {
    *        8.
    * \param output Unsigned literal from buffer will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         `num_bits > 8` or the `rb->bit_offset` is negative.
+   *         `num_bits > 8` or the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if the buffer runs
    *         out of data and cannot get more from source before the desired
    *         `num_bits` are read.
@@ -95,7 +95,8 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success.  `absl::ResourceExhaustedError()` if
    *         the buffer is exhausted before the signed 16 is fully read and
    *         source does not have the requisite data to complete the signed 16.
-   *         `absl::InvalidArgumentError()` if the `rb->bit_offset` is negative.
+   *         `absl::InvalidArgumentError()` if the buffer's bit offset is
+   *         negative.
    */
   absl::Status ReadSigned16(int16_t& output);
 
@@ -120,10 +121,10 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bits of
    *         uleb128, or if the data in the buffer requires that we read more
-   *         than `kMaxLeb128Size` bytes, or the `rb->bit_offset` is negative.
-   *         `absl::ResourceExhaustedError()` if the buffer is exhausted before
-   *         the uleb128 is fully read and source does not have the requisite
-   *         data to complete the uleb128.
+   *         than `kMaxLeb128Size` bytes, or the buffer's bit offset is
+   *         negative. `absl::ResourceExhaustedError()` if the buffer is
+   *         exhausted before the uleb128 is fully read and source does not
+   *         have the requisite data to complete the uleb128.
    */
   absl::Status ReadULeb128(DecodedUleb128& uleb128);
 
@@ -138,7 +139,7 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bits of
    *         uleb128, or if the data in the buffer requires that we read more
-   *         than `kMaxLeb128Size` bytes, the `rb->bit_offset` is negative.
+   *         than `kMaxLeb128Size` bytes, the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if
    *         the buffer is exhausted before the uleb128 is fully read and
    *         source does not have the requisite data to complete the uleb128.
@@ -153,7 +154,7 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the consumed data from the buffer does not fit into the 32 bit
    *         output, or if the data encoded is larger than the `max_class_size`
-   *         bits, the `rb->bit_offset` is negative.
+   *         bits, the buffer's bit offset is negative.
    *         `absl::ResourceExhaustedError()` if the buffer is exhausted
    *         before the expanded field is fully read and source does not have
    *         the requisite data to complete the expanded field.
@@ -167,7 +168,7 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
    *         the buffer runs out of data and cannot get more from source before
    *         filling the span. `absl::InvalidArgumentError()` if the
-   *         `rb->bit_offset` is negative.
+   *         buffer's bit offset is negative.
    */
   absl::Status ReadUint8Span(absl::Span<uint8_t> output);
 
@@ -177,7 +178,7 @@ class ReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
    *         the buffer runs out of data and cannot get more from source before
    *         the desired boolean is read. `absl::InvalidArgumentError()` if the
-   *         `rb->bit_offset` is negative.
+   *         buffer's bit offset is negative.
    */
   absl::Status ReadBoolean(bool& output);
 
@@ -203,10 +204,40 @@ class ReadBitBuffer {
    */
   absl::Status Seek(int64_t position);
 
- private:
-  absl::Status ReadUnsignedLiteralInternal(const int num_bits,
-                                           const int max_num_bits,
+ protected:
+  /*!\brief Constructor.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \param source_size Size of the source data in bits.
+   */
+  ReadBitBuffer(size_t capacity, int64_t source_size);
+
+  /*!\brief Internal reading function that reads `num_bits` from buffer.
+   *
+   * As a side effect buffer loading might happen.
+   *
+   * \param num_bits Number of upper bits to read from buffer.
+   * \param max_num_bits Maximum number of upper bits to read from buffer.
+   * \param output Output unsigned literal read from buffer.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         `num_bits > max_num_bits` or the buffer's bit offset is negative.
+   *         `absl::ResourceExhaustedError()` if the buffer runs out of data
+   *         and cannot get more from source before the desired `num_bits`
+   *         are read.
+   */
+  absl::Status ReadUnsignedLiteralInternal(int num_bits, int max_num_bits,
                                            uint64_t& output);
+  /*!\brief Load bytes from source to the buffer.
+   *
+   * Subclasses of this class should implement the actual loading logic.
+   *
+   * \param starting_byte Starting byte to load from source.
+   * \param num_bytes Number of bytes to load.
+   * \return `absl::OkStatus()` on success. Other specific statuses (depending
+   *         on the subclass) on failure.
+   */
+  virtual absl::Status LoadBytesToBuffer(int64_t starting_byte,
+                                         int64_t num_bytes) = 0;
 
   // Read buffer.
   std::vector<uint8_t> bit_buffer_;
@@ -217,11 +248,109 @@ class ReadBitBuffer {
   // Size of the valid data in the buffer in bits.
   int64_t buffer_size_ = 0;
 
-  // Source data.
-  std::vector<uint8_t> source_;
+  // Size of the source data in bits. It may refer to the total file size
+  // for a file-based buffer, or the total memory size for a memory-based
+  // buffer, etc.
+  const int64_t source_size_;
 
-  // Specifies the next bit to consume from the source data `source_`.
+  // Specifies the next bit to consume from the source data (the actual storage
+  // type is subclass-specific).
   int64_t source_bit_offset_ = 0;
+};
+
+/*!\brief Memory-based read bit buffer.
+ *
+ * The entire content of the source data is held as a vector inside the class.
+ *
+ * NOTICE: This is mostly useful for testing and processing small files,
+ * because it will hold the entire content in memory during its lifetime.
+ * For processing large (e.g. 2 GB) files, use the `FileBasedReadBitBuffer`
+ * for example.
+ */
+class MemoryBasedReadBitBuffer : public ReadBitBuffer {
+ public:
+  /*!\brief Creates an instance of a memory-based read bit buffer.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \param source Reference of the source vector from which the buffer will
+   *        load data. The entire content will be copied into the constructed
+   *        instance.
+   * \return Unique pointer of the created instance. `nullptr` if the creation
+   *         fails.
+   */
+  static std::unique_ptr<MemoryBasedReadBitBuffer> CreateFromVector(
+      int64_t capacity, const std::vector<uint8_t>& source);
+
+  /*!\brief Destructor.*/
+  ~MemoryBasedReadBitBuffer() override = default;
+
+ private:
+  /*!\brief Private constructor. Called by the factory method only.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \param source Reference of the source vector from which the buffer will
+   *        load data. The entire content will be copied into the constructed
+   *        instance.
+   */
+  MemoryBasedReadBitBuffer(size_t capacity, const std::vector<uint8_t>& source);
+
+  /*!\brief Load bytes from the source vector to the buffer.
+   *
+   * \param starting_byte Starting byte to load from source.
+   * \param num_bytes Number of bytes to load.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the start/ending position is invalid.
+   */
+  absl::Status LoadBytesToBuffer(int64_t starting_byte,
+                                 int64_t num_bytes) override;
+
+  // Source data stored in a vector.
+  const std::vector<uint8_t> source_vector_;
+};
+
+/*!\brief File-based read bit buffer.
+ *
+ * The file is read and buffer loaded only when necessary.
+ */
+class FileBasedReadBitBuffer : public ReadBitBuffer {
+ public:
+  /*!\brief Creates an instance of a file-based read bit buffer.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \param file_path Path to the file to load the buffer from.
+   * \return Unique pointer of the created instance. `nullptr` if the creation
+   *         fails.
+   */
+  static std::unique_ptr<FileBasedReadBitBuffer> CreateFromFilePath(
+      int64_t capacity, const std::filesystem::path& file_path);
+
+  /*!\brief Destructor.*/
+  ~FileBasedReadBitBuffer() override = default;
+
+ private:
+  /*!\brief Private constructor. Called by the factory method only.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \param source_size Total size of the file in bits.
+   * \param ifs Input file stream from which the buffer will load data. At most
+   *        a buffer full of data will be read at a given time.
+   *
+   */
+  FileBasedReadBitBuffer(size_t capacity, int64_t source_size,
+                         std::ifstream&& ifs);
+
+  /*!\brief Load bytes from the source file to the buffer.
+   *
+   * \param starting_byte Starting byte to load from source.
+   * \param num_bytes Number of bytes to load.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the file reading fails.
+   */
+  absl::Status LoadBytesToBuffer(int64_t starting_byte,
+                                 int64_t num_bytes) override;
+
+  // Source data stored in a file stream.
+  std::ifstream source_ifs_;
 };
 
 }  // namespace iamf_tools

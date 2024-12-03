@@ -117,20 +117,20 @@ TEST_F(TemporalDelimiterTest,
 
 TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
   std::vector<uint8_t> source_data = {};
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
 
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(
-                  ObuHeader(), source_data.size(), buffer),
+                  ObuHeader(), source_data.size(), *buffer),
               IsOk());
 }
 
 TEST(CreateFromBuffer, SetsObuType) {
   std::vector<uint8_t> source_data = {};
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
 
   absl::StatusOr<TemporalDelimiterObu> obu =
       TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), source_data.size(),
-                                             buffer);
+                                             *buffer);
   EXPECT_THAT(obu, IsOk());
   EXPECT_EQ(obu->header_.obu_type, kObuIaTemporalDelimiter);
 }
@@ -138,12 +138,12 @@ TEST(CreateFromBuffer, SetsObuType) {
 TEST(CreateFromBuffer, DoesNotConsumeBufferWhenObuPayloadSizeIsZero) {
   const int64_t kObuPayloadSize = 0;
   std::vector<uint8_t> source_data = {99};
-  ReadBitBuffer buffer(1024, &source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(),
-                                                     kObuPayloadSize, buffer),
+                                                     kObuPayloadSize, *buffer),
               IsOk());
   uint8_t next_byte;
-  EXPECT_THAT(buffer.ReadUnsignedLiteral(8, next_byte), IsOk());
+  EXPECT_THAT(buffer->ReadUnsignedLiteral(8, next_byte), IsOk());
 
   EXPECT_EQ(next_byte, 99);
 }
