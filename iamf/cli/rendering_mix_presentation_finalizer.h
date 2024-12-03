@@ -187,6 +187,20 @@ class RenderingMixPresentationFinalizer {
           parameter_blocks_end,
       std::list<MixPresentationObu>& mix_presentation_obus);
 
+  /*!\brief Validates and updates loudness for all mix presentations.
+   *
+   * Will update the loudness information for each mix presentation. Should be
+   * called after all temporal units have been pushed to PushTemporalUnit.
+   *
+   * \param validate_loudness If true, validate the loudness against the user
+   *        provided loudness.
+   * \param mix_presentation_obus Output list of OBUs to finalize with
+   *        calculated loudness information.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status Finalize(bool validate_loudness,
+                        std::list<MixPresentationObu>& mix_presentation_obus);
+
   /*!\brief Finalizes the list of Mix Presentation OBUs.
    *
    * Populates the loudness information for each Mix Presentation OBU. This
@@ -217,7 +231,7 @@ class RenderingMixPresentationFinalizer {
   const std::unique_ptr<LoudnessCalculatorFactoryBase>
       loudness_calculator_factory_;
 
-  std::list<MixPresentationRenderingMetadata> rendering_metadata_;
+  std::vector<MixPresentationRenderingMetadata> rendering_metadata_;
 };
 
 }  // namespace iamf_tools

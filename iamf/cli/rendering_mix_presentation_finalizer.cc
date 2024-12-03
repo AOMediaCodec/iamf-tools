@@ -498,7 +498,6 @@ absl::Status RenderAllFramesForLayout(
       // mix gain.
       RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
           labeled_frame, rendering_metadata, rendered_audio_elements[i]));
-
     } else {
       // This can happen when reaching the end of the stream. Flush and
       // calculate the final gains.
@@ -987,6 +986,19 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
   // Examine finalized Mix Presentation OBUs.
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     mix_presentation_obu.PrintObu();
+  }
+  return absl::OkStatus();
+}
+
+absl::Status RenderingMixPresentationFinalizer::Finalize(
+    bool validate_loudness,
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  int i = 0;
+  for (auto& mix_presentation_obu : mix_presentation_obus) {
+    RETURN_IF_NOT_OK(UpdateLoudnessInfo(
+        validate_loudness, rendering_metadata_[i].submix_rendering_metadata,
+        mix_presentation_obu));
+    i++;
   }
   return absl::OkStatus();
 }
