@@ -520,6 +520,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "resampler_base",
+    srcs = ["resampler_base.cc"],
+    hdrs = ["resampler_base.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 cc_binary(
     name = "encoder_main",
     srcs = [
