@@ -35,7 +35,7 @@ py_repositories()
 git_repository(
     name = "com_google_protobuf",
     remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v27.4",
+    tag = "v27.5",
 )
 
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
