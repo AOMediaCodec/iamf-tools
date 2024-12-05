@@ -25,6 +25,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -276,6 +277,46 @@ constexpr void Int32ToInternalSampleType(
 std::vector<InternalSampleType> Int32ToInternalSampleType(
     absl::Span<const int32_t> samples);
 
+/*!\brief Returns samples representing a sine wave.
+ *
+ * \param start_tick Tick to start sampling at. I.e. each tick represents
+ *                   `1.0 / sample_rate_hz` seconds.
+ * \param num_samples Number of samples to generate.
+ * \param sample_rate_hz Sample rate of the generated samples in Hz.
+ * \param frequency_hz Frequency of the sine wave in Hz.
+ * \param amplitude Amplitude of the sine wave. Recommended to be in [-1.0,
+ *                  1.0] to agree with the canonical `InternalSampleType`
+ *                  convention.
+ * \return Output vector of `InternalSampleType`s.
+ */
+std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
+                                                uint32_t num_samples,
+                                                uint32_t sample_rate_hz,
+                                                double frequency_hz,
+                                                double amplitude);
+
+/*!\brief Counts the zero crossings for each channel.
+ *
+ * The first time a user calls this, the `zero_crossing_states` and
+ * `zero_crossing_counts` may be empty. In subsequent calls, the user should
+ * pass the previous state of each channel.
+ *
+ * This pattern allows the user to accumulate the zero crossings for a
+ * single audio channel, while allowing data to be processed in chunks (i.e.
+ * frames).
+ *
+ * \param tick_channel_samples Samples arranged in (time, channel) axes.
+ * \param zero_crossing_states Initial state for each channel. Used between
+ *        subsequence calls to `CountZeroCrossings` to track the state of each
+ *        channel.
+ * \param zero_crossing_counts Accumulates the number of zero crossings
+ *        detected.
+ */
+enum class ZeroCrossingState { kUnknown, kPositive, kNegative };
+void AccumulateZeroCrossings(
+    absl::Span<const std::vector<int32_t>> tick_channel_samples,
+    std::vector<ZeroCrossingState>& zero_crossing_states,
+    std::vector<int>& zero_crossing_counts);
 /*!\brief Reads the contents of the file and appends it to `buffer`.
  *
  * \param file_path Path of file to read.

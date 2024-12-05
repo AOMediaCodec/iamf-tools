@@ -17,8 +17,10 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <limits>
 #include <list>
 #include <memory>
+#include <numbers>
 #include <numeric>
 #include <string>
 #include <system_error>
@@ -453,6 +455,65 @@ std::vector<InternalSampleType> Int32ToInternalSampleType(
   std::vector<InternalSampleType> result(samples.size());
   Int32ToInternalSampleType(samples, absl::MakeSpan(result));
   return result;
+}
+
+std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
+                                                uint32_t num_samples,
+                                                uint32_t sample_rate_hz,
+                                                double frequency_hz,
+                                                double amplitude) {
+  std::vector<InternalSampleType> samples(num_samples, 0.0);
+  constexpr double kPi = std::numbers::pi_v<InternalSampleType>;
+  const double time_base = 1.0 / sample_rate_hz;
+
+  for (int frame_tick = 0; frame_tick < num_samples; ++frame_tick) {
+    const double t = start_tick + frame_tick;
+    samples[frame_tick] =
+        amplitude * sin(2.0 * kPi * frequency_hz * t * time_base);
+  }
+  return samples;
+}
+
+void AccumulateZeroCrossings(
+    absl::Span<const std::vector<int32_t>> samples,
+    std::vector<ZeroCrossingState>& zero_crossing_states,
+    std::vector<int>& zero_crossing_counts) {
+  using enum ZeroCrossingState;
+  const auto num_channels = samples.empty() ? 0 : samples[0].size();
+  // Seed the data structures, or check they contain the right number of
+  // channels.
+  if (zero_crossing_counts.empty()) {
+    zero_crossing_counts.resize(num_channels, 0);
+  } else {
+    ASSERT_EQ(num_channels, zero_crossing_counts.size());
+  }
+  if (zero_crossing_states.empty()) {
+    zero_crossing_states.resize(num_channels, ZeroCrossingState::kUnknown);
+  } else {
+    ASSERT_EQ(num_channels, zero_crossing_states.size());
+  }
+
+  // Zero crossing threshold determined empirically for -18 dB sine waves to
+  // skip encoding artifacts (e.g. a small ringing artifact < -40 dB after
+  // the sine wave stopped.)  Note that -18 dB would correspond to dividing
+  // by 8, while dividing by 100 is -40 dB.
+  constexpr int32_t kThreshold = std::numeric_limits<int32_t>::max() / 100;
+  for (const auto& tick : samples) {
+    ASSERT_EQ(tick.size(), num_channels);
+    for (int i = 0; i < num_channels; ++i) {
+      ZeroCrossingState next_state = (tick[i] > kThreshold)    ? kPositive
+                                     : (tick[i] < -kThreshold) ? kNegative
+                                                               : kUnknown;
+      if (next_state == kUnknown) {
+        // Don't do anything if it's not clearly positive or negative.
+        continue;
+      } else if (zero_crossing_states[i] != next_state) {
+        // If we clearly flipped states, count it as a zero crossing.
+        zero_crossing_counts[i]++;
+        zero_crossing_states[i] = next_state;
+      }
+    }
+  }
 }
 
 absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
