@@ -325,6 +325,42 @@ absl::Status ConvertInterleavedToTimeChannel(
   return absl::OkStatus();
 }
 
+/*!\brief Interleaves the input samples.
+ *
+ * \param samples Samples in (time, channel) axes to arrange.
+ * \param transform_samples Function to transform each sample to the output
+ *        type.
+ * \param output Output vector to write the interleaved samples to.
+ * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
+ *         input has an inconsistent number of channels. An error propagated
+ *         from `transform_samples` if it fails.
+ */
+template <typename InputType, typename OutputType>
+absl::Status ConvertTimeChannelToInterleaved(
+    absl::Span<const std::vector<InputType>> input,
+    const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
+        transform_samples,
+    std::vector<OutputType>& output) {
+  const size_t num_channels = input.empty() ? 0 : input[0].size();
+  if (!std::all_of(input.begin(), input.end(), [&](const auto& tick) {
+        return tick.size() == num_channels;
+      })) {
+    return absl::InvalidArgumentError(
+        "All ticks must have the same number of channels.");
+  }
+
+  output.clear();
+  output.reserve(input.size() * num_channels);
+  for (const auto& tick : input) {
+    for (const auto& sample : tick) {
+      OutputType transformed_sample;
+      RETURN_IF_NOT_OK(transform_samples(sample, transformed_sample));
+      output.emplace_back(transformed_sample);
+    }
+  }
+  return absl::OkStatus();
+}
+
 /*!\brief Looks up a key in a map and returns a status or value.
  *
  * When lookup fails the error message will contain the `context` string

@@ -16,10 +16,12 @@
 #include <utility>
 #include <vector>
 
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/opus_utils.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -52,20 +54,21 @@ absl::Status ValidateDecoderConfig(
   return absl::OkStatus();
 }
 
+// `opus_encode_float` recommends the input is normalized to the range [-1, 1].
+const absl::AnyInvocable<absl::Status(int32_t, float&) const>
+    kInt32ToNormalizedFloat = [](int32_t input, float& output) {
+      output = Int32ToNormalizedFloatingPoint<float>(input);
+      return absl::OkStatus();
+    };
+
 absl::StatusOr<int> EncodeFloat(
     const std::vector<std::vector<int32_t>>& samples,
-    int num_samples_per_channel, int num_channels, ::OpusEncoder* encoder,
+    int num_samples_per_channel, ::OpusEncoder* encoder,
     std::vector<uint8_t>& audio_frame) {
-  //  `opus_encode_float` usually recommends the input is normalized to the
-  //  range [-1, 1].
-  std::vector<float> encoder_input_pcm(num_samples_per_channel * num_channels,
-                                       0.0);
-  for (int t = 0; t < samples.size(); t++) {
-    for (int c = 0; c < num_channels; ++c) {
-      encoder_input_pcm[t * num_channels + c] =
-          Int32ToNormalizedFloatingPoint<float>(samples[t][c]);
-    }
-  }
+  std::vector<float> encoder_input_pcm;
+  RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(samples),
+                                                   kInt32ToNormalizedFloat,
+                                                   encoder_input_pcm));
 
   // TODO(b/311655037): Test that samples are passed to `opus_encode_float` in
   //                    the correct order. Maybe also check they are in the
@@ -183,8 +186,7 @@ absl::Status OpusEncoder::EncodeAudioFrame(
 
   const auto encoded_length_bytes =
       encoder_metadata_.use_float_api()
-          ? EncodeFloat(samples, num_samples_per_channel, num_channels_,
-                        encoder_, audio_frame)
+          ? EncodeFloat(samples, num_samples_per_channel, encoder_, audio_frame)
           : EncodeInt16(samples, num_samples_per_channel, num_channels_,
                         encoder_, audio_frame);
 

@@ -19,10 +19,12 @@
 #include <utility>
 #include <vector>
 
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
@@ -163,27 +165,25 @@ absl::Status FlacEncoder::EncodeAudioFrame(
     base_sign_extension_mask |= 1 << i;
   }
 
+  const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+      kLeftJustifiedToRightJustified =
+          [base_sign_extension_mask, input_bit_depth](int32_t input,
+                                                      int32_t& output) {
+            // Only apply the sign extension mask when the left-justified value
+            // has '1' in the MSB.
+            const uint32_t sign_extension_mask =
+                (input & 0x80000000) ? base_sign_extension_mask : 0;
+            // Shift the input value to be right-justified.
+            output = static_cast<uint32_t>(input) >> (32 - input_bit_depth) |
+                     sign_extension_mask;
+            return absl::OkStatus();
+          };
+
   // Convert input to the array that will be passed to `flac_encode`.
-  std::vector<FLAC__int32> encoder_input_pcm(
-      num_samples_per_channel * num_channels_, 0);
-  int write_position = 0;
-  for (int t = 0; t < samples.size(); t++) {
-    for (int c = 0; c < samples[0].size(); ++c) {
-      // Only apply the sign extension mask when the left-justified value has
-      // '1' in the MSB.
-      const uint32_t sign_extension_mask =
-          (samples[t][c] & 0x80000000) ? base_sign_extension_mask : 0;
-      // Shift the input value to be right-justified.
-      const uint32_t sample_right_justified =
-          static_cast<uint32_t>(samples[t][c]) >> (32 - input_bit_depth) |
-          sign_extension_mask;
-      RETURN_IF_NOT_OK(
-          WritePcmSample(sample_right_justified, 32,
-                         /*big_endian=*/false,
-                         reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
-                         write_position));
-    }
-  }
+  std::vector<FLAC__int32> encoder_input_pcm;
+  RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(
+      absl::MakeConstSpan(samples), kLeftJustifiedToRightJustified,
+      encoder_input_pcm));
 
   LOG_FIRST_N(INFO, 1) << "Encoding " << encoder_input_pcm.size() * 4
                        << " bytes representing " << num_samples_per_channel

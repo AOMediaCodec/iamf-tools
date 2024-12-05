@@ -13,18 +13,19 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
-#include <algorithm>
 #include <memory>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -180,14 +181,16 @@ absl::Status AudioElementRendererPassThrough::RenderSamples(
     std::vector<InternalSampleType>& rendered_samples) {
   // Flatten the (time, channel) axes into interleaved samples.
   absl::MutexLock lock(&mutex_);
-  auto rendered_samples_iter = rendered_samples.begin();
-  for (const auto& samples_at_time : samples_to_render) {
-    // Skip applying the identity matrix and just copy values over.
-    std::copy(samples_at_time.begin(), samples_at_time.end(),
-              rendered_samples_iter);
-    rendered_samples_iter += num_output_channels_;
-  }
-  return absl::OkStatus();
+  const absl::AnyInvocable<absl::Status(InternalSampleType, InternalSampleType&)
+                               const>
+      kIdentityTransform =
+          [](InternalSampleType input, InternalSampleType& output) {
+            output = input;
+            return absl::OkStatus();
+          };
+
+  return ConvertTimeChannelToInterleaved(absl::MakeConstSpan(samples_to_render),
+                                         kIdentityTransform, rendered_samples);
 }
 
 }  // namespace iamf_tools

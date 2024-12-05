@@ -1045,6 +1045,79 @@ TEST(ConvertInterleavedToTimeChannel, AppliesTransform) {
   EXPECT_EQ(result, kExpectedResult);
 }
 
+TEST(ConvertTimeChannelToInterleaved,
+     FailsIfSamplesHaveAnUnevenNumberOfChannels) {
+  std::vector<std::vector<int32_t>> input = {{1, 2}, {3, 4, 5}};
+  std::vector<int32_t> undefined_result;
+
+  EXPECT_THAT(
+      ConvertTimeChannelToInterleaved(absl::MakeConstSpan(input),
+                                      kIdentityTransform, undefined_result),
+      StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ConvertTimeChannelToInterleaved, PropagatesError) {
+  const absl::Status kError = absl::InternalError("Test error");
+  const std::vector<std::vector<int32_t>> kInput = {{1, 2, 3}, {4, 5, 6}};
+  const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+      kAlwaysErrorTransform =
+          [kError](int32_t /*input*/, int32_t& /*output*/) { return kError; };
+  std::vector<int32_t> undefined_result;
+
+  EXPECT_EQ(
+      ConvertTimeChannelToInterleaved(absl::MakeConstSpan(kInput),
+                                      kAlwaysErrorTransform, undefined_result),
+      kError);
+}
+
+TEST(ConvertTimeChannelToInterleaved, SucceedsOnEmptyInput) {
+  const std::vector<std::vector<int32_t>> kEmptyInput;
+  std::vector<int32_t> result;
+
+  EXPECT_THAT(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(kEmptyInput),
+                                              kIdentityTransform, result),
+              IsOk());
+  EXPECT_TRUE(result.empty());
+}
+
+TEST(ConvertTimeChannelToInterleaved, ClearsOutputVector) {
+  const std::vector<std::vector<int32_t>> kInput = {{1}};
+  std::vector<int32_t> result = {1, 2, 3};
+  constexpr std::array<int32_t, 1> kExpectedResult{1};
+
+  EXPECT_THAT(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(kInput),
+                                              kIdentityTransform, result),
+              IsOk());
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
+}
+
+TEST(ConvertTimeChannelToInterleaved, InterleavesResult) {
+  const std::vector<std::vector<int32_t>> kInput = {{1, 2, 3}, {4, 5, 6}};
+  std::vector<int32_t> result;
+  constexpr std::array<int32_t, 6> kExpectedResult{1, 2, 3, 4, 5, 6};
+
+  EXPECT_THAT(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(kInput),
+                                              kIdentityTransform, result),
+              IsOk());
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
+}
+
+TEST(ConvertTimeChannelToInterleaved, AppliesTransform) {
+  const std::vector<std::vector<int32_t>> kInput = {{1, 2, 3}, {4, 5, 6}};
+  std::vector<int32_t> result;
+  const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+      kDoublingTransform = [](int32_t input, int32_t& output) {
+        output = input * 2;
+        return absl::OkStatus();
+      };
+  constexpr std::array<int32_t, 6> kExpectedResult{2, 4, 6, 8, 10, 12};
+
+  EXPECT_THAT(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(kInput),
+                                              kDoublingTransform, result),
+              IsOk());
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
+}
+
 TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {
   const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
       {1, false}, {2, true}, {3, true}, {4, false}};
