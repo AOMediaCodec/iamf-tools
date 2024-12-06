@@ -64,14 +64,29 @@ absl::Status ValidateSpecificParamDefinition(
 }  // namespace
 
 bool operator==(const ParamDefinition& lhs, const ParamDefinition& rhs) {
-  // First check always-present fields.
-  if (lhs.param_definition_mode_ != rhs.param_definition_mode_) {
-    return false;
-  }
   if (lhs.type_ != rhs.type_) {
     return false;
   }
-  if (!lhs.EquivalentDerived(rhs)) {
+  if (!lhs.type_.has_value()) {
+    return true;
+  }
+  switch (*lhs.type_) {
+    using enum ParamDefinition::ParameterDefinitionType;
+    case kParameterDefinitionMixGain:
+    case kParameterDefinitionDemixing:
+    case kParameterDefinitionReconGain:
+      if (!lhs.EquivalentDerived(rhs)) {
+        return false;
+      }
+      break;
+    case kParameterDefinitionReservedStart:
+    case kParameterDefinitionReservedEnd:
+      // Other fields are virtual. Only compare the derived "extended" bytes.
+      return lhs.EquivalentDerived(rhs);
+  }
+
+  // First check always-present fields.
+  if (lhs.param_definition_mode_ != rhs.param_definition_mode_) {
     return false;
   }
 

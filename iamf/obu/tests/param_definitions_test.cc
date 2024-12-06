@@ -864,5 +864,40 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
             kExpectedParamDefinitionBytes);
 }
 
+TEST(ExtendedParamDefinitionEqualityOperator, Equals) {
+  ExtendedParamDefinition lhs(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  lhs.param_definition_size_ = 5;
+  lhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
+  ExtendedParamDefinition rhs(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  rhs.param_definition_size_ = 5;
+  rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
+
+  EXPECT_TRUE(lhs == rhs);
+}
+
+TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenTypeIsDifferent) {
+  const ExtendedParamDefinition lhs(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  const ExtendedParamDefinition rhs(
+      ParamDefinition::kParameterDefinitionReservedEnd);
+
+  EXPECT_NE(lhs, rhs);
+}
+
+TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenPayloadIsDifferent) {
+  ExtendedParamDefinition lhs(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  lhs.param_definition_size_ = 3;
+  lhs.param_definition_bytes_ = {'e', 'x', 't'};
+  ExtendedParamDefinition rhs(
+      ParamDefinition::kParameterDefinitionReservedStart);
+  rhs.param_definition_size_ = 5;
+  rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
+
+  EXPECT_NE(lhs, rhs);
+}
+
 }  // namespace
 }  // namespace iamf_tools
