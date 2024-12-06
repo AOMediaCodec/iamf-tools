@@ -47,7 +47,7 @@ class ParamDefinition {
    * After constructing `InitializeSubblockDurations()` MUST be called
    * before using most functionality.
    */
-  ParamDefinition() : type_(std::nullopt) {}
+  ParamDefinition() = default;
 
   /*!\brief Default destructor.
    */
@@ -130,10 +130,10 @@ class ParamDefinition {
    */
   virtual void Print() const;
 
-  DecodedUleb128 parameter_id_;
-  DecodedUleb128 parameter_rate_;
-  uint8_t param_definition_mode_;  // 1 bit.
-  uint8_t reserved_ = 0;           // 7 bits.
+  DecodedUleb128 parameter_id_ = 0;
+  DecodedUleb128 parameter_rate_ = 0;
+  uint8_t param_definition_mode_ = 0;  // 1 bit.
+  uint8_t reserved_ = 0;               // 7 bits.
 
   // All fields below are only included if `param_definition_mode_ == 0`.
   DecodedUleb128 duration_ = 0;

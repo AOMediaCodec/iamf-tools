@@ -1029,7 +1029,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
     const auto& expected_label_to_samples =
         expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
     EXPECT_EQ(actual_label_to_samples.size(), expected_label_to_samples.size());
-    for (const auto [label, samples] : actual_label_to_samples) {
+    for (const auto& [label, samples] : actual_label_to_samples) {
       // Use `DoubleNear` with a tolerance because floating-point arithmetic
       // introduces errors larger than allowed by `DoubleEq`.
       constexpr double kErrorTolerance = 1e-14;

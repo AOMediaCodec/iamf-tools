@@ -166,24 +166,6 @@ TEST(Decode, DecodesLpcmFrame) {
   }
 }
 
-void DecodeEightSampleAudioFrame(uint32_t num_samples_to_trim_at_end = 0,
-                                 uint32_t num_samples_to_trim_at_start = 0) {
-  AudioFrameDecoder decoder;
-  // Encoded frames.
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  AudioFrameWithData encoded_audio_frame =
-      PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
-  InitAllAudioElements(audio_elements, decoder);
-
-  encoded_audio_frame.obu.header_.num_samples_to_trim_at_end =
-      num_samples_to_trim_at_end;
-  encoded_audio_frame.obu.header_.num_samples_to_trim_at_start =
-      num_samples_to_trim_at_start;
-  // Decode.
-  EXPECT_THAT(decoder.Decode(encoded_audio_frame), IsOk());
-}
-
 TEST(Decode, DecodesFlacFrame) {
   AudioFrameDecoder decoder;
 

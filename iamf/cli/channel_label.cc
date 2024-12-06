@@ -618,6 +618,7 @@ ChannelLabel::GetDemixedChannelLabelForReconGain(
     case kReconGainFlagRtb:
       return kDemixedRtb4;
     case kReconGainFlagLfe:
+    default:
       LOG(WARNING)
           << "Unexpected recon gain flag. No corresponding channel label.";
       return absl::InvalidArgumentError("Unexpected recon gain flag.");
