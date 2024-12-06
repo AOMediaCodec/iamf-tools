@@ -158,11 +158,9 @@ TEST_F(FlacDecoderTest, InitializeSuccess) {
 TEST_F(FlacDecoderTest, DecodeAudioFrameSuccess) {
   FlacDecoder flac_decoder = CreateFlacDecoder();
 
-  std::vector<std::vector<int32_t>> decoded_samples;
   EXPECT_THAT(flac_decoder.Initialize(), IsOk());
   auto status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()),
-      decoded_samples);
+      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
   EXPECT_THAT(status, IsOk());
 
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
@@ -182,26 +180,22 @@ TEST_F(FlacDecoderTest, DecodeAudioFrameSuccess) {
       {0x00000000, 0x00000000},
       {0x00000000, 0x00000000},
       {0x00000000, 0x00000000}};
-  EXPECT_EQ(decoded_samples.size(), kExpectedDecodedSamples.size());
-  EXPECT_EQ(decoded_samples, kExpectedDecodedSamples);
-  decoded_samples.clear();
+  EXPECT_EQ(flac_decoder.ValidDecodedSamples(), kExpectedDecodedSamples);
+
+  // Decode again.
   status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()),
-      decoded_samples);
+      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
   EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(decoded_samples.size(), kExpectedDecodedSamples.size());
-  EXPECT_EQ(decoded_samples, kExpectedDecodedSamples);
+  EXPECT_EQ(flac_decoder.ValidDecodedSamples(), kExpectedDecodedSamples);
 }
 
 TEST_F(FlacDecoderTest, DecodeAudioFrameFailsOnMismatchedBlocksize) {
   // num_samples_per_channel = 32, but the encoded frame has 16 samples per
   // channel.
   FlacDecoder flac_decoder = CreateFlacDecoder(32);
-  std::vector<std::vector<int32_t>> decoded_samples;
   EXPECT_THAT(flac_decoder.Initialize(), IsOk());
   auto status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()),
-      decoded_samples);
+      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
   EXPECT_FALSE(status.ok());
 }
 

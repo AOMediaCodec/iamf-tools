@@ -82,14 +82,14 @@ absl::Status OpusDecoder::Initialize() {
 }
 
 absl::Status OpusDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame,
-    std::vector<std::vector<int32_t>>& decoded_samples) {
+    const std::vector<uint8_t>& encoded_frame) {
+  num_valid_ticks_ = 0;
+
   // `opus_decode_float` decodes to `float` samples with channels interlaced.
   // Typically these values are in the range of [-1, +1] (always for
   // `iamf_tools`-encoded data). Values outside of that range will be clipped in
   // `NormalizedFloatToInt32`.
-  std::vector<float> output_pcm_float;
-  output_pcm_float.resize(num_samples_per_channel_ * num_channels_);
+  std::vector<float> output_pcm_float(num_samples_per_channel_ * num_channels_);
 
   // Transform the data and feed it to the decoder.
   std::vector<unsigned char> input_data(encoded_frame.size());
@@ -106,16 +106,17 @@ absl::Status OpusDecoder::DecodeAudioFrame(
     return OpusErrorCodeToAbslStatus(num_output_samples,
                                      "Failed to decode Opus frame.");
   }
-  output_pcm_float.resize(num_output_samples * num_channels_);
   LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
                        << " samples per channel. With " << num_channels_
                        << " channels.";
   // Convert the interleaved data to (time, channel) axes.
   return ConvertInterleavedToTimeChannel(
-      absl::MakeConstSpan(output_pcm_float), num_channels_,
+      absl::MakeConstSpan(output_pcm_float)
+          .first(num_output_samples * num_channels_),
+      num_channels_,
       absl::AnyInvocable<absl::Status(float, int32_t&) const>(
           NormalizedFloatingPointToInt32<float>),
-      decoded_samples);
+      decoded_samples_, num_valid_ticks_);
 }
 
 }  // namespace iamf_tools

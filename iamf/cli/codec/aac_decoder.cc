@@ -170,8 +170,9 @@ absl::Status AacDecoder::Initialize() {
 }
 
 absl::Status AacDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame,
-    std::vector<std::vector<int32_t>>& decoded_samples) {
+    const std::vector<uint8_t>& encoded_frame) {
+  num_valid_ticks_ = 0;
+
   // Transform the data and feed it to the decoder.
   std::vector<UCHAR> input_data(encoded_frame.size());
   std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),
@@ -191,8 +192,7 @@ absl::Status AacDecoder::DecodeAudioFrame(
 
   // Retrieve the decoded frame. `fdk_aac` decodes to INT_PCM (usually 16-bits)
   // samples with channels interlaced.
-  std::vector<INT_PCM> output_pcm;
-  output_pcm.resize(num_samples_per_channel_ * num_channels_);
+  std::vector<INT_PCM> output_pcm(num_samples_per_channel_ * num_channels_);
   RETURN_IF_NOT_OK(AacDecoderErrorToAbslStatus(
       aacDecoder_DecodeFrame(decoder_, output_pcm.data(), output_pcm.size(),
                              /*flags=*/0),
@@ -207,7 +207,7 @@ absl::Status AacDecoder::DecodeAudioFrame(
       };
   return ConvertInterleavedToTimeChannel(absl::MakeConstSpan(output_pcm),
                                          num_channels_, kAacInternalTypeToInt32,
-                                         decoded_samples);
+                                         decoded_samples_, num_valid_ticks_);
 }
 
 }  // namespace iamf_tools

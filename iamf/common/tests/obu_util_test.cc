@@ -966,11 +966,43 @@ const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
 TEST(ConvertInterleavedToTimeChannel, FailsIfSamplesIsNotAMultipleOfChannels) {
   constexpr std::array<int32_t, 4> kFourTestValues = {1, 2, 3, 4};
   constexpr size_t kNumChannels = 3;
-  std::vector<std::vector<int32_t>> undefined_result;
-
+  std::vector<std::vector<int32_t>> undefined_result(
+      1, std::vector<int32_t>(kNumChannels));
+  size_t undefined_num_ticks;
   EXPECT_THAT(ConvertInterleavedToTimeChannel(
                   absl::MakeConstSpan(kFourTestValues), kNumChannels,
-                  kIdentityTransform, undefined_result),
+                  kIdentityTransform, undefined_result, undefined_num_ticks),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ConvertInterleavedToTimeChannel, FailsIfTooFewTicksInResult) {
+  constexpr std::array<int32_t, 4> kFourTestValues = {1, 2, 3, 4};
+  constexpr size_t kNumChannels = 2;
+  const size_t input_num_ticks = kFourTestValues.size() / kNumChannels;
+
+  // The result has one fewer ticks than the input, which will be rejected.
+  std::vector<std::vector<int32_t>> undefined_result(
+      input_num_ticks - 1, std::vector<int32_t>(kNumChannels));
+  size_t undefined_num_ticks;
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kFourTestValues), kNumChannels,
+                  kIdentityTransform, undefined_result, undefined_num_ticks),
+              StatusIs(absl::StatusCode::kInvalidArgument));
+}
+
+TEST(ConvertInterleavedToTimeChannel, FailsIfDifferentChannelNumbersInResult) {
+  constexpr std::array<int32_t, 4> kFourTestValues = {1, 2, 3, 4};
+  constexpr size_t kNumChannels = 2;
+  const size_t input_num_ticks = kFourTestValues.size() / kNumChannels;
+
+  // The result has a different number of channels than the input, which will be
+  // rejected.
+  std::vector<std::vector<int32_t>> undefined_result(
+      input_num_ticks, std::vector<int32_t>(kNumChannels + 1));
+  size_t undefined_num_ticks;
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kFourTestValues), kNumChannels,
+                  kIdentityTransform, undefined_result, undefined_num_ticks),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -978,14 +1010,16 @@ TEST(ConvertInterleavedToTimeChannel, PropagatesError) {
   const absl::Status kError = absl::InternalError("Test error");
   const size_t kNumChannels = 2;
   constexpr std::array<int32_t, 4> kSamples{1, 2, 3, 4};
+  const size_t kNumTicks = kSamples.size() / kNumChannels;
   const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
       kAlwaysErrorTransform =
           [kError](int32_t input, int32_t& output) { return kError; };
-  std::vector<std::vector<int32_t>> undefined_result;
-
-  EXPECT_EQ(ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kSamples),
-                                            kNumChannels, kAlwaysErrorTransform,
-                                            undefined_result),
+  std::vector<std::vector<int32_t>> undefined_result(
+      kNumTicks, std::vector<int32_t>(kNumChannels));
+  size_t undefined_num_ticks;
+  EXPECT_EQ(ConvertInterleavedToTimeChannel(
+                absl::MakeConstSpan(kSamples), kNumChannels,
+                kAlwaysErrorTransform, undefined_result, undefined_num_ticks),
             kError);
 }
 
@@ -993,24 +1027,29 @@ TEST(ConvertInterleavedToTimeChannel, SucceedsOnEmptySamples) {
   constexpr std::array<int32_t, 0> kEmptySamples{};
   constexpr size_t kNumChannels = 2;
   std::vector<std::vector<int32_t>> result;
-
-  EXPECT_THAT(
-      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kEmptySamples),
-                                      kNumChannels, kIdentityTransform, result),
-      IsOk());
-  EXPECT_TRUE(result.empty());
+  size_t num_ticks = 0;
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kEmptySamples), kNumChannels,
+                  kIdentityTransform, result, num_ticks),
+              IsOk());
+  EXPECT_EQ(num_ticks, 0);
 }
 
-TEST(ConvertInterleavedToTimeChannel, ClearsOutputVector) {
+TEST(ConvertInterleavedToTimeChannel, DoesNotAlterOutputVector) {
   constexpr size_t kNumChannels = 2;
   constexpr std::array<int32_t, 0> kEmptySamples{};
   std::vector<std::vector<int32_t>> result = {{1, 2}, {3, 4}};
+  const auto copy_of_result = result;
+  size_t num_ticks = 0;
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(
+                  absl::MakeConstSpan(kEmptySamples), kNumChannels,
+                  kIdentityTransform, result, num_ticks),
+              IsOk());
 
-  EXPECT_THAT(
-      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kEmptySamples),
-                                      kNumChannels, kIdentityTransform, result),
-      IsOk());
-  EXPECT_TRUE(result.empty());
+  // Result is not changed but the valid range (`num_ticks`) is zero, meaning
+  // none of the result should be used.
+  EXPECT_EQ(copy_of_result, result);
+  EXPECT_EQ(num_ticks, 0);
 }
 
 TEST(ConvertInterleavedToTimeChannel, InterleavesResults) {
@@ -1018,13 +1057,15 @@ TEST(ConvertInterleavedToTimeChannel, InterleavesResults) {
   constexpr std::array<int32_t, 6> kTwoTicksOfThreeChannels{1, 2, 3, 4, 5, 6};
   const std::vector<std::vector<int32_t>> kExpectedTwoTicksForThreeChannels = {
       {1, 2, 3}, {4, 5, 6}};
-  std::vector<std::vector<int32_t>> result;
-
+  std::vector<std::vector<int32_t>> result(2,
+                                           std::vector<int32_t>(kNumChannels));
+  size_t num_ticks = 0;
   EXPECT_THAT(ConvertInterleavedToTimeChannel(
                   absl::MakeConstSpan(kTwoTicksOfThreeChannels), kNumChannels,
-                  kIdentityTransform, result),
+                  kIdentityTransform, result, num_ticks),
               IsOk());
   EXPECT_EQ(result, kExpectedTwoTicksForThreeChannels);
+  EXPECT_EQ(num_ticks, 2);
 }
 
 TEST(ConvertInterleavedToTimeChannel, AppliesTransform) {
@@ -1036,13 +1077,15 @@ TEST(ConvertInterleavedToTimeChannel, AppliesTransform) {
         output = input * 2;
         return absl::OkStatus();
       };
-  std::vector<std::vector<int32_t>> result;
-
-  EXPECT_THAT(
-      ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kSamples),
-                                      kNumChannels, kDoublingTransform, result),
-      IsOk());
+  std::vector<std::vector<int32_t>> result(2,
+                                           std::vector<int32_t>(kNumChannels));
+  size_t num_ticks = 0;
+  EXPECT_THAT(ConvertInterleavedToTimeChannel(absl::MakeConstSpan(kSamples),
+                                              kNumChannels, kDoublingTransform,
+                                              result, num_ticks),
+              IsOk());
   EXPECT_EQ(result, kExpectedResult);
+  EXPECT_EQ(num_ticks, 2);
 }
 
 TEST(ConvertTimeChannelToInterleaved,

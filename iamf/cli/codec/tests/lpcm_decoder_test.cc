@@ -76,9 +76,9 @@ LpcmDecoder CreateDecoderForDecodingTest(uint8_t sample_size,
   if (!codec_config_obu.Initialize(kOverrideAudioRollDistance).ok()) {
     LOG(ERROR) << "Failed to initialize codec config OBU";
   }
-  int number_of_channels = 2;  // Keep the amount of test data reasonable.
+  constexpr int kTwoChannels = 2;  // Keep the amount of test data reasonable.
 
-  LpcmDecoder lpcm_decoder(codec_config_obu, number_of_channels);
+  LpcmDecoder lpcm_decoder(codec_config_obu, kTwoChannels);
   auto status = lpcm_decoder.Initialize();
   return lpcm_decoder;
 }
@@ -95,8 +95,8 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
       0x80, 0xff,  // -128
   };
 
-  auto decoded_samples = std::vector<std::vector<int32_t>>();
-  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
+  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
+  const auto& decoded_samples = lpcm_decoder.ValidDecodedSamples();
 
   EXPECT_THAT(status, IsOk());
   // We have two channels and four samples, so we expect two time ticks of two
@@ -124,8 +124,8 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
       0x80, 0x00, 0x00,  // -8388608
   };
 
-  auto decoded_samples = std::vector<std::vector<int32_t>>();
-  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
+  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
+  const auto& decoded_samples = lpcm_decoder.ValidDecodedSamples();
 
   EXPECT_THAT(status, IsOk());
   // We have two channels and six samples, so we expect three time ticks of two
@@ -151,36 +151,30 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
   // samples which doesn't divide evenly into the number of channels.
   const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x00,
                                                0x00, 0x00, 0x00};
-  auto decoded_samples = std::vector<std::vector<int32_t>>();
 
-  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
-
+  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
   EXPECT_FALSE(status.ok());
-  EXPECT_THAT(decoded_samples, ::testing::IsEmpty());
+  EXPECT_THAT(lpcm_decoder.ValidDecodedSamples(), ::testing::IsEmpty());
 }
 
-TEST(LpcmDecoderTest, DecodeAudioFrame_AppendsToExistingSamples) {
+TEST(LpcmDecoderTest, DecodeAudioFrame_OverwritesExistingSamples) {
   uint8_t sample_size = 16;
   bool little_endian = true;
   LpcmDecoder lpcm_decoder =
       CreateDecoderForDecodingTest(sample_size, little_endian);
   const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x01, 0x00};
 
-  auto decoded_samples = std::vector<std::vector<int32_t>>();
-  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
-
+  auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
   EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(decoded_samples.size(), 1);
+  EXPECT_EQ(lpcm_decoder.ValidDecodedSamples().size(), 1);
 
-  status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
-
+  status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
   EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(decoded_samples.size(), 2);
+  EXPECT_EQ(lpcm_decoder.ValidDecodedSamples().size(), 1);
 
-  status = lpcm_decoder.DecodeAudioFrame(encoded_frame, decoded_samples);
-
+  status = lpcm_decoder.DecodeAudioFrame(encoded_frame);
   EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(decoded_samples.size(), 3);
+  EXPECT_EQ(lpcm_decoder.ValidDecodedSamples().size(), 1);
 }
 
 }  // namespace

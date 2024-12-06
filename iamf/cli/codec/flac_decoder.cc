@@ -12,6 +12,7 @@
 
 #include "iamf/cli/codec/flac_decoder.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -144,8 +145,9 @@ absl::Status FlacDecoder::Finalize() {
 }
 
 absl::Status FlacDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame,
-    std::vector<std::vector<int32_t>>& decoded_samples) {
+    const std::vector<uint8_t>& encoded_frame) {
+  num_valid_ticks_ = 0;
+
   // Set the encoded frame to be decoded; the libflac decoder will copy the
   // data using LibFlacReadCallback.
   encoded_frame_ = encoded_frame;
@@ -154,7 +156,10 @@ absl::Status FlacDecoder::DecodeAudioFrame(
     return absl::InternalError("Failed to decode FLAC frame.");
   }
   // Get the decoded frame, which will have been set by LibFlacWriteCallback.
-  decoded_samples = decoded_frame_;
+  // Copy the first `num_valid_ticks_` time samples to `decoded_samples_`.
+  num_valid_ticks_ = decoded_frame_.size();
+  std::copy(decoded_frame_.begin(), decoded_frame_.begin() + num_valid_ticks_,
+            decoded_samples_.begin());
   return absl::OkStatus();
 }
 

@@ -13,6 +13,7 @@
 #ifndef CLI_DECODER_BASE_H_
 #define CLI_DECODER_BASE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -34,7 +35,10 @@ class DecoderBase {
    */
   DecoderBase(int num_channels, int num_samples_per_channel)
       : num_channels_(num_channels),
-        num_samples_per_channel_(num_samples_per_channel) {}
+        num_samples_per_channel_(num_samples_per_channel),
+        decoded_samples_(num_samples_per_channel_,
+                         std::vector<int32_t>(num_channels)),
+        num_valid_ticks_(0) {}
 
   /*!\brief Destructor.
    */
@@ -49,19 +53,33 @@ class DecoderBase {
   /*!\brief Decodes an audio frame.
    *
    * \param encoded_frame Frame to decode.
-   * \param decoded_samples Output decoded frames arranged in (time, sample)
-   *        axes.  That is to say, each inner vector has one sample for per
-   *        channel and the outer vector contains one inner vector for each
-   *        time tick.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame,
-      std::vector<std::vector<int32_t>>& decoded_samples) = 0;
+      const std::vector<uint8_t>& encoded_frame) = 0;
+
+  /*!\brief Outputs valid decoded samples.
+   *
+   * \return Valid decoded samples.
+   */
+  std::vector<std::vector<int32_t>> ValidDecodedSamples() const {
+    return {decoded_samples_.begin(),
+            decoded_samples_.begin() + num_valid_ticks_};
+  }
 
  protected:
   const int num_channels_;
   const int num_samples_per_channel_;
+
+  // Stores the output decoded frames arranged in (time, sample) axes. That
+  // is to say, each inner vector has one sample for per channel and the outer
+  // vector contains one inner vector for each time tick. When the decoded
+  // samples is shorter than a frame, only the first `num_valid_ticks_` ticks
+  // should be used.
+  std::vector<std::vector<int32_t>> decoded_samples_;
+
+  // Number of ticks (time samples) in `decoded_samples_` that are valid.
+  size_t num_valid_ticks_;
 };
 
 }  // namespace iamf_tools

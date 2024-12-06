@@ -26,8 +26,7 @@ class MockDecoder : public DecoderBase {
   }
 
   absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame,
-      std::vector<std::vector<int32_t>>& decoded_frames) override {
+      const std::vector<uint8_t>& encoded_frame) override {
     return absl::UnimplementedError("Not implemented");
   }
 };

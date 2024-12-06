@@ -60,13 +60,10 @@ class FlacDecoder : public DecoderBase {
   /*!\brief Decodes a FLAC audio frame.
    *
    * \param encoded_frame Frame to decode.
-   * \param decoded_samples Output decoded frames arranged in (time, sample)
-   *        axes.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame,
-      std::vector<std::vector<int32_t>>& decoded_samples) override;
+      const std::vector<uint8_t>& encoded_frame) override;
 
   /*!\brief Sets an encoded FLAC frame in decoder.encoded_frame_.
    *

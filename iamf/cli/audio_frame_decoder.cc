@@ -11,10 +11,8 @@
  */
 #include "iamf/cli/audio_frame_decoder.h"
 
-#include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "absl/container/node_hash_map.h"
 #include "absl/log/log.h"
@@ -99,9 +97,8 @@ absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
   }
   // Decode the samples with the specific decoder associated with this
   // substream.
-  std::vector<std::vector<int32_t>> decoded_samples;
-  RETURN_IF_NOT_OK(decoder_iter->second->DecodeAudioFrame(
-      audio_frame.obu.audio_frame_, decoded_samples));
+  auto& decoder = *decoder_iter->second;
+  RETURN_IF_NOT_OK(decoder.DecodeAudioFrame(audio_frame.obu.audio_frame_));
 
   // Return a frame. Most fields are copied from the encoded frame.
   return DecodedAudioFrame{
@@ -112,7 +109,7 @@ absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
           audio_frame.obu.header_.num_samples_to_trim_at_end,
       .samples_to_trim_at_start =
           audio_frame.obu.header_.num_samples_to_trim_at_start,
-      .decoded_samples = decoded_samples,
+      .decoded_samples = decoder.ValidDecodedSamples(),
       .down_mixing_params = audio_frame.down_mixing_params,
       .audio_element_with_data = audio_frame.audio_element_with_data,
   };
