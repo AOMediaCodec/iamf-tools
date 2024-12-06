@@ -35,7 +35,9 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl::StatusCode::kInvalidArgument;
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 
 TEST(FlushAndWriteToStream, WritesToOutputStream) {
   const std::vector<uint8_t> kDataToOutput = {0x00, '\r', '\n', 0x1a};
@@ -137,13 +139,12 @@ TEST_F(WriteBitBufferTest, UnsignedLiteralNotByteAlignedLarge) {
 }
 
 TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralOverflowOverRequestedNumBits) {
-  EXPECT_EQ(wb_->WriteUnsignedLiteral(16, 4).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(wb_->WriteUnsignedLiteral(16, 4), StatusIs(kInvalidArgument));
 }
 
 TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralOverNumBitsOver32) {
-  EXPECT_EQ(wb_->WriteUnsignedLiteral(0, /*num_bits=*/33).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/33),
+              StatusIs(kInvalidArgument));
 }
 
 TEST_F(WriteBitBufferTest, UnsignedLiteralZeroNumBits) {
@@ -152,8 +153,8 @@ TEST_F(WriteBitBufferTest, UnsignedLiteralZeroNumBits) {
 }
 
 TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralNegativeNumBits) {
-  EXPECT_EQ(wb_->WriteUnsignedLiteral(0, /*num_bits=*/-1).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/-1),
+              StatusIs(kInvalidArgument));
 }
 
 TEST_F(WriteBitBufferTest, UnsignedLiteral64OneByteZero) {
@@ -186,13 +187,13 @@ TEST_F(WriteBitBufferTest, UnsignedLiteral64NotByteAlignedLarge) {
 
 TEST_F(WriteBitBufferTest,
        InvalidUnsignedLiteral64OverflowOverRequestedNumBits) {
-  EXPECT_EQ(wb_->WriteUnsignedLiteral64(uint64_t{1} << 34, 34).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(wb_->WriteUnsignedLiteral64(uint64_t{1} << 34, 34),
+              StatusIs(kInvalidArgument));
 }
 
 TEST_F(WriteBitBufferTest, InvalidUnsignedLiteral64NumBitsOver64) {
-  EXPECT_EQ(wb_->WriteUnsignedLiteral64(0, /*num_bits=*/65).code(),
-            absl::StatusCode::kInvalidArgument);
+  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0, /*num_bits=*/65),
+              StatusIs(kInvalidArgument));
 }
 
 TEST_F(WriteBitBufferTest, Signed8Zero) {
@@ -245,6 +246,21 @@ TEST_F(WriteBitBufferTest, Signed16MaxNegative) {
   ValidateWriteResults(*wb_, {0xff, 0xff});
 }
 
+TEST_F(WriteBitBufferTest, InvalidInternalNullTerminator) {
+  const std::string kInternalNull("a\0b", 3);
+
+  EXPECT_THAT(wb_->WriteString(kInternalNull), StatusIs(kInvalidArgument));
+  EXPECT_EQ(wb_->bit_offset(), 0);
+}
+
+TEST_F(WriteBitBufferTest, EmptyLiteralString) {
+  const std::string kEmptyString = "";
+
+  EXPECT_THAT(wb_->WriteString(kEmptyString), IsOk());
+
+  ValidateWriteResults(*wb_, {'\0'});
+}
+
 TEST_F(WriteBitBufferTest, StringOnlyNullCharacter) {
   const std::string kEmptyString = "\0";
 
@@ -287,10 +303,11 @@ TEST_F(WriteBitBufferTest, StringMaxLength) {
   ValidateWriteResults(*wb_, expected_result);
 }
 
-TEST_F(WriteBitBufferTest, InvalidStringMissingNullTerminator) {
+TEST_F(WriteBitBufferTest, InvalidStringTooLong) {
   const std::string kMaxLengthString(kIamfMaxStringSize, 'a');
 
-  EXPECT_FALSE(wb_->WriteString(kMaxLengthString).ok());
+  EXPECT_THAT(wb_->WriteString(kMaxLengthString), StatusIs(kInvalidArgument));
+  EXPECT_EQ(wb_->bit_offset(), 0);
 }
 
 TEST_F(WriteBitBufferTest, Uint8ArrayLengthZero) {
