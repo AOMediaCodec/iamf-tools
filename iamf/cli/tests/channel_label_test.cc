@@ -45,10 +45,6 @@ constexpr std::optional<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>
 using enum ChannelAudioLayerConfig::LoudspeakerLayout;
 using enum ReconGainElement::ReconGainFlagBitmask;
 
-TEST(StringToLabel, SucceedsForMonoInput) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("M"), IsOkAndHolds(kMono));
-}
-
 TEST(ProtoToLabel, SucceedsForMonoInput) {
   EXPECT_THAT(ChannelLabel::ProtoToLabel(CHANNEL_LABEL_MONO),
               IsOkAndHolds(kMono));
@@ -58,76 +54,18 @@ TEST(ProtoToLabel, FailsForInvalidInput) {
   EXPECT_FALSE(ChannelLabel::ProtoToLabel(CHANNEL_LABEL_INVALID).ok());
 }
 
-TEST(StringToLabel, SucceedsForStereoInput) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("L2"), IsOkAndHolds(kL2));
-  EXPECT_THAT(ChannelLabel::StringToLabel("R2"), IsOkAndHolds(kR2));
-}
-
-TEST(StringToLabel, SucceedsFor3_1_2Input) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("L3"), IsOkAndHolds(kL3));
-  EXPECT_THAT(ChannelLabel::StringToLabel("R3"), IsOkAndHolds(kR3));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Ltf3"), IsOkAndHolds(kLtf3));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rtf3"), IsOkAndHolds(kRtf3));
-  EXPECT_THAT(ChannelLabel::StringToLabel("C"), IsOkAndHolds(kCentre));
-  EXPECT_THAT(ChannelLabel::StringToLabel("LFE"), IsOkAndHolds(kLFE));
-}
-
-TEST(StringToLabel, SucceedsFor5_1_2Input) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("L5"), IsOkAndHolds(kL5));
-  EXPECT_THAT(ChannelLabel::StringToLabel("R5"), IsOkAndHolds(kR5));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Ls5"), IsOkAndHolds(kLs5));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rs5"), IsOkAndHolds(kRs5));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Ltf2"), IsOkAndHolds(kLtf2));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rtf2"), IsOkAndHolds(kRtf2));
-  EXPECT_THAT(ChannelLabel::StringToLabel("C"), IsOkAndHolds(kCentre));
-  EXPECT_THAT(ChannelLabel::StringToLabel("LFE"), IsOkAndHolds(kLFE));
-}
-
-TEST(StringToLabel, SucceedsFor7_1_4Input) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("L7"), IsOkAndHolds(kL7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("R7"), IsOkAndHolds(kR7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Lss7"), IsOkAndHolds(kLss7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rss7"), IsOkAndHolds(kRss7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Lrs7"), IsOkAndHolds(kLrs7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rrs7"), IsOkAndHolds(kRrs7));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Ltf4"), IsOkAndHolds(kLtf4));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rtf4"), IsOkAndHolds(kRtf4));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Ltb4"), IsOkAndHolds(kLtb4));
-  EXPECT_THAT(ChannelLabel::StringToLabel("Rtb4"), IsOkAndHolds(kRtb4));
-  EXPECT_THAT(ChannelLabel::StringToLabel("C"), IsOkAndHolds(kCentre));
-  EXPECT_THAT(ChannelLabel::StringToLabel("LFE"), IsOkAndHolds(kLFE));
-}
-
-TEST(StringToLabel, SucceedsForFOAInput) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("A0"), IsOkAndHolds(kA0));
-  EXPECT_THAT(ChannelLabel::StringToLabel("A1"), IsOkAndHolds(kA1));
-  EXPECT_THAT(ChannelLabel::StringToLabel("A2"), IsOkAndHolds(kA2));
-  EXPECT_THAT(ChannelLabel::StringToLabel("A3"), IsOkAndHolds(kA3));
-}
-
-TEST(StringToLabel, SucceedsForFourthOrderAmbisonicsInput) {
-  EXPECT_THAT(ChannelLabel::StringToLabel("A16"), IsOkAndHolds(kA16));
-  EXPECT_THAT(ChannelLabel::StringToLabel("A24"), IsOkAndHolds(kA24));
-}
-
-TEST(StringToLabel, InvalidForFifthOrderAmbisonicsInput) {
-  EXPECT_FALSE(ChannelLabel::StringToLabel("A25").ok());
-  EXPECT_FALSE(ChannelLabel::StringToLabel("A35").ok());
-}
-
-TEST(StringToLabel, InvalidForFourteenthOrderAmbisonicsInput) {
-  EXPECT_FALSE(ChannelLabel::StringToLabel("A196").ok());
-  EXPECT_FALSE(ChannelLabel::StringToLabel("A224").ok());
-}
-
 using LabelTestCase = ::testing::TestWithParam<ChannelLabel::Label>;
-TEST_P(LabelTestCase, StringToLabelAndLabelToStringForDebuggingAreSymmetric) {
+TEST_P(LabelTestCase,
+       ConvertAndFillLabelsAndLabelToStringForDebuggingAreSymmetric) {
   const ChannelLabel::Label label = GetParam();
-  const std::string label_string_for_debugging =
-      ChannelLabel::LabelToStringForDebugging(label);
+  const std::vector<std::string> label_string_for_debugging{
+      ChannelLabel::LabelToStringForDebugging(label)};
 
-  EXPECT_THAT(ChannelLabel::StringToLabel(label_string_for_debugging),
-              IsOkAndHolds(label));
+  std::vector<ChannelLabel::Label> round_trip_labels;
+  ASSERT_THAT(ChannelLabel::ConvertAndFillLabels(label_string_for_debugging,
+                                                 round_trip_labels),
+              IsOk());
+  ASSERT_EQ(round_trip_labels, std::vector<ChannelLabel::Label>{label});
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -224,6 +162,77 @@ void ExpectConvertAndFillLabelsHasExpectedOutput(
       ChannelLabel::ConvertAndFillLabels(input_labels, converted_labels),
       IsOk());
   EXPECT_EQ(converted_labels, expected_output);
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBasedMonoInput) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"M"}),
+      std::vector<ChannelLabel::Label>({kMono}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBasedStereoInput) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"L2", "R2"}),
+      std::vector<ChannelLabel::Label>({kL2, kR2}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBased3_1_2Input) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"L3", "R3", "Ltf3", "Rtf3", "C", "LFE"}),
+      std::vector<ChannelLabel::Label>(
+          {kL3, kR3, kLtf3, kRtf3, kCentre, kLFE}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBased5_1_2Input) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>(
+          {"L5", "R5", "Ls5", "Rs5", "Ltf2", "Rtf2", "C", "LFE"}),
+      std::vector<ChannelLabel::Label>(
+          {kL5, kR5, kLs5, kRs5, kLtf2, kRtf2, kCentre, kLFE}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBased7_1_4Input) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"L7", "R7", "Lss7", "Rss7", "Lrs7",
+                                      "Rrs7", "Ltf4", "Rtf4", "Ltb4", "Rtb4",
+                                      "C", "LFE"}),
+      std::vector<ChannelLabel::Label>({kL7, kR7, kLss7, kRss7, kLrs7, kRrs7,
+                                        kLtf4, kRtf4, kLtb4, kRtb4, kCentre,
+                                        kLFE}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBasedFirstOrderAmbisonicsInput) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"A0", "A1", "A2", "A3"}),
+      std::vector<ChannelLabel::Label>({kA0, kA1, kA2, kA3}));
+}
+
+TEST(ConvertAndFillLabels, SucceedsForStringBaseFourthOrderAmbisonicsInput) {
+  ExpectConvertAndFillLabelsHasExpectedOutput(
+      std::vector<absl::string_view>({"A16", "A24"}),
+      std::vector<ChannelLabel::Label>({kA16, kA24}));
+}
+
+TEST(ConvertAndFillLabels, InvalidForFifthOrderAmbisonicsInput) {
+  const std::vector<absl::string_view> kInvalidFifthOrderAmbisonicsLabels = {
+      "A25", "A35"};
+
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_FALSE(ChannelLabel::ConvertAndFillLabels(
+                   kInvalidFifthOrderAmbisonicsLabels, output)
+                   .ok());
+  EXPECT_TRUE(output.empty());
+}
+
+TEST(ConvertAndFillLabels, InvalidForFourteenthOrderAmbisonicsInput) {
+  const std::vector<absl::string_view> kInvalidFourteenthOrderAmbisonicsLabels =
+      {"A196", "A224"};
+
+  std::vector<ChannelLabel::Label> output;
+  EXPECT_FALSE(ChannelLabel::ConvertAndFillLabels(
+                   kInvalidFourteenthOrderAmbisonicsLabels, output)
+                   .ok());
+  EXPECT_TRUE(output.empty());
 }
 
 TEST(ConvertAndFillLabels, OutputContainerHasSameOrderAsInputContainer) {

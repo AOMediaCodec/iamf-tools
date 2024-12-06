@@ -209,12 +209,12 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
 
 absl::StatusOr<ChannelLabel::Label>
 ChannelLabel::AmbisonicsChannelNumberToLabel(int ambisonics_channel_number) {
-  return ChannelLabel::StringToLabel(
+  return ChannelLabel::DeprecatedStringBasedLabelToLabel(
       absl::StrCat("A", ambisonics_channel_number));
 }
 
-absl::StatusOr<ChannelLabel::Label> ChannelLabel::StringToLabel(
-    absl::string_view label) {
+absl::StatusOr<ChannelLabel::Label>
+ChannelLabel::DeprecatedStringBasedLabelToLabel(absl::string_view label) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<
       absl::flat_hash_map<absl::string_view, ChannelLabel::Label>>
