@@ -480,7 +480,7 @@ absl::Status ScalableChannelLayoutConfig::Validate(
 
 absl::Status AmbisonicsMonoConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {
-  RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
+  MAYBE_RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "channel_mapping", channel_mapping, output_channel_count));
   if (substream_count > output_channel_count) {

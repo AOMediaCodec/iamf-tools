@@ -28,6 +28,15 @@ const uint8_t kOpusMajorVersion = 0;
 
 namespace {
 
+absl::Status ValidateOpusMajorVersion(uint8_t opus_major_version) {
+  // Opus Major version is in upper 4 bits. Higher versions may break backwards
+  // compatibility and require software updates.
+  if (opus_major_version > kOpusMajorVersion) {
+    return absl::UnimplementedError("Unsupported Opus major version");
+  }
+  return absl::OkStatus();
+}
+
 // Validates the `OpusDecoderConfig`.
 absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
   // Version 0 is invalid in the OPUS spec.
@@ -40,21 +49,20 @@ absl::Status ValidatePayload(const OpusDecoderConfig& decoder_config) {
   // compatibility and require software updates.
   const uint8_t decoder_config_major_version =
       (decoder_config.version_ & 0xf0) >> 4;
-  if (decoder_config_major_version > kOpusMajorVersion) {
-    return absl::UnimplementedError("Unsupported Opus major version");
-  }
+  MAYBE_RETURN_IF_NOT_OK(
+      ValidateOpusMajorVersion(decoder_config_major_version));
 
   // Various below fields are fixed. The real value is determined from the Audio
   // Element OBU.
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
-                                 OpusDecoderConfig::kOutputChannelCount,
-                                 "output_channel_count"));
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
-                                 OpusDecoderConfig::kOutputGain,
-                                 "output_gain"));
-  RETURN_IF_NOT_OK(ValidateEqual(decoder_config.mapping_family_,
-                                 OpusDecoderConfig::kMappingFamily,
-                                 "mapping_family"));
+  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_channel_count_,
+                                       OpusDecoderConfig::kOutputChannelCount,
+                                       "output_channel_count"));
+  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.output_gain_,
+                                       OpusDecoderConfig::kOutputGain,
+                                       "output_gain"));
+  MAYBE_RETURN_IF_NOT_OK(ValidateEqual(decoder_config.mapping_family_,
+                                       OpusDecoderConfig::kMappingFamily,
+                                       "mapping_family"));
 
   return absl::OkStatus();
 }
@@ -101,7 +109,7 @@ absl::StatusOr<int16_t> OpusDecoderConfig::GetRequiredAudioRollDistance(
 absl::Status OpusDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
                                                  int16_t audio_roll_distance,
                                                  WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(
+  MAYBE_RETURN_IF_NOT_OK(
       ValidateAudioRollDistance(num_samples_per_frame, audio_roll_distance));
   RETURN_IF_NOT_OK(ValidatePayload(*this));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(version_, 8));

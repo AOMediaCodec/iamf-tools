@@ -234,7 +234,7 @@ absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
 absl::Status ObuSequencerBase::WriteTemporalUnit(
     bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
     WriteBitBuffer& wb, int& num_samples) {
-  RETURN_IF_NOT_OK(AccumulateNumSamples(temporal_unit, num_samples));
+  MAYBE_RETURN_IF_NOT_OK(AccumulateNumSamples(temporal_unit, num_samples));
 
   if (include_temporal_delimiters) {
     // Temporal delimiter has no payload.

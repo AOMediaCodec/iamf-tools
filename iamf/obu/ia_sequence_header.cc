@@ -43,9 +43,9 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
 absl::Status IASequenceHeaderObu::Validate() const {
   // If the IA Code is any other value then the data may not actually be an IA
   // Sequence, or it may mean the data is corrupt / misaligned.
-  RETURN_IF_NOT_OK(
+  MAYBE_RETURN_IF_NOT_OK(
       ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
-  RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
+  MAYBE_RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
   return absl::OkStatus();
 }
 

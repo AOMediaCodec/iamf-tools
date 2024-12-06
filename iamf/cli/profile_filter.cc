@@ -401,25 +401,27 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
   const std::string mix_presentation_id_for_debugging =
       absl::StrCat("Mix presentation with ID= ",
                    mix_presentation_obu.GetMixPresentationId());
-  RETURN_IF_NOT_OK(FilterProfileForNumSubmixes(
+  MAYBE_RETURN_IF_NOT_OK(FilterProfileForNumSubmixes(
       mix_presentation_id_for_debugging, mix_presentation_obu.GetNumSubMixes(),
       profile_versions));
 
-  RETURN_IF_NOT_OK(FilterProfileForHeadphonesRenderingMode(
+  MAYBE_RETURN_IF_NOT_OK(FilterProfileForHeadphonesRenderingMode(
       mix_presentation_id_for_debugging, mix_presentation_obu,
       profile_versions));
 
   int num_audio_elements_in_mix_presentation;
   int num_channels_in_mix_presentation;
-  RETURN_IF_NOT_OK(FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
-      mix_presentation_id_for_debugging, audio_elements, mix_presentation_obu,
-      profile_versions, num_audio_elements_in_mix_presentation,
-      num_channels_in_mix_presentation));
+  MAYBE_RETURN_IF_NOT_OK(
+      FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
+          mix_presentation_id_for_debugging, audio_elements,
+          mix_presentation_obu, profile_versions,
+          num_audio_elements_in_mix_presentation,
+          num_channels_in_mix_presentation));
 
-  RETURN_IF_NOT_OK(FilterProfilesForNumAudioElements(
+  MAYBE_RETURN_IF_NOT_OK(FilterProfilesForNumAudioElements(
       mix_presentation_id_for_debugging, num_audio_elements_in_mix_presentation,
       profile_versions));
-  RETURN_IF_NOT_OK(FilterProfilesForNumChannels(
+  MAYBE_RETURN_IF_NOT_OK(FilterProfilesForNumChannels(
       mix_presentation_id_for_debugging, num_channels_in_mix_presentation,
       profile_versions));
 

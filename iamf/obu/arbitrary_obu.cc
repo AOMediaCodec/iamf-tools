@@ -18,8 +18,10 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
 
@@ -36,11 +38,13 @@ absl::Status ArbitraryObu::WriteObusWithHook(
 
 absl::Status ArbitraryObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUint8Vector(payload_));
-  return invalidates_bitstream_
-             ? absl::InvalidArgumentError(absl::StrCat(
-                   "Bitstream invalidated by an arbitrary OBU with obu_type= ",
-                   header_.obu_type))
-             : absl::OkStatus();
+  // Usually we want to fail when an arbitrary OBU signals an invalid bitstream.
+  // However, to create invalid test files we still want to insert them.
+  MAYBE_RETURN_IF_NOT_OK(ValidateNotEqual(
+      invalidates_bitstream_, true,
+      absl::StrCat("Bitstream invalidated by an arbitrary OBU with obu_type= ",
+                   header_.obu_type)));
+  return absl::OkStatus();
 }
 
 absl::Status ArbitraryObu::ReadAndValidatePayloadDerived(

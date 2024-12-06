@@ -25,6 +25,15 @@
 namespace iamf_tools {
 
 namespace {
+
+absl::Status ValidateProfileIsNotReserved(ProfileVersion obu_profile_version) {
+  if (obu_profile_version == ProfileVersion::kIamfReserved255Profile) {
+    return absl::InvalidArgumentError(
+        "ProfileVersion::kIamfReserved255Profile is not supported.");
+  }
+  return absl::OkStatus();
+}
+
 absl::Status CopyProfileVersion(
     iamf_tools_cli_proto::ProfileVersion metadata_profile_version,
     ProfileVersion& obu_profile_version) {
@@ -36,11 +45,7 @@ absl::Status CopyProfileVersion(
       "Internal version of proto `ProfileVersion`", obu_profile_version));
 
   // Only the test suite should use the reserved profile version.
-  if (obu_profile_version == ProfileVersion::kIamfReserved255Profile) {
-    return absl::InvalidArgumentError(
-        "ProfileVersion::kIamfReserved255Profile is not supported.");
-  }
-
+  MAYBE_RETURN_IF_NOT_OK(ValidateProfileIsNotReserved(obu_profile_version));
   return absl::OkStatus();
 }
 

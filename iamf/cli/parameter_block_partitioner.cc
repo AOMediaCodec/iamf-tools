@@ -356,8 +356,10 @@ absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
   // Find the subblocks that overlap this partition.
   std::list<iamf_tools_cli_proto::ParameterSubblock> partitioned_subblocks;
 
+  // TODO(b/382536303): Convert `test_000016` to rely on an arbitrary OBU
+  //                    instead of this `MAYBE_RETURN_IF_NOT_OK`.
   uint32_t constant_subblock_duration;
-  RETURN_IF_NOT_OK(GetPartitionedSubblocks(
+  MAYBE_RETURN_IF_NOT_OK(GetPartitionedSubblocks(
       full_parameter_block, partitioned_start_time, partitioned_end_time,
       partitioned_subblocks, constant_subblock_duration));
 

@@ -194,7 +194,7 @@ absl::Status ReadStreamInfo(FlacMetaBlockStreamInfo& stream_info,
 absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
                                                  int16_t audio_roll_distance,
                                                  WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
+  MAYBE_RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
 
   RETURN_IF_NOT_OK(ValidatePayload(num_samples_per_frame, *this));
 

@@ -15,22 +15,24 @@
 namespace iamf_tools {
 
 // For propagating errors when calling a function.
-//
-// Beware that defining `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is not
-// thoroughly tested and may result in unexpected behavior. This define should
-// only be used when creating test files which intentionally violate the IAMF
-// spec.
-#ifdef IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE
-#define RETURN_IF_NOT_OK(...)    \
-  do {                           \
-    (__VA_ARGS__).IgnoreError(); \
-  } while (0)
-#else
 #define RETURN_IF_NOT_OK(...)             \
   do {                                    \
     absl::Status _status = (__VA_ARGS__); \
     if (!_status.ok()) return _status;    \
   } while (0)
+
+// For propagating errors when calling a function, but ignoring errors when
+// built with `-DIGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE`. Beware that
+// defining `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is not thoroughly
+// tested and may result in unexpected behavior. This define should only be used
+// when creating test files which intentionally violate the IAMF spec.
+#ifdef IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE
+#define MAYBE_RETURN_IF_NOT_OK(...) \
+  do {                              \
+    (__VA_ARGS__).IgnoreError();    \
+  } while (0)
+#else
+#define MAYBE_RETURN_IF_NOT_OK(...) RETURN_IF_NOT_OK(__VA_ARGS__)
 #endif
 
 }  // namespace iamf_tools

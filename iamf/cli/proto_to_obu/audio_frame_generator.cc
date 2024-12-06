@@ -210,7 +210,7 @@ absl::Status InitializeSubstreamData(
     uint32_t encoder_required_samples_to_delay =
         encoder_iter->second->GetNumberOfSamplesToDelayAtStart();
     if (user_samples_to_trim_at_start_includes_codec_delay) {
-      RETURN_IF_NOT_OK(ValidateUserStartTrimIncludesCodecDelay(
+      MAYBE_RETURN_IF_NOT_OK(ValidateUserStartTrimIncludesCodecDelay(
           user_samples_to_trim_at_start, encoder_required_samples_to_delay));
     }
 

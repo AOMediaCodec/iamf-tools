@@ -37,7 +37,7 @@ namespace iamf_tools {
 namespace {
 
 // Performs validation for values that this implementation assumes are
-// restricted because they are restricted in IAMF V1.
+// restricted because they are restricted in IAMF v1.1.0.
 absl::Status ValidateDecoderConfig(
     const OpusDecoderConfig& opus_decoder_config) {
   // Validate the input. Reject values that would need to be added to this
@@ -45,7 +45,7 @@ absl::Status ValidateDecoderConfig(
   if (opus_decoder_config.output_gain_ != 0 ||
       opus_decoder_config.mapping_family_ != 0) {
     auto error_message = absl::StrCat(
-        "IAMF V1 expects output_gain: ", opus_decoder_config.output_gain_,
+        "IAMF v1.1.0 expects output_gain: ", opus_decoder_config.output_gain_,
         " and mapping_family: ", opus_decoder_config.mapping_family_,
         " to be 0.");
     return absl::InvalidArgumentError(error_message);
@@ -116,16 +116,16 @@ absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart(
   // `lookahead`.
   required_samples_to_delay_at_start_ = static_cast<uint32_t>(lookahead);
   if (validate_codec_delay) {
-    return ValidateEqual(static_cast<uint32_t>(decoder_config_.pre_skip_),
-                         required_samples_to_delay_at_start_,
-                         "Opus `pre_skip`");
+    MAYBE_RETURN_IF_NOT_OK(
+        ValidateEqual(static_cast<uint32_t>(decoder_config_.pre_skip_),
+                      required_samples_to_delay_at_start_, "Opus `pre_skip`"));
   }
 
   return absl::OkStatus();
 }
 
 absl::Status OpusEncoder::InitializeEncoder() {
-  RETURN_IF_NOT_OK(ValidateDecoderConfig(decoder_config_));
+  MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(decoder_config_));
 
   int application;
   switch (encoder_metadata_.application()) {
