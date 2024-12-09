@@ -136,19 +136,6 @@ absl::Status InitializeRenderingMetadata(
   return absl::OkStatus();
 }
 
-absl::Status SleepUntilFinalizedOrTimeout(
-    const AudioElementRendererBase& audio_element_renderer) {
-  const int kMaxNumTries = 500;
-  for (int i = 0; i < kMaxNumTries; i++) {
-    if (audio_element_renderer.IsFinalized()) {
-      // Usually it will be finalized right away. So avoid sleeping.
-      return absl::OkStatus();
-    }
-    absl::SleepFor(absl::Milliseconds(10));
-  }
-  return absl::DeadlineExceededError("Timed out waiting to finalize.");
-}
-
 absl::Status FlushUntilNonEmptyOrTimeout(
     AudioElementRendererBase& audio_element_renderer,
     std::vector<InternalSampleType>& rendered_samples) {
@@ -417,17 +404,6 @@ absl::Status RenderAllFramesForLayout(
       // mix gain.
       RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
           labeled_frame, rendering_metadata, rendered_audio_elements[i]));
-
-    } else {
-      // This can happen when reaching the end of the stream. Flush and
-      // calculate the final gains.
-      LOG(INFO) << "Rendering END";
-      RETURN_IF_NOT_OK(rendering_metadata.renderer->Finalize());
-      RETURN_IF_NOT_OK(
-          SleepUntilFinalizedOrTimeout(*rendering_metadata.renderer));
-
-      RETURN_IF_NOT_OK(
-          rendering_metadata.renderer->Flush(rendered_audio_elements[i]));
     }
 
     RETURN_IF_NOT_OK(
@@ -498,16 +474,6 @@ absl::Status RenderAllFramesForLayout(
       // mix gain.
       RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
           labeled_frame, rendering_metadata, rendered_audio_elements[i]));
-    } else {
-      // This can happen when reaching the end of the stream. Flush and
-      // calculate the final gains.
-      LOG(INFO) << "Rendering END";
-      RETURN_IF_NOT_OK(rendering_metadata.renderer->Finalize());
-      RETURN_IF_NOT_OK(
-          SleepUntilFinalizedOrTimeout(*rendering_metadata.renderer));
-
-      RETURN_IF_NOT_OK(
-          rendering_metadata.renderer->Flush(rendered_audio_elements[i]));
     }
 
     RETURN_IF_NOT_OK(
