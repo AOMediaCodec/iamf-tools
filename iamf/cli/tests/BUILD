@@ -38,6 +38,7 @@ cc_library(
         "@com_google_absl//absl/types:span",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:demixing_module",
+        "//iamf/cli:resampler_base",
         "//iamf/cli:wav_reader",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
@@ -392,6 +393,19 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "resampler_base_test",
+    srcs = ["resampler_base_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:resampler_base",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],

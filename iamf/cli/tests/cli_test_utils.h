@@ -13,6 +13,7 @@
 #define CLI_TESTS_CLI_TEST_UTILS_H_
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <list>
@@ -30,6 +31,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
+#include "iamf/cli/resampler_base.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
@@ -344,6 +346,43 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
              .ok() &&
          equivalent_integral_sample == testing::get<1>(arg);
 }
+
+class MockResampler : public ResamplerBase {
+ public:
+  MockResampler(uint32_t max_num_samples_per_frame, size_t num_channels)
+      : ResamplerBase(max_num_samples_per_frame, num_channels) {}
+
+  MOCK_METHOD(absl::Status, PushFrame,
+              (absl::Span<const std::vector<int32_t>> time_channel_samples),
+              (override));
+
+  MOCK_METHOD(absl::Status, Flush, (), (override));
+};
+
+/*!\brief A simple resampler whose output represents every second tick.
+ */
+class EverySecondTickResampler : public ResamplerBase {
+ public:
+  EverySecondTickResampler(uint32_t max_num_samples_per_frame,
+                           size_t num_channels)
+      : ResamplerBase(max_num_samples_per_frame / 2, num_channels) {}
+
+  /*!\brief Pushes a frame of samples to the resampler.
+   *
+   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushFrame(
+      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+
+  /*!\brief Signals to close the resampler and flush any remaining samples.
+   *
+   * It is bad practice to reuse the resampler after calling this function.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status Flush() override;
+};
 
 }  // namespace iamf_tools
 

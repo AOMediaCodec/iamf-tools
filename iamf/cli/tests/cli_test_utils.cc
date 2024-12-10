@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -530,6 +531,23 @@ absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
   buffer.resize(original_buffer_size + file_size);
   ifs.read(reinterpret_cast<char*>(buffer.data() + original_buffer_size),
            file_size);
+  return absl::OkStatus();
+}
+
+absl::Status EverySecondTickResampler::PushFrame(
+    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+  num_valid_ticks_ = 0;
+  for (size_t i = 0; i < time_channel_samples.size(); ++i) {
+    if (i % 2 == 1) {
+      output_time_channel_samples_[num_valid_ticks_] = time_channel_samples[i];
+      ++num_valid_ticks_;
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status EverySecondTickResampler::Flush() {
+  num_valid_ticks_ = 0;
   return absl::OkStatus();
 }
 

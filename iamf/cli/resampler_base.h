@@ -12,6 +12,7 @@
 #ifndef CLI_RESAMPLER_BASE_H_
 #define CLI_RESAMPLER_BASE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -31,41 +32,62 @@ namespace iamf_tools {
  * underlying IAMF codec.
  *
  * Usage pattern:
- *   - Repeatedly call `PushFrame()` to push in samples. Available samples will
- *     be located via the output argument.
+ *   - While input samples are available:
+ *     - Call `PushFrame()` to push in samples
+ *     - Call `GetOutputSamplesAsSpan()` to retrieve the samples.
+ *   - Call `Flush()` to signal that no more frames will be pushed.
+ *   - Call `GetOutputSamplesAsSpan()` one last time to retrieve any remaining
+ *     samples.
  *
- *   - After all samples have been pushed it is RECOMMENDED to call `Flush()` to
- *     retrieve any remaining ticks. Available samples will be located via the
- *     output argument.
- *   - It is safe and encouraged to reuse the buffers between calls.
- *     Implementations are free to clear and resize the buffers as needed.
+ *   - Note: Results from `GetOutputSamplesAsSpan()` must always be used before
+ *     further calls to `PushFrame()` or `Flush()`.
  */
+// TODO(b/382257677): Return an error, or at least test that it is safe, to push
+//                    further frames after `Flush()` calls.
 class ResamplerBase {
  public:
+  /*!\brief Constructor.
+   *
+   * \param max_output_ticks Maximum number of ticks in the output timescale.
+   * \param num_channels Number of channels.
+   */
+  ResamplerBase(size_t max_output_ticks, size_t num_channels)
+      : output_time_channel_samples_(max_output_ticks,
+                                     std::vector<int32_t>(num_channels)) {}
+
   /*!\brief Destructor. */
   virtual ~ResamplerBase() = 0;
 
   /*!\brief Pushes a frame of samples to the resampler.
    *
    * \param time_channel_samples Samples to push arranged in (time, channel).
-   * \param output_time_channel_samples Output samples arranged in (time,
-   *        channel).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status PushFrame(
-      absl::Span<const std::vector<int32_t>> time_channel_samples,
-      std::vector<std::vector<int32_t>>& output_time_channel_samples) = 0;
+      absl::Span<const std::vector<int32_t>> time_channel_samples) = 0;
 
   /*!\brief Signals to close the resampler and flush any remaining samples.
    *
-   * It is bad practice to reuse the resampler after calling this function.
+   * After calling `Flush()`, it is implementation-defined to call `PushFrame()`
+   * or `Flush()` again.
    *
-   * \param output_time_channel_samples Output samples arranged in (time,
-   *        channel).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  virtual absl::Status Flush(
-      std::vector<std::vector<int32_t>>& output_time_channel_samples) = 0;
+  virtual absl::Status Flush() = 0;
+
+  /*!\brief Gets a span of the output samples.
+   *
+   * \return Span of the output samples. The span will be invalidated when
+   *         `PushFrame()` or `Flush()` is called.
+   */
+  absl::Span<const std::vector<int32_t>> GetOutputSamplesAsSpan() const {
+    return absl::MakeConstSpan(output_time_channel_samples_)
+        .first(num_valid_ticks_);
+  }
+
+ protected:
+  std::vector<std::vector<int32_t>> output_time_channel_samples_;
+  size_t num_valid_ticks_ = 0;
 };
 
 }  // namespace iamf_tools
