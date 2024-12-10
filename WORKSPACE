@@ -1,6 +1,9 @@
-########################
-# Platform Independent #
-########################
+####################################################################################################
+# This project is now manages dependencies with both bazelmod and WORKSPACE, with the goal of moving
+# all dependencies to bazelmod.
+#
+# For more details, please check https://github.com/bazelbuild/bazel/issues/18958.
+####################################################################################################
 
 load(
     "@bazel_tools//tools/build_defs/repo:git.bzl",
@@ -10,43 +13,6 @@ load(
 load(
     "@bazel_tools//tools/build_defs/repo:http.bzl",
     "http_archive",  # @unused
-)
-
-# GoogleTest/GoogleMock framework.
-git_repository(
-    name = "com_google_googletest",
-    remote = "https://github.com/google/googletest.git",
-    tag = "v1.14.0",
-)
-
-git_repository(
-    name = "rules_python",
-    remote = "https://github.com/bazelbuild/rules_python.git",
-    tag = "0.35.0",
-)
-
-load("@rules_python//python:repositories.bzl", "py_repositories")
-
-py_repositories()
-
-# proto_library, cc_proto_library, and java_proto_library rules implicitly
-# depend on @com_google_protobuf for protoc and proto runtimes.
-# This statement defines the @com_google_protobuf repo.
-git_repository(
-    name = "com_google_protobuf",
-    remote = "https://github.com/protocolbuffers/protobuf.git",
-    tag = "v27.5",
-)
-
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()
-
-# Google Abseil Libraries.
-git_repository(
-    name = "com_google_absl",
-    commit = "7e149e40c7a2d8049ecd28d1f83f64cc197cc128",
-    remote = "https://github.com/abseil/abseil-cpp.git",
 )
 
 # Google Audio-to-Tactile Library.

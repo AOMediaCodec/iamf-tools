@@ -1,0 +1,26 @@
+###############################################################################
+# This project is now using bazelmod to manage some dependencies.
+# Some still remain in WORKSPACE.
+#
+# For more details, please check https://github.com/bazelbuild/bazel/issues/18958
+###############################################################################
+
+bazel_dep(
+    name = "abseil-cpp",
+    version = "20240722.0.bcr.2",
+    repo_name = "com_google_absl",
+)
+bazel_dep(
+    name = "googletest",
+    version = "1.14.0",
+    repo_name = "com_google_googletest",
+)
+bazel_dep(
+    name = "rules_python",
+    version = "0.35.0",
+)
+bazel_dep(
+    name = "protobuf",
+    version = "27.5",
+    repo_name = "com_google_protobuf",
+)
