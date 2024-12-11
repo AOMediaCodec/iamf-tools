@@ -68,12 +68,23 @@ void WriteSigned16(int16_t data) {
 
 FUZZ_TEST(WriteBitBufferFuzzTest, WriteSigned16);
 
-void WriteString(const std::string& data) {
+void WriteStringAndValidate(const std::string& data) {
   WriteBitBuffer wb(0);
   auto status = wb.WriteString(data);
+  if (status.ok()) {
+    const auto number_of_bytes =
+        data.size() + 1;  // +1 for the NULL terminator.
+    const auto number_of_bits = number_of_bytes * 8;
+    EXPECT_EQ(wb.bit_offset(), number_of_bits);
+    std::vector<uint8_t> expected_data = {data.begin(), data.end()};
+    expected_data.push_back(0);  // NULL terminator.
+    EXPECT_EQ(wb.bit_buffer(), expected_data);
+  } else {
+    EXPECT_EQ(wb.bit_offset(), 0);
+  }
 }
 
-FUZZ_TEST(WriteBitBufferFuzzTest, WriteString);
+FUZZ_TEST(WriteBitBufferFuzzTest, WriteStringAndValidate);
 
 void WriteUint8Vector(const std::vector<uint8_t>& data) {
   WriteBitBuffer wb(0);
@@ -87,6 +98,30 @@ void WriteUint8Vector(const std::vector<uint8_t>& data) {
 }
 
 FUZZ_TEST(WriteBitBufferFuzzTest, WriteUint8Vector);
+
+void WriteUleb128(uint32_t data) {
+  WriteBitBuffer wb(0);
+  auto status = wb.WriteUleb128(data);
+  if (status.ok()) {
+    EXPECT_NE(wb.bit_offset(), 0);
+  } else {
+    EXPECT_EQ(wb.bit_offset(), 0);
+  }
+}
+
+FUZZ_TEST(WriteBitBufferFuzzTest, WriteUleb128);
+
+void WriteIso14496_1Expanded(uint32_t data) {
+  WriteBitBuffer wb(0);
+  auto status = wb.WriteIso14496_1Expanded(data);
+  if (status.ok()) {
+    EXPECT_NE(wb.bit_offset(), 0);
+  } else {
+    EXPECT_EQ(wb.bit_offset(), 0);
+  }
+}
+
+FUZZ_TEST(WriteBitBufferFuzzTest, WriteIso14496_1Expanded);
 
 }  // namespace
 }  // namespace iamf_tools
