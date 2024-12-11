@@ -43,6 +43,18 @@ using ::absl_testing::StatusIs;
 constexpr int kBitsPerByte = 8;
 constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
 
+TEST(MemoryBasedReadBitBufferTest, CreateFromVectorFailsWithNegativeCapacity) {
+  const std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
+  EXPECT_THAT(MemoryBasedReadBitBuffer::CreateFromVector(-1, source_data),
+              ::testing::IsNull());
+}
+
+TEST(FileBasedReadBitBufferTest, CreateFromFilePathFailsWithNegativeCapacity) {
+  const auto file_path = GetAndCleanupOutputFileName(".iamf");
+  EXPECT_THAT(FileBasedReadBitBuffer::CreateFromFilePath(-1, file_path),
+              ::testing::IsNull());
+}
+
 template <typename BufferReaderType>
 std::unique_ptr<BufferReaderType> CreateConcreteReadBitBuffer(
     int64_t capacity, std::vector<uint8_t>& source_data);

@@ -309,6 +309,9 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   if (num_bits > max_num_bits) {
     return absl::InvalidArgumentError("num_bits must be <= max_num_bits.");
   }
+  if (num_bits < 0) {
+    return absl::InvalidArgumentError("num_bits must be >= 0.");
+  }
   if (buffer_bit_offset_ < 0) {
     return absl::InvalidArgumentError("buffer_bit_offset_ must be >= 0.");
   }
@@ -370,6 +373,10 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
 std::unique_ptr<MemoryBasedReadBitBuffer>
 MemoryBasedReadBitBuffer::CreateFromVector(int64_t capacity,
                                            const std::vector<uint8_t>& source) {
+  if (capacity < 0) {
+    LOG(ERROR) << "MemoryBasedReadBitBuffer capacity must be >= 0.";
+    return nullptr;
+  }
   return absl::WrapUnique(new MemoryBasedReadBitBuffer(capacity, source));
 }
 
@@ -397,6 +404,10 @@ MemoryBasedReadBitBuffer::MemoryBasedReadBitBuffer(
 std::unique_ptr<FileBasedReadBitBuffer>
 FileBasedReadBitBuffer::CreateFromFilePath(
     const int64_t capacity, const std::filesystem::path& file_path) {
+  if (capacity < 0) {
+    LOG(ERROR) << "FileBasedReadBitBuffer capacity must be >= 0.";
+    return nullptr;
+  }
   if (!std::filesystem::exists(file_path)) {
     LOG(ERROR) << "File not found: " << file_path;
     return nullptr;

@@ -45,6 +45,20 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "read_bit_buffer_fuzz_test",
+    size = "small",
+    srcs = ["read_bit_buffer_fuzz_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+        "@com_google_fuzztest//fuzztest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "test_utils",
     testonly = True,
