@@ -22,7 +22,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -135,7 +135,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const Layout& playback_layout) {
+    const Layout& playback_layout, size_t num_samples_per_frame) {
   // Exclude unsupported modes first, and deal with only mono or projection
   // in the rest of the code.
   const auto mode = ambisonics_config.ambisonics_mode;
@@ -194,15 +194,14 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
   }
 
   return absl::WrapUnique(new AudioElementRendererAmbisonicsToChannel(
-      static_cast<size_t>(num_output_channels), ambisonics_config,
-      channel_labels, *gains));
+      static_cast<size_t>(num_output_channels), num_samples_per_frame,
+      ambisonics_config, channel_labels, *gains));
 }
 
 absl::Status AudioElementRendererAmbisonicsToChannel::RenderSamples(
-    const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    absl::Span<const std::vector<InternalSampleType>> samples_to_render,
     std::vector<InternalSampleType>& rendered_samples) {
   // Render the samples.
-  absl::MutexLock lock(&mutex_);
   RETURN_IF_NOT_OK(RenderAmbisonicsToLoudspeakers(
       samples_to_render, ambisonics_config_, gains_, rendered_samples));
 

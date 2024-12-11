@@ -12,6 +12,7 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <numeric>
@@ -82,17 +83,21 @@ const ScalableChannelLayoutConfig kMonoScalableChannelLayoutConfig = {
     .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutMono}}};
 
+constexpr size_t kFourSamplesPerFrame = 4;
+
 TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughBinaural) {
   EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kBinauralScalableChannelLayoutConfig, kBinauralLayout),
+          kBinauralScalableChannelLayoutConfig, kBinauralLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
 TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughStereo) {
   EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kStereoLayout),
+          kStereoScalableChannelLayoutConfig, kStereoLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -100,28 +105,32 @@ TEST(CreateFromScalableChannelLayoutConfig,
      SupportsPassThroughIfAnyLayerMatches) {
   EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kStereoLayout),
+          kStereoScalableChannelLayoutConfig, kStereoLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
 TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportBinauralToStereo) {
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kBinauralScalableChannelLayoutConfig, kStereoLayout),
+          kBinauralScalableChannelLayoutConfig, kStereoLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
 TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportStereoToBinaural) {
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kBinauralLayout),
+          kStereoScalableChannelLayoutConfig, kBinauralLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
 TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportIfNoLayerMatches) {
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kMonoLayout),
+          kStereoScalableChannelLayoutConfig, kMonoLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -132,7 +141,8 @@ TEST(CreateFromScalableChannelLayoutConfig, DoesNotSupportReservedLayout) {
 
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kReservedLayout),
+          kStereoScalableChannelLayoutConfig, kReservedLayout,
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -146,7 +156,7 @@ TEST(CreateFromScalableChannelLayoutConfig,
   EXPECT_EQ(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kStereoScalableChannelLayoutConfig,
-          kLayoutWithNoEquivalentSoundSystem),
+          kLayoutWithNoEquivalentSoundSystem, kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -156,7 +166,7 @@ TEST(CreateFromScalableChannelLayoutConfig,
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutLFE),
-          k7_1_4Layout),
+          k7_1_4Layout, kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -166,7 +176,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutLFE),
-          GetScalableLayoutForSoundSystem(kSoundSystem10_2_7_0)),
+          GetScalableLayoutForSoundSystem(kSoundSystem10_2_7_0),
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -176,7 +187,7 @@ TEST(CreateFromScalableChannelLayoutConfig,
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutStereoS),
-          k5_1_4Layout),
+          k5_1_4Layout, kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -185,7 +196,8 @@ TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughFor9_1_6) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayout9_1_6_ch),
-          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0)),
+          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -195,7 +207,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutTop6Ch),
-          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0)),
+          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
+          kFourSamplesPerFrame),
       nullptr);
 }
 
@@ -205,7 +218,8 @@ const LabeledFrame kLabeledFrameWithL2AndR2 = {
 TEST(RenderLabeledFrame, RendersPassThroughStereo) {
   auto stereo_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kStereoLayout);
+          kStereoScalableChannelLayoutConfig, kStereoLayout,
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
@@ -219,7 +233,8 @@ TEST(RenderLabeledFrame, RendersPassThroughStereo) {
 TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
   auto binaural_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kBinauralScalableChannelLayoutConfig, kBinauralLayout);
+          kBinauralScalableChannelLayoutConfig, kBinauralLayout,
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
@@ -248,7 +263,8 @@ TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
                                            }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          k7_1_4ScalableChannelLayoutConfig, k7_1_4Layout);
+          k7_1_4ScalableChannelLayoutConfig, k7_1_4Layout,
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
@@ -267,7 +283,8 @@ TEST(RenderLabeledFrame, RendersPassThroughLFE) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayoutLFE),
-          GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0));
+          GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kLFELabeledFrame, pass_through_renderer.get(),
@@ -288,7 +305,8 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoS) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayoutStereoS),
-          GetScalableLayoutForSoundSystem(kSoundSystemD_4_5_0));
+          GetScalableLayoutForSoundSystem(kSoundSystemD_4_5_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kStereoSLabeledFrame, pass_through_renderer.get(),
@@ -309,7 +327,8 @@ TEST(RenderLabeledFrame, RendersPassThrough3_0_Ch) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayout3_0_ch),
-          GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0));
+          GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
@@ -344,7 +363,8 @@ TEST(RenderLabeledFrame, RendersPassThrough9_1_6) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayout9_1_6_ch),
-          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
+          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(k9_1_6LabeledFrame, pass_through_renderer.get(),
@@ -366,7 +386,8 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoF) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayoutStereoF),
-          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
+          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kStreoFLabeledFrame, pass_through_renderer.get(),
@@ -391,7 +412,8 @@ TEST(RenderLabeledFrame, RendersPassThroughTop6Ch) {
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               ChannelAudioLayerConfig::kExpandedLayoutTop6Ch),
-          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0));
+          GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
+          kFourSamplesPerFrame);
 
   std::vector<InternalSampleType> rendered_samples;
   RenderAndFlushExpectOk(kTop6ChLabeledFrame, pass_through_renderer.get(),
@@ -409,7 +431,8 @@ TEST(RenderLabeledFrame, RendersDemixedSamples) {
 
   auto demixed_stereo_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoChannelConfigWithTwoLayers, kStereoLayout);
+          kStereoChannelConfigWithTwoLayers, kStereoLayout,
+          kFourSamplesPerFrame);
   EXPECT_NE(demixed_stereo_renderer, nullptr);
 
   EXPECT_THAT(demixed_stereo_renderer->RenderLabeledFrame(kTwoLayerStereo),
@@ -430,7 +453,8 @@ TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
 
   auto stereo_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kStereoScalableChannelLayoutConfig, kStereoLayout);
+          kStereoScalableChannelLayoutConfig, kStereoLayout,
+          kFourSamplesPerFrame);
   const auto result = stereo_pass_through_renderer->RenderLabeledFrame(
       kStereoFrameWithTwoRenderedTicks);
   EXPECT_THAT(result, IsOk());
@@ -443,7 +467,7 @@ TEST(RenderLabeledFrame, EdgeCaseWithAllSamplesTrimmedReturnsZero) {
 
   auto mono_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kMonoScalableChannelLayoutConfig, kMonoLayout);
+          kMonoScalableChannelLayoutConfig, kMonoLayout, kFourSamplesPerFrame);
   const auto result =
       mono_pass_through_renderer->RenderLabeledFrame(kMonoFrame);
   EXPECT_THAT(result, IsOk());
@@ -480,12 +504,12 @@ void CollectRenderedSamples(AudioElementRendererPassThrough& renderer,
 }
 
 TEST(RenderLabeledFrame, IsThreadSafe) {
+  constexpr int kSamplesPerFrame = 10;
   auto mono_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          kMonoScalableChannelLayoutConfig, kMonoLayout);
+          kMonoScalableChannelLayoutConfig, kMonoLayout, kSamplesPerFrame);
   EXPECT_NE(mono_pass_through_renderer, nullptr);
   constexpr int kNumFrames = 1000;
-  constexpr int kSamplesPerFrame = 10;
 
   // Spawn a thread to render an increasing sequence.
   std::thread render_thread(&RenderMonoSequence, kNumFrames, kSamplesPerFrame,

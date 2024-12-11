@@ -11,11 +11,13 @@
  */
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 
+#include <cstddef>
 #include <vector>
 
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/macros.h"
@@ -25,6 +27,30 @@ namespace iamf_tools {
 
 AudioElementRendererBase::~AudioElementRendererBase() {}
 
+absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
+    const LabeledFrame& labeled_frame) {
+  absl::MutexLock lock(&mutex_);
+
+  size_t num_valid_samples = 0;
+  RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
+      labeled_frame, ordered_labels_, samples_to_render_, num_valid_samples));
+
+  // Render samples in concrete subclasses.
+  current_labeled_frame_ = &labeled_frame;
+
+  std::vector<InternalSampleType> rendered_samples(
+      num_output_channels_ * num_valid_samples, 0);
+  RETURN_IF_NOT_OK(RenderSamples(
+      absl::MakeConstSpan(samples_to_render_).first(num_valid_samples),
+      rendered_samples));
+
+  // Copy rendered samples to the output.
+  rendered_samples_.insert(rendered_samples_.end(), rendered_samples.begin(),
+                           rendered_samples.end());
+
+  return num_valid_samples;
+}
+
 absl::Status AudioElementRendererBase::Flush(
     std::vector<InternalSampleType>& rendered_samples) {
   absl::MutexLock lock(&mutex_);
@@ -32,28 +58,6 @@ absl::Status AudioElementRendererBase::Flush(
                           rendered_samples_.end());
   rendered_samples_.clear();
   return absl::OkStatus();
-}
-
-absl::StatusOr<int> AudioElementRendererBase::RenderLabeledFrame(
-    const LabeledFrame& labeled_frame) {
-  std::vector<std::vector<InternalSampleType>> samples_to_render;
-  RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
-      labeled_frame, ordered_labels_, samples_to_render));
-
-  // Render samples in concrete subclasses.
-  mutex_.Lock();
-  current_labeled_frame_ = &labeled_frame;
-  mutex_.Unlock();
-  std::vector<InternalSampleType> rendered_samples(
-      num_output_channels_ * samples_to_render.size(), 0);
-  RETURN_IF_NOT_OK(RenderSamples(samples_to_render, rendered_samples));
-
-  // Copy rendered samples to the output.
-  absl::MutexLock lock(&mutex_);
-  rendered_samples_.insert(rendered_samples_.end(), rendered_samples.begin(),
-                           rendered_samples.end());
-
-  return samples_to_render.size();
 }
 
 }  // namespace iamf_tools

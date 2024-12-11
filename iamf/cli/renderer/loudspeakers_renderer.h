@@ -17,6 +17,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -45,7 +46,7 @@ absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status RenderChannelLayoutToLoudspeakers(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const DownMixingParams& down_mixing_params,
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
@@ -61,7 +62,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status RenderAmbisonicsToLoudspeakers(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
     std::vector<InternalSampleType>& rendered_samples);

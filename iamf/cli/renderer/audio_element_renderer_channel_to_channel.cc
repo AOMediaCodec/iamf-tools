@@ -26,7 +26,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -117,7 +117,7 @@ absl::StatusOr<absl::string_view> LookupInputKeyFromLoudspeakerLayout(
 std::unique_ptr<AudioElementRendererChannelToChannel>
 AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
     const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-    const Layout& playback_layout) {
+    const Layout& playback_layout, size_t num_samples_per_frame) {
   if (scalable_channel_layout_config.channel_audio_layer_configs.empty()) {
     LOG(ERROR) << "No channel audio layer configs provided.";
     return nullptr;
@@ -162,14 +162,13 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
 
   return absl::WrapUnique(new AudioElementRendererChannelToChannel(
       *input_key, *output_key, static_cast<size_t>(num_output_channels),
-      *ordered_labels, *gains));
+      num_samples_per_frame, *ordered_labels, *gains));
 }
 
 absl::Status AudioElementRendererChannelToChannel::RenderSamples(
-    const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    absl::Span<const std::vector<InternalSampleType>> samples_to_render,
     std::vector<InternalSampleType>& rendered_samples) {
   // Render the samples.
-  absl::MutexLock lock(&mutex_);
   RETURN_IF_NOT_OK(RenderChannelLayoutToLoudspeakers(
       samples_to_render, current_labeled_frame_->demixing_params,
       ordered_labels_, input_key_, output_key_, gains_, rendered_samples));

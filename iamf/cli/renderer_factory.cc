@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/renderer_factory.h"
 
+#include <cstddef>
 #include <memory>
 #include <variant>
 #include <vector>
@@ -43,7 +44,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
     bool use_binaural, const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout) {
+    const Layout& loudness_layout, size_t num_samples_per_frame) {
   const auto* ambisonics_config = std::get_if<AmbisonicsConfig>(&config);
   if (ambisonics_config == nullptr) {
     LOG(ERROR) << "Ambisonics config is inconsistent with audio element type.";
@@ -59,12 +60,12 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
 
   return AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
       *ambisonics_config, audio_substream_ids, substream_id_to_labels,
-      loudness_layout);
+      loudness_layout, num_samples_per_frame);
 }
 
 std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
     bool use_binaural, const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout) {
+    const Layout& loudness_layout, size_t num_samples_per_frame) {
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&config);
   if (channel_config == nullptr) {
@@ -74,7 +75,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   // Lazily try to make a pass-through renderer.
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          *channel_config, loudness_layout);
+          *channel_config, loudness_layout, num_samples_per_frame);
   if (pass_through_renderer != nullptr) {
     return pass_through_renderer;
   }
@@ -84,7 +85,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
     return nullptr;
   }
   return AudioElementRendererChannelToChannel::
-      CreateFromScalableChannelLayoutConfig(*channel_config, loudness_layout);
+      CreateFromScalableChannelLayoutConfig(*channel_config, loudness_layout,
+                                            num_samples_per_frame);
 }
 
 }  // namespace
@@ -97,8 +99,8 @@ RendererFactory::CreateRendererForLayout(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     AudioElementObu::AudioElementType audio_element_type,
     const AudioElementObu::AudioElementConfig& audio_element_config,
-    const RenderingConfig& rendering_config,
-    const Layout& loudness_layout) const {
+    const RenderingConfig& rendering_config, const Layout& loudness_layout,
+    size_t num_samples_per_frame) const {
   const bool use_binaural = IsAudioElementRenderedBinaural(
       rendering_config.headphones_rendering_mode, loudness_layout.layout_type);
 
@@ -106,10 +108,10 @@ RendererFactory::CreateRendererForLayout(
     case AudioElementObu::kAudioElementSceneBased:
       return MaybeCreateAmbisonicsRenderer(
           use_binaural, audio_substream_ids, substream_id_to_labels,
-          audio_element_config, loudness_layout);
+          audio_element_config, loudness_layout, num_samples_per_frame);
     case AudioElementObu::kAudioElementChannelBased:
       return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
-                                        loudness_layout);
+                                        loudness_layout, num_samples_per_frame);
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
       LOG(WARNING) << "Unsupported audio_element_type_= " << audio_element_type;

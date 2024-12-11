@@ -11,6 +11,7 @@
  */
 #ifndef CLI_RENDERER_RENDERER_UTILS_H_
 #define CLI_RENDERER_RENDERER_UTILS_H_
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -40,7 +41,8 @@ namespace renderer_utils {
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<InternalSampleType>>& samples_to_render);
+    std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    size_t& num_valid_samples);
 
 /*!\brief Gets a key associated with the playback layout.
  *

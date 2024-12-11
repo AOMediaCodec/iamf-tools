@@ -117,7 +117,9 @@ absl::Status InitializeRenderingMetadata(
         sub_mix_audio_element.substream_id_to_labels,
         rendering_metadata.audio_element->GetAudioElementType(),
         sub_mix_audio_element.obu.config_,
-        sub_mix_audio_elements[i].rendering_config, loudness_layout);
+        sub_mix_audio_elements[i].rendering_config, loudness_layout,
+        static_cast<size_t>(
+            rendering_metadata.codec_config->GetNumSamplesPerFrame()));
 
     if (rendering_metadata.renderer == nullptr) {
       return absl::UnknownError("Unable to create renderer.");

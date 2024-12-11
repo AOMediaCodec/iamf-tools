@@ -81,12 +81,14 @@ class MockRenderer : public AudioElementRendererBase {
  public:
   MockRenderer(absl::Span<const ChannelLabel::Label> ordered_labels,
                size_t num_output_channels)
-      : AudioElementRendererBase(ordered_labels, num_output_channels) {}
+      : AudioElementRendererBase(ordered_labels,
+                                 static_cast<size_t>(kNumSamplesPerFrame),
+                                 num_output_channels) {}
   MockRenderer() : MockRenderer({}, 0) {}
 
   MOCK_METHOD(
       absl::Status, RenderSamples,
-      (const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+      (absl::Span<const std::vector<InternalSampleType>> samples_to_render,
        std::vector<InternalSampleType>& rendered_samples),
       (override));
 };
@@ -102,7 +104,7 @@ class MockRendererFactory : public RendererFactoryBase {
                AudioElementObu::AudioElementType audio_element_type,
                const AudioElementObu::AudioElementConfig& audio_element_config,
                const RenderingConfig& rendering_config,
-               const Layout& /*loudness_layout*/),
+               const Layout& loudness_layout, size_t num_samples_per_frame),
               (const, override));
 };
 
@@ -118,7 +120,8 @@ class AlwaysNullRendererFactory : public RendererFactoryBase {
       AudioElementObu::AudioElementType /*audio_element_type*/,
       const AudioElementObu::AudioElementConfig& /*audio_element_config*/,
       const RenderingConfig& /*rendering_config*/,
-      const Layout& /*loudness_layout*/) const override {
+      const Layout& /*loudness_layout*/,
+      size_t /*num_samples_per_frame*/) const override {
     return nullptr;
   }
 };
@@ -349,10 +352,12 @@ TEST_F(FinalizerTest, ForwardsAudioElementToRenderer) {
   const auto& forwarded_audio_element = audio_elements_.at(kAudioElementId);
   EXPECT_CALL(
       *mock_renderer_factory,
-      CreateRendererForLayout(forwarded_audio_element.obu.audio_substream_ids_,
-                              forwarded_audio_element.substream_id_to_labels,
-                              forwarded_audio_element.obu.GetAudioElementType(),
-                              forwarded_audio_element.obu.config_, _, _));
+      CreateRendererForLayout(
+          forwarded_audio_element.obu.audio_substream_ids_,
+          forwarded_audio_element.substream_id_to_labels,
+          forwarded_audio_element.obu.GetAudioElementType(),
+          forwarded_audio_element.obu.config_, _, _,
+          forwarded_audio_element.codec_config->GetNumSamplesPerFrame()));
   renderer_factory_ = std::move(mock_renderer_factory);
   RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
@@ -373,7 +378,7 @@ TEST_F(FinalizerTest, ForwardsRenderingConfigToRenderer) {
       forwarded_sub_mix.audio_elements[0].rendering_config;
   EXPECT_CALL(
       *mock_renderer_factory,
-      CreateRendererForLayout(_, _, _, _, forwarded_rendering_config, _));
+      CreateRendererForLayout(_, _, _, _, forwarded_rendering_config, _, _));
   renderer_factory_ = std::move(mock_renderer_factory);
   RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
@@ -392,7 +397,7 @@ TEST_F(FinalizerTest, ForwardsLayoutToRenderer) {
   const auto& forwarded_sub_mix = obus_to_finalize_.front().sub_mixes_[0];
   const auto& forwarded_layout = forwarded_sub_mix.layouts[0].loudness_layout;
   EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, forwarded_layout));
+              CreateRendererForLayout(_, _, _, _, _, forwarded_layout, _));
   renderer_factory_ = std::move(mock_renderer_factory);
   RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
@@ -412,10 +417,12 @@ TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
   const std::vector<std::vector<InternalSampleType>>
       kExpectedTimeChannelOrderedSamples = {{0, 2}, {1, 3}};
   EXPECT_CALL(*mock_renderer,
-              RenderSamples(kExpectedTimeChannelOrderedSamples, _));
+              RenderSamples(
+                  absl::MakeConstSpan(kExpectedTimeChannelOrderedSamples), _));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   ASSERT_NE(mock_renderer_factory, nullptr);
-  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _, _))
+  EXPECT_CALL(*mock_renderer_factory,
+              CreateRendererForLayout(_, _, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   renderer_factory_ = std::move(mock_renderer_factory);
   RenderingMixPresentationFinalizer finalizer = GetFinalizer();
@@ -434,7 +441,8 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   auto mock_renderer = std::make_unique<MockRenderer>();
   EXPECT_CALL(*mock_renderer, RenderSamples(_, _));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
-  EXPECT_CALL(*mock_renderer_factory, CreateRendererForLayout(_, _, _, _, _, _))
+  EXPECT_CALL(*mock_renderer_factory,
+              CreateRendererForLayout(_, _, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   renderer_factory_ = std::move(mock_renderer_factory);
   RenderingMixPresentationFinalizer finalizer = GetFinalizer();

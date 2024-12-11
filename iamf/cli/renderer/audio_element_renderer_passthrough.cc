@@ -13,6 +13,7 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 
+#include <cstddef>
 #include <memory>
 #include <vector>
 
@@ -24,7 +25,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
@@ -159,7 +159,7 @@ absl::StatusOr<ChannelAudioLayerConfig> FindEquivalentLayer(
 std::unique_ptr<AudioElementRendererPassThrough>
 AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
     const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-    const Layout& playback_layout) {
+    const Layout& playback_layout, size_t num_samples_per_frame) {
   const auto& equivalent_layer =
       FindEquivalentLayer(scalable_channel_layout_config, playback_layout);
   if (!equivalent_layer.ok()) {
@@ -173,14 +173,14 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
     return nullptr;
   }
 
-  return absl::WrapUnique(new AudioElementRendererPassThrough(*ordered_labels));
+  return absl::WrapUnique(new AudioElementRendererPassThrough(
+      *ordered_labels, num_samples_per_frame));
 }
 
 absl::Status AudioElementRendererPassThrough::RenderSamples(
-    const std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    absl::Span<const std::vector<InternalSampleType>> samples_to_render,
     std::vector<InternalSampleType>& rendered_samples) {
   // Flatten the (time, channel) axes into interleaved samples.
-  absl::MutexLock lock(&mutex_);
   const absl::AnyInvocable<absl::Status(InternalSampleType, InternalSampleType&)
                                const>
       kIdentityTransform =
@@ -189,8 +189,8 @@ absl::Status AudioElementRendererPassThrough::RenderSamples(
             return absl::OkStatus();
           };
 
-  return ConvertTimeChannelToInterleaved(absl::MakeConstSpan(samples_to_render),
-                                         kIdentityTransform, rendered_samples);
+  return ConvertTimeChannelToInterleaved(samples_to_render, kIdentityTransform,
+                                         rendered_samples);
 }
 
 }  // namespace iamf_tools

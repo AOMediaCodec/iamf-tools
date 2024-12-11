@@ -15,7 +15,9 @@
 #include <memory>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
@@ -50,6 +52,7 @@ class AudioElementRendererAmbisonicsToChannel
    * \param audio_substream_ids Audio substream IDs.
    * \param substream_id_to_labels Mapping of substream IDs to labels.
    * \param playback_layout Layout of the audio element to be rendered.
+   * \param num_samples_per_frame Number of samples per frame.
    * \return Render to use or `nullptr` on failure.
    */
   static std::unique_ptr<AudioElementRendererAmbisonicsToChannel>
@@ -57,7 +60,7 @@ class AudioElementRendererAmbisonicsToChannel
       const AmbisonicsConfig& ambisonics_config,
       const std::vector<DecodedUleb128>& audio_substream_ids,
       const SubstreamIdLabelsMap& substream_id_to_labels,
-      const Layout& playback_layout);
+      const Layout& playback_layout, size_t num_samples_per_frame);
 
   /*!\brief Destructor. */
   ~AudioElementRendererAmbisonicsToChannel() override = default;
@@ -73,10 +76,12 @@ class AudioElementRendererAmbisonicsToChannel
    * \param gains Gains matrix.
    */
   AudioElementRendererAmbisonicsToChannel(
-      size_t num_output_channels, const AmbisonicsConfig& ambisonics_config,
+      size_t num_output_channels, size_t num_samples_per_frame,
+      const AmbisonicsConfig& ambisonics_config,
       const std::vector<ChannelLabel::Label>& ordered_labels,
       const std::vector<std::vector<double>>& gains)
-      : AudioElementRendererBase(ordered_labels, num_output_channels),
+      : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
+                                 num_output_channels),
         ambisonics_config_(ambisonics_config),
         gains_(gains) {}
 
@@ -87,8 +92,9 @@ class AudioElementRendererAmbisonicsToChannel
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status RenderSamples(
-      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples) override;
+      absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples)
+      ABSL_SHARED_LOCKS_REQUIRED(mutex_) override;
 
   const AmbisonicsConfig ambisonics_config_;
 

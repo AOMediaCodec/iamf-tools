@@ -9,6 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,11 +36,10 @@ namespace {
 // Returns the common number of time ticks to be rendered for the requested
 // labels or associated demixed label in `labeled_frame`. This represents the
 // number of time ticks in the rendered audio after trimming.
-absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
+absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels) {
-  const int kUnknownNumTimeTicks = -1;
-  int num_raw_time_ticks = kUnknownNumTimeTicks;
+  std::optional<size_t> num_raw_time_ticks;
   for (const auto& label : ordered_labels) {
     if (label == ChannelLabel::kOmitted) {
       continue;
@@ -51,26 +52,25 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
     if (samples_to_render == nullptr) {
       return absl::InvalidArgumentError(
           absl::StrCat("Label ", label, " or D_", label, " not found."));
-    } else if (num_raw_time_ticks == kUnknownNumTimeTicks) {
+    } else if (!num_raw_time_ticks.has_value()) {
       num_raw_time_ticks = samples_to_render->size();
-    } else if (num_raw_time_ticks != samples_to_render->size()) {
+    } else if (*num_raw_time_ticks != samples_to_render->size()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "All labels must have the same number of samples ", label, " (",
-          samples_to_render->size(), " vs. ", num_raw_time_ticks, ")"));
+          samples_to_render->size(), " vs. ", *num_raw_time_ticks, ")"));
     }
   }
-
-  const int num_trimmed_time_ticks = num_raw_time_ticks -
-                                     labeled_frame.samples_to_trim_at_start -
-                                     labeled_frame.samples_to_trim_at_end;
-  if (num_trimmed_time_ticks < 0) {
+  if (*num_raw_time_ticks < (labeled_frame.samples_to_trim_at_start +
+                             labeled_frame.samples_to_trim_at_end)) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Not enough samples to render ", num_trimmed_time_ticks,
-        " samples. Raw samples: ", num_raw_time_ticks,
+        "Not enough samples to render samples",
+        ". #Raw samples: ", *num_raw_time_ticks,
         ", samples to trim at start: ", labeled_frame.samples_to_trim_at_start,
         ", samples to trim at end: ", labeled_frame.samples_to_trim_at_end));
   }
-  return num_trimmed_time_ticks;
+
+  return *num_raw_time_ticks - labeled_frame.samples_to_trim_at_start -
+         labeled_frame.samples_to_trim_at_end;
 }
 
 }  // namespace
@@ -78,21 +78,25 @@ absl::StatusOr<int> GetCommonNumTrimmedTimeTicks(
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<InternalSampleType>>& samples_to_render) {
-  samples_to_render.clear();
+    std::vector<std::vector<InternalSampleType>>& samples_to_render,
+    size_t& num_valid_samples) {
   if (ordered_labels.empty()) {
     return absl::OkStatus();
   }
 
-  const auto num_trimmed_time_ticks =
+  const auto common_num_trimmed_time_ticks =
       GetCommonNumTrimmedTimeTicks(labeled_frame, ordered_labels);
-  if (!num_trimmed_time_ticks.ok()) {
-    return num_trimmed_time_ticks.status();
+  if (!common_num_trimmed_time_ticks.ok()) {
+    return common_num_trimmed_time_ticks.status();
   }
+  num_valid_samples = *common_num_trimmed_time_ticks;
 
   const auto num_channels = ordered_labels.size();
-  samples_to_render.resize(*num_trimmed_time_ticks,
-                           std::vector<InternalSampleType>(num_channels, 0));
+  if (num_valid_samples > samples_to_render.size()) [[unlikely]] {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Number of time samples to render= ", num_valid_samples,
+        "does not fit into the output of size ", samples_to_render.size()));
+  }
 
   for (int channel = 0; channel < num_channels; ++channel) {
     const auto& channel_label = ordered_labels[channel];
@@ -111,7 +115,7 @@ absl::Status ArrangeSamplesToRender(
 
     // Grab the entire time axes for this label, Skip over any samples that
     // should be trimmed.
-    for (int time = 0; time < *num_trimmed_time_ticks; ++time) {
+    for (int time = 0; time < num_valid_samples; ++time) {
       samples_to_render[time][channel] =
           (*channel_samples)[time + labeled_frame.samples_to_trim_at_start];
     }

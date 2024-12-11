@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/obu/types.h"
@@ -34,10 +35,10 @@ const std::vector<int32_t> kSamplesToRender = {0, 1, 2, 3};
 // `RenderLabeledFrame`.
 class MockAudioElementRenderer : public AudioElementRendererBase {
  public:
-  MockAudioElementRenderer() : AudioElementRendererBase({}, 0) {};
+  MockAudioElementRenderer() : AudioElementRendererBase({}, 0, 0) {};
 
   absl::Status RenderSamples(
-      const std::vector<std::vector<InternalSampleType>>&,
+      absl::Span<const std::vector<InternalSampleType>>,
       std::vector<InternalSampleType>& rendered_samples) override {
     rendered_samples.insert(rendered_samples.end(), kSamplesToRender.begin(),
                             kSamplesToRender.end());

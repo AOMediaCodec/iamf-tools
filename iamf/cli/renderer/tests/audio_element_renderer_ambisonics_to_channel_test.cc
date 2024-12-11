@@ -12,6 +12,7 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_ambisonics_to_channel.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <vector>
@@ -33,6 +34,7 @@ using enum ChannelLabel::Label;
 
 using enum LoudspeakersSsConventionLayout::SoundSystem;
 
+constexpr size_t kOneSamplePerFrame = 1;
 const Layout kMonoLayout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
     .specific_layout =
@@ -96,7 +98,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsZerothOrderToMono) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullZerothOrderAmbisonicsConfig, kFullZerothOrderAudioSubstreamIds,
-          kZerothOrderSubstreamIdToLabels, kMonoLayout),
+          kZerothOrderSubstreamIdToLabels, kMonoLayout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -106,7 +108,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsZerothOrderToStereo) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullZerothOrderAmbisonicsConfig, kFullZerothOrderAudioSubstreamIds,
-          kZerothOrderSubstreamIdToLabels, kStereoLayout),
+          kZerothOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -116,7 +118,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsZerothOrderTo9_1_6) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullZerothOrderAmbisonicsConfig, kFullZerothOrderAudioSubstreamIds,
-          kZerothOrderSubstreamIdToLabels, k9_1_6Layout),
+          kZerothOrderSubstreamIdToLabels, k9_1_6Layout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -127,7 +129,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsFirstOrderTo7_1_2) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullFirstOrderAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-          kFirstOrderSubstreamIdToLabels, k7_1_2Layout),
+          kFirstOrderSubstreamIdToLabels, k7_1_2Layout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -141,7 +143,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsThirdOrderToStereo) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullThirdOrderAmbisonicsConfig, kFullThirdOrderAudioSubstreamIds,
-          kThirdOrderSubstreamIdToLabels, kStereoLayout),
+          kThirdOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -156,7 +158,7 @@ TEST(CreateFromAmbisonicsConfig, SupportsFourthOrderAmbisonics) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullFourthOrderAmbisonicsConfig, kFullFourthOrderAudioSubstreamIds,
-          kFourthOrderSubstreamIdToLabels, kStereoLayout),
+          kFourthOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -166,7 +168,7 @@ TEST(CreateFromAmbisonicsConfig, DoesNotSupportBinauralOutput) {
   EXPECT_EQ(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullZerothOrderAmbisonicsConfig, kFullZerothOrderAudioSubstreamIds,
-          kZerothOrderSubstreamIdToLabels, kBinauralLayout),
+          kZerothOrderSubstreamIdToLabels, kBinauralLayout, kOneSamplePerFrame),
       nullptr);
 }
 
@@ -187,7 +189,8 @@ TEST(CreateFromAmbisonicsConfig, SupportsMixedFirstOrderAmbisonics) {
   EXPECT_NE(
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kMixedFirstOrderAmbisonicsConfig, kMixedFirstOrderAudioSubstreamIds,
-          kMixedFirstOrderSubstreamIdToLabels, kStereoLayout),
+          kMixedFirstOrderSubstreamIdToLabels, kStereoLayout,
+          kOneSamplePerFrame),
       nullptr);
 }
 
@@ -232,10 +235,11 @@ TEST(CreateFromAmbisonicsConfig, Projection) {
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
       {0, {kA0}}, {1, {kA1}}, {2, {kA2}}, {3, {kA3}}};
 
-  EXPECT_NE(AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
-                kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                kFirstOrderSubstreamIdToLabels, kStereoLayout),
-            nullptr);
+  EXPECT_NE(
+      AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
+          kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
+          kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
+      nullptr);
 }
 
 TEST(CreateFromAmbisonicsConfig,
@@ -251,10 +255,11 @@ TEST(CreateFromAmbisonicsConfig,
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {{0, {kA0, kA1}},
                                                                {1, {kA2, kA3}}};
 
-  EXPECT_NE(AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
-                kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                kFirstOrderSubstreamIdToLabels, kStereoLayout),
-            nullptr);
+  EXPECT_NE(
+      AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
+          kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
+          kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
+      nullptr);
 }
 
 // =========== Mixed-order ambisonics projection config ===========
@@ -277,10 +282,11 @@ TEST(CreateFromAmbisonicsConfig, SupportedMixedOrderProjectionConfig) {
   const SubstreamIdLabelsMap kFirstOrderSubstreamIdToLabels = {
       {0, {kA0}}, {1, {kA1}}, {2, {kA3}}};
 
-  EXPECT_NE(AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
-                kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
-                kFirstOrderSubstreamIdToLabels, kStereoLayout),
-            nullptr);
+  EXPECT_NE(
+      AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
+          kAmbisonicsProjectionConfig, kFirstOrderAudioSubstreamIds,
+          kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame),
+      nullptr);
 }
 
 TEST(RenderFrames, AcnZeroIsSymmetric) {
@@ -290,7 +296,7 @@ TEST(RenderFrames, AcnZeroIsSymmetric) {
   auto renderer =
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kFullFirstOrderAmbisonicsConfig, kFullFirstOrderAudioSubstreamIds,
-          kFirstOrderSubstreamIdToLabels, kStereoLayout);
+          kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame);
 
   const LabeledFrame frame = {
       .label_to_samples = {{kA0, {10000}}, {kA1, {0}}, {kA2, {0}}, {kA3, {0}}}};
@@ -327,7 +333,7 @@ TEST(RenderFrames, UsesDemixingMatrix) {
   auto renderer_epsilon_identity =
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kAmbisonicsProjectionConfigIdentity, kFirstOrderAudioSubstreamIds,
-          kFirstOrderSubstreamIdToLabels, kStereoLayout);
+          kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame);
   std::vector<InternalSampleType> output_samples_epsilon_identity;
   RenderAndFlushExpectOk(frame, renderer_epsilon_identity.get(),
                          output_samples_epsilon_identity);
@@ -335,7 +341,7 @@ TEST(RenderFrames, UsesDemixingMatrix) {
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kAmbisonicsProjectionConfigIdentityInverse,
           kFirstOrderAudioSubstreamIds, kFirstOrderSubstreamIdToLabels,
-          kStereoLayout);
+          kStereoLayout, kOneSamplePerFrame);
   std::vector<InternalSampleType> output_samples_negative_epsilon_identity;
   RenderAndFlushExpectOk(frame, renderer_negative_epsilon_identity.get(),
                          output_samples_negative_epsilon_identity);

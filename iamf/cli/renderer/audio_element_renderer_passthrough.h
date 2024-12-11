@@ -11,10 +11,13 @@
  */
 #ifndef CLI_RENDERER_AUDIO_ELEMENT_RENDERER_PASSTHROUGH_H_
 #define CLI_RENDERER_AUDIO_ELEMENT_RENDERER_PASSTHROUGH_H_
+#include <cstddef>
 #include <memory>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
@@ -51,13 +54,14 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
    *
    * \param scalable_channel_layout_config Config for the scalable channel
    *        layout.
-   * \param playback_layout Layout of the audio element to be rendered.
+   * \param playback_layout Layout of the audio element to be rendered
+   * \param num_samples_per_frame Number of samples per frame.
    * \return Render to use or `nullptr` if it would not be suitable for use.
    */
   static std::unique_ptr<AudioElementRendererPassThrough>
   CreateFromScalableChannelLayoutConfig(
       const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-      const Layout& playback_layout);
+      const Layout& playback_layout, size_t num_samples_per_frame);
 
   /*!\brief Destructor. */
   ~AudioElementRendererPassThrough() override = default;
@@ -68,11 +72,13 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
    * \param ordered_labels Ordered list of channel labels to render.
    */
   AudioElementRendererPassThrough(
-      const std::vector<ChannelLabel::Label>& ordered_labels)
+      const std::vector<ChannelLabel::Label>& ordered_labels,
+      size_t num_samples_per_frame)
       : AudioElementRendererBase(
             ordered_labels,
             // For a passthrough renderer, (number of output channels)
             // is the same as (number of input channels).
+            num_samples_per_frame,
             /*num_output_channels=*/ordered_labels.size()) {}
 
   /*!\brief Renders samples.
@@ -82,8 +88,9 @@ class AudioElementRendererPassThrough : public AudioElementRendererBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status RenderSamples(
-      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples) override;
+      absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples)
+      ABSL_SHARED_LOCKS_REQUIRED(mutex_) override;
 };
 
 }  // namespace iamf_tools

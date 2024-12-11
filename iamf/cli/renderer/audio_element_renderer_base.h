@@ -49,10 +49,10 @@ class AudioElementRendererBase {
   /*!\brief Renders samples stored in labeled frames.
    *
    * \param labeled_frame Labeled frame to render.
-   * \return Number of ticks which will be rendered. A specific status on
+   * \return Number of ticks that will be rendered. A specific status on
    *         failure.
    */
-  absl::StatusOr<int> RenderLabeledFrame(const LabeledFrame& labeled_frame);
+  absl::StatusOr<size_t> RenderLabeledFrame(const LabeledFrame& labeled_frame);
 
   /*!\brief Flushes finished audio frames.
    *
@@ -87,12 +87,18 @@ class AudioElementRendererBase {
   /*!\brief Constructor.
    *
    * \param ordered_labels Ordered list of channel labels to render.
+   * \param num_samples_per_frame Number of samples per frame.
    * \param num_output_channels Number of output channels.
    */
   AudioElementRendererBase(absl::Span<const ChannelLabel::Label> ordered_labels,
+                           const size_t num_samples_per_frame,
                            const size_t num_output_channels)
       : ordered_labels_(ordered_labels.begin(), ordered_labels.end()),
-        num_output_channels_(num_output_channels) {}
+        num_samples_per_frame_(num_samples_per_frame),
+        num_output_channels_(num_output_channels),
+        samples_to_render_(
+            num_samples_per_frame_,
+            std::vector<InternalSampleType>(ordered_labels_.size(), 0)) {}
 
   /*!\brief Renders samples.
    *
@@ -101,14 +107,18 @@ class AudioElementRendererBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status RenderSamples(
-      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples) = 0;
+      absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples)
+      ABSL_SHARED_LOCKS_REQUIRED(mutex_) = 0;
 
   const std::vector<ChannelLabel::Label> ordered_labels_;
+  const size_t num_samples_per_frame_ = 0;
   const size_t num_output_channels_;
 
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
+  std::vector<std::vector<InternalSampleType>> samples_to_render_
+      ABSL_GUARDED_BY(mutex_);
   std::vector<InternalSampleType> rendered_samples_ ABSL_GUARDED_BY(mutex_);
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
   const LabeledFrame* current_labeled_frame_ ABSL_GUARDED_BY(mutex_) = nullptr;

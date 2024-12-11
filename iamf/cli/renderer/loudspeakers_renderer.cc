@@ -26,6 +26,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/precomputed_gains.h"
 #include "iamf/common/macros.h"
@@ -162,7 +163,7 @@ double Q15ToSignedDouble(const int16_t input) {
 }
 
 std::vector<std::vector<InternalSampleType>> ProjectSamplesToRender(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const int16_t* demixing_matrix, const int output_channel_count) {
   CHECK_NE(demixing_matrix, nullptr);
   std::vector<std::vector<InternalSampleType>> samples_to_render(
@@ -188,15 +189,20 @@ std::vector<std::vector<InternalSampleType>> ProjectSamplesToRender(
 }
 
 void RenderSamplesUsingGains(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const std::vector<std::vector<double>>& gains,
     const int16_t* demixing_matrix,
     std::vector<InternalSampleType>& rendered_samples) {
   // Project with `demixing_matrix` when in projection mode.
-  const std::vector<std::vector<InternalSampleType>>& samples_to_render_double =
-      (demixing_matrix != nullptr)
-          ? ProjectSamplesToRender(input_samples, demixing_matrix, gains.size())
-          : input_samples;
+  absl::Span<const std::vector<InternalSampleType>> samples_to_render_double;
+  std::vector<std::vector<InternalSampleType>> projected_samples;
+  if (demixing_matrix != nullptr) {
+    projected_samples =
+        ProjectSamplesToRender(input_samples, demixing_matrix, gains.size());
+    samples_to_render_double = absl::MakeConstSpan(projected_samples);
+  } else {
+    samples_to_render_double = input_samples;
+  }
 
   int rendered_samples_index = 0;
   std::fill(rendered_samples.begin(), rendered_samples.end(), 0);
@@ -235,7 +241,7 @@ absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
 }
 
 absl::Status RenderChannelLayoutToLoudspeakers(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const DownMixingParams& down_mixing_params,
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
@@ -258,7 +264,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
 }
 
 absl::Status RenderAmbisonicsToLoudspeakers(
-    const std::vector<std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const std::vector<InternalSampleType>>& input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
     std::vector<InternalSampleType>& rendered_samples) {

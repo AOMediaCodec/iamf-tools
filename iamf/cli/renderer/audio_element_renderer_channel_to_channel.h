@@ -16,8 +16,10 @@
 #include <string>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
@@ -49,12 +51,13 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
    * \param scalable_channel_layout_config Config for the scalable channel
    *        layout.
    * \param playback_layout Layout of the audio element to be rendered.
+   * \param num_samples_per_frame Number of samples per frame.
    * \return Render to use or `nullptr` on failure.
    */
   static std::unique_ptr<AudioElementRendererChannelToChannel>
   CreateFromScalableChannelLayoutConfig(
       const ScalableChannelLayoutConfig& scalable_channel_layout_config,
-      const Layout& playback_layout);
+      const Layout& playback_layout, size_t num_samples_per_frame);
 
   /*!\brief Destructor. */
   ~AudioElementRendererChannelToChannel() override = default;
@@ -67,14 +70,16 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
    * \param input_key Key representing the input loudspeaker layout.
    * \param output_key Key representing the output loudspeaker layout.
    * \param num_output_channels Number of output channels.
+   * \param num_samples_per_frame Number of samples per frame.
    * \param ordered_labels Ordered list of channel labels to render.
    */
   AudioElementRendererChannelToChannel(
       absl::string_view input_key, absl::string_view output_key,
-      size_t num_output_channels,
+      size_t num_output_channels, size_t num_samples_per_frame,
       const std::vector<ChannelLabel::Label>& ordered_labels,
       const std::vector<std::vector<double>>& gains)
-      : AudioElementRendererBase(ordered_labels, num_output_channels),
+      : AudioElementRendererBase(ordered_labels, num_samples_per_frame,
+                                 num_output_channels),
         input_key_(input_key),
         output_key_(output_key),
         gains_(gains) {}
@@ -86,8 +91,9 @@ class AudioElementRendererChannelToChannel : public AudioElementRendererBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status RenderSamples(
-      const std::vector<std::vector<InternalSampleType>>& samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples) override;
+      absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      std::vector<InternalSampleType>& rendered_samples)
+      ABSL_SHARED_LOCKS_REQUIRED(mutex_) override;
 
   const std::string input_key_;
   const std::string output_key_;
