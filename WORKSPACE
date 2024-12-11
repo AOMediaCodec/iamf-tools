@@ -8,11 +8,6 @@
 load(
     "@bazel_tools//tools/build_defs/repo:git.bzl",
     "git_repository",
-    "new_git_repository",  # @unused
-)
-load(
-    "@bazel_tools//tools/build_defs/repo:http.bzl",
-    "http_archive",  # @unused
 )
 
 # Google Audio-to-Tactile Library.
@@ -20,13 +15,6 @@ git_repository(
     name = "com_google_audio_to_tactile",
     commit = "d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15",
     remote = "https://github.com/google/audio-to-tactile.git",
-)
-
-# Google Benchmark Library.
-git_repository(
-    name = "com_google_benchmark",
-    remote = "https://github.com/google/benchmark.git",
-    tag = "v1.9.0",
 )
 
 # Expat.
