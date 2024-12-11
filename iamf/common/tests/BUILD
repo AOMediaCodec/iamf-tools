@@ -78,3 +78,14 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "write_bit_buffer_fuzz_test",
+    size = "small",
+    srcs = ["write_bit_buffer_fuzz_test.cc"],
+    deps = [
+        "//iamf/common:write_bit_buffer",
+        "@com_google_fuzztest//fuzztest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
