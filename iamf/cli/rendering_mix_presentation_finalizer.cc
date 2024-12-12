@@ -862,6 +862,14 @@ absl::Status RenderingMixPresentationFinalizer::Initialize(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const WavWriterFactory& wav_writer_factory,
     std::list<MixPresentationObu>& mix_presentation_obus) {
+  if (renderer_factory_ == nullptr) {
+    LOG(INFO) << "Renderer factory is null; so rendering is safely aborted.";
+    return absl::OkStatus();
+  }
+  if (loudness_calculator_factory_ == nullptr) {
+    LOG(INFO) << "Loudness calculator factory is null so loudness will not be "
+                 "calculated.";
+  }
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     std::vector<SubmixRenderingMetadata> rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
@@ -961,6 +969,14 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
 absl::Status RenderingMixPresentationFinalizer::Finalize(
     bool validate_loudness,
     std::list<MixPresentationObu>& mix_presentation_obus) {
+  if (renderer_factory_ == nullptr) {
+    LOG(INFO) << "Renderer factory is null; so rendering is safely aborted.";
+    return absl::OkStatus();
+  }
+  if (rendering_metadata_.size() != mix_presentation_obus.size()) {
+    return absl::InvalidArgumentError(
+        "Size mismatch between rendering metadata and mix presentation OBUs.");
+  }
   int i = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     RETURN_IF_NOT_OK(UpdateLoudnessInfo(
