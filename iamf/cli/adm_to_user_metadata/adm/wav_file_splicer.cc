@@ -410,8 +410,9 @@ absl::Status ConvertFromObjectsTo3OA(
     }
 
     // Pan the current wav segment to 3OA and append the output wav.
-    RETURN_IF_NOT_OK(PanObjectsToAmbisonics(
-        input_file, input_adm, audio_block_indices, *output_wav_writer));
+    RETURN_IF_NOT_OK(PanObjectsToAmbisonics(input_file.string(), input_adm,
+                                            audio_block_indices,
+                                            *output_wav_writer));
 
     UpdateWavSplicingParams(this_seg_duration, audio_channels, seg_duration,
                             audio_block_indices);

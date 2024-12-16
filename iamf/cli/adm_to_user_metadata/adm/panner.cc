@@ -21,6 +21,7 @@
 #include <cstring>
 #include <filesystem>
 #include <numbers>
+#include <string>
 #include <vector>
 
 #include "Eigen/Core"
@@ -55,14 +56,15 @@ constexpr double kRadiansToDegrees = 180.0 / std::numbers::pi_v<double>;
 
 }  // namespace
 
-absl::Status PanObjectsToAmbisonics(
-    const std::filesystem::path& input_file_path, const ADM& input_adm,
-    const std::vector<size_t>& block_indices, WavWriter& wav_writer) {
+absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
+                                    const ADM& input_adm,
+                                    const std::vector<size_t>& block_indices,
+                                    WavWriter& wav_writer) {
   // Read input wav file.
-  FILE* input_file = std::fopen(input_file_path.c_str(), "rb");
+  FILE* input_file = std::fopen(input_filename.c_str(), "rb");
   if (input_file == nullptr) {
     return absl::FailedPreconditionError(
-        absl::StrCat("Failed to open file: \"", input_file_path.string(),
+        absl::StrCat("Failed to open file: \"", input_filename,
                      "\" with error: ", std::strerror(errno), "."));
   }
 

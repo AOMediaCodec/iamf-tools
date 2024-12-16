@@ -11,7 +11,7 @@
  */
 
 #include <cstddef>
-#include <filesystem>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -25,14 +25,14 @@ constexpr int kOutputWavChannels = 16;
 
 /*!\brief Invokes panner to convert audio objects to 3rd order ambisonics.
  *
- * \param input_file Input wav file to panner.
+ * \param input_filename Input wav file to panner.
  * \param input_adm Input ADM struct to panner.
  * \param block_indices Vector holding the index of audioBlockFormat(s)
  *        which contain the positional metadata for each channel.
  * \param wav_writer WavWriter used for writing into the output file.
  * \return `absl::OkStatus()` on success. A specific error code on failure.
  */
-absl::Status PanObjectsToAmbisonics(const std::filesystem::path& input_file,
+absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
                                     const ADM& input_adm,
                                     const std::vector<size_t>& block_indices,
                                     WavWriter& wav_writer);
