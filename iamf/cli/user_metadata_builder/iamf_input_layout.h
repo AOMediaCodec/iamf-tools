@@ -32,6 +32,7 @@ enum class IamfInputLayout {
   k7_1,
   k7_1_4,
   kBinaural,
+  kLFE,
   kAmbisonicsOrder1,
   kAmbisonicsOrder2,
   kAmbisonicsOrder3,

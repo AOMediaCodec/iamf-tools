@@ -112,6 +112,34 @@ TEST(PopulateAudioElementMetadata, ConfiguresLoudspeakerLayoutForBinaural) {
             iamf_tools_cli_proto::LOUDSPEAKER_LAYOUT_BINAURAL);
 }
 
+TEST(PopulateAudioElementMetadata, ConfiguresLFE) {
+  iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
+  AudioElementMetadataBuilder audio_element_metadata_builder;
+
+  EXPECT_THAT(audio_element_metadata_builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kLFE,
+                  audio_element_metadata),
+              IsOk());
+
+  EXPECT_EQ(audio_element_metadata.num_substreams(), 1);
+  EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 1);
+  EXPECT_EQ(audio_element_metadata.audio_substream_ids().at(0), 0);
+  ASSERT_TRUE(audio_element_metadata.has_scalable_channel_layout_config());
+  EXPECT_EQ(audio_element_metadata.scalable_channel_layout_config()
+                .channel_audio_layer_configs()
+                .size(),
+            1);
+  const auto& first_channel_audio_layer_config =
+      audio_element_metadata.scalable_channel_layout_config()
+          .channel_audio_layer_configs(0);
+  EXPECT_EQ(first_channel_audio_layer_config.loudspeaker_layout(),
+            iamf_tools_cli_proto::LOUDSPEAKER_LAYOUT_EXPANDED);
+  EXPECT_EQ(first_channel_audio_layer_config.expanded_loudspeaker_layout(),
+            iamf_tools_cli_proto::EXPANDED_LOUDSPEAKER_LAYOUT_LFE);
+  EXPECT_EQ(first_channel_audio_layer_config.substream_count(), 1);
+  EXPECT_EQ(first_channel_audio_layer_config.coupled_substream_count(), 0);
+}
+
 TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
   iamf_tools_cli_proto::AudioElementObuMetadata audio_element_metadata;
   AudioElementMetadataBuilder audio_element_metadata_builder;

@@ -44,13 +44,14 @@ absl::StatusOr<int32_t> LookupNumSubstreamsFromInputLayout(
           {k7_1, 5},
           {k7_1_4, 7},
           {kBinaural, 1},
+          {kLFE, 1},
           {kAmbisonicsOrder1, 4},
           {kAmbisonicsOrder2, 9},
           {kAmbisonicsOrder3, 16},
       });
 
   return LookupInMap(*kInputLayoutToNumSubstreams, input_layout,
-                     "Number of channels for `IamfInputLayout`");
+                     "Number of substreams for `IamfInputLayout`");
 }
 
 absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
@@ -68,6 +69,7 @@ absl::StatusOr<int32_t> LookupCoupledSubstreamCountFromInputLayout(
           {k7_1, 3},
           {k7_1_4, 5},
           {kBinaural, 1},
+          {kLFE, 0},
       });
 
   return LookupInMap(*kInputLayoutToCoupledSubstreamCount, input_layout,
@@ -92,10 +94,28 @@ LookupLoudspeakerLayoutFromInputLayout(IamfInputLayout input_layout) {
           {k7_1, LOUDSPEAKER_LAYOUT_7_1_CH},
           {k7_1_4, LOUDSPEAKER_LAYOUT_7_1_4_CH},
           {kBinaural, LOUDSPEAKER_LAYOUT_BINAURAL},
+          {kLFE, LOUDSPEAKER_LAYOUT_EXPANDED},
       });
 
   return LookupInMap(*KInputLayoutToLoudspeakerLayout, input_layout,
                      "Proto `LoudspeakerLayout` for `IamfInputLayout`");
+}
+
+absl::StatusOr<iamf_tools_cli_proto::ExpandedLoudspeakerLayout>
+LookupExpandedLoudspeakerLayoutFromInputLayout(IamfInputLayout input_layout) {
+  using enum IamfInputLayout;
+  using enum iamf_tools_cli_proto::ExpandedLoudspeakerLayout;
+
+  // Map which holds the channel layout and the corresponding expanded
+  // loudspeaker layout in IAMF.
+  static const absl::NoDestructor<absl::flat_hash_map<
+      IamfInputLayout, iamf_tools_cli_proto::ExpandedLoudspeakerLayout>>
+      KInputLayoutToExpandedLoudspeakerLayout({
+          {kLFE, EXPANDED_LOUDSPEAKER_LAYOUT_LFE},
+      });
+
+  return LookupInMap(*KInputLayoutToExpandedLoudspeakerLayout, input_layout,
+                     "Proto `ExpandedLoudspeakerLayout` for `IamfInputLayout`");
 }
 
 absl::StatusOr<iamf_tools_cli_proto::AudioElementType>
@@ -116,6 +136,7 @@ LookupAudioElementTypeFromInputLayout(IamfInputLayout input_layout) {
           {k7_1, AUDIO_ELEMENT_CHANNEL_BASED},
           {k7_1_4, AUDIO_ELEMENT_CHANNEL_BASED},
           {kBinaural, AUDIO_ELEMENT_CHANNEL_BASED},
+          {kLFE, AUDIO_ELEMENT_CHANNEL_BASED},
           {kAmbisonicsOrder1, AUDIO_ELEMENT_SCENE_BASED},
           {kAmbisonicsOrder2, AUDIO_ELEMENT_SCENE_BASED},
           {kAmbisonicsOrder3, AUDIO_ELEMENT_SCENE_BASED},
@@ -158,6 +179,20 @@ absl::Status PopulateChannelBasedAudioElementMetadata(
   }
   channel_audio_layer_config->set_coupled_substream_count(
       *coupled_substream_count);
+
+  // Set the specific 'expanded_loudspeaker_layout' field when it is relevant
+  // (e.g. LFE).
+  if (channel_audio_layer_config->loudspeaker_layout() ==
+      iamf_tools_cli_proto::LOUDSPEAKER_LAYOUT_EXPANDED) {
+    const auto expanded_loudspeaker_layout =
+        LookupExpandedLoudspeakerLayoutFromInputLayout(input_layout);
+    if (!expanded_loudspeaker_layout.ok()) {
+      return expanded_loudspeaker_layout.status();
+    }
+    channel_audio_layer_config->set_expanded_loudspeaker_layout(
+        *expanded_loudspeaker_layout);
+  }
+
   return absl::OkStatus();
 }
 

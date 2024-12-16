@@ -62,6 +62,7 @@ LookupLabelsFromInputLayout(IamfInputLayout input_layout) {
             CHANNEL_LABEL_LRS_7, CHANNEL_LABEL_RRS_7, CHANNEL_LABEL_LTF_4,
             CHANNEL_LABEL_RTF_4, CHANNEL_LABEL_LTB_4, CHANNEL_LABEL_RTB_4}},
           {kBinaural, {CHANNEL_LABEL_L_2, CHANNEL_LABEL_R_2}},
+          {kLFE, {CHANNEL_LABEL_LFE}},
           {kAmbisonicsOrder1,
            {CHANNEL_LABEL_A_0, CHANNEL_LABEL_A_1, CHANNEL_LABEL_A_2,
             CHANNEL_LABEL_A_3}},

@@ -141,6 +141,15 @@ TEST(PopulateAudioFrameMetadata,
   EXPECT_EQ(audio_frame_obu_metadata.channel_metadatas(1).channel_id(), 1);
 }
 
+TEST(PopulateAudioFrameMetadata, ConfiguresChannelIdsAndLabelsForLFEInput) {
+  const auto audio_frame_obu_metadata = GetAudioFrameMetadataExpectOk(
+      kWavFilename, IamfInputLayout::kLFE, kFirstAudioElementId);
+
+  ExpectLabelsAreConvertibleToChannelLabels(
+      audio_frame_obu_metadata.channel_metadatas(), {kLFE});
+  EXPECT_EQ(audio_frame_obu_metadata.channel_metadatas(0).channel_id(), 0);
+}
+
 TEST(PopulateAudioFrameMetadata,
      ConfiguresChannelIdsAndLabelsForAmbisonicsOrder1Input) {
   const auto audio_frame_obu_metadata = GetAudioFrameMetadataExpectOk(

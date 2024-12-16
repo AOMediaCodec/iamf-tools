@@ -36,6 +36,7 @@ absl::StatusOr<IamfInputLayout> LookupInputLayoutFromAudioPackFormatId(
           {"AP_0001000f", IamfInputLayout::k7_1},
           {"AP_00010017", IamfInputLayout::k7_1_4},
           {"AP_00050001", IamfInputLayout::kBinaural},
+          {"AP_00011FFF", IamfInputLayout::kLFE},
           {"AP_00040001", IamfInputLayout::kAmbisonicsOrder1},
           {"AP_00040002", IamfInputLayout::kAmbisonicsOrder2},
           {"AP_00040003", IamfInputLayout::kAmbisonicsOrder3},

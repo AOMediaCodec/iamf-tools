@@ -198,6 +198,7 @@ bool IsChannelBasedAndNotStereo(IamfInputLayout input_layout) {
     case k7_1:
     case k7_1_4:
     case kBinaural:
+    case kLFE:
       return true;
     case kStereo:
     case kAmbisonicsOrder1:
@@ -205,6 +206,9 @@ bool IsChannelBasedAndNotStereo(IamfInputLayout input_layout) {
     case kAmbisonicsOrder3:
       return false;
   }
+  // The above switch is exhaustive.
+  LOG(FATAL) << "Unexpcected value for `IamfInputLayout`: "
+             << static_cast<int>(input_layout);
 }
 
 }  // namespace

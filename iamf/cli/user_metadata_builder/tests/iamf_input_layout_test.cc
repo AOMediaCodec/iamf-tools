@@ -57,6 +57,10 @@ INSTANTIATE_TEST_SUITE_P(Binaural, SupportedAudioPackFormatId,
                          testing::ValuesIn<SupportedAudioPackFormatIdTestCase>(
                              {{"AP_00050001", IamfInputLayout::kBinaural}}));
 
+INSTANTIATE_TEST_SUITE_P(LFE, SupportedAudioPackFormatId,
+                         testing::ValuesIn<SupportedAudioPackFormatIdTestCase>(
+                             {{"AP_00011FFF", IamfInputLayout::kLFE}}));
+
 INSTANTIATE_TEST_SUITE_P(
     Ambisonics, SupportedAudioPackFormatId,
     testing::ValuesIn<SupportedAudioPackFormatIdTestCase>({
