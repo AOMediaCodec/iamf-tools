@@ -201,27 +201,6 @@ class RenderingMixPresentationFinalizer {
   absl::Status Finalize(bool validate_loudness,
                         std::list<MixPresentationObu>& mix_presentation_obus);
 
-  /*!\brief Finalizes the list of Mix Presentation OBUs.
-   *
-   * Populates the loudness information for each Mix Presentation OBU. This
-   * requires rendering the data which depends on several types of input OBUs.
-   *
-   * \param audio_elements Input Audio Element OBUs with data.
-   * \param id_to_time_to_labeled_frame Data structure of samples, keyed by
-   *        audio element ID, starting timestamp, and channel label.
-   * \param parameter_blocks Input Parameter Block OBUs.
-   * \param wav_writer_factory Factory for creating output rendered wav files.
-   * \param mix_presentation_obus Output list of OBUs to finalize with initial
-   *        user-provided loudness information.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Finalize(
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const IdTimeLabeledFrameMap& id_to_time_to_labeled_frame,
-      const std::list<ParameterBlockWithData>& parameter_blocks,
-      const WavWriterFactory& wav_writer_factory,
-      std::list<MixPresentationObu>& mix_presentation_obus);
-
  private:
   const std::filesystem::path file_path_prefix_;
   const std::optional<uint8_t> output_wav_file_bit_depth_override_;
