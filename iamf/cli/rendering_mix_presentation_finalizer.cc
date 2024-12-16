@@ -984,6 +984,9 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
         mix_presentation_obu));
     i++;
   }
+  // Clearing rendering metadata closes all renderers, wav writers, and loudness
+  // calculators.
+  rendering_metadata_.clear();
   return absl::OkStatus();
 }
 
