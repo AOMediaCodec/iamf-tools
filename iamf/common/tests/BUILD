@@ -49,6 +49,9 @@ cc_test(
     name = "read_bit_buffer_fuzz_test",
     size = "small",
     srcs = ["read_bit_buffer_fuzz_test.cc"],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:types",
@@ -97,6 +100,9 @@ cc_test(
     name = "write_bit_buffer_fuzz_test",
     size = "small",
     srcs = ["write_bit_buffer_fuzz_test.cc"],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
     deps = [
         "//iamf/common:write_bit_buffer",
         "@com_google_fuzztest//fuzztest",
@@ -108,6 +114,9 @@ cc_test(
     name = "write_read_fuzz_test",
     size = "small",
     srcs = ["write_read_fuzz_test.cc"],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
