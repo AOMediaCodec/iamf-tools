@@ -19,22 +19,27 @@
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
+#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*!\brief Splices a wav file per object based on the input ADM stream.
+/*!\brief Splices a wav file based on the input ADM file type.
  *
  * \param output_file_path Path to output wav files to.
  * \param file_prefix File prefix to use when naming output wav files.
+ * \param profile_version IAMF output spec version to use for panning the audio
+ *        objects.
  * \param reader Bw64Reader associated with the input stream.
  * \param input_stream Input stream to process.
+ * \param lfe_count Number of LFE channels, updated if the being converted from
+ *        an extended ADM file.
  * \return `absl::OkStatus()` on success. A specific error code on failure.
  */
 absl::Status SpliceWavFilesFromAdm(
     const std::filesystem::path& output_file_path,
-    absl::string_view file_prefix, const Bw64Reader& reader,
-    std::istream& input_stream);
+    absl::string_view file_prefix, ProfileVersion profile_version,
+    const Bw64Reader& reader, std::istream& input_stream, int& lfe_count);
 
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

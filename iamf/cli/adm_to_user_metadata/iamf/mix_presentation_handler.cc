@@ -51,6 +51,7 @@ LookupSoundSystemFromInputLayout(IamfInputLayout layout) {
           {k5_1_4, SOUND_SYSTEM_D_4_5_0},
           {k7_1, SOUND_SYSTEM_I_0_7_0},
           {k7_1_4, SOUND_SYSTEM_J_4_7_0},
+          {kLFE, SOUND_SYSTEM_J_4_7_0},
       });
 
   return LookupInMap(*kInputLayoutToSoundSystem, layout,

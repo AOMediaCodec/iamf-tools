@@ -18,11 +18,14 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
-/*!\brief Populates a `IASequenceHeaderObuMetadata` proto for base profile.
+/*!\brief Populates a `IASequenceHeaderObuMetadata` proto.
  *
+ * \param profile_version IAMF output specification version to use for
+ *        proto generation.
  * \param ia_sequence_header_obu_metadata Data to populate.
  */
-void PopulateBaseProfileIaSequenceHeaderObuMetadata(
+void PopulateIaSequenceHeaderObuMetadata(
+    iamf_tools_cli_proto::ProfileVersion profile_version,
     iamf_tools_cli_proto::IASequenceHeaderObuMetadata&
         ia_sequence_header_obu_metadata);
 

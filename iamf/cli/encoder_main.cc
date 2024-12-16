@@ -27,6 +27,7 @@
 #include "iamf/cli/encoder_main_lib.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/ia_sequence_header.h"
 #include "src/google/protobuf/text_format.h"
 
 // Flags to parse input user metadata.
@@ -44,6 +45,9 @@ ABSL_FLAG(std::string, input_wav_directory, "",
 ABSL_FLAG(std::string, adm_filename, "",
           "Filename of the ADM BW64 file to use. Exactly one of --adm_filename "
           "or --user_metadata_filename must be provided.");
+ABSL_FLAG(std::string, adm_profile_version, "base",
+          "IAMF version to be used: (base/enhanced). Used only if "
+          "--adm_filename is provided.");
 ABSL_FLAG(int32_t, adm_importance_threshold, 0,
           "Importance value used to skip an audioObject. Clamped to [0, 10]. "
           "Used only if --adm_filename is provided.");
@@ -99,7 +103,8 @@ absl::StatusOr<iamf_tools_cli_proto::UserMetadata>
 GetUserMetadataAndInputWavDirectory(
     const std::filesystem::path& input_user_metadata_filename,
     const std::filesystem::path& adm_filename,
-    std::filesystem::path& encoder_input_wav_directory) {
+    std::filesystem::path& encoder_input_wav_directory,
+    const iamf_tools::ProfileVersion profile_version) {
   if (input_user_metadata_filename.empty() == adm_filename.empty()) {
     return absl::InvalidArgumentError(
         "Please provide exactly one of --user_metadata_filename or "
@@ -125,7 +130,7 @@ GetUserMetadataAndInputWavDirectory(
             std::filesystem::path(adm_filename).stem().string(),
             absl::GetFlag(FLAGS_adm_frame_duration_ms),
             absl::GetFlag(FLAGS_adm_importance_threshold),
-            temp_wav_file_directory, adm_file);
+            temp_wav_file_directory, adm_file, profile_version);
   }
 }
 
@@ -135,12 +140,26 @@ int main(int argc, char** argv) {
   absl::SetProgramUsageMessage(argv[0]);
   absl::ParseCommandLine(argc, argv);
 
+  // Log the profile version flag.
+  using enum iamf_tools::ProfileVersion;
+  std::string iamf_profile = absl::GetFlag(FLAGS_adm_profile_version);
+  iamf_tools::ProfileVersion profile_version;
+  if (iamf_profile == "base") {
+    profile_version = kIamfBaseProfile;
+  } else if (iamf_profile == "enhanced") {
+    profile_version = kIamfBaseEnhancedProfile;
+  } else {
+    LOG(ERROR) << "Invalid profile version: " << iamf_profile;
+    return static_cast<int>(absl::StatusCode::kInvalidArgument);
+  }
+  LOG(INFO) << "Using IAMF" << iamf_profile << "profile version.";
+
   // Prepare `user_metadata` and `input_wav_directory` depending on the
   // input source.
   std::filesystem::path input_wav_directory;
   const auto& user_metadata = GetUserMetadataAndInputWavDirectory(
       absl::GetFlag(FLAGS_user_metadata_filename),
-      absl::GetFlag(FLAGS_adm_filename), input_wav_directory);
+      absl::GetFlag(FLAGS_adm_filename), input_wav_directory, profile_version);
   if (!user_metadata.ok()) {
     LOG(ERROR) << user_metadata.status();
     return static_cast<int>(user_metadata.status().code());

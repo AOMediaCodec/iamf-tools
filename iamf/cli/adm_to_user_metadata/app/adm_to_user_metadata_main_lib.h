@@ -19,6 +19,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -32,6 +33,8 @@ namespace adm_to_user_metadata {
  * \param importance_threshold Threshold for to determine which audio objects to
  * \param output_path Directory to output wav files to.
  * \param input_adm_stream Input stream to process.
+ * \param profile_version IAMF output specification version to use for
+          textproto generation.
  * \return Proto based on the ADM file or a specific error code on failure.
  */
 absl::StatusOr<iamf_tools_cli_proto::UserMetadata>
@@ -39,7 +42,8 @@ GenerateUserMetadataAndSpliceWavFiles(absl::string_view file_prefix,
                                       int32_t max_frame_duration_ms,
                                       int32_t input_importance_threshold,
                                       const std::filesystem::path& output_path,
-                                      std::istream& input_adm_stream);
+                                      std::istream& input_adm_stream,
+                                      ProfileVersion profile_version);
 
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

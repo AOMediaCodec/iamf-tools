@@ -26,8 +26,8 @@ TEST(GenerateBaseProfileIaSequenceHeaderObuMetadata, GeneratesBaseProfile) {
   iamf_tools_cli_proto::IASequenceHeaderObuMetadata
       ia_sequence_header_obu_metadata;
 
-  PopulateBaseProfileIaSequenceHeaderObuMetadata(
-      ia_sequence_header_obu_metadata);
+  PopulateIaSequenceHeaderObuMetadata(kBaseProfileVersion,
+                                      ia_sequence_header_obu_metadata);
 
   EXPECT_EQ(ia_sequence_header_obu_metadata.ia_code(),
             IASequenceHeaderObu::kIaCode);

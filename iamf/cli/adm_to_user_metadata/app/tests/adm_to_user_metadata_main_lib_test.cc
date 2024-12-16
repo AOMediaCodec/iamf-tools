@@ -25,12 +25,15 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {
 
 using ::absl_testing::IsOk;
+
+using enum iamf_tools::ProfileVersion;
 
 constexpr int32_t kImportanceThreshold = 10;
 constexpr int32_t kMaxFrameDurationMs = 10;
@@ -105,7 +108,8 @@ GenerateUserMetadataAndSpliceWavFilesExpectOk(
     absl::string_view input_adm, const std::filesystem::path& output_path) {
   std::istringstream ss((std::string(input_adm)));
   const auto& user_metadata = GenerateUserMetadataAndSpliceWavFiles(
-      kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold, output_path, ss);
+      kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold, output_path, ss,
+      kIamfBaseProfile);
 
   EXPECT_THAT(user_metadata, IsOk());
 
@@ -151,7 +155,7 @@ TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutAxmlChunk) {
 
   EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
                    kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   output_path, ss)
+                   output_path, ss, kIamfBaseProfile)
                    .ok());
   EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }
@@ -162,7 +166,7 @@ TEST(GenerateUserMetadataAndSpliceWavFiles, InvalidWithoutDataChunk) {
 
   EXPECT_FALSE(GenerateUserMetadataAndSpliceWavFiles(
                    kFilePrefix, kMaxFrameDurationMs, kImportanceThreshold,
-                   output_path, ss)
+                   output_path, ss, kIamfBaseProfile)
                    .ok());
   EXPECT_TRUE(std::filesystem::is_empty(output_path));
 }

@@ -12,6 +12,8 @@
 
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -23,6 +25,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/adm_to_user_metadata/adm/format_info_chunk.h"
 #include "iamf/cli/adm_to_user_metadata/adm/xml_to_adm.h"
 
@@ -31,8 +34,10 @@ namespace adm_to_user_metadata {
 
 namespace {
 
-const int32_t kExtraOffset = 8;
-const int32_t kRiffHeaderLength = 12;
+static const int32_t kExtraOffset = 8;
+static const int32_t kRiffHeaderLength = 12;
+static const uint16_t kBitDepthForDolby = 24;
+static constexpr std::array<uint32_t, 2> kSampleRatesForDolby = {48000, 96000};
 
 // Reads and validates the RIFF chunk data of WAV file.
 absl::Status ReadRiffChunk(std::istream& buffer) {
@@ -59,8 +64,8 @@ absl::Status ReadRiffChunk(std::istream& buffer) {
 
 // Reads the chunk data of the WAV file. It returns a vector containing the name
 // of WAV header such as "fmt " and the corresponding and data size.
-std::pair<std::vector<char>, int32_t> ReadChunkHeader(std::istream& buffer) {
-  std::pair<std::vector<char>, int32_t> chunk_header;
+std::pair<std::vector<char>, size_t> ReadChunkHeader(std::istream& buffer) {
+  std::pair<std::vector<char>, size_t> chunk_header;
   chunk_header.first.resize(Bw64Reader::kChunkNameSize);
   if (buffer.read(chunk_header.first.data(), Bw64Reader::kChunkNameSize) &&
       buffer.read(reinterpret_cast<char*>(&chunk_header.second),
@@ -82,10 +87,11 @@ Bw64Reader::ChunksOffsetMap CreateChunksOffsetMap(std::istream& buffer) {
     if (chunk_size == -1) {
       break;
     }
-    int32_t current_file_pointer = buffer.tellg();
+    size_t current_file_pointer = buffer.tellg();
     chunks_offset_map[std::string(chunk_id.begin(), chunk_id.end())] = {
         chunk_size, current_file_pointer - kExtraOffset};
-    buffer.seekg(chunk_size + (chunk_size & 1), std::ios::cur);
+    const std::streamoff chunk_realtive_offset = chunk_size + (chunk_size & 1);
+    buffer.seekg(chunk_realtive_offset, std::ios::cur);
   }
   return chunks_offset_map;
 }
@@ -128,16 +134,22 @@ absl::StatusOr<std::string> ReadAxml(
     return axml_chunk_info.status();
   }
 
-  const int32_t axml_size = axml_chunk_info->size;
-  const int32_t axml_data_position =
-      axml_chunk_info->offset + Bw64Reader::kChunkHeaderOffset;
+  const size_t axml_size = axml_chunk_info->size;
   std::vector<char> axml_data(axml_size);
   buffer.clear();
 
+  const std::streamoff axml_data_position =
+      axml_chunk_info->offset + Bw64Reader::kChunkHeaderOffset;
   buffer.seekg(axml_data_position);
   buffer.read(axml_data.data(), axml_size);
 
   return std::string(axml_data.data(), axml_size);
+}
+
+// Checks for the existence of "dbmd" data.
+absl::Status CheckDbmd(const Bw64Reader::ChunksOffsetMap& chunks_offset_map) {
+  const auto& dbmd_chunk_info = GetChunkInfo("dbmd", chunks_offset_map);
+  return dbmd_chunk_info.status();
 }
 
 }  // namespace
@@ -168,7 +180,29 @@ absl::StatusOr<Bw64Reader> Bw64Reader::BuildFromStream(
     return axml_data.status();
   }
 
-  const auto adm = ParseXmlToAdm(*axml_data, importance_threshold);
+  const auto dbmd_status = CheckDbmd(chunks_offset_map);
+  AdmFileType file_type = kAdmFileTypeDefault;
+  if (dbmd_status.ok()) {
+    file_type = kAdmFileTypeDolby;
+
+    const auto bit_depth = format_info.value().bits_per_sample;
+    const auto sample_rate = format_info.value().samples_per_sec;
+
+    if (bit_depth != kBitDepthForDolby) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Invalid bit_depth= ", bit_depth, " detected in Dolby ADM file."));
+    }
+
+    auto sample_rate_iter = std::find(kSampleRatesForDolby.begin(),
+                                      kSampleRatesForDolby.end(), sample_rate);
+    if (sample_rate_iter == kSampleRatesForDolby.end()) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Invalid sample_rate= ", sample_rate,
+                       " detected in Dolby ADM file."));
+    }
+  }
+
+  const auto adm = ParseXmlToAdm(*axml_data, importance_threshold, file_type);
   if (!adm.ok()) {
     return adm.status();
   }

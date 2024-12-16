@@ -13,9 +13,11 @@
 #ifndef CLI_ADM_TO_USER_METADATA_ADM_ADM_ELEMENTS_H_
 #define CLI_ADM_TO_USER_METADATA_ADM_ADM_ELEMENTS_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
@@ -23,11 +25,21 @@
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 
+/*!\brief Specific ADM file type, or default if no extensions are detected. */
+enum AdmFileType {
+  kAdmFileTypeDefault,
+  kAdmFileTypeDolby,
+};
+
 // This struct holds the Audio Definition Model (ADM) elements.
 struct ADM {
   std::vector<struct AudioProgramme> audio_programmes;
   std::vector<struct AudioContent> audio_contents;
   std::vector<struct AudioObject> audio_objects;
+  std::vector<struct AudioPackFormat> audio_packs;
+  std::vector<struct AudioChannelFormat> audio_channels;
+  // Holds the ADM file type.
+  AdmFileType file_type = kAdmFileTypeDefault;
 };
 
 // This structure holds the sub-elements of loudness metadata.
@@ -82,6 +94,48 @@ struct AudioObject {
   std::vector<std::string> audio_pack_format_id_refs;
   std::vector<std::string> audio_comple_object_id_ref;
   std::vector<std::string> audio_track_uid_ref;
+};
+
+// This structure holds the attributes of an audio pack format in ADM.
+struct AudioPackFormat {
+  std::string id;
+  std::string name;
+  std::string audio_pack_label;
+
+  // A vector to map the channel ID refs to their corresponding indices.
+  std::vector<std::pair<std::string, size_t>> audio_channel_format_id_refs_map;
+};
+
+// This structure holds cartesian position associated with an audio block.
+struct CartesianPosition {
+  float x;
+  float y;
+  float z;
+};
+
+struct BlockTime {
+  int hour = 0;
+  int minute = 0;
+  double second = 0.0;
+};
+
+// This structure holds the attributes of an audio block format in ADM.
+struct AudioBlockFormat {
+  static constexpr float kDefaultBlockGain = 1.0f;
+  std::string id;
+  std::string name;
+  BlockTime rtime;
+  BlockTime duration;
+  float gain = kDefaultBlockGain;
+  CartesianPosition position;
+};
+
+// This structure holds the attributes of an audio channel format in ADM.
+struct AudioChannelFormat {
+  std::string id;
+  std::string name;
+  std::string audio_channel_label;
+  std::vector<AudioBlockFormat> audio_blocks;
 };
 
 }  // namespace adm_to_user_metadata

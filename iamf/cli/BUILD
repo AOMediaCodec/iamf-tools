@@ -543,6 +543,7 @@ cc_binary(
         "//iamf/cli/adm_to_user_metadata/app:adm_to_user_metadata_main_lib",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/flags:usage",

@@ -21,6 +21,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/adm_to_user_metadata/adm/format_info_chunk.h"
+#include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 
 namespace iamf_tools {
@@ -58,11 +59,14 @@ class UserMetadataGenerator {
 
   /*!\brief Generates a `UserMetadata` proto.
    *
+   * \param profile_version IAMF output specification version to use for
+   *        textproto generation.
    * \param file_prefix File prefix to use when naming output wav files.
    * \return Proto based on the constructor arguments or a specific error code
    *         on failure.
    */
   absl::StatusOr<iamf_tools_cli_proto::UserMetadata> GenerateUserMetadata(
+      iamf_tools_cli_proto::ProfileVersion profile_version,
       absl::string_view file_prefix) const;
 
  private:

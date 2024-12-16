@@ -4,6 +4,7 @@ cc_binary(
     deps = [
         ":adm_to_user_metadata_main_lib",
         "//iamf/cli/adm_to_user_metadata/iamf:user_metadata_generator",
+        "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/flags:usage",
@@ -23,9 +24,13 @@ cc_library(
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
         "//iamf/cli/adm_to_user_metadata/adm:wav_file_splicer",
+        "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/adm_to_user_metadata/iamf:user_metadata_generator",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/common:macros",
+        "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
     ],

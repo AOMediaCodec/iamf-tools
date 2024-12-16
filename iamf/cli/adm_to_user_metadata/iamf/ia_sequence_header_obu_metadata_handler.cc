@@ -19,14 +19,13 @@ namespace iamf_tools {
 namespace adm_to_user_metadata {
 
 // Sets the required textproto fields for `ia_sequence_header_metadata`.
-void PopulateBaseProfileIaSequenceHeaderObuMetadata(
+void PopulateIaSequenceHeaderObuMetadata(
+    iamf_tools_cli_proto::ProfileVersion profile_version,
     iamf_tools_cli_proto::IASequenceHeaderObuMetadata&
         ia_sequence_header_obu_metadata) {
   ia_sequence_header_obu_metadata.set_ia_code(IASequenceHeaderObu::kIaCode);
-  ia_sequence_header_obu_metadata.set_primary_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE);
-  ia_sequence_header_obu_metadata.set_additional_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE);
+  ia_sequence_header_obu_metadata.set_primary_profile(profile_version);
+  ia_sequence_header_obu_metadata.set_additional_profile(profile_version);
 }
 
 }  // namespace adm_to_user_metadata

@@ -28,10 +28,12 @@ namespace adm_to_user_metadata {
  * \param importance_threshold Threshold for to determine which audio objects to
  *        ignore. Any `audioObject`s with a lower `importance` will be dropped
  *        from the output ADM.
+ * \param file_type ADM file type of the input wav.
  * \return Output ADM on success. A specific error code on failure.
  */
 absl::StatusOr<ADM> ParseXmlToAdm(absl::string_view xml_data,
-                                  int32_t importance_threshold);
+                                  int32_t importance_threshold,
+                                  AdmFileType file_type);
 
 }  // namespace adm_to_user_metadata
 }  // namespace iamf_tools

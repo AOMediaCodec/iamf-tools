@@ -69,6 +69,7 @@ absl::Status UserMetadataGenerator::WriteUserMetadataToFile(
 
 absl::StatusOr<iamf_tools_cli_proto::UserMetadata>
 UserMetadataGenerator::GenerateUserMetadata(
+    iamf_tools_cli_proto::ProfileVersion profile_version,
     absl::string_view file_prefix) const {
   std::vector<std::string> audio_pack_format_ids;
   audio_pack_format_ids.reserve(adm_.audio_objects.size());
@@ -88,8 +89,8 @@ UserMetadataGenerator::GenerateUserMetadata(
                             *user_metadata.mutable_test_vector_metadata());
 
   // Generate ia sequence header metadata.
-  PopulateBaseProfileIaSequenceHeaderObuMetadata(
-      *user_metadata.add_ia_sequence_header_metadata());
+  PopulateIaSequenceHeaderObuMetadata(
+      profile_version, *user_metadata.add_ia_sequence_header_metadata());
 
   // Generate codec config obu metadata.
   user_metadata.mutable_codec_config_metadata()->Add(

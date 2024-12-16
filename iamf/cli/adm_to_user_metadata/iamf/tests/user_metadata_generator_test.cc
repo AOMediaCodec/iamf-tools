@@ -150,9 +150,8 @@ UserMetadata GenerateUserMetadataExpectOk(
     const ADM& adm, std::string_view input_file_prefix = "") {
   const UserMetadataGenerator user_metadata_generator(adm, kFormatInfoChunk,
                                                       kMaxFrameDuration);
-
-  const auto user_metadata =
-      user_metadata_generator.GenerateUserMetadata(input_file_prefix);
+  const auto user_metadata = user_metadata_generator.GenerateUserMetadata(
+      iamf_tools_cli_proto::PROFILE_VERSION_BASE, input_file_prefix);
   EXPECT_THAT(user_metadata, IsOk()) << user_metadata.status();
   return *user_metadata;
 }

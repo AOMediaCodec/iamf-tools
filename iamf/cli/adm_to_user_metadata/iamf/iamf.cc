@@ -236,7 +236,7 @@ IAMF::IAMF(const std::map<int32_t, AudioObjectsAndMetadata>&
 
 absl::StatusOr<IAMF> IAMF::Create(const ADM& adm, int32_t max_frame_duration_ms,
                                   uint32_t samples_per_sec) {
-  int64_t num_samples_per_frame;
+  int64_t num_samples_per_frame = 0;
   if (const auto status = ComputeNumSamplesPerFrame(
           max_frame_duration_ms, samples_per_sec, num_samples_per_frame);
       !status.ok()) {

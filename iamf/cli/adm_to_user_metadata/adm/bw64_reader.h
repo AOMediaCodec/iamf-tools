@@ -13,6 +13,7 @@
 #ifndef CLI_ADM_TO_USER_METADATA_ADM_BW64_READER_H_
 #define CLI_ADM_TO_USER_METADATA_ADM_BW64_READER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <istream>
 #include <string>
@@ -43,7 +44,7 @@ namespace adm_to_user_metadata {
 class Bw64Reader {
  public:
   struct ChunkInfo {
-    int32_t size, offset;
+    size_t size, offset;
   };
   typedef absl::flat_hash_map<std::string, ChunkInfo> ChunksOffsetMap;
 

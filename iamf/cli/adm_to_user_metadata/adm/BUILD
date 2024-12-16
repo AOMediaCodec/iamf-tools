@@ -22,6 +22,25 @@ cc_library(
 )
 
 cc_library(
+    name = "panner",
+    srcs = ["panner.cc"],
+    hdrs = ["panner.h"],
+    deps = [
+        ":xml_to_adm",
+        "//iamf/cli:wav_writer",
+        "//iamf/cli/ambisonic_encoder",
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_audio_to_tactile//:dsp",
+        "@eigen3",
+    ],
+)
+
+cc_library(
     name = "wav_file_splicer",
     srcs = ["wav_file_splicer.cc"],
     hdrs = ["wav_file_splicer.h"],
@@ -32,8 +51,13 @@ cc_library(
     deps = [
         ":bw64_reader",
         ":format_info_chunk",
+        ":panner",
         ":xml_to_adm",
         "//iamf/cli:wav_writer",
+        "//iamf/common:macros",
+        "//iamf/obu:ia_sequence_header",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
@@ -51,6 +75,7 @@ cc_library(
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",

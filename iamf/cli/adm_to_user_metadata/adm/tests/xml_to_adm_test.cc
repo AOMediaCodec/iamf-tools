@@ -18,6 +18,7 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -33,7 +34,7 @@ constexpr int kImportanceThreshold = 0;
 
 TEST(ParseXmlToAdm, InvalidXml) {
   EXPECT_FALSE(ParseXmlToAdm(R"xml(<open_tag> </mismatching_close_tag>)xml",
-                             kImportanceThreshold)
+                             kImportanceThreshold, kAdmFileTypeDefault)
                    .ok());
 }
 
@@ -45,7 +46,7 @@ TEST(ParseXmlToAdm, LoadsAudioProgrammes) {
           <audioPackFormatIDRef>AP_00010001</audioPackFormatIDRef>
         </audioProgramme>
   )xml",
-      kImportanceThreshold);
+      kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_programmes.empty());
@@ -66,7 +67,7 @@ TEST(ParseXmlToAdm, LoadsAudioContents) {
       <audioObjectIDRef>object_1</audioObjectIDRef>
     </audioContent>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_contents.empty());
@@ -87,7 +88,7 @@ TEST(ParseXmlToAdm, LoadsAudioObject) {
     <gain>2.5</gain>
   </audioObject>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   ASSERT_FALSE(adm->audio_objects.empty());
@@ -131,7 +132,7 @@ TEST(ParseXmlToAdm, LoudspeakerLayoutIsSupported) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 7);
@@ -151,7 +152,7 @@ TEST(ParseXmlToAdm, AmbisonicsLayoutIsSupported) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 3);
@@ -163,7 +164,7 @@ TEST(ParseXmlToAdm, BinauralLayoutIsSupported) {
       <audioPackFormatIDRef>AP_00050001</audioPackFormatIDRef>
   </audioObject>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
@@ -189,7 +190,7 @@ TEST(ParseXmlToAdm, FiltersOutUnsupportedLayouts) {
     </audioObject>
   </TopLevelElement>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects.size(), 1);
@@ -200,7 +201,7 @@ TEST(ParseXmlToAdm, AudioObjectImportanceDefaultsToTen) {
   const auto adm = ParseXmlToAdm(R"xml(
   <audioObject></audioObject>
   )xml",
-                                 kImportanceThreshold);
+                                 kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
 
   EXPECT_EQ(adm->audio_objects[0].importance, 10);
@@ -217,19 +218,19 @@ TEST(ParseXmlToAdm, FiltersOutLowImportanceAudioObjects) {
   )xml";
 
   const auto adm_with_all_objects_below_threshold =
-      ParseXmlToAdm(xml, /*importance_threshold=*/10);
+      ParseXmlToAdm(xml, /*importance_threshold=*/10, kAdmFileTypeDefault);
   ASSERT_THAT(adm_with_all_objects_below_threshold, IsOk());
   EXPECT_EQ(adm_with_all_objects_below_threshold->audio_objects.size(), 0);
 
   // One object is at or above the threshold.
   const auto adm_with_one_object_at_or_above_threshold =
-      ParseXmlToAdm(xml, /*importance_threshold=*/9);
+      ParseXmlToAdm(xml, /*importance_threshold=*/9, kAdmFileTypeDefault);
   ASSERT_THAT(adm_with_one_object_at_or_above_threshold, IsOk());
   EXPECT_EQ(adm_with_one_object_at_or_above_threshold->audio_objects.size(), 1);
 
   // Three objects are at or above the threshold.
   const auto adm_with_three_objects_at_or_above_threshold =
-      ParseXmlToAdm(xml, /*importance_threshold=*/3);
+      ParseXmlToAdm(xml, /*importance_threshold=*/3, kAdmFileTypeDefault);
   ASSERT_THAT(adm_with_three_objects_at_or_above_threshold, IsOk());
   EXPECT_EQ(adm_with_three_objects_at_or_above_threshold->audio_objects.size(),
             3);
@@ -240,7 +241,9 @@ TEST(ParseXmlToAdm, InvalidWhenImportanceIsNonInteger) {
     <audioObject importance="1.1"/>
   )xml";
 
-  EXPECT_FALSE(ParseXmlToAdm(xml, /*importance_threshold=*/10).ok());
+  EXPECT_FALSE(
+      ParseXmlToAdm(xml, /*importance_threshold=*/10, kAdmFileTypeDefault)
+          .ok());
 }
 
 TEST(ParseXmlToAdm, InvalidWhenGainIsNonFloat) {
@@ -248,7 +251,7 @@ TEST(ParseXmlToAdm, InvalidWhenGainIsNonFloat) {
     <audioObject>
       <gain>1-1</gain>
     </audioObject>)xml",
-                             /*importance_threshold=*/10)
+                             /*importance_threshold=*/10, kAdmFileTypeDefault)
                    .ok());
 }
 
@@ -261,7 +264,7 @@ TEST(ParseXmlToAdm, SetsExplicitLoudnessValuesAsFloat) {
           <dialogueLoudness>3.3</dialogueLoudness>
         </audioProgramme>
   )xml",
-      kImportanceThreshold);
+      kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
   ASSERT_FALSE(adm->audio_programmes.empty());
 
@@ -277,7 +280,7 @@ TEST(ParseXmlToAdm, InvalidWhenFloatCannotBeParsed) {
         <audioProgramme>
           <integratedLoudness>1.1q</integratedLoudness>
         </audioProgramme>)xml",
-                   kImportanceThreshold)
+                   kImportanceThreshold, kAdmFileTypeDefault)
                    .ok());
 }
 
@@ -288,7 +291,7 @@ TEST(ParseXmlToAdm, DefaultLoudnessValues) {
         <audioProgramme>
         </audioProgramme>
   )xml",
-      kImportanceThreshold);
+      kImportanceThreshold, kAdmFileTypeDefault);
   ASSERT_THAT(adm, IsOk());
   ASSERT_FALSE(adm->audio_programmes.empty());
 

@@ -83,6 +83,7 @@ cc_library(
         ":test_vector_metadata_handler",
         "//iamf/cli/adm_to_user_metadata/adm:format_info_chunk",
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:audio_frame_metadata_builder",
         "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
