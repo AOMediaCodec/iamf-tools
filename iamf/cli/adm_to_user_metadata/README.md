@@ -41,12 +41,12 @@ The description of each directory is as follows:
 ### Build the binary
 
 ```
-bazel build -c opt app:adm_to_user_metadata_main
+bazelisk build -c opt app:adm_to_user_metadata_main
 ```
 
 ### Run the binary
 
-Running `bazel build` creates the binary file `adm_to_user_metadata_main`. The
+Running `bazelisk build` creates the binary file `adm_to_user_metadata_main`. The
 input format required to run the binary is as below:
 
 ```

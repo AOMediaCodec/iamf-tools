@@ -4,9 +4,10 @@
 
 ### All platforms
 
--   Bazel: `iamf-tools` uses the Bazel build system. See Bazel's
-    [Getting started](https://bazel.build/start) page for installation
-    instructions.
+-   Bazelisk: `iamf-tools` uses the Bazel build system, via bazelisk. See
+    [Bazelisk installation instructions](https://bazel.build/install/bazelisk).
+    For further information on Bazel, see
+    [Getting started](https://bazel.build/start).
 -   CMake: required to build some dependencies. See CMake's
     [Download](https://cmake.org/download/) page to install.
 -   Clang 13+ or GCC 10+ for Linux-like systems or MSVC for Windows.
@@ -32,13 +33,13 @@ Windows requires some additional prerequisites:
 Building the encoder binary:
 
 ```
-bazel build -c opt //iamf/cli:encoder_main
+bazelisk build -c opt //iamf/cli:encoder_main
 ```
 
 Running built-in tests:
 
 ```
-bazel test -c opt //iamf/...
+bazelisk test -c opt //iamf/...
 ```
 
 ## Test suite
