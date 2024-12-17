@@ -12,3 +12,8 @@ filegroup(
     name = "test_vectors",
     srcs = glob(["test_*.textproto"]),
 )
+
+filegroup(
+    name = "fuzz_test_iamf",
+    srcs = glob(["iamf/*.iamf"]),
+)
