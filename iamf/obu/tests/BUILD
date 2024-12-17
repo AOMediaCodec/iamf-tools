@@ -211,6 +211,7 @@ cc_test(
     deps = [
         ":obu_test_base",
         "//iamf/cli:leb_generator",
+        "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:demixing_param_definition",

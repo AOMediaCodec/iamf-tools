@@ -114,12 +114,12 @@ class ParameterBlockObu : public ObuBase {
    * \param start_time Start time of the `MixGainParameterData`.
    * \param end_time End time of the `MixGainParameterData`.
    * \param target_time Target time to get the interpolated value of.
-   * \param target_mix_gain Output argument for the inteprolated value.
+   * \param target_mix_gain_db Output inteprolated mix gain value in dB.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status InterpolateMixGainParameterData(
       const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
-      int32_t end_time, int32_t target_time, int16_t& target_mix_gain);
+      int32_t end_time, int32_t target_time, float& target_mix_gain_db);
 
   /*!\brief Gets the duration of the parameter block.
    *
@@ -163,15 +163,17 @@ class ParameterBlockObu : public ObuBase {
    */
   absl::Status SetSubblockDuration(int subblock_index, DecodedUleb128 duration);
 
-  /*!\brief Writes the mix gain at the target time to the output argument.
+  /*!\brief Outputs the linear mix gain at the target time.
    *
    * \param obu_relative_time Time relative to the start of the OBU to get the
    *        mix gain of.
-   * \param mix_gain Output argument for the mix gain.
+   * \param linear_mix_gain Output linear mix gain converted from a dB value
+   *        stored as Q7.8.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
    *         failure.
    */
-  absl::Status GetMixGain(int32_t obu_relative_time, int16_t& mix_gain) const;
+  absl::Status GetLinearMixGain(int32_t obu_relative_time,
+                                float& linear_mix_gain) const;
 
   /*!\brief Initialize the vector of subblocks.
    *

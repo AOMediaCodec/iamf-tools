@@ -37,7 +37,8 @@ absl::Status InterpolateMixGainParameterData(
     int32_t start_time, int32_t end_time, int32_t target_time,
     int16_t& target_mix_gain) {
   const auto& param_data = mix_gain_parameter_data.param_data();
-  return InterpolateMixGainValue(
+  float target_mix_gain_db = 0;
+  RETURN_IF_NOT_OK(InterpolateMixGainValue(
       mix_gain_parameter_data.animation_type(),
       iamf_tools_cli_proto::ANIMATE_STEP, iamf_tools_cli_proto::ANIMATE_LINEAR,
       iamf_tools_cli_proto::ANIMATE_BEZIER,
@@ -63,7 +64,11 @@ absl::Status InterpolateMixGainParameterData(
         return static_cast<int16_t>(
             param_data.bezier().control_point_relative_time());
       },
-      start_time, end_time, target_time, target_mix_gain);
+      start_time, end_time, target_time, target_mix_gain_db));
+
+  // Interpolated values are in dB in float; convert back to Q7.8 to store in
+  // the partitioned parameter block.
+  return FloatToQ7_8(target_mix_gain_db, target_mix_gain);
 }
 
 /*!\brief Partitions a `MixGainParameterData`

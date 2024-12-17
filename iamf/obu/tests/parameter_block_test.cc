@@ -21,6 +21,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
+#include "iamf/common/obu_util.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -149,17 +150,17 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
 
-  int16_t mix_gain;
+  float linear_mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT((*parameter_block)->GetMixGain(0, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_THAT((*parameter_block)->GetMixGain(1, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_THAT((*parameter_block)->GetMixGain(4, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0544);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(0, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 2.9961426f);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(1, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 2.343807f);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(4, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE((*parameter_block)->GetMixGain(10, mix_gain).ok());
+  EXPECT_FALSE((*parameter_block)->GetLinearMixGain(10, linear_mix_gain).ok());
 }
 
 TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
@@ -216,17 +217,17 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(1), IsOkAndHolds(3));
   EXPECT_THAT((*parameter_block)->GetSubblockDuration(2), IsOkAndHolds(6));
 
-  int16_t mix_gain;
+  float linear_mix_gain;
   // The first subblock covers [0, subblock_duration[0]).
-  EXPECT_THAT((*parameter_block)->GetMixGain(0, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0988);
-  EXPECT_THAT((*parameter_block)->GetMixGain(1, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0766);
-  EXPECT_THAT((*parameter_block)->GetMixGain(4, mix_gain), IsOk());
-  EXPECT_EQ(mix_gain, 0x0544);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(0, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 2.9961426f);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(1, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 2.343807f);
+  EXPECT_THAT((*parameter_block)->GetLinearMixGain(4, linear_mix_gain), IsOk());
+  EXPECT_FLOAT_EQ(linear_mix_gain, 1.8335015f);
 
   // Parameter blocks are open intervals.
-  EXPECT_FALSE((*parameter_block)->GetMixGain(10, mix_gain).ok());
+  EXPECT_FALSE((*parameter_block)->GetLinearMixGain(10, linear_mix_gain).ok());
 }
 
 TEST(ParameterBlockObu,
@@ -1052,14 +1053,16 @@ using InterpolateMixGainParameter =
 
 TEST_P(InterpolateMixGainParameter, InterpolateMixGainParameter) {
   const InterpolateMixGainParameterDataTestCase& test_case = GetParam();
-  int16_t target_mix_gain;
+  float target_mix_gain_db;
   EXPECT_EQ(ParameterBlockObu::InterpolateMixGainParameterData(
                 &test_case.mix_gain_parameter_data, test_case.start_time,
-                test_case.end_time, test_case.target_time, target_mix_gain),
+                test_case.end_time, test_case.target_time, target_mix_gain_db),
             test_case.expected_status);
 
   if (test_case.expected_status.ok()) {
-    EXPECT_EQ(target_mix_gain, test_case.expected_target_mix_gain);
+    int16_t target_mix_gain_q7_8;
+    EXPECT_THAT(FloatToQ7_8(target_mix_gain_db, target_mix_gain_q7_8), IsOk());
+    EXPECT_EQ(target_mix_gain_q7_8, test_case.expected_target_mix_gain);
   }
 }
 

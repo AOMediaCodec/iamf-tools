@@ -174,10 +174,10 @@ absl::Status RenderLabeledFrameToLayout(
                                      rendered_samples);
 }
 
-absl::Status GetParameterBlockMixGainsPerTick(
+absl::Status GetParameterBlockLinearMixGainsPerTick(
     uint32_t common_sample_rate, const ParameterBlockWithData& parameter_block,
     const MixGainParamDefinition& mix_gain,
-    std::vector<int16_t>& mix_gain_per_tick) {
+    std::vector<float>& linear_mix_gain_per_tick) {
   if (mix_gain.parameter_rate_ != common_sample_rate) {
     // TODO(b/283281856): Support resampling parameter blocks.
     return absl::UnimplementedError(
@@ -186,18 +186,18 @@ absl::Status GetParameterBlockMixGainsPerTick(
 
   const int16_t default_mix_gain = mix_gain.default_mix_gain_;
   // Initialize to the default gain value.
-  std::fill(mix_gain_per_tick.begin(), mix_gain_per_tick.end(),
-            default_mix_gain);
+  std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
+            std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
 
   int32_t cur_tick = parameter_block.start_timestamp;
   // Process as many ticks as possible until all are found or the parameter
   // block ends.
   while (cur_tick < parameter_block.end_timestamp &&
          (cur_tick - parameter_block.start_timestamp) <
-             mix_gain_per_tick.size()) {
-    RETURN_IF_NOT_OK(parameter_block.obu->GetMixGain(
+             linear_mix_gain_per_tick.size()) {
+    RETURN_IF_NOT_OK(parameter_block.obu->GetLinearMixGain(
         cur_tick - parameter_block.start_timestamp,
-        mix_gain_per_tick[cur_tick - parameter_block.start_timestamp]));
+        linear_mix_gain_per_tick[cur_tick - parameter_block.start_timestamp]));
     cur_tick++;
   }
   return absl::OkStatus();
@@ -208,15 +208,15 @@ absl::Status GetParameterBlockMixGainsPerTick(
 // TODO(b/288073842): Consider improving computational efficiency instead of
 //                    searching through all parameter blocks for each frame.
 // TODO(b/379961928): Remove this function once the new
-//                    `GetParameterBlockMixGainsPerTick()` is in use.
-absl::Status GetParameterBlockMixGainsPerTick(
+//                    `GetParameterBlockLinearMixGainsPerTick()` is in use.
+absl::Status GetParameterBlockLinearMixGainsPerTick(
     uint32_t common_sample_rate, int32_t start_timestamp, int32_t end_timestamp,
     const std::list<ParameterBlockWithData>::const_iterator&
         parameter_blocks_start,
     const std::list<ParameterBlockWithData>::const_iterator&
         parameter_blocks_end,
     const MixGainParamDefinition& mix_gain,
-    std::vector<int16_t>& mix_gain_per_tick) {
+    std::vector<float>& linear_mix_gain_per_tick) {
   if (mix_gain.parameter_rate_ != common_sample_rate) {
     // TODO(b/283281856): Support resampling parameter blocks.
     return absl::UnimplementedError(
@@ -227,15 +227,15 @@ absl::Status GetParameterBlockMixGainsPerTick(
   const int16_t default_mix_gain = mix_gain.default_mix_gain_;
 
   // Initialize to the default gain value.
-  std::fill(mix_gain_per_tick.begin(), mix_gain_per_tick.end(),
-            default_mix_gain);
+  std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
+            std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
 
   int32_t cur_tick = start_timestamp;
 
   // Find the mix gain at each tick. May terminate early if there are samples to
   // trim at the end.
   while (cur_tick < end_timestamp &&
-         (cur_tick - start_timestamp) < mix_gain_per_tick.size()) {
+         (cur_tick - start_timestamp) < linear_mix_gain_per_tick.size()) {
     // Find the parameter block that this tick occurs during.
     const auto parameter_block_iter = std::find_if(
         parameter_blocks_start, parameter_blocks_end,
@@ -254,21 +254,14 @@ absl::Status GetParameterBlockMixGainsPerTick(
     // block ends.
     while (cur_tick < end_timestamp &&
            cur_tick < parameter_block_iter->end_timestamp &&
-           (cur_tick - start_timestamp) < mix_gain_per_tick.size()) {
-      RETURN_IF_NOT_OK(parameter_block_iter->obu->GetMixGain(
+           (cur_tick - start_timestamp) < linear_mix_gain_per_tick.size()) {
+      RETURN_IF_NOT_OK(parameter_block_iter->obu->GetLinearMixGain(
           cur_tick - parameter_block_iter->start_timestamp,
-          mix_gain_per_tick[cur_tick - start_timestamp]));
+          linear_mix_gain_per_tick[cur_tick - start_timestamp]));
       cur_tick++;
     }
   }
 
-  return absl::OkStatus();
-}
-
-// Applies the `mix_gain` in Q7.8 format to the output sample.
-absl::Status ApplyMixGain(int16_t mix_gain, InternalSampleType& sample) {
-  const double mix_gain_db = Q7_8ToFloat(mix_gain);
-  sample *= std::pow(10, mix_gain_db / 20);
   return absl::OkStatus();
 }
 
@@ -284,23 +277,22 @@ absl::Status GetAndApplyMixGain(  // NOLINT
   }
 
   // Get the mix gain on a per tick basis from the parameter block.
-  std::vector<int16_t> mix_gain_per_tick(rendered_samples.size() /
-                                         num_channels);
-  RETURN_IF_NOT_OK(GetParameterBlockMixGainsPerTick(
-      common_sample_rate, parameter_block, mix_gain, mix_gain_per_tick));
+  std::vector<float> linear_mix_gain_per_tick(rendered_samples.size() /
+                                              num_channels);
+  RETURN_IF_NOT_OK(GetParameterBlockLinearMixGainsPerTick(
+      common_sample_rate, parameter_block, mix_gain, linear_mix_gain_per_tick));
 
-  if (!mix_gain_per_tick.empty()) {
+  if (!linear_mix_gain_per_tick.empty()) {
     LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
-                         << mix_gain_per_tick.front();
+                         << linear_mix_gain_per_tick.front();
   }
 
-  for (int tick = 0; tick < mix_gain_per_tick.size(); tick++) {
+  for (int tick = 0; tick < linear_mix_gain_per_tick.size(); tick++) {
     for (int channel = 0; channel < num_channels; channel++) {
       // Apply the same mix gain to all `num_channels` associated with this
       // tick.
-      RETURN_IF_NOT_OK(
-          ApplyMixGain(mix_gain_per_tick[tick],
-                       rendered_samples[tick * num_channels + channel]));
+      rendered_samples[tick * num_channels + channel] *=
+          linear_mix_gain_per_tick[tick];
     }
   }
 
@@ -315,6 +307,7 @@ absl::Status GetAndApplyMixGain(
     const std::list<ParameterBlockWithData>::const_iterator&
         parameter_blocks_end,
     const MixGainParamDefinition& mix_gain, int32_t num_channels,
+    std::vector<float>& linear_mix_gain_per_tick,
     std::vector<InternalSampleType>& rendered_samples) {
   if (rendered_samples.size() % num_channels != 0) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -324,25 +317,23 @@ absl::Status GetAndApplyMixGain(
   }
 
   // Get the mix gain on a per tick basis from the parameter block.
-  std::vector<int16_t> mix_gain_per_tick(rendered_samples.size() /
-                                         num_channels);
-  RETURN_IF_NOT_OK(GetParameterBlockMixGainsPerTick(
+  linear_mix_gain_per_tick.resize(rendered_samples.size() / num_channels, 0.0f);
+  RETURN_IF_NOT_OK(GetParameterBlockLinearMixGainsPerTick(
       common_sample_rate, start_timestamp, end_timestamp,
       parameter_blocks_start, parameter_blocks_end, mix_gain,
-      mix_gain_per_tick));
+      linear_mix_gain_per_tick));
 
-  if (!mix_gain_per_tick.empty()) {
+  if (!linear_mix_gain_per_tick.empty()) {
     LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
-                         << mix_gain_per_tick.front();
+                         << linear_mix_gain_per_tick.front();
   }
 
-  for (int tick = 0; tick < mix_gain_per_tick.size(); tick++) {
+  for (int tick = 0; tick < linear_mix_gain_per_tick.size(); tick++) {
     for (int channel = 0; channel < num_channels; channel++) {
       // Apply the same mix gain to all `num_channels` associated with this
       // tick.
-      RETURN_IF_NOT_OK(
-          ApplyMixGain(mix_gain_per_tick[tick],
-                       rendered_samples[tick * num_channels + channel]));
+      rendered_samples[tick * num_channels + channel] *=
+          linear_mix_gain_per_tick[tick];
     }
   }
 
@@ -394,6 +385,7 @@ absl::Status RenderAllFramesForLayout(
   // Each audio element rendered individually with `element_mix_gain` applied.
   std::vector<std::vector<InternalSampleType>> rendered_audio_elements(
       sub_mix_audio_elements.size());
+  std::vector<float> linear_mix_gain_per_tick;
   for (int i = 0; i < sub_mix_audio_elements.size(); i++) {
     const SubMixAudioElement& sub_mix_audio_element = sub_mix_audio_elements[i];
     const auto audio_element_id = sub_mix_audio_element.audio_element_id;
@@ -407,12 +399,11 @@ absl::Status RenderAllFramesForLayout(
       RETURN_IF_NOT_OK(RenderLabeledFrameToLayout(
           labeled_frame, rendering_metadata, rendered_audio_elements[i]));
     }
-
-    RETURN_IF_NOT_OK(
-        GetAndApplyMixGain(common_sample_rate, start_timestamp, end_timestamp,
-                           parameter_blocks_start, parameter_blocks_end,
-                           sub_mix_audio_element.element_mix_gain, num_channels,
-                           rendered_audio_elements[i]));
+    RETURN_IF_NOT_OK(GetAndApplyMixGain(
+        common_sample_rate, start_timestamp, end_timestamp,
+        parameter_blocks_start, parameter_blocks_end,
+        sub_mix_audio_element.element_mix_gain, num_channels,
+        linear_mix_gain_per_tick, rendered_audio_elements[i]));
   }
 
   // Mix the audio elements.
@@ -423,10 +414,10 @@ absl::Status RenderAllFramesForLayout(
   LOG_FIRST_N(INFO, 1) << "    Applying output_mix_gain.default_mix_gain= "
                        << output_mix_gain.default_mix_gain_;
 
-  RETURN_IF_NOT_OK(GetAndApplyMixGain(common_sample_rate, start_timestamp,
-                                      end_timestamp, parameter_blocks_start,
-                                      parameter_blocks_end, output_mix_gain,
-                                      num_channels, rendered_samples_internal));
+  RETURN_IF_NOT_OK(GetAndApplyMixGain(
+      common_sample_rate, start_timestamp, end_timestamp,
+      parameter_blocks_start, parameter_blocks_end, output_mix_gain,
+      num_channels, linear_mix_gain_per_tick, rendered_samples_internal));
 
   // Convert the rendered samples to int32, clipping if needed.
   rendered_samples.reserve(rendered_samples_internal.size());

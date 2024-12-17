@@ -632,7 +632,7 @@ absl::StatusOr<T> GetParameterSubblockDuration(
   }
 }
 
-/*!\brief Interpolates a mix gain value.
+/*!\brief Interpolates a mix gain value in dB.
  *
  * The logic is used to partition parameter block protocol buffers as well as
  * to query the gain value at a specific timestamp during mixing.
@@ -658,7 +658,7 @@ absl::StatusOr<T> GetParameterSubblockDuration(
  * \param start_time Start time of the `MixGainParameterData`.
  * \param end_time End time of the `MixGainParameterData`.
  * \param target_time Target time to the get interpolated value of.
- * \param target_mix_gain Output argument for the inteprolated value.
+ * \param target_mix_gain_db Output inteprolated mix gain value in dB.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 template <typename AnimationEnumType>
@@ -673,7 +673,7 @@ absl::Status InterpolateMixGainValue(
     absl::AnyInvocable<int16_t()> bezier_control_point_getter,
     absl::AnyInvocable<int16_t()> bezier_control_point_relative_time_getter,
     int32_t start_time, int32_t end_time, int32_t target_time,
-    int16_t& target_mix_gain) {
+    float& target_mix_gain_db) {
   if (target_time < start_time || target_time > end_time ||
       start_time > end_time) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -694,13 +694,13 @@ absl::Status InterpolateMixGainValue(
 
   if (animation_type == step_enum) {
     // No interpolation is needed for step.
-    target_mix_gain = step_start_point_getter();
+    target_mix_gain_db = Q7_8ToFloat(step_start_point_getter());
   } else if (animation_type == linear_enum) {
     // Interpolate using the exact formula from the spec.
     const float a = (float)n / (float)n_2;
     const float p_0 = Q7_8ToFloat(linear_start_point_getter());
     const float p_2 = Q7_8ToFloat(linear_end_point_getter());
-    RETURN_IF_NOT_OK(FloatToQ7_8((1 - a) * p_0 + a * p_2, target_mix_gain));
+    target_mix_gain_db = (1 - a) * p_0 + a * p_2;
   } else if (animation_type == bezier_enum) {
     const float control_point_float =
         Q0_8ToFloat(bezier_control_point_relative_time_getter());
@@ -718,9 +718,8 @@ absl::Status InterpolateMixGainValue(
                         ? -gamma / beta
                         : (-beta + std::sqrt(beta * beta - 4 * alpha * gamma)) /
                               (2 * alpha);
-    const float target_mix_gain_float =
+    target_mix_gain_db =
         (1 - a) * (1 - a) * p_0 + 2 * (1 - a) * a * p_1 + a * a * p_2;
-    RETURN_IF_NOT_OK(FloatToQ7_8(target_mix_gain_float, target_mix_gain));
   } else {
     return absl::InvalidArgumentError(
         absl::StrCat("Unknown animation_type = ", animation_type));

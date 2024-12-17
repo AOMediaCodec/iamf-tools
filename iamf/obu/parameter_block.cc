@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/parameter_block.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -127,7 +128,7 @@ ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
-    int32_t end_time, int32_t target_time, int16_t& target_mix_gain) {
+    int32_t end_time, int32_t target_time, float& target_mix_gain_db) {
   return InterpolateMixGainValue(
       mix_gain_parameter_data->animation_type,
       MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
@@ -166,7 +167,7 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
                    mix_gain_parameter_data->param_data)
             .control_point_relative_time;
       },
-      start_time, end_time, target_time, target_mix_gain);
+      start_time, end_time, target_time, target_mix_gain_db);
 }
 
 DecodedUleb128 ParameterBlockObu::GetDuration() const {
@@ -249,8 +250,8 @@ absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
   return absl::OkStatus();
 }
 
-absl::Status ParameterBlockObu::GetMixGain(int32_t obu_relative_time,
-                                           int16_t& mix_gain) const {
+absl::Status ParameterBlockObu::GetLinearMixGain(int32_t obu_relative_time,
+                                                 float& linear_mix_gain) const {
   if (metadata_.param_definition_type !=
       ParamDefinition::kParameterDefinitionMixGain) {
     return absl::InvalidArgumentError("Expected Mix Gain Parameter Definition");
@@ -286,12 +287,15 @@ absl::Status ParameterBlockObu::GetMixGain(int32_t obu_relative_time,
                      num_subblocks));
   }
 
+  float mix_gain_db = 0;
   RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
       static_cast<const MixGainParameterData*>(
           subblocks_[target_subblock_index].param_data.get()),
       subblock_relative_start_time, subblock_relative_end_time,
-      obu_relative_time, mix_gain));
+      obu_relative_time, mix_gain_db));
 
+  // Mix gain data is in dB and stored in Q7.8. Convert to the linear value.
+  linear_mix_gain = std::pow(10.0f, mix_gain_db / 20.0f);
   return absl::OkStatus();
 }
 
