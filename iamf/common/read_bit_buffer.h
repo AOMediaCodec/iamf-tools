@@ -353,6 +353,68 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
   std::ifstream source_ifs_;
 };
 
+/*!\brief Stream-based read bit buffer.
+ *
+ * The buffer is loaded from a stream. The user should Create() the stream
+ * and push data to the buffer using PushBytes() as needed; calls to Read*()
+ * methods will read data from the stream and provide it to the caller, or else
+ * will instruct the caller to push more data if necessary.
+ */
+class StreamBasedReadBitBuffer : public ReadBitBuffer {
+ public:
+  /*!\brief Creates an instance of a stream-based read bit buffer.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   * \return Unique pointer of the created instance. `nullptr` if the creation
+   *         fails.
+   */
+  static std::unique_ptr<StreamBasedReadBitBuffer> Create(int64_t capacity);
+
+  /*!\brief Adds some chunk of data to StreamBasedReadBitBuffer.
+   *
+   * \param bytes Bytes to push.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the stream push fails.
+   */
+  absl::Status PushBytes(const std::vector<uint8_t>& bytes);
+
+  /*!\brief Flush already processed data from StreamBasedReadBitBuffer.
+   *
+   * Should be called whenever the caller no longer needs the first `num_bytes`
+   * of data.
+   *
+   * \param num_bytes Bytes to flush from StreamBasedReadBitBuffer
+   * \return `absl::OkStatus()` on success. Specific statuses on failure.
+   */
+  absl::Status Flush(int64_t num_bytes);
+
+  /*!\brief Destructor.*/
+  ~StreamBasedReadBitBuffer() override = default;
+
+ private:
+  /*!\brief Private constructor.
+   *
+   * \param capacity Capacity of the internal buffer in bytes.
+   *
+   */
+  StreamBasedReadBitBuffer(size_t capacity);
+
+  /*!\brief Load bytes from the source stream to the buffer.
+   *
+   * \param starting_byte Starting byte to load from source.
+   * \param num_bytes Number of bytes to load.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the stream reading fails. `absl::ResourceExhaustedError()` if there
+   *         is not enough data in the stream to load the requested bytes.
+   */
+  absl::Status LoadBytesToBuffer(int64_t starting_byte,
+                                 int64_t num_bytes) override;
+
+  // Source data stored in a vector. Calls to Flush() will remove the first
+  // `num_bytes` elements from this vector.
+  std::vector<uint8_t> source_vector_;
+};
+
 }  // namespace iamf_tools
 
 #endif  // COMMON_READ_BIT_BUFFER_H_
