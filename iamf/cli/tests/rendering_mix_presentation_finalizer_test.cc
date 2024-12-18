@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -974,6 +975,46 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   // since kArbitraryLoudnessInfo is the `computed` loudness, it won't.
   EXPECT_FALSE(
       finalizer.Finalize(/*validate_loudness=*/true, obus_to_finalize_).ok());
+}
+
+TEST_F(FinalizerTest, OutofOrderMixPresentationObusFailOnFinalize) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId + 1);
+  const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
+
+  PerIdParameterMetadata common_mix_gain_parameter_metadata = {
+      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
+      .param_definition =
+          obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
+  std::list<ParameterBlockWithData> parameter_blocks;
+
+  wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  // Prepare a mock loudness calculator that will return arbitrary loudness
+  // information.
+  auto mock_loudness_calculator_factory =
+      std::make_unique<MockLoudnessCalculatorFactory>();
+  auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
+  loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
+
+  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
+                                   obus_to_finalize_),
+              IsOk());
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/0,
+                                 /*end_timestamp=*/10, parameter_blocks.begin(),
+                                 parameter_blocks.end(), obus_to_finalize_),
+      IsOk());
+  // Reverse the list of OBUs to finalize. This will cause the mix presentation
+  // ID to be out of order with respect to the rendering metadata.
+  std::reverse(obus_to_finalize_.begin(), obus_to_finalize_.end());
+  EXPECT_FALSE(
+      finalizer.Finalize(/*validate_loudness=*/false, obus_to_finalize_).ok());
 }
 
 }  // namespace

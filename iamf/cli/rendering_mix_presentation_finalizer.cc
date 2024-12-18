@@ -801,6 +801,12 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
   }
   int i = 0;
   for (auto& mix_presentation_obu : mix_presentation_obus) {
+    if (rendering_metadata_[i].mix_presentation_id !=
+        mix_presentation_obu.GetMixPresentationId()) {
+      return absl::InvalidArgumentError(
+          "Mix presentation ID mismatch between rendering metadata and mix "
+          "presentation OBUs.");
+    }
     RETURN_IF_NOT_OK(UpdateLoudnessInfo(
         validate_loudness, rendering_metadata_[i].submix_rendering_metadata,
         mix_presentation_obu));
