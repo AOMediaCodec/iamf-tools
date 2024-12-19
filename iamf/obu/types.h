@@ -20,6 +20,10 @@ namespace iamf_tools {
  */
 inline constexpr int kMaxLeb128Size = 8;
 
+/*!\brief IAMF spec requires an entire OBU to be <= 2 MB.
+ */
+constexpr uint32_t kEntireObuSizeMaxTwoMegabytes = (1 << 21);
+
 /*!\brief Decoded `leb128` in IAMF. */
 typedef uint32_t DecodedUleb128;
 

@@ -395,9 +395,10 @@ class StreamBasedReadBitBuffer : public ReadBitBuffer {
   /*!\brief Private constructor.
    *
    * \param capacity Capacity of the internal buffer in bytes.
+   * \param source_size Size of the source data in bits.
    *
    */
-  StreamBasedReadBitBuffer(size_t capacity);
+  StreamBasedReadBitBuffer(size_t capacity, int64_t source_size);
 
   /*!\brief Load bytes from the source stream to the buffer.
    *

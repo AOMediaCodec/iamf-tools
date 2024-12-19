@@ -55,6 +55,26 @@ TEST(FileBasedReadBitBufferTest, CreateFromFilePathFailsWithNegativeCapacity) {
               ::testing::IsNull());
 }
 
+TEST(StreamBasedReadBitBufferTest, CreateFromStreamFailsWithNegativeCapacity) {
+  EXPECT_THAT(StreamBasedReadBitBuffer::Create(-1), ::testing::IsNull());
+}
+
+TEST(StreamBasedReadBitBufferTest, PushBytesFailsWithTooManyBytes) {
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  const std::vector<uint8_t> source_data(
+      (kEntireObuSizeMaxTwoMegabytes * 2) + 1, 0);
+  EXPECT_FALSE(rb->PushBytes(source_data).ok());
+}
+
+TEST(StreamBasedReadBitBufferTest, PushBytesSucceedsWithTwoMaxSizedObus) {
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  const std::vector<uint8_t> source_data(kEntireObuSizeMaxTwoMegabytes, 0);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  const std::vector<uint8_t> one_byte(1, 0);
+  EXPECT_FALSE(rb->PushBytes(one_byte).ok());
+}
+
 template <typename BufferReaderType>
 std::unique_ptr<BufferReaderType> CreateConcreteReadBitBuffer(
     int64_t capacity, std::vector<uint8_t>& source_data);

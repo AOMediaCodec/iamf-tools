@@ -127,11 +127,10 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
 absl::Status ValidateObuIsUnderTwoMegabytes(DecodedUleb128 obu_size,
                                             size_t size_of_obu_size) {
   CHECK_LE(size_of_obu_size, kMaxLeb128Size);
-  constexpr uint32_t kEntireObuSizeTwoMegabytes = (1 << 21);
 
   // Subtract out `obu_size` and all preceding data (one byte).
   const uint32_t max_obu_size =
-      kEntireObuSizeTwoMegabytes - 1 - size_of_obu_size;
+      kEntireObuSizeMaxTwoMegabytes - 1 - size_of_obu_size;
 
   if (obu_size > max_obu_size) {
     return absl::InvalidArgumentError(
