@@ -225,7 +225,6 @@ absl::Status GenerateObus(
   // TODO(b/329375123): Make two while loops that run on two threads: one for
   //                    adding samples and parameter block metadata, and one for
   //                    outputing OBUs.
-  IdTimeLabeledFrameMap id_to_time_to_labeled_frame;
   int data_obus_iteration = 0;  // Just for logging purposes.
   while (iamf_encoder.GeneratingDataObus()) {
     LOG_EVERY_N_SEC(INFO, 5)

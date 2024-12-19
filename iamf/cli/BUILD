@@ -128,7 +128,6 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:node_hash_map",

@@ -18,7 +18,6 @@
 #include <list>
 #include <vector>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
@@ -70,13 +69,6 @@ struct LabeledFrame {
 
 // Mapping from audio element ids to `LabeledFrame`s.
 typedef absl::flat_hash_map<DecodedUleb128, LabeledFrame> IdLabeledFrameMap;
-
-// Mapping from starting timestamps to `LabeledFrame`s.
-typedef absl::btree_map<int32_t, LabeledFrame> TimeLabeledFrameMap;
-
-// Mapping from audio element ids to `TimeLabeledFrameMap`s.
-typedef absl::flat_hash_map<DecodedUleb128, TimeLabeledFrameMap>
-    IdTimeLabeledFrameMap;
 
 typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap&);
 
