@@ -29,6 +29,7 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
@@ -101,9 +102,9 @@ void InitializeTestData(
   codec_config_obus.clear();
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, sample_rate,
                                         codec_config_obus);
-  AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          {kSubstreamId}, codec_config_obus,
-                                          audio_elements);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kAudioElementId, kCodecConfigId, {kSubstreamId},
+      codec_config_obus, audio_elements);
 }
 
 std::string GetInputWavDir() {

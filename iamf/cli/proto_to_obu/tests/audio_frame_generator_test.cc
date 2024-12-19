@@ -39,6 +39,8 @@
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -429,39 +431,22 @@ void AddStereoAudioElementAndAudioFrameMetadata(
       audio_frame_metadata));
   audio_frame_metadata->set_audio_element_id(audio_element_id);
 
-  auto* audio_element_metadata = user_metadata.add_audio_element_metadata();
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
-        reserved: 0
-        codec_config_id: 200
-        num_substreams: 1
-        num_parameters: 0
-        scalable_channel_layout_config {
-          num_layers: 1
-          reserved: 0
-          channel_audio_layer_configs:
-          [ {
-            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
-            output_gain_is_present_flag: 0
-            recon_gain_is_present_flag: 0
-            reserved_a: 0
-            substream_count: 1
-            coupled_substream_count: 1
-          }]
-        }
-      )pb",
-      audio_element_metadata));
-  audio_element_metadata->set_audio_element_id(audio_element_id);
-  audio_element_metadata->mutable_audio_substream_ids()->Add(
-      audio_substream_id);
+  AudioElementMetadataBuilder builder;
+  auto& audio_element_metadata = *user_metadata.add_audio_element_metadata();
+  ASSERT_THAT(builder.PopulateAudioElementMetadata(
+                  audio_element_id, kCodecConfigId, IamfInputLayout::kStereo,
+                  audio_element_metadata),
+              IsOk());
+  // Override with the custom substream ID.
+  audio_element_metadata.mutable_audio_substream_ids()->Set(0,
+                                                            audio_substream_id);
 }
 
 void ConfigureAacCodecConfigMetadata(
     iamf_tools_cli_proto::CodecConfigObuMetadata& codec_config_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        codec_config_id: 200
+        codec_config_id: 99
         codec_config {
           codec_id: CODEC_ID_AAC_LC
           automatically_override_audio_roll_distance: true
@@ -490,7 +475,7 @@ void ConfigureOneStereoSubstreamLittleEndian(
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        codec_config_id: 200
+        codec_config_id: 99
         codec_config {
           codec_id: CODEC_ID_LPCM
           num_samples_per_frame: 8

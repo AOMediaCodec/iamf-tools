@@ -30,6 +30,7 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -112,15 +113,16 @@ void ConfigureDemixingParameterBlocks(
 }
 
 void InitializePrerequisiteObus(
+    IamfInputLayout input_layout,
     absl::Span<const DecodedUleb128> substream_ids,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
   constexpr uint32_t kSampleRate = 48000;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
-  AddScalableAudioElementWithSubstreamIds(kAudioElementId, kCodecConfigId,
-                                          substream_ids, codec_config_obus,
-                                          audio_elements);
+  AddScalableAudioElementWithSubstreamIds(input_layout, kAudioElementId,
+                                          kCodecConfigId, substream_ids,
+                                          codec_config_obus, audio_elements);
 }
 
 void ValidateParameterBlocksCommon(
@@ -156,8 +158,8 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   // Initialize pre-requisite OBUs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(kOneSubstreamId, codec_config_obus,
-                             audio_elements);
+  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
+                             codec_config_obus, audio_elements);
 
   // Add a demixing parameter definition inside the Audio Element OBU.
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
@@ -271,8 +273,8 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Initialize pre-requisite OBUs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(kOneSubstreamId, codec_config_obus,
-                             audio_elements);
+  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
+                             codec_config_obus, audio_elements);
 
   // Add param definition. It would normally be owned by a Mix Presentation OBU.
   MixGainParamDefinition param_definition;
@@ -431,8 +433,8 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   // Initialize pre-requisite OBUs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(kFourSubtreamIds, codec_config_obus,
-                             audio_elements);
+  InitializePrerequisiteObus(IamfInputLayout::k5_1, kFourSubtreamIds,
+                             codec_config_obus, audio_elements);
 
   // Extra data needed to compute recon gain.
   PrepareAudioElementWithDataForReconGain(audio_elements.begin()->second);
@@ -489,8 +491,8 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   ConfigureDemixingParameterBlocks(user_metadata);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(kFourSubtreamIds, codec_config_obus,
-                             audio_elements);
+  InitializePrerequisiteObus(IamfInputLayout::k5_1, kFourSubtreamIds,
+                             codec_config_obus, audio_elements);
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,

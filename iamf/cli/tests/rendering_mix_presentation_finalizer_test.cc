@@ -42,6 +42,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/obu/audio_element.h"
@@ -194,17 +195,9 @@ class FinalizerTest : public ::testing::Test {
 
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_configs_);
-    AddScalableAudioElementWithSubstreamIds(audio_element_id, kCodecConfigId,
-                                            kMonoSubstreamIds, codec_configs_,
-                                            audio_elements_);
-
-    // Fill in the first layer correctly for mono input.
-    auto& first_layer = std::get<ScalableChannelLayoutConfig>(
-                            audio_elements_.at(audio_element_id).obu.config_)
-                            .channel_audio_layer_configs.front();
-    first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono;
-    first_layer.substream_count = 1;
-    first_layer.coupled_substream_count = 0;
+    AddScalableAudioElementWithSubstreamIds(
+        IamfInputLayout::kMono, audio_element_id, kCodecConfigId,
+        kMonoSubstreamIds, codec_configs_, audio_elements_);
   }
 
   void InitPrerequisiteObusForStereoInput(DecodedUleb128 audio_element_id) {
@@ -212,17 +205,9 @@ class FinalizerTest : public ::testing::Test {
 
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_configs_);
-    AddScalableAudioElementWithSubstreamIds(audio_element_id, kCodecConfigId,
-                                            kStereoSubstreamIds, codec_configs_,
-                                            audio_elements_);
-
-    // Fill in the first layer correctly for stereo input.
-    auto& first_layer = std::get<ScalableChannelLayoutConfig>(
-                            audio_elements_.at(audio_element_id).obu.config_)
-                            .channel_audio_layer_configs.front();
-    first_layer.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo;
-    first_layer.substream_count = 1;
-    first_layer.coupled_substream_count = 1;
+    AddScalableAudioElementWithSubstreamIds(
+        IamfInputLayout::kStereo, audio_element_id, kCodecConfigId,
+        kStereoSubstreamIds, codec_configs_, audio_elements_);
   }
 
   void AddMixPresentationObuForMonoOutput(DecodedUleb128 mix_presentation_id) {

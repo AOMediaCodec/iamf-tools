@@ -33,6 +33,7 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -675,8 +676,8 @@ TEST(GenerateParamIdToMetadataMapTest,
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
   AddScalableAudioElementWithSubstreamIds(
-      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
-      audio_elements_with_data);
+      IamfInputLayout::kMono, kAudioElementId, kCodecConfigId,
+      {kFirstSubstreamId}, input_codec_configs, audio_elements_with_data);
 
   auto param_definition = ReconGainParamDefinition(kSecondAudioElementId);
   param_definition.parameter_id_ = kParameterId;

@@ -32,6 +32,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/resampler_base.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
@@ -105,6 +106,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
 
 /*!\brief Adds a configurable scalable `AudioElementObu` to the output argument.
  *
+ * \param input_layout `input_layout` of the OBU to create.
  * \param audio_element_id `audio_element_id` of the OBU to create.
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param substream_ids `substream_ids` of the OBU to create.
@@ -112,8 +114,8 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
  * \param audio_elements Map to add the OBU to keyed by `audio_element_id`.
  */
 void AddScalableAudioElementWithSubstreamIds(
-    DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    absl::Span<const DecodedUleb128> substream_ids,
+    IamfInputLayout input_layout, DecodedUleb128 audio_element_id,
+    uint32_t codec_config_id, absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements);
 

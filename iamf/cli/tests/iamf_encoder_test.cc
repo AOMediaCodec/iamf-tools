@@ -23,6 +23,8 @@
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -35,6 +37,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::iamf_tools_cli_proto::UserMetadata;
 
+constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr uint32_t kNumSamplesPerFrame = 8;
 
@@ -66,30 +69,11 @@ void AddCodecConfig(UserMetadata& user_metadata) {
 }
 
 void AddAudioElement(UserMetadata& user_metadata) {
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_id: 300
-        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
-        reserved: 0
-        codec_config_id: 200
-        num_substreams: 1
-        audio_substream_ids: [ 0 ]
-        num_parameters: 0
-        scalable_channel_layout_config {
-          num_layers: 1
-          reserved: 0
-          channel_audio_layer_configs:
-          [ {
-            loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
-            output_gain_is_present_flag: 0
-            recon_gain_is_present_flag: 0
-            reserved_a: 0
-            substream_count: 1
-            coupled_substream_count: 1
-          }]
-        }
-      )pb",
-      user_metadata.add_audio_element_metadata()));
+  AudioElementMetadataBuilder builder;
+  ASSERT_THAT(builder.PopulateAudioElementMetadata(
+                  kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
+                  *user_metadata.add_audio_element_metadata()),
+              IsOk());
 }
 
 void AddMixPresentation(UserMetadata& user_metadata) {

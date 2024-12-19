@@ -45,6 +45,8 @@
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
+#include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -59,6 +61,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/io/zero_copy_stream_impl.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -225,33 +228,34 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
   audio_elements.emplace(audio_element_id, std::move(audio_element));
 }
 
-// TODO(b/309658744): Populate the rest of `ScalableChannelLayout`.
 // Adds a scalable Audio Element OBU based on the input arguments.
 void AddScalableAudioElementWithSubstreamIds(
-    DecodedUleb128 audio_element_id, uint32_t codec_config_id,
-    absl::Span<const DecodedUleb128> substream_ids,
+    IamfInputLayout input_layout, DecodedUleb128 audio_element_id,
+    uint32_t codec_config_id, absl::Span<const DecodedUleb128> substream_ids,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
-  // Check the `codec_config_id` is known and this is a new
-  // `audio_element_id`.
-  auto codec_config_iter = codec_config_obus.find(codec_config_id);
-  ASSERT_NE(codec_config_iter, codec_config_obus.end());
-  ASSERT_EQ(audio_elements.find(audio_element_id), audio_elements.end());
+  google::protobuf::RepeatedPtrField<
+      iamf_tools_cli_proto::AudioElementObuMetadata>
+      audio_element_metadatas;
+  AudioElementMetadataBuilder builder;
 
-  // Initialize the Audio Element OBU without any parameters and a single layer.
-  AudioElementObu obu(ObuHeader(), audio_element_id,
-                      AudioElementObu::kAudioElementChannelBased, 0,
-                      codec_config_id);
-  obu.InitializeAudioSubstreams(substream_ids.size());
-  obu.audio_substream_ids_.assign(substream_ids.begin(), substream_ids.end());
-  obu.InitializeParams(0);
+  auto& new_audio_element_metadata = *audio_element_metadatas.Add();
+  ASSERT_THAT(builder.PopulateAudioElementMetadata(
+                  audio_element_id, codec_config_id, input_layout,
+                  new_audio_element_metadata),
+              IsOk());
+  // Check that this is a scalable Audio Element, and override the substream
+  // IDs.
+  ASSERT_TRUE(new_audio_element_metadata.has_scalable_channel_layout_config());
+  ASSERT_EQ(new_audio_element_metadata.num_substreams(), substream_ids.size());
+  for (int i = 0; i < substream_ids.size(); ++i) {
+    new_audio_element_metadata.mutable_audio_substream_ids()->Set(
+        i, substream_ids[i]);
+  }
 
-  EXPECT_THAT(obu.InitializeScalableChannelLayout(1, 0), IsOk());
-
-  AudioElementWithData audio_element = {
-      .obu = std::move(obu), .codec_config = &codec_config_iter->second};
-
-  audio_elements.emplace(audio_element_id, std::move(audio_element));
+  // Generate the Audio Element OBU.
+  AudioElementGenerator generator(audio_element_metadatas);
+  ASSERT_THAT(generator.Generate(codec_config_obus, audio_elements), IsOk());
 }
 
 void AddMixPresentationObuWithAudioElementIds(
