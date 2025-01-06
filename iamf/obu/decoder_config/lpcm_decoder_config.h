@@ -78,6 +78,11 @@ class LpcmDecoderConfig {
 
   /*!\brief Gets the output sample rate represented within the decoder config.
    *
+   * This sample rate is used for timing and offset calculations.
+   *
+   * IAMF v1.1.0 section 3.11.4 specifies:
+   *  > "The sample rate used for computing offsets SHALL be sample_rate."
+   *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
    *         if there is an unexpected sample rate.

@@ -149,6 +149,12 @@ class AacDecoderConfig {
 
   /*!\brief Gets the output sample rate of the `AacDecoderConfig`.
    *
+   * This sample rate is used for timing and offset calculations.
+   *
+   * IAMF v1.1.0 section 3.11.2 specifies:
+   *  > "The sample rate used for computing offsets SHALL be the rate indicated
+   *     by the samplingFrequencyIndex in GASpecificConfig()."
+   *
    * \param output_sample_rate Output sample rate.
    * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()`
    *         if the metadata is an unrecognized type.

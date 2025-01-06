@@ -130,11 +130,21 @@ class CodecConfigObu : public ObuBase {
 
   /*!\brief Gets the output sample rate associated with the OBU.
    *
+   * This sample rate is used for timing and offset calculations as per
+   * section 3.11 of the IAMF spec.
+   *
+   *   - AAC, FLAC, LPCM: Based on the sample rate of the input stream.
+   *   - Opus: Always 48kHz ("The sample rate used for computing offsets SHALL
+   *           be 48 kHz.").
+   *
    * \return Output sample rate in Hz if the OBU was initialized successfully.
    */
   uint32_t GetOutputSampleRate() const { return output_sample_rate_; }
 
   /*!\brief Gets the input sample rate associated with the OBU.
+   *
+   * The sample rate of the data before being passed to the underlying codec
+   * libraries.
    *
    * \return Input sample rate in Hz if the OBU was initialized successfully.
    */

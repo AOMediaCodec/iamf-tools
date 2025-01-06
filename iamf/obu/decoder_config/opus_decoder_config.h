@@ -70,7 +70,10 @@ class OpusDecoderConfig {
 
   /*!\brief Gets the output sample rate represented within the decoder config.
    *
-   * IAMF Spec requires the output to be 48,000 Hz.
+   * This sample rate is used for timing and offset calculations.
+   *
+   * IAMF v1.1.0 section 3.11.1 specifies:
+   *  > "The sample rate used for computing offsets SHALL be 48 kHz."
    *
    * \return Output sample rate.
    */
