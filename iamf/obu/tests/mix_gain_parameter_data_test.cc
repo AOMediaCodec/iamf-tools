@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -39,7 +40,8 @@ TEST(AnimationStepInt16, ReadAndValidate) {
       0x02,
       0x01,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   AnimationStepInt16 step_animation;
   EXPECT_THAT(step_animation.ReadAndValidate(*buffer), IsOk());
@@ -55,7 +57,8 @@ TEST(AnimationLinearInt16, ReadAndValidate) {
       0x02,
       0x01,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   AnimationLinearInt16 linear_animation;
   EXPECT_THAT(linear_animation.ReadAndValidate(*buffer), IsOk());
@@ -72,7 +75,8 @@ TEST(AnimationBezierInt16, ReadAndValidate) {
                                       0x03, 0x02,
                                       // Control point relative time.
                                       0x01};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   AnimationBezierInt16 bezier_animation;
   EXPECT_THAT(bezier_animation.ReadAndValidate(*buffer), IsOk());
@@ -90,7 +94,8 @@ TEST(MixGainParameterData, ReadAndValidateStep) {
       0x02,
       0x01,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(
@@ -112,7 +117,8 @@ TEST(MixGainParameterData, ReadAndValidateLinear) {
       0x02,
       0x01,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(
@@ -139,7 +145,8 @@ TEST(MixGainParameterData, ReadAndValidateBezier) {
       // Control point relative time.
       0x01,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_THAT(
@@ -156,7 +163,8 @@ TEST(MixGainParameterData,
       // Animation type.
       0x03,
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   MixGainParameterData mix_gain_parameter_data;
   EXPECT_FALSE(

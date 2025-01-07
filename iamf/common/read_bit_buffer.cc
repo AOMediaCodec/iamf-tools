@@ -371,8 +371,8 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
 // ----- MemoryBasedReadBitBuffer -----
 
 std::unique_ptr<MemoryBasedReadBitBuffer>
-MemoryBasedReadBitBuffer::CreateFromVector(int64_t capacity,
-                                           const std::vector<uint8_t>& source) {
+MemoryBasedReadBitBuffer::CreateFromSpan(int64_t capacity,
+                                         absl::Span<const uint8_t> source) {
   if (capacity < 0) {
     LOG(ERROR) << "MemoryBasedReadBitBuffer capacity must be >= 0.";
     return nullptr;
@@ -395,9 +395,9 @@ absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
 }
 
 MemoryBasedReadBitBuffer::MemoryBasedReadBitBuffer(
-    size_t capacity, const std::vector<uint8_t>& source)
+    size_t capacity, absl::Span<const uint8_t> source)
     : ReadBitBuffer(capacity, static_cast<int64_t>(source.size()) * 8),
-      source_vector_(source) {}
+      source_vector_(source.begin(), source.end()) {}
 
 // ----- FileBasedReadBitBuffer -----
 

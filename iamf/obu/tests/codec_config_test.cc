@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
@@ -615,7 +616,8 @@ TEST(CreateFromBuffer, OpusDecoderConfig) {
                                       // `mapping_family`.
                                       OpusDecoderConfig::kMappingFamily};
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
@@ -720,7 +722,8 @@ TEST(CreateFromBuffer, AacLcDecoderConfig) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
@@ -821,7 +824,8 @@ TEST(CreateFromBuffer, ValidLpcmDecoderConfig) {
                                       // `sample_rate`.
                                       0, 0, 0xbb, 0x80};
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =
@@ -884,7 +888,8 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00};
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   ObuHeader header;
 
   absl::StatusOr<CodecConfigObu> obu =

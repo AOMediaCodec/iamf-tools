@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -275,7 +276,8 @@ TEST(ReadAndValidateTest, ReadAllFields) {
       0x00, 0x00, 0xbb, 0x80  // sample_rate
   };
   int16_t audio_roll_distance = 0;
-  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   LpcmDecoderConfig lpcm_decoder_config;
   EXPECT_THAT(
       lpcm_decoder_config.ReadAndValidate(audio_roll_distance, *read_buffer),
@@ -292,7 +294,8 @@ TEST(ReadAndValidateTest, RejectInvalidAudioRollDistance) {
       0x00, 0x00, 0xbb, 0x80  // sample_rate
   };
   int16_t audio_roll_distance = 1;
-  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto read_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   LpcmDecoderConfig lpcm_decoder_config;
   EXPECT_FALSE(
       lpcm_decoder_config.ReadAndValidate(audio_roll_distance, *read_buffer)

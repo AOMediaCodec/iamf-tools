@@ -19,6 +19,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
@@ -296,7 +297,8 @@ TEST(CreateFromBuffer, ValidAudioFrameWithExplicitId) {
                                  18,
                                  // `audio_frame`.
                                  8, 6, 24, 55, 11};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header = {.obu_type = kObuIaAudioFrame};
   const int64_t obu_payload_size = 6;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
@@ -308,7 +310,8 @@ TEST(CreateFromBuffer, ValidAudioFrameWithExplicitId) {
 TEST(CreateFromBuffer, ValidAudioFrameWithImplicitId) {
   std::vector<uint8_t> source = {// `audio_frame`.
                                  8, 6, 24, 55, 11};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header = {.obu_type = kObuIaAudioFrameId0};
   int64_t obu_payload_size = 5;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);
@@ -326,7 +329,8 @@ TEST(CreateFromBuffer, FailsWithPayloadSizeTooLarge) {
                                  18,
                                  // `audio_frame`.
                                  8, 6, 24, 55, 11};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header = {.obu_type = kObuIaAudioFrame};
   int64_t obu_payload_size = 7;
   auto obu = AudioFrameObu::CreateFromBuffer(header, obu_payload_size, *buffer);

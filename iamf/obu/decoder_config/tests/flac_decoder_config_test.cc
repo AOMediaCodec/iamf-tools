@@ -18,6 +18,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -737,7 +738,8 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00};
   ;
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, payload);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
   EXPECT_THAT(decoder_config.ReadAndValidate(
                   /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
@@ -787,7 +789,8 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x01};
   ;
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, payload);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
   EXPECT_FALSE(
       decoder_config

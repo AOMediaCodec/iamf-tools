@@ -272,14 +272,13 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
   /*!\brief Creates an instance of a memory-based read bit buffer.
    *
    * \param capacity Capacity of the internal buffer in bytes.
-   * \param source Reference of the source vector from which the buffer will
-   *        load data. The entire content will be copied into the constructed
-   *        instance.
+   * \param source Source span from which the buffer will load data. The
+   *        entire contents will be copied into the constructed instance.
    * \return Unique pointer of the created instance. `nullptr` if the creation
    *         fails.
    */
-  static std::unique_ptr<MemoryBasedReadBitBuffer> CreateFromVector(
-      int64_t capacity, const std::vector<uint8_t>& source);
+  static std::unique_ptr<MemoryBasedReadBitBuffer> CreateFromSpan(
+      int64_t capacity, absl::Span<const uint8_t> source);
 
   /*!\brief Destructor.*/
   ~MemoryBasedReadBitBuffer() override = default;
@@ -288,11 +287,10 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
   /*!\brief Private constructor. Called by the factory method only.
    *
    * \param capacity Capacity of the internal buffer in bytes.
-   * \param source Reference of the source vector from which the buffer will
-   *        load data. The entire content will be copied into the constructed
-   *        instance.
+   * \param source Source span from which the buffer will load data. The
+   *        entire contents will be copied into the constructed instance.
    */
-  MemoryBasedReadBitBuffer(size_t capacity, const std::vector<uint8_t>& source);
+  MemoryBasedReadBitBuffer(size_t capacity, absl::Span<const uint8_t> source);
 
   /*!\brief Load bytes from the source vector to the buffer.
    *

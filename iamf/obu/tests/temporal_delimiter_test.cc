@@ -18,6 +18,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
@@ -117,7 +118,8 @@ TEST_F(TemporalDelimiterTest,
 
 TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
   std::vector<uint8_t> source_data = {};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(
                   ObuHeader(), source_data.size(), *buffer),
@@ -126,7 +128,8 @@ TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
 
 TEST(CreateFromBuffer, SetsObuType) {
   std::vector<uint8_t> source_data = {};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   absl::StatusOr<TemporalDelimiterObu> obu =
       TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), source_data.size(),
@@ -138,7 +141,8 @@ TEST(CreateFromBuffer, SetsObuType) {
 TEST(CreateFromBuffer, DoesNotConsumeBufferWhenObuPayloadSizeIsZero) {
   const int64_t kObuPayloadSize = 0;
   std::vector<uint8_t> source_data = {99};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(),
                                                      kObuPayloadSize, *buffer),
               IsOk());

@@ -18,6 +18,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
@@ -68,7 +69,8 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   };
   const int64_t kCorrectObuSize = source_data.size();
   constexpr int64_t kIncorrectObuSize = 1;
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -126,7 +128,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
       0x44,
   };
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -185,7 +188,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
       0x44,
   };
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -253,7 +257,8 @@ TEST(ParameterBlockObu,
       0x88,
   };
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
@@ -286,7 +291,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
       0x88,
   };
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
       .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
@@ -303,7 +309,8 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
   // When there is no matching metadata, the parameter block cannot be created.
   per_id_metadata.erase(kParameterId);
   auto buffer_to_use_without_metadata =
-      MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+      MemoryBasedReadBitBuffer::CreateFromSpan(
+          1024, absl::MakeConstSpan(source_data));
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                    per_id_metadata, *buffer_to_use_without_metadata)
@@ -317,7 +324,8 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
                                       // `dmixp_mode`.
                                       kDMixPMode2 << 5};
   const int64_t payload_size = source_data.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {

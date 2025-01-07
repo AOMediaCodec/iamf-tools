@@ -23,7 +23,8 @@ void WriteReadString(const std::string& data) {
   if (write_status.ok()) {
     std::vector<uint8_t> source_data = wb.bit_buffer();
     std::unique_ptr<MemoryBasedReadBitBuffer> rb =
-        MemoryBasedReadBitBuffer::CreateFromVector(256, source_data);
+        MemoryBasedReadBitBuffer::CreateFromSpan(
+            256, absl::MakeConstSpan(source_data));
 
     std::string read_data;
     EXPECT_THAT(rb->ReadString(read_data), IsOk());
@@ -41,7 +42,8 @@ void WriteReadUint8Vector(const std::vector<uint8_t>& data) {
   if (write_status.ok()) {
     std::vector<uint8_t> source_data = wb.bit_buffer();
     std::unique_ptr<MemoryBasedReadBitBuffer> rb =
-        MemoryBasedReadBitBuffer::CreateFromVector(256, source_data);
+        MemoryBasedReadBitBuffer::CreateFromSpan(
+            256, absl::MakeConstSpan(source_data));
 
     std::vector<uint8_t> read_data(data.size());
     EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(read_data)), IsOk());

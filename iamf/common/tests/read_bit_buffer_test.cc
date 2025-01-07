@@ -45,7 +45,8 @@ constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
 
 TEST(MemoryBasedReadBitBufferTest, CreateFromVectorFailsWithNegativeCapacity) {
   const std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
-  EXPECT_THAT(MemoryBasedReadBitBuffer::CreateFromVector(-1, source_data),
+  EXPECT_THAT(MemoryBasedReadBitBuffer::CreateFromSpan(
+                  -1, absl::MakeConstSpan(source_data)),
               ::testing::IsNull());
 }
 
@@ -82,7 +83,8 @@ std::unique_ptr<BufferReaderType> CreateConcreteReadBitBuffer(
 template <>
 std::unique_ptr<MemoryBasedReadBitBuffer> CreateConcreteReadBitBuffer(
     int64_t capacity, std::vector<uint8_t>& source_data) {
-  return MemoryBasedReadBitBuffer::CreateFromVector(capacity, source_data);
+  return MemoryBasedReadBitBuffer::CreateFromSpan(
+      capacity, absl::MakeConstSpan(source_data));
 }
 
 template <>

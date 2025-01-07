@@ -70,7 +70,8 @@ TEST(ObuBaseTest, InvalidWhenValidatePayloadDerivedDoesNotReadIntegerBytes) {
   const ImaginaryObuNonIntegerBytes obu;
 
   std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 0x80};
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   EXPECT_FALSE(ImaginaryObuNonIntegerBytes::CreateFromBuffer(1, *rb).ok());
 }
@@ -153,7 +154,8 @@ TEST(ObuBaseTest, WritesObuFooterAndConsistentObuSize) {
 
 TEST(ObuBaseTest, ReadWithConsistentSize) {
   std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   auto obu = OneByteObu::CreateFromBuffer(ObuHeader(), 1, *rb);
   EXPECT_THAT(obu, IsOk());
@@ -165,7 +167,8 @@ TEST(ObuBaseTest, ReadDoesNotOverflowWhenBufferIsLarge) {
   constexpr size_t kJunkDataSize = 1 << 29;
   std::vector<uint8_t> source_data(kJunkDataSize + kObu.size(), 0);
   source_data.insert(source_data.end() - kObu.size(), kObu.begin(), kObu.end());
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
   // Advance the buffer to just before the OBU of interest.
   std::vector<uint8_t> junk_data(kJunkDataSize);
   ASSERT_THAT(rb->ReadUint8Span(absl::MakeSpan(junk_data)), IsOk());
@@ -176,7 +179,8 @@ TEST(ObuBaseTest, ReadDoesNotOverflowWhenBufferIsLarge) {
 TEST(ObuBaseTest, ReadFailsWhenSizeIsTooSmall) {
   const int64_t kSizeTooSmall = 0;
   std::vector<uint8_t> source_data = {kObuIaReserved24 << 3, 1, 255};
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   EXPECT_FALSE(
       OneByteObu::CreateFromBuffer(ObuHeader(), kSizeTooSmall, *rb).ok());
@@ -187,7 +191,8 @@ TEST(ObuBaseTest, ReadsFooterWhenObuSizeIsTooLarge) {
   const std::vector<uint8_t> kExtraData = {'e', 'x', 't'};
 
   std::vector<uint8_t> source_data = {255, 'e', 'x', 't'};
-  auto rb = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   const auto obu =
       OneByteObu::CreateFromBuffer(ObuHeader(), kSizeWithExtraData, *rb);

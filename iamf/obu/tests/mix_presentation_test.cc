@@ -20,6 +20,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
@@ -967,7 +968,8 @@ TEST_F(GetNumChannelsFromLayoutTest, ErrorBeyondReservedSoundSystem) {
 TEST(CreateFromBufferTest, RejectEmptyBitstream) {
   std::vector<uint8_t> source;
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header;
   EXPECT_FALSE(
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
@@ -989,7 +991,8 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
       // End Mix OBU.
   };
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header;
   EXPECT_FALSE(
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer).ok());
@@ -1035,7 +1038,8 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       // End Mix OBU.
   };
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
@@ -1084,7 +1088,8 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
   source.insert(source.end(), kMixPresentationTags.begin(),
                 kMixPresentationTags.end());
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
@@ -1133,7 +1138,8 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
   source.insert(source.end(), kDuplicateContentLanguageTags.begin(),
                 kDuplicateContentLanguageTags.end());
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
@@ -1164,7 +1170,8 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       0, 4
       // End ElementMixGain
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   SubMixAudioElement audio_element;
   EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, *buffer),
               IsOk());
@@ -1198,7 +1205,8 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
       // End anchored loudness.
       // End Layout.
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   MixPresentationLayout layout;
   EXPECT_THAT(layout.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(layout.loudness_layout.layout_type,
@@ -1232,7 +1240,8 @@ TEST(LoudspeakersSsConventionLayoutRead, ReadsSsConventionLayout) {
   std::vector<uint8_t> source = {
       (kSoundSystem << kSoundSystemBitShift | kArbitraryTwoBitReservedField)
       << kSsConventionBitShift};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   LoudspeakersSsConventionLayout ss_convention_layout;
 
   EXPECT_THAT(ss_convention_layout.Read(*buffer), IsOk());
@@ -1248,7 +1257,8 @@ TEST(LoudspeakersReservedOrBinauralLayoutRead, ReadsReservedField) {
   constexpr uint8_t kArbitrarySixBitReservedField = 63;
   std::vector<uint8_t> source = {kArbitrarySixBitReservedField
                                  << kBinauralLayoutBitShift};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   LoudspeakersReservedOrBinauralLayout reserved_binaural_layout;
 
   EXPECT_THAT(reserved_binaural_layout.Read(*buffer), IsOk());
@@ -1263,7 +1273,8 @@ TEST(LayoutReadAndValidate, ReadsLoudspeakersSsConventionLayout) {
   std::vector<uint8_t> source = {
       (Layout::kLayoutTypeLoudspeakersSsConvention << kLayoutTypeBitShift) |
       (kSoundSystem << kSoundSystemBitShift | kArbitraryTwoBitReservedField)};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   Layout loudness_layout;
 
   EXPECT_THAT(loudness_layout.ReadAndValidate(*buffer), IsOk());
@@ -1283,7 +1294,8 @@ TEST(LayoutReadAndValidate, ReadsReservedLayout) {
   constexpr uint8_t kArbitrarySixBitReservedField = 63;
   std::vector<uint8_t> source = {(kReservedLayout << kLayoutTypeBitShift) |
                                  (kArbitrarySixBitReservedField)};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   Layout loudness_layout;
 
   EXPECT_THAT(loudness_layout.ReadAndValidate(*buffer), IsOk());
@@ -1302,7 +1314,8 @@ TEST(LayoutReadAndValidate, ReadsBinauralLayout) {
   constexpr uint8_t kArbitrarySixBitReservedField = 33;
   std::vector<uint8_t> source = {(kBinauralLayout << kLayoutTypeBitShift) |
                                  (kArbitrarySixBitReservedField)};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   Layout loudness_layout;
 
   EXPECT_THAT(loudness_layout.ReadAndValidate(*buffer), IsOk());
@@ -1336,7 +1349,8 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
       0, 0, 31, 0, 32,
       // End SubMix.
   };
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source));
   MixPresentationSubMix sub_mix;
   EXPECT_THAT(sub_mix.ReadAndValidate(/*count_label=*/1, *buffer), IsOk());
   EXPECT_EQ(sub_mix.audio_elements.size(), 1);

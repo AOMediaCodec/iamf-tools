@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -30,7 +31,8 @@ TEST(ExtensionParameterDataReadTest, NineBytes) {
                                       // `parameter_data_bytes`.
                                       'a', 'r', 'b', 'i', 't', 'r', 'a', 'r',
                                       'y'};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   ExtensionParameterData extension_parameter_data;
   EXPECT_THAT(

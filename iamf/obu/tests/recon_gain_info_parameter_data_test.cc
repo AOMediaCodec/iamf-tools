@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -36,7 +37,8 @@ TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
       // Layer 0 is omitted due to `recon_gain_is_present_flags`.
       // `layer[1]`.
       ReconGainElement::kReconGainFlagR, 1};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
@@ -75,7 +77,8 @@ TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
       (ReconGainElement::kReconGainFlagLtb >> 7) |
           (ReconGainElement::kReconGainFlagRtb >> 7),
       8, 9};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromVector(1024, source_data);
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
