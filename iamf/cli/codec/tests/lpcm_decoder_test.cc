@@ -17,9 +17,12 @@ namespace {
 using ::absl_testing::IsOk;
 
 constexpr bool kOverrideAudioRollDistance = true;
+constexpr uint32_t kNumSamplesPerFrame = 1024;
+constexpr uint8_t kSampleSize16 = 16;
+constexpr bool kLittleEndian = true;
 
 CodecConfigObu CreateCodecConfigObu(LpcmDecoderConfig lpcm_decoder_config,
-                                    uint32_t num_samples_per_frame = 1024) {
+                                    uint32_t num_samples_per_frame) {
   const CodecConfig codec_config = {
       .codec_id = CodecConfig::kCodecIdLpcm,
       .num_samples_per_frame = num_samples_per_frame,
@@ -35,7 +38,8 @@ TEST(LpcmDecoderTest, Construct) {
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
-  CodecConfigObu codec_config_obu = CreateCodecConfigObu(lpcm_decoder_config);
+  CodecConfigObu codec_config_obu =
+      CreateCodecConfigObu(lpcm_decoder_config, kNumSamplesPerFrame);
   ASSERT_THAT(codec_config_obu.Initialize(kOverrideAudioRollDistance), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
@@ -51,7 +55,8 @@ TEST(LpcmDecoderTest, Initialize_InvalidConfigFails) {
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmBeginReserved;
-  CodecConfigObu codec_config_obu = CreateCodecConfigObu(lpcm_decoder_config);
+  CodecConfigObu codec_config_obu =
+      CreateCodecConfigObu(lpcm_decoder_config, kNumSamplesPerFrame);
   ASSERT_THAT(codec_config_obu.Initialize(kOverrideAudioRollDistance), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
@@ -62,7 +67,8 @@ TEST(LpcmDecoderTest, Initialize_InvalidConfigFails) {
 }
 
 LpcmDecoder CreateDecoderForDecodingTest(uint8_t sample_size,
-                                         bool little_endian) {
+                                         bool little_endian,
+                                         uint32_t num_samples_per_frame) {
   LpcmDecoderConfig lpcm_decoder_config;
   // The sample rate and bit depth are validated with CodecConfigObu::Initialize
   // so if we want to test the validation in LpcmDecoderConfig::Initialize we
@@ -72,7 +78,8 @@ LpcmDecoder CreateDecoderForDecodingTest(uint8_t sample_size,
   using enum LpcmDecoderConfig::LpcmFormatFlagsBitmask;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       little_endian ? kLpcmLittleEndian : kLpcmBigEndian;
-  CodecConfigObu codec_config_obu = CreateCodecConfigObu(lpcm_decoder_config);
+  CodecConfigObu codec_config_obu =
+      CreateCodecConfigObu(lpcm_decoder_config, num_samples_per_frame);
   if (!codec_config_obu.Initialize(kOverrideAudioRollDistance).ok()) {
     LOG(ERROR) << "Failed to initialize codec config OBU";
   }
@@ -83,11 +90,36 @@ LpcmDecoder CreateDecoderForDecodingTest(uint8_t sample_size,
   return lpcm_decoder;
 }
 
+TEST(LpcmDecoderTest, DecodeAudioFrame_FailsWhenFrameIsLargerThanExpected) {
+  constexpr uint32_t kShortNumberOfSamplesPerFrame = 1;
+  LpcmDecoder lpcm_decoder = CreateDecoderForDecodingTest(
+      kSampleSize16, kLittleEndian, kShortNumberOfSamplesPerFrame);
+  const std::vector<uint8_t>& kEncodedFrameWithOneSamplesPerFrame = {
+      0x00, 0x00,  // 0
+      0x01, 0x00,  // 1
+  };
+  // The decoder is configured correctly. One sample per frame decodes fine.
+  ASSERT_THAT(
+      lpcm_decoder.DecodeAudioFrame(kEncodedFrameWithOneSamplesPerFrame),
+      IsOk());
+
+  // But decoding two samples per frame fails, since the decoder was configured
+  // for at most one sample per frame.
+  const std::vector<uint8_t>& kEncodedFrameWithTwoSamplesPerFrame = {
+      0x00, 0x00,  // 0
+      0x01, 0x00,  // 1
+      0x00, 0x01,  // 256
+      0x80, 0xff,  // -128
+  };
+  EXPECT_FALSE(
+      lpcm_decoder.DecodeAudioFrame(kEncodedFrameWithTwoSamplesPerFrame).ok());
+}
+
 TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
   uint8_t sample_size = 16;
   bool little_endian = true;
-  LpcmDecoder lpcm_decoder =
-      CreateDecoderForDecodingTest(sample_size, little_endian);
+  LpcmDecoder lpcm_decoder = CreateDecoderForDecodingTest(
+      sample_size, little_endian, kNumSamplesPerFrame);
   const std::vector<uint8_t>& encoded_frame = {
       0x00, 0x00,  // 0
       0x01, 0x00,  // 1
@@ -113,8 +145,8 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
 TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
   uint8_t sample_size = 24;
   bool little_endian = false;
-  LpcmDecoder lpcm_decoder =
-      CreateDecoderForDecodingTest(sample_size, little_endian);
+  LpcmDecoder lpcm_decoder = CreateDecoderForDecodingTest(
+      sample_size, little_endian, kNumSamplesPerFrame);
   const std::vector<uint8_t>& encoded_frame = {
       0x00, 0x00, 0x00,  // 0
       0x00, 0x00, 0x01,  // 1
@@ -145,8 +177,8 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
 TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
   uint8_t sample_size = 16;
   bool little_endian = true;
-  LpcmDecoder lpcm_decoder =
-      CreateDecoderForDecodingTest(sample_size, little_endian);
+  LpcmDecoder lpcm_decoder = CreateDecoderForDecodingTest(
+      sample_size, little_endian, kNumSamplesPerFrame);
   // If we have 6 bytes, 16-bit samples, and two channels, we only have 3
   // samples which doesn't divide evenly into the number of channels.
   const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x00,
@@ -160,8 +192,8 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
 TEST(LpcmDecoderTest, DecodeAudioFrame_OverwritesExistingSamples) {
   uint8_t sample_size = 16;
   bool little_endian = true;
-  LpcmDecoder lpcm_decoder =
-      CreateDecoderForDecodingTest(sample_size, little_endian);
+  LpcmDecoder lpcm_decoder = CreateDecoderForDecodingTest(
+      sample_size, little_endian, kNumSamplesPerFrame);
   const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x01, 0x00};
 
   auto status = lpcm_decoder.DecodeAudioFrame(encoded_frame);

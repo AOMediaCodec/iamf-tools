@@ -68,7 +68,17 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
         bytes_per_sample, ") * number of channels (", num_channels_, ")."));
   }
   // Each time tick has one sample for each channel.
-  num_valid_ticks_ = encoded_frame.size() / bytes_per_sample / num_channels_;
+  const size_t num_ticks =
+      encoded_frame.size() / bytes_per_sample / num_channels_;
+  if (num_ticks > num_samples_per_channel_) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Detected num_ticks= ", num_ticks,
+                     ", but the decoder is only configured for up to "
+                     "num_samples_per_channel_= ",
+                     num_samples_per_channel_, "."));
+  }
+  num_valid_ticks_ = num_ticks;
+
   const bool little_endian = decoder_config_.IsLittleEndian();
 
   int32_t sample_result;
