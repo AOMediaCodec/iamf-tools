@@ -21,9 +21,11 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_base.h"
@@ -90,12 +92,6 @@ class RenderingMixPresentationFinalizer {
     std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
   };
 
-  // Contains rendering metadata for all submixes in a given mix presentation.
-  struct MixPresentationRenderingMetadata {
-    DecodedUleb128 mix_presentation_id;
-    std::vector<SubmixRenderingMetadata> submix_rendering_metadata;
-  };
-
   /*!\brief Factory for a wav writer.
    *
    * Used to control whether or not wav writers are created and control their
@@ -121,44 +117,42 @@ class RenderingMixPresentationFinalizer {
       int num_channels, int sample_rate, int bit_depth) const>
       WavWriterFactory;
 
-  /*!\brief Constructor.
+  /*!\brief Creates a rendering mix presentation finalizer.
    *
-   * \param mix_presentation_metadata Input mix presentation metadata. Only the
-   *        `loudness_metadata` fields are used.
+   * Rendering metadata is extracted from the mix presentation OBUs, which will
+   * be used to render the mix presentations in PushTemporalUnit.
+   *
+   * \param mix_presentation_metadata Input mix presentation metadata. Only
+   *        the `loudness_metadata` fields are used.
    * \param file_path_prefix Prefix for the output WAV file names.
    * \param output_wav_file_bit_depth_override If present, overrides the output
    *        WAV file bit depth.
-   * \param validate_loudness If true, validate the loudness against the user
-   *        provided loudness.
-   * \param renderer_factory Factory to take control of for creating renderers.
-   * \param renderer_factory Factory to take control of for creating loudness
-   *        calculators.
-   */
-  RenderingMixPresentationFinalizer(
-      const std::filesystem::path& file_path_prefix,
-      std::optional<uint8_t> output_wav_file_bit_depth_override,
-      bool validate_loudness,
-      std::unique_ptr<RendererFactoryBase> renderer_factory,
-      std::unique_ptr<LoudnessCalculatorFactoryBase>
-          loudness_calculator_factory)
-      : file_path_prefix_(file_path_prefix),
-        output_wav_file_bit_depth_override_(output_wav_file_bit_depth_override),
-        validate_loudness_(validate_loudness),
-        renderer_factory_(std::move(renderer_factory)),
-        loudness_calculator_factory_(std::move(loudness_calculator_factory)) {}
-
-  /*!\brief Initializes the rendering mix presentation finalizer.
-   *
-   * Rendering metadata is extracted from the mix presentation OBUs, which will
-   * be used to render the mix presentations in PushTemporalUnit. This must be
-   * called before PushTemporalUnit or Finalize.
+   * \param renderer_factory Factory to create renderers, or `nullptr` to
+   *        disable rendering.
+   * \param loudness_calculator_factory Factory to create loudness calculators
+   *        or `nullptr` to disable loudness calculation.
+   * \param audio_elements Audio elements with data.
+   * \param wav_writer_factory Factory to create wav writers.
+   * \param mix_presentation_obus Output list of OBUs to finalize with initial
+   *        user-provided loudness information.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Initialize(
+  static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
+      const std::filesystem::path& file_path_prefix,
+      std::optional<uint8_t> output_wav_file_bit_depth_override,
+      absl::Nullable<const RendererFactoryBase*> renderer_factory,
+      absl::Nullable<const LoudnessCalculatorFactoryBase*>
+          loudness_calculator_factory,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
       const WavWriterFactory& wav_writer_factory,
       std::list<MixPresentationObu>& mix_presentation_obus);
+
+  /*!\brief Move constructor. */
+  RenderingMixPresentationFinalizer(RenderingMixPresentationFinalizer&&) =
+      default;
+  /*!\brief Destructor. */
+  ~RenderingMixPresentationFinalizer() = default;
 
   /*!\brief Renders and writes a single temporal unit.
    *
@@ -170,10 +164,8 @@ class RenderingMixPresentationFinalizer {
    *        keyed by audio element ID and channel label.
    * \param start_timestamp Start timestamp of this temporal unit.
    * \param end_timestamp End timestamp of this temporal unit.
-   * \param parameter_blocks_start Start of the Input Parameter Block OBUs
-   *        associated with this temporal unit.
-   * \param parameter_blocks_end End of the Input Parameter Block OBUs
-   *        associated with this temporal unit.
+   * \param parameter_blocks Parameter Block OBUs associated with this temporal
+   *        unit.
    * \param mix_presentation_obus Output list of OBUs to finalize with initial
    *        user-provided loudness information.
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -181,11 +173,7 @@ class RenderingMixPresentationFinalizer {
   absl::Status PushTemporalUnit(
       const IdLabeledFrameMap& id_to_labeled_frame, int32_t start_timestamp,
       int32_t end_timestamp,
-      const std::list<ParameterBlockWithData>::const_iterator&
-          parameter_blocks_start,
-      const std::list<ParameterBlockWithData>::const_iterator&
-          parameter_blocks_end,
-      std::list<MixPresentationObu>& mix_presentation_obus);
+      const std::list<ParameterBlockWithData>& parameter_blocks);
 
   /*!\brief Validates and updates loudness for all mix presentations.
    *
@@ -202,13 +190,24 @@ class RenderingMixPresentationFinalizer {
                         std::list<MixPresentationObu>& mix_presentation_obus);
 
  private:
-  const std::filesystem::path file_path_prefix_;
-  const std::optional<uint8_t> output_wav_file_bit_depth_override_;
-  const bool validate_loudness_;
+  /*!\brief  Metadata for all sub mixes within a single mix presentation. */
+  struct MixPresentationRenderingMetadata {
+    DecodedUleb128 mix_presentation_id;
+    std::vector<SubmixRenderingMetadata> submix_rendering_metadata;
+  };
 
-  const std::unique_ptr<RendererFactoryBase> renderer_factory_;
-  const std::unique_ptr<LoudnessCalculatorFactoryBase>
-      loudness_calculator_factory_;
+  /*!\brief Private constructor.
+   *
+   * Used only by the factory method.
+   *
+   * \param rendering_metadata Mix presentation metadata.
+   */
+  RenderingMixPresentationFinalizer(
+      std::vector<MixPresentationRenderingMetadata>&& rendering_metadata)
+      : rendering_is_disabled_(rendering_metadata.empty()),
+        rendering_metadata_(std::move(rendering_metadata)) {}
+
+  const bool rendering_is_disabled_;
 
   std::vector<MixPresentationRenderingMetadata> rendering_metadata_;
 };

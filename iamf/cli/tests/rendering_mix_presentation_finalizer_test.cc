@@ -249,31 +249,26 @@ class FinalizerTest : public ::testing::Test {
     AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   }
 
-  RenderingMixPresentationFinalizer GetFinalizer() {
-    return RenderingMixPresentationFinalizer(
+  RenderingMixPresentationFinalizer CreateFinalizerExpectOk() {
+    auto finalizer = RenderingMixPresentationFinalizer::Create(
         output_directory_, output_wav_file_bit_depth_override_,
-        validate_loudness_, std::move(renderer_factory_),
-        std::move(loudness_calculator_factory_));
+        renderer_factory_.get(), loudness_calculator_factory_.get(),
+        audio_elements_, wav_writer_factory_, obus_to_finalize_);
+    EXPECT_THAT(finalizer, IsOk());
+    return *std::move(finalizer);
   }
 
   void IterativeRenderingExpectOk(
       RenderingMixPresentationFinalizer& finalizer,
-      const std::list<ParameterBlockWithData>::const_iterator&
-          parameter_blocks_start,
-      const std::list<ParameterBlockWithData>::const_iterator&
-          parameter_blocks_end) {
-    EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                     obus_to_finalize_),
-                IsOk());
+      const std::list<ParameterBlockWithData>& parameter_blocks) {
     int64_t start_timestamp = 0;
     for (const auto& id_to_labeled_frame : ordered_labeled_frames_) {
       ASSERT_TRUE(id_to_labeled_frame.contains(kAudioElementId));
-      EXPECT_THAT(
-          finalizer.PushTemporalUnit(
-              id_to_labeled_frame, start_timestamp,
-              id_to_labeled_frame.at(kAudioElementId).end_timestamp,
-              parameter_blocks_start, parameter_blocks_end, obus_to_finalize_),
-          IsOk());
+      EXPECT_THAT(finalizer.PushTemporalUnit(
+                      id_to_labeled_frame, start_timestamp,
+                      id_to_labeled_frame.at(kAudioElementId).end_timestamp,
+                      parameter_blocks),
+                  IsOk());
     }
 
     EXPECT_THAT(finalizer.Finalize(validate_loudness_, obus_to_finalize_),
@@ -287,7 +282,7 @@ class FinalizerTest : public ::testing::Test {
   std::list<MixPresentationObu> obus_to_finalize_;
   std::list<ParameterBlockWithData> parameter_blocks_;
 
-  // Finalizer constructor settings. Default to simplistic inputs that disable
+  // Finalizer create settings. Default to simplistic inputs that disable
   // most features.
   std::filesystem::path output_directory_ = GetAndCreateOutputDirectory("");
   std::optional<uint8_t> output_wav_file_bit_depth_override_ =
@@ -302,28 +297,28 @@ class FinalizerTest : public ::testing::Test {
   std::vector<IdLabeledFrameMap> ordered_labeled_frames_;
 };
 
-// === Tests that the constructor does not crash with various modes disabled ===
+// =Tests that the create function does not crash with various modes disabled.=
 
-TEST_F(FinalizerTest, ConstructorDoesNotCrashWithMockFactories) {
+TEST_F(FinalizerTest, CreateDoesNotCrashWithMockFactories) {
   renderer_factory_ = std::make_unique<MockRendererFactory>();
   loudness_calculator_factory_ =
       std::make_unique<MockLoudnessCalculatorFactory>();
 
-  GetFinalizer();
+  CreateFinalizerExpectOk();
 }
 
-TEST_F(FinalizerTest, ConstructorDoesNotCrashWhenRendererFactoryIsNullptr) {
+TEST_F(FinalizerTest, CreateDoesNotCrashWhenRendererFactoryIsNullptr) {
   renderer_factory_ = nullptr;
 
-  GetFinalizer();
+  CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest,
-       ConstructorDoesNotCrashWhenLoudnessCalculatorFactoryIsNullptr) {
+       CreateDoesNotCrashWhenLoudnessCalculatorFactoryIsNullptr) {
   renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
   loudness_calculator_factory_ = nullptr;
 
-  GetFinalizer();
+  CreateFinalizerExpectOk();
 }
 
 // =========== Tests that work is delegated to the renderer factory. ===========
@@ -346,11 +341,8 @@ TEST_F(FinalizerTest, ForwardsAudioElementToRenderer) {
           forwarded_audio_element.obu.config_, _, _,
           forwarded_audio_element.codec_config->GetNumSamplesPerFrame()));
   renderer_factory_ = std::move(mock_renderer_factory);
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest, ForwardsRenderingConfigToRenderer) {
@@ -368,11 +360,8 @@ TEST_F(FinalizerTest, ForwardsRenderingConfigToRenderer) {
       *mock_renderer_factory,
       CreateRendererForLayout(_, _, _, _, forwarded_rendering_config, _, _));
   renderer_factory_ = std::move(mock_renderer_factory);
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest, ForwardsLayoutToRenderer) {
@@ -388,11 +377,8 @@ TEST_F(FinalizerTest, ForwardsLayoutToRenderer) {
   EXPECT_CALL(*mock_renderer_factory,
               CreateRendererForLayout(_, _, _, _, _, forwarded_layout, _));
   renderer_factory_ = std::move(mock_renderer_factory);
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
@@ -417,10 +403,8 @@ TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
   renderer_factory_ = std::move(mock_renderer_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  auto finalizer = CreateFinalizerExpectOk();
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 }
 
 TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
@@ -438,9 +422,9 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
       .WillOnce(Return(std::move(mock_renderer)));
   renderer_factory_ = std::move(mock_renderer_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+
+  auto finalizer = CreateFinalizerExpectOk();
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
@@ -454,10 +438,9 @@ TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingFactoryIsNullptr) {
       GetAndCreateOutputDirectory("");
   renderer_factory_ = nullptr;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  auto finalizer = CreateFinalizerExpectOk();
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   EXPECT_TRUE(std::filesystem::is_empty(output_directory));
 }
@@ -472,10 +455,9 @@ TEST_F(FinalizerTest, DoesNotCreateFilesWhenRenderingFactoryReturnsNullptr) {
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  auto finalizer = CreateFinalizerExpectOk();
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   EXPECT_TRUE(std::filesystem::is_empty(output_directory));
 }
@@ -490,10 +472,9 @@ TEST_F(FinalizerTest, UsesCodecConfigBitDepthWhenOverrideIsNotSet) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   const auto wav_reader =
       CreateWavReaderExpectOk(GetFirstSubmixFirstLayoutExpectedPath());
@@ -509,10 +490,9 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   output_wav_file_bit_depth_override_ = 32;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   const auto wav_reader =
       CreateWavReaderExpectOk(GetFirstSubmixFirstLayoutExpectedPath());
@@ -529,18 +509,14 @@ TEST_F(FinalizerTest, InvalidWhenFrameIsLargerThanNumSamplesPerFrame) {
                   kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
   std::list<ParameterBlockWithData> parameter_blocks;
+  auto finalizer = CreateFinalizerExpectOk();
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
   EXPECT_FALSE(
       finalizer
           .PushTemporalUnit(
               ordered_labeled_frames_[0], kStartTime,
               ordered_labeled_frames_[0].at(kAudioElementId).end_timestamp,
-              parameter_blocks.begin(), parameter_blocks.end(),
-              obus_to_finalize_)
+              parameter_blocks)
           .ok());
 }
 
@@ -553,10 +529,9 @@ TEST_F(FinalizerTest, WavFileHasExpectedProperties) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   const auto wav_reader =
       CreateWavReaderExpectOk(GetFirstSubmixFirstLayoutExpectedPath());
@@ -579,10 +554,9 @@ TEST_F(FinalizerTest, SamplesAreTrimmedFromWavFile) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   const auto wav_reader =
       CreateWavReaderExpectOk(GetFirstSubmixFirstLayoutExpectedPath());
@@ -603,10 +577,9 @@ TEST_F(FinalizerTest, SupportsFullyTrimmedFrames) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  IterativeRenderingExpectOk(finalizer, parameter_blocks_.begin(),
-                             parameter_blocks_.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   const auto wav_reader =
       CreateWavReaderExpectOk(GetFirstSubmixFirstLayoutExpectedPath());
@@ -630,20 +603,23 @@ const LoudnessInfo kArbitraryLoudnessInfo = {
 
 TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
   PrepareObusForOneSamplePassThroughMono();
-  renderer_factory_ = std::make_unique<RendererFactory>();
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
   // A factory can be used to omit generating the wav file.
+  renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceNoWavWriters;
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
+  auto finalizer_without_wav_writers = CreateFinalizerExpectOk();
+  EXPECT_THAT(finalizer_without_wav_writers.Finalize(validate_loudness_,
+                                                     obus_to_finalize_),
               IsOk());
   EXPECT_FALSE(
       std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
+
   // Or a factory can be used to create it.
+  renderer_factory_ = std::make_unique<RendererFactory>();
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
+  auto finalizer_with_wav_writers = CreateFinalizerExpectOk();
+  EXPECT_THAT(finalizer_with_wav_writers.Finalize(validate_loudness_,
+                                                  obus_to_finalize_),
               IsOk());
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
@@ -666,11 +642,8 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
                                forwarded_bit_depth_to_measure_loudness));
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
 
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
@@ -700,12 +673,11 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
   obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness =
       kMismatchingUserLoudness;
-  IterativeRenderingExpectOk(finalizer, parameter_blocks.begin(),
-                             parameter_blocks.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   // Data was copied based on `QueryLoudness()`.
   EXPECT_EQ(obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness,
@@ -735,16 +707,12 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
   EXPECT_THAT(
       finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
                                  /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks.begin(),
-                                 parameter_blocks.end(), obus_to_finalize_),
+                                 /*end_timestamp=*/10, parameter_blocks),
       IsOk());
 
   EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
@@ -753,29 +721,23 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
 //============== Various modes fallback to preserving loudness. ==============
 
 void FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
     const std::vector<IdLabeledFrameMap>& ordered_labeled_frames_,
     RenderingMixPresentationFinalizer& finalizer,
     std::list<MixPresentationObu>& obus_to_finalize) {
   obus_to_finalize.front().sub_mixes_[0].layouts[0].loudness =
       kArbitraryLoudnessInfo;
   std::list<ParameterBlockWithData> parameter_blocks;
-  EXPECT_THAT(finalizer.Initialize(audio_elements, ProduceNoWavWriters,
-                                   obus_to_finalize),
-              IsOk());
   int64_t start_timestamp = 0;
   for (const auto& id_to_labeled_frame : ordered_labeled_frames_) {
     ASSERT_TRUE(id_to_labeled_frame.contains(kAudioElementId));
-    EXPECT_THAT(
-        finalizer.PushTemporalUnit(
-            id_to_labeled_frame, start_timestamp,
-            id_to_labeled_frame.at(kAudioElementId).end_timestamp,
-            parameter_blocks.begin(), parameter_blocks.end(), obus_to_finalize),
-        IsOk());
+    EXPECT_THAT(finalizer.PushTemporalUnit(
+                    id_to_labeled_frame, start_timestamp,
+                    id_to_labeled_frame.at(kAudioElementId).end_timestamp,
+                    parameter_blocks),
+                IsOk());
   }
 
-  EXPECT_THAT(finalizer.Finalize(/*validate_loudness=*/true, obus_to_finalize),
+  EXPECT_THAT(finalizer.Finalize(kDontValidateLoudness, obus_to_finalize),
               IsOk());
 
   const auto& loudness =
@@ -786,10 +748,10 @@ void FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderFactoryIsNullptr) {
   PrepareObusForOneSamplePassThroughMono();
   renderer_factory_ = nullptr;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
   FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
-      audio_elements_, ordered_labeled_frames_, finalizer, obus_to_finalize_);
+      ordered_labeled_frames_, finalizer, obus_to_finalize_);
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingIsNotSupported) {
@@ -797,20 +759,20 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderingIsNotSupported) {
   renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
   loudness_calculator_factory_ =
       std::make_unique<AlwaysNullLoudnessCalculatorFactory>();
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
   FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
-      audio_elements_, ordered_labeled_frames_, finalizer, obus_to_finalize_);
+      ordered_labeled_frames_, finalizer, obus_to_finalize_);
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryIsNullPtr) {
   PrepareObusForOneSamplePassThroughMono();
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = nullptr;
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
   FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
-      audio_elements_, ordered_labeled_frames_, finalizer, obus_to_finalize_);
+      ordered_labeled_frames_, finalizer, obus_to_finalize_);
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
@@ -818,22 +780,19 @@ TEST_F(FinalizerTest, PreservesUserLoudnessWhenLoudnessFactoryReturnsNullPtr) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ =
       std::make_unique<AlwaysNullLoudnessCalculatorFactory>();
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
+  auto finalizer = CreateFinalizerExpectOk();
 
   FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
-      audio_elements_, ordered_labeled_frames_, finalizer, obus_to_finalize_);
+      ordered_labeled_frames_, finalizer, obus_to_finalize_);
 }
 
-TEST_F(FinalizerTest, InitializeSucceedsWithValidInput) {
+TEST_F(FinalizerTest, CreateSucceedsWithValidInput) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   renderer_factory_ = std::make_unique<RendererFactory>();
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
 }
 
 TEST_F(FinalizerTest, FinalizeFailsIfCalledTwice) {
@@ -842,10 +801,7 @@ TEST_F(FinalizerTest, FinalizeFailsIfCalledTwice) {
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   renderer_factory_ = std::make_unique<RendererFactory>();
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.Finalize(validate_loudness_, obus_to_finalize_),
               IsOk());
   EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
@@ -869,15 +825,11 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
   ASSERT_EQ(ordered_labeled_frames_.size(), 1);
   wav_writer_factory_ = ProduceFirstSubMixFirstLayoutWavWriter;
   renderer_factory_ = std::make_unique<RendererFactory>();
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(
       finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
                                  /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks.begin(),
-                                 parameter_blocks.end(), obus_to_finalize_),
+                                 /*end_timestamp=*/10, parameter_blocks),
       IsOk());
 }
 
@@ -908,11 +860,9 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   validate_loudness_ = false;
+  auto finalizer = CreateFinalizerExpectOk();
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-
-  IterativeRenderingExpectOk(finalizer, parameter_blocks.begin(),
-                             parameter_blocks.end());
+  IterativeRenderingExpectOk(finalizer, parameter_blocks_);
 
   // Then we expect the loudness to be populated with the computed loudness.
   EXPECT_EQ(obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness,
@@ -946,20 +896,16 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(
       finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
                                  /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks.begin(),
-                                 parameter_blocks.end(), obus_to_finalize_),
+                                 /*end_timestamp=*/10, parameter_blocks),
       IsOk());
   // Do validate that computed loudness matches the user provided loudness -
   // since kArbitraryLoudnessInfo is the `computed` loudness, it won't.
-  EXPECT_FALSE(
-      finalizer.Finalize(/*validate_loudness=*/true, obus_to_finalize_).ok());
+  validate_loudness_ = true;
+  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
 }
 
 TEST_F(FinalizerTest, OutofOrderMixPresentationObusFailOnFinalize) {
@@ -985,21 +931,17 @@ TEST_F(FinalizerTest, OutofOrderMixPresentationObusFailOnFinalize) {
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
-  RenderingMixPresentationFinalizer finalizer = GetFinalizer();
-  EXPECT_THAT(finalizer.Initialize(audio_elements_, wav_writer_factory_,
-                                   obus_to_finalize_),
-              IsOk());
+  validate_loudness_ = false;
+  auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(
       finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
                                  /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks.begin(),
-                                 parameter_blocks.end(), obus_to_finalize_),
+                                 /*end_timestamp=*/10, parameter_blocks),
       IsOk());
   // Reverse the list of OBUs to finalize. This will cause the mix presentation
   // ID to be out of order with respect to the rendering metadata.
   std::reverse(obus_to_finalize_.begin(), obus_to_finalize_.end());
-  EXPECT_FALSE(
-      finalizer.Finalize(/*validate_loudness=*/false, obus_to_finalize_).ok());
+  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
 }
 
 }  // namespace

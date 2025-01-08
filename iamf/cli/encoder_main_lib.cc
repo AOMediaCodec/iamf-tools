@@ -210,12 +210,13 @@ absl::Status GenerateObus(
     return wav_sample_provider.status();
   }
 
-  RenderingMixPresentationFinalizer mix_presentation_finalizer(
+  auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
       output_wav_file_prefix, output_wav_file_bit_depth_override,
-      user_metadata.test_vector_metadata().validate_user_loudness(),
-      CreateRendererFactory(), CreateLoudnessCalculatorFactory());
-  RETURN_IF_NOT_OK(mix_presentation_finalizer.Initialize(
-      audio_elements, ProduceAllWavWriters, mix_presentation_obus));
+      CreateRendererFactory().get(), CreateLoudnessCalculatorFactory().get(),
+      audio_elements, ProduceAllWavWriters, mix_presentation_obus);
+  if (!mix_presentation_finalizer.ok()) {
+    return mix_presentation_finalizer.status();
+  }
 
   // Parameter blocks.
   TimeParameterBlockMetadataMap time_parameter_block_metadata;
@@ -279,10 +280,9 @@ absl::Status GenerateObus(
       LOG(INFO) << "No audio frame generated in this iteration; continue.";
       continue;
     }
-    RETURN_IF_NOT_OK(mix_presentation_finalizer.PushTemporalUnit(
+    RETURN_IF_NOT_OK(mix_presentation_finalizer->PushTemporalUnit(
         id_to_labeled_frame, temp_audio_frames.front().start_timestamp,
-        temp_audio_frames.front().end_timestamp, temp_parameter_blocks.begin(),
-        temp_parameter_blocks.end(), mix_presentation_obus));
+        temp_audio_frames.front().end_timestamp, temp_parameter_blocks));
 
     audio_frames.splice(audio_frames.end(), temp_audio_frames);
     parameter_blocks.splice(parameter_blocks.end(), temp_parameter_blocks);
@@ -290,7 +290,7 @@ absl::Status GenerateObus(
   LOG(INFO) << "\n============================= END of Generating Data OBUs"
             << " =============================\n\n";
   PrintAudioFrames(audio_frames);
-  RETURN_IF_NOT_OK(mix_presentation_finalizer.Finalize(
+  RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
       user_metadata.test_vector_metadata().validate_user_loudness(),
       mix_presentation_obus));
 
