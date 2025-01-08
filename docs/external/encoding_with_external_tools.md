@@ -219,7 +219,7 @@ done
 ffmpeg \
   -i $input_iamf \
   -i $input_video \
-  -c:a copy -map 0:a:0 \
+  -c:a copy -map 0:a \
   -c:v copy -map 1:v:0 \
   -stream_group map=0=0$st_map \
   -stream_group map=0=1$st_map \
