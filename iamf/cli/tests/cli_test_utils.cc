@@ -538,9 +538,9 @@ absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
   return absl::OkStatus();
 }
 
-absl::Status EverySecondTickResampler::PushFrame(
+absl::Status EverySecondTickResampler::PushFrameDerived(
     absl::Span<const std::vector<int32_t>> time_channel_samples) {
-  num_valid_ticks_ = 0;
+  EXPECT_EQ(num_valid_ticks_, 0);  // `SampleProcessorBase` should ensure this.
   for (size_t i = 0; i < time_channel_samples.size(); ++i) {
     if (i % 2 == 1) {
       output_time_channel_samples_[num_valid_ticks_] = time_channel_samples[i];
@@ -550,8 +550,8 @@ absl::Status EverySecondTickResampler::PushFrame(
   return absl::OkStatus();
 }
 
-absl::Status EverySecondTickResampler::Flush() {
-  num_valid_ticks_ = 0;
+absl::Status EverySecondTickResampler::FlushDerived() {
+  EXPECT_EQ(num_valid_ticks_, 0);  // `SampleProcessorBase` should ensure this.
   return absl::OkStatus();
 }
 

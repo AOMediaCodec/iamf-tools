@@ -31,7 +31,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
-#include "iamf/cli/resampler_base.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/obu_util.h"
@@ -349,32 +349,37 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
          equivalent_integral_sample == testing::get<1>(arg);
 }
 
-class MockResampler : public ResamplerBase {
+class MockSampleProcessor : public SampleProcessorBase {
  public:
-  MockResampler(uint32_t max_num_samples_per_frame, size_t num_channels)
-      : ResamplerBase(max_num_samples_per_frame, num_channels) {}
+  MockSampleProcessor(uint32_t max_input_samples_per_frame, size_t num_channels,
+                      uint32_t max_output_samples_per_frame)
+      : SampleProcessorBase(max_input_samples_per_frame, num_channels,
+                            max_output_samples_per_frame) {}
 
-  MOCK_METHOD(absl::Status, PushFrame,
+  MOCK_METHOD(absl::Status, PushFrameDerived,
               (absl::Span<const std::vector<int32_t>> time_channel_samples),
               (override));
 
-  MOCK_METHOD(absl::Status, Flush, (), (override));
+  MOCK_METHOD(absl::Status, FlushDerived, (), (override));
 };
 
-/*!\brief A simple resampler whose output represents every second tick.
+/*!\brief A simple processor which resamples the output to every second tick.
  */
-class EverySecondTickResampler : public ResamplerBase {
+class EverySecondTickResampler : public SampleProcessorBase {
  public:
-  EverySecondTickResampler(uint32_t max_num_samples_per_frame,
+  EverySecondTickResampler(uint32_t max_input_num_samples_per_frame,
                            size_t num_channels)
-      : ResamplerBase(max_num_samples_per_frame / 2, num_channels) {}
+      : SampleProcessorBase(max_input_num_samples_per_frame, num_channels,
+                            /*max_output_samples_per_frame=*/
+                            max_input_num_samples_per_frame / 2) {}
 
-  /*!\brief Pushes a frame of samples to the resampler.
+ private:
+  /*!\brief Pushes a frame of samples to be resampled.
    *
    * \param time_channel_samples Samples to push arranged in (time, channel).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PushFrame(
+  absl::Status PushFrameDerived(
       absl::Span<const std::vector<int32_t>> time_channel_samples) override;
 
   /*!\brief Signals to close the resampler and flush any remaining samples.
@@ -383,7 +388,7 @@ class EverySecondTickResampler : public ResamplerBase {
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Flush() override;
+  absl::Status FlushDerived() override;
 };
 
 }  // namespace iamf_tools

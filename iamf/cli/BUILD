@@ -471,6 +471,17 @@ cc_library(
 )
 
 cc_library(
+    name = "sample_processor_base",
+    srcs = ["sample_processor_base.cc"],
+    hdrs = ["sample_processor_base.h"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "wav_reader",
     srcs = ["wav_reader.cc"],
     hdrs = ["wav_reader.h"],
@@ -516,16 +527,6 @@ cc_library(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/memory",
         "@com_google_audio_to_tactile//:dsp",
-    ],
-)
-
-cc_library(
-    name = "resampler_base",
-    srcs = ["resampler_base.cc"],
-    hdrs = ["resampler_base.h"],
-    deps = [
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
