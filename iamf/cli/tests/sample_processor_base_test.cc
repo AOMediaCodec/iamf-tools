@@ -25,7 +25,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using ::testing::status::StatusIs;
+using ::absl_testing::StatusIs;
 
 using absl::StatusCode::kFailedPrecondition;
 
