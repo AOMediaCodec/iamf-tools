@@ -565,6 +565,9 @@ INSTANTIATE_TEST_SUITE_P(ExtensionsInIaSequenceHeader, TestVector,
 INSTANTIATE_TEST_SUITE_P(MultipleFramesTrimmedAtEnd, TestVector,
                          testing::Values("test_000135.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(InvalidInconsistentParamDefinitions, TestVector,
+                         testing::Values("test_000136.textproto"));
+
 // ---- Test Set 2 -----
 
 INSTANTIATE_TEST_SUITE_P(BasicMonoLPCM, TestVector,
