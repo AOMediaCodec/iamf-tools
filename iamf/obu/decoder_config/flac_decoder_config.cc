@@ -259,9 +259,10 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
             std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), rb));
         break;
       default: {
-        auto& payload = std::get<std::vector<uint8_t>>(metadata_block.payload);
+        std::vector<uint8_t> payload;
         payload.resize(metadata_block.header.metadata_data_block_length);
         RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(payload)));
+        metadata_block.payload = std::move(payload);
         break;
       }
     }

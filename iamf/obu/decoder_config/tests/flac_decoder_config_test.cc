@@ -29,13 +29,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-
-constexpr int16_t kAudioRollDistance = 0;
-
-TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
-  EXPECT_EQ(FlacDecoderConfig::GetRequiredAudioRollDistance(),
-            kAudioRollDistance);
-}
+using ::testing::ElementsAreArray;
+using ::testing::Eq;
 
 class FlacTest : public testing::Test {
  public:
@@ -87,6 +82,10 @@ class FlacTest : public testing::Test {
   absl::StatusCode expected_write_status_code_ = absl::StatusCode::kOk;
   std::vector<uint8_t> expected_decoder_config_payload_;
 };
+
+// ============================================================================
+// Write Tests
+// ============================================================================
 
 TEST_F(FlacTest, WriteDefault) {
   expected_decoder_config_payload_ = {
@@ -564,6 +563,16 @@ TEST_F(FlacTest, IllegalMd5SumNonZero) {
   TestWriteDecoderConfig();
 }
 
+// ============================================================================
+// Get Tests
+// ============================================================================
+
+TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
+  constexpr int16_t kAudioRollDistance = 0;
+  EXPECT_EQ(FlacDecoderConfig::GetRequiredAudioRollDistance(),
+            kAudioRollDistance);
+}
+
 TEST_F(FlacTest, GetOutputSampleRateMin) {
   first_stream_info_payload_->sample_rate =
       FlacMetaBlockStreamInfo::kMinSampleRate;
@@ -711,6 +720,10 @@ TEST_F(FlacTest, InvalidGetTotalNumSamplesInStreamWithNoStreamInfo) {
                    .ok());
 }
 
+// ============================================================================
+// Read Tests
+// ============================================================================
+
 TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
   std::vector<uint8_t> payload = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -737,7 +750,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       // MD5 sum.
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00};
-  ;
+
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
@@ -760,6 +773,86 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
   EXPECT_EQ(stream_info.bits_per_sample, 7);
   EXPECT_EQ(stream_info.total_samples_in_stream, 100);
   EXPECT_EQ(stream_info.md5_signature, FlacMetaBlockStreamInfo::kMd5Signature);
+}
+
+TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
+  std::vector<uint8_t> payload = {
+      // `last_metadata_block_flag` and `block_type` fields.
+      0 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
+      // `metadata_data_block_length`.
+      0, 0, 34,
+      // `minimum_block_size`.
+      0, 64,
+      // `maximum_block_size`.
+      0, 64,
+      // `minimum_frame_size`.
+      0, 0, 0,
+      // `maximum_frame_size`.
+      0, 0, 0,
+      // `sample_rate` (20 bits)
+      0x0b, 0xb8,
+      (0 << 4) |
+          // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
+          (FlacMetaBlockStreamInfo::kNumberOfChannels << 1),
+      15 << 4 |
+          // `total_samples_in_stream` (36 bits).
+          0,
+      0x00, 0x00, 0x00, 0x00,
+      // MD5 sum.
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      // `last_metadata_block_flag` and `block_type` fields.
+      0 << 7 | FlacMetaBlockHeader::kFlacPicture,
+      // `metadata_data_block_length`.
+      0, 0, 3,
+      // Payload.
+      'a', 'b', 'c',
+      // `last_metadata_block_flag` and `block_type` fields.
+      1 << 7 | FlacMetaBlockHeader::kFlacApplication,
+      // `metadata_data_block_length`.
+      0, 0, 3,
+      // Payload.
+      'd', 'e', 'f'};
+
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(payload));
+  FlacDecoderConfig decoder_config;
+  EXPECT_THAT(decoder_config.ReadAndValidate(
+                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+              IsOk());
+  // The StreamInfo block details are tested in the previous test.  Here, we'll
+  // just check that it is not labelled as the last block.
+  EXPECT_THAT(decoder_config.metadata_blocks_[0].header.block_type,
+              Eq(FlacMetaBlockHeader::kFlacStreamInfo));
+  EXPECT_FALSE(
+      decoder_config.metadata_blocks_[0].header.last_metadata_block_flag);
+
+  EXPECT_THAT(decoder_config.metadata_blocks_.size(), Eq(3));
+  auto& picture_block = decoder_config.metadata_blocks_[1];
+  auto& application_block = decoder_config.metadata_blocks_[2];
+
+  // Check that the subsequent blocks have the correct header (block type,
+  // payload length, last block flag).
+  EXPECT_THAT(picture_block.header.block_type,
+              Eq(FlacMetaBlockHeader::kFlacPicture));
+  EXPECT_THAT(application_block.header.block_type,
+              Eq(FlacMetaBlockHeader::kFlacApplication));
+  EXPECT_THAT(picture_block.header.metadata_data_block_length, Eq(3));
+  EXPECT_THAT(application_block.header.metadata_data_block_length, Eq(3));
+  EXPECT_FALSE(picture_block.header.last_metadata_block_flag);
+  EXPECT_TRUE(application_block.header.last_metadata_block_flag);
+
+  // Check that the subsequent blocks have the correct payload variant and
+  // contents.
+  EXPECT_TRUE(
+      std::holds_alternative<std::vector<uint8_t>>(picture_block.payload));
+  EXPECT_TRUE(
+      std::holds_alternative<std::vector<uint8_t>>(application_block.payload));
+  auto picture_payload = std::get<std::vector<uint8_t>>(picture_block.payload);
+  auto application_payload =
+      std::get<std::vector<uint8_t>>(application_block.payload);
+  EXPECT_THAT(picture_payload, ElementsAreArray({'a', 'b', 'c'}));
+  EXPECT_THAT(application_payload, ElementsAreArray({'d', 'e', 'f'}));
 }
 
 TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
@@ -788,7 +881,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
       // MD5 sum (invalid bit at end)
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x01};
-  ;
+
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
