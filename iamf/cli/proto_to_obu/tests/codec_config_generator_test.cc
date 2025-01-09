@@ -796,6 +796,26 @@ TEST_F(CodecConfigGeneratorTest, InvalidUnknownSamplingFrequencyIndex) {
   EXPECT_FALSE(InitAndGenerate().ok());
 }
 
+TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithImplicitSamplingFrequency) {
+  InitMetadataForAac(codec_config_metadata_);
+  codec_config_metadata_.at(0)
+      .mutable_codec_config()
+      ->mutable_decoder_config_aac()
+      ->mutable_decoder_specific_info()
+      ->set_sample_frequency_index(
+          iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_24000);
+
+  const auto output_obus = InitAndGenerate();
+  ASSERT_THAT(output_obus, IsOk());
+
+  const auto& audio_specific_config =
+      std::get<AacDecoderConfig>(
+          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
+          .decoder_specific_info_.audio_specific_config;
+  EXPECT_EQ(audio_specific_config.sample_frequency_index_,
+            AudioSpecificConfig::SampleFrequencyIndex::k24000);
+}
+
 TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithExplicitSamplingFrequency) {
   InitMetadataForAac(codec_config_metadata_);
   codec_config_metadata_.at(0)
