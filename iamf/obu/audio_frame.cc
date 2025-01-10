@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -76,7 +77,11 @@ absl::Status AudioFrameObu::ReadAndValidatePayloadDerived(int64_t payload_size,
   } else {
     audio_substream_id_ = header_.obu_type - kObuIaAudioFrameId0;
   }
-
+  if (payload_size < 0 || payload_size < encoded_uleb128_size) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Less than zero bytes remaining in payload. payload_size=",
+        payload_size, " encoded_uleb128_size=", encoded_uleb128_size));
+  }
   audio_frame_.resize(payload_size - encoded_uleb128_size);
   return rb.ReadUint8Span(absl::MakeSpan(audio_frame_));
 }
