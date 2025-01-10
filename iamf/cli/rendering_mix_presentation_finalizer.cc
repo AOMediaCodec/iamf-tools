@@ -435,7 +435,7 @@ absl::Status WriteRenderedSamples(const std::vector<int32_t>& rendered_samples,
                                     /*big_endian=*/false, native_samples.data(),
                                     write_position));
   }
-  wav_writer.WriteSamples(native_samples);
+  RETURN_IF_NOT_OK(wav_writer.WriteSamples(native_samples));
 
   return absl::OkStatus();
 }

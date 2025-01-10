@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
+#include "absl/status/status.h"
 
 namespace iamf_tools {
 
@@ -57,9 +58,9 @@ class WavWriter {
    *
    * \param buffer Buffer of raw input PCM with channels interlaced and no
    *        padding.
-   * \return `true` on success. `false` on failure.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  bool WriteSamples(const std::vector<uint8_t>& buffer);
+  absl::Status WriteSamples(const std::vector<uint8_t>& buffer);
 
   /*!\brief Aborts the write process and deletes the wav file.*/
   void Abort();

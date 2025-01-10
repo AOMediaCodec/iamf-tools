@@ -19,9 +19,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_reader.h"
+
+using ::absl_testing::IsOk;
 
 namespace iamf_tools {
 namespace {
@@ -75,7 +79,7 @@ TEST(WavWriterTest, WriteEmptySamplesSucceeds) {
   ASSERT_NE(wav_writer, nullptr);
 
   std::vector<uint8_t> empty_samples(0);
-  EXPECT_TRUE(wav_writer->WriteSamples(empty_samples));
+  EXPECT_THAT(wav_writer->WriteSamples(empty_samples), IsOk());
 }
 
 TEST(WavWriterTest, WriteIntegerSamplesSucceeds) {
@@ -85,7 +89,7 @@ TEST(WavWriterTest, WriteIntegerSamplesSucceeds) {
 
   // Bit depth = 16, and writing 6 bytes = 48 bits = 3 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer->WriteSamples(samples));
+  EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
 }
 
 TEST(WavWriterTest, WriteNonIntegerNumberOfSamplesFails) {
@@ -95,7 +99,7 @@ TEST(WavWriterTest, WriteNonIntegerNumberOfSamplesFails) {
 
   // Bit depth = 16, and writing 3 bytes = 24 bits = 1.5 samples fails.
   std::vector<uint8_t> samples(3, 0);
-  EXPECT_FALSE(wav_writer->WriteSamples(samples));
+  EXPECT_FALSE(wav_writer->WriteSamples(samples).ok());
 }
 
 TEST(WavWriterTest, WriteIntegerSamplesSucceedsWithoutHeader) {
@@ -106,7 +110,7 @@ TEST(WavWriterTest, WriteIntegerSamplesSucceedsWithoutHeader) {
 
   // Bit depth = 16, and writing 6 bytes = 48 bits = 3 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer->WriteSamples(samples));
+  EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
 }
 
 TEST(WavWriterTest, Write24BitSamplesSucceeds) {
@@ -116,7 +120,7 @@ TEST(WavWriterTest, Write24BitSamplesSucceeds) {
 
   // Bit depth = 24, and writing 6 bytes = 48 bits = 2 samples succeeds.
   std::vector<uint8_t> samples(6, 0);
-  EXPECT_TRUE(wav_writer->WriteSamples(samples));
+  EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
 }
 
 TEST(WavWriterTest, Write32BitSamplesSucceeds) {
@@ -126,7 +130,7 @@ TEST(WavWriterTest, Write32BitSamplesSucceeds) {
 
   // Bit depth = 32, and writing 8 bytes = 64 bits = 2 samples succeeds.
   std::vector<uint8_t> samples = {1, 0, 0, 0, 2, 0, 0, 0};
-  EXPECT_TRUE(wav_writer->WriteSamples(samples));
+  EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
 }
 
 TEST(WavWriterTest, FileExistsAndHasNonZeroSizeWithHeader) {
@@ -176,7 +180,7 @@ TEST(WavWriterTest, OutputFileHasCorrectSizeWithoutHeader) {
                           kSampleRateHz, kBitDepth16, /*write_header=*/false);
     ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
-    EXPECT_TRUE(wav_writer->WriteSamples(samples));
+    EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
   }
 
   std::error_code error_code;
@@ -200,7 +204,7 @@ TEST(WavWriterTest, Output16BitWavFileHasCorrectData) {
     ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer->WriteSamples(samples));
+    EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
   }
 
   auto wav_reader =
@@ -224,7 +228,7 @@ TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
     ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer->WriteSamples(samples));
+    EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
   }
 
   auto wav_reader =
@@ -248,7 +252,7 @@ TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
     ASSERT_NE(wav_writer, nullptr);
     std::vector<uint8_t> samples(kInputBytes, 0);
     std::iota(samples.begin(), samples.end(), 0);
-    EXPECT_TRUE(wav_writer->WriteSamples(samples));
+    EXPECT_THAT(wav_writer->WriteSamples(samples), IsOk());
   }
 
   auto wav_reader =

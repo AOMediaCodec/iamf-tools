@@ -24,9 +24,17 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
+#include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "src/dsp/write_wav_file.h"
 
 namespace iamf_tools {
+
+namespace {
+// Some audio to tactile functions return 0 on success and 1 on failure.
+constexpr int kAudioToTactileResultFailure = 0;
+constexpr int kAudioToTactileResultSuccess = 1;
+}  // namespace
 
 std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
                                              int num_channels,
@@ -64,7 +72,8 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
   // header.
   if (!write_header) {
     wav_header_writer = WavHeaderWriter();
-  } else if (wav_header_writer(file, 0, sample_rate_hz, num_channels) == 0) {
+  } else if (wav_header_writer(file, 0, sample_rate_hz, num_channels) ==
+             kAudioToTactileResultFailure) {
     LOG(ERROR) << "Error writing header of file \"" << wav_filename << "\"";
     return nullptr;
   }
@@ -90,28 +99,30 @@ WavWriter::~WavWriter() {
 }
 
 // Write samples for all channels.
-bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
+absl::Status WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
   if (file_ == nullptr) {
-    return false;
+    // Wav writer may have been aborted.
+    return absl::FailedPreconditionError(
+        "Wav writer is not accepting samples.");
   }
 
   const auto buffer_size = buffer.size();
 
   if (buffer_size == 0) {
     // Nothing to write.
-    return true;
+    return absl::OkStatus();
   }
 
   if (buffer_size % (bit_depth_ * num_channels_ / 8) != 0) {
-    LOG(ERROR) << "Must write an integer number of samples.";
-    return false;
+    return absl::InvalidArgumentError(
+        "Must write an integer number of samples.");
   }
 
   // Calculate how many samples there are.
   const int bytes_per_sample = bit_depth_ / 8;
   const size_t num_total_samples = (buffer_size) / bytes_per_sample;
 
-  int result = 0;
+  int write_sample_result = kAudioToTactileResultFailure;
   if (bit_depth_ == 16) {
     // Arrange the input samples into an int16_t to match the expected input of
     // `WriteWavSamples`.
@@ -121,7 +132,8 @@ bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
       samples[i / bytes_per_sample] = (buffer[i + 1] << 8) | buffer[i];
     }
 
-    result = WriteWavSamples(file_, samples.data(), samples.size());
+    write_sample_result =
+        WriteWavSamples(file_, samples.data(), samples.size());
   } else if (bit_depth_ == 24) {
     // Arrange the input samples into an int32_t to match the expected input of
     // `WriteWavSamples24Bit` with the lowest byte unused.
@@ -131,7 +143,8 @@ bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
       samples[i / bytes_per_sample] =
           (buffer[i + 2] << 24) | buffer[i + 1] << 16 | buffer[i] << 8;
     }
-    result = WriteWavSamples24Bit(file_, samples.data(), samples.size());
+    write_sample_result =
+        WriteWavSamples24Bit(file_, samples.data(), samples.size());
   } else if (bit_depth_ == 32) {
     // Arrange the input samples into an int32_t to match the expected input of
     // `WriteWavSamples32Bit`.
@@ -142,7 +155,8 @@ bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
                                       buffer[i + 2] << 16 | buffer[i + 1] << 8 |
                                       buffer[i];
     }
-    result = WriteWavSamples32Bit(file_, samples.data(), samples.size());
+    write_sample_result =
+        WriteWavSamples32Bit(file_, samples.data(), samples.size());
   } else {
     // This should never happen because the factory method would never create
     // an object with disallowed `bit_depth_` values.
@@ -150,12 +164,15 @@ bool WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
                << bit_depth_;
   }
 
-  if (result == 1) {
+  if (write_sample_result == kAudioToTactileResultSuccess) {
     total_samples_written_ += num_total_samples;
-    return true;
+    return absl::OkStatus();
   }
 
-  return false;
+  // It's not clear why this would happen.
+  return absl::UnknownError(
+      absl::StrCat("Error writing samples to wav file. write_sample_result= ",
+                   write_sample_result));
 }
 
 void WavWriter::Abort() {
