@@ -208,12 +208,12 @@ absl::Status GetObuSizeAndValidate(const LebGenerator& leb_generator,
 // Returns the size of the payload associated with the OBU, i.e. the number of
 // bytes that contain payload data. See
 // https://aomediacodec.github.io/iamf/#obu_size for more details.
-int64_t GetObuPayloadSize(const DecodedUleb128& obu_size,
-                          const uint8_t& num_samples_to_trim_at_end_size,
-                          const uint8_t& num_samples_to_trim_at_start_size,
-                          const uint8_t& extension_header_size_size,
-                          const uint8_t& extension_header_bytes_size) {
-  return obu_size -
+int64_t GetObuPayloadSize(DecodedUleb128 obu_size,
+                          uint8_t num_samples_to_trim_at_end_size,
+                          uint8_t num_samples_to_trim_at_start_size,
+                          uint8_t extension_header_size_size,
+                          uint8_t extension_header_bytes_size) {
+  return static_cast<int64_t>(obu_size) -
          (num_samples_to_trim_at_end_size + num_samples_to_trim_at_start_size +
           extension_header_size_size + extension_header_bytes_size);
 }
@@ -276,6 +276,10 @@ absl::Status ObuHeader::ReadAndValidate(
       obu_size, num_samples_to_trim_at_end_size,
       num_samples_to_trim_at_start_size, extension_header_size_size,
       extension_header_bytes.size());
+  if (output_payload_serialized_size < 0) {
+    return absl::InvalidArgumentError(
+        "obu_size not valid for OBU flags. Negative remaining payload size.");
+  }
 
   RETURN_IF_NOT_OK(Validate(*this));
 

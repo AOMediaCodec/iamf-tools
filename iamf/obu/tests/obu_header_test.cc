@@ -30,6 +30,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 // Max value of a decoded ULEB128.
 constexpr uint32_t kMaxUlebDecoded = UINT32_MAX;
@@ -923,6 +924,21 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 2);
   EXPECT_EQ(obu_header_.extension_header_size, 0);
   EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+}
+
+TEST_F(ObuHeaderTest, NegativePayloadSizeNotAcceptable) {
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size`
+                                      2,
+                                      // `num_samples_to_trim_at_end`.
+                                      0x80, 0x01,
+                                      // `num_samples_to_trim_at_start`.
+                                      0x02};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      Not(IsOk()));
 }
 
 }  // namespace
