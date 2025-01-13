@@ -66,7 +66,7 @@ class WavWriter : public SampleProcessorBase {
    *        padding.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  [[deprecated(("Use `SampleProcessorBase::PushFrame` instead."))]]
+  [[deprecated("Use `SampleProcessorBase::PushFrame` instead.")]]
   absl::Status WritePcmSamples(const std::vector<uint8_t>& buffer);
 
   /*!\brief Aborts the write process and deletes the wav file.*/
