@@ -39,6 +39,25 @@ Set the following fields in the textproto template.
     Set this to the desired output filename. The generated .iamf file will be
     named `file_name_prefix.iamf`.
 
+- `loudness`
+
+    Measure the loudness of the input audio, including the stereo downmix, and
+    store these values in the following loudness fields. IAMF decoders and
+    renderers can use this loudness metadata to normalize the output audio.
+
+    - `loudness.integrated_loudness`
+
+        This is the [ITU-R BS.1770-4](https://www.itu.int/rec/R-REC-BS.1770)
+        integrated loudness, specified in LKFS. Convert the loudness value to
+        the correct `int16` value to use here as `integrated_loudness =
+        integrated_loudness_in_lkfs * 256`.
+
+    - `loudness.digital_peak`
+
+        This is the digital (sampled) peak value of the audio signal, specified
+        in dBFS. Convert the peak value to the correct `int16` value to use here
+        as `digital_peak = digital_peak_in_dBFS * 256`.
+
 Optionally, modify other fields in the textproto template as necessary.
 
 - `channel_metadatas`
