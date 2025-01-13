@@ -12,6 +12,7 @@
 
 #include "iamf/cli/wav_writer.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -20,12 +21,16 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
+#include "iamf/common/macros.h"
+#include "iamf/common/obu_util.h"
 #include "src/dsp/write_wav_file.h"
 
 namespace iamf_tools {
@@ -34,6 +39,86 @@ namespace {
 // Some audio to tactile functions return 0 on success and 1 on failure.
 constexpr int kAudioToTactileResultFailure = 0;
 constexpr int kAudioToTactileResultSuccess = 1;
+
+// Write samples for all channels.
+absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
+                                  size_t num_channels, int bit_depth,
+                                  const std::vector<uint8_t>& buffer,
+                                  size_t& total_samples_accumulator) {
+  if (file == nullptr) {
+    // Wav writer may have been aborted.
+    return absl::FailedPreconditionError(
+        "Wav writer is not accepting samples.");
+  }
+
+  const auto buffer_size = buffer.size();
+
+  if (buffer_size == 0) {
+    // Nothing to write.
+    return absl::OkStatus();
+  }
+
+  if (buffer_size % (bit_depth * num_channels / 8) != 0) {
+    return absl::InvalidArgumentError(
+        "Must write an integer number of samples.");
+  }
+
+  // Calculate how many samples there are.
+  const int bytes_per_sample = bit_depth / 8;
+  const size_t num_total_samples = (buffer_size) / bytes_per_sample;
+
+  int write_sample_result = kAudioToTactileResultFailure;
+  if (bit_depth == 16) {
+    // Arrange the input samples into an int16_t to match the expected input of
+    // `WriteWavSamples`.
+    std::vector<int16_t> samples(num_total_samples, 0);
+    for (int i = 0; i < num_total_samples * bytes_per_sample;
+         i += bytes_per_sample) {
+      samples[i / bytes_per_sample] = (buffer[i + 1] << 8) | buffer[i];
+    }
+
+    write_sample_result = WriteWavSamples(file, samples.data(), samples.size());
+  } else if (bit_depth == 24) {
+    // Arrange the input samples into an int32_t to match the expected input of
+    // `WriteWavSamples24Bit` with the lowest byte unused.
+    std::vector<int32_t> samples(num_total_samples, 0);
+    for (int i = 0; i < num_total_samples * bytes_per_sample;
+         i += bytes_per_sample) {
+      samples[i / bytes_per_sample] =
+          (buffer[i + 2] << 24) | buffer[i + 1] << 16 | buffer[i] << 8;
+    }
+    write_sample_result =
+        WriteWavSamples24Bit(file, samples.data(), samples.size());
+  } else if (bit_depth == 32) {
+    // Arrange the input samples into an int32_t to match the expected input of
+    // `WriteWavSamples32Bit`.
+    std::vector<int32_t> samples(num_total_samples, 0);
+    for (int i = 0; i < num_total_samples * bytes_per_sample;
+         i += bytes_per_sample) {
+      samples[i / bytes_per_sample] = buffer[i + 3] << 24 |
+                                      buffer[i + 2] << 16 | buffer[i + 1] << 8 |
+                                      buffer[i];
+    }
+    write_sample_result =
+        WriteWavSamples32Bit(file, samples.data(), samples.size());
+  } else {
+    // This should never happen because the factory method would never create
+    // an object with disallowed `bit_depth_` values.
+    LOG(FATAL) << "WavWriter only supports 16, 24, and 32-bit samples; got "
+               << bit_depth;
+  }
+
+  if (write_sample_result == kAudioToTactileResultSuccess) {
+    total_samples_accumulator += num_total_samples;
+    return absl::OkStatus();
+  }
+
+  // It's not clear why this would happen.
+  return absl::UnknownError(
+      absl::StrCat("Error writing samples to wav file. write_sample_result= ",
+                   write_sample_result));
+}
+
 }  // namespace
 
 std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
@@ -98,81 +183,38 @@ WavWriter::~WavWriter() {
   std::fclose(file_);
 }
 
-// Write samples for all channels.
-absl::Status WavWriter::WriteSamples(const std::vector<uint8_t>& buffer) {
-  if (file_ == nullptr) {
-    // Wav writer may have been aborted.
-    return absl::FailedPreconditionError(
-        "Wav writer is not accepting samples.");
-  }
-
-  const auto buffer_size = buffer.size();
-
-  if (buffer_size == 0) {
-    // Nothing to write.
-    return absl::OkStatus();
-  }
-
-  if (buffer_size % (bit_depth_ * num_channels_ / 8) != 0) {
+absl::Status WavWriter::PushFrame(
+    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+  // Flatten down the serialized PCM for compatibility with the internal
+  // `WriteSamplesInternal` function.
+  const size_t num_ticks = time_channel_samples.size();
+  const size_t num_channels =
+      time_channel_samples.empty() ? 0 : time_channel_samples[0].size();
+  if (!std::all_of(
+          time_channel_samples.begin(), time_channel_samples.end(),
+          [&](const auto& tick) { return tick.size() == num_channels; })) {
     return absl::InvalidArgumentError(
-        "Must write an integer number of samples.");
+        "All ticks must have the same number of channels.");
   }
 
-  // Calculate how many samples there are.
-  const int bytes_per_sample = bit_depth_ / 8;
-  const size_t num_total_samples = (buffer_size) / bytes_per_sample;
-
-  int write_sample_result = kAudioToTactileResultFailure;
-  if (bit_depth_ == 16) {
-    // Arrange the input samples into an int16_t to match the expected input of
-    // `WriteWavSamples`.
-    std::vector<int16_t> samples(num_total_samples, 0);
-    for (int i = 0; i < num_total_samples * bytes_per_sample;
-         i += bytes_per_sample) {
-      samples[i / bytes_per_sample] = (buffer[i + 1] << 8) | buffer[i];
+  std::vector<uint8_t> samples_as_pcm(num_channels * num_ticks * bit_depth_ / 8,
+                                      0);
+  int write_position = 0;
+  for (const auto& tick : time_channel_samples) {
+    for (const auto& channel_sample : tick) {
+      RETURN_IF_NOT_OK(WritePcmSample(channel_sample, bit_depth_,
+                                      /*big_endian=*/false,
+                                      samples_as_pcm.data(), write_position));
     }
-
-    write_sample_result =
-        WriteWavSamples(file_, samples.data(), samples.size());
-  } else if (bit_depth_ == 24) {
-    // Arrange the input samples into an int32_t to match the expected input of
-    // `WriteWavSamples24Bit` with the lowest byte unused.
-    std::vector<int32_t> samples(num_total_samples, 0);
-    for (int i = 0; i < num_total_samples * bytes_per_sample;
-         i += bytes_per_sample) {
-      samples[i / bytes_per_sample] =
-          (buffer[i + 2] << 24) | buffer[i + 1] << 16 | buffer[i] << 8;
-    }
-    write_sample_result =
-        WriteWavSamples24Bit(file_, samples.data(), samples.size());
-  } else if (bit_depth_ == 32) {
-    // Arrange the input samples into an int32_t to match the expected input of
-    // `WriteWavSamples32Bit`.
-    std::vector<int32_t> samples(num_total_samples, 0);
-    for (int i = 0; i < num_total_samples * bytes_per_sample;
-         i += bytes_per_sample) {
-      samples[i / bytes_per_sample] = buffer[i + 3] << 24 |
-                                      buffer[i + 2] << 16 | buffer[i + 1] << 8 |
-                                      buffer[i];
-    }
-    write_sample_result =
-        WriteWavSamples32Bit(file_, samples.data(), samples.size());
-  } else {
-    // This should never happen because the factory method would never create
-    // an object with disallowed `bit_depth_` values.
-    LOG(FATAL) << "WavWriter only supports 16, 24, and 32-bit samples; got "
-               << bit_depth_;
   }
 
-  if (write_sample_result == kAudioToTactileResultSuccess) {
-    total_samples_written_ += num_total_samples;
-    return absl::OkStatus();
-  }
+  return WriteSamplesInternal(file_, num_channels_, bit_depth_, samples_as_pcm,
+                              total_samples_written_);
+}
 
-  // It's not clear why this would happen.
-  return absl::UnknownError(
-      absl::StrCat("Error writing samples to wav file. write_sample_result= ",
-                   write_sample_result));
+absl::Status WavWriter::WritePcmSamples(const std::vector<uint8_t>& buffer) {
+  return WriteSamplesInternal(file_, num_channels_, bit_depth_, buffer,
+                              total_samples_written_);
 }
 
 void WavWriter::Abort() {

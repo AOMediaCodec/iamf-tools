@@ -486,6 +486,7 @@ cc_test(
         "//iamf/cli:wav_reader",
         "//iamf/cli:wav_writer",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -524,12 +524,16 @@ cc_library(
     srcs = ["wav_writer.cc"],
     hdrs = ["wav_writer.h"],
     deps = [
+        "//iamf/common:macros",
+        "//iamf/common:obu_util",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
         "@com_google_audio_to_tactile//:dsp",
     ],
 )

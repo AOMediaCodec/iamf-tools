@@ -165,7 +165,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
           op_buffer_int32[i], ip_wav_bits_per_sample,
           /*big_endian=*/false, output_buffer_char.data(), write_position));
     }
-    RETURN_IF_NOT_OK(wav_writer.WriteSamples(output_buffer_char));
+    RETURN_IF_NOT_OK(wav_writer.WritePcmSamples(output_buffer_char));
 
     samples_remaining -= samples_read;
   }

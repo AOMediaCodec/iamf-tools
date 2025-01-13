@@ -22,6 +22,7 @@
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 
 namespace iamf_tools {
 
@@ -52,6 +53,16 @@ class WavWriter {
 
   /*!\brief Writes samples to the wav file.
    *
+   * There must be the same number of samples for each channel.
+   *
+   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushFrame(
+      absl::Span<const std::vector<int32_t>> time_channel_samples);
+
+  /*!\brief Writes samples to the wav file.
+   *
    * There must be an integer number of samples and the number of samples %
    * `num_channels()` must equal 0. The number of samples is implicitly
    * calculated by `buffer.size()` / (bit_depth / 8).
@@ -60,7 +71,8 @@ class WavWriter {
    *        padding.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status WriteSamples(const std::vector<uint8_t>& buffer);
+  [[deprecated(("Use `PushFrame` instead."))]]
+  absl::Status WritePcmSamples(const std::vector<uint8_t>& buffer);
 
   /*!\brief Aborts the write process and deletes the wav file.*/
   void Abort();

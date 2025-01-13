@@ -84,7 +84,7 @@ void AbortAllWavWriters(
 
 absl::Status FlushToWavWriter(std::vector<uint8_t>& samples_to_flush,
                               WavWriter& wav_writer) {
-  RETURN_IF_NOT_OK(wav_writer.WriteSamples(samples_to_flush));
+  RETURN_IF_NOT_OK(wav_writer.WritePcmSamples(samples_to_flush));
   samples_to_flush.clear();
   return absl::OkStatus();
 }
