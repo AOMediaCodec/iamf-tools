@@ -190,6 +190,23 @@ TEST(PushFrame, WriteChannelWithTooFewSamplesFails) {
   EXPECT_FALSE(wav_writer->PushFrame(absl::MakeConstSpan(samples)).ok());
 }
 
+TEST(PushFrame, ConsumesInputSamples) {
+  auto wav_writer =
+      WavWriter::Create(GetAndCleanupOutputFileName(".wav"), kNumChannels,
+                        kSampleRateHz, kBitDepth16, kMaxInputSamplesPerFrame);
+  ASSERT_NE(wav_writer, nullptr);
+  constexpr int kNumSamples = 3;
+  const std::vector<std::vector<int32_t>> samples(
+      kNumSamples, std::vector<int32_t>(kNumChannels, kSampleValue));
+
+  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(samples)), IsOk());
+
+  // The writer consumes all input samples, so
+  // `SampleProcessorBase::GetOutputSamplesAsSpan` will always return an empty
+  // span.
+  EXPECT_TRUE(wav_writer->GetOutputSamplesAsSpan().empty());
+}
+
 TEST(DeprecatedWritePcmSamples,
      DeprecatedWriteIntegerSamplesSucceedsWithoutHeader) {
   auto wav_writer =
@@ -311,15 +328,17 @@ TEST(WavWriterTest,
   EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
 }
 
-TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrame) {
+TEST(WavWriterTest,
+     Output16BitWavFileHasCorrectDataWithPushFrameAfterDestruction) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
       {0x01000000}, {0x03020000}, {0x05040000},
       {0x07060000}, {0x09080000}, {0x0b0a0000}};
   constexpr int kNumSamplesPerFrame = 6;
   {
-    // Create the writer in a small scope. It should be destroyed before
-    // checking the results.
+    // Create the writer in a small scope. The user can safely omit the call the
+    // `Flush()` method, but then they must wait until the writer is destroyed,
+    // to read the finalized header.
     auto wav_writer =
         WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                           kBitDepth16, kMaxInputSamplesPerFrame);
@@ -327,6 +346,31 @@ TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrame) {
     EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
                 IsOk());
   }
+
+  auto wav_reader =
+      CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
+  EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
+  EXPECT_TRUE(wav_reader.ReadFrame());
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+}
+
+TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrameAfterFlush) {
+  const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+      {0x01000000}, {0x03020000}, {0x05040000},
+      {0x07060000}, {0x09080000}, {0x0b0a0000}};
+  constexpr int kNumSamplesPerFrame = 6;
+
+  auto wav_writer =
+      WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
+                        kBitDepth16, kMaxInputSamplesPerFrame);
+  ASSERT_NE(wav_writer, nullptr);
+  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+              IsOk());
+  // Instead of waiting for the destructor to call `Flush()`, the user can call
+  // `Flush()` explicitly, to signal the wav header (including the total number
+  // of samples) to be finalized.
+  EXPECT_THAT(wav_writer->Flush(), IsOk());
 
   auto wav_reader =
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);

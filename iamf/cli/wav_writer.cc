@@ -29,6 +29,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "src/dsp/write_wav_file.h"
@@ -39,6 +40,10 @@ namespace {
 // Some audio to tactile functions return 0 on success and 1 on failure.
 constexpr int kAudioToTactileResultFailure = 0;
 constexpr int kAudioToTactileResultSuccess = 1;
+
+// This class is implemented to consume all samples without producing output
+// samples.
+constexpr size_t kMaxOutputSamplesPerFrame = 0;
 
 // Write samples for all channels.
 absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
@@ -130,6 +135,24 @@ absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
                    write_sample_result));
 }
 
+void MaybeFinalizeFile(size_t sample_rate_hz, size_t num_channels,
+                       auto& wav_header_writer, FILE*& file,
+                       size_t& total_samples_written) {
+  if (file == nullptr) {
+    return;
+  }
+
+  // Finalize the temporary header based on the total number of samples written
+  // and close the file.
+  if (wav_header_writer) {
+    std::fseek(file, 0, SEEK_SET);
+    wav_header_writer(file, total_samples_written, sample_rate_hz,
+                      num_channels);
+  }
+  std::fclose(file);
+  file = nullptr;
+}
+
 }  // namespace
 
 std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
@@ -181,21 +204,12 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
 }
 
 WavWriter::~WavWriter() {
-  if (file_ == nullptr) {
-    return;
-  }
-
-  // Finalize the temporary header based on the total number of samples written
-  // and close the file.
-  if (wav_header_writer_) {
-    std::fseek(file_, 0, SEEK_SET);
-    wav_header_writer_(file_, total_samples_written_, sample_rate_hz_,
-                       num_channels_);
-  }
-  std::fclose(file_);
+  // Finalize the header, in case the user did not call `Flush()`.
+  MaybeFinalizeFile(sample_rate_hz_, num_channels_, wav_header_writer_, file_,
+                    total_samples_written_);
 }
 
-absl::Status WavWriter::PushFrame(
+absl::Status WavWriter::PushFrameDerived(
     absl::Span<const std::vector<int32_t>> time_channel_samples) {
   // Flatten down the serialized PCM for compatibility with the internal
   // `WriteSamplesInternal` function.
@@ -221,13 +235,20 @@ absl::Status WavWriter::PushFrame(
   }
 
   return WriteSamplesInternal(file_, num_channels_, bit_depth_,
-                              num_samples_per_frame_, samples_as_pcm,
+                              max_input_samples_per_frame_, samples_as_pcm,
                               total_samples_written_);
+}
+
+absl::Status WavWriter::FlushDerived() {
+  // No more samples are coming, finalize the header and close the file.
+  MaybeFinalizeFile(sample_rate_hz_, num_channels_, wav_header_writer_, file_,
+                    total_samples_written_);
+  return absl::OkStatus();
 }
 
 absl::Status WavWriter::WritePcmSamples(const std::vector<uint8_t>& buffer) {
   return WriteSamplesInternal(file_, num_channels_, bit_depth_,
-                              num_samples_per_frame_, buffer,
+                              max_input_samples_per_frame_, buffer,
                               total_samples_written_);
 }
 
@@ -241,10 +262,10 @@ WavWriter::WavWriter(const std::string& filename_to_remove, int num_channels,
                      int sample_rate_hz, int bit_depth,
                      size_t num_samples_per_frame, FILE* file,
                      WavHeaderWriter wav_header_writer)
-    : num_channels_(num_channels),
+    : SampleProcessorBase(num_samples_per_frame, num_channels,
+                          kMaxOutputSamplesPerFrame),
       sample_rate_hz_(sample_rate_hz),
       bit_depth_(bit_depth),
-      num_samples_per_frame_(num_samples_per_frame),
       total_samples_written_(0),
       file_(file),
       filename_to_remove_(filename_to_remove),

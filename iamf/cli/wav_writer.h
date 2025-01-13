@@ -23,10 +23,12 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/cli/sample_processor_base.h"
 
 namespace iamf_tools {
 
-class WavWriter {
+/*!\brief Write samples to a wav (or pcm) file, then consumes the samples. */
+class WavWriter : public SampleProcessorBase {
  public:
   /*!\brief Factory function to create a `WavWriter`.
    *
@@ -56,16 +58,6 @@ class WavWriter {
 
   /*!\brief Writes samples to the wav file.
    *
-   * There must be the same number of samples for each channel.
-   *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status PushFrame(
-      absl::Span<const std::vector<int32_t>> time_channel_samples);
-
-  /*!\brief Writes samples to the wav file.
-   *
    * There must be an integer number of samples and the number of samples %
    * `num_channels()` must equal 0. The number of samples is implicitly
    * calculated by `buffer.size()` / (bit_depth / 8).
@@ -74,7 +66,7 @@ class WavWriter {
    *        padding.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  [[deprecated(("Use `PushFrame` instead."))]]
+  [[deprecated(("Use `SampleProcessorBase::PushFrame` instead."))]]
   absl::Status WritePcmSamples(const std::vector<uint8_t>& buffer);
 
   /*!\brief Aborts the write process and deletes the wav file.*/
@@ -99,10 +91,31 @@ class WavWriter {
             int sample_rate_hz, int bit_depth, size_t num_samples_per_frame,
             FILE* file, WavHeaderWriter wav_header_writer);
 
-  const size_t num_channels_;
+  /*!\brief Writes samples to the wav file and consumes them.
+   *
+   * Since the samples are consumed, the
+   * `SampleProcessorBase::GetOutputSamplesAsSpan` method will always return an
+   * empty span.
+   *
+   * There must be the same number of samples for each channel.
+   *
+   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushFrameDerived(
+      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+
+  /*!\brief Signals that no more samples will be pushed.
+   *
+   * After calling `Flush()`, it is invalid to call `PushFrame()`
+   * or `Flush()` again.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status FlushDerived() override;
+
   const size_t sample_rate_hz_;
   const size_t bit_depth_;
-  const size_t num_samples_per_frame_;
   size_t total_samples_written_;
   FILE* file_;
   const std::string filename_to_remove_;

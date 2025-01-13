@@ -524,6 +524,7 @@ cc_library(
     srcs = ["wav_writer.cc"],
     hdrs = ["wav_writer.h"],
     deps = [
+        ":sample_processor_base",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "@com_google_absl//absl/base:nullability",
