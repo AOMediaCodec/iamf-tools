@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/encoder_main_lib.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
@@ -57,11 +58,12 @@ using iamf_tools_cli_proto::UserMetadata;
 std::unique_ptr<WavWriter> ProduceAllWavWriters(
     DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
     const Layout&, const std::filesystem::path& prefix, int num_channels,
-    int sample_rate, int bit_depth) {
+    int sample_rate, int bit_depth, size_t max_input_samples_per_frame) {
   const auto wav_path = absl::StrCat(
       prefix.string(), "_rendered_id_", mix_presentation_id, "_sub_mix_",
       sub_mix_index, "_layout_", layout_index, ".wav");
-  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth);
+  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                           max_input_samples_per_frame);
 }
 
 absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {

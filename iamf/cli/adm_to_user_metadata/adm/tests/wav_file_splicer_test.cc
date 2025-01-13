@@ -26,6 +26,8 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/ia_sequence_header.h"
 
+// TODO(b/384048095): Add better tests for spliced wav files with LFE channels.
+
 namespace iamf_tools {
 namespace adm_to_user_metadata {
 namespace {

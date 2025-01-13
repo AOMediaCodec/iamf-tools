@@ -77,15 +77,18 @@ absl::Status CollectAudioElementsInSubMix(
   return absl::OkStatus();
 }
 
-absl::Status GetCommonSampleRateAndBitDepthFromAudioElementIds(
+absl::Status GetCommonCodecConfigPropertiesFromAudioElementIds(
     const std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix,
     uint32_t& common_sample_rate, uint8_t& common_bit_depth,
-    bool& requires_resampling) {
+    uint32_t& common_num_samples_per_frame, bool& requires_resampling) {
   absl::flat_hash_set<uint32_t> sample_rates;
+  absl::flat_hash_set<uint32_t> num_samples_per_frame;
   absl::flat_hash_set<uint8_t> bit_depths;
 
   // Get all the bit-depths and sample_rates from each Audio Element.
   for (const auto* audio_element : audio_elements_in_sub_mix) {
+    num_samples_per_frame.insert(
+        audio_element->codec_config->GetNumSamplesPerFrame());
     sample_rates.insert(audio_element->codec_config->GetOutputSampleRate());
     bit_depths.insert(
         audio_element->codec_config->GetBitDepthToMeasureLoudness());
@@ -94,6 +97,13 @@ absl::Status GetCommonSampleRateAndBitDepthFromAudioElementIds(
   RETURN_IF_NOT_OK(GetCommonSampleRateAndBitDepth(
       sample_rates, bit_depths, common_sample_rate, common_bit_depth,
       requires_resampling));
+  if (num_samples_per_frame.size() != 1) {
+    return absl::InvalidArgumentError(
+        "Audio elements in a submix must have the same number of samples per "
+        "frame.");
+  }
+  common_num_samples_per_frame = *num_samples_per_frame.begin();
+
   return absl::OkStatus();
 }
 
@@ -526,7 +536,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
     int sub_mix_index,
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
     uint32_t common_sample_rate, uint8_t loudness_calculator_bit_depth,
-    uint8_t wav_file_bit_depth,
+    uint8_t wav_file_bit_depth, uint32_t common_num_samples_per_frame,
     std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
   output_layout_rendering_metadata.resize(sub_mix.layouts.size());
   for (int layout_index = 0; layout_index < sub_mix.layouts.size();
@@ -561,7 +571,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
     layout_rendering_metadata.wav_writer = wav_writer_factory(
         mix_presentation_id, sub_mix_index, layout_index,
         layout.loudness_layout, file_path_prefix, num_channels,
-        common_sample_rate, wav_file_bit_depth);
+        common_sample_rate, wav_file_bit_depth, common_num_samples_per_frame);
   }
 
   return absl::OkStatus();
@@ -606,10 +616,11 @@ absl::Status GenerateRenderingMetadataForSubmixes(
 
     // Data common to all audio elements and layouts.
     bool requires_resampling;
-    RETURN_IF_NOT_OK(GetCommonSampleRateAndBitDepthFromAudioElementIds(
+    uint32_t common_num_samples_per_frame;
+    RETURN_IF_NOT_OK(GetCommonCodecConfigPropertiesFromAudioElementIds(
         audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
         submix_rendering_metadata.loudness_calculator_bit_depth,
-        requires_resampling));
+        common_num_samples_per_frame, requires_resampling));
     if (requires_resampling) {
       // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
       return absl::UnimplementedError(
@@ -630,7 +641,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
         submix_rendering_metadata.loudness_calculator_bit_depth,
         submix_rendering_metadata.wav_file_bit_depth,
-        layout_rendering_metadata));
+        common_num_samples_per_frame, layout_rendering_metadata));
   }
   return absl::OkStatus();
 }

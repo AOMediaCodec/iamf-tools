@@ -43,6 +43,7 @@ constexpr int kAudioToTactileResultSuccess = 1;
 // Write samples for all channels.
 absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
                                   size_t num_channels, int bit_depth,
+                                  size_t max_num_samples_per_frame,
                                   const std::vector<uint8_t>& buffer,
                                   size_t& total_samples_accumulator) {
   if (file == nullptr) {
@@ -66,6 +67,16 @@ absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
   // Calculate how many samples there are.
   const int bytes_per_sample = bit_depth / 8;
   const size_t num_total_samples = (buffer_size) / bytes_per_sample;
+  const size_t num_samples_per_channel = num_total_samples / num_channels;
+  if (num_samples_per_channel > max_num_samples_per_frame) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Too many samples per frame. The `WavWriter` is "
+                     "configured with a maximum number of "
+                     "samples per frame of: ",
+                     max_num_samples_per_frame,
+                     ". The number of samples per frame received is: ",
+                     num_samples_per_channel));
+  }
 
   int write_sample_result = kAudioToTactileResultFailure;
   if (bit_depth == 16) {
@@ -124,6 +135,7 @@ absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
 std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
                                              int num_channels,
                                              int sample_rate_hz, int bit_depth,
+                                             size_t num_samples_per_frame,
                                              bool write_header) {
   // Open the file to write to.
   LOG(INFO) << "Writer \"" << wav_filename << "\"";
@@ -163,9 +175,9 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
     return nullptr;
   }
 
-  return absl::WrapUnique(new WavWriter(wav_filename, num_channels,
-                                        sample_rate_hz, bit_depth, file,
-                                        std::move(wav_header_writer)));
+  return absl::WrapUnique(
+      new WavWriter(wav_filename, num_channels, sample_rate_hz, bit_depth,
+                    num_samples_per_frame, file, std::move(wav_header_writer)));
 }
 
 WavWriter::~WavWriter() {
@@ -208,12 +220,14 @@ absl::Status WavWriter::PushFrame(
     }
   }
 
-  return WriteSamplesInternal(file_, num_channels_, bit_depth_, samples_as_pcm,
+  return WriteSamplesInternal(file_, num_channels_, bit_depth_,
+                              num_samples_per_frame_, samples_as_pcm,
                               total_samples_written_);
 }
 
 absl::Status WavWriter::WritePcmSamples(const std::vector<uint8_t>& buffer) {
-  return WriteSamplesInternal(file_, num_channels_, bit_depth_, buffer,
+  return WriteSamplesInternal(file_, num_channels_, bit_depth_,
+                              num_samples_per_frame_, buffer,
                               total_samples_written_);
 }
 
@@ -224,11 +238,13 @@ void WavWriter::Abort() {
 }
 
 WavWriter::WavWriter(const std::string& filename_to_remove, int num_channels,
-                     int sample_rate_hz, int bit_depth, FILE* file,
+                     int sample_rate_hz, int bit_depth,
+                     size_t num_samples_per_frame, FILE* file,
                      WavHeaderWriter wav_header_writer)
     : num_channels_(num_channels),
       sample_rate_hz_(sample_rate_hz),
       bit_depth_(bit_depth),
+      num_samples_per_frame_(num_samples_per_frame),
       total_samples_written_(0),
       file_(file),
       filename_to_remove_(filename_to_remove),

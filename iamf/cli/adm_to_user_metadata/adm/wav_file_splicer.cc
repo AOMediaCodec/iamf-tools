@@ -45,6 +45,12 @@ namespace {
 
 constexpr int32_t kBitsPerByte = 8;
 constexpr size_t kSizeToFlush = 4096;
+
+// Arbitrary limit on how many samples will be written to the wav file at
+// once. Chosen to agree with `kSizeToFlush`, even if there are 16-bit
+// samples and one channel.
+constexpr size_t kMaxNumSamplesPerFrame = kSizeToFlush / 2;
+
 // Error tolerance set to the minimum precision allowed by ADM file to describe
 // timing related parameters.
 constexpr double kErrorTolerance = 1e-5;
@@ -305,7 +311,7 @@ absl::Status ConvertFromObjectsTo3OA(
   // Output channels set to 16 as objects get panned to 3OA.
   auto output_wav_writer = WavWriter::Create(
       output_file.string(), kOutputWavChannels, wav_file_fmt.samples_per_sec,
-      wav_file_fmt.bits_per_sample);
+      wav_file_fmt.bits_per_sample, kMaxNumSamplesPerFrame);
 
   // Calculate number of bytes per sample based on bits per sample.
   const int32_t bytes_per_sample =
@@ -383,7 +389,8 @@ absl::Status ConvertFromObjectsTo3OA(
     {
       auto wav_writer = WavWriter::Create(
           input_file.string(), wav_file_fmt.num_channels,
-          wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample);
+          wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample,
+          kMaxNumSamplesPerFrame);
       // Compute the length of audio samples corresponding to the current
       // segment duration. The samples excluded due the rounding error at each
       // segment is accounted in the next segment.
@@ -445,14 +452,15 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
   // the wav writer corresponding to non-LFE channels and subsequent indices
   // correspond to each LFE channel present.
   std::vector<std::unique_ptr<WavWriter>> nonlfe_lfe_wav_writer;
-  nonlfe_lfe_wav_writer.emplace_back(WavWriter::Create(
-      non_lfe_file_path, non_lfe_count, samples_per_sec, bits_per_sample));
+  nonlfe_lfe_wav_writer.emplace_back(
+      WavWriter::Create(non_lfe_file_path, non_lfe_count, samples_per_sec,
+                        bits_per_sample, kMaxNumSamplesPerFrame));
   for (int lfe_index = 1; lfe_index <= lfe_ids.size(); ++lfe_index) {
     nonlfe_lfe_wav_writer.emplace_back(WavWriter::Create(
         (output_file_path /
          absl::StrCat(file_prefix, "_converted", lfe_index + 1, ".wav"))
             .string(),
-        1, samples_per_sec, bits_per_sample));
+        1, samples_per_sec, bits_per_sample, kMaxNumSamplesPerFrame));
   }
 
   // The samples in the input wav are packed in a channel-interleaved fashion.
@@ -603,7 +611,8 @@ absl::Status SpliceWavFilesFromAdm(
                                            audio_object_index + 1, ".wav"))
               .string(),
           audio_tracks_for_audio_objects[audio_object_index].size(),
-          wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample));
+          wav_file_fmt.samples_per_sec, wav_file_fmt.bits_per_sample,
+          kMaxNumSamplesPerFrame));
     }
 
     // Write audio samples into the corresponding output wav file(s).

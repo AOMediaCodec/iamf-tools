@@ -39,9 +39,12 @@
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/cli/wav_writer.h"
@@ -50,6 +53,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 namespace {
@@ -76,7 +80,14 @@ constexpr uint32_t kCommonParameterRate = kSampleRate;
 constexpr uint32_t kNumSamplesPerFrame = 8;
 constexpr uint8_t kCodecConfigBitDepth = 16;
 constexpr uint8_t kNoTrimFromEnd = 0;
+constexpr std::array<DecodedUleb128, 1> kMonoSubstreamIds = {0};
+constexpr std::array<DecodedUleb128, 1> kStereoSubstreamIds = {1};
+
 constexpr std::array<ChannelLabel::Label, 2> kStereoLabels = {kL2, kR2};
+
+typedef ::google::protobuf::RepeatedPtrField<
+    iamf_tools_cli_proto::CodecConfigObuMetadata>
+    CodecConfigObuMetadatas;
 
 class MockRenderer : public AudioElementRendererBase {
  public:
@@ -167,17 +178,18 @@ std::string GetFirstSubmixFirstLayoutExpectedPath() {
                       kMixPresentationId, kSuffixAfterMixPresentationId);
 }
 
-std::unique_ptr<WavWriter> ProduceNoWavWriters(DecodedUleb128, int, int,
-                                               const Layout&,
-                                               const std::filesystem::path&,
-                                               int, int, int) {
+std::unique_ptr<WavWriter> ProduceNoWavWriters(
+    DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
+    int /*layout_index*/, const Layout& /*layout*/,
+    const std::filesystem::path& /*prefix*/, int /*num_channels*/,
+    int /*sample_rate*/, int /*bit_depth*/, size_t /*num_samples_per_frame*/) {
   return nullptr;
 }
 
 std::unique_ptr<WavWriter> ProduceFirstSubMixFirstLayoutWavWriter(
     DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
     const Layout&, const std::filesystem::path& prefix, int num_channels,
-    int sample_rate, int bit_depth) {
+    int sample_rate, int bit_depth, size_t num_samples_per_frame) {
   if (sub_mix_index != 0 || layout_index != 0) {
     return nullptr;
   }
@@ -185,14 +197,13 @@ std::unique_ptr<WavWriter> ProduceFirstSubMixFirstLayoutWavWriter(
   const auto wav_path =
       absl::StrCat(prefix.string(), "_id_", mix_presentation_id,
                    kSuffixAfterMixPresentationId);
-  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth);
+  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                           num_samples_per_frame);
 }
 
 class FinalizerTest : public ::testing::Test {
  public:
   void InitPrerequisiteObusForMonoInput(DecodedUleb128 audio_element_id) {
-    const std::vector<DecodedUleb128> kMonoSubstreamIds = {0};
-
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_configs_);
     AddScalableAudioElementWithSubstreamIds(
@@ -201,8 +212,6 @@ class FinalizerTest : public ::testing::Test {
   }
 
   void InitPrerequisiteObusForStereoInput(DecodedUleb128 audio_element_id) {
-    const std::vector<DecodedUleb128> kStereoSubstreamIds = {0};
-
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                           codec_configs_);
     AddScalableAudioElementWithSubstreamIds(
@@ -319,6 +328,40 @@ TEST_F(FinalizerTest,
   loudness_calculator_factory_ = nullptr;
 
   CreateFinalizerExpectOk();
+}
+
+TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
+  // The first audio element references an LPCM codec config.
+  renderer_factory_ = std::make_unique<AlwaysNullRendererFactory>();
+  CodecConfigObuMetadatas metadata;
+  metadata.Add(CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
+      kCodecConfigId, 960));
+  constexpr uint32_t kSecondCodecConfigId = kCodecConfigId + 1;
+  metadata.Add(CodecConfigObuMetadataBuilder::GetOpusCodecConfigObuMetadata(
+      kSecondCodecConfigId, 1920));
+  CodecConfigGenerator generator(metadata);
+  ASSERT_THAT(generator.Generate(codec_configs_), IsOk());
+
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kMono, kAudioElementId, kCodecConfigId,
+      kMonoSubstreamIds, codec_configs_, audio_elements_);
+  // The second audio element references a codec Config with a different
+  // number of samples per frame.
+  constexpr DecodedUleb128 kStereoAudioElementId = kAudioElementId + 1;
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kStereo, kStereoAudioElementId, kSecondCodecConfigId,
+      kStereoSubstreamIds, codec_configs_, audio_elements_);
+  // Mixing these is invalid because there must be only one codec config in IAMF
+  // v1.1.0.
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId, kStereoAudioElementId},
+      /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
+
+  EXPECT_FALSE(RenderingMixPresentationFinalizer::Create(
+                   output_directory_, output_wav_file_bit_depth_override_,
+                   renderer_factory_.get(), loudness_calculator_factory_.get(),
+                   audio_elements_, wav_writer_factory_, obus_to_finalize_)
+                   .ok());
 }
 
 // =========== Tests that work is delegated to the renderer factory. ===========

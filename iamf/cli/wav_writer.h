@@ -34,15 +34,18 @@ class WavWriter {
    * the number of samples in advance.
    *
    * \param wav_filename Path of the file to write to.
-   * \param num_channels Number of channels in the wav file, must be 1 or 2.
+   * \param num_channels Number of channels in the wav file.
    * \param sample_rate_hz Sample rate of the wav file in Hz.
    * \param bit_depth Bit-depth of the wav file, must be 16, 24, or 32.
+   * \param num_samples_per_frame Number of samples per frame. Subsequent writes
+   *        must use at most this number of samples.
    * \param write_header If true, the wav header is written.
    * \return Unique pointer to `WavWriter` on success. `nullptr` otherwise.
    */
   static std::unique_ptr<WavWriter> Create(const std::string& wav_filename,
                                            int num_channels, int sample_rate_hz,
                                            int bit_depth,
+                                           size_t num_samples_per_frame,
                                            bool write_header = true);
 
   /*!\brief Finalizes the wav header and closes the underlying file.*/
@@ -86,17 +89,20 @@ class WavWriter {
    *        file when aborting.
    * \param num_channels Number of channels in the wav file, must be 1 or 2.
    * \param sample_rate_hz Sample rate of the wav file in Hz.
+   *  \param num_samples_per_frame Number of samples per frame. Subsequent
+   *         writes must use at most this number of samples.
    * \param bit_depth Bit-depth of the wav file, must be 16, 24, or 32.
    * \param file Pointer to the file to write to.
    * \param wav_header_writer Function that writes the header if non-empty.
    */
   WavWriter(const std::string& filename_to_remove, int num_channels,
-            int sample_rate_hz, int bit_depth, FILE* file,
-            WavHeaderWriter wav_header_writer);
+            int sample_rate_hz, int bit_depth, size_t num_samples_per_frame,
+            FILE* file, WavHeaderWriter wav_header_writer);
 
   const size_t num_channels_;
   const size_t sample_rate_hz_;
   const size_t bit_depth_;
+  const size_t num_samples_per_frame_;
   size_t total_samples_written_;
   FILE* file_;
   const std::string filename_to_remove_;

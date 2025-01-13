@@ -387,7 +387,10 @@ cc_test(
         "//iamf/cli:rendering_mix_presentation_finalizer",
         "//iamf/cli:wav_reader",
         "//iamf/cli:wav_writer",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto_to_obu:codec_config_generator",
         "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
@@ -401,6 +404,7 @@ cc_test(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
     ],
 )
 

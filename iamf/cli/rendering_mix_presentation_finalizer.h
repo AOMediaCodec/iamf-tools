@@ -13,6 +13,7 @@
 #ifndef CLI_RENDERING_MIX_PRESENTATION_FINALIZER_H_
 #define CLI_RENDERING_MIX_PRESENTATION_FINALIZER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <list>
@@ -109,12 +110,14 @@ class RenderingMixPresentationFinalizer {
    * \param num_channels Number of channels.
    * \param sample_rate Sample rate.
    * \param bit_depth Bit depth.
+   * \param num_samples_per_frame Number of samples per frame.
    * \return Unique pointer to a wav writer or `nullptr` if none is desired.
    */
   typedef absl::AnyInvocable<std::unique_ptr<WavWriter>(
       DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
       const Layout& layout, const std::filesystem::path& prefix,
-      int num_channels, int sample_rate, int bit_depth) const>
+      int num_channels, int sample_rate, int bit_depth,
+      size_t num_samples_per_frame) const>
       WavWriterFactory;
 
   /*!\brief Creates a rendering mix presentation finalizer.
