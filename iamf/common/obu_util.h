@@ -33,7 +33,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/common/macros.h"
 
 namespace iamf_tools {
 
@@ -369,7 +368,10 @@ absl::Status ConvertTimeChannelToInterleaved(
   for (const auto& tick : input) {
     for (const auto& sample : tick) {
       OutputType transformed_sample;
-      RETURN_IF_NOT_OK(transform_samples(sample, transformed_sample));
+      auto status = transform_samples(sample, transformed_sample);
+      if (!status.ok()) {
+        return status;
+      }
       output.emplace_back(transformed_sample);
     }
   }
