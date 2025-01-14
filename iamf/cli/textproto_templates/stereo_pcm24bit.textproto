@@ -17,6 +17,19 @@ test_vector_metadata {
   is_valid: true
 }
 
+audio_frame_metadata {
+  wav_filename: "TEMPLATE_stereo.wav"
+  samples_to_trim_at_end_includes_padding: false
+  samples_to_trim_at_start_includes_codec_delay: false
+  samples_to_trim_at_end: 0
+  samples_to_trim_at_start: 0
+  audio_element_id: 300
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_R_2 }
+  ]
+}
+
 ia_sequence_header_metadata {
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
@@ -106,19 +119,6 @@ mix_presentation_metadata {
       }
     }
   }
-}
-
-audio_frame_metadata {
-  wav_filename: "TEMPLATE_stereo.wav"
-  samples_to_trim_at_end_includes_padding: false
-  samples_to_trim_at_start_includes_codec_delay: false
-  samples_to_trim_at_end: 0
-  samples_to_trim_at_start: 0
-  audio_element_id: 300
-  channel_metadatas: [
-    { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
-    { channel_id: 1 channel_label: CHANNEL_LABEL_R_2 }
-  ]
 }
 
 temporal_delimiter_metadata {

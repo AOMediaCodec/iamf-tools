@@ -17,6 +17,29 @@ test_vector_metadata {
   is_valid: true
 }
 
+audio_frame_metadata {
+  wav_filename: "TEMPLATE_7dot1dot4.wav"
+  samples_to_trim_at_end_includes_padding: false
+  samples_to_trim_at_start_includes_codec_delay: false
+  samples_to_trim_at_end: 0
+  samples_to_trim_at_start: 0
+  audio_element_id: 300
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_L_7 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_R_7 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_CENTRE },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_LFE },
+    { channel_id: 4 channel_label: CHANNEL_LABEL_LSS_7 },
+    { channel_id: 5 channel_label: CHANNEL_LABEL_RSS_7 },
+    { channel_id: 6 channel_label: CHANNEL_LABEL_LRS_7 },
+    { channel_id: 7 channel_label: CHANNEL_LABEL_RRS_7 },
+    { channel_id: 8 channel_label: CHANNEL_LABEL_LTF_4 },
+    { channel_id: 9 channel_label: CHANNEL_LABEL_RTF_4 },
+    { channel_id: 10 channel_label: CHANNEL_LABEL_LTB_4 },
+    { channel_id: 11 channel_label: CHANNEL_LABEL_RTB_4 }
+  ]
+}
+
 ia_sequence_header_metadata {
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
@@ -122,29 +145,6 @@ mix_presentation_metadata {
       }
     }
   }
-}
-
-audio_frame_metadata {
-  wav_filename: "TEMPLATE_7dot1dot4.wav"
-  samples_to_trim_at_end_includes_padding: false
-  samples_to_trim_at_start_includes_codec_delay: false
-  samples_to_trim_at_end: 0
-  samples_to_trim_at_start: 0
-  audio_element_id: 300
-  channel_metadatas: [
-    { channel_id: 0 channel_label: CHANNEL_LABEL_L_7 },
-    { channel_id: 1 channel_label: CHANNEL_LABEL_R_7 },
-    { channel_id: 2 channel_label: CHANNEL_LABEL_CENTRE },
-    { channel_id: 3 channel_label: CHANNEL_LABEL_LFE },
-    { channel_id: 4 channel_label: CHANNEL_LABEL_LSS_7 },
-    { channel_id: 5 channel_label: CHANNEL_LABEL_RSS_7 },
-    { channel_id: 6 channel_label: CHANNEL_LABEL_LRS_7 },
-    { channel_id: 7 channel_label: CHANNEL_LABEL_RRS_7 },
-    { channel_id: 8 channel_label: CHANNEL_LABEL_LTF_4 },
-    { channel_id: 9 channel_label: CHANNEL_LABEL_RTF_4 },
-    { channel_id: 10 channel_label: CHANNEL_LABEL_LTB_4 },
-    { channel_id: 11 channel_label: CHANNEL_LABEL_RTB_4 }
-  ]
 }
 
 temporal_delimiter_metadata {
