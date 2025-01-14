@@ -450,32 +450,30 @@ std::unique_ptr<StreamBasedReadBitBuffer> StreamBasedReadBitBuffer::Create(
     LOG(ERROR) << "StreamBasedReadBitBuffer capacity must be >= 0.";
     return nullptr;
   }
-  // The buffer is sized to hold at most twice the size of the largest possible
-  // OBU. `source_size` is in bits while max size is in bytes, so we convert
-  // accordingly.
-  return absl::WrapUnique(new StreamBasedReadBitBuffer(
-      capacity, kEntireObuSizeMaxTwoMegabytes * 2 * 8));
+  // Since this is a stream based buffer, we do not initialize with any data,
+  // hence the source size is initially set to 0.
+  return absl::WrapUnique(
+      new StreamBasedReadBitBuffer(capacity, /*source_size=*/0));
 }
 
 absl::Status StreamBasedReadBitBuffer::PushBytes(
     const std::vector<uint8_t>& bytes) {
-  if (bytes.size() > ((source_size_ / 8) - source_vector_.size())) {
+  if (bytes.size() > ((max_source_size_ / 8) - source_vector_.size())) {
     return absl::InvalidArgumentError(
         "Cannot push more bytes than the available space in the source.");
   }
   // Copy the bytes to the source vector; this is added to the end in case there
   // are already some bytes in the source.
   source_vector_.insert(source_vector_.end(), bytes.begin(), bytes.end());
+  // The source grows as bytes are pushed.
+  source_size_ += bytes.size() * 8;
   return absl::OkStatus();
-}
-
-absl::Status StreamBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
-                                                         int64_t num_bytes) {
-  return absl::UnimplementedError("Not implemented.");
 }
 
 StreamBasedReadBitBuffer::StreamBasedReadBitBuffer(size_t capacity,
                                                    int64_t source_size)
-    : ReadBitBuffer(capacity, source_size) {}
+    : MemoryBasedReadBitBuffer(capacity, absl::Span<const uint8_t>()) {
+  max_source_size_ = kEntireObuSizeMaxTwoMegabytes * 2 * 8;
+}
 
 }  // namespace iamf_tools

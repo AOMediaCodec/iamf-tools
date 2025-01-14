@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -35,7 +36,6 @@ namespace iamf_tools {
 namespace {
 using absl::StatusCode::kInvalidArgument;
 using absl::StatusCode::kResourceExhausted;
-using testing::ElementsAreArray;
 
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
@@ -100,6 +100,15 @@ std::unique_ptr<FileBasedReadBitBuffer> CreateConcreteReadBitBuffer(
   return FileBasedReadBitBuffer::CreateFromFilePath(capacity, output_filename);
 }
 
+template <>
+std::unique_ptr<StreamBasedReadBitBuffer> CreateConcreteReadBitBuffer(
+    int64_t capacity, std::vector<uint8_t>& source_data) {
+  auto rb = StreamBasedReadBitBuffer::Create(capacity);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  return rb;
+}
+
 template <typename BufferReaderType>
 class ReadBitBufferTest : public ::testing::Test {
  protected:
@@ -117,7 +126,8 @@ class ReadBitBufferTest : public ::testing::Test {
 };
 
 using BufferReaderTypes =
-    ::testing::Types<MemoryBasedReadBitBuffer, FileBasedReadBitBuffer>;
+    ::testing::Types<MemoryBasedReadBitBuffer, FileBasedReadBitBuffer,
+                     StreamBasedReadBitBuffer>;
 TYPED_TEST_SUITE(ReadBitBufferTest, BufferReaderTypes);
 
 TYPED_TEST(ReadBitBufferTest, CreateReadBitBufferSucceeds) {
@@ -381,7 +391,7 @@ TYPED_TEST(ReadBitBufferTest, ReadUleb128NotEnoughDataInBufferOrSource) {
 // is used to create different concrete types of buffer readers. Then we
 // augment the tests by taking the cartesian product of {test values} and
 // {types of buffer readers} (using `testing::Combine`).
-enum BufferReaderType { kMemoryBased, kFileBased };
+enum BufferReaderType { kMemoryBased, kFileBased, kStreamBased };
 struct SourceAndSize {
   std::vector<uint8_t> source_data;
   uint32_t expected_size_of_instance;
@@ -399,8 +409,11 @@ TEST_P(ReadIso14496_1ExpandedTest, ReadIso14496_1Expanded) {
   if (buffer_reader_type == kMemoryBased) {
     rb = CreateConcreteReadBitBuffer<MemoryBasedReadBitBuffer>(
         source_data.size() * kBitsPerByte, source_data);
-  } else {
+  } else if (buffer_reader_type == kFileBased) {
     rb = CreateConcreteReadBitBuffer<FileBasedReadBitBuffer>(
+        source_data.size() * kBitsPerByte, source_data);
+  } else {
+    rb = CreateConcreteReadBitBuffer<StreamBasedReadBitBuffer>(
         source_data.size() * kBitsPerByte, source_data);
   }
 

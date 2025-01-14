@@ -250,8 +250,9 @@ class ReadBitBuffer {
 
   // Size of the source data in bits. It may refer to the total file size
   // for a file-based buffer, or the total memory size for a memory-based
-  // buffer, etc.
-  const int64_t source_size_;
+  // buffer. For a stream-based buffer, it is the current size of the source
+  // data, which is updated as bytes are pushed or flushed.
+  int64_t source_size_;
 
   // Specifies the next bit to consume from the source data (the actual storage
   // type is subclass-specific).
@@ -283,15 +284,14 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
   /*!\brief Destructor.*/
   ~MemoryBasedReadBitBuffer() override = default;
 
- private:
-  /*!\brief Private constructor. Called by the factory method only.
+ protected:
+  /*!\brief Protected constructor. Called by the factory method or subclasses.
    *
    * \param capacity Capacity of the internal buffer in bytes.
    * \param source Source span from which the buffer will load data. The
    *        entire contents will be copied into the constructed instance.
    */
   MemoryBasedReadBitBuffer(size_t capacity, absl::Span<const uint8_t> source);
-
   /*!\brief Load bytes from the source vector to the buffer.
    *
    * \param starting_byte Starting byte to load from source.
@@ -303,7 +303,7 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
                                  int64_t num_bytes) override;
 
   // Source data stored in a vector.
-  const std::vector<uint8_t> source_vector_;
+  std::vector<uint8_t> source_vector_;
 };
 
 /*!\brief File-based read bit buffer.
@@ -358,7 +358,7 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
  * methods will read data from the stream and provide it to the caller, or else
  * will instruct the caller to push more data if necessary.
  */
-class StreamBasedReadBitBuffer : public ReadBitBuffer {
+class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
  public:
   /*!\brief Creates an instance of a stream-based read bit buffer.
    *
@@ -398,20 +398,8 @@ class StreamBasedReadBitBuffer : public ReadBitBuffer {
    */
   StreamBasedReadBitBuffer(size_t capacity, int64_t source_size);
 
-  /*!\brief Load bytes from the source stream to the buffer.
-   *
-   * \param starting_byte Starting byte to load from source.
-   * \param num_bytes Number of bytes to load.
-   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
-   *         the stream reading fails. `absl::ResourceExhaustedError()` if there
-   *         is not enough data in the stream to load the requested bytes.
-   */
-  absl::Status LoadBytesToBuffer(int64_t starting_byte,
-                                 int64_t num_bytes) override;
-
-  // Source data stored in a vector. Calls to Flush() will remove the first
-  // `num_bytes` elements from this vector.
-  std::vector<uint8_t> source_vector_;
+  // Specifies the maximum size of the source data in bits.
+  int64_t max_source_size_;
 };
 
 }  // namespace iamf_tools
