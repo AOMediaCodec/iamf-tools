@@ -262,11 +262,17 @@ bool ReadBitBuffer::IsDataAvailable() const {
   return valid_data_in_buffer || valid_data_in_source;
 }
 
-int64_t ReadBitBuffer::Tell() const {
+int64_t ReadBitBuffer::Tell() {
+  is_position_valid_ = true;
   return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;
 }
 
 absl::Status ReadBitBuffer::Seek(const int64_t position) {
+  if (!is_position_valid_) {
+    return absl::FailedPreconditionError(
+        "Seeking to position has been disabled. This can happen if Flush() has "
+        "been called after Tell().");
+  }
   if (position < 0) {
     return absl::InvalidArgumentError(
         absl::StrCat("Invalid source position: ", position));
@@ -467,6 +473,30 @@ absl::Status StreamBasedReadBitBuffer::PushBytes(
   source_vector_.insert(source_vector_.end(), bytes.begin(), bytes.end());
   // The source grows as bytes are pushed.
   source_size_ += bytes.size() * 8;
+  return absl::OkStatus();
+}
+
+// Flush should be called in a reasonable manner, i.e. not every time a read
+// operation is performed, as the removal of elements from the source vector
+// is an O(n) operation, where n is the number of elements in the source vector.
+// In general, it is a trade-off: the more often it is called, the more
+// space-efficient the buffer is (since it holds less data in the source vector)
+// while simultaneously being less time-efficient (since it takes time to remove
+// elements from the source vector).
+absl::Status StreamBasedReadBitBuffer::Flush(int64_t num_bytes) {
+  if (num_bytes > source_vector_.size()) {
+    return absl::InvalidArgumentError(
+        "Cannot flush more bytes than are in the source.");
+  }
+  source_vector_.erase(source_vector_.begin(),
+                       source_vector_.begin() + num_bytes);
+  // Offset needs to be moved back as erase moves the elements of a vector that
+  // are not removed to the beginning of the vector.
+  source_bit_offset_ -= num_bytes * 8;
+  source_size_ -= num_bytes * 8;
+  // Disable seeking as the position returned by a previous Tell() call is no
+  // longer valid.
+  is_position_valid_ = false;
   return absl::OkStatus();
 }
 

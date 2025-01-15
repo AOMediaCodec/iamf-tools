@@ -807,5 +807,64 @@ TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
   EXPECT_FALSE(this->rb_->ReadString(output).ok());
 }
 
+// --- Specific StreamBasedReadBitBuffer tests ---
+
+// --- `Flush` tests ---
+TEST(StreamBasedReadBitBufferTest, FlushFailsWhenTryingToFlushTooManyBytes) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  EXPECT_FALSE(rb->Flush(source_data.size() + 1).ok());
+}
+
+TEST(StreamBasedReadBitBufferTest, FlushSuccessfullyEmptiesSource) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_FALSE(rb->IsDataAvailable());
+}
+
+TEST(StreamBasedReadBitBufferTest,
+     FlushPartiallyEmptiesSourceButSubsequentReadsSucceed) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  std::vector<uint8_t> output = {0};
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  EXPECT_THAT(rb->Flush(output.size()), IsOk());
+  EXPECT_TRUE(rb->IsDataAvailable());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
+}
+
+TEST(StreamBasedReadBitBufferTest, FlushAndPushingMoreDataSucceeds) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_FALSE(rb->IsDataAvailable());
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_TRUE(rb->IsDataAvailable());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+}
+
+TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_EQ(rb->Tell(), 0);
+  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  // Seeking is disabled after Flush().
+  EXPECT_FALSE(rb->Seek(0).ok());
+}
 }  // namespace
 }  // namespace iamf_tools

@@ -193,7 +193,7 @@ class ReadBitBuffer {
    *
    * \return Next reading position of the source in bits.
    */
-  int64_t Tell() const;
+  int64_t Tell();
 
   /*!\brief Moves the next reading position in bits of the source.
    *
@@ -257,6 +257,9 @@ class ReadBitBuffer {
   // Specifies the next bit to consume from the source data (the actual storage
   // type is subclass-specific).
   int64_t source_bit_offset_ = 0;
+
+  // Specifies whether a position returned by Tell() is valid.
+  bool is_position_valid_;
 };
 
 /*!\brief Memory-based read bit buffer.
