@@ -262,6 +262,15 @@ bool ReadBitBuffer::IsDataAvailable() const {
   return valid_data_in_buffer || valid_data_in_source;
 }
 
+bool ReadBitBuffer::CanReadBytes(int64_t num_bytes_requested) const {
+  CHECK_GE(num_bytes_requested, 0);
+  CHECK(source_bit_offset_ >= 0 && source_bit_offset_ <= source_size_);
+  const int64_t num_bytes_in_source = (source_size_ - source_bit_offset_) / 8;
+  CHECK(buffer_bit_offset_ >= 0 && buffer_bit_offset_ <= buffer_size_);
+  const int64_t num_bytes_in_buffer = (buffer_size_ - buffer_bit_offset_) / 8;
+  return (num_bytes_in_source + num_bytes_in_buffer) >= num_bytes_requested;
+}
+
 int64_t ReadBitBuffer::Tell() {
   is_position_valid_ = true;
   return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;

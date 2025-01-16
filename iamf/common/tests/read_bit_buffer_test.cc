@@ -689,6 +689,17 @@ TYPED_TEST(ReadBitBufferTest, IsDataAvailable) {
   EXPECT_FALSE(this->rb_->IsDataAvailable());
 }
 
+TYPED_TEST(ReadBitBufferTest, CanReadBytes) {
+  this->source_data_ = {0xff, 0xff};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+  EXPECT_TRUE(this->rb_->CanReadBytes(2));
+  EXPECT_FALSE(this->rb_->CanReadBytes(3));
+  uint64_t output = 0;
+  EXPECT_THAT(this->rb_->ReadUnsignedLiteral(16, output), IsOk());
+  EXPECT_FALSE(this->rb_->CanReadBytes(1));
+}
+
 TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteralMax32) {
   this->source_data_ = {0xff, 0xff, 0xff, 0xff};
   this->rb_capacity_ = 1024;
@@ -865,6 +876,29 @@ TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
   EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
   // Seeking is disabled after Flush().
   EXPECT_FALSE(rb->Seek(0).ok());
+}
+
+TEST(StreamBasedReadBitBufferTest, PushBytesCanReadBytesSucceeds) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_TRUE(rb->CanReadBytes(3));
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_TRUE(rb->CanReadBytes(3));
+}
+
+TEST(StreamBasedReadBitBufferTest, PushBytesFailsOnNegativeNumBytes) {
+  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
+  auto rb = StreamBasedReadBitBuffer::Create(1024);
+  EXPECT_NE(rb, nullptr);
+  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_DEATH(rb->CanReadBytes(-1), "");
 }
 }  // namespace
 }  // namespace iamf_tools
