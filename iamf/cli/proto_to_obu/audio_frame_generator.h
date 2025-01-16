@@ -104,6 +104,9 @@ class AudioFrameGenerator {
       ParametersManager& parameters_manager,
       GlobalTimingModule& global_timing_module);
 
+  /*!\brief Deleted move constructor. */
+  AudioFrameGenerator(AudioFrameGenerator&&) = delete;
+
   /*!\brief Returns the number of samples to delay based on the codec config.
    *
    * \param codec_config_metadata Codec config metadata.
@@ -212,6 +215,8 @@ class AudioFrameGenerator {
   absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state_
       ABSL_GUARDED_BY(mutex_);
 
+  // TODO(b/390150766): Be more careful about the lifetime of the following
+  //                    references, as they are not owned by this class.
   const DemixingModule& demixing_module_;
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;

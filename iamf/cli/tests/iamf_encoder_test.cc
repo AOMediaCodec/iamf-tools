@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <list>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -17,6 +17,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/iamf_encoder.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
@@ -25,6 +26,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -125,6 +127,16 @@ void AddMixPresentation(UserMetadata& user_metadata) {
       user_metadata.add_mix_presentation_metadata()));
 }
 
+void AddArbitraryObu(UserMetadata& user_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        insertion_hook: INSERTION_HOOK_AFTER_AUDIO_ELEMENTS
+        obu_type: OBU_IA_RESERVED_26
+        payload: "Imaginary descriptor OBU between the audio element and mix presentation."
+      )pb",
+      user_metadata.add_arbitrary_obu_metadata()));
+}
+
 void AddAudioFrame(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
@@ -160,43 +172,63 @@ void AddParameterBlockAtTimestamp(const int32_t start_timestamp,
   metadata->set_start_timestamp(start_timestamp);
 }
 
-TEST(IamfEncoderTest, EmptyUserMetadataFails) {
+TEST(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
   UserMetadata user_metadata;
-  IamfEncoder iamf_encoder(user_metadata);
-
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
+  std::list<ArbitraryObu> arbitrary_obus;
 
-  EXPECT_FALSE(iamf_encoder
-                   .GenerateDescriptorObus(ia_sequence_header_obu,
-                                           codec_config_obus, audio_elements,
-                                           mix_presentation_obus)
+  EXPECT_FALSE(IamfEncoder::Create(user_metadata, ia_sequence_header_obu,
+                                   codec_config_obus, audio_elements,
+                                   mix_presentation_obus, arbitrary_obus)
                    .ok());
 }
 
-TEST(IamfEncoderTest, GenerateDescriptorObusSucceeds) {
+TEST(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
   AddCodecConfig(user_metadata);
   AddAudioElement(user_metadata);
   AddMixPresentation(user_metadata);
-  IamfEncoder iamf_encoder(user_metadata);
-
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  EXPECT_THAT(iamf_encoder.GenerateDescriptorObus(
-                  ia_sequence_header_obu, codec_config_obus, audio_elements,
-                  mix_presentation_obus),
-              IsOk());
+  std::list<ArbitraryObu> arbitrary_obus;
+  auto iamf_encoder = IamfEncoder::Create(
+      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus);
+
+  ASSERT_THAT(iamf_encoder, IsOk());
 
   EXPECT_TRUE(ia_sequence_header_obu.has_value());
   EXPECT_EQ(codec_config_obus.size(), 1);
   EXPECT_EQ(audio_elements.size(), 1);
   EXPECT_EQ(mix_presentation_obus.size(), 1);
+  EXPECT_TRUE(arbitrary_obus.empty());
+}
+
+TEST(IamfEncoderTest, CreateGeneratesArbitraryObus) {
+  UserMetadata user_metadata;
+  AddIaSequenceHeader(user_metadata);
+  AddCodecConfig(user_metadata);
+  AddAudioElement(user_metadata);
+  AddMixPresentation(user_metadata);
+  AddArbitraryObu(user_metadata);
+  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::list<ArbitraryObu> arbitrary_obus;
+
+  auto iamf_encoder = IamfEncoder::Create(
+      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus);
+  ASSERT_THAT(iamf_encoder, IsOk());
+
+  EXPECT_EQ(arbitrary_obus.size(), 1);
 }
 
 TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
@@ -208,16 +240,15 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   AddAudioFrame(user_metadata);
   AddParameterBlockAtTimestamp(0, user_metadata);
   AddParameterBlockAtTimestamp(8, user_metadata);
-  IamfEncoder iamf_encoder(user_metadata);
-
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  ASSERT_THAT(iamf_encoder.GenerateDescriptorObus(
-                  ia_sequence_header_obu, codec_config_obus, audio_elements,
-                  mix_presentation_obus),
-              IsOk());
+  std::list<ArbitraryObu> arbitrary_obus;
+  auto iamf_encoder = IamfEncoder::Create(
+      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus);
+  ASSERT_THAT(iamf_encoder, IsOk());
 
   // Temporary variables for one iteration.
   const std::vector<InternalSampleType> zero_samples(kNumSamplesPerFrame, 0.0);
@@ -226,22 +257,22 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   IdLabeledFrameMap id_to_labeled_frame;
   int32_t output_timestamp = 0;
   int iteration = 0;
-  while (iamf_encoder.GeneratingDataObus()) {
-    iamf_encoder.BeginTemporalUnit();
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, zero_samples);
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, zero_samples);
+  while (iamf_encoder->GeneratingDataObus()) {
+    iamf_encoder->BeginTemporalUnit();
+    iamf_encoder->AddSamples(kAudioElementId, ChannelLabel::kL2, zero_samples);
+    iamf_encoder->AddSamples(kAudioElementId, ChannelLabel::kR2, zero_samples);
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {
-      iamf_encoder.FinalizeAddSamples();
+      iamf_encoder->FinalizeAddSamples();
     }
 
-    EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
+    EXPECT_THAT(iamf_encoder->AddParameterBlockMetadata(
                     user_metadata.parameter_block_metadata(iteration)),
                 IsOk());
 
     // Output.
-    EXPECT_THAT(iamf_encoder.OutputTemporalUnit(
+    EXPECT_THAT(iamf_encoder->OutputTemporalUnit(
                     temp_audio_frames, temp_parameter_blocks,
                     id_to_labeled_frame, output_timestamp),
                 IsOk());
@@ -254,6 +285,50 @@ TEST(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
 
   EXPECT_EQ(iteration, 2);
 }
+
+TEST(IamfEncoderTest, SafeToUseAfterMove) {
+  UserMetadata user_metadata;
+  AddIaSequenceHeader(user_metadata);
+  AddCodecConfig(user_metadata);
+  AddAudioElement(user_metadata);
+  AddMixPresentation(user_metadata);
+  AddAudioFrame(user_metadata);
+  AddParameterBlockAtTimestamp(0, user_metadata);
+  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::list<ArbitraryObu> arbitrary_obus;
+  auto iamf_encoder_to_move_from = IamfEncoder::Create(
+      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus);
+  ASSERT_THAT(iamf_encoder_to_move_from, IsOk());
+
+  // Move the encoder, and use it.
+  IamfEncoder iamf_encoder = std::move(*iamf_encoder_to_move_from);
+
+  // Use many parts of the API, to make sure the move did not break anything.
+  EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
+  iamf_encoder.BeginTemporalUnit();
+  const std::vector<InternalSampleType> kZeroSamples(kNumSamplesPerFrame, 0.0);
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, kZeroSamples);
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, kZeroSamples);
+  EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
+                  user_metadata.parameter_block_metadata(0)),
+              IsOk());
+  iamf_encoder.FinalizeAddSamples();
+  std::list<AudioFrameWithData> temp_audio_frames;
+  std::list<ParameterBlockWithData> temp_parameter_blocks;
+  IdLabeledFrameMap id_to_labeled_frame;
+  int32_t output_timestamp = 0;
+  EXPECT_THAT(
+      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks,
+                                      id_to_labeled_frame, output_timestamp),
+      IsOk());
+  EXPECT_EQ(temp_audio_frames.size(), 1);
+  EXPECT_EQ(temp_parameter_blocks.size(), 1);
+}
+
 // TODO(b/349321277): Add more tests.
 
 }  // namespace

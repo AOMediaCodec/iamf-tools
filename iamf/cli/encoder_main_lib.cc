@@ -36,7 +36,6 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_to_obu/arbitrary_obu_generator.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
@@ -158,25 +157,13 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   return absl::OkStatus();
 }
 
-absl::Status GenerateObus(
+absl::Status GenerateTemporalUnitObus(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
     const std::string& output_iamf_directory, IamfEncoder& iamf_encoder,
-    std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus,
     std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks,
-    std::list<ArbitraryObu>& arbitrary_obus) {
-  RETURN_IF_NOT_OK(iamf_encoder.GenerateDescriptorObus(
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus));
-
-  // TODO(b/349271508): Move the arbitrary obu generator inside `IamfEncoder`.
-  ArbitraryObuGenerator arbitrary_obu_generator(
-      user_metadata.arbitrary_obu_metadata());
-  RETURN_IF_NOT_OK(arbitrary_obu_generator.Generate(arbitrary_obus));
-
+    std::list<ParameterBlockWithData>& parameter_blocks) {
   // Initialize mix presentation finalizer. Requires rendering data for every
   // submix to accurately compute loudness.
   std::optional<uint8_t> output_wav_file_bit_depth_override;
@@ -349,11 +336,17 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
     RETURN_IF_NOT_OK(PartitionParameterMetadata(user_metadata));
   }
 
-  IamfEncoder iamf_encoder(user_metadata);
-  RETURN_IF_NOT_OK(GenerateObus(
-      user_metadata, input_wav_directory, output_iamf_directory, iamf_encoder,
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus, audio_frames, parameter_blocks, arbitrary_obus));
+  // We want to hold the `IamfEncoder` until all OBUs have been written.
+  auto iamf_encoder = IamfEncoder::Create(
+      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus);
+  if (!iamf_encoder.ok()) {
+    return iamf_encoder.status();
+  }
+
+  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(
+      user_metadata, input_wav_directory, output_iamf_directory, *iamf_encoder,
+      audio_elements, mix_presentation_obus, audio_frames, parameter_blocks));
 
   RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
                              ia_sequence_header_obu.value(), codec_config_obus,
