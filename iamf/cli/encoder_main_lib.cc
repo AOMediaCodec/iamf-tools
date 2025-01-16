@@ -14,7 +14,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <limits>
 #include <list>
 #include <memory>
 #include <optional>
@@ -36,7 +35,6 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
@@ -148,64 +146,16 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
 
 absl::Status GenerateTemporalUnitObus(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
-    const std::string& output_iamf_directory, IamfEncoder& iamf_encoder,
+    IamfEncoder& iamf_encoder,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus,
     std::list<AudioFrameWithData>& audio_frames,
     std::list<ParameterBlockWithData>& parameter_blocks) {
-  // Initialize mix presentation finalizer. Requires rendering data for every
-  // submix to accurately compute loudness.
-  std::optional<uint8_t> output_wav_file_bit_depth_override;
-  if (user_metadata.test_vector_metadata()
-          .has_output_wav_file_bit_depth_override()) {
-    if (user_metadata.test_vector_metadata()
-            .output_wav_file_bit_depth_override() >
-        std::numeric_limits<uint8_t>::max()) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Bit-depth too large. "
-                       "output_wav_file_bit_depth_override= ",
-                       user_metadata.test_vector_metadata()
-                           .output_wav_file_bit_depth_override()));
-    }
-    output_wav_file_bit_depth_override =
-        static_cast<uint8_t>(user_metadata.test_vector_metadata()
-                                 .output_wav_file_bit_depth_override());
-  }
-  // TODO(b/349271713): Move the mix presentation finalizer inside
-  //                    `IamfEncoder`.
-  // Write the output audio streams which were used to measure loudness to the
-  // same directory as the IAMF file.
-  const std::string output_wav_file_prefix =
-      (std::filesystem::path(output_iamf_directory) /
-       user_metadata.test_vector_metadata().file_name_prefix())
-          .string();
-  LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
-  const auto ProduceAllWavWriters =
-      [output_wav_file_prefix](
-          DecodedUleb128 mix_presentation_id, int sub_mix_index,
-          int layout_index, const Layout&, int num_channels, int sample_rate,
-          int bit_depth,
-          size_t max_input_samples_per_frame) -> std::unique_ptr<WavWriter> {
-    const auto wav_path = absl::StrCat(
-        output_wav_file_prefix, "_rendered_id_", mix_presentation_id,
-        "_sub_mix_", sub_mix_index, "_layout_", layout_index, ".wav");
-    return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
-                             max_input_samples_per_frame);
-  };
-
   auto wav_sample_provider =
       WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
                                 input_wav_directory, audio_elements);
   if (!wav_sample_provider.ok()) {
     return wav_sample_provider.status();
-  }
-
-  auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
-      output_wav_file_bit_depth_override, CreateRendererFactory().get(),
-      CreateLoudnessCalculatorFactory().get(), audio_elements,
-      ProduceAllWavWriters, mix_presentation_obus);
-  if (!mix_presentation_finalizer.ok()) {
-    return mix_presentation_finalizer.status();
   }
 
   // Parameter blocks.
@@ -258,10 +208,8 @@ absl::Status GenerateTemporalUnitObus(
     std::list<AudioFrameWithData> temp_audio_frames;
     std::list<ParameterBlockWithData> temp_parameter_blocks;
     IdLabeledFrameMap id_to_labeled_frame;
-    int32_t output_timestamp = 0;
-    RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(
-        temp_audio_frames, temp_parameter_blocks, id_to_labeled_frame,
-        output_timestamp));
+    RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(temp_audio_frames,
+                                                     temp_parameter_blocks));
 
     if (temp_audio_frames.empty()) {
       // Some audio codec will only output an encoded frame after the next
@@ -270,9 +218,6 @@ absl::Status GenerateTemporalUnitObus(
       LOG(INFO) << "No audio frame generated in this iteration; continue.";
       continue;
     }
-    RETURN_IF_NOT_OK(mix_presentation_finalizer->PushTemporalUnit(
-        id_to_labeled_frame, temp_audio_frames.front().start_timestamp,
-        temp_audio_frames.front().end_timestamp, temp_parameter_blocks));
 
     audio_frames.splice(audio_frames.end(), temp_audio_frames);
     parameter_blocks.splice(parameter_blocks.end(), temp_parameter_blocks);
@@ -280,9 +225,10 @@ absl::Status GenerateTemporalUnitObus(
   LOG(INFO) << "\n============================= END of Generating Data OBUs"
             << " =============================\n\n";
   PrintAudioFrames(audio_frames);
-  RETURN_IF_NOT_OK(mix_presentation_finalizer->Finalize(
-      user_metadata.test_vector_metadata().validate_user_loudness(),
-      mix_presentation_obus));
+
+  // Update the loudness information in the mix presentation OBUs.
+  RETURN_IF_NOT_OK(
+      iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus));
 
   return absl::OkStatus();
 }
@@ -338,16 +284,38 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   }
 
   // We want to hold the `IamfEncoder` until all OBUs have been written.
+  // Write the output audio streams which were used to measure loudness to the
+  // same directory as the IAMF file.
+  const std::string output_wav_file_prefix =
+      (std::filesystem::path(output_iamf_directory) /
+       user_metadata.test_vector_metadata().file_name_prefix())
+          .string();
+  LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
+  const auto ProduceAllWavWriters =
+      [output_wav_file_prefix](
+          DecodedUleb128 mix_presentation_id, int sub_mix_index,
+          int layout_index, const Layout&, int num_channels, int sample_rate,
+          int bit_depth,
+          size_t max_input_samples_per_frame) -> std::unique_ptr<WavWriter> {
+    const auto wav_path = absl::StrCat(
+        output_wav_file_prefix, "_rendered_id_", mix_presentation_id,
+        "_sub_mix_", sub_mix_index, "_layout_", layout_index, ".wav");
+    return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                             max_input_samples_per_frame);
+  };
+
   auto iamf_encoder = IamfEncoder::Create(
-      user_metadata, ia_sequence_header_obu, codec_config_obus, audio_elements,
+      user_metadata, CreateRendererFactory().get(),
+      CreateLoudnessCalculatorFactory().get(), ProduceAllWavWriters,
+      ia_sequence_header_obu, codec_config_obus, audio_elements,
       mix_presentation_obus, arbitrary_obus);
   if (!iamf_encoder.ok()) {
     return iamf_encoder.status();
   }
 
   RETURN_IF_NOT_OK(GenerateTemporalUnitObus(
-      user_metadata, input_wav_directory, output_iamf_directory, *iamf_encoder,
-      audio_elements, mix_presentation_obus, audio_frames, parameter_blocks));
+      user_metadata, input_wav_directory, *iamf_encoder, audio_elements,
+      mix_presentation_obus, audio_frames, parameter_blocks));
 
   RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
                              ia_sequence_header_obu.value(), codec_config_obus,

@@ -19,9 +19,12 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -29,6 +32,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -40,6 +44,8 @@
 #include "iamf/cli/proto_to_obu/ia_sequence_header_generator.h"
 #include "iamf/cli/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/proto_to_obu/parameter_block_generator.h"
+#include "iamf/cli/renderer_factory.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/macros.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
@@ -51,6 +57,20 @@
 namespace iamf_tools {
 
 namespace {
+
+std::optional<uint8_t> GetOverrideBitDepth(uint32_t requested_bit_depth) {
+  if (requested_bit_depth == 0) {
+    return std::nullopt;
+  }
+
+  // Clamp the bit-depth to something supported by wav files.
+  constexpr uint32_t kMinWavFileBitDepth = 16;
+  constexpr uint32_t kMaxWavFileBitDepth = 32;
+  const uint32_t clamped_bit_depth =
+      std::clamp(requested_bit_depth, kMinWavFileBitDepth, kMaxWavFileBitDepth);
+  return static_cast<uint8_t>(clamped_bit_depth);
+}
+
 absl::Status InitAudioFrameDecoderForAllAudioElements(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
@@ -72,6 +92,11 @@ absl::Status InitAudioFrameDecoderForAllAudioElements(
 
 absl::StatusOr<IamfEncoder> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
+    absl::Nullable<const RendererFactoryBase*> renderer_factory,
+    absl::Nullable<const LoudnessCalculatorFactoryBase*>
+        loudness_calculator_factory,
+    const RenderingMixPresentationFinalizer::WavWriterFactory&
+        wav_writer_factory,
     std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
@@ -103,6 +128,16 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   MixPresentationGenerator mix_presentation_generator(
       user_metadata.mix_presentation_metadata());
   RETURN_IF_NOT_OK(mix_presentation_generator.Generate(mix_presentation_obus));
+  // Initialize a mix presentation mix presentation finalizer. Requires
+  // rendering data for every submix to accurately compute loudness.
+  auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
+      GetOverrideBitDepth(user_metadata.test_vector_metadata()
+                              .output_wav_file_bit_depth_override()),
+      renderer_factory, loudness_calculator_factory, audio_elements,
+      wav_writer_factory, mix_presentation_obus);
+  if (!mix_presentation_finalizer.ok()) {
+    return mix_presentation_finalizer.status();
+  }
 
   // Generate Arbitrary OBUs.
   ArbitraryObuGenerator arbitrary_obu_generator(
@@ -153,10 +188,12 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
       audio_elements, audio_frame_decoder));
 
   return IamfEncoder(
+      user_metadata.test_vector_metadata().validate_user_loudness(),
       std::move(parameter_id_to_metadata), std::move(param_definitions),
       std::move(parameter_block_generator), std::move(parameters_manager),
       std::move(demixing_module), std::move(audio_frame_generator),
-      std::move(audio_frame_decoder), std::move(global_timing_module));
+      std::move(audio_frame_decoder), std::move(global_timing_module),
+      std::move(*mix_presentation_finalizer));
 }
 
 bool IamfEncoder::GeneratingDataObus() const {
@@ -210,8 +247,7 @@ absl::Status IamfEncoder::AddParameterBlockMetadata(
 
 absl::Status IamfEncoder::OutputTemporalUnit(
     std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks,
-    IdLabeledFrameMap& id_to_labeled_frame, int32_t& output_timestamp) {
+    std::list<ParameterBlockWithData>& parameter_blocks) {
   audio_frames.clear();
   parameter_blocks.clear();
 
@@ -245,8 +281,15 @@ absl::Status IamfEncoder::OutputTemporalUnit(
 
   RETURN_IF_NOT_OK(audio_frame_generator_->OutputFrames(audio_frames));
   if (audio_frames.empty()) {
+    // Some audio codec will only output an encoded frame after the next
+    // frame "pushes" the old one out. So we wait till the next iteration to
+    // retrieve it.
     return absl::OkStatus();
   }
+  // All generated audio frame should be in the same temporal unit; they all
+  // have the same timestamps.
+  const int32_t output_start_timestamp = audio_frames.front().start_timestamp;
+  const int32_t output_end_timestamp = audio_frames.front().end_timestamp;
 
   // Decode the audio frames. They are required to determine the demixed
   // frames.
@@ -256,10 +299,13 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     if (!decoded_audio_frame.ok()) {
       return decoded_audio_frame.status();
     }
+    CHECK_EQ(output_start_timestamp, decoded_audio_frame->start_timestamp);
+    CHECK_EQ(output_end_timestamp, decoded_audio_frame->end_timestamp);
     decoded_audio_frames.emplace_back(*decoded_audio_frame);
   }
 
   // Demix the audio frames.
+  IdLabeledFrameMap id_to_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
   RETURN_IF_NOT_OK(demixing_module_->DemixAudioSamples(
       audio_frames, decoded_audio_frames, id_to_labeled_frame,
@@ -273,21 +319,33 @@ absl::Status IamfEncoder::OutputTemporalUnit(
 
   // Move all generated parameter blocks belonging to this temporal unit to
   // the output.
-  output_timestamp = audio_frames.front().start_timestamp;
   for (auto* temp_parameter_blocks :
        {&temp_mix_gain_parameter_blocks_, &temp_demixing_parameter_blocks_,
         &temp_recon_gain_parameter_blocks_}) {
     auto last_same_timestamp_iter = std::find_if(
         temp_parameter_blocks->begin(), temp_parameter_blocks->end(),
-        [output_timestamp](const auto& parameter_block) {
-          return parameter_block.start_timestamp > output_timestamp;
+        [output_start_timestamp](const auto& parameter_block) {
+          return parameter_block.start_timestamp > output_start_timestamp;
         });
     parameter_blocks.splice(parameter_blocks.end(), *temp_parameter_blocks,
                             temp_parameter_blocks->begin(),
                             last_same_timestamp_iter);
   }
 
-  return absl::OkStatus();
+  return mix_presentation_finalizer_.PushTemporalUnit(
+      id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
+      parameter_blocks);
+}
+
+absl::Status IamfEncoder::FinalizeMixPresentationObus(
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  if (GeneratingDataObus()) {
+    return absl::FailedPreconditionError(
+        "Cannot finalize mix presentation OBUs while generating data OBUs.");
+  }
+
+  return mix_presentation_finalizer_.Finalize(validate_user_loudness_,
+                                              mix_presentation_obus);
 }
 
 }  // namespace iamf_tools

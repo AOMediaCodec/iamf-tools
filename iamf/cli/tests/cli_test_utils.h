@@ -23,12 +23,15 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/loudness_calculator_base.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/sample_processor_base.h"
@@ -349,6 +352,7 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
          equivalent_integral_sample == testing::get<1>(arg);
 }
 
+/*!\brief A mock sample processor. */
 class MockSampleProcessor : public SampleProcessorBase {
  public:
   MockSampleProcessor(uint32_t max_input_samples_per_frame, size_t num_channels,
@@ -389,6 +393,29 @@ class EverySecondTickResampler : public SampleProcessorBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status FlushDerived() override;
+};
+
+/*!\brief A mock loudness calculator factory. */
+class MockLoudnessCalculatorFactory : public LoudnessCalculatorFactoryBase {
+ public:
+  MockLoudnessCalculatorFactory() : LoudnessCalculatorFactoryBase() {}
+
+  MOCK_METHOD(std::unique_ptr<LoudnessCalculatorBase>, CreateLoudnessCalculator,
+              (const MixPresentationLayout& layout,
+               int32_t rendered_sample_rate, int32_t rendered_bit_depth),
+              (const, override));
+};
+
+/*!\brief A mock loudness calculator. */
+class MockLoudnessCalculator : public LoudnessCalculatorBase {
+ public:
+  MockLoudnessCalculator() : LoudnessCalculatorBase() {}
+
+  MOCK_METHOD(absl::Status, AccumulateLoudnessForSamples,
+              (const std::vector<int32_t>& rendered_samples), (override));
+
+  MOCK_METHOD(absl::StatusOr<LoudnessInfo>, QueryLoudness, (),
+              (const, override));
 };
 
 }  // namespace iamf_tools

@@ -152,27 +152,6 @@ class AlwaysNullLoudnessCalculatorFactory
   }
 };
 
-class MockLoudnessCalculator : public LoudnessCalculatorBase {
- public:
-  MockLoudnessCalculator() : LoudnessCalculatorBase() {}
-
-  MOCK_METHOD(absl::Status, AccumulateLoudnessForSamples,
-              (const std::vector<int32_t>& rendered_samples), (override));
-
-  MOCK_METHOD(absl::StatusOr<LoudnessInfo>, QueryLoudness, (),
-              (const, override));
-};
-
-class MockLoudnessCalculatorFactory : public LoudnessCalculatorFactoryBase {
- public:
-  MockLoudnessCalculatorFactory() : LoudnessCalculatorFactoryBase() {}
-
-  MOCK_METHOD(std::unique_ptr<LoudnessCalculatorBase>, CreateLoudnessCalculator,
-              (const MixPresentationLayout& layout,
-               int32_t rendered_sample_rate, int32_t rendered_bit_depth),
-              (const, override));
-};
-
 std::string GetFirstSubmixFirstLayoutExpectedPath() {
   return absl::StrCat(GetAndCreateOutputDirectory(""), "_id_",
                       kMixPresentationId, kSuffixAfterMixPresentationId);

@@ -29,12 +29,15 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/audio_frame_generator.h"
 #include "iamf/cli/proto_to_obu/parameter_block_generator.h"
+#include "iamf/cli/renderer_factory.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -77,6 +80,8 @@ namespace iamf_tools {
  *     // Get OBUs for next encoded temporal unit.
  *     encoder->OutputTemporalUnit(...);
  *   }
+ *   // Get the final mix presentation OBUs, with measured loudness information.
+ *   encoder->FinalizeMixPresentationObus(...);
  *
  * Note the timestamps corresponding to `AddSamples()` and
  * `AddParameterBlockMetadata()` might be different from that of the output
@@ -89,20 +94,32 @@ class IamfEncoder {
   /*!\brief Factory function to create an `IamfEncoder`.
    *
    * \param user_metadata Input user metadata describing the IAMF stream.
+   * \param renderer_factory Factory to create renderers for use in measuring
+   *        the loudness.
+   * \param loudness_calculator_factory Factory to create loudness calculators
+   *        to measure the loudness of the output layouts.
+   * \param wav_writer_factory Factory to create wav writers.
    * \param ia_sequence_header_obu Generated IA Sequence Header OBU.
    * \param codec_config_obus Map of Codec Config ID to generated Codec Config
    *        OBUs.
    * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
-   * \param mix_presentation_obus List of generated Mix Presentation OBUs.
+   * \param preliminary_mix_presentation_obus List of preliminary Mix
+   *        Presentation OBUs, which should be finalized by a future call to
+   *        `FinalizeMixPresentationObus()`.
    * \param arbitrary_obus List of generated Arbitrary OBUs.
-   * \return `IamfEncoder` on success. A specific status on failure.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   static absl::StatusOr<IamfEncoder> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
+      absl::Nullable<const RendererFactoryBase*> renderer_factory,
+      absl::Nullable<const LoudnessCalculatorFactoryBase*>
+          loudness_calculator_factory,
+      const RenderingMixPresentationFinalizer::WavWriterFactory&
+          wav_writer_factory,
       std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
       absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-      std::list<MixPresentationObu>& mix_presentation_obus,
+      std::list<MixPresentationObu>& preliminary_mix_presentation_obus,
       std::list<ArbitraryObu>& arbitrary_obus);
 
   /*!\brief Returns whether this encoder is generating data OBUs.
@@ -151,24 +168,28 @@ class IamfEncoder {
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
           parameter_block_metadata);
 
-  // TODO(b/349271713): Remove the `id_to_labeled_frame` output argument
-  //                    when the mix presentation finalizer is moved inside
-  //                    this class.
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
    * \param audio_frames List of generated audio frames corresponding to this
    *        temporal unit.
    * \param parameter_blocks List of generated parameter block corresponding
    *        to this temporal unit.
-   * \param id_to_labeled_frame Map of Audio Element IDs to labeld frames;
-   *        which is a data structure storing samples.
-   * \param output_timestamp Output timestamp of this temporal unit.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status OutputTemporalUnit(
       std::list<AudioFrameWithData>& audio_frames,
-      std::list<ParameterBlockWithData>& parameter_blocks,
-      IdLabeledFrameMap& id_to_labeled_frame, int32_t& output_timestamp);
+      std::list<ParameterBlockWithData>& parameter_blocks);
+
+  /*!\brief Finalizes the Mix Presentation OBUs.
+   *
+   * Must only be called after all data OBUs are generated, i.e. after
+   * `GeneratingDataObus()` returns false.
+   *
+   * \param mix_presentation_obus List of Mix Presentation OBUs to finalize.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status FinalizeMixPresentationObus(
+      std::list<MixPresentationObu>& mix_presentation_obus);
 
  private:
   /*!\brief Private constructor.
@@ -176,6 +197,8 @@ class IamfEncoder {
    * Moves from the input arguments Some arguments are wrapped in unique
    * pointers to ensure pointer or reference stability after move.
    *
+   * \param validate_user_loudness Whether to validate the user-provided
+   *        loudness.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
    *        parameter metadata.
    * \param param_definitions Parameter definitions for the IA Sequence.
@@ -187,7 +210,8 @@ class IamfEncoder {
    *        recon gain computation.
    * \param global_timing_module Manages global timing information.
    */
-  IamfEncoder(std::unique_ptr<
+  IamfEncoder(bool validate_user_loudness,
+              std::unique_ptr<
                   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>
                   parameter_id_to_metadata,
               absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&&
@@ -197,15 +221,20 @@ class IamfEncoder {
               std::unique_ptr<DemixingModule> demixing_module,
               std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
               AudioFrameDecoder&& audio_frame_decoder,
-              std::unique_ptr<GlobalTimingModule> global_timing_module)
-      : parameter_id_to_metadata_(std::move(parameter_id_to_metadata)),
+              std::unique_ptr<GlobalTimingModule> global_timing_module,
+              RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
+      : validate_user_loudness_(validate_user_loudness),
+        parameter_id_to_metadata_(std::move(parameter_id_to_metadata)),
         param_definitions_(std::move(param_definitions)),
         parameter_block_generator_(std::move(parameter_block_generator)),
         parameters_manager_(std::move(parameters_manager)),
         demixing_module_(std::move(demixing_module)),
         audio_frame_generator_(std::move(audio_frame_generator)),
         audio_frame_decoder_(std::move(audio_frame_decoder)),
-        global_timing_module_(std::move(global_timing_module)) {}
+        global_timing_module_(std::move(global_timing_module)),
+        mix_presentation_finalizer_(std::move(mix_presentation_finalizer)) {}
+
+  const bool validate_user_loudness_;
 
   // Mapping from parameter IDs to per-ID parameter metadata.
   // Parameter block generator owns a reference to this map. Wrapped in
@@ -238,6 +267,9 @@ class IamfEncoder {
   absl::Nonnull<std::unique_ptr<AudioFrameGenerator>> audio_frame_generator_;
   AudioFrameDecoder audio_frame_decoder_;
   absl::Nonnull<std::unique_ptr<GlobalTimingModule>> global_timing_module_;
+
+  // Modules to render the output layouts and measure their loudness.
+  RenderingMixPresentationFinalizer mix_presentation_finalizer_;
 };
 
 }  // namespace iamf_tools

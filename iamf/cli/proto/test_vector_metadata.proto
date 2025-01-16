@@ -66,7 +66,8 @@ message TestVectorMetadata {
   optional bool validate_user_loudness = 13 [default = false];
 
   // An override to control the output bit-depth of the output `rendered` wav
-  // file.
+  // file. Or 0, to use a default bit-depth depending on the bitstream. The
+  // value may be clamped to a supported-bit depth.
   optional uint32 output_wav_file_bit_depth_override = 12;
 
   // `true` partitions the input mix gain parameter blocks to be aligned with
