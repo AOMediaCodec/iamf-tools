@@ -15,7 +15,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <list>
 #include <memory>
 #include <optional>
@@ -115,10 +114,21 @@ class RenderingMixPresentationFinalizer {
    */
   typedef absl::AnyInvocable<std::unique_ptr<WavWriter>(
       DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
-      const Layout& layout, const std::filesystem::path& prefix,
-      int num_channels, int sample_rate, int bit_depth,
+      const Layout& layout, int num_channels, int sample_rate, int bit_depth,
       size_t num_samples_per_frame) const>
       WavWriterFactory;
+
+  /*!\brief Factory that disabled wav writers.
+   *
+   * For convenience to use with `Create`.
+   */
+  static std::unique_ptr<WavWriter> ProduceNoWavWriters(
+      DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
+      int /*layout_index*/, const Layout& /*layout*/, int /*num_channels*/,
+      int /*sample_rate*/, int /*bit_depth*/,
+      size_t /*num_samples_per_frame*/) {
+    return nullptr;
+  }
 
   /*!\brief Creates a rendering mix presentation finalizer.
    *
@@ -127,7 +137,6 @@ class RenderingMixPresentationFinalizer {
    *
    * \param mix_presentation_metadata Input mix presentation metadata. Only
    *        the `loudness_metadata` fields are used.
-   * \param file_path_prefix Prefix for the output WAV file names.
    * \param output_wav_file_bit_depth_override If present, overrides the output
    *        WAV file bit depth.
    * \param renderer_factory Factory to create renderers, or `nullptr` to
@@ -142,7 +151,6 @@ class RenderingMixPresentationFinalizer {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
-      const std::filesystem::path& file_path_prefix,
       std::optional<uint8_t> output_wav_file_bit_depth_override,
       absl::Nullable<const RendererFactoryBase*> renderer_factory,
       absl::Nullable<const LoudnessCalculatorFactoryBase*>

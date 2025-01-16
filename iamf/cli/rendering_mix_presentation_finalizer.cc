@@ -16,7 +16,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <filesystem>
 #include <list>
 #include <memory>
 #include <optional>
@@ -531,7 +530,6 @@ absl::Status GenerateRenderingMetadataForLayouts(
     const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::WavWriterFactory&
         wav_writer_factory,
-    const std::filesystem::path& file_path_prefix,
     const DecodedUleb128 mix_presentation_id, MixPresentationSubMix& sub_mix,
     int sub_mix_index,
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
@@ -570,8 +568,8 @@ absl::Status GenerateRenderingMetadataForLayouts(
     // Optionally create a wav writer.
     layout_rendering_metadata.wav_writer = wav_writer_factory(
         mix_presentation_id, sub_mix_index, layout_index,
-        layout.loudness_layout, file_path_prefix, num_channels,
-        common_sample_rate, wav_file_bit_depth, common_num_samples_per_frame);
+        layout.loudness_layout, num_channels, common_sample_rate,
+        wav_file_bit_depth, common_num_samples_per_frame);
   }
 
   return absl::OkStatus();
@@ -589,7 +587,6 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::WavWriterFactory&
         wav_writer_factory,
-    const std::filesystem::path& file_path_prefix,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const std::optional<uint32_t> output_wav_file_bit_depth_override,
     MixPresentationObu& mix_presentation_obu,
@@ -637,8 +634,8 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         submix_rendering_metadata.layout_rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
         renderer_factory, loudness_calculator_factory, wav_writer_factory,
-        file_path_prefix, mix_presentation_id, sub_mix, sub_mix_index,
-        audio_elements_in_sub_mix, submix_rendering_metadata.common_sample_rate,
+        mix_presentation_id, sub_mix, sub_mix_index, audio_elements_in_sub_mix,
+        submix_rendering_metadata.common_sample_rate,
         submix_rendering_metadata.loudness_calculator_bit_depth,
         submix_rendering_metadata.wav_file_bit_depth,
         common_num_samples_per_frame, layout_rendering_metadata));
@@ -736,7 +733,6 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
 
 absl::StatusOr<RenderingMixPresentationFinalizer>
 RenderingMixPresentationFinalizer::Create(
-    const std::filesystem::path& file_path_prefix,
     std::optional<uint8_t> output_wav_file_bit_depth_override,
     absl::Nullable<const RendererFactoryBase*> renderer_factory,
     absl::Nullable<const LoudnessCalculatorFactoryBase*>
@@ -759,7 +755,7 @@ RenderingMixPresentationFinalizer::Create(
     std::vector<SubmixRenderingMetadata> sub_mix_rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
         *renderer_factory, loudness_calculator_factory, wav_writer_factory,
-        file_path_prefix, audio_elements, output_wav_file_bit_depth_override,
+        audio_elements, output_wav_file_bit_depth_override,
         mix_presentation_obu, sub_mix_rendering_metadata));
 
     rendering_metadata.push_back(MixPresentationRenderingMetadata{

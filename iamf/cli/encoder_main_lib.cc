@@ -54,17 +54,6 @@ namespace {
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
 using iamf_tools_cli_proto::UserMetadata;
 
-std::unique_ptr<WavWriter> ProduceAllWavWriters(
-    DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
-    const Layout&, const std::filesystem::path& prefix, int num_channels,
-    int sample_rate, int bit_depth, size_t max_input_samples_per_frame) {
-  const auto wav_path = absl::StrCat(
-      prefix.string(), "_rendered_id_", mix_presentation_id, "_sub_mix_",
-      sub_mix_index, "_layout_", layout_index, ".wav");
-  return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
-                           max_input_samples_per_frame);
-}
-
 absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
   uint32_t partition_duration = 0;
   if (user_metadata.ia_sequence_header_metadata().empty() ||
@@ -191,6 +180,18 @@ absl::Status GenerateTemporalUnitObus(
        user_metadata.test_vector_metadata().file_name_prefix())
           .string();
   LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
+  const auto ProduceAllWavWriters =
+      [output_wav_file_prefix](
+          DecodedUleb128 mix_presentation_id, int sub_mix_index,
+          int layout_index, const Layout&, int num_channels, int sample_rate,
+          int bit_depth,
+          size_t max_input_samples_per_frame) -> std::unique_ptr<WavWriter> {
+    const auto wav_path = absl::StrCat(
+        output_wav_file_prefix, "_rendered_id_", mix_presentation_id,
+        "_sub_mix_", sub_mix_index, "_layout_", layout_index, ".wav");
+    return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                             max_input_samples_per_frame);
+  };
 
   auto wav_sample_provider =
       WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
@@ -200,9 +201,9 @@ absl::Status GenerateTemporalUnitObus(
   }
 
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
-      output_wav_file_prefix, output_wav_file_bit_depth_override,
-      CreateRendererFactory().get(), CreateLoudnessCalculatorFactory().get(),
-      audio_elements, ProduceAllWavWriters, mix_presentation_obus);
+      output_wav_file_bit_depth_override, CreateRendererFactory().get(),
+      CreateLoudnessCalculatorFactory().get(), audio_elements,
+      ProduceAllWavWriters, mix_presentation_obus);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();
   }
