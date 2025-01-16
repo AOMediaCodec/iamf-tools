@@ -34,6 +34,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
@@ -371,7 +372,9 @@ absl::Status MixAudioElements(
   return absl::OkStatus();
 }
 
-absl::Status RenderAllFramesForLayout(
+// Returns a span, which is backed by `rendered_samples`, of the ticks actually
+// rendered.
+absl::StatusOr<absl::Span<const std::vector<int32_t>>> RenderAllFramesForLayout(
     int32_t num_channels,
     const std::vector<SubMixAudioElement> sub_mix_audio_elements,
     const MixGainParamDefinition& output_mix_gain,
@@ -379,9 +382,8 @@ absl::Status RenderAllFramesForLayout(
     const std::vector<AudioElementRenderingMetadata>& rendering_metadata_array,
     const int32_t start_timestamp, const int32_t end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    const uint32_t common_sample_rate, std::vector<int32_t>& rendered_samples) {
-  rendered_samples.clear();
-
+    const uint32_t common_sample_rate,
+    std::vector<std::vector<int32_t>>& rendered_samples) {
   // Each audio element rendered individually with `element_mix_gain` applied.
   std::vector<std::vector<InternalSampleType>> rendered_audio_elements(
       sub_mix_audio_elements.size());
@@ -419,34 +421,13 @@ absl::Status RenderAllFramesForLayout(
                          linear_mix_gain_per_tick, rendered_samples_internal));
 
   // Convert the rendered samples to int32, clipping if needed.
-  rendered_samples.reserve(rendered_samples_internal.size());
-  for (const InternalSampleType sample : rendered_samples_internal) {
-    int32_t sample_int32;
-    RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(sample, sample_int32));
-    rendered_samples.push_back(sample_int32);
-  }
-
-  return absl::OkStatus();
-}
-
-// Convert the samples from left-justified 32 bit to the little endian PCM with
-// the expected bit-depth. Write the native format write to the wav file.
-absl::Status WriteRenderedSamples(const std::vector<int32_t>& rendered_samples,
-                                  const uint8_t common_bit_depth,
-                                  WavWriter& wav_writer) {
-  std::vector<uint8_t> native_samples(
-      rendered_samples.size() * common_bit_depth / 8, 0);
-  int write_position = 0;
-  for (const int32_t sample : rendered_samples) {
-    // `WritePcmSample` requires the input sample to be in the upper
-    // bits of the first argument.
-    RETURN_IF_NOT_OK(WritePcmSample(sample, common_bit_depth,
-                                    /*big_endian=*/false, native_samples.data(),
-                                    write_position));
-  }
-  RETURN_IF_NOT_OK(wav_writer.WritePcmSamples(native_samples));
-
-  return absl::OkStatus();
+  size_t num_ticks = 0;
+  RETURN_IF_NOT_OK(ConvertInterleavedToTimeChannel(
+      absl::MakeConstSpan(rendered_samples_internal), num_channels,
+      absl::AnyInvocable<absl::Status(InternalSampleType, int32_t&) const>(
+          NormalizedFloatingPointToInt32<InternalSampleType>),
+      rendered_samples, num_ticks));
+  return absl::MakeConstSpan(rendered_samples).first(num_ticks);
 }
 
 absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
@@ -570,6 +551,12 @@ absl::Status GenerateRenderingMetadataForLayouts(
         mix_presentation_id, sub_mix_index, layout_index,
         layout.loudness_layout, num_channels, common_sample_rate,
         wav_file_bit_depth, common_num_samples_per_frame);
+
+    // Pre-allocate a buffer to store a frame's worth of rendered samples.
+    layout_rendering_metadata.rendered_samples.resize(
+        common_num_samples_per_frame, std::vector<int32_t>(num_channels, 0));
+    layout_rendering_metadata.flattened_rendered_samples.resize(
+        common_num_samples_per_frame * num_channels, 0);
   }
 
   return absl::OkStatus();
@@ -690,6 +677,12 @@ bool CanRenderAnyLayout(
   return false;
 }
 
+const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
+    kIdentityTransform = [](int32_t input, int32_t& output) {
+      output = input;
+      return absl::OkStatus();
+    };
+
 // Renders all submixes, layouts, and audio elements for a temporal unit. It
 // then optionally writes the rendered samples to a wav file and/or calculates
 // the loudness of the rendered samples.
@@ -704,25 +697,39 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
       if (!layout_rendering_metadata.can_render) {
         continue;
       }
-      std::vector<int32_t> rendered_samples;
       if (submix_rendering_metadata.mix_gain == nullptr) {
         return absl::InvalidArgumentError("Submix mix gain is null");
       }
-      RETURN_IF_NOT_OK(RenderAllFramesForLayout(
+
+      const auto rendered_span = RenderAllFramesForLayout(
           layout_rendering_metadata.num_channels,
           submix_rendering_metadata.audio_elements_in_sub_mix,
           *submix_rendering_metadata.mix_gain, id_to_labeled_frame,
           layout_rendering_metadata.audio_element_rendering_metadata,
           start_timestamp, end_timestamp, parameter_blocks,
-          submix_rendering_metadata.common_sample_rate, rendered_samples));
-      if (layout_rendering_metadata.wav_writer != nullptr) {
-        RETURN_IF_NOT_OK(WriteRenderedSamples(
-            rendered_samples, submix_rendering_metadata.wav_file_bit_depth,
-            *layout_rendering_metadata.wav_writer));
+          submix_rendering_metadata.common_sample_rate,
+          layout_rendering_metadata.rendered_samples);
+      if (!rendered_span.ok()) {
+        return rendered_span.status();
       }
+
+      if (layout_rendering_metadata.wav_writer != nullptr) {
+        RETURN_IF_NOT_OK(
+            layout_rendering_metadata.wav_writer->PushFrame(*rendered_span));
+      }
+
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
-        RETURN_IF_NOT_OK(layout_rendering_metadata.loudness_calculator
-                             ->AccumulateLoudnessForSamples(rendered_samples));
+        // Adapt to the loudness calculator interface.
+        // TODO(b/390250647): Remove this conversion, once the loudness
+        //                    calculator no longer uses data in this form.
+        RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(
+            *rendered_span, kIdentityTransform,
+            layout_rendering_metadata.flattened_rendered_samples));
+
+        RETURN_IF_NOT_OK(
+            layout_rendering_metadata.loudness_calculator
+                ->AccumulateLoudnessForSamples(
+                    layout_rendering_metadata.flattened_rendered_samples));
       }
     }
   }

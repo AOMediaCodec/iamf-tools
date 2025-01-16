@@ -73,6 +73,13 @@ class RenderingMixPresentationFinalizer {
     // The start time stamp of the current frames to be rendered within this
     // layout.
     int32_t start_timestamp;
+
+    // Reusable buffer for storing rendered samples.
+    std::vector<std::vector<int32_t>> rendered_samples;
+    // TODO(b/390250647): Remove `flattened_rendered_samples` once the loudness
+    //                    calculator no longer uses it.
+    // Reusable buffer for storing a flattened version of `rendered_samples`.
+    std::vector<int32_t> flattened_rendered_samples;
   };
 
   // We need to store rendering metadata for each submix, layout, and audio
@@ -118,7 +125,7 @@ class RenderingMixPresentationFinalizer {
       size_t num_samples_per_frame) const>
       WavWriterFactory;
 
-  /*!\brief Factory that disabled wav writers.
+  /*!\brief Factory that disables wav writers.
    *
    * For convenience to use with `Create`.
    */
