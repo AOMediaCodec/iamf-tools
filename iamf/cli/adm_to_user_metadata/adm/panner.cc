@@ -121,6 +121,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
   // Main processing loop.
   size_t samples_remaining = ip_wav_total_num_samples;
   size_t num_samples_to_read = buffer_size;
+  auto max_value_db = 0.0f;
   while (samples_remaining > 0) {
     CHECK_EQ(num_samples_to_read, buffer_size);
     // When remaining samples is below buffer capacity, pad unused buffer space
@@ -147,11 +148,30 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     // Process.
     encoder.ProcessPlanarAudioData(ip_buffer_float, op_buffer_float);
 
+    // Warn if level exceeds 0 dBFS.
+    for (size_t smp = 0; smp < buffer_size; ++smp) {
+      auto ch = 0;  // Only look at the first channel, as the scene is SN3D
+                    // normalized. Therefore, the first channel is the loudest.
+
+      if (std::abs(op_buffer_float[ch * buffer_size + smp]) > 1.0f) {
+        auto timestamp = ip_wav_total_num_samples - samples_remaining + smp;
+        float level =
+            20 * std::log10(std::abs(op_buffer_float[ch * buffer_size + smp]));
+        max_value_db = std::max(max_value_db, level);
+
+        LOG_FIRST_N(WARNING, 5) << absl::StrFormat(
+            "Clipping detected at sample %d. Sample exceeds 0 dBFS by: "
+            "%.2f dB.",
+            timestamp, level);
+      }
+    }
+
     // Convert float planar to int32 interleaved.
     for (size_t smp = 0; smp < buffer_size; ++smp) {
       for (size_t ch = 0; ch < op_wav_nch; ++ch) {
-        op_buffer_int32[smp * op_wav_nch + ch] = static_cast<int32_t>(
-            (op_buffer_float[ch * buffer_size + smp]) * kNormalizeFactor);
+        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
+            op_buffer_float[ch * buffer_size + smp],
+            op_buffer_int32[smp * op_wav_nch + ch]));
       }
     }
 
@@ -168,6 +188,14 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     RETURN_IF_NOT_OK(wav_writer.WritePcmSamples(output_buffer_char));
 
     samples_remaining -= samples_read;
+  }
+
+  if (max_value_db > 0.0f) {
+    LOG(WARNING) << absl::StrFormat(
+        "Clipping detected during objects to Ambisonics panning. Maximum level "
+        "exceeded 0 dBFS by: "
+        "%.2f dB.",
+        max_value_db);
   }
 
   std::fclose(input_file);
