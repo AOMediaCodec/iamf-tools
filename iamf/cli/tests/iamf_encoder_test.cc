@@ -421,7 +421,7 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
   EXPECT_CALL(*mock_loudness_calculator_factory,
-              CreateLoudnessCalculator(_, _, _))
+              CreateLoudnessCalculator(_, _, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   auto iamf_encoder = CreateExpectOk();

@@ -544,7 +544,8 @@ absl::Status GenerateRenderingMetadataForLayouts(
       // Optionally create a loudness calculator.
       layout_rendering_metadata.loudness_calculator =
           loudness_calculator_factory->CreateLoudnessCalculator(
-              layout, common_sample_rate, loudness_calculator_bit_depth);
+              layout, common_num_samples_per_frame, common_sample_rate,
+              loudness_calculator_bit_depth);
     }
     // Optionally create a wav writer.
     layout_rendering_metadata.wav_writer = wav_writer_factory(

@@ -146,7 +146,8 @@ class AlwaysNullLoudnessCalculatorFactory
   ~AlwaysNullLoudnessCalculatorFactory() override = default;
 
   std::unique_ptr<LoudnessCalculatorBase> CreateLoudnessCalculator(
-      const MixPresentationLayout& /*layout*/, int32_t /*rendered_sample_rate*/,
+      const MixPresentationLayout& /*layout*/,
+      uint32_t /*num_samples_per_frame*/, int32_t /*rendered_sample_rate*/,
       int32_t /*rendered_bit_depth*/) const override {
     return nullptr;
   }
@@ -649,14 +650,17 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
       std::make_unique<MockLoudnessCalculatorFactory>();
   const auto& forwarded_layout =
       obus_to_finalize_.front().sub_mixes_[0].layouts[0];
+  const uint32_t forwarded_num_samples_per_frame =
+      codec_configs_.at(kCodecConfigId).GetNumSamplesPerFrame();
   const int32_t forwarded_sample_rate = static_cast<int32_t>(
       codec_configs_.at(kCodecConfigId).GetOutputSampleRate());
   const int32_t forwarded_bit_depth_to_measure_loudness = static_cast<int32_t>(
       codec_configs_.at(kCodecConfigId).GetBitDepthToMeasureLoudness());
   EXPECT_CALL(
       *mock_loudness_calculator_factory,
-      CreateLoudnessCalculator(forwarded_layout, forwarded_sample_rate,
-                               forwarded_bit_depth_to_measure_loudness));
+      CreateLoudnessCalculator(
+          forwarded_layout, forwarded_num_samples_per_frame,
+          forwarded_sample_rate, forwarded_bit_depth_to_measure_loudness));
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
@@ -685,7 +689,7 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
   EXPECT_CALL(*mock_loudness_calculator_factory,
-              CreateLoudnessCalculator(_, _, _))
+              CreateLoudnessCalculator(_, _, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   renderer_factory_ = std::make_unique<RendererFactory>();
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
@@ -714,7 +718,7 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kMockCalculatedLoudness));
   EXPECT_CALL(*mock_loudness_calculator_factory,
-              CreateLoudnessCalculator(_, _, _))
+              CreateLoudnessCalculator(_, _, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
 
   // The user provided loudness does not match what the mock "measured".
@@ -873,7 +877,7 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
   EXPECT_CALL(*mock_loudness_calculator_factory,
-              CreateLoudnessCalculator(_, _, _))
+              CreateLoudnessCalculator(_, _, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   validate_loudness_ = false;
@@ -909,7 +913,7 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
   EXPECT_CALL(*mock_loudness_calculator_factory,
-              CreateLoudnessCalculator(_, _, _))
+              CreateLoudnessCalculator(_, _, _, _))
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
