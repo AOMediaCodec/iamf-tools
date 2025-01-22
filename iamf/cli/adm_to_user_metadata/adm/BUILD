@@ -31,6 +31,7 @@ cc_library(
         "//iamf/cli/ambisonic_encoder",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
