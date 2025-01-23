@@ -42,6 +42,7 @@ cc_library(
         "//iamf/cli:loudness_calculator_factory_base",
         "//iamf/cli:sample_processor_base",
         "//iamf/cli:wav_reader",
+        "//iamf/cli:wav_writer",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_to_obu:audio_element_generator",

@@ -37,6 +37,7 @@
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/cli/wav_writer.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -418,6 +419,13 @@ class MockLoudnessCalculator : public LoudnessCalculatorBase {
   MOCK_METHOD(absl::StatusOr<LoudnessInfo>, QueryLoudness, (),
               (const, override));
 };
+
+/*!\brief A mock wav writer factory. */
+typedef testing::MockFunction<std::unique_ptr<WavWriter>(
+    DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
+    const Layout& layout, int num_channels, int sample_rate, int bit_depth,
+    size_t num_samples_per_frame)>
+    MockWavWriterFactory;
 
 }  // namespace iamf_tools
 

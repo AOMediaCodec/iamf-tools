@@ -612,8 +612,6 @@ absl::Status GenerateRenderingMetadataForSubmixes(
           "This implementation does not support mixing different sample rates "
           "or bit-depths.");
     }
-    // TODO(b/380487606): Add test coverage for the case where we have
-    // differing bit depths for the wav file and loudness calculator.
     submix_rendering_metadata.wav_file_bit_depth =
         output_wav_file_bit_depth_override.has_value()
             ? *output_wav_file_bit_depth_override

@@ -436,51 +436,39 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
             kArbitraryLoudnessInfo);
 };
 
-TEST_F(IamfEncoderTest, OutputWavFileMatchesCodecBitDepth) {
+TEST_F(IamfEncoderTest, OutputWavFactoryIsCalledWithOverrideBitDepth) {
   SetupDescriptorObus();
+  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = 32;
+  user_metadata_.mutable_test_vector_metadata()
+      ->set_output_wav_file_bit_depth_override(
+          kExpectedWavFactoryCalledBitDepth);
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
   renderer_factory_ = std::make_unique<RendererFactory>();
-  const auto output_wav_directory = GetAndCreateOutputDirectory("wav_files");
-  wav_writer_factory_ = GetWavWriterFactoryThatProducesFirstSubMixFirstLayout(
-      output_wav_directory);
-  const auto expected_wav_path =
-      GetFirstSubmixFirstLayoutExpectedPath(output_wav_directory);
-  auto iamf_encoder = CreateExpectOk();
+  MockWavWriterFactory mock_wav_writer_factory;
+  EXPECT_CALL(mock_wav_writer_factory,
+              Call(_, _, _, _, _, _, kExpectedWavFactoryCalledBitDepth, _));
+  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
 
-  iamf_encoder.FinalizeAddSamples();
-  EXPECT_THAT(iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_),
-              IsOk());
-
-  ASSERT_TRUE(std::filesystem::exists(expected_wav_path));
-  auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
-  EXPECT_EQ(wav_reader.bit_depth(), kExpectedPcmBitDepth);
+  CreateExpectOk();
 };
 
-TEST_F(IamfEncoderTest, OutputWavFileHasSaneClampedBitDepth) {
+TEST_F(IamfEncoderTest, OutputWavWriterFactoryIsCalledWithSaneClampedBitDepth) {
   SetupDescriptorObus();
+  // The bit-depth is nonsensically large, normally wav files are limited to 32
+  // bits per sample
+  user_metadata_.mutable_test_vector_metadata()
+      ->set_output_wav_file_bit_depth_override(256);
+  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = 32;
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
   renderer_factory_ = std::make_unique<RendererFactory>();
-  // The bit-depth is nonsensiclely large, normally wav files are limited to 32
-  // bits per sample.
-  user_metadata_.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(256);
-  constexpr int kExpectedClampedBitDepth = 32;
-  const auto output_wav_directory = GetAndCreateOutputDirectory("wav_files");
-  const auto expected_wav_path =
-      GetFirstSubmixFirstLayoutExpectedPath(output_wav_directory);
-  wav_writer_factory_ = GetWavWriterFactoryThatProducesFirstSubMixFirstLayout(
-      output_wav_directory);
-  auto iamf_encoder = CreateExpectOk();
+  MockWavWriterFactory mock_wav_writer_factory;
+  EXPECT_CALL(mock_wav_writer_factory,
+              Call(_, _, _, _, _, _, kExpectedWavFactoryCalledBitDepth, _));
+  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
 
-  iamf_encoder.FinalizeAddSamples();
-  EXPECT_THAT(iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_),
-              IsOk());
-
-  ASSERT_TRUE(std::filesystem::exists(expected_wav_path));
-  auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
-  EXPECT_EQ(wav_reader.bit_depth(), kExpectedClampedBitDepth);
+  CreateExpectOk();
 };
 
 // TODO(b/349321277): Add more tests.

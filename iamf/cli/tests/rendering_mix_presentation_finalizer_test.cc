@@ -642,6 +642,52 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
 
+TEST_F(FinalizerTest, ForwardsArgumentsToWavWriterFactory) {
+  PrepareObusForOneSamplePassThroughMono();
+  // Rendering needs to be initialized to create wav files.
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  // We expect arguments to be forwarded from the OBUs to the wav writer
+  // factory.
+  constexpr int kFirstSubmixIndex = 0;
+  constexpr int kFirstLayoutIndex = 0;
+  const auto& forwarded_layout =
+      obus_to_finalize_.front().sub_mixes_[0].layouts[0].loudness_layout;
+  constexpr int kNumchannelsForMono = 1;
+  const int32_t forwarded_sample_rate = static_cast<int32_t>(
+      codec_configs_.at(kCodecConfigId).GetOutputSampleRate());
+  const int32_t forwarded_bit_depth = static_cast<int32_t>(
+      codec_configs_.at(kCodecConfigId).GetBitDepthToMeasureLoudness());
+  const uint32_t forwarded_num_samples_per_frame =
+      codec_configs_.at(kCodecConfigId).GetNumSamplesPerFrame();
+
+  MockWavWriterFactory mock_wav_writer_factory;
+  EXPECT_CALL(mock_wav_writer_factory,
+              Call(kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex,
+                   forwarded_layout, kNumchannelsForMono, forwarded_sample_rate,
+                   forwarded_bit_depth, forwarded_num_samples_per_frame));
+  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
+
+  auto finalizer = CreateFinalizerExpectOk();
+}
+
+TEST_F(FinalizerTest, ForwardsOverrideBitDepthToWavWriterFactory) {
+  PrepareObusForOneSamplePassThroughMono();
+  // Rendering needs to be initialized to create wav files.
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  output_wav_file_bit_depth_override_ = 32;
+  // The codec config is configured with a different bit-depth.
+  ASSERT_NE(*output_wav_file_bit_depth_override_,
+            codec_configs_.at(kCodecConfigId).GetBitDepthToMeasureLoudness());
+
+  // We expect the override bit-depth to be forwarded to the wav writer factory.
+  MockWavWriterFactory mock_wav_writer_factory;
+  EXPECT_CALL(mock_wav_writer_factory,
+              Call(_, _, _, _, _, _, *output_wav_file_bit_depth_override_, _));
+  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
+
+  auto finalizer = CreateFinalizerExpectOk();
+}
+
 TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
   PrepareObusForOneSamplePassThroughMono();
   // We expect arguments to be forwarded from the OBUs to the loudness
