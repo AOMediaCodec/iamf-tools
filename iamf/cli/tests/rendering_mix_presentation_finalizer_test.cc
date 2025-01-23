@@ -217,16 +217,17 @@ class FinalizerTest : public ::testing::Test {
 
   RenderingMixPresentationFinalizer CreateFinalizerExpectOk() {
     auto finalizer = RenderingMixPresentationFinalizer::Create(
-        output_wav_file_bit_depth_override_, renderer_factory_.get(),
-        loudness_calculator_factory_.get(), audio_elements_,
-        wav_writer_factory_, obus_to_finalize_);
+        renderer_factory_.get(), loudness_calculator_factory_.get(),
+        audio_elements_, wav_writer_factory_, obus_to_finalize_);
     EXPECT_THAT(finalizer, IsOk());
     return *std::move(finalizer);
   }
 
   void ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout() {
     wav_writer_factory_ =
-        [output_directory = output_directory_](
+        [output_directory = output_directory_,
+         output_wav_file_bit_depth_override =
+             output_wav_file_bit_depth_override_](
             DecodedUleb128 mix_presentation_id, int sub_mix_index,
             int layout_index, const Layout&, int num_channels, int sample_rate,
             int bit_depth,
@@ -234,12 +235,15 @@ class FinalizerTest : public ::testing::Test {
       if (sub_mix_index != 0 || layout_index != 0) {
         return nullptr;
       }
-
+      // Obey the override bit depth. But if it is not set, just match the input
+      // audio.
+      const uint8_t wav_file_bit_depth =
+          output_wav_file_bit_depth_override.value_or(bit_depth);
       const auto wav_path =
           absl::StrCat(output_directory.string(), "_id_", mix_presentation_id,
                        kSuffixAfterMixPresentationId);
-      return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
-                               num_samples_per_frame);
+      return WavWriter::Create(wav_path, num_channels, sample_rate,
+                               wav_file_bit_depth, num_samples_per_frame);
     };
   }
 
@@ -334,9 +338,8 @@ TEST_F(FinalizerTest, CreateFailsWitMismatchingNumSamplesPerFrame) {
       /*common_parameter_id=*/999, kCommonParameterRate, obus_to_finalize_);
 
   EXPECT_FALSE(RenderingMixPresentationFinalizer::Create(
-                   output_wav_file_bit_depth_override_, renderer_factory_.get(),
-                   loudness_calculator_factory_.get(), audio_elements_,
-                   wav_writer_factory_, obus_to_finalize_)
+                   renderer_factory_.get(), loudness_calculator_factory_.get(),
+                   audio_elements_, wav_writer_factory_, obus_to_finalize_)
                    .ok());
 }
 
@@ -505,8 +508,8 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
-  ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   output_wav_file_bit_depth_override_ = 32;
+  ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -665,24 +668,6 @@ TEST_F(FinalizerTest, ForwardsArgumentsToWavWriterFactory) {
               Call(kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex,
                    forwarded_layout, kNumchannelsForMono, forwarded_sample_rate,
                    forwarded_bit_depth, forwarded_num_samples_per_frame));
-  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
-
-  auto finalizer = CreateFinalizerExpectOk();
-}
-
-TEST_F(FinalizerTest, ForwardsOverrideBitDepthToWavWriterFactory) {
-  PrepareObusForOneSamplePassThroughMono();
-  // Rendering needs to be initialized to create wav files.
-  renderer_factory_ = std::make_unique<RendererFactory>();
-  output_wav_file_bit_depth_override_ = 32;
-  // The codec config is configured with a different bit-depth.
-  ASSERT_NE(*output_wav_file_bit_depth_override_,
-            codec_configs_.at(kCodecConfigId).GetBitDepthToMeasureLoudness());
-
-  // We expect the override bit-depth to be forwarded to the wav writer factory.
-  MockWavWriterFactory mock_wav_writer_factory;
-  EXPECT_CALL(mock_wav_writer_factory,
-              Call(_, _, _, _, _, _, *output_wav_file_bit_depth_override_, _));
   wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
 
   auto finalizer = CreateFinalizerExpectOk();

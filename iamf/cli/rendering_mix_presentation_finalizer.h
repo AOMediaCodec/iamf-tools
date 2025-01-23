@@ -89,8 +89,6 @@ class RenderingMixPresentationFinalizer {
   // and/or calculating loudness based on the rendered output.
   struct SubmixRenderingMetadata {
     uint32_t common_sample_rate;
-    uint8_t wav_file_bit_depth;
-    uint8_t loudness_calculator_bit_depth;
     std::vector<SubMixAudioElement> audio_elements_in_sub_mix;
     // Mix gain applied to the entire submix.
     std::unique_ptr<MixGainParamDefinition> mix_gain;
@@ -114,8 +112,8 @@ class RenderingMixPresentationFinalizer {
    * \param layout Associated layout.
    * \param prefix Prefix for the output file.
    * \param num_channels Number of channels.
-   * \param sample_rate Sample rate.
-   * \param bit_depth Bit depth.
+   * \param sample_rate Sample rate of the input audio.
+   * \param bit_depth Bit depth of the input audio.
    * \param num_samples_per_frame Number of samples per frame.
    * \return Unique pointer to a wav writer or `nullptr` if none is desired.
    */
@@ -144,8 +142,6 @@ class RenderingMixPresentationFinalizer {
    *
    * \param mix_presentation_metadata Input mix presentation metadata. Only
    *        the `loudness_metadata` fields are used.
-   * \param output_wav_file_bit_depth_override If present, overrides the output
-   *        WAV file bit depth.
    * \param renderer_factory Factory to create renderers, or `nullptr` to
    *        disable rendering.
    * \param loudness_calculator_factory Factory to create loudness calculators
@@ -158,7 +154,6 @@ class RenderingMixPresentationFinalizer {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
-      std::optional<uint8_t> output_wav_file_bit_depth_override,
       absl::Nullable<const RendererFactoryBase*> renderer_factory,
       absl::Nullable<const LoudnessCalculatorFactoryBase*>
           loudness_calculator_factory,

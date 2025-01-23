@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/encoder_main_lib.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -233,6 +234,20 @@ absl::Status GenerateTemporalUnitObus(
   return absl::OkStatus();
 }
 
+// TODO(b/390392510): Update control of output wav file bit-depth.
+std::optional<uint8_t> GetOverrideBitDepth(uint32_t requested_bit_depth) {
+  if (requested_bit_depth == 0) {
+    return std::nullopt;
+  }
+
+  // Clamp the bit-depth to something supported by wav files.
+  constexpr uint32_t kMinWavFileBitDepth = 16;
+  constexpr uint32_t kMaxWavFileBitDepth = 32;
+  const uint32_t clamped_bit_depth =
+      std::clamp(requested_bit_depth, kMinWavFileBitDepth, kMaxWavFileBitDepth);
+  return static_cast<uint8_t>(clamped_bit_depth);
+}
+
 absl::Status WriteObus(
     const UserMetadata& user_metadata, const std::string& output_iamf_directory,
     const IASequenceHeaderObu& ia_sequence_header_obu,
@@ -290,9 +305,12 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       (std::filesystem::path(output_iamf_directory) /
        user_metadata.test_vector_metadata().file_name_prefix())
           .string();
+  const std::optional<uint8_t> override_bit_depth =
+      GetOverrideBitDepth(user_metadata.test_vector_metadata()
+                              .output_wav_file_bit_depth_override());
   LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
   const auto ProduceAllWavWriters =
-      [output_wav_file_prefix](
+      [output_wav_file_prefix, override_bit_depth](
           DecodedUleb128 mix_presentation_id, int sub_mix_index,
           int layout_index, const Layout&, int num_channels, int sample_rate,
           int bit_depth,
@@ -300,8 +318,11 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
     const auto wav_path = absl::StrCat(
         output_wav_file_prefix, "_rendered_id_", mix_presentation_id,
         "_sub_mix_", sub_mix_index, "_layout_", layout_index, ".wav");
-    return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
-                             max_input_samples_per_frame);
+    // Obey the override bit depth. But if it is not set, we can infer a good
+    // bit-depth from the input audio.
+    const uint8_t wav_file_bit_depth = override_bit_depth.value_or(bit_depth);
+    return WavWriter::Create(wav_path, num_channels, sample_rate,
+                             wav_file_bit_depth, max_input_samples_per_frame);
   };
 
   auto iamf_encoder = IamfEncoder::Create(

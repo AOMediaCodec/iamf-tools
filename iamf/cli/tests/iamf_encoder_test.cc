@@ -436,30 +436,13 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
             kArbitraryLoudnessInfo);
 };
 
-TEST_F(IamfEncoderTest, OutputWavFactoryIsCalledWithOverrideBitDepth) {
+TEST_F(IamfEncoderTest, OutputWavFactoryIgnoresOverrideBitDepth) {
+  // The override bit-depth should be used at the `WavWriterFactory` level.
   SetupDescriptorObus();
-  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = 32;
+  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = kExpectedPcmBitDepth;
+  constexpr uint32_t kIgnoredBitDepthOverride = 255;
   user_metadata_.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(
-          kExpectedWavFactoryCalledBitDepth);
-  // Wav file writing is done only when the signal can be rendered, based on the
-  // resultant wav writers.
-  renderer_factory_ = std::make_unique<RendererFactory>();
-  MockWavWriterFactory mock_wav_writer_factory;
-  EXPECT_CALL(mock_wav_writer_factory,
-              Call(_, _, _, _, _, _, kExpectedWavFactoryCalledBitDepth, _));
-  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
-
-  CreateExpectOk();
-};
-
-TEST_F(IamfEncoderTest, OutputWavWriterFactoryIsCalledWithSaneClampedBitDepth) {
-  SetupDescriptorObus();
-  // The bit-depth is nonsensically large, normally wav files are limited to 32
-  // bits per sample
-  user_metadata_.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(256);
-  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = 32;
+      ->set_output_wav_file_bit_depth_override(kIgnoredBitDepthOverride);
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
   renderer_factory_ = std::make_unique<RendererFactory>();

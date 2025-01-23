@@ -58,19 +58,6 @@ namespace iamf_tools {
 
 namespace {
 
-std::optional<uint8_t> GetOverrideBitDepth(uint32_t requested_bit_depth) {
-  if (requested_bit_depth == 0) {
-    return std::nullopt;
-  }
-
-  // Clamp the bit-depth to something supported by wav files.
-  constexpr uint32_t kMinWavFileBitDepth = 16;
-  constexpr uint32_t kMaxWavFileBitDepth = 32;
-  const uint32_t clamped_bit_depth =
-      std::clamp(requested_bit_depth, kMinWavFileBitDepth, kMaxWavFileBitDepth);
-  return static_cast<uint8_t>(clamped_bit_depth);
-}
-
 absl::Status InitAudioFrameDecoderForAllAudioElements(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
@@ -131,8 +118,6 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
-      GetOverrideBitDepth(user_metadata.test_vector_metadata()
-                              .output_wav_file_bit_depth_override()),
       renderer_factory, loudness_calculator_factory, audio_elements,
       wav_writer_factory, mix_presentation_obus);
   if (!mix_presentation_finalizer.ok()) {
