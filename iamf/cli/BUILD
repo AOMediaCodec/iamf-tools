@@ -453,7 +453,7 @@ cc_library(
         ":loudness_calculator_factory_base",
         ":parameter_block_with_data",
         ":renderer_factory",
-        ":wav_writer",
+        ":sample_processor_base",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/renderer:audio_element_renderer_base",

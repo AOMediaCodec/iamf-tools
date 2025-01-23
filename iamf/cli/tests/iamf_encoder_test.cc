@@ -58,7 +58,7 @@ constexpr uint32_t kNumSamplesPerFrame = 8;
 constexpr int kExpectedPcmBitDepth = 16;
 
 const auto kOmitOutputWavFiles =
-    RenderingMixPresentationFinalizer::ProduceNoWavWriters;
+    RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
 
 void AddIaSequenceHeader(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -229,7 +229,7 @@ class IamfEncoderTest : public ::testing::Test {
   IamfEncoder CreateExpectOk() {
     auto iamf_encoder = IamfEncoder::Create(
         user_metadata_, renderer_factory_.get(),
-        loudness_calculator_factory_.get(), wav_writer_factory_,
+        loudness_calculator_factory_.get(), sample_processor_factory_,
         ia_sequence_header_obu_, codec_config_obus_, audio_elements_,
         mix_presentation_obus_, arbitrary_obus_);
     EXPECT_THAT(iamf_encoder, IsOk());
@@ -249,8 +249,8 @@ class IamfEncoderTest : public ::testing::Test {
       CreateRendererFactory();
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_ =
       CreateLoudnessCalculatorFactory();
-  RenderingMixPresentationFinalizer::WavWriterFactory wav_writer_factory_ =
-      kOmitOutputWavFiles;
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory_ = kOmitOutputWavFiles;
 };
 
 TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
@@ -258,9 +258,10 @@ TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
 
   EXPECT_FALSE(IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
                                    loudness_calculator_factory_.get(),
-                                   wav_writer_factory_, ia_sequence_header_obu_,
-                                   codec_config_obus_, audio_elements_,
-                                   mix_presentation_obus_, arbitrary_obus_)
+                                   sample_processor_factory_,
+                                   ia_sequence_header_obu_, codec_config_obus_,
+                                   audio_elements_, mix_presentation_obus_,
+                                   arbitrary_obus_)
                    .ok());
 }
 
@@ -436,20 +437,23 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
             kArbitraryLoudnessInfo);
 };
 
-TEST_F(IamfEncoderTest, OutputWavFactoryIgnoresOverrideBitDepth) {
-  // The override bit-depth should be used at the `WavWriterFactory` level.
+TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
+  // The override bit-depth should be used at the `SampleProcessorFactory`
+  // level.
   SetupDescriptorObus();
-  constexpr uint32_t kExpectedWavFactoryCalledBitDepth = kExpectedPcmBitDepth;
+  constexpr uint32_t kExpectedSampleProcessorFactoryCalledBitDepth =
+      kExpectedPcmBitDepth;
   constexpr uint32_t kIgnoredBitDepthOverride = 255;
   user_metadata_.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(kIgnoredBitDepthOverride);
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
   renderer_factory_ = std::make_unique<RendererFactory>();
-  MockWavWriterFactory mock_wav_writer_factory;
-  EXPECT_CALL(mock_wav_writer_factory,
-              Call(_, _, _, _, _, _, kExpectedWavFactoryCalledBitDepth, _));
-  wav_writer_factory_ = mock_wav_writer_factory.AsStdFunction();
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(
+      mock_sample_processor_factory,
+      Call(_, _, _, _, _, _, kExpectedSampleProcessorFactoryCalledBitDepth, _));
+  sample_processor_factory_ = mock_sample_processor_factory.AsStdFunction();
 
   CreateExpectOk();
 };

@@ -82,8 +82,8 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
     absl::Nullable<const RendererFactoryBase*> renderer_factory,
     absl::Nullable<const LoudnessCalculatorFactoryBase*>
         loudness_calculator_factory,
-    const RenderingMixPresentationFinalizer::WavWriterFactory&
-        wav_writer_factory,
+    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+        sample_processor_factory,
     std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
@@ -119,7 +119,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(
       renderer_factory, loudness_calculator_factory, audio_elements,
-      wav_writer_factory, mix_presentation_obus);
+      sample_processor_factory, mix_presentation_obus);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();
   }

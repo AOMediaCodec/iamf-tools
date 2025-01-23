@@ -98,7 +98,8 @@ class IamfEncoder {
    *        the loudness.
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        to measure the loudness of the output layouts.
-   * \param wav_writer_factory Factory to create wav writers.
+   * \param sample_processor_factory Factory to create processors for use after
+   *        rendering.
    * \param ia_sequence_header_obu Generated IA Sequence Header OBU.
    * \param codec_config_obus Map of Codec Config ID to generated Codec Config
    *        OBUs.
@@ -114,8 +115,8 @@ class IamfEncoder {
       absl::Nullable<const RendererFactoryBase*> renderer_factory,
       absl::Nullable<const LoudnessCalculatorFactoryBase*>
           loudness_calculator_factory,
-      const RenderingMixPresentationFinalizer::WavWriterFactory&
-          wav_writer_factory,
+      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+          sample_processor_factory,
       std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
       absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,

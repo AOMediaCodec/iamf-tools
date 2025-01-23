@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -34,7 +33,7 @@
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
-#include "iamf/cli/wav_writer.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
@@ -61,11 +60,11 @@ class RenderingMixPresentationFinalizer {
   // Contains rendering metadata for all audio elements in a given layout.
   struct LayoutRenderingMetadata {
     bool can_render;
-    // Controlled by the WavWriterFactory; may be nullptr if the user does not
-    // want a wav file written for this layout.
-    std::unique_ptr<WavWriter> wav_writer;
-    // Controlled by the LoudnessCalculatorFactory; may be nullptr if the user
-    // does not want loudness calculated for this layout.
+    // Controlled by the `SampleProcessorFactory`; may be `nullptr` if the user
+    // does not want post-processing this layout.
+    std::unique_ptr<SampleProcessorBase> sample_processor;
+    // Controlled by the `LoudnessCalculatorFactory`; may be `nullptr` if the
+    // user does not want loudness calculated for this layout.
     std::unique_ptr<LoudnessCalculatorBase> loudness_calculator;
     std::vector<AudioElementRenderingMetadata> audio_element_rendering_metadata;
     // The number of channels in this layout.
@@ -97,14 +96,13 @@ class RenderingMixPresentationFinalizer {
     std::vector<LayoutRenderingMetadata> layout_rendering_metadata;
   };
 
-  /*!\brief Factory for a wav writer.
+  /*!\brief Factory for a sample processor.
    *
-   * Used to control whether or not wav writers are created and control their
-   * filenames.
+   * Used to create a sample processor for use in post-processing the rendering.
    *
    * For example, if the user only wants a particular layout (e.g. stereo), or a
-   * particular mix presentation to be rendered, then a factory could filter out
-   * irrelevant mix presentations or layouts.
+   * particular mix presentation to be saved to a wav file, then a factory could
+   * select relevant layouts and mix presentations to create a `WavWriter` for.
    *
    * \param mix_presentation_id Mix presentation ID.
    * \param sub_mix_index Index of the sub mix within the mix presentation.
@@ -115,19 +113,20 @@ class RenderingMixPresentationFinalizer {
    * \param sample_rate Sample rate of the input audio.
    * \param bit_depth Bit depth of the input audio.
    * \param num_samples_per_frame Number of samples per frame.
-   * \return Unique pointer to a wav writer or `nullptr` if none is desired.
+   * \return Unique pointer to a sample processor or `nullptr` if none is
+   *         desired.
    */
-  typedef absl::AnyInvocable<std::unique_ptr<WavWriter>(
+  typedef absl::AnyInvocable<std::unique_ptr<SampleProcessorBase>(
       DecodedUleb128 mix_presentation_id, int sub_mix_index, int layout_index,
       const Layout& layout, int num_channels, int sample_rate, int bit_depth,
       size_t num_samples_per_frame) const>
-      WavWriterFactory;
+      SampleProcessorFactory;
 
-  /*!\brief Factory that disables wav writers.
+  /*!\brief Factory that never returns a sample processor.
    *
    * For convenience to use with `Create`.
    */
-  static std::unique_ptr<WavWriter> ProduceNoWavWriters(
+  static std::unique_ptr<SampleProcessorBase> ProduceNoSampleProcessors(
       DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
       int /*layout_index*/, const Layout& /*layout*/, int /*num_channels*/,
       int /*sample_rate*/, int /*bit_depth*/,
@@ -147,7 +146,8 @@ class RenderingMixPresentationFinalizer {
    * \param loudness_calculator_factory Factory to create loudness calculators
    *        or `nullptr` to disable loudness calculation.
    * \param audio_elements Audio elements with data.
-   * \param wav_writer_factory Factory to create wav writers.
+   * \param sample_processor_factory Factory to create sample processors for use
+   *        after rendering.
    * \param mix_presentation_obus Output list of OBUs to finalize with initial
    *        user-provided loudness information.
    *
@@ -158,7 +158,7 @@ class RenderingMixPresentationFinalizer {
       absl::Nullable<const LoudnessCalculatorFactoryBase*>
           loudness_calculator_factory,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const WavWriterFactory& wav_writer_factory,
+      const SampleProcessorFactory& sample_processor_factory,
       std::list<MixPresentationObu>& mix_presentation_obus);
 
   /*!\brief Move constructor. */

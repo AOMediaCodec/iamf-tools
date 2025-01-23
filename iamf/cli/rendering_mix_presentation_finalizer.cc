@@ -18,7 +18,6 @@
 #include <cstring>
 #include <list>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,7 +44,6 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
-#include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
@@ -504,13 +502,13 @@ using SubmixRenderingMetadata =
     RenderingMixPresentationFinalizer::SubmixRenderingMetadata;
 
 // Generates rendering metadata for all layouts within a submix. This includes
-// optionally creating a wav writer and/or a loudness calculator for each
+// optionally creating a sample processor and/or a loudness calculator for each
 // layout.
 absl::Status GenerateRenderingMetadataForLayouts(
     const RendererFactoryBase& renderer_factory,
     const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
-    const RenderingMixPresentationFinalizer::WavWriterFactory&
-        wav_writer_factory,
+    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+        sample_processor_factory,
     const DecodedUleb128 mix_presentation_id, MixPresentationSubMix& sub_mix,
     int sub_mix_index,
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
@@ -547,8 +545,8 @@ absl::Status GenerateRenderingMetadataForLayouts(
               layout, common_num_samples_per_frame, common_sample_rate,
               rendering_bit_depth);
     }
-    // Optionally create a wav writer.
-    layout_rendering_metadata.wav_writer = wav_writer_factory(
+    // Optionally create a post-processor.
+    layout_rendering_metadata.sample_processor = sample_processor_factory(
         mix_presentation_id, sub_mix_index, layout_index,
         layout.loudness_layout, num_channels, common_sample_rate,
         rendering_bit_depth, common_num_samples_per_frame);
@@ -573,8 +571,8 @@ absl::Status GenerateRenderingMetadataForSubmixes(
     const RendererFactoryBase& renderer_factory,
     absl::Nullable<const LoudnessCalculatorFactoryBase*>
         loudness_calculator_factory,
-    const RenderingMixPresentationFinalizer::WavWriterFactory&
-        wav_writer_factory,
+    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+        sample_processor_factory,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     MixPresentationObu& mix_presentation_obu,
     std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
@@ -613,7 +611,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
           "or bit-depths.");
     }
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
-        renderer_factory, loudness_calculator_factory, wav_writer_factory,
+        renderer_factory, loudness_calculator_factory, sample_processor_factory,
         mix_presentation_id, sub_mix, sub_mix_index, audio_elements_in_sub_mix,
         submix_rendering_metadata.common_sample_rate, rendering_bit_depth,
         common_num_samples_per_frame,
@@ -622,7 +620,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
   return absl::OkStatus();
 }
 
-absl::Status UpdateLoudnessInfo(
+absl::Status FinalizeLoudnessAndFlushPostProcessors(
     bool validate_loudness,
     std::vector<SubmixRenderingMetadata>& rendering_metadata,
     MixPresentationObu& mix_presentation_obu) {
@@ -632,20 +630,22 @@ absl::Status UpdateLoudnessInfo(
     int layout_index = 0;
     for (auto& layout_rendering_metadata :
          submix_rendering_metadata.layout_rendering_metadata) {
-      if (layout_rendering_metadata.loudness_calculator == nullptr) {
-        continue;
+      if (layout_rendering_metadata.loudness_calculator != nullptr) {
+        RETURN_IF_NOT_OK(UpdateLoudnessInfoForLayout(
+            validate_loudness,
+            mix_presentation_obu.sub_mixes_[submix_index]
+                .layouts[layout_index]
+                .loudness,
+            mix_presentation_obu.GetMixPresentationId(), submix_index,
+            layout_index, loudness_matches_user_data,
+            std::move(layout_rendering_metadata.loudness_calculator),
+            mix_presentation_obu.sub_mixes_[submix_index]
+                .layouts[layout_index]
+                .loudness));
       }
-      RETURN_IF_NOT_OK(UpdateLoudnessInfoForLayout(
-          validate_loudness,
-          mix_presentation_obu.sub_mixes_[submix_index]
-              .layouts[layout_index]
-              .loudness,
-          mix_presentation_obu.GetMixPresentationId(), submix_index,
-          layout_index, loudness_matches_user_data,
-          std::move(layout_rendering_metadata.loudness_calculator),
-          mix_presentation_obu.sub_mixes_[submix_index]
-              .layouts[layout_index]
-              .loudness));
+      if (layout_rendering_metadata.sample_processor != nullptr) {
+        RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->Flush());
+      }
       layout_index++;
     }
     submix_index++;
@@ -704,12 +704,8 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
       if (!rendered_span.ok()) {
         return rendered_span.status();
       }
-
-      if (layout_rendering_metadata.wav_writer != nullptr) {
-        RETURN_IF_NOT_OK(
-            layout_rendering_metadata.wav_writer->PushFrame(*rendered_span));
-      }
-
+      // Calculate loudness based on the original rendered samples; we do not
+      // know what post-processing the end user will have.
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
         // Adapt to the loudness calculator interface.
         // TODO(b/390250647): Remove this conversion, once the loudness
@@ -722,6 +718,12 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
             layout_rendering_metadata.loudness_calculator
                 ->AccumulateLoudnessForSamples(
                     layout_rendering_metadata.flattened_rendered_samples));
+      }
+
+      // Perform any post-processing.
+      if (layout_rendering_metadata.sample_processor != nullptr) {
+        RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->PushFrame(
+            *rendered_span));
       }
     }
   }
@@ -736,7 +738,7 @@ RenderingMixPresentationFinalizer::Create(
     absl::Nullable<const LoudnessCalculatorFactoryBase*>
         loudness_calculator_factory,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const WavWriterFactory& wav_writer_factory,
+    const SampleProcessorFactory& sample_processor_factory,
     std::list<MixPresentationObu>& mix_presentation_obus) {
   if (renderer_factory == nullptr) {
     LOG(INFO) << "Rendering is safely disabled.";
@@ -752,8 +754,9 @@ RenderingMixPresentationFinalizer::Create(
   for (auto& mix_presentation_obu : mix_presentation_obus) {
     std::vector<SubmixRenderingMetadata> sub_mix_rendering_metadata;
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
-        *renderer_factory, loudness_calculator_factory, wav_writer_factory,
-        audio_elements, mix_presentation_obu, sub_mix_rendering_metadata));
+        *renderer_factory, loudness_calculator_factory,
+        sample_processor_factory, audio_elements, mix_presentation_obu,
+        sub_mix_rendering_metadata));
 
     rendering_metadata.push_back(MixPresentationRenderingMetadata{
         .mix_presentation_id = mix_presentation_obu.GetMixPresentationId(),
@@ -800,12 +803,12 @@ absl::Status RenderingMixPresentationFinalizer::Finalize(
           "Mix presentation ID mismatch between rendering metadata and mix "
           "presentation OBUs.");
     }
-    RETURN_IF_NOT_OK(UpdateLoudnessInfo(
+    RETURN_IF_NOT_OK(FinalizeLoudnessAndFlushPostProcessors(
         validate_loudness, rendering_metadata_[i].submix_rendering_metadata,
         mix_presentation_obu));
     i++;
   }
-  // Clearing rendering metadata closes all renderers, wav writers, and loudness
+  // Clearing rendering metadata closes all renderers,  and loudness
   // calculators.
   rendering_metadata_.clear();
   return absl::OkStatus();
