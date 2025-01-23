@@ -48,9 +48,6 @@ constexpr int kBitsPerByte = 8;
 constexpr int kBitDepth16 = 16;
 constexpr int kBitDepth24 = 24;
 constexpr int kBitDepth32 = 32;
-// Value 2^31 used as the normalizing factor for the audio samples stored in
-// int32 buffer.
-constexpr float kNormalizeFactor = INT32_MAX + 1.0f;
 
 constexpr double kRadiansToDegrees = 180.0 / std::numbers::pi_v<double>;
 
@@ -141,8 +138,8 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     for (size_t smp = 0; smp < buffer_size; ++smp) {
       for (size_t ch = 0; ch < ip_wav_nch; ++ch) {
         ip_buffer_float[ch * buffer_size + smp] =
-            static_cast<float>(ip_buffer_int32[smp * ip_wav_nch + ch]) /
-            kNormalizeFactor;
+            Int32ToNormalizedFloatingPoint<float>(
+                ip_buffer_int32[smp * ip_wav_nch + ch]);
       }
     }
 
