@@ -156,13 +156,13 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // Down-mix the audio samples and then demix audio samples while decoding
   // them. This is useful to create multi-layer audio elements and to determine
   // the recon gain parameters and to measuring loudness.
-  auto demixing_module = std::make_unique<DemixingModule>();
-  RETURN_IF_NOT_OK(demixing_module->InitializeForDownMixingAndReconstruction(
+  DemixingModule demixing_module;
+  RETURN_IF_NOT_OK(demixing_module.InitializeForDownMixingAndReconstruction(
       user_metadata, audio_elements));
 
   auto audio_frame_generator = std::make_unique<AudioFrameGenerator>(
       user_metadata.audio_frame_metadata(),
-      user_metadata.codec_config_metadata(), audio_elements, *demixing_module,
+      user_metadata.codec_config_metadata(), audio_elements, demixing_module,
       *parameters_manager, *global_timing_module);
   RETURN_IF_NOT_OK(audio_frame_generator->Initialize());
 
@@ -176,7 +176,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
       user_metadata.test_vector_metadata().validate_user_loudness(),
       std::move(parameter_id_to_metadata), std::move(param_definitions),
       std::move(parameter_block_generator), std::move(parameters_manager),
-      std::move(demixing_module), std::move(audio_frame_generator),
+      demixing_module, std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),
       std::move(*mix_presentation_finalizer));
 }
@@ -292,7 +292,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   // Demix the audio frames.
   IdLabeledFrameMap id_to_labeled_frame;
   IdLabeledFrameMap id_to_labeled_decoded_frame;
-  RETURN_IF_NOT_OK(demixing_module_->DemixAudioSamples(
+  RETURN_IF_NOT_OK(demixing_module_.DemixAudioSamples(
       audio_frames, decoded_audio_frames, id_to_labeled_frame,
       id_to_labeled_decoded_frame));
 

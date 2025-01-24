@@ -283,7 +283,7 @@ void InitializeAudioFrameGenerator(
         param_definitions,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    DemixingModule& demixing_module, GlobalTimingModule& global_timing_module,
+    GlobalTimingModule& global_timing_module,
     std::optional<ParametersManager>& parameters_manager,
     std::optional<AudioFrameGenerator>& audio_frame_generator,
     bool expected_initialize_is_ok = true) {
@@ -299,6 +299,7 @@ void InitializeAudioFrameGenerator(
       audio_element_generator.Generate(codec_config_obus, audio_elements),
       IsOk());
 
+  DemixingModule demixing_module;
   ASSERT_THAT(demixing_module.InitializeForDownMixingAndReconstruction(
                   user_metadata, audio_elements),
               IsOk());
@@ -330,15 +331,14 @@ void ExpectAudioFrameGeneratorInitializeIsNotOk(
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
 
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
-      demixing_module, global_timing_module, parameters_manager,
-      audio_frame_generator, /*expected_initialize_is_ok=*/false);
+      global_timing_module, parameters_manager, audio_frame_generator,
+      /*expected_initialize_is_ok=*/false);
 }
 
 // Safe to run simultaneously with `FlushAudioFrameGenerator`.
@@ -393,16 +393,14 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
   // containers.
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   // For delayed initialization.
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   // Initialize, add samples, generate frames, and finalize.
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   // Add one "real" frame.
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
@@ -521,15 +519,13 @@ TEST(AudioFrameGenerator, AddSamplesAfterFinalizeHasNoEffect) {
       param_definitions = {};
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   // For delayed initialization.
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
 
   // First add one frame of samples and call finalize.
   const absl::flat_hash_map<ChannelLabel::Label,
@@ -569,14 +565,12 @@ TEST(AudioFrameGenerator, AddZeroSamplesBeforeFinalizeFails) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
 
   // Before `Finalize()` is called, adding zero samples is disallowed.
   EXPECT_FALSE(
@@ -851,14 +845,12 @@ TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   EXPECT_THAT(
       audio_frame_generator->AddSamples(kFirstAudioElementId, ChannelLabel::kL2,
                                         kFrame0L2EightSamples),
@@ -900,14 +892,12 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
       label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
@@ -930,16 +920,15 @@ TEST(AudioFrameGenerator,
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
 
   constexpr bool kExpectInitializeIsOk = false;
-  InitializeAudioFrameGenerator(
-      user_metadata, param_definitions, codec_config_obus, audio_elements,
-      demixing_module, global_timing_module, parameters_manager,
-      audio_frame_generator, kExpectInitializeIsOk);
+  InitializeAudioFrameGenerator(user_metadata, param_definitions,
+                                codec_config_obus, audio_elements,
+                                global_timing_module, parameters_manager,
+                                audio_frame_generator, kExpectInitializeIsOk);
 }
 
 TEST(AudioFrameGenerator,
@@ -961,14 +950,12 @@ TEST(AudioFrameGenerator,
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   const absl::flat_hash_map<ChannelLabel::Label,
                             std::vector<absl::Span<const InternalSampleType>>>
       label_to_frames = {{ChannelLabel::kL2, {kFrame0L2EightSamples}},
@@ -1126,14 +1113,12 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   EXPECT_THAT(audio_frame_generator->Finalize(), IsOk());
   // Omit adding any samples to the generator.
   //  AddSamplesToAudioFrameGeneratorExpectOk(kFirstAudioElementId,
@@ -1151,14 +1136,12 @@ TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   constexpr int kNumFrames = 3;
   const std::vector<absl::Span<const InternalSampleType>> kThreeFrames(
       kNumFrames, kFrame0L2EightSamples);
@@ -1184,14 +1167,12 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  DemixingModule demixing_module;
   GlobalTimingModule global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
-  InitializeAudioFrameGenerator(user_metadata, param_definitions,
-                                codec_config_obus, audio_elements,
-                                demixing_module, global_timing_module,
-                                parameters_manager, audio_frame_generator);
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
   // Vector backing the samples passed to `audio_frame_generator`.
   const int kFrameSize = 8;
   std::vector<std::vector<InternalSampleType>> all_samples(kNumFrames);

@@ -215,9 +215,10 @@ class AudioFrameGenerator {
   absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state_
       ABSL_GUARDED_BY(mutex_);
 
-  // TODO(b/390150766): Be more careful about the lifetime of the following
-  //                    references, as they are not owned by this class.
-  const DemixingModule& demixing_module_;
+  const DemixingModule demixing_module_;
+  // TODO(b/390150766): Be more careful about the lifetime of the
+  //                    `parameters_manager_` and `global_timing_module_`, as
+  //                    they are not owned by this class.
   ParametersManager& parameters_manager_;
   GlobalTimingModule& global_timing_module_;
   GeneratorState state_ ABSL_GUARDED_BY(mutex_);

@@ -219,7 +219,7 @@ class IamfEncoder {
                   param_definitions,
               ParameterBlockGenerator&& parameter_block_generator,
               std::unique_ptr<ParametersManager> parameters_manager,
-              std::unique_ptr<DemixingModule> demixing_module,
+              const DemixingModule& demixing_module,
               std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
               AudioFrameDecoder&& audio_frame_decoder,
               std::unique_ptr<GlobalTimingModule> global_timing_module,
@@ -229,7 +229,7 @@ class IamfEncoder {
         param_definitions_(std::move(param_definitions)),
         parameter_block_generator_(std::move(parameter_block_generator)),
         parameters_manager_(std::move(parameters_manager)),
-        demixing_module_(std::move(demixing_module)),
+        demixing_module_(demixing_module),
         audio_frame_generator_(std::move(audio_frame_generator)),
         audio_frame_decoder_(std::move(audio_frame_decoder)),
         global_timing_module_(std::move(global_timing_module)),
@@ -264,7 +264,7 @@ class IamfEncoder {
   // Some are held in `unique_ptr` for reference stability after move.
   ParameterBlockGenerator parameter_block_generator_;
   absl::Nonnull<std::unique_ptr<ParametersManager>> parameters_manager_;
-  absl::Nonnull<std::unique_ptr<DemixingModule>> demixing_module_;
+  const DemixingModule demixing_module_;
   absl::Nonnull<std::unique_ptr<AudioFrameGenerator>> audio_frame_generator_;
   AudioFrameDecoder audio_frame_decoder_;
   absl::Nonnull<std::unique_ptr<GlobalTimingModule>> global_timing_module_;
