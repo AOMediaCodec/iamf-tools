@@ -30,8 +30,8 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/cli/sample_processor_base.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/obu_util.h"
 #include "src/dsp/write_wav_file.h"
 
 namespace iamf_tools {

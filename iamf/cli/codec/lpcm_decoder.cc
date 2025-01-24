@@ -20,8 +20,8 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/numeric_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 

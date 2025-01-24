@@ -21,7 +21,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/common/tests/test_utils.h"
+#include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_base.h"

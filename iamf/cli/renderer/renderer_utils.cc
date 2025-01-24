@@ -22,8 +22,8 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 

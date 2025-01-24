@@ -19,7 +19,7 @@
 
 #include "absl/functional/any_invocable.h"
 #include "absl/types/span.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/obu_util.h"
 
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
 #ifdef IS_LITTLE_ENDIAN
@@ -33,7 +33,7 @@
 #include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"

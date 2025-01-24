@@ -22,8 +22,8 @@
 #include "iamf/cli/obu_to_proto/obu_header_metadata_generator.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

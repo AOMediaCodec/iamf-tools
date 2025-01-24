@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/numeric_utils.h"
+#include "iamf/common/utils/numeric_utils.h"
 
 #include <bit>
 #include <cmath>

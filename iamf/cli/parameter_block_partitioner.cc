@@ -23,8 +23,8 @@
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/obu_util.h"
 
 namespace iamf_tools {
 

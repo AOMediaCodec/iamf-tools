@@ -25,9 +25,9 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
-#include "iamf/common/validation_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 

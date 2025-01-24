@@ -23,7 +23,7 @@
 #include "iamf/cli/adm_to_user_metadata/adm/bw64_reader.h"
 #include "iamf/cli/adm_to_user_metadata/adm/wav_file_splicer.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/user_metadata_generator.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

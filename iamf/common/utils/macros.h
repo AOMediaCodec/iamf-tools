@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_MACROS_H_
-#define COMMON_MACROS_H_
+#ifndef COMMON_UTILS_MACROS_H_
+#define COMMON_UTILS_MACROS_H_
 
 namespace iamf_tools {
 
@@ -37,4 +37,4 @@ namespace iamf_tools {
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_MACROS_H_
+#endif  // COMMON_UTILS_MACROS_H_

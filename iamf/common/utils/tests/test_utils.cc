@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/tests/test_utils.h"
+#include "iamf/common/utils/tests/test_utils.h"
 
 #include <cstdint>
 #include <vector>

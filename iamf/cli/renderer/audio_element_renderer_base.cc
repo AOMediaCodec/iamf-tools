@@ -20,7 +20,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/renderer_utils.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

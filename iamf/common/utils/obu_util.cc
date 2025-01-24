@@ -9,21 +9,14 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/obu_util.h"
 
-#include <bit>
-#include <cmath>
-#include <cstddef>
 #include <cstdint>
-#include <limits>
-#include <vector>
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
-#include "absl/types/span.h"
 
 namespace iamf_tools {
 

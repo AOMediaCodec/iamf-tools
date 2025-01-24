@@ -20,10 +20,10 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/common/validation_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "libSYS/include/machine_type.h"
 

@@ -37,7 +37,7 @@
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"

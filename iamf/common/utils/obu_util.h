@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_OBU_UTIL_H_
-#define COMMON_OBU_UTIL_H_
+#ifndef COMMON_UTILS_OBU_UTIL_H_
+#define COMMON_UTILS_OBU_UTIL_H_
 
 #include <algorithm>
 #include <cmath>
@@ -26,7 +26,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/common/numeric_utils.h"
+#include "iamf/common/utils/numeric_utils.h"
 
 namespace iamf_tools {
 
@@ -296,4 +296,4 @@ absl::Status InterpolateMixGainValue(
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_OBU_UTIL_H_
+#endif  // COMMON_UTILS_OBU_UTIL_H_

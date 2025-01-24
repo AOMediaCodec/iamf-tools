@@ -18,8 +18,8 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

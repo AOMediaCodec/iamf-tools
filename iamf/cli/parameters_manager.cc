@@ -24,7 +24,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/parameter_block_with_data.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/param_definitions.h"

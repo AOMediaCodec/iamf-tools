@@ -23,7 +23,7 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/map_utils.h"
 
 namespace iamf_tools {
 

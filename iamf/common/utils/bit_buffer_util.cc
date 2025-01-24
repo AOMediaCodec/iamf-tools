@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/bit_buffer_util.h"
+#include "iamf/common/utils/bit_buffer_util.h"
 
 #include <cstdint>
 #include <vector>

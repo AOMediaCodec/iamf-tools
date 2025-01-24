@@ -16,7 +16,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/map_utils.h"
 
 namespace iamf_tools {
 

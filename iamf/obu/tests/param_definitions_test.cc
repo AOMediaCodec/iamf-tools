@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/common/tests/test_utils.h"
+#include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/demixing_param_definition.h"

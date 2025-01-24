@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/map_utils.h"
 
 #include <array>
 #include <utility>

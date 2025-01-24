@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_MAP_UTILS_H_
-#define COMMON_MAP_UTILS_H_
+#ifndef COMMON_UTILS_MAP_UTILS_H_
+#define COMMON_UTILS_MAP_UTILS_H_
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
@@ -142,4 +142,4 @@ auto BuildStaticMapFromInvertedPairs(const InputContainer& pairs) {
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_MAP_UTILS_H_
+#endif  // COMMON_UTILS_MAP_UTILS_H_

@@ -19,8 +19,8 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions.h"
 

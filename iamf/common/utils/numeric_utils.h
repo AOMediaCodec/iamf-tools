@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_NUMERIC_UTILS_H_
-#define COMMON_NUMERIC_UTILS_H_
+#ifndef COMMON_UTILS_NUMERIC_UTILS_H_
+#define COMMON_UTILS_NUMERIC_UTILS_H_
 
 #include <algorithm>
 #include <cmath>
@@ -25,7 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/common/validation_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 
 namespace iamf_tools {
 
@@ -234,4 +234,4 @@ absl::Status StaticCastSpanIfInRange(absl::string_view field_name,
 }
 }  // namespace iamf_tools
 
-#endif  // COMMON_NUMERIC_UTILS_H_
+#endif  // COMMON_UTILS_NUMERIC_UTILS_H_

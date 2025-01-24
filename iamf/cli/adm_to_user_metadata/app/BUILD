@@ -27,7 +27,7 @@ cc_library(
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "//iamf/cli/adm_to_user_metadata/iamf:user_metadata_generator",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "//iamf/common:macros",
+        "//iamf/common/utils:macros",
         "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

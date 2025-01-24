@@ -29,7 +29,7 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 #include "iamf/cli/renderer/renderer_utils.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"

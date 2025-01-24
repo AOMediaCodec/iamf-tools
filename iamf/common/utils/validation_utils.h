@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_VALIDATION_UTILS_H_
-#define COMMON_VALIDATION_UTILS_H_
+#ifndef COMMON_UTILS_VALIDATION_UTILS_H_
+#define COMMON_UTILS_VALIDATION_UTILS_H_
 
 #include <optional>
 
@@ -134,4 +134,4 @@ absl::Status ValidateUnique(InputIt first, InputIt last,
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_VALIDATION_UTILS_H_
+#endif  // COMMON_UTILS_VALIDATION_UTILS_H_

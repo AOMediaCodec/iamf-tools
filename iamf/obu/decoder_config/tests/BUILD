@@ -6,7 +6,7 @@ cc_test(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "//iamf/common/tests:test_utils",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
@@ -21,7 +21,7 @@ cc_test(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "//iamf/common/tests:test_utils",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu/decoder_config:flac_decoder_config",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
@@ -36,7 +36,7 @@ cc_test(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "//iamf/common/tests:test_utils",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
@@ -51,7 +51,7 @@ cc_test(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "//iamf/common/tests:test_utils",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",

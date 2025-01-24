@@ -13,8 +13,8 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions.h"

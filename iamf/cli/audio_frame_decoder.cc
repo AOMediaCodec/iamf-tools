@@ -25,7 +25,7 @@
 #include "iamf/cli/codec/flac_decoder.h"
 #include "iamf/cli/codec/lpcm_decoder.h"
 #include "iamf/cli/codec/opus_decoder.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/codec_config.h"
 
 namespace iamf_tools {

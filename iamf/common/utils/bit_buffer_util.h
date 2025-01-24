@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef COMMON_BIT_BUFFER_UTIL_H_
-#define COMMON_BIT_BUFFER_UTIL_H_
+#ifndef COMMON_UTILS_BIT_BUFFER_UTIL_H_
+#define COMMON_UTILS_BIT_BUFFER_UTIL_H_
 
 #include <cstdint>
 #include <vector>
@@ -71,4 +71,4 @@ absl::Status WriteBit(int bit, int64_t& bit_offset,
 
 }  // namespace iamf_tools
 
-#endif  // COMMON_BIT_BUFFER_UTIL_H_
+#endif  // COMMON_UTILS_BIT_BUFFER_UTIL_H_

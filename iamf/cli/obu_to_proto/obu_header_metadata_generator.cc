@@ -16,8 +16,8 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/proto/obu_header.pb.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/obu_util.h"
 #include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {

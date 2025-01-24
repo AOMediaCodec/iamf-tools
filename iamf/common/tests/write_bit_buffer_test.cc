@@ -28,8 +28,8 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/common/bit_buffer_util.h"
-#include "iamf/common/tests/test_utils.h"
+#include "iamf/common/utils/bit_buffer_util.h"
+#include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

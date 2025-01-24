@@ -1,4 +1,4 @@
-#include "iamf/common/validation_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 
 /*
  * Copyright (c) 2023, Alliance for Open Media. All rights reserved

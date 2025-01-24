@@ -20,8 +20,8 @@
 #include "absl/status/status.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
-#include "iamf/common/macros.h"
-#include "iamf/common/map_utils.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

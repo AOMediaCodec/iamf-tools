@@ -16,8 +16,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "iamf/common/macros.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"

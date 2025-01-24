@@ -35,7 +35,7 @@
 #include "iamf/cli/adm_to_user_metadata/adm/format_info_chunk.h"
 #include "iamf/cli/adm_to_user_metadata/adm/panner.h"
 #include "iamf/cli/wav_writer.h"
-#include "iamf/common/macros.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

@@ -41,7 +41,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
