@@ -25,6 +25,7 @@
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/map_utils.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/obu_header.h"

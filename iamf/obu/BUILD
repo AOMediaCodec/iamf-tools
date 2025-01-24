@@ -135,7 +135,7 @@ cc_library(
         ":param_definitions",
         ":types",
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
+        "//iamf/common:map_utils",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",

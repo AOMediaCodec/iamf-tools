@@ -14,8 +14,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -23,7 +21,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/map_utils.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"

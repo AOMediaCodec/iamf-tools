@@ -6,7 +6,7 @@ cc_library(
     hdrs = ["aac_decoder_config.h"],
     deps = [
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
+        "//iamf/common:map_utils",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",

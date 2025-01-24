@@ -13,7 +13,7 @@ cc_library(
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
+        "//iamf/common:map_utils",
         "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",

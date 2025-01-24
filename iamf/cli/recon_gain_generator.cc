@@ -21,7 +21,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/map_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

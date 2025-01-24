@@ -22,12 +22,12 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/common/map_utils.h"
 #include "iamf/common/obu_util.h"
 
 namespace iamf_tools {
