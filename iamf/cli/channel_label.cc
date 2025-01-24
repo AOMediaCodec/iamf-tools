@@ -27,6 +27,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 

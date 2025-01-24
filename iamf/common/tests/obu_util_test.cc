@@ -46,7 +46,6 @@ using ::testing::HasSubstr;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
-constexpr std::array<int, 4> kFourTestValues = {1, 2, 3, 4};
 
 TEST(AddUint32CheckOverflow, SmallInput) {
   uint32_t result;
@@ -884,31 +883,6 @@ TEST(WritePcmSample, InvalidOver32Bits) {
             absl::StatusCode::kInvalidArgument);
 }
 
-TEST(ValidateContainerSizeEqual, OkIfArgsAreEqual) {
-  constexpr uint8_t kReportedSizeFour = 4;
-
-  EXPECT_THAT(ValidateContainerSizeEqual(kOmitContext, kFourTestValues,
-                                         kReportedSizeFour),
-              IsOk());
-}
-
-TEST(ValidateContainerSizeEqual, NotOkIfArgsAreNotEquals) {
-  constexpr uint8_t kInaccurateSizeFive = 5;
-
-  EXPECT_FALSE(
-      ValidateContainerSizeEqual("", kFourTestValues, kInaccurateSizeFive)
-          .ok());
-}
-
-TEST(ValidateContainerSizeEqual, MessageContainsContextOnError) {
-  constexpr uint8_t kInaccurateSizeFive = 5;
-
-  EXPECT_THAT(ValidateContainerSizeEqual(kCustomUserContext, kFourTestValues,
-                                         kInaccurateSizeFive)
-                  .message(),
-              HasSubstr(kCustomUserContext));
-}
-
 TEST(StaticCastSpanIfInRange, SucceedsIfArgsAreEqualSize) {
   constexpr std::array<uint8_t, 4> kContainer = {1, 2, 3, 4};
   constexpr std::array<char, 4> kExpectedResult = {0x01, 0x02, 0x03, 0x04};
@@ -1227,56 +1201,6 @@ TEST(LookupInMapStatusOr, MessageContainsEmptyWhenMapIsEmpty) {
 
   EXPECT_THAT(LookupInMap(kEmptyMap, 3, kOmitContext).status().message(),
               HasSubstr("empty"));
-}
-
-TEST(ValidateEqual, OkIfArgsAreEqual) {
-  const auto kLeftArg = 123;
-  const auto kRightArg = 123;
-  EXPECT_THAT(ValidateEqual(kLeftArg, kRightArg, kOmitContext), IsOk());
-}
-
-TEST(ValidateEqual, NotOkIfArgsAreNotEqual) {
-  const auto kLeftArg = 123;
-  const auto kUnequalRightArg = 223;
-  EXPECT_FALSE(ValidateEqual(kLeftArg, kUnequalRightArg, kOmitContext).ok());
-}
-
-TEST(ValidateNotEqual, OkIfArgsAreNotEqual) {
-  const auto kLeftArg = 123;
-  const auto kRightArg = 124;
-  EXPECT_THAT(ValidateNotEqual(kLeftArg, kRightArg, kOmitContext), IsOk());
-}
-
-TEST(ValidateNotEqual, NotOkIfArgsAreEqual) {
-  const auto kLeftArg = 123;
-  const auto kEqualRightArg = 123;
-  EXPECT_FALSE(ValidateNotEqual(kLeftArg, kEqualRightArg, kOmitContext).ok());
-}
-
-TEST(ValidateHasValue, OkIfArgHasValue) {
-  constexpr std::optional<int> kArg = 123;
-  EXPECT_THAT(ValidateHasValue(kArg, kOmitContext), IsOk());
-}
-
-TEST(ValidateHasValue, NotOkIfArgDoesNotHaveValue) {
-  constexpr std::optional<int> kArg = std::nullopt;
-  EXPECT_FALSE(ValidateHasValue(kArg, kOmitContext).ok());
-}
-
-TEST(ValidateUnique, OkIfArgsAreUnique) {
-  const std::vector<int> kVectorWithUniqueValues = {1, 2, 3, 99};
-
-  EXPECT_THAT(ValidateUnique(kVectorWithUniqueValues.begin(),
-                             kVectorWithUniqueValues.end(), kOmitContext),
-              IsOk());
-}
-
-TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
-  const std::vector<int> kVectorWithDuplicateValues = {1, 2, 3, 99, 1};
-
-  EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
-                              kVectorWithDuplicateValues.end(), kOmitContext)
-                   .ok());
 }
 
 TEST(BuildStaticMapFromPairs, SucceedsOnEmptyContainer) {

@@ -83,6 +83,7 @@ cc_library(
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
+        "//iamf/common:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",

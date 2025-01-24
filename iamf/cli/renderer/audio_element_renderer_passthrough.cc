@@ -31,6 +31,7 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"

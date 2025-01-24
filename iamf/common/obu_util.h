@@ -17,14 +17,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
@@ -33,6 +31,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "iamf/common/validation_utils.h"
 
 namespace iamf_tools {
 
@@ -230,32 +229,6 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
  */
 bool IsNativeBigEndian();
 
-/*!\brief Returns an error if the size arguments are not equivalent.
- *
- * Intended to be used in OBUs to ensure the reported and actual size of
- * containers are equivalent.
- *
- * \param field_name Field name of the container to insert into the error
- *                   message.
- * \param container Container to check the size of.
- * \param reported_size Size reported by associated fields (e.g. "*_size" fields
- *                      in the OBU).
- * \return `absl::OkStatus()` if the size arguments are equivalent.
- *         `absl::InvalidArgumentError()` otherwise.
- */
-template <typename Container, typename ReportedSize>
-absl::Status ValidateContainerSizeEqual(absl::string_view field_name,
-                                        const Container& container,
-                                        ReportedSize reported_size) {
-  const auto actual_size = container.size();
-  if (actual_size == reported_size) [[likely]] {
-    return absl::OkStatus();
-  }
-  return absl::InvalidArgumentError(absl::StrCat(
-      "Found inconsistency with `", field_name, ".size()`= ", actual_size,
-      ". Expected a value of ", reported_size, "."));
-}
-
 /*!\brief Casts and copies the input span to the output span.
  *
  * \param field_name Field name of the vector to insert into the error message.
@@ -438,89 +411,6 @@ absl::Status CopyFromMap(const absl::flat_hash_map<T, U>& map, const T& key,
     value = *result;
   }
   return result.status();
-}
-
-/*!\brief Returns `absl::OkStatus()` if the arguments are equal.
- *
- * \param lhs First value to compare.
- * \param rhs Second value to compare.
- * \param context Context to insert into the error message for debugging
- *        purposes.
- * \return `absl::OkStatus()` if the arguments are equal
- *         `absl::InvalidArgumentError()` if the arguments are not equal.
- */
-template <typename T>
-absl::Status ValidateEqual(const T& lhs, const T& rhs,
-                           absl::string_view context) {
-  if (lhs == rhs) [[likely]] {
-    return absl::OkStatus();
-  }
-
-  return absl::InvalidArgumentError(
-      absl::StrCat("Invalid ", context, ". Expected ", lhs, " == ", rhs, "."));
-}
-
-/*!\brief Returns `absl::OkStatus()` if the arguments are not equal.
- *
- * \param lhs First value to compare.
- * \param rhs Second value to compare.
- * \param context Context to insert into the error message for debugging
- *        purposes.
- * \return `absl::OkStatus()` if the arguments are not equal
- *         `absl::InvalidArgumentError()` if the arguments are equal.
- */
-template <typename T>
-absl::Status ValidateNotEqual(const T& lhs, const T& rhs,
-                              absl::string_view context) {
-  if (lhs != rhs) [[likely]] {
-    return absl::OkStatus();
-  }
-
-  return absl::InvalidArgumentError(
-      absl::StrCat("Invalid ", context, ". Expected ", lhs, " != ", rhs, "."));
-}
-
-/*!\brief Returns `absl::OkStatus()` if the argument has a value.
- *
- * \param argument Argument to check.
- * \param context Context to insert into the error message for debugging
- *        purposes.
- * \return `absl::OkStatus()` if the arguments has a value.
- *        `absl::InvalidArgumentError()` if the argument does not have a value.
- */
-template <typename T>
-absl::Status ValidateHasValue(const std::optional<T>& argument,
-                              absl::string_view context) {
-  if (argument.has_value()) [[likely]] {
-    return absl::OkStatus();
-  }
-
-  return absl::InvalidArgumentError(
-      absl::StrCat("Invalid ", context, ". Expected to have a value."));
-}
-
-/*!\brief Validates that all values in the range [first, last) are unique.
- *
- * \param first Iterator to start from.
- * \param last Iterator to stop before.
- * \param context Context to insert into the error message for debugging
- *        purposes.
- * \return `absl::OkStatus()` if no duplicates are found while iterating.
- *        `absl::InvalidArgumentError()` if duplicates are found.
- */
-template <class InputIt>
-absl::Status ValidateUnique(InputIt first, InputIt last,
-                            absl::string_view context) {
-  absl::flat_hash_set<typename InputIt::value_type> seen_values;
-
-  for (auto iter = first; iter != last; ++iter) {
-    if (const auto& [unused_iter, inserted] = seen_values.insert(*iter);
-        !inserted) {
-      return absl::InvalidArgumentError(
-          absl::StrCat(context, " must be unique. Found duplicate: ", *iter));
-    }
-  }
-  return absl::OkStatus();
 }
 
 /*!\brief Returns a map for static storage from a container of pairs.

@@ -35,6 +35,7 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"

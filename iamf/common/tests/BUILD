@@ -79,6 +79,18 @@ cc_library(
 )
 
 cc_test(
+    name = "validation_utils_test",
+    size = "small",
+    srcs = ["validation_utils_test.cc"],
+    deps = [
+        "//iamf/common:validation_utils",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "write_bit_buffer_test",
     size = "small",
     srcs = ["write_bit_buffer_test.cc"],

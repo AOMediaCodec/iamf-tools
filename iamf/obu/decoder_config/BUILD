@@ -8,6 +8,7 @@ cc_library(
         "//iamf/common:macros",
         "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -26,8 +27,8 @@ cc_library(
     hdrs = ["flac_decoder_config.h"],
     deps = [
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -42,8 +43,8 @@ cc_library(
     hdrs = ["lpcm_decoder_config.h"],
     deps = [
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -57,8 +58,8 @@ cc_library(
     hdrs = ["opus_decoder_config.h"],
     deps = [
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
         "//iamf/common:read_bit_buffer",
+        "//iamf/common:validation_utils",
         "//iamf/common:write_bit_buffer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

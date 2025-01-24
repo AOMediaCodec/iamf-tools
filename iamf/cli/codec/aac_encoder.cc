@@ -26,6 +26,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/macros.h"
 #include "iamf/common/obu_util.h"
+#include "iamf/common/validation_utils.h"
 #include "libAACenc/include/aacenc_lib.h"
 #include "libSYS/include/FDK_audio.h"
 #include "libSYS/include/machine_type.h"

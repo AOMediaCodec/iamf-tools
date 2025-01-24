@@ -35,6 +35,7 @@ cc_library(
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/common:macros",
         "//iamf/common:obu_util",
+        "//iamf/common:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:demixing_param_definition",
