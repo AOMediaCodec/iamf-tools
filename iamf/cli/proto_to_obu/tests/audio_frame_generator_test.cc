@@ -299,10 +299,9 @@ void InitializeAudioFrameGenerator(
       audio_element_generator.Generate(codec_config_obus, audio_elements),
       IsOk());
 
-  DemixingModule demixing_module;
-  ASSERT_THAT(demixing_module.InitializeForDownMixingAndReconstruction(
-                  user_metadata, audio_elements),
-              IsOk());
+  const auto demixing_module =
+      DemixingModule::CreateForReconstruction(audio_elements);
+  ASSERT_THAT(demixing_module, IsOk());
   ASSERT_THAT(
       global_timing_module.Initialize(audio_elements, param_definitions),
       IsOk());
@@ -313,7 +312,7 @@ void InitializeAudioFrameGenerator(
   // Generate the audio frames.
   audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
                                 user_metadata.codec_config_metadata(),
-                                audio_elements, demixing_module,
+                                audio_elements, *demixing_module,
                                 *parameters_manager, global_timing_module);
   ASSERT_TRUE(audio_frame_generator.has_value());
 

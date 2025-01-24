@@ -23,6 +23,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -799,10 +800,13 @@ absl::Status DemixingModule::FindSamplesOrDemixedSamples(
   }
 }
 
-absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
+absl::StatusOr<DemixingModule>
+DemixingModule::CreateForDownMixingAndReconstruction(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements) {
+  absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>
+      audio_element_id_to_demixing_metadata;
   for (const auto& audio_frame_metadata :
        user_metadata.audio_frame_metadata()) {
     const auto audio_element_id = audio_frame_metadata.audio_element_id();
@@ -818,14 +822,17 @@ absl::Status DemixingModule::InitializeForDownMixingAndReconstruction(
 
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
         input_channel_labels, audio_element->second,
-        audio_element_id_to_demixing_metadata_[audio_element_id]));
+        audio_element_id_to_demixing_metadata[audio_element_id]));
   }
-  return absl::OkStatus();
+
+  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
 }
 
-absl::Status DemixingModule::InitializeForReconstruction(
+absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements) {
+  absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>
+      audio_element_id_to_demixing_metadata;
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
     const auto labels_to_reconstruct =
@@ -834,17 +841,16 @@ absl::Status DemixingModule::InitializeForReconstruction(
       return labels_to_reconstruct.status();
     }
 
-    auto [iter, inserted] = audio_element_id_to_demixing_metadata_.insert(
+    auto [iter, inserted] = audio_element_id_to_demixing_metadata.insert(
         {audio_element_id, DemxingMetadataForAudioElementId()});
-    if (!inserted) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Audio Element ID= ", audio_element_id, " already initialized."));
-    }
+    CHECK(inserted) << "The target map was initially empty, iterating over "
+                       "`audio_elements` cannot produce a duplicate key.";
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
         *labels_to_reconstruct, audio_element_with_data, iter->second));
     iter->second.down_mixers.clear();
   }
-  return absl::OkStatus();
+
+  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
 }
 
 absl::Status DemixingModule::DownMixSamplesToSubstreams(
