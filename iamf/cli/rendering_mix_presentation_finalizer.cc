@@ -45,6 +45,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/numeric_utils.h"
 #include "iamf/common/obu_util.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"

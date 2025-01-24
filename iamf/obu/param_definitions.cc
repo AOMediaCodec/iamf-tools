@@ -18,7 +18,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/numeric_utils.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"

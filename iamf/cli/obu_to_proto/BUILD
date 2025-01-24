@@ -48,7 +48,6 @@ cc_library(
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/common:macros",
-        "//iamf/common:obu_util",
         "//iamf/common:validation_utils",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",

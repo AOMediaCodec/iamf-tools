@@ -23,7 +23,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/common/macros.h"
-#include "iamf/common/obu_util.h"
+#include "iamf/common/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"

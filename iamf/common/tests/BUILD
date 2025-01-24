@@ -25,6 +25,23 @@ cc_test(
 )
 
 cc_test(
+    name = "numeric_utils_test",
+    srcs = ["numeric_utils_test.cc"],
+    deps = [
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/common:numeric_utils",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "obu_util_test",
     size = "small",
     srcs = ["obu_util_test.cc"],
@@ -32,8 +49,6 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:obu_util",
         "//iamf/common:write_bit_buffer",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",

@@ -28,13 +28,26 @@ cc_library(
 )
 
 cc_library(
+    name = "numeric_utils",
+    srcs = ["numeric_utils.cc"],
+    hdrs = ["numeric_utils.h"],
+    deps = [
+        ":validation_utils",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "obu_util",
     srcs = ["obu_util.cc"],
     hdrs = ["obu_util.h"],
     deps = [
-        ":validation_utils",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
+        ":numeric_utils",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",

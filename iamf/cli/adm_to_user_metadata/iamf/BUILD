@@ -46,7 +46,7 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common:map_utils",
-        "//iamf/common:obu_util",
+        "//iamf/common:numeric_utils",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",

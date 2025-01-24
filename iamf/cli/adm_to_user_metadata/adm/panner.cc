@@ -33,6 +33,7 @@
 #include "iamf/cli/ambisonic_encoder/ambisonic_encoder.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/macros.h"
+#include "iamf/common/numeric_utils.h"
 #include "iamf/common/obu_util.h"
 #include "src/dsp/read_wav_file.h"
 #include "src/dsp/read_wav_info.h"
