@@ -27,7 +27,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "include/opus.h"

@@ -46,7 +46,7 @@
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"

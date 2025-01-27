@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 
 #include <cstdint>
 

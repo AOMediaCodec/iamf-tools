@@ -46,7 +46,6 @@ cc_library(
 
 cc_library(
     name = "obu_util",
-    srcs = ["obu_util.cc"],
     hdrs = ["obu_util.h"],
     deps = [
         ":numeric_utils",
@@ -56,6 +55,23 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "sample_processing_utils",
+    srcs = ["sample_processing_utils.cc"],
+    hdrs = ["sample_processing_utils.h"],
+    deps = [
+        ":numeric_utils",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
     ],
 )

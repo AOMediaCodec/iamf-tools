@@ -19,7 +19,7 @@
 
 #include "absl/functional/any_invocable.h"
 #include "absl/types/span.h"
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
 #ifdef IS_LITTLE_ENDIAN

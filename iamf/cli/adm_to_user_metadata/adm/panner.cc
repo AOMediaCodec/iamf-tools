@@ -34,7 +34,7 @@
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 #include "src/dsp/read_wav_file.h"
 #include "src/dsp/read_wav_info.h"
 

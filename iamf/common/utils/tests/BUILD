@@ -58,6 +58,22 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "sample_processing_utils_test",
+    srcs = ["sample_processing_utils_test.cc"],
+    deps = [
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:sample_processing_utils",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_library(
     name = "test_utils",
     testonly = True,
