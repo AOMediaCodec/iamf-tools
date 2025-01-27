@@ -13,6 +13,7 @@
  */
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -26,6 +27,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::HasSubstr;
+using ::testing::Not;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
@@ -42,9 +44,9 @@ TEST(ValidateContainerSizeEqual, OkIfArgsAreEqual) {
 TEST(ValidateContainerSizeEqual, NotOkIfArgsAreNotEquals) {
   constexpr uint8_t kInaccurateSizeFive = 5;
 
-  EXPECT_FALSE(
-      ValidateContainerSizeEqual("", kFourTestValues, kInaccurateSizeFive)
-          .ok());
+  EXPECT_FALSE(ValidateContainerSizeEqual(kOmitContext, kFourTestValues,
+                                          kInaccurateSizeFive)
+                   .ok());
 }
 
 TEST(ValidateContainerSizeEqual, MessageContainsContextOnError) {
@@ -104,6 +106,48 @@ TEST(ValidateUnique, NotOkIfArgsAreNotUnique) {
   EXPECT_FALSE(ValidateUnique(kVectorWithDuplicateValues.begin(),
                               kVectorWithDuplicateValues.end(), kOmitContext)
                    .ok());
+}
+
+TEST(ValidateInRange, OkIfValueInRange) {
+  EXPECT_THAT(ValidateInRange(0, {-1, 1}, kOmitContext), IsOk());
+  EXPECT_THAT(ValidateInRange(-1, {-1, 1}, kOmitContext), IsOk());
+  EXPECT_THAT(ValidateInRange(1, {-1, 1}, kOmitContext), IsOk());
+  EXPECT_THAT(ValidateInRange(1.1f, {1.0f, 1.2f}, kOmitContext), IsOk());
+  EXPECT_THAT(
+      ValidateInRange(uint8_t{254}, {uint8_t{253}, uint8_t{255}}, kOmitContext),
+      IsOk());
+  EXPECT_THAT(
+      ValidateInRange(int64_t{-0xFFFFFE},
+                      {int64_t{-0xFFFFFF}, int64_t{-0xFFFF}}, kOmitContext),
+      IsOk());
+}
+
+TEST(ValidateInRange, InvalidIfValueOutOfRange) {
+  EXPECT_THAT(ValidateInRange(2, {0, 1}, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(ValidateInRange(-1, {0, 1}, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(ValidateInRange(1.11f, {1.0f, 1.1f}, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(
+      ValidateInRange(uint8_t{255}, {uint8_t{253}, uint8_t{254}}, kOmitContext),
+      Not(IsOk()));
+  EXPECT_THAT(
+      ValidateInRange(int64_t{-0xFFFE}, {int64_t{-0xFFFFFF}, int64_t{-0xFFFF}},
+                      kOmitContext),
+      Not(IsOk()));
+}
+
+TEST(ValidateComparison, OkIfValidComparison) {
+  EXPECT_THAT(Validate(1, std::less{}, 2, kOmitContext), IsOk());
+  EXPECT_THAT(Validate(2.0f, std::greater{}, 1.0f, kOmitContext), IsOk());
+  EXPECT_THAT(Validate(2, std::greater_equal{}, 2, kOmitContext), IsOk());
+  EXPECT_THAT(Validate(1, std::equal_to{}, 1, kOmitContext), IsOk());
+  EXPECT_THAT(Validate(2, std::not_equal_to{}, 1, kOmitContext), IsOk());
+}
+
+TEST(ValidateComparison, InvalidIfInvalidComparison) {
+  EXPECT_THAT(Validate(2, std::less{}, 1, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(Validate(1.0f, std::greater{}, 2.0f, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(Validate(2, std::equal_to{}, 1, kOmitContext), Not(IsOk()));
+  EXPECT_THAT(Validate(1, std::not_equal_to{}, 1, kOmitContext), Not(IsOk()));
 }
 
 }  // namespace

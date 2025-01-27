@@ -13,6 +13,7 @@
 #define COMMON_UTILS_VALIDATION_UTILS_H_
 
 #include <optional>
+#include <utility>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/check.h"
@@ -130,6 +131,59 @@ absl::Status ValidateUnique(InputIt first, InputIt last,
     }
   }
   return absl::OkStatus();
+}
+
+/*!\brief Returns `absl::OkStatus()` if `value` is in the range [min, max].
+ *
+ * \param value Value to check.
+ * \param min Minimum allowed value.
+ * \param max Maximum allowed value.
+ * \param context Context to insert into the error message for debugging
+ *        purposes.
+ * \return `absl::OkStatus()` if the argument is in the range [min, max].
+ *         `absl::InvalidArgumentError()` if the argument is not in the range
+ *         [min, max].
+ */
+template <typename T>
+absl::Status ValidateInRange(const T& value,
+                             std::pair<const T&, const T&> min_max,
+                             absl::string_view context) {
+  const auto& [min, max] = min_max;
+  if (min <= max && value <= max && value >= min) [[likely]] {
+    return absl::OkStatus();
+  }
+  if (min > max) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Invalid range: [", min, ", ", max, "]. Expected min <= max."));
+  }
+  if (value < min || value > max) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Invalid ", context, ". Expected ", value, " in range [",
+                     min, ", ", max, "]."));
+  }
+}
+
+/*!\brief Returns `absl::OkStatus()` if `value` (comparison) `reference` is true
+ *
+ * Useful for arbitrary comparisons, e.g.
+ * RETURN_IF_NOT_OK(Validate(my_value, std::greater_equal{}, 0, "my_value >="))
+ *
+ * \param value Value to check.
+ * \param comparison A comparator like std::less.
+ * \param reference The value to compare against.
+ * \param context Context to insert into the error message for debugging
+ *        purposes. For best results, include the operator, e.g. "my_value >=".
+ * \return `absl::OkStatus()` if the comparison is true.
+ *         `absl::InvalidArgumentError()` otherwise.
+ */
+template <typename T, typename C>
+absl::Status Validate(const T& value, const C& comparison, const T& reference,
+                      absl::string_view context) {
+  if (comparison(value, reference)) [[likely]] {
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Invalid value: ", value, ". Require ", context, reference, "."));
 }
 
 }  // namespace iamf_tools
