@@ -42,23 +42,6 @@ cc_test(
 )
 
 cc_test(
-    name = "obu_util_test",
-    size = "small",
-    srcs = ["obu_util_test.cc"],
-    deps = [
-        "//iamf/cli/tests:cli_test_utils",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:obu_util",
-        "@com_google_absl//absl/functional:any_invocable",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "sample_processing_utils_test",
     srcs = ["sample_processing_utils_test.cc"],
     deps = [

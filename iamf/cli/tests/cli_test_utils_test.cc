@@ -9,6 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/tests/cli_test_utils.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -22,7 +23,6 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
