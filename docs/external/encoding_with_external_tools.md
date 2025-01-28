@@ -92,8 +92,8 @@ ffmpeg -i /path/to/input.wav \
 Replace `/path/to/input.wav`, `/path/to/video.mp4` and `/path/to/output.mp4`.
 
 ```shell
-ffmpeg -i /path/to/input.wav -i \
-    /path/to/video.mp4 -c:v copy \
+ffmpeg -i /path/to/input.wav \
+    -i /path/to/video.mp4 -c:v copy \
     -filter_complex "[0:a]channelmap=0|1:stereo[FRONT];[0:a]channelmap=4|5:stereo[SIDE];[0:a]channelmap=6|7:stereo[BACK];[0:a]channelmap=8|9:stereo[TOP_FRONT];[0:a]channelmap=10|11:stereo[TOP_BACK];[0:a]channelmap=2:mono[CENTER];[0:a]channelmap=3:mono[LFE]" \
     -map "[FRONT]" -map "[SIDE]" -map "[BACK]" -map "[TOP_FRONT]" -map "[TOP_BACK]" -map "[CENTER]" -map "[LFE]" -map 1:0 \
     -stream_group "type=iamf_audio_element:id=1:st=0:st=1:st=2:st=3:st=4:st=5:st=6:audio_element_type=channel,layer=ch_layout=7.1.4" \
@@ -199,7 +199,7 @@ containing 3rd order Ambisonics and stereo with a video file.
 
 ```shell
 ffmpeg -i /path/to/3OA_and_stereo_iamf.mp4 \
-    /path/to/video.mp4 \
+    -i /path/to/video.mp4 \
     -c:v copy -c:a copy \
     -map 0:a:0 -map 0:a:1 -map 0:a:2 -map 0:a:3 -map 0:a:4 -map 0:a:5 -map 0:a:6 -map 0:a:7 -map 0:a:8 -map 0:a:9 -map 0:a:10 -map 0:a:11 -map 0:a:12 -map 0:a:13 -map 0:a:14 -map 0:a:15 -map 0:a:16 -map 1:v:0 \
     -stream_group map=0=0:st=0:st=1:st=2:st=3:st=4:st=5:st=6:st=7:st=8:st=9:st=10:st=11:st=12:st=13:st=14:st=15 \
