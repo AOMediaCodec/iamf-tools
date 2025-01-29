@@ -75,10 +75,6 @@ class RenderingMixPresentationFinalizer {
 
     // Reusable buffer for storing rendered samples.
     std::vector<std::vector<int32_t>> rendered_samples;
-    // TODO(b/390250647): Remove `flattened_rendered_samples` once the loudness
-    //                    calculator no longer uses it.
-    // Reusable buffer for storing a flattened version of `rendered_samples`.
-    std::vector<int32_t> flattened_rendered_samples;
   };
 
   // We need to store rendering metadata for each submix, layout, and audio

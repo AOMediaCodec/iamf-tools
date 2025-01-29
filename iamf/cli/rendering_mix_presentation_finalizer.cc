@@ -555,8 +555,6 @@ absl::Status GenerateRenderingMetadataForLayouts(
     // Pre-allocate a buffer to store a frame's worth of rendered samples.
     layout_rendering_metadata.rendered_samples.resize(
         common_num_samples_per_frame, std::vector<int32_t>(num_channels, 0));
-    layout_rendering_metadata.flattened_rendered_samples.resize(
-        common_num_samples_per_frame * num_channels, 0);
   }
 
   return absl::OkStatus();
@@ -670,12 +668,6 @@ bool CanRenderAnyLayout(
   return false;
 }
 
-const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
-    kIdentityTransform = [](int32_t input, int32_t& output) {
-      output = input;
-      return absl::OkStatus();
-    };
-
 // Renders all submixes, layouts, and audio elements for a temporal unit. It
 // then optionally writes the rendered samples to a wav file and/or calculates
 // the loudness of the rendered samples.
@@ -708,17 +700,8 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
       // Calculate loudness based on the original rendered samples; we do not
       // know what post-processing the end user will have.
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
-        // Adapt to the loudness calculator interface.
-        // TODO(b/390250647): Remove this conversion, once the loudness
-        //                    calculator no longer uses data in this form.
-        RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(
-            *rendered_span, kIdentityTransform,
-            layout_rendering_metadata.flattened_rendered_samples));
-
-        RETURN_IF_NOT_OK(
-            layout_rendering_metadata.loudness_calculator
-                ->AccumulateLoudnessForSamples(
-                    layout_rendering_metadata.flattened_rendered_samples));
+        RETURN_IF_NOT_OK(layout_rendering_metadata.loudness_calculator
+                             ->AccumulateLoudnessForSamples(*rendered_span));
       }
 
       // Perform any post-processing.

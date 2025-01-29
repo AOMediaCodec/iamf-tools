@@ -413,7 +413,8 @@ class MockLoudnessCalculator : public LoudnessCalculatorBase {
   MockLoudnessCalculator() : LoudnessCalculatorBase() {}
 
   MOCK_METHOD(absl::Status, AccumulateLoudnessForSamples,
-              (const std::vector<int32_t>& rendered_samples), (override));
+              (absl::Span<const std::vector<int32_t>> time_channel_samples),
+              (override));
 
   MOCK_METHOD(absl::StatusOr<LoudnessInfo>, QueryLoudness, (),
               (const, override));

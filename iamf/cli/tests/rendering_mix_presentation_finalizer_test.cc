@@ -734,8 +734,8 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
 TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
-  const std::vector<int32_t> kExpectedPassthroughSamples = {
-      0, std::numeric_limits<int32_t>::max()};
+  const std::vector<std::vector<int32_t>> kExpectedPassthroughSamples = {
+      {0}, {std::numeric_limits<int32_t>::max()}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
@@ -748,7 +748,8 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
   // We expect the loudness calculator to be called with the rendered samples.
   EXPECT_CALL(*mock_loudness_calculator,
-              AccumulateLoudnessForSamples(kExpectedPassthroughSamples))
+              AccumulateLoudnessForSamples(
+                  absl::MakeConstSpan(kExpectedPassthroughSamples)))
       .WillOnce(Return(absl::OkStatus()));
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));

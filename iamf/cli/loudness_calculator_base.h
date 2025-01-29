@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -36,17 +37,14 @@ class LoudnessCalculatorBase {
 
   /*!\brief Accumulates samples to be measured.
    *
-   * \param rendered_samples Samples interleaved in IAMF canonical order to
-   *        measure loudness on.
+   * \param time_channel_samples Samples to push arranged in (time, channel).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status AccumulateLoudnessForSamples(
-      const std::vector<int32_t>& rendered_samples) = 0;
+      absl::Span<const std::vector<int32_t>> time_channel_samples) = 0;
 
   /*!\brief Outputs the measured loudness.
    *
-   * \param rendered_samples Samples interleaved in IAMF canonical order to
-   *        measure loudness on.
    * \return Measured loudness on success. A specific status on failure.
    */
   virtual absl::StatusOr<LoudnessInfo> QueryLoudness() const = 0;
