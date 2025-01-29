@@ -219,7 +219,37 @@ int64_t GetObuPayloadSize(DecodedUleb128 obu_size,
           extension_header_size_size + extension_header_bytes_size);
 }
 
+absl::Status FillHeaderMetadata(ReadBitBuffer& rb,
+                                HeaderMetadata& output_header_metadata) {
+  uint64_t obu_type_uint64_t = 0;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type_uint64_t));
+  output_header_metadata.obu_type = static_cast<ObuType>(obu_type_uint64_t);
+  // We don't care about the next three bits.
+  bool dummy_bool;
+  RETURN_IF_NOT_OK(rb.ReadBoolean(dummy_bool));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(dummy_bool));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(dummy_bool));
+  DecodedUleb128 obu_size;
+  int8_t size_of_obu_size = 0;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(obu_size, size_of_obu_size));
+  // The extra byte is for the `obu_type` field + the three boolean fields.
+  output_header_metadata.total_obu_size = obu_size + size_of_obu_size + 1;
+  return absl::OkStatus();
+}
+
 }  // namespace
+
+absl::StatusOr<HeaderMetadata> ObuHeader::PeekObuTypeAndTotalObuSize(
+    ReadBitBuffer& rb) {
+  const uint64_t position_before_header = rb.Tell();
+  HeaderMetadata header_metadata;
+  auto header_metadata_status = FillHeaderMetadata(rb, header_metadata);
+  RETURN_IF_NOT_OK(rb.Seek(position_before_header));
+  if (!header_metadata_status.ok()) {
+    return header_metadata_status;
+  }
+  return header_metadata;
+}
 
 absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
                                          WriteBitBuffer& wb) const {

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -59,6 +60,11 @@ enum ObuType : uint8_t {
   kObuIaSequenceHeader = 31,
 };
 
+struct HeaderMetadata {
+  ObuType obu_type;
+  int64_t total_obu_size;
+};
+
 struct ObuHeader {
   friend bool operator==(const ObuHeader& lhs, const ObuHeader& rhs) = default;
 
@@ -98,6 +104,19 @@ struct ObuHeader {
    */
   void Print(const LebGenerator& leb_generator,
              int64_t payload_serialized_size) const;
+
+  /*!\brief Peeks the type and total OBU size from the bitstream.
+   *
+   * This function does not consume any data from the bitstream.
+   *
+   * \param rb Buffer to read from.
+   * \return `HeaderMetadata` containing the OBU type and total OBU size if
+   *         successful. Returns an absl::ResourceExhaustedError if there is not
+   *         enough data to read the obu_type and obu_size. Returns other errors
+   *         if the bitstream is invalid.
+   */
+  static absl::StatusOr<HeaderMetadata> PeekObuTypeAndTotalObuSize(
+      ReadBitBuffer& rb);
 
   ObuType obu_type;
   // `obu_size` is inserted automatically.

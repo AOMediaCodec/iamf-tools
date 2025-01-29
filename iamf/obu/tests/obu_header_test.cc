@@ -29,7 +29,9 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl::StatusCode::kResourceExhausted;
 using ::absl_testing::IsOk;
+using ::absl_testing::StatusIs;
 using ::testing::Not;
 
 // Max value of a decoded ULEB128.
@@ -939,6 +941,86 @@ TEST_F(ObuHeaderTest, NegativePayloadSizeNotAcceptable) {
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       Not(IsOk()));
+}
+
+TEST(PeekObuTypeAndTotalObuSize, Success) {
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size`
+                                      2};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  auto start_position = read_bit_buffer->Tell();
+
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+
+  EXPECT_THAT(header_metadata, IsOk());
+  EXPECT_EQ(header_metadata->obu_type, kObuIaAudioFrameId0);
+  // obu_size + size_of(obu_size) + 1, 2 + 1 + 1 = 4.
+  EXPECT_EQ(header_metadata->total_obu_size, 4);
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(PeekObuTypeAndTotalObuSize, SuccessWithMaxSizedObuSize) {
+  std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
+                                      // `obu_size == 2 megabytes - 9`
+                                      0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
+                                      0x00};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  auto start_position = read_bit_buffer->Tell();
+
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+
+  EXPECT_THAT(header_metadata, IsOk());
+  EXPECT_EQ(header_metadata->obu_type, kObuIaAudioFrameId0);
+  // obu_size + size_of(obu_size) + 1.
+  EXPECT_EQ(header_metadata->total_obu_size,
+            kMaxObuSizeIamfV1_1_0WithFixedSizeLebEight + 8 + 1);
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(PeekObuTypeAndTotalObuSize, EmptyBitBufferResourceExhausted) {
+  std::vector<uint8_t> source_data = {};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  auto start_position = read_bit_buffer->Tell();
+
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+
+  EXPECT_THAT(header_metadata, Not(IsOk()));
+  EXPECT_THAT(header_metadata, StatusIs(kResourceExhausted));
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(PeekObuTypeAndTotalObuSize, NoObuSizeResourceExhausted) {
+  std::vector<uint8_t> source_data = {kObuIaAudioFrameId0};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  auto start_position = read_bit_buffer->Tell();
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+  EXPECT_THAT(header_metadata, Not(IsOk()));
+  EXPECT_THAT(header_metadata,
+              absl_testing::StatusIs(absl::StatusCode::kResourceExhausted));
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
+}
+
+TEST(PeekObuTypeAndTotalObuSize, ReturnsResourceExhaustedForPartialObuSize) {
+  std::vector<uint8_t> source_data = {kObuIaAudioFrameId0, 0x80};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(source_data));
+  auto start_position = read_bit_buffer->Tell();
+
+  auto header_metadata =
+      ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
+
+  EXPECT_THAT(header_metadata, Not(IsOk()));
+  EXPECT_THAT(header_metadata,
+              absl_testing::StatusIs(absl::StatusCode::kResourceExhausted));
+  EXPECT_EQ(read_bit_buffer->Tell(), start_position);
 }
 
 }  // namespace
