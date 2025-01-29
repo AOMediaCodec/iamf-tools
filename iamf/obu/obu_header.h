@@ -118,6 +118,8 @@ struct ObuHeader {
   static absl::StatusOr<HeaderMetadata> PeekObuTypeAndTotalObuSize(
       ReadBitBuffer& rb);
 
+  static bool IsTemporalUnitObuType(ObuType obu_type);
+
   ObuType obu_type;
   // `obu_size` is inserted automatically.
   bool obu_redundant_copy = false;
