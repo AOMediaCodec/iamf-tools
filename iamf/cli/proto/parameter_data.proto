@@ -19,20 +19,47 @@ enum AnimationType {
   ANIMATE_BEZIER = 3;
 }
 
+// Values are represented to align with the IAMF spec.
+//
+// See https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-mix-gain-param for
+// further details.
+//
+// See detailed examples on Q7.8 format below in `AnimationLinearInt16`.
 message AnimationStepInt16 {
-  optional int32 start_point_value = 1;
+  optional int32 start_point_value = 1;  // Q7.8.
 }
 
+// Values are represented to align with the IAMF spec.
+//
+// See https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-mix-gain-param for
+// further details.
+//
+// See detailed examples on Q7.8 format below in `AnimationLinearInt16`.
 message AnimationLinearInt16 {
-  optional int32 start_point_value = 1;
-  optional int32 end_point_value = 2;
+  optional int32 start_point_value = 1;  // Q7.8.
+  optional int32 end_point_value = 2;    // Q7.8.
 }
 
+// Values are represented to align with the IAMF spec.
+//
+// See https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-mix-gain-param for
+// further details.
+//
+// To convert from dB to Q7.8, multiply by 256. Example:
+//  - For -3 dB, set the proto value to 256 * -3 = -768.
+//  - For +6 dB, set the proto value to 256 * 6 = 1536.
+//
+// To convert from a float in the range [0.0, 1.0] to Q0.8. Multiply by 256 and
+// clamp to the range [0, 255]. Examples:
+//  - For a control point relative time of 0.5, set the proto value to
+//    clam(0.5 * 256, 0, 255) = 128.
+//  - For a control point relative time of 1.0, set the proto value to
+//    clamp(1.0 * 256, 0, 255) = 255.
 message AnimationBezierInt16 {
-  optional int32 start_point_value = 1;
-  optional int32 end_point_value = 2;
-  optional int32 control_point_value = 3;
-  optional uint32 control_point_relative_time = 4;
+  optional int32 start_point_value = 1;             // Q7.8.
+  optional int32 end_point_value = 2;               // Q7.8.
+  optional int32 control_point_value = 3;           // Q7.8.
+  optional uint32 control_point_relative_time = 4;  // Q0.8.
 }
 
 message AnimatedParameterDataInt16 {

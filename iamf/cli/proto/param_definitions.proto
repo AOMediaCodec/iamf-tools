@@ -35,9 +35,18 @@ message ParamDefinition {
   repeated uint32 subblock_durations = 8 [packed = true];
 }
 
+// Values are represented to align with the IAMF spec.
+//
+// See
+// https://aomediacodec.github.io/iamf/v1.1.0.html#syntax-mixgain-parameter-definition
+// for further details.
+//
+// To convert from dB to Q7.8, multiply by 256. Example:
+//  - For -3 dB, set the proto value to 256 * -3 = -768.
+//  - For +6 dB, set the proto value to 256 * 6 = 1536.
 message MixGainParamDefinition {
   optional ParamDefinition param_definition = 1;
-  optional int32 default_mix_gain = 2;
+  optional int32 default_mix_gain = 2;  // Q7.8.
 }
 
 message DemixingParamDefinition {
