@@ -42,6 +42,24 @@
 
 namespace iamf_tools {
 
+/*!\brief A class that renders and finalizes IAMF mixes.
+ *
+ * The use pattern of this class is:
+ *   // Call the factory function and handle any errors.
+ *   auto finalizer = RenderingMixPresentationFinalizer::Create(...);
+ *   if(!finalizer.ok()) {
+ *     // Handle error.
+ *   }
+ *
+ *   while (source has temporal units) {
+ *     // Push the next temporal unit.
+ *     RETURN_IF_NOT_OK(finalizer->PushTemporalUnit(...));
+ *   }
+ *   // Finalize the mix presentation OBUs, these should match the ones passed
+ *   // to the factory function.
+ *   auto status = finalizer->FinalizePushingTemporalUnits(...);
+ *   // Handle any errors, or use the output mix presentation OBUs.
+ */
 class RenderingMixPresentationFinalizer {
  public:
   // -- Rendering Metadata struct definitions --
@@ -155,7 +173,7 @@ class RenderingMixPresentationFinalizer {
           loudness_calculator_factory,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
       const SampleProcessorFactory& sample_processor_factory,
-      std::list<MixPresentationObu>& mix_presentation_obus);
+      const std::list<MixPresentationObu>& mix_presentation_obus);
 
   /*!\brief Move constructor. */
   RenderingMixPresentationFinalizer(RenderingMixPresentationFinalizer&&) =
@@ -165,9 +183,10 @@ class RenderingMixPresentationFinalizer {
 
   /*!\brief Renders and writes a single temporal unit.
    *
-   * Renders a single temporal unit for all mix presentations. It also computes
-   * the loudness of the rendered samples which can be used once Finalize() is
-   * called.
+   * Renders a single temporal unit for all mix presentations. It also
+   * accumulates the loudness of the rendered samples which will be finalized
+   * once FinalizePushingTemporalUnits() is called. This function must not be
+   * called after FinalizePushingTemporalUnits() has been called.
    *
    * \param id_to_labeled_frame Data structure of samples for a given timestamp,
    *        keyed by audio element ID and channel label.
@@ -187,7 +206,8 @@ class RenderingMixPresentationFinalizer {
   /*!\brief Validates and updates loudness for all mix presentations.
    *
    * Will update the loudness information for each mix presentation. Should be
-   * called after all temporal units have been pushed to PushTemporalUnit.
+   * called only once, and after all temporal units have been pushed to
+   * PushTemporalUnit.
    *
    * \param validate_loudness If true, validate the loudness against the user
    *        provided loudness.
@@ -195,10 +215,13 @@ class RenderingMixPresentationFinalizer {
    *        calculated loudness information.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Finalize(bool validate_loudness,
-                        std::list<MixPresentationObu>& mix_presentation_obus);
+  absl::Status FinalizePushingTemporalUnits(
+      bool validate_loudness,
+      std::list<MixPresentationObu>& mix_presentation_obus);
 
  private:
+  enum State { kAcceptingTemporalUnits, kFinalizePushTemporalUnitCalled };
+
   /*!\brief  Metadata for all sub mixes within a single mix presentation. */
   struct MixPresentationRenderingMetadata {
     DecodedUleb128 mix_presentation_id;
@@ -217,6 +240,7 @@ class RenderingMixPresentationFinalizer {
         rendering_metadata_(std::move(rendering_metadata)) {}
 
   const bool rendering_is_disabled_;
+  State state_ = kAcceptingTemporalUnits;
 
   std::vector<MixPresentationRenderingMetadata> rendering_metadata_;
 };

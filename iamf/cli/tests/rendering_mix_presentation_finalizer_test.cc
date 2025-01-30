@@ -261,7 +261,8 @@ class FinalizerTest : public ::testing::Test {
                   IsOk());
     }
 
-    EXPECT_THAT(finalizer.Finalize(validate_loudness_, obus_to_finalize_),
+    EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(validate_loudness_,
+                                                       obus_to_finalize_),
                 IsOk());
   }
 
@@ -633,8 +634,8 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
   sample_processor_factory_ =
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
   auto finalizer_without_post_processors = CreateFinalizerExpectOk();
-  EXPECT_THAT(finalizer_without_post_processors.Finalize(validate_loudness_,
-                                                         obus_to_finalize_),
+  EXPECT_THAT(finalizer_without_post_processors.FinalizePushingTemporalUnits(
+                  validate_loudness_, obus_to_finalize_),
               IsOk());
   EXPECT_FALSE(
       std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
@@ -643,8 +644,8 @@ TEST_F(FinalizerTest, CreatesWavFilesBasedOnFactoryFunction) {
   renderer_factory_ = std::make_unique<RendererFactory>();
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   auto finalizer_with_wav_writers = CreateFinalizerExpectOk();
-  EXPECT_THAT(finalizer_with_wav_writers.Finalize(validate_loudness_,
-                                                  obus_to_finalize_),
+  EXPECT_THAT(finalizer_with_wav_writers.FinalizePushingTemporalUnits(
+                  validate_loudness_, obus_to_finalize_),
               IsOk());
   EXPECT_TRUE(std::filesystem::exists(GetFirstSubmixFirstLayoutExpectedPath()));
 }
@@ -800,7 +801,10 @@ TEST_F(FinalizerTest, ValidatesUserLoudnessWhenRequested) {
                                  /*end_timestamp=*/10, parameter_blocks),
       IsOk());
 
-  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
+  EXPECT_FALSE(
+      finalizer
+          .FinalizePushingTemporalUnits(validate_loudness_, obus_to_finalize_)
+          .ok());
 }
 
 //============== Various modes fallback to preserving loudness. ==============
@@ -822,12 +826,32 @@ void FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
                 IsOk());
   }
 
-  EXPECT_THAT(finalizer.Finalize(kDontValidateLoudness, obus_to_finalize),
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(kDontValidateLoudness,
+                                                     obus_to_finalize),
               IsOk());
 
   const auto& loudness =
       obus_to_finalize.front().sub_mixes_[0].layouts[0].loudness;
   EXPECT_EQ(loudness, kArbitraryLoudnessInfo);
+}
+
+TEST_F(FinalizerTest,
+       ReturnsErrorIfPushTemporalUnitIsCalledAfterFinalizeTemporalUnits) {
+  PrepareObusForOneSamplePassThroughMono();
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  loudness_calculator_factory_ = nullptr;
+  const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+  auto finalizer = CreateFinalizerExpectOk();
+
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(kDontValidateLoudness,
+                                                     obus_to_finalize_),
+              IsOk());
+
+  EXPECT_FALSE(finalizer
+                   .PushTemporalUnit(ordered_labeled_frames_[0], kStartTime,
+                                     kEndTime, parameter_blocks_)
+                   .ok());
 }
 
 TEST_F(FinalizerTest, PreservesUserLoudnessWhenRenderFactoryIsNullptr) {
@@ -880,16 +904,16 @@ TEST_F(FinalizerTest, CreateSucceedsWithValidInput) {
   auto finalizer = CreateFinalizerExpectOk();
 }
 
-TEST_F(FinalizerTest, FinalizeFailsIfCalledTwice) {
-  InitPrerequisiteObusForStereoInput(kAudioElementId);
-  AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  renderer_factory_ = std::make_unique<RendererFactory>();
-
+TEST_F(FinalizerTest, FinalizePushingTemporalUnitsFailsIfCalledTwice) {
   auto finalizer = CreateFinalizerExpectOk();
-  EXPECT_THAT(finalizer.Finalize(validate_loudness_, obus_to_finalize_),
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(validate_loudness_,
+                                                     obus_to_finalize_),
               IsOk());
-  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
+
+  EXPECT_FALSE(
+      finalizer
+          .FinalizePushingTemporalUnits(validate_loudness_, obus_to_finalize_)
+          .ok());
 }
 
 // =========== Tests for PushTemporalUnit ===========
@@ -990,10 +1014,14 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   // Do validate that computed loudness matches the user provided loudness -
   // since kArbitraryLoudnessInfo is the `computed` loudness, it won't.
   validate_loudness_ = true;
-  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
+  EXPECT_FALSE(
+      finalizer
+          .FinalizePushingTemporalUnits(validate_loudness_, obus_to_finalize_)
+          .ok());
 }
 
-TEST_F(FinalizerTest, OutofOrderMixPresentationObusFailOnFinalize) {
+TEST_F(FinalizerTest,
+       OutofOrderMixPresentationObusFailOnFinalizePushingTemporalUnits) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId + 1);
@@ -1026,7 +1054,10 @@ TEST_F(FinalizerTest, OutofOrderMixPresentationObusFailOnFinalize) {
   // Reverse the list of OBUs to finalize. This will cause the mix presentation
   // ID to be out of order with respect to the rendering metadata.
   std::reverse(obus_to_finalize_.begin(), obus_to_finalize_.end());
-  EXPECT_FALSE(finalizer.Finalize(validate_loudness_, obus_to_finalize_).ok());
+  EXPECT_FALSE(
+      finalizer
+          .FinalizePushingTemporalUnits(validate_loudness_, obus_to_finalize_)
+          .ok());
 }
 
 }  // namespace

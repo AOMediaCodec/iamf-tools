@@ -331,8 +331,8 @@ absl::Status IamfEncoder::FinalizeMixPresentationObus(
         "Cannot finalize mix presentation OBUs while generating data OBUs.");
   }
 
-  return mix_presentation_finalizer_.Finalize(validate_user_loudness_,
-                                              mix_presentation_obus);
+  return mix_presentation_finalizer_.FinalizePushingTemporalUnits(
+      validate_user_loudness_, mix_presentation_obus);
 }
 
 }  // namespace iamf_tools

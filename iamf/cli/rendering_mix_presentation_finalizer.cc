@@ -510,9 +510,9 @@ absl::Status GenerateRenderingMetadataForLayouts(
     const LoudnessCalculatorFactoryBase* loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
-    const DecodedUleb128 mix_presentation_id, MixPresentationSubMix& sub_mix,
-    int sub_mix_index,
-    std::vector<const AudioElementWithData*> audio_elements_in_sub_mix,
+    const DecodedUleb128 mix_presentation_id,
+    const MixPresentationSubMix& sub_mix, int sub_mix_index,
+    const std::vector<const AudioElementWithData*>& audio_elements_in_sub_mix,
     uint32_t common_sample_rate, uint8_t rendering_bit_depth,
     uint32_t common_num_samples_per_frame,
     std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
@@ -521,7 +521,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
        layout_index++) {
     LayoutRenderingMetadata& layout_rendering_metadata =
         output_layout_rendering_metadata[layout_index];
-    MixPresentationLayout& layout = sub_mix.layouts[layout_index];
+    const auto& layout = sub_mix.layouts[layout_index];
 
     int32_t num_channels = 0;
     auto can_render_status = MixPresentationObu::GetNumChannelsFromLayout(
@@ -573,7 +573,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    MixPresentationObu& mix_presentation_obu,
+    const MixPresentationObu& mix_presentation_obu,
     std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
   const auto mix_presentation_id = mix_presentation_obu.GetMixPresentationId();
   output_rendering_metadata.resize(mix_presentation_obu.sub_mixes_.size());
@@ -582,8 +582,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
        ++sub_mix_index) {
     SubmixRenderingMetadata& submix_rendering_metadata =
         output_rendering_metadata[sub_mix_index];
-    MixPresentationSubMix& sub_mix =
-        mix_presentation_obu.sub_mixes_[sub_mix_index];
+    const auto& sub_mix = mix_presentation_obu.sub_mixes_[sub_mix_index];
 
     // Pointers to audio elements in this sub mix; useful later.
     std::vector<const AudioElementWithData*> audio_elements_in_sub_mix;
@@ -723,7 +722,7 @@ RenderingMixPresentationFinalizer::Create(
         loudness_calculator_factory,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const SampleProcessorFactory& sample_processor_factory,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+    const std::list<MixPresentationObu>& mix_presentation_obus) {
   if (renderer_factory == nullptr) {
     LOG(INFO) << "Rendering is safely disabled.";
     return RenderingMixPresentationFinalizer(
@@ -755,6 +754,16 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
     const IdLabeledFrameMap& id_to_labeled_frame, const int32_t start_timestamp,
     const int32_t end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks) {
+  switch (state_) {
+    case kAcceptingTemporalUnits:
+      // Ok to push.
+      break;
+    case kFinalizePushTemporalUnitCalled:
+      return absl::FailedPreconditionError(
+          "PushTemporalUnit() should not be called after "
+          "FinalizePushingTemporalUnits() has been called.");
+  }
+
   for (auto& mix_presentation_rendering_metadata : rendering_metadata_) {
     if (!CanRenderAnyLayout(
             mix_presentation_rendering_metadata.submix_rendering_metadata)) {
@@ -768,9 +777,19 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
   return absl::OkStatus();
 }
 
-absl::Status RenderingMixPresentationFinalizer::Finalize(
+absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits(
     bool validate_loudness,
     std::list<MixPresentationObu>& mix_presentation_obus) {
+  switch (state_) {
+    case kAcceptingTemporalUnits:
+      // Ok to finalize.
+      break;
+    case kFinalizePushTemporalUnitCalled:
+      return absl::FailedPreconditionError(
+          "FinalizePushingTemporalUnits() should not be called twice.");
+  }
+  state_ = kFinalizePushTemporalUnitCalled;
+
   if (rendering_is_disabled_) {
     LOG(INFO) << "Renderer is disabled; so rendering is safely aborted.";
     return absl::OkStatus();
