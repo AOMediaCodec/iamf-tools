@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -55,9 +56,9 @@ namespace iamf_tools {
  *     // Push the next temporal unit.
  *     RETURN_IF_NOT_OK(finalizer->PushTemporalUnit(...));
  *   }
- *   // Finalize the mix presentation OBUs, these should match the ones passed
- *   // to the factory function.
- *   auto status = finalizer->FinalizePushingTemporalUnits(...);
+ *   // Get the final OBUs, with measured loudness information.
+ *   absl::StatusOr<...> mix_presentation_obus =
+ *     finalizer->FinalizePushingTemporalUnits();
  *   // Handle any errors, or use the output mix presentation OBUs.
  */
 class RenderingMixPresentationFinalizer {
@@ -153,8 +154,6 @@ class RenderingMixPresentationFinalizer {
    * Rendering metadata is extracted from the mix presentation OBUs, which will
    * be used to render the mix presentations in PushTemporalUnit.
    *
-   * \param mix_presentation_metadata Input mix presentation metadata. Only
-   *        the `loudness_metadata` fields are used.
    * \param renderer_factory Factory to create renderers, or `nullptr` to
    *        disable rendering.
    * \param loudness_calculator_factory Factory to create loudness calculators
@@ -162,9 +161,7 @@ class RenderingMixPresentationFinalizer {
    * \param audio_elements Audio elements with data.
    * \param sample_processor_factory Factory to create sample processors for use
    *        after rendering.
-   * \param mix_presentation_obus Output list of OBUs to finalize with initial
-   *        user-provided loudness information.
-   *
+   * \param mix_presentation_obus OBUs to render and measure the loudness of.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
@@ -203,29 +200,33 @@ class RenderingMixPresentationFinalizer {
       int32_t end_timestamp,
       const std::list<ParameterBlockWithData>& parameter_blocks);
 
-  /*!\brief Validates and updates loudness for all mix presentations.
+  /*!\brief Retrieves the finalized mix presentation OBUs.
    *
-   * Will update the loudness information for each mix presentation. Should be
-   * called only once, and after all temporal units have been pushed to
+   * Will return mix presentation OBUs with updated loudness information. Should
+   * be called only once, and after all temporal units have been pushed to
    * PushTemporalUnit.
    *
    * \param validate_loudness If true, validate the loudness against the user
    *        provided loudness.
-   * \param mix_presentation_obus Output list of OBUs to finalize with
-   *        calculated loudness information.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return List of finalized OBUs with calculated loudness information. A
+   *         specific status on failure.
    */
-  absl::Status FinalizePushingTemporalUnits(
-      bool validate_loudness,
-      std::list<MixPresentationObu>& mix_presentation_obus);
+  absl::StatusOr<std::list<MixPresentationObu>> FinalizePushingTemporalUnits(
+      bool validate_loudness);
 
  private:
   enum State { kAcceptingTemporalUnits, kFinalizePushTemporalUnitCalled };
 
   /*!\brief  Metadata for all sub mixes within a single mix presentation. */
   struct MixPresentationRenderingMetadata {
-    DecodedUleb128 mix_presentation_id;
-    std::vector<SubmixRenderingMetadata> submix_rendering_metadata;
+    // Mix presentation OBU to render and to be updated with the final measured
+    // loudness.
+    MixPresentationObu mix_presentation_obu;
+
+    // Metadata for rendering all sub mixes within the mix presentation. If
+    // `nullopt`, rendering is disabled for this mix presentation.
+    std::optional<std::vector<SubmixRenderingMetadata>>
+        submix_rendering_metadata;
   };
 
   /*!\brief Private constructor.
@@ -236,10 +237,8 @@ class RenderingMixPresentationFinalizer {
    */
   RenderingMixPresentationFinalizer(
       std::vector<MixPresentationRenderingMetadata>&& rendering_metadata)
-      : rendering_is_disabled_(rendering_metadata.empty()),
-        rendering_metadata_(std::move(rendering_metadata)) {}
+      : rendering_metadata_(std::move(rendering_metadata)) {}
 
-  const bool rendering_is_disabled_;
   State state_ = kAcceptingTemporalUnits;
 
   std::vector<MixPresentationRenderingMetadata> rendering_metadata_;

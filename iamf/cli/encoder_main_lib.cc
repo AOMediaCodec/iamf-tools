@@ -149,7 +149,6 @@ absl::Status GenerateTemporalUnitObus(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
     IamfEncoder& iamf_encoder,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus,
     std::list<AudioFrameWithData>& audio_frames,
     std::list<ParameterBlockWithData>& parameter_blocks) {
   auto wav_sample_provider =
@@ -227,10 +226,6 @@ absl::Status GenerateTemporalUnitObus(
             << " =============================\n\n";
   PrintAudioFrames(audio_frames);
 
-  // Update the loudness information in the mix presentation OBUs.
-  RETURN_IF_NOT_OK(
-      iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus));
-
   return absl::OkStatus();
 }
 
@@ -283,7 +278,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  std::list<MixPresentationObu> preliminary_mix_presentation_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<ArbitraryObu> arbitrary_obus;
@@ -329,18 +324,28 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       user_metadata, CreateRendererFactory().get(),
       CreateLoudnessCalculatorFactory().get(), ProduceAllWavWriters,
       ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus, arbitrary_obus);
+      preliminary_mix_presentation_obus, arbitrary_obus);
   if (!iamf_encoder.ok()) {
     return iamf_encoder.status();
   }
-
-  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(
-      user_metadata, input_wav_directory, *iamf_encoder, audio_elements,
-      mix_presentation_obus, audio_frames, parameter_blocks));
+  // Discard the "preliminary" mix presentation OBUs. We only care about the
+  // finalized ones, which are not possible to know until audio encoding is
+  // complete.
+  preliminary_mix_presentation_obus.clear();
+  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(user_metadata, input_wav_directory,
+                                            *iamf_encoder, audio_elements,
+                                            audio_frames, parameter_blocks));
+  // Audio encoding is complete. Retrieve the OBUs with have the finalized
+  // loudness information.
+  const auto finalized_mix_presentation_obus =
+      iamf_encoder->GetFinalizedMixPresentationObus();
+  if (!finalized_mix_presentation_obus.ok()) {
+    return finalized_mix_presentation_obus.status();
+  }
 
   RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
                              ia_sequence_header_obu.value(), codec_config_obus,
-                             audio_elements, mix_presentation_obus,
+                             audio_elements, *finalized_mix_presentation_obus,
                              audio_frames, parameter_blocks, arbitrary_obus));
 
   return absl::OkStatus();

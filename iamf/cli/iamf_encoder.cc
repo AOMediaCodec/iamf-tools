@@ -324,15 +324,15 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       parameter_blocks);
 }
 
-absl::Status IamfEncoder::FinalizeMixPresentationObus(
-    std::list<MixPresentationObu>& mix_presentation_obus) {
+absl::StatusOr<std::list<MixPresentationObu>>
+IamfEncoder::GetFinalizedMixPresentationObus() {
   if (GeneratingDataObus()) {
     return absl::FailedPreconditionError(
         "Cannot finalize mix presentation OBUs while generating data OBUs.");
   }
 
   return mix_presentation_finalizer_.FinalizePushingTemporalUnits(
-      validate_user_loudness_, mix_presentation_obus);
+      validate_user_loudness_);
 }
 
 }  // namespace iamf_tools

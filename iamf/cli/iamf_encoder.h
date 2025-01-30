@@ -81,7 +81,7 @@ namespace iamf_tools {
  *     encoder->OutputTemporalUnit(...);
  *   }
  *   // Get the final mix presentation OBUs, with measured loudness information.
- *   encoder->FinalizeMixPresentationObus(...);
+ *   auto mix_presentation_obus = encoder->GetFinalizedMixPresentationObus();
  *
  * Note the timestamps corresponding to `AddSamples()` and
  * `AddParameterBlockMetadata()` might be different from that of the output
@@ -105,8 +105,10 @@ class IamfEncoder {
    *        OBUs.
    * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
    * \param preliminary_mix_presentation_obus List of preliminary Mix
-   *        Presentation OBUs, which should be finalized by a future call to
-   *        `FinalizeMixPresentationObus()`.
+   *        Presentation OBUs. Using these directly almost certainly results in
+   *        incorrect loudness metadata. It is best practice to replace these
+   *        with the result of `GetFinalizedMixPresentationObus()` after all
+   *        data OBUs are generated.
    * \param arbitrary_obus List of generated Arbitrary OBUs.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
@@ -181,16 +183,18 @@ class IamfEncoder {
       std::list<AudioFrameWithData>& audio_frames,
       std::list<ParameterBlockWithData>& parameter_blocks);
 
-  /*!\brief Finalizes the Mix Presentation OBUs.
+  /*!\brief Gets the finalized mix presentation OBUs.
    *
-   * Must only be called after all data OBUs are generated, i.e. after
-   * `GeneratingDataObus()` returns false.
+   * Mix Presentation OBUs contain loudness information, which is only possible
+   * to know after all data OBUs are generated.
    *
-   * \param mix_presentation_obus List of Mix Presentation OBUs to finalize.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * Must only be called only once and after all data OBUs are generated, i.e.
+   * after `GeneratingDataObus()` returns false.
+   *
+   * \return Finalized Mix Presentation OBUs. A specific status on failure.
    */
-  absl::Status FinalizeMixPresentationObus(
-      std::list<MixPresentationObu>& mix_presentation_obus);
+  absl::StatusOr<std::list<MixPresentationObu>>
+  GetFinalizedMixPresentationObus();
 
  private:
   /*!\brief Private constructor.

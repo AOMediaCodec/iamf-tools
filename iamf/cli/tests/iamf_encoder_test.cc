@@ -48,8 +48,11 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::iamf_tools_cli_proto::UserMetadata;
 using ::testing::_;
+using ::testing::IsEmpty;
+using ::testing::Not;
 using ::testing::Return;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
@@ -363,8 +366,18 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObusSucceeds) {
 
   iamf_encoder.FinalizeAddSamples();
 
-  EXPECT_THAT(iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_),
-              IsOk());
+  EXPECT_THAT(iamf_encoder.GetFinalizedMixPresentationObus(), IsOk());
+}
+
+TEST_F(IamfEncoderTest, CallingFinalizeMixPresentationObusTwiceFails) {
+  SetupDescriptorObus();
+  auto iamf_encoder = CreateExpectOk();
+  iamf_encoder.FinalizeAddSamples();
+
+  // The first call is OK.
+  EXPECT_THAT(iamf_encoder.GetFinalizedMixPresentationObus(), IsOk());
+
+  EXPECT_FALSE(iamf_encoder.GetFinalizedMixPresentationObus().ok());
 }
 
 TEST_F(IamfEncoderTest,
@@ -381,10 +394,11 @@ TEST_F(IamfEncoderTest,
                                      .loudness;
   iamf_encoder.FinalizeAddSamples();
 
-  EXPECT_THAT(iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_),
-              IsOk());
+  const auto finalized_mix_presentation_obus =
+      iamf_encoder.GetFinalizedMixPresentationObus();
+  ASSERT_THAT(finalized_mix_presentation_obus, IsOk());
 
-  EXPECT_EQ(mix_presentation_obus_.front()
+  EXPECT_EQ(finalized_mix_presentation_obus->front()
                 .sub_mixes_.front()
                 .layouts.front()
                 .loudness,
@@ -401,8 +415,7 @@ TEST_F(IamfEncoderTest,
   // final loudness values.
   ASSERT_TRUE(iamf_encoder.GeneratingDataObus());
 
-  EXPECT_FALSE(
-      iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_).ok());
+  EXPECT_FALSE(iamf_encoder.GetFinalizedMixPresentationObus().ok());
 }
 
 TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
@@ -428,9 +441,11 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
   auto iamf_encoder = CreateExpectOk();
   iamf_encoder.FinalizeAddSamples();
 
-  EXPECT_THAT(iamf_encoder.FinalizeMixPresentationObus(mix_presentation_obus_),
-              IsOk());
-  EXPECT_EQ(mix_presentation_obus_.front()
+  const auto finalized_mix_presentation_obus =
+      iamf_encoder.GetFinalizedMixPresentationObus();
+  ASSERT_THAT(finalized_mix_presentation_obus, IsOkAndHolds(Not(IsEmpty())));
+
+  EXPECT_EQ(finalized_mix_presentation_obus->front()
                 .sub_mixes_.front()
                 .layouts.front()
                 .loudness,
