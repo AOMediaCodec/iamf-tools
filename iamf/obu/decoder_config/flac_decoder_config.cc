@@ -12,6 +12,7 @@
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 
 #include <cstdint>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -43,41 +44,28 @@ absl::Status GetStreamInfo(const FlacDecoderConfig& decoder_config,
   return absl::OkStatus();
 }
 
-absl::Status ValidateSampleRate(uint32_t sample_rate) {
-  // Validate restrictions from the FLAC specification.
-  if (sample_rate < FlacMetaBlockStreamInfo::kMinSampleRate ||
-      sample_rate > FlacMetaBlockStreamInfo::kMaxSampleRate) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid sample rate= ", sample_rate));
-  }
+using Cons = FlacStreamInfoConstraints;
 
-  return absl::OkStatus();
+absl::Status ValidateSampleRate(uint32_t sample_rate) {
+  return ValidateInRange(
+      sample_rate, {Cons::kMinSampleRate, Cons::kMaxSampleRate}, "sample_rate");
 }
 
 absl::Status ValidateBitsPerSample(uint8_t bits_per_sample) {
   // Validate restrictions from the FLAC specification.
-  if (bits_per_sample < FlacMetaBlockStreamInfo::kMinBitsPerSample ||
-      bits_per_sample > FlacMetaBlockStreamInfo::kMaxBitsPerSample) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid bits_per_sample= ", bits_per_sample));
-  }
-
-  return absl::OkStatus();
+  return ValidateInRange(bits_per_sample,
+                         {Cons::kMinBitsPerSample, Cons::kMaxBitsPerSample},
+                         "bits_per_sample");
 }
 
 absl::Status ValidateTotalSamplesInStream(uint64_t total_samples_in_stream) {
   // The FLAC specification treats this as a 36-bit value which is always valid,
   // but in `iamf_tools` it could be out of bounds because it is stored as a
   // `uint64_t`.
-  if (total_samples_in_stream <
-          FlacMetaBlockStreamInfo::kMinTotalSamplesInStream ||
-      total_samples_in_stream >
-          FlacMetaBlockStreamInfo::kMaxTotalSamplesInStream) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid total_samples_in_stream= ", total_samples_in_stream));
-  }
-
-  return absl::OkStatus();
+  return ValidateInRange(
+      total_samples_in_stream,
+      {Cons::kMinTotalSamplesInStream, Cons::kMaxTotalSamplesInStream},
+      "total_samples_in_stream");
 }
 
 // Validates the `FlacDecoderConfig`.
@@ -103,12 +91,12 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
   RETURN_IF_NOT_OK(ValidateSampleRate(stream_info->sample_rate));
   RETURN_IF_NOT_OK(ValidateBitsPerSample(stream_info->bits_per_sample));
 
-  if (stream_info->minimum_block_size < 16 ||
-      stream_info->maximum_block_size < 16) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Invalid minimum_block_size= ", stream_info->minimum_block_size,
-        " or invalid maximum_block_size=", stream_info->maximum_block_size));
-  }
+  RETURN_IF_NOT_OK(Validate(stream_info->minimum_block_size,
+                            std::greater_equal{}, Cons::kMinMinAndMaxBlockSize,
+                            "minimum_block_size >="));
+  RETURN_IF_NOT_OK(Validate(stream_info->maximum_block_size,
+                            std::greater_equal{}, Cons::kMinMinAndMaxBlockSize,
+                            "maximum_block_size >="));
 
   // IAMF restricts some fields.
   RETURN_IF_NOT_OK(
@@ -118,19 +106,17 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
       ValidateEqual(static_cast<uint32_t>(stream_info->minimum_block_size),
                     num_samples_per_frame, "minimum_block_size"));
   RETURN_IF_NOT_OK(ValidateEqual(stream_info->minimum_frame_size,
-                                 FlacMetaBlockStreamInfo::kMinimumFrameSize,
-                                 "minimum_frame_size"));
+                                 Cons::kMinFrameSize, "minimum_frame_size"));
   RETURN_IF_NOT_OK(ValidateEqual(stream_info->maximum_frame_size,
-                                 FlacMetaBlockStreamInfo::kMaximumFrameSize,
-                                 "maximum_frame_size"));
+                                 Cons::kMaxFrameSize, "maximum_frame_size"));
 
   RETURN_IF_NOT_OK(ValidateEqual(stream_info->number_of_channels,
-                                 FlacMetaBlockStreamInfo::kNumberOfChannels,
+                                 Cons::kNumberOfChannels,
                                  "number_of_channels"));
 
   RETURN_IF_NOT_OK(ValidateTotalSamplesInStream(stream_info->bits_per_sample));
 
-  if (stream_info->md5_signature != FlacMetaBlockStreamInfo::kMd5Signature) {
+  if (stream_info->md5_signature != Cons::kMd5Signature) {
     return absl::InvalidArgumentError("Invalid md5_signature.");
   }
 

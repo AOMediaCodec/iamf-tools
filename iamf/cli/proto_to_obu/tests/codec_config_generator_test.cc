@@ -886,16 +886,14 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
   // IAMF requires several fields in the Stream Info block are fixed. The
   // generator does not validate OBU requirements.
   const uint32_t kInvalidMinimumFrameSize = 99;
-  ASSERT_NE(kInvalidMinimumFrameSize,
-            FlacMetaBlockStreamInfo::kMinimumFrameSize);
+  ASSERT_NE(kInvalidMinimumFrameSize, FlacStreamInfoConstraints::kMinFrameSize);
   const uint32_t kInvalidMaximumFrameSize = 98;
-  ASSERT_NE(kInvalidMaximumFrameSize,
-            FlacMetaBlockStreamInfo::kMaximumFrameSize);
+  ASSERT_NE(kInvalidMaximumFrameSize, FlacStreamInfoConstraints::kMaxFrameSize);
   const uint8_t kInvalidNumberOfChannels = 97;
   ASSERT_NE(kInvalidNumberOfChannels,
-            FlacMetaBlockStreamInfo::kNumberOfChannels);
+            FlacStreamInfoConstraints::kNumberOfChannels);
   const std::array<uint8_t, 16> kInvalidMd5Signature = {1};
-  ASSERT_NE(kInvalidMd5Signature, FlacMetaBlockStreamInfo::kMd5Signature);
+  ASSERT_NE(kInvalidMd5Signature, FlacStreamInfoConstraints::kMd5Signature);
   InitMetadataForFlac(codec_config_metadata_);
   auto* stream_info_metadata = codec_config_metadata_.at(0)
                                    .mutable_codec_config()
