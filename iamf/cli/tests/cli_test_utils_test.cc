@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/tests/cli_test_utils.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -29,6 +30,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
   const std::filesystem::path file_path_does_not_exist(
@@ -90,6 +92,74 @@ TEST(ReadFileToBytes, ReadsBinaryFileWithPlatformDependentControlCharacters) {
   EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
 
   EXPECT_THAT(bytes, kBinaryDataWithPlatformDependentControlCharacters);
+}
+
+TEST(OneFrameDelayer, ValidatesInputShapeWithTooManyChannels) {
+  // Input shape validation is managed by `SampleProcessorBase`.
+  constexpr uint32_t kNumSamplesPerFrame = 3;
+  constexpr size_t kNumChannels = 1;
+  OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
+  const std::vector<std::vector<int32_t>> kInputFrameWithTooManyChannels(
+      kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels + 1, 0));
+
+  EXPECT_THAT(one_frame_delayer.PushFrame(kInputFrameWithTooManyChannels),
+              Not(IsOk()));
+}
+
+TEST(OneFrameDelayer, ValidatesInputShapeWithTooManySamplesPerFrame) {
+  // Input shape validation is managed by `SampleProcessorBase`.
+  constexpr uint32_t kNumSamplesPerFrame = 3;
+  constexpr size_t kNumChannels = 1;
+  OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
+  const std::vector<std::vector<int32_t>> kInputFrameWithTooFewSamples(
+      kNumSamplesPerFrame + 1, std::vector<int32_t>(kNumChannels, 0));
+
+  EXPECT_THAT(one_frame_delayer.PushFrame(kInputFrameWithTooFewSamples),
+              Not(IsOk()));
+}
+
+TEST(OneFrameDelayer, DelaysSamplesByOneFrame) {
+  constexpr uint32_t kNumSamplesPerFrame = 5;
+  constexpr size_t kNumChannels = 4;
+  const std::vector<std::vector<int32_t>> kFirstInputFrame = {
+      {{1, 2, 3, 4},
+       {5, 6, 7, 8},
+       {9, 10, 11, 12},
+       {13, 14, 15, 16},
+       {17, 18, 19, 20}}};
+  const std::vector<std::vector<int32_t>> kSecondInputFrame = {
+      {{21, 22, 23, 24}}};
+  OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
+  // Nothing is available at the start.
+  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
+  EXPECT_THAT(one_frame_delayer.PushFrame(kFirstInputFrame), IsOk());
+  // Still nothing is available because the samples are delayed by a frame.
+  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
+
+  // Pushing in a new frame will cause the first frame to be available.
+  EXPECT_THAT(one_frame_delayer.PushFrame(kSecondInputFrame), IsOk());
+
+  EXPECT_THAT(one_frame_delayer.GetOutputSamplesAsSpan(), kFirstInputFrame);
+}
+
+TEST(OneFrameDelayer, GetOutputSamplesAsSpanReturnsFinalFrameAfterFlush) {
+  constexpr uint32_t kNumSamplesPerFrame = 5;
+  constexpr size_t kNumChannels = 4;
+  const std::vector<std::vector<int32_t>> kFirstInputFrame = {
+      {{1, 2, 3, 4},
+       {5, 6, 7, 8},
+       {9, 10, 11, 12},
+       {13, 14, 15, 16},
+       {17, 18, 19, 20}}};
+  OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
+  EXPECT_THAT(one_frame_delayer.PushFrame(kFirstInputFrame), IsOk());
+  // Nothing is available because the samples are delayed by a frame.
+  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
+
+  // Flushing will allow access to the final delayed frame.
+  EXPECT_THAT(one_frame_delayer.Flush(), IsOk());
+
+  EXPECT_THAT(one_frame_delayer.GetOutputSamplesAsSpan(), kFirstInputFrame);
 }
 
 }  // namespace

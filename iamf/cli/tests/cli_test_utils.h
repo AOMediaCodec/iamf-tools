@@ -395,6 +395,53 @@ class EverySecondTickResampler : public SampleProcessorBase {
   absl::Status FlushDerived() override;
 };
 
+/*!\brief A simple processor which delays the output by one frame.
+ *
+ * Useful for tests which want to verify that an abstract `SampleProcessorBase`
+ * is properly being used when it has delayed output.
+ *
+ * In real-world use cases, resamplers and loudness limiters often will have a
+ * short delay in their output, which `SampleProcessorBase` permits. This is
+ * just simple implementation of a delayer which helps ensure that any delayed
+ * samples are not lost.
+ */
+class OneFrameDelayer : public SampleProcessorBase {
+ public:
+  /*!\brief Constructor.
+   *
+   * \param max_input_samples_per_frame Maximum number of samples per frame in
+   *        the input timescale. Later calls to `PushFrame()` must contain at
+   *        most this many samples.
+   * \param num_channels Number of channels. Later calls to `PushFrame()` must
+   *        contain this many channels.
+   */
+  OneFrameDelayer(uint32_t max_input_num_samples_per_frame, size_t num_channels)
+      : SampleProcessorBase(max_input_num_samples_per_frame, num_channels,
+                            /*max_output_samples_per_frame=*/
+                            max_input_num_samples_per_frame),
+        delayed_samples_(max_input_num_samples_per_frame,
+                         std::vector<int32_t>(num_channels)) {}
+
+ private:
+  /*!\brief Pushes a frame of samples to be resampled.
+   *
+   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushFrameDerived(
+      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+
+  /*!\brief Signals to close the resampler and flush any remaining samples.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status FlushDerived() override;
+
+  // Buffer to track the delayed samples.
+  std::vector<std::vector<int32_t>> delayed_samples_;
+  size_t num_delayed_ticks_ = 0;
+};
+
 /*!\brief A mock loudness calculator factory. */
 class MockLoudnessCalculatorFactory : public LoudnessCalculatorFactoryBase {
  public:

@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
@@ -553,6 +554,29 @@ absl::Status EverySecondTickResampler::PushFrameDerived(
 absl::Status EverySecondTickResampler::FlushDerived() {
   EXPECT_EQ(num_valid_ticks_, 0);  // `SampleProcessorBase` should ensure this.
   return absl::OkStatus();
+}
+
+absl::Status OneFrameDelayer::PushFrameDerived(
+    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+  // Swap the delayed samples with the output samples from the base class.
+  std::swap(delayed_samples_, output_time_channel_samples_);
+  std::swap(num_delayed_ticks_, num_valid_ticks_);
+
+  // The fact that the input size is less than the output size should have
+  // already been validated in `SampleProcessorBase`, but for safety we can
+  // check it here.
+  EXPECT_LE(time_channel_samples.size(), delayed_samples_.size());
+  // Cache the new samples to delay.
+  std::copy(time_channel_samples.begin(), time_channel_samples.end(),
+            delayed_samples_.begin());
+  num_delayed_ticks_ = time_channel_samples.size();
+
+  return absl::OkStatus();
+}
+
+absl::Status OneFrameDelayer::FlushDerived() {
+  // Pushing in an empty frame will cause the delayed frame to be available.
+  return PushFrameDerived({});
 }
 
 }  // namespace iamf_tools
