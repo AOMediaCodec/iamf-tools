@@ -103,8 +103,7 @@ auto BuildStaticMapFromPairs(const InputContainer& pairs) {
       const auto& [unused_iter, inserted] = map_from_pairs.insert({key, value});
       if (!inserted) [[unlikely]] {
         LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
-                   << absl::StrCat(key) << ". Key type= " << typeid(key).name()
-                   << " value type= " << typeid(value).name();
+                   << absl::StrCat(key) << ".";
         return MapFromPairs{};
       }
     }
@@ -131,8 +130,7 @@ auto BuildStaticMapFromInvertedPairs(const InputContainer& pairs) {
           map_from_inverted_pairs.insert({key, value});
       if (!inserted) [[unlikely]] {
         LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
-                   << absl::StrCat(key) << ". Key type: " << typeid(key).name()
-                   << " value type: " << typeid(value).name();
+                   << absl::StrCat(key) << ".";
         return MapFromInvertedPairs{};
       }
     }
