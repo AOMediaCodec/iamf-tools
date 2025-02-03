@@ -349,6 +349,33 @@ cc_library(
 )
 
 cc_library(
+    name = "obu_with_data_generator",
+    srcs = ["obu_with_data_generator.cc"],
+    hdrs = ["obu_with_data_generator.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":audio_frame_with_data",
+        ":global_timing_module",
+        ":parameter_block_with_data",
+        ":parameters_manager",
+        "//iamf/cli/proto_to_obu:audio_element_generator",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "parameter_block_partitioner",
     srcs = ["parameter_block_partitioner.cc"],
     hdrs = ["parameter_block_partitioner.h"],
