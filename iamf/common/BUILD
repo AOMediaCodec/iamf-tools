@@ -1,6 +1,19 @@
 package(default_visibility = ["//iamf:__subpackages__"])
 
 cc_library(
+    name = "leb_generator",
+    srcs = ["leb_generator.cc"],
+    hdrs = ["leb_generator.h"],
+    deps = [
+        "//iamf/obu:types",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "read_bit_buffer",
     srcs = ["read_bit_buffer.cc"],
     hdrs = ["read_bit_buffer.h"],
@@ -23,7 +36,7 @@ cc_library(
     srcs = ["write_bit_buffer.cc"],
     hdrs = ["write_bit_buffer.h"],
     deps = [
-        "//iamf/cli:leb_generator",
+        ":leb_generator",
         "//iamf/common/utils:bit_buffer_util",
         "//iamf/common/utils:macros",
         "//iamf/obu:types",

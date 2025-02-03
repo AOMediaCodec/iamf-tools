@@ -23,7 +23,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/leb_generator.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/bit_buffer_util.h"
 #include "iamf/common/utils/tests/test_utils.h"

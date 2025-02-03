@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/cli/leb_generator.h"
+#include "iamf/common/leb_generator.h"
 
 #include <cstdint>
 #include <memory>

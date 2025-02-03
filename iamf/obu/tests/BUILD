@@ -6,7 +6,7 @@ cc_library(
     srcs = ["obu_test_base.cc"],
     hdrs = ["obu_test_base.h"],
     deps = [
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:obu_header",
@@ -34,7 +34,7 @@ cc_test(
     srcs = ["audio_element_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
@@ -57,7 +57,7 @@ cc_test(
     srcs = ["audio_frame_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:audio_frame",
@@ -76,7 +76,7 @@ cc_test(
     srcs = ["codec_config_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:codec_config",
@@ -100,7 +100,7 @@ cc_test(
     srcs = ["ia_sequence_header_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:ia_sequence_header",
@@ -119,7 +119,7 @@ cc_test(
     srcs = ["mix_presentation_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:bit_buffer_util",
@@ -158,7 +158,7 @@ cc_test(
     size = "small",
     srcs = ["obu_header_test.cc"],
     deps = [
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
@@ -175,7 +175,7 @@ cc_test(
     size = "small",
     srcs = ["param_definitions_test.cc"],
     deps = [
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
@@ -218,7 +218,7 @@ cc_test(
     srcs = ["parameter_block_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:numeric_utils",
@@ -242,7 +242,7 @@ cc_test(
     srcs = ["temporal_delimiter_test.cc"],
     deps = [
         ":obu_test_base",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:obu_header",

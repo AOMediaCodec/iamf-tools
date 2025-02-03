@@ -22,7 +22,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/leb_generator.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/utils/bit_buffer_util.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/types.h"

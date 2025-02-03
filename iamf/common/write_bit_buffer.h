@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/cli/leb_generator.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

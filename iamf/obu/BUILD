@@ -154,7 +154,7 @@ cc_library(
     hdrs = ["obu_base.h"],
     deps = [
         ":obu_header",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
@@ -171,7 +171,7 @@ cc_library(
     hdrs = ["obu_header.h"],
     deps = [
         ":types",
-        "//iamf/cli:leb_generator",
+        "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
