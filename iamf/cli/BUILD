@@ -21,7 +21,7 @@ cc_library(
         ":channel_label",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
-        "//iamf/obu:parameter_block",
+        "//iamf/obu:param_definitions",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
     ],

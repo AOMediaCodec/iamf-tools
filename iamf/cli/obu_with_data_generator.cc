@@ -79,11 +79,14 @@ ObuWithDataGenerator::GenerateAudioElementsWithData(
       return absl::InvalidArgumentError(
           "codec_config_obus does not contain codec_config_id");
     }
-    audio_element_with_data.insert(
-        {audio_element_id,
-         AudioElementWithData(std::move(audio_element_obu), &iter->second,
-                              substream_id_to_labels, label_to_output_gain,
-                              channel_numbers_for_layers)});
+    audio_element_with_data.emplace(
+        audio_element_id,
+        AudioElementWithData{
+            .obu = std::move(audio_element_obu),
+            .codec_config = &iter->second,
+            .substream_id_to_labels = substream_id_to_labels,
+            .label_to_output_gain = label_to_output_gain,
+            .channel_numbers_for_layers = channel_numbers_for_layers});
   }
   audio_element_obus.clear();
   return audio_element_with_data;

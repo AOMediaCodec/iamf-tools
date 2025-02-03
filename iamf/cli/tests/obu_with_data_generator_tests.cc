@@ -90,13 +90,15 @@ TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
       expected_audio_element_with_data_map;
   expected_audio_element_with_data_map.emplace(
       kFirstAudioElementId,
-      AudioElementWithData(
-          AudioElementObu(
+      AudioElementWithData{
+          .obu = AudioElementObu(
               ObuHeader(), kFirstAudioElementId,
               AudioElementObu::AudioElementType::kAudioElementChannelBased,
               /*reserved=*/0, kFirstCodecConfigId),
-          expected_codec_config_obu, /*substream_id_to_labels=*/{},
-          /*label_to_output_gain*/ {}, /*channel_numbers_for_layers*/ {}));
+          .codec_config = expected_codec_config_obu,
+          .substream_id_to_labels = {},
+          .label_to_output_gain = {},
+          .channel_numbers_for_layers = {}});
   EXPECT_EQ(expected_audio_element_with_data_map,
             audio_element_with_data_map.value());
 }
@@ -132,22 +134,26 @@ TEST(GenerateAudioElementWithData, MultipleAudioElementsWithOneCodecConfig) {
       expected_audio_element_with_data_map;
   expected_audio_element_with_data_map.emplace(
       kFirstAudioElementId,
-      AudioElementWithData(
-          AudioElementObu(
+      AudioElementWithData{
+          .obu = AudioElementObu(
               ObuHeader(), kFirstAudioElementId,
               AudioElementObu::AudioElementType::kAudioElementChannelBased,
               /*reserved=*/0, kFirstCodecConfigId),
-          expected_codec_config_obu, /*substream_id_to_labels=*/{},
-          /*label_to_output_gain*/ {}, /*channel_numbers_for_layers*/ {}));
+          .codec_config = expected_codec_config_obu,
+          .substream_id_to_labels{},
+          .label_to_output_gain{},
+          .channel_numbers_for_layers{}});
   expected_audio_element_with_data_map.emplace(
       kSecondAudioElementId,
-      AudioElementWithData(
-          AudioElementObu(
+      AudioElementWithData{
+          .obu = AudioElementObu(
               ObuHeader(), kSecondAudioElementId,
               AudioElementObu::AudioElementType::kAudioElementChannelBased,
               /*reserved=*/0, kFirstCodecConfigId),
-          expected_codec_config_obu, /*substream_id_to_labels=*/{},
-          /*label_to_output_gain*/ {}, /*channel_numbers_for_layers*/ {}));
+          .codec_config = expected_codec_config_obu,
+          .substream_id_to_labels = {},
+          .label_to_output_gain = {},
+          .channel_numbers_for_layers = {}});
   EXPECT_EQ(expected_audio_element_with_data_map,
             audio_element_with_data_map.value());
 }
