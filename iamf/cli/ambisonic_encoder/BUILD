@@ -1,5 +1,3 @@
-package(default_visibility = ["//iamf:__subpackages__"])
-
 cc_library(
     name = "ambisonic_encoder",
     srcs = [
