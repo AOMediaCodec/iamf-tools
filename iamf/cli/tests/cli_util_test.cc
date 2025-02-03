@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/leb_generator.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
@@ -706,6 +707,96 @@ TEST(ExpectLogSpectralDistanceBelowThreshold, ReturnsZeroWhenEqual) {
   EXPECT_EQ(GetLogSpectralDistance(absl::MakeConstSpan(first_log_spectrum),
                                    absl::MakeConstSpan(second_log_spectrum)),
             0.0);
+}
+
+TEST(CreateLebGenerator, EquivalentGenerateLebMinimumFactories) {
+  // Create user config to set GenerationMode to kMinimum.
+  iamf_tools_cli_proto::Leb128Generator proto_user_config;
+  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
+                R"pb(
+                  mode: GENERATE_LEB_MINIMUM
+                )pb",
+                &proto_user_config),
+            true);
+  // Create three generators, all should have generation mode kMinimum.
+  auto user_metadata_generator = CreateLebGenerator(proto_user_config);
+  auto default_argument_generator = LebGenerator::Create();
+  auto argument_generator =
+      LebGenerator::Create(LebGenerator::GenerationMode::kMinimum);
+
+  ASSERT_NE(default_argument_generator, nullptr);
+  ASSERT_NE(argument_generator, nullptr);
+  ASSERT_NE(user_metadata_generator, nullptr);
+
+  EXPECT_EQ(*argument_generator, *user_metadata_generator);
+  EXPECT_EQ(*argument_generator, *default_argument_generator);
+}
+
+TEST(CreateLebGenerator, ConfigProtoDefaultsToGenerateLebMinimum) {
+  auto user_metadata_generator =
+      CreateLebGenerator(/*leb_generator_metadata=*/{});
+  auto minimum_size_generator =
+      LebGenerator::Create(LebGenerator::GenerationMode::kMinimum);
+
+  ASSERT_NE(user_metadata_generator, nullptr);
+  EXPECT_EQ(*user_metadata_generator, *minimum_size_generator);
+}
+
+TEST(CreateLebGenerator, EquivalentGenerateLebFixedSizeFactories) {
+  // Create a user config to set GenerationMode to kFixedSize, size of 5.
+  iamf_tools_cli_proto::Leb128Generator proto_user_config;
+  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
+                R"pb(
+                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 5
+                )pb",
+                &proto_user_config),
+            true);
+  // Create one with the user config, one with the explicit arguments.
+  auto user_metadata_generator = CreateLebGenerator(proto_user_config);
+  auto argument_generator =
+      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 5);
+
+  ASSERT_NE(user_metadata_generator, nullptr);
+  ASSERT_NE(argument_generator, nullptr);
+  EXPECT_EQ(*user_metadata_generator, *user_metadata_generator);
+}
+
+TEST(CreateLebGenerator, ValidatesUserMetadataWhenFixedSizeIsTooSmall) {
+  iamf_tools_cli_proto::Leb128Generator proto_user_config;
+
+  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
+                R"pb(
+                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 0
+                )pb",
+                &proto_user_config),
+            true);
+
+  EXPECT_EQ(CreateLebGenerator(proto_user_config), nullptr);
+}
+
+TEST(CreateLebGenerator, ValidatesUserMetadataWhenFixedSizeIsTooLarge) {
+  iamf_tools_cli_proto::Leb128Generator proto_user_config;
+  // 9 is larger than the max allowed size of 8 (kMaxLeb128Size).
+  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
+                R"pb(
+                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 9
+                )pb",
+                &proto_user_config),
+            true);
+
+  EXPECT_EQ(CreateLebGenerator(proto_user_config), nullptr);
+}
+
+TEST(CreateLebGenerator, ValidatesUserMetadataWhenModeIsInvalid) {
+  iamf_tools_cli_proto::Leb128Generator proto_user_config;
+
+  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
+                R"pb(
+                  mode: GENERATE_LEB_INVALID
+                )pb",
+                &proto_user_config),
+            true);
+  EXPECT_EQ(CreateLebGenerator(proto_user_config), nullptr);
 }
 
 }  // namespace

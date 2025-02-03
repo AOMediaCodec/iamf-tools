@@ -19,7 +19,7 @@
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/leb_generator.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -49,7 +49,8 @@ std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const std::string& output_iamf_directory,
     const bool include_temporal_delimiters) {
-  const auto leb_generator = LebGenerator::Create(user_metadata);
+  const auto leb_generator =
+      CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
   if (leb_generator == nullptr) {
     LOG(ERROR) << "Failed to create LebGenerator.";
     return {};

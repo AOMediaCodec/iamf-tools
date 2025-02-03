@@ -20,107 +20,12 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
-#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-
-TEST(LebGeneratorFactory, EquivalentGenerateLebMinimumFactories) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-
-  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
-                R"pb(
-                  mode: GENERATE_LEB_MINIMUM
-                )pb",
-                user_metadata.mutable_test_vector_metadata()
-                    ->mutable_leb_generator()),
-            true);
-
-  // There are several ways to make equivalent `LebGenerators`.
-  auto user_metadata_generator = LebGenerator::Create(user_metadata);
-  auto default_argument_generator = LebGenerator::Create();
-  auto argument_generator =
-      LebGenerator::Create(LebGenerator::GenerationMode::kMinimum);
-
-  ASSERT_NE(default_argument_generator, nullptr);
-  ASSERT_NE(argument_generator, nullptr);
-  ASSERT_NE(user_metadata_generator, nullptr);
-
-  EXPECT_EQ(*argument_generator, *user_metadata_generator);
-  EXPECT_EQ(*argument_generator, *default_argument_generator);
-}
-
-TEST(LebGeneratorFactory, UserMetadataDefaultsToGenerateLebMinimum) {
-  auto user_metadata_generator = LebGenerator::Create(/*user_metadata=*/{});
-
-  ASSERT_NE(user_metadata_generator, nullptr);
-  EXPECT_EQ(*user_metadata_generator, *LebGenerator::Create());
-}
-
-TEST(LebGeneratorFactory, EquivalentGenerateLebFixedSizeFactories) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
-                R"pb(
-                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 5
-                )pb",
-                user_metadata.mutable_test_vector_metadata()
-                    ->mutable_leb_generator()),
-            true);
-
-  auto user_metadata_generator = LebGenerator::Create(user_metadata);
-  auto argument_generator =
-      LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 5);
-
-  ASSERT_NE(user_metadata_generator, nullptr);
-  ASSERT_NE(argument_generator, nullptr);
-  EXPECT_EQ(*user_metadata_generator, *user_metadata_generator);
-}
-
-TEST(LebGeneratorFactory, ValidatesUserMetadataWhenFixedSizeIsTooSmall) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-
-  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
-                R"pb(
-                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 0
-                )pb",
-                user_metadata.mutable_test_vector_metadata()
-                    ->mutable_leb_generator()),
-            true);
-
-  EXPECT_EQ(LebGenerator::Create(user_metadata), nullptr);
-}
-
-TEST(LebGeneratorFactory, ValidatesUserMetadataWhenFixedSizeIsTooLarge) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-
-  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
-                R"pb(
-                  mode: GENERATE_LEB_FIXED_SIZE fixed_size: 9
-                )pb",
-                user_metadata.mutable_test_vector_metadata()
-                    ->mutable_leb_generator()),
-            true);
-
-  EXPECT_EQ(LebGenerator::Create(user_metadata), nullptr);
-}
-
-TEST(LebGeneratorFactory, ValidatesUserMetadataWhenModeIsInvalid) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-
-  ASSERT_EQ(google::protobuf::TextFormat::ParseFromString(
-                R"pb(
-                  mode: GENERATE_LEB_INVALID
-                )pb",
-                user_metadata.mutable_test_vector_metadata()
-                    ->mutable_leb_generator()),
-            true);
-  EXPECT_EQ(LebGenerator::Create(user_metadata), nullptr);
-}
 
 class LebGeneratorTest : public testing::Test {
  public:

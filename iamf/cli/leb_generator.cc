@@ -13,7 +13,6 @@
 #include "iamf/cli/leb_generator.h"
 
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <variant>
 #include <vector>
@@ -22,8 +21,6 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -143,35 +140,6 @@ std::unique_ptr<LebGenerator> LebGenerator::Create(
     default:
       LOG(ERROR) << "Invalid generation mode: "
                  << absl::StrCat(generation_mode);
-      return nullptr;
-  }
-}
-
-std::unique_ptr<LebGenerator> LebGenerator::Create(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata) {
-  const auto& leb_generator_metadata =
-      user_metadata.test_vector_metadata().leb_generator();
-
-  // Reject input that would cause the `static_cast` below to fail.
-  if (leb_generator_metadata.has_fixed_size() &&
-      leb_generator_metadata.fixed_size() >
-          std::numeric_limits<int8_t>::max()) {
-    LOG(ERROR) << "Invalid fixed size: " << leb_generator_metadata.fixed_size();
-    return nullptr;
-  }
-
-  // Transform the enumeration and `fixed_size` to call the other factory
-  // function.
-  switch (leb_generator_metadata.mode()) {
-    using enum iamf_tools_cli_proto::Leb128GeneratorMode;
-    case GENERATE_LEB_MINIMUM:
-      return Create(GenerationMode::kMinimum);
-    case GENERATE_LEB_FIXED_SIZE:
-      return Create(GenerationMode::kFixedSize,
-                    static_cast<int8_t>(leb_generator_metadata.fixed_size()));
-    default:
-      LOG(ERROR) << "Invalid generation mode: "
-                 << leb_generator_metadata.mode();
       return nullptr;
   }
 }

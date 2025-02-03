@@ -89,10 +89,12 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
+        ":leb_generator",
         ":lookup_tables",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
@@ -203,7 +205,7 @@ cc_library(
     srcs = ["iamf_components.cc"],
     hdrs = ["iamf_components.h"],
     deps = [
-        ":leb_generator",
+        ":cli_util",
         ":loudness_calculator_factory_base",
         ":obu_sequencer",
         ":renderer_factory",
@@ -263,8 +265,6 @@ cc_library(
     hdrs = ["leb_generator.h"],
     visibility = ["//iamf:__subpackages__"],
     deps = [
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/memory",

@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,6 +30,7 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/leb_generator.h"
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -267,6 +269,31 @@ GenerateParamIdToMetadataMap(
                                       param_definition, per_id_metadata));
   }
   return parameter_id_to_metadata;
+}
+
+std::unique_ptr<LebGenerator> CreateLebGenerator(
+    const iamf_tools_cli_proto::Leb128Generator& user_config) {
+  // Transform the enum and possibly `fixed_size` to call LebGenerator::Create.
+  using enum iamf_tools_cli_proto::Leb128GeneratorMode;
+  switch (user_config.mode()) {
+    case GENERATE_LEB_MINIMUM:
+      return LebGenerator::Create(LebGenerator::GenerationMode::kMinimum);
+    case GENERATE_LEB_FIXED_SIZE: {
+      int8_t fixed_size_int8;
+      auto status =
+          StaticCastIfInRange("user_metadata.leb_generator.fixed_size",
+                              user_config.fixed_size(), fixed_size_int8);
+      if (!status.ok()) {
+        LOG(ERROR) << status;
+        return nullptr;
+      }
+      return LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize,
+                                  fixed_size_int8);
+    }
+    default:
+      LOG(ERROR) << "Invalid generation mode: " << user_config.mode();
+      return nullptr;
+  }
 }
 
 absl::Status CompareTimestamps(int32_t expected_timestamp,

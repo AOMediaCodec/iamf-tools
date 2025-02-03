@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -25,9 +26,11 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/leb_generator.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
@@ -111,6 +114,14 @@ GenerateParamIdToMetadataMap(
         param_definitions,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements);
+
+/*!\brief Creates a `LebGenerator` based on the input config.
+ *
+ * \param user_config from a UserMetadata proto.
+ * \return `LebGenerator` on success. `nullptr` if the config is invalid.
+ */
+std::unique_ptr<LebGenerator> CreateLebGenerator(
+    const iamf_tools_cli_proto::Leb128Generator& user_config);
 
 /*!\brief Validates that two timestamps are equal.
  *

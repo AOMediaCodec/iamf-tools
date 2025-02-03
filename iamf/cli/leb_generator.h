@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -41,15 +40,6 @@ class LebGenerator {
   static std::unique_ptr<LebGenerator> Create(
       GenerationMode generation_mode = GenerationMode::kMinimum,
       int8_t fixed_size = 0);
-
-  /*!\brief Factory function to create a `LebGenerator`.
-   *
-   * \param user_metadata Input user metadata.
-   * \return Unique pointer to `LebGenerator` on success. `nullptr` if the input
-   *         is erroneous.
-   */
-  static std::unique_ptr<LebGenerator> Create(
-      const iamf_tools_cli_proto::UserMetadata& user_metadata);
 
   friend bool operator==(const LebGenerator& lhs,
                          const LebGenerator& rhs) = default;

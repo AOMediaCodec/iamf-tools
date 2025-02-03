@@ -110,6 +110,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:cli_util",
+        "//iamf/cli:leb_generator",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto_to_obu:audio_element_generator",
@@ -260,13 +261,10 @@ cc_test(
     srcs = ["leb_generator_test.cc"],
     deps = [
         "//iamf/cli:leb_generator",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
