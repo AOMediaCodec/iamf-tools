@@ -1,5 +1,3 @@
-package(default_visibility = ["//iamf:__subpackages__"])
-
 cc_test(
     name = "ambisonic_encoder_test",
     srcs = ["ambisonic_encoder_test.cc"],
