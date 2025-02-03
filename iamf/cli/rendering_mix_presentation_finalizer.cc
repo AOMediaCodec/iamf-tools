@@ -732,8 +732,7 @@ RenderingMixPresentationFinalizer::Create(
     LOG(INFO) << "Loudness calculator factory is null so loudness will not be "
                  "calculated.";
   }
-  std::vector<MixPresentationRenderingMetadata> rendering_metadata;
-  rendering_metadata.reserve(mix_presentation_obus.size());
+  std::list<MixPresentationRenderingMetadata> rendering_metadata;
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     std::optional<std::vector<SubmixRenderingMetadata>>
         sub_mix_rendering_metadata;

@@ -236,12 +236,12 @@ class RenderingMixPresentationFinalizer {
    * \param rendering_metadata Mix presentation metadata.
    */
   RenderingMixPresentationFinalizer(
-      std::vector<MixPresentationRenderingMetadata>&& rendering_metadata)
+      std::list<MixPresentationRenderingMetadata>&& rendering_metadata)
       : rendering_metadata_(std::move(rendering_metadata)) {}
 
   State state_ = kAcceptingTemporalUnits;
 
-  std::vector<MixPresentationRenderingMetadata> rendering_metadata_;
+  std::list<MixPresentationRenderingMetadata> rendering_metadata_;
 };
 
 }  // namespace iamf_tools
