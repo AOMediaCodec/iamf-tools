@@ -16,12 +16,14 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <numeric>
 #include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -31,6 +33,26 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+
+TEST(GetLogSpectralDistance, ReturnsCorrectValue) {
+  std::vector<double> first_log_spectrum(10);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 0);
+  std::vector<double> second_log_spectrum(10);
+  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
+  EXPECT_EQ(GetLogSpectralDistance(absl::MakeConstSpan(first_log_spectrum),
+                                   absl::MakeConstSpan(second_log_spectrum)),
+            10.0);
+}
+
+TEST(ExpectLogSpectralDistanceBelowThreshold, ReturnsZeroWhenEqual) {
+  std::vector<double> first_log_spectrum(10);
+  std::iota(first_log_spectrum.begin(), first_log_spectrum.end(), 1);
+  std::vector<double> second_log_spectrum(10);
+  std::iota(second_log_spectrum.begin(), second_log_spectrum.end(), 1);
+  EXPECT_EQ(GetLogSpectralDistance(absl::MakeConstSpan(first_log_spectrum),
+                                   absl::MakeConstSpan(second_log_spectrum)),
+            0.0);
+}
 
 TEST(ReadFileToBytes, FailsIfFileDoesNotExist) {
   const std::filesystem::path file_path_does_not_exist(

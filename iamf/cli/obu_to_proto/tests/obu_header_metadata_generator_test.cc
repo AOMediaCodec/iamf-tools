@@ -17,8 +17,8 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/obu_header.pb.h"
+#include "iamf/cli/proto_utils.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
 

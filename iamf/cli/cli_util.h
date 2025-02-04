@@ -15,68 +15,22 @@
 
 #include <cstdint>
 #include <list>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/proto/obu_header.pb.h"
-#include "iamf/cli/proto/param_definitions.pb.h"
-#include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
-#include "iamf/common/leb_generator.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-/*!\brief Copies param definitions from the corresponding protocol buffer.
- *
- * \param input_param_definition Input protocol buffer.
- * \param param_definition Destination param definition.
- * \return `absl::OkStatus()` on success. A specific status on failure.
- */
-absl::Status CopyParamDefinition(
-    const iamf_tools_cli_proto::ParamDefinition& input_param_definition,
-    ParamDefinition& param_definition);
-
-/*!\brief Returns an `ObuHeader` based on the corresponding protocol buffer.
- *
- * \param input_obu_header Input protocol buffer.
- * \return Result.
- */
-ObuHeader GetHeaderFromMetadata(
-    const iamf_tools_cli_proto::ObuHeaderMetadata& input_obu_header);
-
-/*!\brief Copies `DemixingInfoParameterData` from the input protocol buffer.
- *
- * \param input_demixing_info_parameter_data Input protocol buffer.
- * \param obu_demixing_param_data Reference to the result.
- * \return `absl::OkStatus()` on success. A specific status on failure.
- */
-absl::Status CopyDemixingInfoParameterData(
-    const iamf_tools_cli_proto::DemixingInfoParameterData&
-        input_demixing_info_parameter_data,
-    DemixingInfoParameterData& obu_demixing_param_data);
-
-/*!\brief Copies `DMixPMode` to the output protocol buffer.
- *
- * \param obu_dmixp_mode Input `DMixPMode`.
- * \param dmixp_mode Reference to output protocol buffer.
- * \return `absl::OkStatus()` on success. A specific status on failure.
- */
-absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
-                           iamf_tools_cli_proto::DMixPMode& dmixp_mode);
 
 /*!\brief Collects and validates the parameter definitions against the spec.
  *
@@ -114,14 +68,6 @@ GenerateParamIdToMetadataMap(
         param_definitions,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements);
-
-/*!\brief Creates a `LebGenerator` based on the input config.
- *
- * \param user_config from a UserMetadata proto.
- * \return `LebGenerator` on success. `nullptr` if the config is invalid.
- */
-std::unique_ptr<LebGenerator> CreateLebGenerator(
-    const iamf_tools_cli_proto::Leb128Generator& user_config);
 
 /*!\brief Validates that two timestamps are equal.
  *

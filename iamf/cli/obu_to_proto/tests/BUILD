@@ -18,7 +18,7 @@ cc_test(
     name = "obu_header_metadata_generator_test",
     srcs = ["obu_header_metadata_generator_test.cc"],
     deps = [
-        "//iamf/cli:cli_util",
+        "//iamf/cli:proto_utils",
         "//iamf/cli/obu_to_proto:obu_header_metadata_generator",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/obu:obu_header",

@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
+#include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/utils/macros.h"
