@@ -23,6 +23,7 @@
 #include <memory>
 #include <numbers>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -40,7 +41,10 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/obu_processor.h"
+#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_to_obu/audio_element_generator.h"
@@ -49,6 +53,8 @@
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -57,6 +63,7 @@
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/demixing_param_definition.h"
+#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -107,6 +114,43 @@ void AddParamDefinition(
 }  // namespace
 
 using ::absl_testing::IsOk;
+
+absl::Status CollectObusFromIaSequence(
+    ReadBitBuffer& read_bit_buffer, IASequenceHeaderObu& ia_sequence_header,
+    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
+    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
+    std::list<MixPresentationObu>& mix_presentations,
+    std::list<AudioFrameWithData>& audio_frames,
+    std::list<ParameterBlockWithData>& parameter_blocks) {
+  bool insufficient_data = false;
+  auto obu_processor = ObuProcessor::Create(
+      /*is_exhaustive_and_exact=*/false, &read_bit_buffer, insufficient_data);
+  EXPECT_FALSE(insufficient_data);
+
+  bool continue_processing = true;
+  int temporal_unit_count = 0;
+  LOG(INFO) << "Starting Temporal Unit OBU processing";
+  while (continue_processing) {
+    std::list<AudioFrameWithData> audio_frames_for_temporal_unit;
+    std::list<ParameterBlockWithData> parameter_blocks_for_temporal_unit;
+    std::optional<int32_t> timestamp_for_temporal_unit;
+    RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
+        audio_frames_for_temporal_unit, parameter_blocks_for_temporal_unit,
+        timestamp_for_temporal_unit, continue_processing));
+    audio_frames.splice(audio_frames.end(), audio_frames_for_temporal_unit);
+    parameter_blocks.splice(parameter_blocks.end(),
+                            parameter_blocks_for_temporal_unit);
+    temporal_unit_count++;
+  }
+  LOG(INFO) << "Processed " << temporal_unit_count << " Temporal Unit OBUs";
+
+  // Move the processed data to the output.
+  ia_sequence_header = obu_processor->ia_sequence_header_;
+  codec_config_obus.swap(obu_processor->codec_config_obus_);
+  audio_elements.swap(obu_processor->audio_elements_);
+  mix_presentations.swap(obu_processor->mix_presentations_);
+  return absl::OkStatus();
+}
 
 void AddLpcmCodecConfigWithIdAndSampleRate(
     uint32_t codec_config_id, uint32_t sample_rate,

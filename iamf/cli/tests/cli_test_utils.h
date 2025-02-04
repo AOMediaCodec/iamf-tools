@@ -29,22 +29,50 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
+#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+/*!\brief Processes the input standalone IAMF Sequence to output containers.
+ *
+ * This function is useful for testing whether a generated IAMF Sequence
+ * contains expected OBUs.
+ *
+ * \param read_bit_buffer Buffer reader that reads the IAMF bitstream. The
+ *        reader's position will be moved past the first IA sequence.
+ * \param sequence_header Output IA sequence header.
+ * \param codec_config_obus Output codec configs.
+ * \param audio_elements Output audio elements.
+ * \param mix_presentations Output mix presentations.
+ * \param audio_frames Output audio frames.
+ * \param parameter_blocks Output parameter blocks.
+ * \return `absl::OkStatus()` if the process is successful. A specific status
+ *         on failure.
+ */
+absl::Status CollectObusFromIaSequence(
+    ReadBitBuffer& read_bit_buffer, IASequenceHeaderObu& ia_sequence_header,
+    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
+    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
+    std::list<MixPresentationObu>& mix_presentations,
+    std::list<AudioFrameWithData>& audio_frames,
+    std::list<ParameterBlockWithData>& parameter_blocks);
 
 // A specification for a decode request. Currently used in the context of
 // extracting the relevant metadata from the UserMetadata proto associated

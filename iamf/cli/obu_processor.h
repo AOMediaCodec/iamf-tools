@@ -1,0 +1,352 @@
+/*
+ * Copyright (c) 2024, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+
+#ifndef CLI_OBU_PROCESSOR_H_
+#define CLI_OBU_PROCESSOR_H_
+
+#include <cstdint>
+#include <list>
+#include <memory>
+#include <optional>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/status/status.h"
+#include "absl/strings/string_view.h"
+#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_decoder.h"
+#include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/demixing_module.h"
+#include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/parameters_manager.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/common/read_bit_buffer.h"
+#include "iamf/obu/codec_config.h"
+#include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/temporal_delimiter.h"
+#include "iamf/obu/types.h"
+
+namespace iamf_tools {
+
+class ObuProcessor {
+ public:
+  /*!\brief Processes the Descriptor OBUs of an IA Sequence.
+   *
+   * If insufficient data to process all descriptor OBUs is provided, a failing
+   * status will be returned. `insufficient_data` will be set to true, the
+   * read_bit_buffer will not be consumed, and the output parameters will not be
+   * populated. A user should call this function again after providing more
+   * data within the read_bit_buffer.
+   *
+   * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
+   *        include all descriptor OBUs and no other data. This should only be
+   *        set to true if the user knows the exact boundaries of their set of
+   *        descriptor OBUs.
+   * \param read_bit_buffer Buffer containing a portion of an iamf bitstream
+   *        containing a sequence of OBUs. The buffer will be consumed up to the
+   *        end of the descriptor OBUs if processing is successful.
+   * \param output_sequence_header IA sequence header processed from the
+   *        bitstream.
+   * \param output_codec_config_obus Map of Codec Config OBUs processed from the
+   *        bitstream.
+   * \param output_audio_elements_with_data Map of Audio Elements and metadata
+   *        processed from the bitstream.
+   * \param output_mix_presentation_obus List of Mix Presentation OBUs processed
+   *        from the bitstream.
+   * \param insufficient_data Whether the bitstream provided is insufficient to
+   *        process all descriptor OBUs.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  static absl::Status ProcessDescriptorObus(
+      bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
+      IASequenceHeaderObu& output_sequence_header,
+      absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+          output_codec_config_obus,
+      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          output_audio_elements_with_data,
+      std::list<MixPresentationObu>& output_mix_presentation_obus,
+      bool& insufficient_data);
+
+  // TODO(b/330732117): Remove this function and use the non-static version.
+  /*!\brief Processes one Temporal Unit OBU of an IA Sequence.
+   *
+   * This function should only be called after successfully calling
+   * ProcessDescriptorObus. Output audio frames and parameter blocks are
+   * ordered by timestamps first and then by IDs.
+   *
+   * \param audio_elements_with_data Map containing the audio elements that
+   *        were present in the descriptor OBUs, keyed by audio element ID.
+   * \param codec_config_obus Map containing the codec configs that were
+   *        present in the descriptor OBUs, keyed by codec config ID.
+   * \param substream_id_to_audio_element Mapping from substream IDs to the
+   *        audio elements that they belong to.
+   * \param parameters_manager Manager of parameters.
+   * \param param_definitions Map containing the param definitions that were
+   *        present in the descriptor OBUs, keyed by parameter ID.
+   * \param read_bit_buffer Buffer reader that reads the IAMF bitstream.
+   * \param global_timing_module Module to keep track of the timing of audio
+   *        frames and parameters.
+   * \param output_audio_frame_with_data Output Audio Frame with the requisite
+   *        data.
+   * \param output_parameter_block_with_data Output parameter Block with the
+   *        requisite data.
+   * \param output_temporal_delimiter Output temporal deilimiter OBU.
+   * \param continue_processing Whether the processing should be continued.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  static absl::Status ProcessTemporalUnitObu(
+      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          audio_elements_with_data,
+      const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+          codec_config_obus,
+      const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
+          substream_id_to_audio_element,
+      ParametersManager& parameters_manager,
+      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
+          parameter_id_to_metadata,
+      ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
+      std::optional<AudioFrameWithData>& output_audio_frame_with_data,
+      std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
+      std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
+      bool& continue_processing);
+
+  /*!\brief Creates the OBU processor.
+   *
+   * Creation succeeds only if the descriptor OBUs are successfully processed.
+   *
+   * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
+   *        include all descriptor OBUs and no other data. This should only be
+   *        set to true if the user knows the exact boundaries of their set of
+   *        descriptor OBUs.
+   * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
+   *        bitstream.
+   * \param insufficient_data Whether the bitstream provided is insufficient to
+   *        process all descriptor OBUs.
+   * \return std::unique_ptr<ObuProcessor> on success. `nullptr` on failure.
+   */
+  static std::unique_ptr<ObuProcessor> Create(bool is_exhaustive_and_exact,
+                                              ReadBitBuffer* read_bit_buffer,
+                                              bool& insufficient_data);
+
+  /*!\brief Move constructor. */
+  ObuProcessor(ObuProcessor&& obu_processor) = delete;
+
+  /*!\brief Creates the OBU processor for rendering.
+   *
+   * Creation succeeds only if the descriptor OBUs are successfully processed
+   * and all rendering modules are successfully initialized.
+   *
+   * \param playback_layout Specifies the layout that will be used to render
+   *        the audio.
+   * \param write_wav_header If true, a wav header will be written. Otherwise
+   *        the output will be PCM.
+   * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
+   *        include all descriptor OBUs and no other data. This should only be
+   *        set to true if the user knows the exact boundaries of their set of
+   *        descriptor OBUs.
+   * \param output_file_bit_depth_override If present, overrides the bit-depth
+   *        of the output file.
+   * \param output_filename Output filename.
+   * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
+   *        bitstream.
+   * \param insufficient_data Whether the bitstream provided is insufficient to
+   *        process all descriptor OBUs.
+   * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
+   */
+  static std::unique_ptr<ObuProcessor> CreateForRendering(
+      const Layout& playback_layout, bool write_wav_header,
+      bool is_exhaustive_and_exact,
+      std::optional<uint8_t> output_file_bit_depth_override,
+      absl::string_view output_filename, ReadBitBuffer* read_bit_buffer,
+      bool& insufficient_data);
+
+  // TODO(b/381072155): Consider removing this one in favor of
+  //                    `ProcessTemporalUnit()`, which outputs all OBUs
+  //                    belonging the whole temporal unit.
+  /*!\brief Processes one Temporal Unit OBU from the stored IA Sequence.
+   *
+   * `Initialize()` must be called first to ready the input bitstream.
+   *
+   * \param output_audio_frame_with_data Output Audio Frame with the requisite
+   *        data.
+   * \param output_parameter_block_with_data Output Parameter Block with the
+   *        requisite data.
+   * \param output_temporal_delimiter Output temporal deilimiter OBU.
+   * \param continue_processing Whether the processing should be continued.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  absl::Status ProcessTemporalUnitObu(
+      std::optional<AudioFrameWithData>& output_audio_frame_with_data,
+      std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
+      std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
+      bool& continue_processing);
+
+  // TODO(b/379819959): Also handle Temporal Delimiter OBUs.
+  /*!\brief Processes all OBUs from a Temporal Unit from the stored IA Sequence.
+   *
+   * `Initialize()` must be called first to ready the input bitstream.
+   *
+   * \param output_audio_frames Output Audio Frames with the requisite
+   *        data.
+   * \param output_parameter_blocks Output Parameter Blocks with the
+   *        requisite data.
+   * \param output_timestamp Timestamp for the output temporal unit.
+   * \param insufficient_data Whether the bitstream provided is insufficient to
+   *        process all descriptor OBUs.
+   * \param continue_processing Whether the processing should be continued.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  absl::Status ProcessTemporalUnit(
+      std::list<AudioFrameWithData>& output_audio_frames,
+      std::list<ParameterBlockWithData>& output_parameter_blocks,
+      std::optional<int32_t>& output_timestamp, bool& continue_processing);
+
+  /*!\brief Renders a temporal unit and measures loudness.
+   *
+   * `InitializeForRendering()` must be called before calling this.
+   *
+   * \param timestamp Timestamp of this temporal unit. Used to verify that
+   *        the input OBUs actually belong to the same temporal unit.
+   * \param audio_frames_with_data Audio Frames with the requisite data.
+   * \param parameter_blocks_with_data Parameter Blocks with the requisite data.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  absl::Status RenderTemporalUnitAndMeasureLoudness(
+      int32_t timestamp, const std::list<AudioFrameWithData>& audio_frames,
+      const std::list<ParameterBlockWithData>& parameter_blocks);
+
+  IASequenceHeaderObu ia_sequence_header_;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_ = {};
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_ =
+      {};
+  std::list<MixPresentationObu> mix_presentations_ = {};
+
+ private:
+  /*!\brief Private constructor used only by Create() and CreateForRendering().
+   *
+   * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
+   *        bitstream.
+   * \return ObuProcessor instance.
+   */
+  explicit ObuProcessor(ReadBitBuffer* buffer) : read_bit_buffer_(buffer) {}
+
+  /*!\brief Performs internal initialization of the OBU processor.
+   *
+   * Only used by Create() and CreateForRendering().
+   *
+   * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
+   *        include all descriptor OBUs and no other data. This should only be
+   *        set to true if the user knows the exact boundaries of their set of
+   *        descriptor OBUs.
+   * \return `absl::OkStatus()` if initialization is successful. A specific
+   *        status on failure.
+   */
+  absl::Status InitializeInternal(bool is_exhaustive_and_exact,
+                                  bool& insufficient_data);
+
+  /*!\brief Initializes the OBU processor for rendering.
+   *
+   * Must be called after `Initialize()` is called.
+   *
+   * \param playback_layout Specifies the layout that will be used to render the
+   *        audio.
+   * \param write_wav_header If true, a wav header will be written. Otherwise
+   *        the output will be PCM.
+   * \param output_file_bit_depth_override If present, overrides the bit-depth
+   *        of the output files (WAV or PCM).
+   * \param output_filename Output filename.
+   * \return `absl::OkStatus()` if the process is successful. A specific status
+   *         on failure.
+   */
+  absl::Status InitializeForRendering(
+      const Layout& playback_layout, bool write_wav_header,
+      std::optional<uint8_t> output_file_bit_depth_override,
+      absl::string_view output_filename);
+
+  struct TemporalUnitData {
+    std::list<ParameterBlockWithData> parameter_blocks;
+    std::list<AudioFrameWithData> audio_frames;
+
+    std::optional<TemporalDelimiterObu> temporal_delimiter;
+    std::optional<int32_t> timestamp;
+
+    bool Empty() const {
+      return parameter_blocks.empty() && audio_frames.empty();
+    }
+
+    void Clear() {
+      audio_frames.clear();
+      parameter_blocks.clear();
+      temporal_delimiter.reset();
+      timestamp.reset();
+    }
+
+    template <class T>
+    static void AddDataToCorrectTemporalUnit(
+        TemporalUnitData& current_temporal_unit,
+        TemporalUnitData& next_temporal_unit, T&& obu_with_data) {
+      const auto new_timestamp = obu_with_data.start_timestamp;
+      if (!current_temporal_unit.timestamp.has_value()) {
+        current_temporal_unit.timestamp = new_timestamp;
+      }
+      if (*current_temporal_unit.timestamp == new_timestamp) {
+        current_temporal_unit.GetList<T>().push_back(std::move(obu_with_data));
+      } else {
+        next_temporal_unit.GetList<T>().push_back(std::move(obu_with_data));
+        next_temporal_unit.timestamp = new_timestamp;
+      }
+    }
+
+   private:
+    template <class T>
+    std::list<T>& GetList();
+    template <>
+    std::list<ParameterBlockWithData>& GetList() {
+      return parameter_blocks;
+    }
+    template <>
+    std::list<AudioFrameWithData>& GetList() {
+      return audio_frames;
+    }
+  };
+
+  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
+      param_definitions_;
+  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
+      parameter_id_to_metadata_;
+  absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
+      substream_id_to_audio_element_;
+  GlobalTimingModule global_timing_module_;
+  std::optional<ParametersManager> parameters_manager_;
+  ReadBitBuffer* read_bit_buffer_;
+
+  // Cached data when processing temporal units.
+  TemporalUnitData current_temporal_unit_;
+  TemporalUnitData next_temporal_unit_;
+  std::list<DecodedAudioFrame> decoded_frames_for_temporal_unit_;
+
+  // Modules used for rendering.
+  std::optional<AudioFrameDecoder> audio_frame_decoder_;
+  std::optional<DemixingModule> demixing_module_;
+  std::optional<RenderingMixPresentationFinalizer> mix_presentation_finalizer_;
+
+  bool write_wav_header_ = false;
+};
+}  // namespace iamf_tools
+#endif  // CLI_OBU_PROCESSOR_H_
