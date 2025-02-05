@@ -331,7 +331,8 @@ IamfEncoder::GetFinalizedMixPresentationObus() {
         "Cannot finalize mix presentation OBUs while generating data OBUs.");
   }
 
-  return mix_presentation_finalizer_.FinalizePushingTemporalUnits(
+  RETURN_IF_NOT_OK(mix_presentation_finalizer_.FinalizePushingTemporalUnits());
+  return mix_presentation_finalizer_.GetFinalizedMixPresentationObus(
       validate_user_loudness_);
 }
 

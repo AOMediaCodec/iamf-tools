@@ -632,7 +632,21 @@ absl::Status GenerateRenderingMetadataForSubmixes(
   return absl::OkStatus();
 }
 
-absl::Status FinalizeLoudnessAndFlushPostProcessors(
+absl::Status FlushPostProcessors(
+    std::vector<SubmixRenderingMetadata>& rendering_metadata) {
+  for (auto& submix_rendering_metadata : rendering_metadata) {
+    for (auto& layout_rendering_metadata :
+         submix_rendering_metadata.layout_rendering_metadata) {
+      if (layout_rendering_metadata.sample_processor != nullptr) {
+        RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->Flush());
+      }
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status FillLoudnessForMixPresentation(
     bool validate_loudness,
     std::vector<SubmixRenderingMetadata>& rendering_metadata,
     MixPresentationObu& mix_presentation_obu) {
@@ -654,9 +668,6 @@ absl::Status FinalizeLoudnessAndFlushPostProcessors(
             mix_presentation_obu.sub_mixes_[submix_index]
                 .layouts[layout_index]
                 .loudness));
-      }
-      if (layout_rendering_metadata.sample_processor != nullptr) {
-        RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->Flush());
       }
       layout_index++;
     }
@@ -784,18 +795,37 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
   return absl::OkStatus();
 }
 
-absl::StatusOr<std::list<MixPresentationObu>>
-RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits(
-    bool validate_loudness) {
+absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits() {
   switch (state_) {
     case kAcceptingTemporalUnits:
-      // Ok to finalize.
+      state_ = kFinalizePushTemporalUnitCalled;
       break;
     case kFinalizePushTemporalUnitCalled:
       return absl::FailedPreconditionError(
           "FinalizePushingTemporalUnits() should not be called twice.");
   }
-  state_ = kFinalizePushTemporalUnitCalled;
+
+  for (auto& [mix_presentation_obu, submix_rendering_metadata] :
+       rendering_metadata_) {
+    if (submix_rendering_metadata.has_value()) {
+      RETURN_IF_NOT_OK(FlushPostProcessors(*submix_rendering_metadata));
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<std::list<MixPresentationObu>>
+RenderingMixPresentationFinalizer::GetFinalizedMixPresentationObus(
+    bool validate_loudness) {
+  switch (state_) {
+    case kAcceptingTemporalUnits:
+      return absl::FailedPreconditionError(
+          "FinalizePushingTemporalUnits() should be called before "
+          "GetFinalizedMixPresentationOBUs().");
+    case kFinalizePushTemporalUnitCalled:
+      // Ok to finalize.
+      break;
+  }
 
   std::list<MixPresentationObu> finalized_obus;
   for (auto& [original_presentation_obu, submix_rendering_metadata] :
@@ -803,7 +833,7 @@ RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits(
     MixPresentationObu finalized_mix_presentation_obu =
         original_presentation_obu;
     if (submix_rendering_metadata.has_value()) {
-      RETURN_IF_NOT_OK(FinalizeLoudnessAndFlushPostProcessors(
+      RETURN_IF_NOT_OK(FillLoudnessForMixPresentation(
           validate_loudness, *submix_rendering_metadata,
           finalized_mix_presentation_obu));
     } else {

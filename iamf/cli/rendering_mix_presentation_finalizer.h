@@ -56,9 +56,12 @@ namespace iamf_tools {
  *     // Push the next temporal unit.
  *     RETURN_IF_NOT_OK(finalizer->PushTemporalUnit(...));
  *   }
- *   // Get the final OBUs, with measured loudness information.
+ *   // Signal that no more temporal units will be pushed.
+ *   RETURN_IF_NOT_OK(finalizer->FinalizePushingTemporalUnits());
+ *   // Optionally, if loudness measurements and/or validation is desired, get
+ *   // the final OBUs.
  *   absl::StatusOr<...> mix_presentation_obus =
- *     finalizer->FinalizePushingTemporalUnits();
+ *     finalizer->GetFinalizedMixPresentationOBUs();
  *   // Handle any errors, or use the output mix presentation OBUs.
  */
 class RenderingMixPresentationFinalizer {
@@ -200,18 +203,29 @@ class RenderingMixPresentationFinalizer {
       int32_t end_timestamp,
       const std::list<ParameterBlockWithData>& parameter_blocks);
 
+  /*!\brief Signals that `PushTemporalUnit` will no longer be called.
+   *
+   * Since samples will no longer be pushed, this function flushes all of the
+   * sample processors. E.g. when sample processors are `WavWriter`s, the file
+   * will be updated with the final header and the underlying file will be
+   * closed.
+   *
+   * \return `absl::OkStatus()` on success. `absl::FailedPreconditionError` if
+   *         this function has already been called.
+   */
+  absl::Status FinalizePushingTemporalUnits();
+
   /*!\brief Retrieves the finalized mix presentation OBUs.
    *
    * Will return mix presentation OBUs with updated loudness information. Should
-   * be called only once, and after all temporal units have been pushed to
-   * PushTemporalUnit.
+   * only be called after `FinalizePushingTemporalUnits` has been called.
    *
-   * \param validate_loudness If true, validate the loudness against the user
-   *        provided loudness.
+   * \param validate_loudness If true, validate the computed loudness matches
+   *        the original user-provided provided loudness.
    * \return List of finalized OBUs with calculated loudness information. A
    *         specific status on failure.
    */
-  absl::StatusOr<std::list<MixPresentationObu>> FinalizePushingTemporalUnits(
+  absl::StatusOr<std::list<MixPresentationObu>> GetFinalizedMixPresentationObus(
       bool validate_loudness);
 
  private:
