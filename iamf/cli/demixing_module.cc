@@ -31,10 +31,10 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -817,7 +817,7 @@ DemixingModule::CreateForDownMixingAndReconstruction(
     }
 
     absl::flat_hash_set<ChannelLabel::Label> input_channel_labels;
-    RETURN_IF_NOT_OK(ChannelLabel::SelectConvertAndFillLabels(
+    RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
         audio_frame_metadata, input_channel_labels));
 
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(

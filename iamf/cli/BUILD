@@ -65,7 +65,6 @@ cc_library(
     srcs = ["channel_label.cc"],
     hdrs = ["channel_label.h"],
     deps = [
-        "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:validation_utils",
@@ -119,6 +118,7 @@ cc_library(
         ":cli_util",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
@@ -594,6 +594,7 @@ cc_library(
         ":demixing_module",
         ":wav_reader",
         "//iamf/cli/proto:audio_frame_cc_proto",
+        "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",

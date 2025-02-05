@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 
 namespace iamf_tools {
@@ -115,7 +116,7 @@ void ExpectLabelsAreConvertibleToChannelLabels(
     InputContainer labels,
     const std::vector<ChannelLabel::Label>& expected_labels) {
   std::vector<ChannelLabel::Label> converted_labels;
-  ASSERT_THAT(ChannelLabel::ConvertAndFillLabels(labels, converted_labels),
+  ASSERT_THAT(ChannelLabelUtils::ConvertAndFillLabels(labels, converted_labels),
               IsOk());
   EXPECT_EQ(converted_labels, expected_labels);
 }

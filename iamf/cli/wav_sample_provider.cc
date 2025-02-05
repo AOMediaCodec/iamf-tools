@@ -25,9 +25,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
@@ -98,7 +98,7 @@ absl::Status FillChannelIdsAndLabels(
   }
 
   // Precompute the internal `ChannelLabel::Label`s.
-  RETURN_IF_NOT_OK(ChannelLabel::SelectConvertAndFillLabels(
+  RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
       audio_frame_metadata, channel_labels));
 
   return absl::OkStatus();

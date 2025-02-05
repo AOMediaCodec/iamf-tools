@@ -16,6 +16,7 @@ cc_test(
     deps = [
         "//iamf/cli:channel_label",
         "//iamf/cli/proto:audio_frame_cc_proto",
+        "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/cli/user_metadata_builder:audio_frame_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "@com_google_absl//absl/status:status_matchers",

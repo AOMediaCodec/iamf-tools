@@ -75,6 +75,7 @@ cc_library(
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:channel_label_utils",
         "//iamf/common/utils:macros",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",

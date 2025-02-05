@@ -48,6 +48,7 @@
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -700,7 +701,7 @@ absl::Status AudioFrameGenerator::Initialize() {
   for (const auto& [audio_element_id, audio_frame_metadata] :
        audio_frame_metadata_) {
     // Precompute the `ChannelLabel::Label` for each channel label string.
-    RETURN_IF_NOT_OK(ChannelLabel::SelectConvertAndFillLabels(
+    RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
         audio_frame_metadata, audio_element_id_to_labels_[audio_element_id]));
 
     // Find the Codec Config OBU for this mono or coupled stereo substream.

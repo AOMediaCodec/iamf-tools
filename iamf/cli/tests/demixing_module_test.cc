@@ -31,6 +31,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -559,7 +560,7 @@ class DemixingModuleTestBase {
   void ConfigureAudioFrameMetadata(
       absl::Span<const ChannelLabel::Label> labels) {
     for (const auto& label : labels) {
-      auto proto_label = ChannelLabel::LabelToProto(label);
+      auto proto_label = ChannelLabelUtils::LabelToProto(label);
       ASSERT_TRUE(proto_label.ok());
       audio_frame_metadata_.add_channel_metadatas()->set_channel_label(
           *proto_label);
