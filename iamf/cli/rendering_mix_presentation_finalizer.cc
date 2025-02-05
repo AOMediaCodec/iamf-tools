@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <list>
 #include <memory>
 #include <optional>
@@ -45,9 +46,11 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
@@ -390,9 +393,9 @@ absl::Status MixAudioElements(
   return absl::OkStatus();
 }
 
-// Returns a span, which is backed by `rendered_samples`, of the ticks actually
-// rendered.
-absl::StatusOr<absl::Span<const std::vector<int32_t>>> RenderAllFramesForLayout(
+// Fills in `valid_rendered_samples` which is a view backed by
+// `rendered_samples` of the ticks actually rendered.
+absl::Status RenderAllFramesForLayout(
     int32_t num_channels,
     const std::vector<SubMixAudioElement> sub_mix_audio_elements,
     const MixGainParamDefinition& output_mix_gain,
@@ -401,7 +404,8 @@ absl::StatusOr<absl::Span<const std::vector<int32_t>>> RenderAllFramesForLayout(
     const int32_t start_timestamp, const int32_t end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const uint32_t common_sample_rate,
-    std::vector<std::vector<int32_t>>& rendered_samples) {
+    std::vector<std::vector<int32_t>>& rendered_samples,
+    absl::Span<const std::vector<int32_t>>& valid_rendered_samples) {
   // Each audio element rendered individually with `element_mix_gain` applied.
   std::vector<std::vector<InternalSampleType>> rendered_audio_elements(
       sub_mix_audio_elements.size());
@@ -445,7 +449,9 @@ absl::StatusOr<absl::Span<const std::vector<int32_t>>> RenderAllFramesForLayout(
       absl::AnyInvocable<absl::Status(InternalSampleType, int32_t&) const>(
           NormalizedFloatingPointToInt32<InternalSampleType>),
       rendered_samples, num_ticks));
-  return absl::MakeConstSpan(rendered_samples).first(num_ticks);
+  valid_rendered_samples =
+      absl::MakeConstSpan(rendered_samples).first(num_ticks);
+  return absl::OkStatus();
 }
 
 absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
@@ -697,32 +703,78 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
         return absl::InvalidArgumentError("Submix mix gain is null");
       }
 
-      const auto rendered_span = RenderAllFramesForLayout(
+      RETURN_IF_NOT_OK(RenderAllFramesForLayout(
           layout_rendering_metadata.num_channels,
           submix_rendering_metadata.audio_elements_in_sub_mix,
           *submix_rendering_metadata.mix_gain, id_to_labeled_frame,
           layout_rendering_metadata.audio_element_rendering_metadata,
           start_timestamp, end_timestamp, parameter_blocks,
           submix_rendering_metadata.common_sample_rate,
-          layout_rendering_metadata.rendered_samples);
-      if (!rendered_span.ok()) {
-        return rendered_span.status();
-      }
+          layout_rendering_metadata.rendered_samples,
+          layout_rendering_metadata.valid_rendered_samples));
+
       // Calculate loudness based on the original rendered samples; we do not
       // know what post-processing the end user will have.
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
-        RETURN_IF_NOT_OK(layout_rendering_metadata.loudness_calculator
-                             ->AccumulateLoudnessForSamples(*rendered_span));
+        RETURN_IF_NOT_OK(
+            layout_rendering_metadata.loudness_calculator
+                ->AccumulateLoudnessForSamples(
+                    layout_rendering_metadata.valid_rendered_samples));
       }
 
       // Perform any post-processing.
       if (layout_rendering_metadata.sample_processor != nullptr) {
         RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->PushFrame(
-            *rendered_span));
+            layout_rendering_metadata.valid_rendered_samples));
       }
     }
   }
   return absl::OkStatus();
+}
+
+absl::StatusOr<const LayoutRenderingMetadata*>
+GetRenderedSamplesAndPostProcessor(
+    const auto& mix_presentation_id_to_rendering_metadata,
+    DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
+    size_t layout_index) {
+  // TODO(b/394072450): Store the mix presentations in an associative map, to
+  //                    avoid repeatedly searching for them. Be careful to avoid
+  //                    re-ordering same when the order of the mix presentations
+  //                    when `GetFinalizedMixPresentationObus` is called.
+  // Lookup the requested layout in the requested mix presentation.
+  auto mix_presentation_it = std::find_if(
+      mix_presentation_id_to_rendering_metadata.begin(),
+      mix_presentation_id_to_rendering_metadata.end(),
+      [mix_presentation_id](const auto& mix_presentation_rendering_metadata) {
+        return mix_presentation_rendering_metadata.mix_presentation_obu
+                   .GetMixPresentationId() == mix_presentation_id;
+      });
+
+  const auto mix_presentation_id_error_message =
+      absl::StrCat(" Mix Presentation ID ", mix_presentation_id);
+  if (mix_presentation_it == mix_presentation_id_to_rendering_metadata.end()) {
+    return absl::NotFoundError(
+        absl::StrCat(mix_presentation_id_error_message,
+                     " not found in rendering metadata."));
+  }
+
+  // Validate rendering is enabled, and the layout is in bounds.
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(mix_presentation_it->submix_rendering_metadata,
+                       absl::StrCat("because `submix_rendering_metadata` "
+                                    "implies rendering is disabled.",
+                                    mix_presentation_id_error_message)));
+  RETURN_IF_NOT_OK(Validate(
+      sub_mix_index, std::less<size_t>(),
+      mix_presentation_it->submix_rendering_metadata->size(),
+      absl::StrCat(mix_presentation_id_error_message, "  sub_mix_index <")));
+  const auto& submix_rendering_metadata =
+      (*mix_presentation_it->submix_rendering_metadata)[sub_mix_index];
+  RETURN_IF_NOT_OK(Validate(
+      layout_index, std::less<size_t>(),
+      submix_rendering_metadata.layout_rendering_metadata.size(),
+      absl::StrCat(mix_presentation_id_error_message, "  layout_index <")));
+  return &submix_rendering_metadata.layout_rendering_metadata[layout_index];
 }
 
 }  // namespace
@@ -793,6 +845,26 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
         *submix_rendering_metadata));
   }
   return absl::OkStatus();
+}
+
+absl::StatusOr<absl::Span<const std::vector<int32_t>>>
+RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
+    DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
+    size_t layout_index) const {
+  const auto layout_rendering_metadata = GetRenderedSamplesAndPostProcessor(
+      rendering_metadata_, mix_presentation_id, sub_mix_index, layout_index);
+  if (!layout_rendering_metadata.ok()) {
+    return layout_rendering_metadata.status();
+  }
+  // `absl::StatusOr<const T*> cannot hold a nullptr.
+  CHECK_NE(*layout_rendering_metadata, nullptr);
+
+  // Prioritize returning the post-processed samples if a post-processor is
+  // available. Otherwise, return the rendered samples.
+  return (*layout_rendering_metadata)->sample_processor != nullptr
+             ? (*layout_rendering_metadata)
+                   ->sample_processor->GetOutputSamplesAsSpan()
+             : (*layout_rendering_metadata)->valid_rendered_samples;
 }
 
 absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits() {

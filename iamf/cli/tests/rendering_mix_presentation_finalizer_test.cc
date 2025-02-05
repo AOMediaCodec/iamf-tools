@@ -91,6 +91,9 @@ constexpr std::array<DecodedUleb128, 1> kStereoSubstreamIds = {1};
 
 constexpr std::array<ChannelLabel::Label, 2> kStereoLabels = {kL2, kR2};
 
+constexpr size_t kFirstSubmixIndex = 0;
+constexpr size_t kFirstLayoutIndex = 0;
+
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::CodecConfigObuMetadata>
     CodecConfigObuMetadatas;
@@ -1054,6 +1057,192 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   validate_loudness_ = true;
   EXPECT_FALSE(
       finalizer.GetFinalizedMixPresentationObus(validate_loudness_).ok());
+}
+
+// =========== Tests for GetPostProcessedSamplesAsSpan ===========
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsEmptySpanAfterCreate) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  auto finalizer = CreateFinalizerExpectOk();
+
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOkAndHolds(IsEmpty()));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsErrorWithRenderingDisabled) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  // Disable rendering.
+  renderer_factory_ = nullptr;
+
+  auto finalizer = CreateFinalizerExpectOk();
+
+  // Post-processed samples are only available if rendering was enabled.
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              Not(IsOk()));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownMixPresentationId) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const DecodedUleb128 kUnknownMixPresentationId = kMixPresentationId + 1;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  auto finalizer = CreateFinalizerExpectOk();
+
+  EXPECT_THAT(
+      finalizer.GetPostProcessedSamplesAsSpan(
+          kUnknownMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+      Not(IsOk()));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownLayoutIndex) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const int kUnknownLayoutIndex = kFirstLayoutIndex + 1;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  auto finalizer = CreateFinalizerExpectOk();
+
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kUnknownLayoutIndex, kFirstSubmixIndex),
+              Not(IsOk()));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsErrorWithUnknownSubmixIndex) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const int kUnknownSubmixIndex = kFirstSubmixIndex + 1;
+  renderer_factory_ = std::make_unique<RendererFactory>();
+
+  auto finalizer = CreateFinalizerExpectOk();
+
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kUnknownSubmixIndex),
+              Not(IsOk()));
+}
+
+TEST_F(
+    FinalizerTest,
+    GetPostProcessedSamplesAsSpanReturnsEmptySpanWhenFinalizedWithNoPostProcessor) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  sample_processor_factory_ =
+      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
+
+  auto finalizer = CreateFinalizerExpectOk();
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
+
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOkAndHolds(IsEmpty()));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanPrioritizesPostProcessedSamples) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const LabelSamplesMap kLabelToSamples = {
+      {kL2, Int32ToInternalSampleType({0, 1})},
+      {kR2, Int32ToInternalSampleType({2, 3})}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{1, 3}};
+  // We expect the post-processor to be called with the rendered samples.
+  sample_processor_factory_ =
+      [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
+         int /*layout_index*/, const Layout& /*layout*/, int num_channels,
+         int /*sample_rate*/, int /*bit_depth*/, size_t num_samples_per_frame) {
+        return std::make_unique<EverySecondTickResampler>(num_samples_per_frame,
+                                                          num_channels);
+      };
+  auto finalizer = CreateFinalizerExpectOk();
+
+  // Push a temporal unit.
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/0,
+                                 /*end_timestamp=*/10, parameter_blocks_),
+      IsOk());
+
+  // We expect the post-processed samples, i.e. every other tick.
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
+}
+
+TEST_F(FinalizerTest,
+       GetPostProcessedSamplesAsSpanReturnsFallsBackToRenderedSamples) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  const LabelSamplesMap kLabelToSamples = {
+      {kL2, Int32ToInternalSampleType({0, 1})},
+      {kR2, Int32ToInternalSampleType({2, 3})}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{0, 2}, {1, 3}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  sample_processor_factory_ =
+      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
+  auto finalizer = CreateFinalizerExpectOk();
+
+  // Push a temporal unit.
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/0,
+                                 /*end_timestamp=*/10, parameter_blocks_),
+      IsOk());
+
+  // There is no post-processor, but it safely falls back to the pass-through
+  // rendered samples.
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
+}
+
+TEST_F(FinalizerTest,
+       DelayedSamplesAreAvailableAfterFinalizePushingTemporalUnits) {
+  InitPrerequisiteObusForMonoInput(kAudioElementId);
+  AddMixPresentationObuForMonoOutput(kMixPresentationId);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  sample_processor_factory_ =
+      [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
+         int /*layout_index*/, const Layout& /*layout*/, int num_channels,
+         int /*sample_rate*/, int /*bit_depth*/, size_t num_samples_per_frame) {
+        return std::make_unique<OneFrameDelayer>(num_samples_per_frame,
+                                                 num_channels);
+      };
+  const LabelSamplesMap kLabelToSamples = {
+      {kMono, Int32ToInternalSampleType({100, 900})}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100}, {900}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+  auto finalizer = CreateFinalizerExpectOk();
+
+  // The post-processor has delay. So samples are not available immediately.
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/0,
+                                 /*end_timestamp=*/10, parameter_blocks_),
+      IsOk());
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex),
+              IsOkAndHolds(IsEmpty()));
+
+  // But finally after flushing, samples are available.
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex),
+              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
 }
 
 }  // namespace

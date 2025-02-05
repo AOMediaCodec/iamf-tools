@@ -26,6 +26,7 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_base.h"
@@ -55,11 +56,15 @@ namespace iamf_tools {
  *   while (source has temporal units) {
  *     // Push the next temporal unit.
  *     RETURN_IF_NOT_OK(finalizer->PushTemporalUnit(...));
+ *     // Get the post-processed samples for each relevant layout. Relevant
+ *     // layouts depend on use-case.
+ *     RETURN_IF_NOT_OK(finalizer->GetPostProcessedSamplesAsSpan(...));
  *   }
- *   // Signal that no more temporal units will be pushed.
  *   RETURN_IF_NOT_OK(finalizer->FinalizePushingTemporalUnits());
- *   // Optionally, if loudness measurements and/or validation is desired, get
- *   // the final OBUs.
+ *   // Get the post-processed samples for each relevant layout. Relevant
+ *   // layouts depend on use-case.
+ *   RETURN_IF_NOT_OK(finalizer->GetPostProcessedSamplesAsSpan(...));
+ *   // Get the final OBUs, with measured loudness information.
  *   absl::StatusOr<...> mix_presentation_obus =
  *     finalizer->GetFinalizedMixPresentationOBUs();
  *   // Handle any errors, or use the output mix presentation OBUs.
@@ -97,6 +102,8 @@ class RenderingMixPresentationFinalizer {
 
     // Reusable buffer for storing rendered samples.
     std::vector<std::vector<int32_t>> rendered_samples;
+    // A view into the valid portion of `rendered_samples`.
+    absl::Span<const std::vector<int32_t>> valid_rendered_samples;
   };
 
   // We need to store rendering metadata for each submix, layout, and audio
@@ -203,12 +210,38 @@ class RenderingMixPresentationFinalizer {
       int32_t end_timestamp,
       const std::list<ParameterBlockWithData>& parameter_blocks);
 
-  /*!\brief Signals that `PushTemporalUnit` will no longer be called.
+  /*!\brief Retrieves cached post-processed samples.
    *
-   * Since samples will no longer be pushed, this function flushes all of the
-   * sample processors. E.g. when sample processors are `WavWriter`s, the file
-   * will be updated with the final header and the underlying file will be
-   * closed.
+   * Retrieves the post-processed samples for a given mix presentation, submix,
+   * and layout. Or the rendered samples if no post-processor is available. New
+   * data is available after each call to `PushTemporalUnit` or
+   * `FinalizePushingTemporalUnits`. The output span is invalidated by any
+   * further calls to `PushTemporalUnit` or `FinalizePushingTemporalUnits` and
+   * typically should be consumed or copied immediately.
+   *
+   * Simple use pattern:
+   *   - Call based on the same layout each time. E.g. to always render the
+   *     same stereo layout.
+   *
+   * More complex use pattern:
+   *   - Call multiple times based on a small set of layouts. (E.g. to back a
+   *     buffer to support seamless transitions when a GUI element is clicked to
+   *     toggle between mixes, language, or loudnspeaker layout).
+   *   - Call for each layout, to cache and save all possible rendered layouts
+   *     to a file.
+   *
+   * \param mix_presentation_id Mix presentation ID
+   * \param submix_index Index of the sub mix to retrieve.
+   * \param layout_index Index of the layout to retrieve.
+   * \param Post-processed samples, or rendered samples if no post-processor is
+   *        available. A specific status on failure.
+   */
+  absl::StatusOr<absl::Span<const std::vector<int32_t>>>
+  GetPostProcessedSamplesAsSpan(DecodedUleb128 mix_presentation_id,
+                                size_t sub_mix_index,
+                                size_t layout_index) const;
+
+  /*!\brief Signals that `PushTemporalUnit` will no longer be called.
    *
    * \return `absl::OkStatus()` on success. `absl::FailedPreconditionError` if
    *         this function has already been called.

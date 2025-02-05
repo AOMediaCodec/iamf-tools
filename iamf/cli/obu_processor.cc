@@ -852,8 +852,12 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
       decoded_labeled_frames_for_temporal_unit, start_timestamp, *end_timestamp,
       parameter_blocks));
 
-  // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits` when there
-  //                    are no more temporal units to push. That call may
+  // TODO(b/379122580): Expose the "rendered" samples from the finalizer's
+  //                    `GetPostProcessedSamplesAsSpan`.
+
+  // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits`, then a
+  //                    final call to `GetPostProcessedSamplesAsSpan` when there
+  //                    are no more temporal units to push. Those calls may
   //                    belong elsewhere in the class depending on the
   //                    interface.
 
