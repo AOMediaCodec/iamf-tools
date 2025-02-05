@@ -315,15 +315,13 @@ class ObuProcessor {
 
    private:
     template <class T>
-    std::list<T>& GetList();
-    template <>
-    std::list<ParameterBlockWithData>& GetList() {
-      return parameter_blocks;
-    }
-    template <>
-    std::list<AudioFrameWithData>& GetList() {
-      return audio_frames;
-    }
+    std::list<T>& GetList() {
+      if constexpr (std::is_same_v<T, ParameterBlockWithData>) {
+        return parameter_blocks;
+      } else if constexpr (std::is_same_v<T, AudioFrameWithData>) {
+        return audio_frames;
+      }
+    };
   };
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
