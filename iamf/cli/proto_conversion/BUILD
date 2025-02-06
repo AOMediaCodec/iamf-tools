@@ -1,6 +1,6 @@
 # Conversion of proto to internal representations.
-# cli/proto_to_obu and cli/obu_to_proto will be moved here but bidirectional conversion can stay in
-# this directory.
+# cli/proto_to_obu and cli/obu_to_proto are subdirectories for unidirectional conversion, but utils
+# and bidirectional conversion can stay in this directory.
 
 cc_library(
     name = "channel_label_utils",
@@ -27,6 +27,30 @@ cc_library(
 )
 
 cc_library(
+    name = "lookup_tables",
+    hdrs = ["lookup_tables.h"],
+    visibility = ["//iamf/cli/proto_conversion:__subpackages__"],
+    deps = [
+        "//iamf/cli/proto:arbitrary_obu_cc_proto",
+        "//iamf/cli/proto:audio_element_cc_proto",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:mix_presentation_cc_proto",
+        "//iamf/cli/proto:param_definitions_cc_proto",
+        "//iamf/cli/proto:parameter_block_cc_proto",
+        "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu/decoder_config:aac_decoder_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+    ],
+)
+
+cc_library(
     name = "proto_utils",
     srcs = ["proto_utils.cc"],
     hdrs = ["proto_utils.h"],
@@ -36,11 +60,11 @@ cc_library(
         "//iamf/cli/proto_conversion:__subpackages__",
     ],
     deps = [
-        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:lookup_tables",
         "//iamf/common:leb_generator",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",

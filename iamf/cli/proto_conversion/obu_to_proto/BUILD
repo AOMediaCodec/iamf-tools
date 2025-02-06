@@ -9,9 +9,9 @@ cc_library(
     hdrs = ["ia_sequence_header_metadata_generator.h"],
     deps = [
         ":obu_header_metadata_generator",
-        "//iamf/cli:lookup_tables",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
         "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto_conversion:lookup_tables",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/obu:ia_sequence_header",

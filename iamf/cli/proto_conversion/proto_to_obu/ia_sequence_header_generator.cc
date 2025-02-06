@@ -15,8 +15,8 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
+#include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
