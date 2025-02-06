@@ -414,23 +414,6 @@ cc_test(
 )
 
 cc_test(
-    name = "proto_util_test",
-    srcs = ["proto_util_test.cc"],
-    deps = [
-        "//iamf/cli:proto_utils",
-        "//iamf/cli/proto:obu_header_cc_proto",
-        "//iamf/cli/proto:parameter_data_cc_proto",
-        "//iamf/common:leb_generator",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:parameter_data",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
-    ],
-)
-
-cc_test(
     name = "recon_gain_generator_test",
     srcs = ["recon_gain_generator_test.cc"],
     deps = [

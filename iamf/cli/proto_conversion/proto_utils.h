@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef CLI_PROTO_UTILS_H_
-#define CLI_PROTO_UTILS_H_
+#ifndef CLI_PROTO_CONVERSION_PROTO_UTILS_H_
+#define CLI_PROTO_CONVERSION_PROTO_UTILS_H_
 
 #include <memory>
 
@@ -75,4 +75,4 @@ std::unique_ptr<LebGenerator> CreateLebGenerator(
 
 }  // namespace iamf_tools
 
-#endif  // CLI_PROTO_UTILS_H_
+#endif  // CLI_PROTO_CONVERSION_PROTO_UTILS_H_

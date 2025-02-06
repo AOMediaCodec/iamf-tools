@@ -9,6 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/proto_conversion/proto_utils.h"
+
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -19,7 +21,6 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto_utils.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"

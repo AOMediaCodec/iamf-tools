@@ -44,9 +44,9 @@ cc_library(
     srcs = ["parameter_block_metadata_generator.cc"],
     hdrs = ["parameter_block_metadata_generator.h"],
     deps = [
-        "//iamf/cli:proto_utils",
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:param_definitions",

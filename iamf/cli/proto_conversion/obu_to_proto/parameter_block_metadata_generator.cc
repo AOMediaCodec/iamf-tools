@@ -19,7 +19,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"

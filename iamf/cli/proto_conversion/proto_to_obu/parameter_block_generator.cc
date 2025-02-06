@@ -34,7 +34,7 @@
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/recon_gain_generator.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"

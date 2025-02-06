@@ -23,7 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
-#include "iamf/cli/proto_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/obu/arbitrary_obu.h"

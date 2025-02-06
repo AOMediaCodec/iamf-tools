@@ -23,7 +23,7 @@
 #include "iamf/cli/obu_sequencer.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/renderer_factory.h"
 
 namespace iamf_tools {

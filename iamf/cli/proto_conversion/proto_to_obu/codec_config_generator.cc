@@ -24,7 +24,7 @@
 #include "iamf/cli/lookup_tables.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
-#include "iamf/cli/proto_utils.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
