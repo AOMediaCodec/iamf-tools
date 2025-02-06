@@ -274,6 +274,21 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
   return absl::OkStatus();
 }
 
+// Writes the descriptor OBUs. Section 5.1.1
+// (https://aomediacodec.github.io/iamf/#standalone-descriptor-obus) orders the
+// OBUs by type.
+//
+// For Codec Config OBUs and Audio Element OBUs, the order is arbitrary. For
+// determinism this implementation orders them by ascending ID.
+//
+// For Mix Presentation OBUs, the order is the same as the original order.
+// Because the original ordering may be used downstream when selecting the mix
+// presentation
+// (https://aomediacodec.github.io/iamf/#processing-mixpresentation-selection).
+//
+// For Arbitrary OBUs, they are inserted in an order implied by the insertion
+// hook. Ties are broken by the original order, when multiple OBUs have the same
+// hook.
 absl::Status ObuSequencerBase::WriteDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
@@ -312,18 +327,11 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterAudioElements, arbitrary_obus, wb));
 
-  // Write Mix Presentation OBUs in ascending order of Mix Presentation IDs.
-  // TODO(b/332956880): Support customizing the ordering.
-  std::list<MixPresentationObu> sorted_mix_presentation_obus(
-      mix_presentation_obus);
-  sorted_mix_presentation_obus.sort(
-      [](const MixPresentationObu& obu_1, const MixPresentationObu& obu_2) {
-        return obu_1.GetMixPresentationId() < obu_2.GetMixPresentationId();
-      });
   // TODO(b/269708630): Ensure at least one the profiles in the IA Sequence
   //                    Header supports all of the layers for scalable audio
   //                    elements.
-  for (const auto& mix_presentation_obu : sorted_mix_presentation_obus) {
+  // Maintain the original order of Mix Presentation OBUs.
+  for (const auto& mix_presentation_obu : mix_presentation_obus) {
     // Make sure the mix presentation is valid for at least one of the profiles
     // in the sequence header before writing it.
     absl::flat_hash_set<ProfileVersion> profile_version = {

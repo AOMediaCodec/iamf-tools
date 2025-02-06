@@ -776,28 +776,36 @@ TEST_F(ObuSequencerTest, AudioElementAreAscendingOrderByDefault) {
   ValidateWriteDescriptorObuSequence(expected_sequence);
 }
 
-TEST_F(ObuSequencerTest, MixPresentationsAreAscendingOrderByDefault) {
+TEST_F(ObuSequencerTest, MixPresentationsMaintainOriginalOrder) {
   InitializeDescriptorObus();
+  mix_presentation_obus_.clear();
 
-  // Initialize a second Mix Presentation OBU.
-  const DecodedUleb128 kSecondMixPresentationId = 99;
+  // Prefix descriptor OBUs.
+  std::list<const ObuBase*> expected_sequence = {
+      &ia_sequence_header_obu_.value(),
+      &codec_config_obus_.at(kCodecConfigId),
+      &audio_elements_.at(kFirstAudioElementId).obu,
+  };
+  // Initialize three Mix Presentation OBUs, regardless of their IDs we
+  // expect them to be serialized in the same order as the input list.
+  constexpr DecodedUleb128 kFirstMixPresentationId = 100;
+  constexpr DecodedUleb128 kSecondMixPresentationId = 99;
+  constexpr DecodedUleb128 kThirdMixPresentationId = 101;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus_);
+  expected_sequence.push_back(&mix_presentation_obus_.back());
   AddMixPresentationObuWithAudioElementIds(
       kSecondMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonMixGainParameterRate,
       mix_presentation_obus_);
-
-  // IAMF makes no recommendation for the ordering between multiple descriptor
-  // OBUs of the same type. By default `WriteDescriptorObus` orders them in
-  // ascending order regardless of their order in the input list.
-  ASSERT_LT(kSecondMixPresentationId, kFirstMixPresentationId);
-  ASSERT_EQ(mix_presentation_obus_.back().GetMixPresentationId(),
-            kSecondMixPresentationId);
-  ASSERT_EQ(mix_presentation_obus_.front().GetMixPresentationId(),
-            kFirstMixPresentationId);
-  const std::list<const ObuBase*> expected_sequence = {
-      &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
-      &audio_elements_.at(kFirstAudioElementId).obu,
-      &mix_presentation_obus_.back(), &mix_presentation_obus_.front()};
+  expected_sequence.push_back(&mix_presentation_obus_.back());
+  AddMixPresentationObuWithAudioElementIds(
+      kThirdMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus_);
+  expected_sequence.push_back(&mix_presentation_obus_.back());
 
   ValidateWriteDescriptorObuSequence(expected_sequence);
 }
