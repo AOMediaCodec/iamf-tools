@@ -29,7 +29,7 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
-#include "iamf/cli/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"

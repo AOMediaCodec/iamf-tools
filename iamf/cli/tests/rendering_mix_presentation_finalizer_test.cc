@@ -39,7 +39,7 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/cli/proto_to_obu/codec_config_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/tests/cli_test_utils.h"

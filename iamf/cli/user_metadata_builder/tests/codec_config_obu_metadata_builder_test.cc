@@ -19,7 +19,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
-#include "iamf/cli/proto_to_obu/codec_config_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
