@@ -35,3 +35,7 @@ bazel_dep(
     version = "1.8.5",
     repo_name = "com_google_benchmark",
 )
+bazel_dep(
+    name = "eigen",
+    version = "3.4.0",
+)

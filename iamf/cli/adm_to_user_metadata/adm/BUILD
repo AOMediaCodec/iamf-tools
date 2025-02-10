@@ -39,7 +39,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_audio_to_tactile//:dsp",
-        "@eigen3",
+        "@eigen",
     ],
 )
 

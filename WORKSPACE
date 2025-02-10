@@ -48,11 +48,3 @@ git_repository(
     commit = "82ac57d9f1aaf575800cf17373348e45b7ce6c0d",
     remote = "https://gitlab.xiph.org/xiph/opus.git",
 )
-
-# Eigen.
-git_repository(
-    name = "eigen3",
-    build_file = "eigen.BUILD",
-    commit = "3147391d946bb4b6c68edd901f2add6ac1f31f8c",
-    remote = "https://gitlab.com/libeigen/eigen.git",
-)
