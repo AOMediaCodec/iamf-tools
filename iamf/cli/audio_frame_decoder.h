@@ -25,15 +25,16 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 struct DecodedAudioFrame {
   uint32_t substream_id;
-  int32_t start_timestamp;  // Start time of this frame. Measured in ticks from
-                            // the Global Timing Module.
-  int32_t end_timestamp;  // End time of this frame. Measured in ticks from the
-                          // Global Timing Module.
+  InternalTimestamp start_timestamp;  // Start time of this frame. Measured in
+                                      // ticks from the Global Timing Module.
+  InternalTimestamp end_timestamp;    // End time of this frame. Measured in
+                                      // ticks from the Global Timing Module.
   uint32_t samples_to_trim_at_end;
   uint32_t samples_to_trim_at_start;
 

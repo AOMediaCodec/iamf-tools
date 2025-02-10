@@ -43,6 +43,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/obu:codec_config",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
         "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -58,6 +59,7 @@ cc_library(
         ":audio_element_with_data",
         "//iamf/obu:audio_frame",
         "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
     ],
 )
 
@@ -385,7 +387,9 @@ cc_library(
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:obu_util",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -395,7 +399,10 @@ cc_library(
 cc_library(
     name = "parameter_block_with_data",
     hdrs = ["parameter_block_with_data.h"],
-    deps = ["//iamf/obu:parameter_block"],
+    deps = [
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:types",
+    ],
 )
 
 cc_library(

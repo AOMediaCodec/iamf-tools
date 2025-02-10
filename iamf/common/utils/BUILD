@@ -50,6 +50,7 @@ cc_library(
     hdrs = ["obu_util.h"],
     deps = [
         ":numeric_utils",
+        "//iamf/obu:types",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",

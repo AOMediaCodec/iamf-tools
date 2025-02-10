@@ -114,8 +114,8 @@ ObuWithDataGenerator::GenerateAudioFrameWithData(
 
   // Get the timestamps and demixing and recon-gain parameters to fill in
   // `AudioFrameWithData`.
-  int32_t start_timestamp;
-  int32_t end_timestamp;
+  InternalTimestamp start_timestamp;
+  InternalTimestamp end_timestamp;
   RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
       audio_substream_id, duration, start_timestamp, end_timestamp));
   DownMixingParams down_mixing_params;
@@ -140,10 +140,11 @@ ObuWithDataGenerator::GenerateAudioFrameWithData(
 
 absl::StatusOr<ParameterBlockWithData>
 ObuWithDataGenerator::GenerateParameterBlockWithData(
-    int32_t input_start_timestamp, GlobalTimingModule& global_timing_module,
+    InternalTimestamp input_start_timestamp,
+    GlobalTimingModule& global_timing_module,
     std::unique_ptr<ParameterBlockObu> parameter_block_obu) {
-  int32_t start_timestamp;
-  int32_t end_timestamp;
+  InternalTimestamp start_timestamp;
+  InternalTimestamp end_timestamp;
   RETURN_IF_NOT_OK(global_timing_module.GetNextParameterBlockTimestamps(
       parameter_block_obu->parameter_id_, input_start_timestamp,
       parameter_block_obu->GetDuration(), start_timestamp, end_timestamp));

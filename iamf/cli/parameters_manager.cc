@@ -38,7 +38,7 @@ namespace {
 
 template <typename StateType>
 absl::Status UpdateParameterState(
-    DecodedUleb128 audio_element_id, int32_t expected_next_timestamp,
+    DecodedUleb128 audio_element_id, InternalTimestamp expected_next_timestamp,
     absl::flat_hash_map<DecodedUleb128, StateType>& parameter_states,
     absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
         parameter_blocks,
@@ -286,7 +286,7 @@ void ParametersManager::AddReconGainParameterBlock(
 }
 
 absl::Status ParametersManager::UpdateDemixingState(
-    DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
+    DecodedUleb128 audio_element_id, InternalTimestamp expected_timestamp) {
   std::optional<DemixingState*> demixing_state = std::nullopt;
   RETURN_IF_NOT_OK(UpdateParameterState(
       audio_element_id, expected_timestamp, demixing_states_,

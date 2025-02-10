@@ -113,7 +113,7 @@ absl::Status UpdateParameterStatesIfNeeded(
         audio_elements_with_data,
     const GlobalTimingModule& global_timing_module,
     ParametersManager& parameters_manager) {
-  std::optional<int32_t> global_timestamp = std::nullopt;
+  std::optional<InternalTimestamp> global_timestamp;
   RETURN_IF_NOT_OK(
       global_timing_module.GetGlobalAudioFrameTimestamp(global_timestamp));
   // Not ready to update the states yet.
@@ -183,7 +183,7 @@ absl::Status GetAndStoreParameterBlockWithData(
     return parameter_block_obu.status();
   }
 
-  std::optional<int32_t> global_timestamp = std::nullopt;
+  std::optional<InternalTimestamp> global_timestamp;
   RETURN_IF_NOT_OK(
       global_timing_module.GetGlobalAudioFrameTimestamp(global_timestamp));
   if (!global_timestamp.has_value()) {
@@ -741,7 +741,8 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
 absl::Status ObuProcessor::ProcessTemporalUnit(
     std::list<AudioFrameWithData>& output_audio_frames,
     std::list<ParameterBlockWithData>& output_parameter_blocks,
-    std::optional<int32_t>& output_timestamp, bool& continue_processing) {
+    std::optional<InternalTimestamp>& output_timestamp,
+    bool& continue_processing) {
   while (true) {
     std::optional<AudioFrameWithData> audio_frame_with_data;
     std::optional<ParameterBlockWithData> parameter_block_with_data;
@@ -786,7 +787,8 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
 }
 
 absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
-    int32_t start_timestamp, const std::list<AudioFrameWithData>& audio_frames,
+    InternalTimestamp start_timestamp,
+    const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks) {
   if (audio_frames.empty()) {
     // Nothing to decode, render, or measure loudness of.
@@ -812,7 +814,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   // Decode the temporal unit.
   const std::list<AudioFrameWithData> kIgnoreOriginalAudioFrames;
   IdLabeledFrameMap unused_original_labeled_frames;
-  std::optional<int32_t> end_timestamp;
+  std::optional<InternalTimestamp> end_timestamp;
 
   // This resizing should happen only once per IA sequence, since all the
   // temporal units should contain the same number of audio frames.

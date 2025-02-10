@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -118,8 +117,9 @@ class ParameterBlockObu : public ObuBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status InterpolateMixGainParameterData(
-      const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
-      int32_t end_time, int32_t target_time, float& target_mix_gain_db);
+      const MixGainParameterData* mix_gain_parameter_data,
+      InternalTimestamp start_time, InternalTimestamp end_time,
+      InternalTimestamp target_time, float& target_mix_gain_db);
 
   /*!\brief Gets the duration of the parameter block.
    *
@@ -172,7 +172,7 @@ class ParameterBlockObu : public ObuBase {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` on
    *         failure.
    */
-  absl::Status GetLinearMixGain(int32_t obu_relative_time,
+  absl::Status GetLinearMixGain(InternalTimestamp obu_relative_time,
                                 float& linear_mix_gain) const;
 
   /*!\brief Initialize the vector of subblocks.

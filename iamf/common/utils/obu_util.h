@@ -23,6 +23,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -122,8 +123,8 @@ absl::Status InterpolateMixGainValue(
     absl::AnyInvocable<int16_t()> bezier_end_point_getter,
     absl::AnyInvocable<int16_t()> bezier_control_point_getter,
     absl::AnyInvocable<int16_t()> bezier_control_point_relative_time_getter,
-    int32_t start_time, int32_t end_time, int32_t target_time,
-    float& target_mix_gain_db) {
+    InternalTimestamp start_time, InternalTimestamp end_time,
+    InternalTimestamp target_time, float& target_mix_gain_db) {
   if (target_time < start_time || target_time > end_time ||
       start_time > end_time) {
     return absl::InvalidArgumentError(absl::StrCat(

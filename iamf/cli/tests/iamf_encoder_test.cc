@@ -172,7 +172,7 @@ void AddAudioFrame(UserMetadata& user_metadata) {
       user_metadata.add_audio_frame_metadata()));
 }
 
-void AddParameterBlockAtTimestamp(const int32_t start_timestamp,
+void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
                                   UserMetadata& user_metadata) {
   auto* metadata = user_metadata.add_parameter_block_metadata();
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(

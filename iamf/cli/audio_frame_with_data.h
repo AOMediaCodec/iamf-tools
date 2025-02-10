@@ -21,6 +21,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -28,10 +29,10 @@ struct AudioFrameWithData {
   friend bool operator==(const AudioFrameWithData& lhs,
                          const AudioFrameWithData& rhs) = default;
   AudioFrameObu obu;
-  int32_t start_timestamp;  // Start time of this frame. Measured in ticks from
-                            // the Global Timing Module.
-  int32_t end_timestamp;  // End time of this frame. Measured in ticks from the
-                          // Global Timing Module.
+  InternalTimestamp start_timestamp;  // Start time of this frame. Measured in
+                                      // ticks from the Global Timing Module.
+  InternalTimestamp end_timestamp;  // End time of this frame. Measured in ticks
+                                    // from the Global Timing Module.
 
   // The PCM samples to encode this audio frame, if known. This is useful to
   // calculate recon gain.

@@ -228,7 +228,8 @@ class ObuProcessor {
    *         on failure.
    */
   absl::Status RenderTemporalUnitAndMeasureLoudness(
-      int32_t timestamp, const std::list<AudioFrameWithData>& audio_frames,
+      InternalTimestamp timestamp,
+      const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks);
 
   IASequenceHeaderObu ia_sequence_header_;

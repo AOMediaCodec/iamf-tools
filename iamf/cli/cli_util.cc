@@ -172,8 +172,8 @@ GenerateParamIdToMetadataMap(
   return parameter_id_to_metadata;
 }
 
-absl::Status CompareTimestamps(int32_t expected_timestamp,
-                               int32_t actual_timestamp,
+absl::Status CompareTimestamps(InternalTimestamp expected_timestamp,
+                               InternalTimestamp actual_timestamp,
                                absl::string_view prompt) {
   if (expected_timestamp != actual_timestamp) {
     return absl::InvalidArgumentError(

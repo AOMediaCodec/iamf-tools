@@ -127,8 +127,9 @@ ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
       metadata_(metadata) {}
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
-    const MixGainParameterData* mix_gain_parameter_data, int32_t start_time,
-    int32_t end_time, int32_t target_time, float& target_mix_gain_db) {
+    const MixGainParameterData* mix_gain_parameter_data,
+    InternalTimestamp start_time, InternalTimestamp end_time,
+    InternalTimestamp target_time, float& target_mix_gain_db) {
   return InterpolateMixGainValue(
       mix_gain_parameter_data->animation_type,
       MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
@@ -250,8 +251,8 @@ absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
   return absl::OkStatus();
 }
 
-absl::Status ParameterBlockObu::GetLinearMixGain(int32_t obu_relative_time,
-                                                 float& linear_mix_gain) const {
+absl::Status ParameterBlockObu::GetLinearMixGain(
+    InternalTimestamp obu_relative_time, float& linear_mix_gain) const {
   if (metadata_.param_definition_type !=
       ParamDefinition::kParameterDefinitionMixGain) {
     return absl::InvalidArgumentError("Expected Mix Gain Parameter Definition");
@@ -259,9 +260,9 @@ absl::Status ParameterBlockObu::GetLinearMixGain(int32_t obu_relative_time,
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
   int target_subblock_index = -1;
-  int32_t target_subblock_start_time = -1;
-  int32_t subblock_relative_start_time = 0;
-  int32_t subblock_relative_end_time = 0;
+  InternalTimestamp target_subblock_start_time = -1;
+  InternalTimestamp subblock_relative_start_time = 0;
+  InternalTimestamp subblock_relative_end_time = 0;
   for (int i = 0; i < num_subblocks; i++) {
     const auto subblock_duration = GetSubblockDuration(i);
     if (!subblock_duration.ok()) {

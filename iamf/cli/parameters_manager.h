@@ -114,7 +114,7 @@ class ParametersManager {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateDemixingState(DecodedUleb128 audio_element_id,
-                                   int32_t expected_next_timestamp);
+                                   InternalTimestamp expected_next_timestamp);
 
   /*!\brief Updates the state of recon gain parameters for an audio element.
    *
@@ -127,7 +127,7 @@ class ParametersManager {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status UpdateReconGainState(DecodedUleb128 audio_element_id,
-                                    int32_t expected_next_timestamp);
+                                    InternalTimestamp expected_next_timestamp);
 
  private:
   // State used when generating demixing parameters for an audio element.
@@ -141,7 +141,7 @@ class ParametersManager {
     int w_idx;
 
     // Timestamp for the next frame to be processed.
-    int32_t next_timestamp;
+    InternalTimestamp next_timestamp;
 
     // Update rule of the currently tracked demixing parameters, because the
     // first frame needs some special treatment.
@@ -152,7 +152,7 @@ class ParametersManager {
     const ReconGainParamDefinition* param_definition;
 
     // Timestamp for the next frame to be processed.
-    int32_t next_timestamp;
+    InternalTimestamp next_timestamp;
   };
 
   // Mapping from Audio Element ID to audio element data.

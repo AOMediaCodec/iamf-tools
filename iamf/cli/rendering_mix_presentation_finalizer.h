@@ -98,7 +98,7 @@ class RenderingMixPresentationFinalizer {
     int32_t num_channels;
     // The start time stamp of the current frames to be rendered within this
     // layout.
-    int32_t start_timestamp;
+    InternalTimestamp start_timestamp;
 
     // Reusable buffer for storing rendered samples.
     std::vector<std::vector<int32_t>> rendered_samples;
@@ -206,8 +206,8 @@ class RenderingMixPresentationFinalizer {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PushTemporalUnit(
-      const IdLabeledFrameMap& id_to_labeled_frame, int32_t start_timestamp,
-      int32_t end_timestamp,
+      const IdLabeledFrameMap& id_to_labeled_frame,
+      InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
       const std::list<ParameterBlockWithData>& parameter_blocks);
 
   /*!\brief Retrieves cached post-processed samples.

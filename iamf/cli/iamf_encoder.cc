@@ -275,8 +275,10 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   }
   // All generated audio frame should be in the same temporal unit; they all
   // have the same timestamps.
-  const int32_t output_start_timestamp = audio_frames.front().start_timestamp;
-  const int32_t output_end_timestamp = audio_frames.front().end_timestamp;
+  const InternalTimestamp output_start_timestamp =
+      audio_frames.front().start_timestamp;
+  const InternalTimestamp output_end_timestamp =
+      audio_frames.front().end_timestamp;
 
   // Decode the audio frames. They are required to determine the demixed
   // frames.

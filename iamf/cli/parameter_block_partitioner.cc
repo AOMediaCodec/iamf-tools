@@ -25,7 +25,9 @@
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/obu_util.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -35,8 +37,8 @@ namespace {
 
 absl::Status InterpolateMixGainParameterData(
     const iamf_tools_cli_proto::MixGainParameterData& mix_gain_parameter_data,
-    int32_t start_time, int32_t end_time, int32_t target_time,
-    int16_t& target_mix_gain) {
+    InternalTimestamp start_time, InternalTimestamp end_time,
+    InternalTimestamp target_time, int16_t& target_mix_gain) {
   const auto& param_data = mix_gain_parameter_data.param_data();
   float target_mix_gain_db = 0;
   RETURN_IF_NOT_OK(InterpolateMixGainValue(
@@ -90,8 +92,9 @@ absl::Status InterpolateMixGainParameterData(
  */
 absl::Status PartitionMixGain(
     const iamf_tools_cli_proto::MixGainParameterData& subblock_mix_gain,
-    int32_t subblock_start_time, int32_t subblock_end_time,
-    int32_t partitioned_start_time, int32_t partitioned_end_time,
+    InternalTimestamp subblock_start_time, InternalTimestamp subblock_end_time,
+    InternalTimestamp partitioned_start_time,
+    InternalTimestamp partitioned_end_time,
     iamf_tools_cli_proto::ParameterSubblock& partitioned_subblock) {
   // Copy over the animation type.
   auto* mix_gain_param_data =
@@ -180,12 +183,13 @@ absl::Status PartitionMixGain(
  */
 absl::Status GetPartitionedSubblocks(
     const ParameterBlockObuMetadata& full_parameter_block,
-    int32_t partitioned_start_time, int32_t partitioned_end_time,
+    InternalTimestamp partitioned_start_time,
+    InternalTimestamp partitioned_end_time,
     std::list<iamf_tools_cli_proto::ParameterSubblock>& partitioned_subblocks,
     uint32_t& constant_subblock_duration) {
   LOG_FIRST_N(INFO, 1) << "   full_parameter_block=\n" << full_parameter_block;
 
-  int32_t current_time = full_parameter_block.start_timestamp();
+  InternalTimestamp current_time = full_parameter_block.start_timestamp();
 
   // Track that the split subblocks cover the whole partition.
   int32_t total_covered_duration = 0;

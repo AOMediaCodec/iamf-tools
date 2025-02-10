@@ -34,7 +34,7 @@ namespace iamf_tools {
 absl::Status GlobalTimingModule::GetTimestampsForId(
     const DecodedUleb128 id, const uint32_t duration,
     absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
-    int32_t& start_timestamp, int32_t& end_timestamp) {
+    InternalTimestamp& start_timestamp, InternalTimestamp& end_timestamp) {
   auto timing_data_iter = id_to_timing_data.find(id);
   if (timing_data_iter == id_to_timing_data.end()) {
     // This allows generating timing information when
@@ -102,15 +102,16 @@ absl::Status GlobalTimingModule::Initialize(
 
 absl::Status GlobalTimingModule::GetNextAudioFrameTimestamps(
     const DecodedUleb128 audio_substream_id, const uint32_t duration,
-    int32_t& start_timestamp, int32_t& end_timestamp) {
+    InternalTimestamp& start_timestamp, InternalTimestamp& end_timestamp) {
   return GetTimestampsForId(audio_substream_id, duration,
                             audio_frame_timing_data_, start_timestamp,
                             end_timestamp);
 }
 
 absl::Status GlobalTimingModule::GetNextParameterBlockTimestamps(
-    const uint32_t parameter_id, const int32_t input_start_timestamp,
-    const uint32_t duration, int32_t& start_timestamp, int32_t& end_timestamp) {
+    const uint32_t parameter_id, const InternalTimestamp input_start_timestamp,
+    const uint32_t duration, InternalTimestamp& start_timestamp,
+    InternalTimestamp& end_timestamp) {
   RETURN_IF_NOT_OK(GetTimestampsForId(parameter_id, duration,
                                       parameter_block_timing_data_,
                                       start_timestamp, end_timestamp));
@@ -121,12 +122,12 @@ absl::Status GlobalTimingModule::GetNextParameterBlockTimestamps(
 }
 
 absl::Status GlobalTimingModule::GetGlobalAudioFrameTimestamp(
-    std::optional<int32_t>& global_timestamp) const {
+    std::optional<InternalTimestamp>& global_timestamp) const {
   if (audio_frame_timing_data_.empty()) {
     return absl::InvalidArgumentError("No audio frames to get timestamps for");
   }
 
-  const int32_t common_timestamp =
+  const InternalTimestamp common_timestamp =
       audio_frame_timing_data_.begin()->second.timestamp;
   for (const auto& [unused_id, timing_data] : audio_frame_timing_data_) {
     if (common_timestamp != timing_data.timestamp) {

@@ -13,17 +13,17 @@
 #ifndef CLI_PARAMETER_BLOCK_WITH_DATA_H_
 #define CLI_PARAMETER_BLOCK_WITH_DATA_H_
 
-#include <cstdint>
 #include <memory>
 
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 struct ParameterBlockWithData {
   std::unique_ptr<ParameterBlockObu> obu;
-  int32_t start_timestamp = 0;
-  int32_t end_timestamp = 0;
+  InternalTimestamp start_timestamp = 0;
+  InternalTimestamp end_timestamp = 0;
 };
 
 }  // namespace iamf_tools

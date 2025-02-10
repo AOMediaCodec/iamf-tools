@@ -57,8 +57,8 @@ class GlobalTimingModule {
    */
   absl::Status GetNextAudioFrameTimestamps(DecodedUleb128 audio_substream_id,
                                            uint32_t duration,
-                                           int32_t& start_timestamp,
-                                           int32_t& end_timestamp);
+                                           InternalTimestamp& start_timestamp,
+                                           InternalTimestamp& end_timestamp);
 
   /*!\brief Gets the start and end timestamps of the next Parameter Block.
    *
@@ -70,11 +70,10 @@ class GlobalTimingModule {
    * \param end_timestamp Output end timestamp.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status GetNextParameterBlockTimestamps(DecodedUleb128 parameter_id,
-                                               int32_t input_start_timestamp,
-                                               uint32_t duration,
-                                               int32_t& start_timestamp,
-                                               int32_t& end_timestamp);
+  absl::Status GetNextParameterBlockTimestamps(
+      DecodedUleb128 parameter_id, InternalTimestamp input_start_timestamp,
+      uint32_t duration, InternalTimestamp& start_timestamp,
+      InternalTimestamp& end_timestamp);
 
   // TODO(b/291732058): Bring back parameter block coverage validation.
 
@@ -88,7 +87,7 @@ class GlobalTimingModule {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status GetGlobalAudioFrameTimestamp(
-      std::optional<int32_t>& global_timestamp) const;
+      std::optional<InternalTimestamp>& global_timestamp) const;
 
  private:
   struct TimingData {
@@ -96,13 +95,13 @@ class GlobalTimingModule {
     const uint32_t rate;
 
     // Measured in ticks implied by `rate`.
-    int32_t timestamp;
+    InternalTimestamp timestamp;
   };
 
   absl::Status GetTimestampsForId(
       DecodedUleb128 id, uint32_t duration,
       absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
-      int32_t& start_timestamp, int32_t& end_timestamp);
+      InternalTimestamp& start_timestamp, InternalTimestamp& end_timestamp);
 
   absl::flat_hash_map<DecodedUleb128, TimingData> audio_frame_timing_data_;
   absl::flat_hash_map<DecodedUleb128, TimingData> parameter_block_timing_data_;

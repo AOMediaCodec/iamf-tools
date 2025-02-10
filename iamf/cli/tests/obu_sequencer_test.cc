@@ -73,8 +73,8 @@ constexpr std::nullopt_t kOriginalSamplesAreIrrelevant = std::nullopt;
 //                    fixed-size leb generators.
 
 void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
-    uint32_t audio_element_id, uint32_t substream_id, int32_t start_timestamp,
-    int32_t end_timestamp,
+    uint32_t audio_element_id, uint32_t substream_id,
+    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     std::list<AudioFrameWithData>& audio_frames) {
   ASSERT_TRUE(audio_elements.contains(audio_element_id));
@@ -166,8 +166,8 @@ PerIdParameterMetadata CreatePerIdMetadataForDemixing(
 TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
   constexpr DecodedUleb128 kLowerParameterId = 9;
   constexpr DecodedUleb128 kHigherParameterId = 9000;
-  constexpr int32_t kStartTimestamp = 0;
-  constexpr int32_t kEndTimestamp = 16;
+  constexpr InternalTimestamp kStartTimestamp = 0;
+  constexpr InternalTimestamp kEndTimestamp = 16;
   constexpr DecodedUleb128 kSecondParameterId = kCommonMixGainParameterId + 1;
   std::list<ParameterBlockWithData> parameter_blocks;
   const std::list<ArbitraryObu> kNoArbitraryObus;
@@ -308,8 +308,8 @@ void InitializeOneParameterBlockAndOneAudioFrame(
     std::list<AudioFrameWithData>& audio_frames,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
-  const int32_t kStartTimestamp = 0;
-  const int32_t kEndTimestamp = 16;
+  constexpr InternalTimestamp kStartTimestamp = 0;
+  constexpr InternalTimestamp kEndTimestamp = 16;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
                                         codec_config_obus);
   AddAmbisonicsMonoAudioElementWithSubstreamIds(

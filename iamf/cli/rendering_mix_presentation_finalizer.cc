@@ -221,7 +221,7 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
   std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
             std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
 
-  int32_t cur_tick = parameter_block.start_timestamp;
+  InternalTimestamp cur_tick = parameter_block.start_timestamp;
   // Process as many ticks as possible until all are found or the parameter
   // block ends.
   while (cur_tick < parameter_block.end_timestamp &&
@@ -242,7 +242,8 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
 // TODO(b/379961928): Remove this function once the new
 //                    `GetParameterBlockLinearMixGainsPerTick()` is in use.
 absl::Status GetParameterBlockLinearMixGainsPerTick(
-    uint32_t common_sample_rate, int32_t start_timestamp, int32_t end_timestamp,
+    uint32_t common_sample_rate, InternalTimestamp start_timestamp,
+    InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const MixGainParamDefinition& mix_gain,
     std::vector<float>& linear_mix_gain_per_tick) {
@@ -259,7 +260,7 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
   std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
             std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
 
-  int32_t cur_tick = start_timestamp;
+  InternalTimestamp cur_tick = start_timestamp;
 
   // Find the mix gain at each tick. May terminate early if there are samples to
   // trim at the end.
@@ -330,7 +331,8 @@ absl::Status GetAndApplyMixGain(  // NOLINT
 
 // TODO(b/379961928): Remove once the new GetAndApplyMixGain is in use.
 absl::Status GetAndApplyMixGain(
-    uint32_t common_sample_rate, int32_t start_timestamp, int32_t end_timestamp,
+    uint32_t common_sample_rate, InternalTimestamp start_timestamp,
+    InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const MixGainParamDefinition& mix_gain, int32_t num_channels,
     std::vector<float>& linear_mix_gain_per_tick,
@@ -401,7 +403,7 @@ absl::Status RenderAllFramesForLayout(
     const MixGainParamDefinition& output_mix_gain,
     const IdLabeledFrameMap& id_to_labeled_frame,
     const std::vector<AudioElementRenderingMetadata>& rendering_metadata_array,
-    const int32_t start_timestamp, const int32_t end_timestamp,
+    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const uint32_t common_sample_rate,
     std::vector<std::vector<int32_t>>& rendered_samples,
@@ -689,8 +691,8 @@ absl::Status FillLoudnessForMixPresentation(
 // then optionally writes the rendered samples to a wav file and/or calculates
 // the loudness of the rendered samples.
 absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
-    const IdLabeledFrameMap& id_to_labeled_frame, const int32_t start_timestamp,
-    const int32_t end_timestamp,
+    const IdLabeledFrameMap& id_to_labeled_frame,
+    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     std::vector<SubmixRenderingMetadata>& rendering_metadata) {
   for (auto& submix_rendering_metadata : rendering_metadata) {
@@ -821,8 +823,8 @@ RenderingMixPresentationFinalizer::Create(
 }
 
 absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
-    const IdLabeledFrameMap& id_to_labeled_frame, const int32_t start_timestamp,
-    const int32_t end_timestamp,
+    const IdLabeledFrameMap& id_to_labeled_frame,
+    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks) {
   switch (state_) {
     case kAcceptingTemporalUnits:

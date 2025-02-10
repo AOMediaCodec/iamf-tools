@@ -1048,9 +1048,9 @@ TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode1) {
 
 struct InterpolateMixGainParameterDataTestCase {
   MixGainParameterData mix_gain_parameter_data;
-  int32_t start_time;
-  int32_t end_time;
-  int32_t target_time;
+  InternalTimestamp start_time;
+  InternalTimestamp end_time;
+  InternalTimestamp target_time;
   int16_t expected_target_mix_gain;
 
   absl::Status expected_status;

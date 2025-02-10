@@ -13,7 +13,6 @@
 #ifndef CLI_OBU_WITH_DATA_GENERATOR_H_
 #define CLI_OBU_WITH_DATA_GENERATOR_H_
 
-#include <cstdint>
 #include <memory>
 
 #include "absl/container/flat_hash_map.h"
@@ -80,7 +79,8 @@ class ObuWithDataGenerator {
    *         status on failure.
    */
   static absl::StatusOr<ParameterBlockWithData> GenerateParameterBlockWithData(
-      int32_t input_start_timestamp, GlobalTimingModule& global_timing_module,
+      InternalTimestamp input_start_timestamp,
+      GlobalTimingModule& global_timing_module,
       std::unique_ptr<ParameterBlockObu> parameter_block_obu);
 };
 }  // namespace iamf_tools

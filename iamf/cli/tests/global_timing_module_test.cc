@@ -74,10 +74,11 @@ class GlobalTimingModuleTest : public ::testing::Test {
 
   void TestGetNextAudioFrameStamps(
       DecodedUleb128 substream_id, uint32_t duration,
-      int32_t expected_start_timestamp, int32_t expected_end_timestamp,
+      InternalTimestamp expected_start_timestamp,
+      InternalTimestamp expected_end_timestamp,
       absl::StatusCode expected_status_code = absl::StatusCode::kOk) {
-    int32_t start_timestamp;
-    int32_t end_timestamp;
+    InternalTimestamp start_timestamp;
+    InternalTimestamp end_timestamp;
     EXPECT_EQ(global_timing_module_
                   ->GetNextAudioFrameTimestamps(substream_id, duration,
                                                 start_timestamp, end_timestamp)
@@ -87,13 +88,12 @@ class GlobalTimingModuleTest : public ::testing::Test {
     EXPECT_EQ(end_timestamp, expected_end_timestamp);
   }
 
-  void TestGetNextParameterBlockTimestamps(DecodedUleb128 parameter_id,
-                                           int32_t input_start_timestamp,
-                                           uint32_t duration,
-                                           int32_t expected_start_timestamp,
-                                           int32_t expected_end_timestamp) {
-    int32_t start_timestamp;
-    int32_t end_timestamp;
+  void TestGetNextParameterBlockTimestamps(
+      DecodedUleb128 parameter_id, InternalTimestamp input_start_timestamp,
+      uint32_t duration, InternalTimestamp expected_start_timestamp,
+      InternalTimestamp expected_end_timestamp) {
+    InternalTimestamp start_timestamp;
+    InternalTimestamp end_timestamp;
     EXPECT_THAT(global_timing_module_->GetNextParameterBlockTimestamps(
                     parameter_id, input_start_timestamp, duration,
                     start_timestamp, end_timestamp),
@@ -196,8 +196,8 @@ TEST_F(GlobalTimingModuleTest,
 
   EXPECT_THAT(Initialize(), IsOk());
 
-  int32_t start_timestamp;
-  int32_t end_timestamp;
+  InternalTimestamp start_timestamp;
+  InternalTimestamp end_timestamp;
   const auto kStrayParameterBlockId = kFirstParameterId + 1;
   EXPECT_FALSE(global_timing_module_
                    ->GetNextParameterBlockTimestamps(kStrayParameterBlockId, 0,

@@ -46,18 +46,19 @@ constexpr DecodedUleb128 kSecondSubstreamId = 1;
 constexpr DecodedUleb128 kParameterId = 995;
 constexpr DecodedUleb128 kSecondParameterId = 996;
 constexpr DecodedUleb128 kDuration = 8;
+constexpr InternalTimestamp kDurationAsInternalTimestamp = 8;
 
 constexpr DemixingInfoParameterData::DMixPMode kDMixPMode =
     DemixingInfoParameterData::kDMixPMode3_n;
 
 absl::Status AppendParameterBlock(
-    DecodedUleb128 parameter_id, int32_t start_timestamp,
+    DecodedUleb128 parameter_id, InternalTimestamp start_timestamp,
     PerIdParameterMetadata& per_id_metadata,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
   parameter_blocks.emplace_back(ParameterBlockWithData{
       std::make_unique<ParameterBlockObu>(ObuHeader(), parameter_id,
                                           per_id_metadata),
-      start_timestamp, start_timestamp + static_cast<int32_t>(kDuration)});
+      start_timestamp, start_timestamp + kDurationAsInternalTimestamp});
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
   absl::Status status =
       parameter_block_obu.InitializeSubblocks(kDuration, kDuration, 1);
@@ -66,7 +67,7 @@ absl::Status AppendParameterBlock(
 }
 
 absl::Status AddOneDemixingParameterBlock(
-    const ParamDefinition& param_definition, int32_t start_timestamp,
+    const ParamDefinition& param_definition, InternalTimestamp start_timestamp,
     PerIdParameterMetadata& per_id_metadata,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
   per_id_metadata = {
@@ -85,7 +86,7 @@ absl::Status AddOneDemixingParameterBlock(
 }
 
 absl::Status AddOneReconGainParameterBlock(
-    const ParamDefinition& param_definition, int32_t start_timestamp,
+    const ParamDefinition& param_definition, InternalTimestamp start_timestamp,
     PerIdParameterMetadata& per_id_metadata,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
   per_id_metadata = {
@@ -310,7 +311,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
                   *audio_elements_.at(kAudioElementId)
                        .obu.audio_element_params_[1]
                        .param_definition,
-                  /*start_timestamp=*/static_cast<int32_t>(kDuration),
+                  /*start_timestamp=*/kDurationAsInternalTimestamp,
                   per_id_metadata_, recon_gain_parameter_blocks_),
               IsOk());
   parameters_manager_->AddReconGainParameterBlock(
@@ -362,7 +363,7 @@ TEST_F(ParametersManagerTest,
                   *audio_elements_.at(kAudioElementId)
                        .obu.audio_element_params_[1]
                        .param_definition,
-                  /*start_timestamp=*/static_cast<int32_t>(kDuration),
+                  /*start_timestamp=*/kDurationAsInternalTimestamp,
                   per_id_metadata_, recon_gain_parameter_blocks_),
               IsOk());
   parameters_manager_->AddReconGainParameterBlock(
@@ -389,7 +390,7 @@ TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
 
   EXPECT_THAT(parameters_manager_->UpdateDemixingState(
                   kAudioElementId,
-                  /*expected_next_timestamp=*/kDuration),
+                  /*expected_next_timestamp=*/kDurationAsInternalTimestamp),
               IsOk());
 
   // Get the parameters for the second time. Since there is only one
@@ -632,7 +633,7 @@ TEST_F(ParametersManagerTest, UpdateFailsWithWrongTimestamps) {
 
   // The second frame starts with timestamp = 8, so updating with a different
   // timestamp fails.
-  const int32_t kWrongNextTimestamp = 17;
+  constexpr InternalTimestamp kWrongNextTimestamp = 17;
   EXPECT_FALSE(parameters_manager_
                    ->UpdateDemixingState(kAudioElementId, kWrongNextTimestamp)
                    .ok());
@@ -654,7 +655,7 @@ TEST_F(ParametersManagerTest, UpdateNotValidatingWhenParameterIdNotFound) {
 
   // `UpdateDemixingState()` succeeds with any timestamp passed in,
   // because no validation is performed.
-  for (const int32_t timestamp : {0, 8, -200, 61, 4772}) {
+  for (const InternalTimestamp timestamp : {0, 8, -200, 61, 4772}) {
     EXPECT_THAT(
         parameters_manager_->UpdateDemixingState(kAudioElementId, timestamp),
         IsOk());

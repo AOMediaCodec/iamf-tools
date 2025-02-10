@@ -490,8 +490,8 @@ absl::Status MaybeEncodeFramesForAudioElement(
               substream_data.num_samples_to_trim_at_end);
 
       // Both timestamps cover trimmed and regular samples.
-      int32_t start_timestamp;
-      int32_t end_timestamp;
+      InternalTimestamp start_timestamp;
+      InternalTimestamp end_timestamp;
       RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
           substream_id, samples_obu.size(), start_timestamp, end_timestamp));
 

@@ -78,8 +78,8 @@ GenerateParamIdToMetadataMap(
  * \return `absl::OkStatus()` if the timestamps are equal.
  *         `absl::InvalidArgumentError()` with a custom message otherwise.
  */
-absl::Status CompareTimestamps(int32_t expected_timestamp,
-                               int32_t actual_timestamp,
+absl::Status CompareTimestamps(InternalTimestamp expected_timestamp,
+                               InternalTimestamp actual_timestamp,
                                absl::string_view prompt = "");
 
 /*!\brief Writes interlaced PCM samples into the output buffer.

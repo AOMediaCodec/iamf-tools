@@ -36,6 +36,14 @@ typedef int32_t DecodedSleb128;
  */
 typedef double InternalSampleType;
 
+/*!\brief Timestamp for use in internal computations.
+ *
+ * Typically this represents a duration of ticks, based on the sample rate used
+ * for timing purposes in an IA Sequence. I.e. if the sample rate is 48 kHz,
+ * then a timestamp of 1000 represents `1000/48000Hz ~= .02083s`.
+ */
+typedef int32_t InternalTimestamp;
+
 }  // namespace iamf_tools
 
 #endif  // OBU_LEB128_H_
