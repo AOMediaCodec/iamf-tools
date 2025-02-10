@@ -12,11 +12,13 @@
 
 #include "iamf/cli/obu_processor.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <list>
 #include <memory>
 #include <optional>
+#include <string>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -32,9 +34,12 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/cli/wav_writer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -102,6 +107,19 @@ std::vector<uint8_t> InitObuSequenceAddSequenceHeader(
   std::list<const ObuBase*> input_ia_sequence(input_ia_sequence_without_header);
   input_ia_sequence.push_front(&ia_sequence_header);
   return InitObuSequence(input_ia_sequence);
+}
+
+auto CreateAllWavWriters(const std::string output_filename_string,
+                         bool write_wav_header) {
+  return [output_filename_string, write_wav_header](
+             DecodedUleb128 mix_presentation_id, int /*sub_mix_index*/,
+             int /*layout_index*/, const Layout& layout, int num_channels,
+             int sample_rate, int bit_depth, size_t max_input_samples_per_frame)
+             -> std::unique_ptr<SampleProcessorBase> {
+    return WavWriter::Create(output_filename_string, num_channels, sample_rate,
+                             bit_depth, max_input_samples_per_frame,
+                             write_wav_header);
+  };
 }
 
 TEST(ProcessDescriptorObus, InvalidWithoutIaSequenceHeader) {
@@ -1507,9 +1525,11 @@ void RenderUsingObuProcessorExpectOk(
       kBufferCapacity, absl::MakeConstSpan(bitstream_of_descriptors));
   bool insufficient_data = false;
 
+  const std::string output_filename_string(output_filename);
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout, write_wav_header, /*is_exhaustive_and_exact=*/true,
-      output_file_bit_depth_override, output_filename, read_bit_buffer.get(),
+      kStereoLayout,
+      CreateAllWavWriters(output_filename_string, write_wav_header),
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
       insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
@@ -1691,50 +1711,6 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, CanWritePcmOrWav) {
   EXPECT_FALSE(error_code);
 }
 
-TEST(RenderAudioFramesWithDataAndMeasureLoudness,
-     CanOverrideOutputFileBitDepthForWav) {
-  const auto output_filename_24_bit = GetAndCleanupOutputFileName("24_bit.wav");
-  const auto output_filename_32_bit = GetAndCleanupOutputFileName("32_bit.wav");
-
-  RenderOneSampleFoaToStereoWavExpectOk(output_filename_24_bit, kWriteWavHeader,
-                                        kOutputBitDepth24);
-  RenderOneSampleFoaToStereoWavExpectOk(output_filename_32_bit, kWriteWavHeader,
-                                        kOutputBitDepth32);
-
-  const auto wav_reader_24_bit =
-      CreateWavReaderExpectOk(output_filename_24_bit);
-  EXPECT_EQ(wav_reader_24_bit.bit_depth(), kOutputBitDepth24);
-  const auto wav_reader_32_bit =
-      CreateWavReaderExpectOk(output_filename_32_bit);
-  EXPECT_EQ(wav_reader_32_bit.bit_depth(), kOutputBitDepth32);
-}
-
-TEST(RenderAudioFramesWithDataAndMeasureLoudness,
-     CanOverrideOutputFileBitDepthForPcm) {
-  // We expect one sample * two channels * three bytes.
-  constexpr auto kExpected24BitPcmFileSize = 6;
-  // We expect one sample * two channels * four bytes.
-  constexpr auto kExpected32BitPcmFileSize = 8;
-  const auto output_filename_24_bit = GetAndCleanupOutputFileName("24_bit.pcm");
-  const auto output_filename_32_bit = GetAndCleanupOutputFileName("32_bit.pcm");
-
-  RenderOneSampleFoaToStereoWavExpectOk(output_filename_24_bit,
-                                        kDontWriteWavHeader, kOutputBitDepth24);
-  RenderOneSampleFoaToStereoWavExpectOk(output_filename_32_bit,
-                                        kDontWriteWavHeader, kOutputBitDepth32);
-
-  EXPECT_TRUE(std::filesystem::exists(output_filename_24_bit));
-  EXPECT_TRUE(std::filesystem::exists(output_filename_32_bit));
-
-  std::error_code error_code;
-  EXPECT_EQ(std::filesystem::file_size(output_filename_24_bit, error_code),
-            kExpected24BitPcmFileSize);
-  EXPECT_FALSE(error_code);
-  EXPECT_EQ(std::filesystem::file_size(output_filename_32_bit, error_code),
-            kExpected32BitPcmFileSize);
-  EXPECT_FALSE(error_code);
-}
-
 void AddOneLayerStereoAudioElement(
     DecodedUleb128 codec_config_id, DecodedUleb128 audio_element_id,
     uint32_t substream_id,
@@ -1835,9 +1811,11 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
         kBufferCapacity, absl::MakeConstSpan(bitstream));
     bool insufficient_data = false;
 
+    const std::string output_filename_string(output_filename);
     auto obu_processor = ObuProcessor::CreateForRendering(
-        kStereoLayout, kWriteWavHeader, /*is_exhaustive_and_exact=*/true,
-        kNoOutputFileBitDepthOverride, output_filename, read_bit_buffer.get(),
+        kStereoLayout,
+        CreateAllWavWriters(output_filename_string, kWriteWavHeader),
+        /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
         insufficient_data);
     ASSERT_THAT(obu_processor, NotNull());
     ASSERT_FALSE(insufficient_data);
@@ -1993,8 +1971,9 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       kBufferCapacity, absl::MakeConstSpan(bitstream));
   bool insufficient_data = false;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout, kWriteWavHeader, /*is_exhaustive_and_exact=*/true,
-      kNoOutputFileBitDepthOverride, output_filename, read_bit_buffer.get(),
+      kStereoLayout,
+      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
       insufficient_data);
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, IsNull());
@@ -2076,6 +2055,62 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   EXPECT_EQ(wav_reader.ReadFrame(), 2);
   EXPECT_EQ(wav_reader.buffers_[0][0],
             kExpectedFirstSampleForFirstSupportedMixPresentation);
+}
+
+TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+
+  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
+  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+
+  auto bitstream = InitObuSequenceAddSequenceHeader(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data = false;
+
+  // We expect arguments to be forwarded from the OBUs to the sample processor
+  // factory.
+  constexpr int kFirstSubmixIndex = 0;
+  constexpr int kFirstLayoutIndex = 0;
+  const auto& forwarded_layout =
+      mix_presentation_obus.front().sub_mixes_[0].layouts[0].loudness_layout;
+  const int32_t forwarded_sample_rate = static_cast<int32_t>(
+      codec_config_obus.at(kFirstCodecConfigId).GetOutputSampleRate());
+  const int32_t forwarded_bit_depth = static_cast<int32_t>(
+      codec_config_obus.at(kFirstCodecConfigId).GetBitDepthToMeasureLoudness());
+  const uint32_t forwarded_num_samples_per_frame =
+      codec_config_obus.at(kFirstCodecConfigId).GetNumSamplesPerFrame();
+
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(
+      mock_sample_processor_factory,
+      Call(kFirstMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex,
+           forwarded_layout, /*num_channels=*/2, forwarded_sample_rate,
+           forwarded_bit_depth, forwarded_num_samples_per_frame));
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kStereoLayout, sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
 }
 
 }  // namespace

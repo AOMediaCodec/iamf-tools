@@ -42,7 +42,7 @@
 #include "iamf/cli/profile_filter.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
-#include "iamf/cli/wav_writer.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_element.h"
@@ -205,29 +205,31 @@ absl::Status GetAndStoreParameterBlockWithData(
   return absl::OkStatus();
 }
 
-// Returns the ID of the first supported mix presentation in the list of mix
-// presentation OBUs or an error if no supported mix presentation is found.
-absl::StatusOr<DecodedUleb128> GetFirstSupportedMixPresentationId(
+// Returns an iterator to the first supported mix presentation in the list of
+// mix presentation OBUs or nullptr if none are supported.
+std::list<MixPresentationObu>::iterator GetFirstSupportedMixPresentation(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus) {
+    std::list<MixPresentationObu>& mix_presentation_obus) {
   // TODO(b/377554944): Support `ProfileVersion::kIamfBaseEnhancedProfile`.
   // Only permit certain profiles to be used.
   const absl::flat_hash_set<ProfileVersion> kSupportedProfiles = {
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
 
   std::string cumulative_error_message;
-  for (const auto& mix_presentation_obu : mix_presentation_obus) {
+  for (auto iter = mix_presentation_obus.begin();
+       iter != mix_presentation_obus.end(); ++iter) {
     auto profiles = kSupportedProfiles;
     const auto status = ProfileFilter::FilterProfilesForMixPresentation(
-        audio_elements, mix_presentation_obu, profiles);
+        audio_elements, *iter, profiles);
     if (status.ok()) {
-      return mix_presentation_obu.GetMixPresentationId();
+      return iter;
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
-  return absl::InvalidArgumentError(absl::StrCat(
+  LOG(ERROR) << absl::StrCat(
       "No supported mix presentation presentation found in the bitstream.",
-      cumulative_error_message));
+      cumulative_error_message);
+  return mix_presentation_obus.end();
 }
 
 // Resets the buffer to `start_position` and sets the `insufficient_data` flag
@@ -593,10 +595,10 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
 }
 
 std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
-    const Layout& playback_layout, bool write_wav_header,
-    bool is_exhaustive_and_exact,
-    const std::optional<uint8_t> output_file_bit_depth_override,
-    absl::string_view output_filename, ReadBitBuffer* read_bit_buffer,
+    const Layout& playback_layout,
+    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+        sample_processor_factory,
+    bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
     bool& insufficient_data) {
   if (read_bit_buffer == nullptr) {
     return nullptr;
@@ -609,9 +611,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     return nullptr;
   }
   if (!obu_processor
-           ->InitializeForRendering(playback_layout, write_wav_header,
-                                    output_file_bit_depth_override,
-                                    output_filename)
+           ->InitializeForRendering(playback_layout, sample_processor_factory)
            .ok()) {
     return nullptr;
   }
@@ -619,9 +619,9 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
 }
 
 absl::Status ObuProcessor::InitializeForRendering(
-    const Layout& playback_layout, bool write_wav_header,
-    const std::optional<uint8_t> output_file_bit_depth_override,
-    absl::string_view output_filename) {
+    const Layout& playback_layout,
+    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+        sample_processor_factory) {
   // TODO(b/339500539): Add support for other layouts. Downstream code is simple
   //                    and assumes there will be a matching layout in the first
   //                    Mix Presentation OBU. The IAMF spec REQUIRES this for
@@ -637,8 +637,6 @@ absl::Status ObuProcessor::InitializeForRendering(
   if (audio_elements_.empty()) {
     return absl::InvalidArgumentError("No audio element OBUs found.");
   }
-
-  write_wav_header_ = write_wav_header;
 
   // TODO(b/377747704): Decode only the frames selected for the playback
   //                    layout.
@@ -659,31 +657,32 @@ absl::Status ObuProcessor::InitializeForRendering(
 
   // TODO(b/340289717): Add a way to select the mix presentation if multiple
   //                    are supported.
-  const auto mix_presentation_id_to_render =
-      GetFirstSupportedMixPresentationId(audio_elements_, mix_presentations_);
-  if (!mix_presentation_id_to_render.ok()) {
-    return mix_presentation_id_to_render.status();
+  const auto mix_presentation_to_render =
+      GetFirstSupportedMixPresentation(audio_elements_, mix_presentations_);
+  if (mix_presentation_to_render == mix_presentations_.end()) {
+    return absl::NotFoundError("No supportedmix presentation OBUs found.");
   }
-  const std::string output_filename_string(output_filename);
-  auto produce_first_mix_presentation_requested_layout_wav_or_pcm =
-      [mix_presentation_id_to_render, playback_layout,
-       output_file_bit_depth_override, output_filename_string,
-       write_wav_header](
-          DecodedUleb128 mix_presentation_id, int /*sub_mix_index*/,
-          int /*layout_index*/, const Layout& layout, int num_channels,
-          int sample_rate, int bit_depth,
-          size_t max_input_samples_per_frame) -> std::unique_ptr<WavWriter> {
-    if (mix_presentation_id != *mix_presentation_id_to_render ||
-        layout != playback_layout) {
-      return nullptr;
+  int desired_sub_mix_index;
+  int desired_layout_index;
+  RETURN_IF_NOT_OK(GetIndicesForLayout(mix_presentation_to_render->sub_mixes_,
+                                       playback_layout, desired_sub_mix_index,
+                                       desired_layout_index));
+  auto forward_on_desired_layout =
+      [&sample_processor_factory, mix_presentation_to_render,
+       desired_sub_mix_index, desired_layout_index](
+          DecodedUleb128 mix_presentation_id, int sub_mix_index,
+          int layout_index, const Layout& layout, int num_channels,
+          int sample_rate, int bit_depth, size_t max_input_samples_per_frame)
+      -> std::unique_ptr<SampleProcessorBase> {
+    if (mix_presentation_id ==
+            mix_presentation_to_render->GetMixPresentationId() &&
+        desired_sub_mix_index == sub_mix_index &&
+        desired_layout_index == layout_index) {
+      return sample_processor_factory(
+          mix_presentation_id, sub_mix_index, layout_index, layout,
+          num_channels, sample_rate, bit_depth, max_input_samples_per_frame);
     }
-    // Obey the override bit depth. But if it is not set, we can infer a good
-    // bit-depth from the input audio.
-    const uint8_t wav_file_bit_depth =
-        output_file_bit_depth_override.value_or(bit_depth);
-    return WavWriter::Create(output_filename_string, num_channels, sample_rate,
-                             wav_file_bit_depth, max_input_samples_per_frame,
-                             write_wav_header);
+    return nullptr;
   };
 
   // Create the mix presentation finalizer which is used to render the output
@@ -694,8 +693,7 @@ absl::Status ObuProcessor::InitializeForRendering(
       RenderingMixPresentationFinalizer::Create(
           /*renderer_factory=*/&renderer_factory,
           /*loudness_calculator_factory=*/nullptr, audio_elements_,
-          produce_first_mix_presentation_requested_layout_wav_or_pcm,
-          mix_presentations_);
+          forward_on_desired_layout, mix_presentations_);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();
   }

@@ -149,17 +149,13 @@ class ObuProcessor {
    * Creation succeeds only if the descriptor OBUs are successfully processed
    * and all rendering modules are successfully initialized.
    *
-   * \param playback_layout Specifies the layout that will be used to render
-   *        the audio.
-   * \param write_wav_header If true, a wav header will be written. Otherwise
-   *        the output will be PCM.
+   * \param playback_layout Specifies the layout that will be used to render the
+   *        audio.
+   * \param sample_processor_factory Factory to create post processors.
    * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
    *        include all descriptor OBUs and no other data. This should only be
    *        set to true if the user knows the exact boundaries of their set of
    *        descriptor OBUs.
-   * \param output_file_bit_depth_override If present, overrides the bit-depth
-   *        of the output file.
-   * \param output_filename Output filename.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
    * \param insufficient_data Whether the bitstream provided is insufficient to
@@ -167,10 +163,10 @@ class ObuProcessor {
    * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
    */
   static std::unique_ptr<ObuProcessor> CreateForRendering(
-      const Layout& playback_layout, bool write_wav_header,
-      bool is_exhaustive_and_exact,
-      std::optional<uint8_t> output_file_bit_depth_override,
-      absl::string_view output_filename, ReadBitBuffer* read_bit_buffer,
+      const Layout& playback_layout,
+      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+          sample_processor_factory,
+      bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
       bool& insufficient_data);
 
   // TODO(b/381072155): Consider removing this one in favor of
@@ -267,18 +263,14 @@ class ObuProcessor {
    *
    * \param playback_layout Specifies the layout that will be used to render the
    *        audio.
-   * \param write_wav_header If true, a wav header will be written. Otherwise
-   *        the output will be PCM.
-   * \param output_file_bit_depth_override If present, overrides the bit-depth
-   *        of the output files (WAV or PCM).
-   * \param output_filename Output filename.
+   * \param sample_processor_factory Factory to create post processors.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status InitializeForRendering(
-      const Layout& playback_layout, bool write_wav_header,
-      std::optional<uint8_t> output_file_bit_depth_override,
-      absl::string_view output_filename);
+      const Layout& playback_layout,
+      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
+          sample_processor_factory);
 
   struct TemporalUnitData {
     std::list<ParameterBlockWithData> parameter_blocks;
@@ -344,8 +336,6 @@ class ObuProcessor {
   std::optional<AudioFrameDecoder> audio_frame_decoder_;
   std::optional<DemixingModule> demixing_module_;
   std::optional<RenderingMixPresentationFinalizer> mix_presentation_finalizer_;
-
-  bool write_wav_header_ = false;
 };
 }  // namespace iamf_tools
 #endif  // CLI_OBU_PROCESSOR_H_

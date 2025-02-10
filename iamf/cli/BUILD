@@ -292,7 +292,7 @@ cc_library(
         ":profile_filter",
         ":renderer_factory",
         ":rendering_mix_presentation_finalizer",
-        ":wav_writer",
+        ":sample_processor_base",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/obu:audio_element",
