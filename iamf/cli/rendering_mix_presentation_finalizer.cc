@@ -19,7 +19,6 @@
 #include <functional>
 #include <list>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -736,47 +735,37 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
 
 absl::StatusOr<const LayoutRenderingMetadata*>
 GetRenderedSamplesAndPostProcessor(
-    const auto& mix_presentation_id_to_rendering_metadata,
+    const absl::flat_hash_map<DecodedUleb128,
+                              std::vector<SubmixRenderingMetadata>>&
+        mix_presentation_id_to_sub_mix_rendering_metadata,
     DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
     size_t layout_index) {
-  // TODO(b/394072450): Store the mix presentations in an associative map, to
-  //                    avoid repeatedly searching for them. Be careful to avoid
-  //                    re-ordering same when the order of the mix presentations
-  //                    when `GetFinalizedMixPresentationObus` is called.
   // Lookup the requested layout in the requested mix presentation.
-  auto mix_presentation_it = std::find_if(
-      mix_presentation_id_to_rendering_metadata.begin(),
-      mix_presentation_id_to_rendering_metadata.end(),
-      [mix_presentation_id](const auto& mix_presentation_rendering_metadata) {
-        return mix_presentation_rendering_metadata.mix_presentation_obu
-                   .GetMixPresentationId() == mix_presentation_id;
-      });
-
+  const auto sub_mix_rendering_metadata_it =
+      mix_presentation_id_to_sub_mix_rendering_metadata.find(
+          mix_presentation_id);
   const auto mix_presentation_id_error_message =
       absl::StrCat(" Mix Presentation ID ", mix_presentation_id);
-  if (mix_presentation_it == mix_presentation_id_to_rendering_metadata.end()) {
+  if (sub_mix_rendering_metadata_it ==
+      mix_presentation_id_to_sub_mix_rendering_metadata.end()) {
     return absl::NotFoundError(
         absl::StrCat(mix_presentation_id_error_message,
                      " not found in rendering metadata."));
   }
 
-  // Validate rendering is enabled, and the layout is in bounds.
-  RETURN_IF_NOT_OK(
-      ValidateHasValue(mix_presentation_it->submix_rendering_metadata,
-                       absl::StrCat("because `submix_rendering_metadata` "
-                                    "implies rendering is disabled.",
-                                    mix_presentation_id_error_message)));
+  // Validate the sub mix and layout are in bounds, then retrieve it.
+  const auto& [unused_mix_presentation_id, sub_mix_rendering_metadatas] =
+      *sub_mix_rendering_metadata_it;
   RETURN_IF_NOT_OK(Validate(
-      sub_mix_index, std::less<size_t>(),
-      mix_presentation_it->submix_rendering_metadata->size(),
+      sub_mix_index, std::less<size_t>(), sub_mix_rendering_metadatas.size(),
       absl::StrCat(mix_presentation_id_error_message, "  sub_mix_index <")));
-  const auto& submix_rendering_metadata =
-      (*mix_presentation_it->submix_rendering_metadata)[sub_mix_index];
   RETURN_IF_NOT_OK(Validate(
       layout_index, std::less<size_t>(),
-      submix_rendering_metadata.layout_rendering_metadata.size(),
+      sub_mix_rendering_metadatas[sub_mix_index]
+          .layout_rendering_metadata.size(),
       absl::StrCat(mix_presentation_id_error_message, "  layout_index <")));
-  return &submix_rendering_metadata.layout_rendering_metadata[layout_index];
+  return &sub_mix_rendering_metadatas[sub_mix_index]
+              .layout_rendering_metadata[layout_index];
 }
 
 }  // namespace
@@ -797,11 +786,16 @@ RenderingMixPresentationFinalizer::Create(
     LOG(INFO) << "Loudness calculator factory is null so loudness will not be "
                  "calculated.";
   }
-  std::list<MixPresentationRenderingMetadata> rendering_metadata;
+  absl::flat_hash_map<DecodedUleb128, std::vector<SubmixRenderingMetadata>>
+      mix_presentation_id_to_rendering_metadata;
+  std::list<MixPresentationObu> mix_presentation_obus_to_render;
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
-    std::optional<std::vector<SubmixRenderingMetadata>>
-        sub_mix_rendering_metadata;
+    // Copy all mix presentation OBUs, so they can be echoed back, even when
+    // rendering is disabled.
+    mix_presentation_obus_to_render.emplace_back(mix_presentation_obu);
 
+    // Fill in rendering metadata if rendering is enabled, and at least one
+    // layout can be rendered.
     if (rendering_enabled) {
       std::vector<SubmixRenderingMetadata> temp_sub_mix_rendering_metadata;
       RETURN_IF_NOT_OK(GenerateRenderingMetadataForSubmixes(
@@ -809,17 +803,16 @@ RenderingMixPresentationFinalizer::Create(
           sample_processor_factory, audio_elements, mix_presentation_obu,
           temp_sub_mix_rendering_metadata));
       if (CanRenderAnyLayout(temp_sub_mix_rendering_metadata)) {
-        sub_mix_rendering_metadata = std::move(temp_sub_mix_rendering_metadata);
+        mix_presentation_id_to_rendering_metadata.emplace(
+            mix_presentation_obu.GetMixPresentationId(),
+            std::move(temp_sub_mix_rendering_metadata), );
       }
     }
-
-    rendering_metadata.emplace_back(MixPresentationRenderingMetadata{
-        .mix_presentation_obu = mix_presentation_obu,
-        .submix_rendering_metadata = std::move(sub_mix_rendering_metadata),
-    });
   }
 
-  return RenderingMixPresentationFinalizer(std::move(rendering_metadata));
+  return RenderingMixPresentationFinalizer(
+      std::move(mix_presentation_id_to_rendering_metadata),
+      std::move(mix_presentation_obus_to_render));
 }
 
 absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
@@ -834,17 +827,16 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
       return absl::FailedPreconditionError(
           "PushTemporalUnit() should not be called after "
           "FinalizePushingTemporalUnits() has been called.");
+    case kFlushedFinalizedMixPresentationObus:
+      return absl::FailedPreconditionError(
+          "PushTemporalUnit() should not be called after "
+          "GetFinalizedMixPresentationOBUs() has been called.");
   }
-  for (auto& [mix_presentation_obu_for_logging, submix_rendering_metadata] :
-       rendering_metadata_) {
-    if (!submix_rendering_metadata.has_value()) {
-      LOG(INFO) << "No layouts can be rendered for Mix Presentation ID= "
-                << mix_presentation_obu_for_logging.GetMixPresentationId();
-      continue;
-    }
+  for (auto& [mix_presentation_ids, sub_mix_rendering_metadata] :
+       mix_presentation_id_to_sub_mix_rendering_metadata_) {
     RETURN_IF_NOT_OK(RenderWriteAndCalculateLoudnessForTemporalUnit(
         id_to_labeled_frame, start_timestamp, end_timestamp, parameter_blocks,
-        *submix_rendering_metadata));
+        sub_mix_rendering_metadata));
   }
   return absl::OkStatus();
 }
@@ -854,7 +846,8 @@ RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
     DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
     size_t layout_index) const {
   const auto layout_rendering_metadata = GetRenderedSamplesAndPostProcessor(
-      rendering_metadata_, mix_presentation_id, sub_mix_index, layout_index);
+      mix_presentation_id_to_sub_mix_rendering_metadata_, mix_presentation_id,
+      sub_mix_index, layout_index);
   if (!layout_rendering_metadata.ok()) {
     return layout_rendering_metadata.status();
   }
@@ -875,15 +868,14 @@ absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits() {
       state_ = kFinalizePushTemporalUnitCalled;
       break;
     case kFinalizePushTemporalUnitCalled:
+    case kFlushedFinalizedMixPresentationObus:
       return absl::FailedPreconditionError(
           "FinalizePushingTemporalUnits() should not be called twice.");
   }
 
-  for (auto& [mix_presentation_obu, submix_rendering_metadata] :
-       rendering_metadata_) {
-    if (submix_rendering_metadata.has_value()) {
-      RETURN_IF_NOT_OK(FlushPostProcessors(*submix_rendering_metadata));
-    }
+  for (auto& [mix_presentation_id, sub_mix_rendering_metadata] :
+       mix_presentation_id_to_sub_mix_rendering_metadata_) {
+    RETURN_IF_NOT_OK(FlushPostProcessors(sub_mix_rendering_metadata));
   }
   return absl::OkStatus();
 }
@@ -899,27 +891,33 @@ RenderingMixPresentationFinalizer::GetFinalizedMixPresentationObus(
     case kFinalizePushTemporalUnitCalled:
       // Ok to finalize.
       break;
+    case kFlushedFinalizedMixPresentationObus:
+      return absl::FailedPreconditionError(
+          "GetFinalizedMixPresentationOBUs() should not be called twice.");
   }
 
-  std::list<MixPresentationObu> finalized_obus;
-  for (auto& [original_presentation_obu, submix_rendering_metadata] :
-       rendering_metadata_) {
-    MixPresentationObu finalized_mix_presentation_obu =
-        original_presentation_obu;
-    if (submix_rendering_metadata.has_value()) {
-      RETURN_IF_NOT_OK(FillLoudnessForMixPresentation(
-          validate_loudness, *submix_rendering_metadata,
-          finalized_mix_presentation_obu));
-    } else {
+  // Finalize the OBUs in place.
+  for (auto& mix_presentation_obu : mix_presentation_obus_) {
+    const auto sub_mix_rendering_metadata_it =
+        mix_presentation_id_to_sub_mix_rendering_metadata_.find(
+            mix_presentation_obu.GetMixPresentationId());
+    if (sub_mix_rendering_metadata_it ==
+        mix_presentation_id_to_sub_mix_rendering_metadata_.end()) {
       LOG(INFO) << "Rendering was disabled for Mix Presentation ID= "
-                << finalized_mix_presentation_obu.GetMixPresentationId()
+                << mix_presentation_obu.GetMixPresentationId()
                 << " echoing the input OBU.";
+      continue;
     }
 
-    finalized_obus.emplace_back(std::move(finalized_mix_presentation_obu));
+    RETURN_IF_NOT_OK(FillLoudnessForMixPresentation(
+        validate_loudness, sub_mix_rendering_metadata_it->second,
+        mix_presentation_obu));
   }
 
-  return finalized_obus;
+  // Flush the finalized OBUs and mark that this class should not use them
+  // again.
+  state_ = kFlushedFinalizedMixPresentationObus;
+  return std::move(mix_presentation_obus_);
 }
 
 }  // namespace iamf_tools

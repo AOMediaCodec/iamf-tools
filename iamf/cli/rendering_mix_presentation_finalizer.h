@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -262,33 +261,39 @@ class RenderingMixPresentationFinalizer {
       bool validate_loudness);
 
  private:
-  enum State { kAcceptingTemporalUnits, kFinalizePushTemporalUnitCalled };
-
-  /*!\brief  Metadata for all sub mixes within a single mix presentation. */
-  struct MixPresentationRenderingMetadata {
-    // Mix presentation OBU to render and to be updated with the final measured
-    // loudness.
-    MixPresentationObu mix_presentation_obu;
-
-    // Metadata for rendering all sub mixes within the mix presentation. If
-    // `nullopt`, rendering is disabled for this mix presentation.
-    std::optional<std::vector<SubmixRenderingMetadata>>
-        submix_rendering_metadata;
+  enum State {
+    kAcceptingTemporalUnits,
+    kFinalizePushTemporalUnitCalled,
+    kFlushedFinalizedMixPresentationObus
   };
 
   /*!\brief Private constructor.
    *
    * Used only by the factory method.
    *
-   * \param rendering_metadata Mix presentation metadata.
+   * \param mix_presentation_id_to_sub_mix_rendering_metadata Mix presentation
+   *        ID to rendering metadata for each sub mix.
+   * \param mix_presentation_obus Mix presentation OBUs to render and measure
+   *        the loudness of.
    */
   RenderingMixPresentationFinalizer(
-      std::list<MixPresentationRenderingMetadata>&& rendering_metadata)
-      : rendering_metadata_(std::move(rendering_metadata)) {}
+      absl::flat_hash_map<DecodedUleb128,
+                          std::vector<SubmixRenderingMetadata>>&&
+          mix_presentation_id_to_sub_mix_rendering_metadata,
+      std::list<MixPresentationObu>&& mix_presentation_obus)
+      : mix_presentation_id_to_sub_mix_rendering_metadata_(
+            std::move(mix_presentation_id_to_sub_mix_rendering_metadata)),
+        mix_presentation_obus_(std::move(mix_presentation_obus)) {}
 
   State state_ = kAcceptingTemporalUnits;
 
-  std::list<MixPresentationRenderingMetadata> rendering_metadata_;
+  // Mapping from Mix Presentation ID to rendering metadata. Slots are absent
+  // for Mix Presentations that have no layouts which can be rendered.
+  absl::flat_hash_map<DecodedUleb128, std::vector<SubmixRenderingMetadata>>
+      mix_presentation_id_to_sub_mix_rendering_metadata_;
+
+  // Mix Presentation OBUs to render and measure the loudness of.
+  std::list<MixPresentationObu> mix_presentation_obus_;
 };
 
 }  // namespace iamf_tools

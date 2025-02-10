@@ -61,6 +61,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::testing::_;
+using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using testing::Return;
@@ -942,18 +943,91 @@ TEST_F(FinalizerTest,
       finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness).ok());
 }
 
-TEST_F(FinalizerTest, GetFinalizedMixPresentationObusMayBeCalledMultipleTimes) {
+TEST_F(FinalizerTest,
+       PushingIsNotAllowedAnyTimeAfterFinalizePushingTemporalUnits) {
+  InitPrerequisiteObusForMonoInput(kAudioElementId);
+  AddMixPresentationObuForMonoOutput(kMixPresentationId);
+  const LabelSamplesMap kLabelToSamples = {
+      {kMono, Int32ToInternalSampleType({100, 900})}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100}, {900}};
+  AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+  auto finalizer = CreateFinalizerExpectOk();
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/0,
+                                 /*end_timestamp=*/10, parameter_blocks_),
+      IsOk());
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
+
+  // Any time after `FinalizePushingTemporalUnits()` has been called pushing is
+  // not allowed. Even if later functions such as
+  // `GetFinalizedMixPresentationObus` are called.
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/10,
+                                 /*end_timestamp=*/20, parameter_blocks_),
+      Not(IsOk()));
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              IsOk());
+  EXPECT_THAT(
+      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                 /*start_timestamp=*/10,
+                                 /*end_timestamp=*/20, parameter_blocks_),
+      Not(IsOk()));
+}
+
+TEST_F(
+    FinalizerTest,
+    GetPostProcessedSamplesAsSpanCanBeUsedBeforeOrAfterGetFinalizedMixPresentationObus) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  AddMixPresentationObuForStereoOutput(kMixPresentationId);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  auto finalizer = CreateFinalizerExpectOk();
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
+
+  // It's acceptable to retrieve the post-processed samples either before or
+  // after retrieving the finalized mix presentation OBUs.
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOk());
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              IsOk());
+  EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
+                  kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
+              IsOk());
+}
+
+TEST_F(FinalizerTest, GetFinalizedMixPresentationObusMayNotBeCalledTwice) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   auto finalizer = CreateFinalizerExpectOk();
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
 
-  const auto finalized_obus =
-      finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness);
-  EXPECT_THAT(finalized_obus, IsOk());
-  // Subsequent calls are permitted, but they should not change the result.
-  EXPECT_EQ(finalized_obus,
-            finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness));
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              IsOk());
+
+  // The finalized OBUs have already been flushed out and cannot be retrieved
+  // again.
+  EXPECT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              Not(IsOk()));
+}
+
+TEST_F(FinalizerTest, GetFinalizedMixPresentationObusReturnsObusInSameorder) {
+  InitPrerequisiteObusForStereoInput(kAudioElementId);
+  constexpr DecodedUleb128 kFirstMixPresentationId = 100;
+  constexpr DecodedUleb128 kSecondMixPresentationId = 99;
+  constexpr DecodedUleb128 kThirdMixPresentationId = 101;
+  AddMixPresentationObuForStereoOutput(kFirstMixPresentationId);
+  AddMixPresentationObuForStereoOutput(kSecondMixPresentationId);
+  AddMixPresentationObuForStereoOutput(kThirdMixPresentationId);
+  auto finalizer = CreateFinalizerExpectOk();
+  EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
+
+  // We expect the entire list to come back in the same order. List order
+  // may affect the priority downstream when selecting the default mix to
+  // playback.
+  ASSERT_THAT(finalizer.GetFinalizedMixPresentationObus(kDontValidateLoudness),
+              IsOkAndHolds(Eq(obus_to_finalize_)));
 }
 
 // =========== Tests for PushTemporalUnit ===========
