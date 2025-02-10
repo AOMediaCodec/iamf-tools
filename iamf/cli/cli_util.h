@@ -32,6 +32,30 @@
 
 namespace iamf_tools {
 
+/*!\brief Determines if the layout is a stereo layout.
+ *
+ * \param layout Layout to check.
+ * \return True if the layout is a stereo layout. False otherwise.
+ */
+bool IsStereoLayout(const Layout& layout);
+
+/*!\brief Gets indices for the target Layout in the mix presentation.
+ *
+ * This function grabs the submix index and layout index of the desired layout
+ * in the mix presentation.
+ *
+ * \param mix_presentation_sub_mixes List of mix presentation submixes where we
+ *        search for the target_layout.
+ * \param target_layout Layout to get the indices for.
+ * \param output_submix_index Index of the submix to use.
+ * \param output_layout_index Index of the layout to use.
+ * \return `absl::OkStatus()` on success. A specific status on failure.
+ */
+absl::Status GetIndicesForLayout(
+    const std::vector<MixPresentationSubMix>& mix_presentation_sub_mixes,
+    const Layout& target_layout, int& output_submix_index,
+    int& output_layout_index);
+
 /*!\brief Collects and validates the parameter definitions against the spec.
  *
  * When `param_definition_mode = 0`, `duration`, `num_subblocks`,

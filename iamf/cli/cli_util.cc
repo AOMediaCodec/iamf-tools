@@ -89,6 +89,33 @@ absl::Status GetPerIdMetadata(
 
 }  // namespace
 
+bool IsStereoLayout(const Layout& layout) {
+  const Layout kStereoLayout = {
+      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+      .specific_layout = LoudspeakersSsConventionLayout{
+          .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
+  return layout == kStereoLayout;
+}
+
+absl::Status GetIndicesForLayout(
+    const std::vector<MixPresentationSubMix>& mix_presentation_sub_mixes,
+    const Layout& layout, int& output_submix_index, int& output_layout_index) {
+  for (int s = 0; s < mix_presentation_sub_mixes.size(); s++) {
+    const auto& sub_mix = mix_presentation_sub_mixes[s];
+    for (int l = 0; l < sub_mix.num_layouts; l++) {
+      const auto& mix_presentation_layout = sub_mix.layouts[l];
+      if (layout == mix_presentation_layout.loudness_layout) {
+        output_submix_index = s;
+        output_layout_index = l;
+        return absl::OkStatus();
+      }
+    }
+  }
+  return absl::InvalidArgumentError(
+      "No match found in the mix presentation submixes for the desired "
+      "layout.");
+}
+
 absl::Status CollectAndValidateParamDefinitions(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
@@ -197,8 +224,8 @@ absl::Status WritePcmFrameToBuffer(
 
   buffer.resize(num_samples * (bit_depth / 8));
 
-  // The input frame is arranged in (time, channel) axes. Interlace these in the
-  // output PCM and skip over any trimmed samples.
+  // The input frame is arranged in (time, channel) axes. Interlace these in
+  // the output PCM and skip over any trimmed samples.
   int write_position = 0;
   for (int t = samples_to_trim_at_start;
        t < frame.size() - samples_to_trim_at_end; t++) {

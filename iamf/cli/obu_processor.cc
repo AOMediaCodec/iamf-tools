@@ -230,21 +230,6 @@ absl::StatusOr<DecodedUleb128> GetFirstSupportedMixPresentationId(
       cumulative_error_message));
 }
 
-// TODO(b/339500539): Add support for other layouts. Downstream code is simple
-//                    and assumes there will be a matching layout in the first
-//                    Mix Presentation OBU. The IAMF spec REQUIRES this for
-//                    stereo. In general, layouts may require more careful
-//                    selection according to 7.3.1.
-absl::StatusOr<std::string> GetLayoutFilenameString(const Layout& layout) {
-  if (layout.layout_type == Layout::kLayoutTypeLoudspeakersSsConvention &&
-      std::get<LoudspeakersSsConventionLayout>(layout.specific_layout)
-              .sound_system ==
-          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0) {
-    return "stereo";
-  }
-  return absl::InvalidArgumentError("Layout type is not supported.");
-}
-
 // Resets the buffer to `start_position` and sets the `insufficient_data` flag
 // to `true`. Clears the output maps.
 absl::Status InsufficientDataReset(
@@ -637,9 +622,14 @@ absl::Status ObuProcessor::InitializeForRendering(
     const Layout& playback_layout, bool write_wav_header,
     const std::optional<uint8_t> output_file_bit_depth_override,
     absl::string_view output_filename) {
-  const auto& layout_filename_string = GetLayoutFilenameString(playback_layout);
-  if (!layout_filename_string.ok()) {
-    return layout_filename_string.status();
+  // TODO(b/339500539): Add support for other layouts. Downstream code is simple
+  //                    and assumes there will be a matching layout in the first
+  //                    Mix Presentation OBU. The IAMF spec REQUIRES this for
+  //                    stereo. In general, layouts may require more careful
+  //                    selection according to 7.3.1.
+  // TODO(b/395625514): Add test coverage for this.
+  if (!IsStereoLayout(playback_layout)) {
+    return absl::InvalidArgumentError("Layout type is not supported.");
   }
   if (mix_presentations_.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
