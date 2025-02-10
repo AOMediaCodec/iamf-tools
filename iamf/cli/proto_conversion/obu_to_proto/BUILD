@@ -3,6 +3,7 @@ package(default_visibility = [
     "//iamf/cli:__subpackages__",
 ])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "ia_sequence_header_metadata_generator",
     srcs = ["ia_sequence_header_metadata_generator.cc"],
@@ -58,3 +59,5 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
     ],
 )
+
+# keep-sorted end

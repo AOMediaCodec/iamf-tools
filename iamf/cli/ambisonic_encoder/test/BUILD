@@ -1,3 +1,15 @@
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
+# Benchmark with
+#   `bazel run -c opt :ambisonic_encoder_benchmark -- --benchmark_filter=.`
+cc_test(
+    name = "ambisonic_encoder_benchmark",
+    srcs = ["ambisonic_encoder_benchmark.cc"],
+    deps = [
+        "//iamf/cli/ambisonic_encoder",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
 cc_test(
     name = "ambisonic_encoder_test",
     srcs = ["ambisonic_encoder_test.cc"],
@@ -20,13 +32,4 @@ cc_test(
     ],
 )
 
-# Benchmark with
-#   `bazel run -c opt :ambisonic_encoder_benchmark -- --benchmark_filter=.`
-cc_test(
-    name = "ambisonic_encoder_benchmark",
-    srcs = ["ambisonic_encoder_benchmark.cc"],
-    deps = [
-        "//iamf/cli/ambisonic_encoder",
-        "@com_google_benchmark//:benchmark_main",
-    ],
-)
+# keep-sorted end

@@ -1,6 +1,7 @@
 # Protos for IAMF data.
 
 load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
+load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 # [internal] load cc_proto_library.bzl
 
 package(default_visibility = [
@@ -8,6 +9,7 @@ package(default_visibility = [
     "//iamf/cli:__subpackages__",
 ])
 
+# keep-sorted start block=yes prefix_order=proto_library,cc_proto_library newline_separated=yes
 proto_library(
     name = "arbitrary_obu_proto",
     srcs = ["arbitrary_obu.proto"],
@@ -164,3 +166,20 @@ cc_proto_library(
     name = "user_metadata_cc_proto",
     deps = [":user_metadata_proto"],
 )
+
+py_proto_library(
+    name = "parameter_block_py_pb2",
+    deps = [":parameter_block_proto"],
+)
+
+py_proto_library(
+    name = "parameter_data_py_pb2",
+    deps = [":parameter_data_proto"],
+)
+
+py_proto_library(
+    name = "user_metadata_py_pb2",
+    deps = [":user_metadata_proto"],
+)
+
+# keep-sorted end

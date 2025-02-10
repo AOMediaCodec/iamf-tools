@@ -2,6 +2,7 @@ package(default_visibility = [
     "//iamf/cli/adm_to_user_metadata/iamf:__subpackages__",
 ])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "ia_sequence_header_obu_metadata_handler",
     srcs = [
@@ -94,3 +95,5 @@ cc_library(
         "@com_google_absl//absl/strings",
     ],
 )
+
+# keep-sorted end

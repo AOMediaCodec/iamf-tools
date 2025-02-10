@@ -1,3 +1,4 @@
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "channel_label_utils_test",
     srcs = ["channel_label_utils_test.cc"],
@@ -27,3 +28,5 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+# keep-sorted end

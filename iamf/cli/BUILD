@@ -14,6 +14,7 @@ exports_files(
     ],
 )
 
+# keep-sorted start block=yes prefix_order=cc_library,cc_binary newline_separated=yes
 cc_library(
     name = "audio_element_with_data",
     hdrs = ["audio_element_with_data.h"],
@@ -605,3 +606,5 @@ cc_binary(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+# keep-sorted end

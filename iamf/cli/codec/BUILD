@@ -2,6 +2,7 @@
 
 package(default_visibility = ["//iamf/cli:__subpackages__"])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "aac_decoder",
     srcs = ["aac_decoder.cc"],
@@ -76,6 +77,32 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_library(
+    name = "flac_decoder",
+    srcs = ["flac_decoder.cc"],
+    hdrs = ["flac_decoder.h"],
+    deps = [
+        ":decoder_base",
+        "//iamf/obu:codec_config",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@flac//:src",
+    ],
+)
+
+cc_library(
+    name = "flac_decoder_stream_callbacks",
+    srcs = ["flac_decoder_stream_callbacks.cc"],
+    hdrs = ["flac_decoder_stream_callbacks.h"],
+    deps = [
+        ":flac_decoder",
+        "@com_google_absl//absl/log",
+        "@flac//:src",
     ],
 )
 
@@ -196,28 +223,4 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "flac_decoder",
-    srcs = ["flac_decoder.cc"],
-    hdrs = ["flac_decoder.h"],
-    deps = [
-        ":decoder_base",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings",
-        "@flac//:src",
-    ],
-)
-
-cc_library(
-    name = "flac_decoder_stream_callbacks",
-    srcs = ["flac_decoder_stream_callbacks.cc"],
-    hdrs = ["flac_decoder_stream_callbacks.h"],
-    deps = [
-        ":flac_decoder",
-        "@com_google_absl//absl/log",
-        "@flac//:src",
-    ],
-)
+# keep-sorted end

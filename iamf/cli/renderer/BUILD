@@ -1,5 +1,6 @@
 package(default_visibility = ["//iamf/cli:__subpackages__"])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "audio_element_renderer_ambisonics_to_channel",
     srcs = ["audio_element_renderer_ambisonics_to_channel.cc"],
@@ -156,3 +157,5 @@ cc_library(
         "@com_google_absl//absl/strings",
     ],
 )
+
+# keep-sorted end

@@ -3,6 +3,12 @@ package(default_visibility = [
     "//iamf/cli:__subpackages__",
 ])
 
+# keep-sorted start block=yes prefix_order=filegroup newline_separated=yes
+filegroup(
+    name = "fuzz_test_iamf",
+    srcs = glob(["iamf/*.iamf"]),
+)
+
 filegroup(
     name = "input_wav_files",
     srcs = glob(["*.wav"]),
@@ -13,7 +19,4 @@ filegroup(
     srcs = glob(["test_*.textproto"]),
 )
 
-filegroup(
-    name = "fuzz_test_iamf",
-    srcs = glob(["iamf/*.iamf"]),
-)
+# keep-sorted end

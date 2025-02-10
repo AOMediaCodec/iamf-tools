@@ -1,3 +1,4 @@
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "ia_sequence_header_metadata_generator_test",
     srcs = ["ia_sequence_header_metadata_generator_test.cc"],
@@ -45,3 +46,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end

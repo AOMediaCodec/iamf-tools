@@ -1,5 +1,6 @@
 package(default_visibility = ["//iamf/cli/renderer/tests:__subpackages__"])
 
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "audio_element_renderer_ambisonics_to_channel_test",
     srcs = ["audio_element_renderer_ambisonics_to_channel_test.cc"],
@@ -70,7 +71,6 @@ cc_test(
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -89,3 +89,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end

@@ -1,5 +1,6 @@
 # Tests for the IAMF software.
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "obu_test_base",
     testonly = True,
@@ -191,28 +192,6 @@ cc_test(
 )
 
 cc_test(
-    name = "parameter_data_test",
-    size = "small",
-    srcs = [
-        "demixing_info_parameter_data_test.cc",
-        "extension_parameter_data_test.cc",
-        "mix_gain_parameter_data_test.cc",
-        "recon_gain_info_parameter_data_test.cc",
-    ],
-    deps = [
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils/tests:test_utils",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_data",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "parameter_block_test",
     size = "small",
     srcs = ["parameter_block_test.cc"],
@@ -229,6 +208,28 @@ cc_test(
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "parameter_data_test",
+    size = "small",
+    srcs = [
+        "demixing_info_parameter_data_test.cc",
+        "extension_parameter_data_test.cc",
+        "mix_gain_parameter_data_test.cc",
+        "recon_gain_info_parameter_data_test.cc",
+    ],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_data",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",
@@ -254,3 +255,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end

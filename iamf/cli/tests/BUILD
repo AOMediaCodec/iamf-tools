@@ -1,17 +1,6 @@
 package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
 
-cc_test(
-    name = "channel_label_test",
-    srcs = ["channel_label_test.cc"],
-    deps = [
-        "//iamf/cli:channel_label",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:parameter_data",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
+# keep-sorted start block=yes prefix_order=cc_library,cc_test newline_separated=yes
 cc_library(
     name = "cli_test_utils",
     testonly = True,
@@ -67,17 +56,32 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "cli_test_utils_test",
-    srcs = ["cli_test_utils_test.cc"],
+cc_library(
+    name = "obu_with_data_generator_tests",
+    testonly = True,
+    srcs = ["obu_with_data_generator_tests.cc"],
     deps = [
         ":cli_test_utils",
-        "//iamf/common:write_bit_buffer",
-        "@com_google_absl//absl/status",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:global_timing_module",
+        "//iamf/cli:obu_with_data_generator",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:parameters_manager",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_param_definition",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_map",
         "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
-        "@com_google_absl//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -97,6 +101,32 @@ cc_test(
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "channel_label_test",
+    srcs = ["channel_label_test.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:parameter_data",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cli_test_utils_test",
+    srcs = ["cli_test_utils_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/common:write_bit_buffer",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -321,35 +351,6 @@ cc_test(
     ],
 )
 
-cc_library(
-    name = "obu_with_data_generator_tests",
-    testonly = True,
-    srcs = ["obu_with_data_generator_tests.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:global_timing_module",
-        "//iamf/cli:obu_with_data_generator",
-        "//iamf/cli:parameter_block_with_data",
-        "//iamf/cli:parameters_manager",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:audio_frame",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_param_definition",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
-        "//iamf/obu:parameter_data",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
 cc_test(
     name = "parameter_block_partitioner_test",
     size = "small",
@@ -567,3 +568,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end

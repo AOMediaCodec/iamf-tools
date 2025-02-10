@@ -2,6 +2,7 @@
 # cli/proto_to_obu and cli/obu_to_proto are subdirectories for unidirectional conversion, but utils
 # and bidirectional conversion can stay in this directory.
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "channel_label_utils",
     srcs = ["channel_label_utils.cc"],
@@ -60,11 +61,11 @@ cc_library(
         "//iamf/cli/proto_conversion:__subpackages__",
     ],
     deps = [
+        ":lookup_tables",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "//iamf/cli/proto_conversion:lookup_tables",
         "//iamf/common:leb_generator",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
@@ -79,3 +80,5 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
     ],
 )
+
+# keep-sorted end

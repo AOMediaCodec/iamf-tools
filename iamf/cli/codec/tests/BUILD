@@ -1,3 +1,4 @@
+# keep-sorted start block=yes prefix_order=cc_library,cc_test newline_separated=yes
 cc_library(
     name = "encoder_test_base",
     testonly = True,
@@ -53,6 +54,35 @@ cc_test(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "flac_decoder_stream_callbacks_test",
+    srcs = ["flac_decoder_stream_callbacks_test.cc"],
+    deps = [
+        "//iamf/cli/codec:flac_decoder",
+        "//iamf/cli/codec:flac_decoder_stream_callbacks",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:obu_header",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "@com_google_googletest//:gtest_main",
+        "@flac//:src",
+    ],
+)
+
+cc_test(
+    name = "flac_decoder_test",
+    srcs = ["flac_decoder_test.cc"],
+    deps = [
+        "//iamf/cli/codec:flac_decoder",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "//iamf/obu/decoder_config:flac_decoder_config",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+        "@flac//:src",
     ],
 )
 
@@ -117,31 +147,4 @@ cc_test(
     ],
 )
 
-cc_test(
-    name = "flac_decoder_stream_callbacks_test",
-    srcs = ["flac_decoder_stream_callbacks_test.cc"],
-    deps = [
-        "//iamf/cli/codec:flac_decoder",
-        "//iamf/cli/codec:flac_decoder_stream_callbacks",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "@com_google_googletest//:gtest_main",
-        "@flac//:src",
-    ],
-)
-
-cc_test(
-    name = "flac_decoder_test",
-    srcs = ["flac_decoder_test.cc"],
-    deps = [
-        "//iamf/cli/codec:flac_decoder",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:types",
-        "//iamf/obu/decoder_config:flac_decoder_config",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@flac//:src",
-    ],
-)
+# keep-sorted end

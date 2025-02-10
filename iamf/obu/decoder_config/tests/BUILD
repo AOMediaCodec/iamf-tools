@@ -1,5 +1,6 @@
 # Tests for the IAMF software.
 
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "aac_decoder_config_test",
     srcs = ["aac_decoder_config_test.cc"],
@@ -59,3 +60,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end

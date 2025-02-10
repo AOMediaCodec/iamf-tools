@@ -1,5 +1,6 @@
 package(default_visibility = ["//iamf:__subpackages__"])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "arbitrary_obu",
     srcs = [
@@ -117,11 +118,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
-)
-
-cc_library(
-    name = "types",
-    hdrs = ["types.h"],
 )
 
 cc_library(
@@ -272,3 +268,10 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
     ],
 )
+
+cc_library(
+    name = "types",
+    hdrs = ["types.h"],
+)
+
+# keep-sorted end

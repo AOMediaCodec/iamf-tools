@@ -2,11 +2,7 @@ package(default_visibility = [
     "//iamf/cli/adm_to_user_metadata:__subpackages__",
 ])
 
-cc_library(
-    name = "format_info_chunk",
-    hdrs = ["format_info_chunk.h"],
-)
-
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "bw64_reader",
     srcs = ["bw64_reader.cc"],
@@ -19,6 +15,11 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
     ],
+)
+
+cc_library(
+    name = "format_info_chunk",
+    hdrs = ["format_info_chunk.h"],
 )
 
 cc_library(
@@ -84,3 +85,5 @@ cc_library(
         "@libexpat",
     ],
 )
+
+# keep-sorted end

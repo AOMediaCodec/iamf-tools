@@ -2,6 +2,7 @@
 
 package(default_visibility = ["//iamf:__subpackages__"])
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "bit_buffer_util",
     srcs = ["bit_buffer_util.cc"],
@@ -55,7 +56,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -64,12 +64,10 @@ cc_library(
     srcs = ["sample_processing_utils.cc"],
     hdrs = ["sample_processing_utils.h"],
     deps = [
-        ":numeric_utils",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:string_view",
         "@com_google_absl//absl/types:span",
@@ -88,3 +86,5 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
     ],
 )
+
+# keep-sorted end

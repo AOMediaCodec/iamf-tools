@@ -1,3 +1,4 @@
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "arbitrary_obu_generator_test",
     srcs = ["arbitrary_obu_generator_test.cc"],
@@ -157,3 +158,5 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+# keep-sorted end

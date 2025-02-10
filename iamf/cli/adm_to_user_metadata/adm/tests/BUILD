@@ -1,3 +1,4 @@
+# keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "bw64_reader_test",
     srcs = ["bw64_reader_test.cc"],
@@ -33,3 +34,5 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+# keep-sorted end
