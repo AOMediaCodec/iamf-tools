@@ -37,6 +37,7 @@
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/arbitrary_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
@@ -156,8 +157,15 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // Down-mix the audio samples and then demix audio samples while decoding
   // them. This is useful to create multi-layer audio elements and to determine
   // the recon gain parameters and to measuring loudness.
+  const absl::StatusOr<absl::flat_hash_map<
+      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+      audio_element_id_to_demixing_metadata =
+          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
+  if (!audio_element_id_to_demixing_metadata.ok()) {
+    return audio_element_id_to_demixing_metadata.status();
+  }
   auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      user_metadata, audio_elements);
+      *std::move(audio_element_id_to_demixing_metadata));
   if (!demixing_module.ok()) {
     return demixing_module.status();
   }

@@ -23,6 +23,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -32,6 +33,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
+#include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -41,7 +43,6 @@
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
-#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
@@ -144,43 +145,29 @@ void InitAudioElementWithLabelsAndLayers(
   }
 }
 
-TEST(CreateForDownMixingAndReconstruction, ValidWithTwoLayerStereo) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_id: 137
-        channel_metadatas: { channel_label: CHANNEL_LABEL_L_2 }
-        channel_metadatas: { channel_label: CHANNEL_LABEL_R_2 }
-      )pb",
-      user_metadata.add_audio_frame_metadata()));
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{0, {kMono}}, {1, {kL2}}},
-                                      {ChannelAudioLayerConfig::kLayoutMono,
-                                       ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
-
+TEST(CreateForDownMixingAndReconstruction, EmptyConfigMapIsOk) {
+  absl::flat_hash_map<DecodedUleb128,
+                      DemixingModule::DownmixingAndReconstructionConfig>
+      id_to_config_map;
   const auto demixing_module =
-      DemixingModule::CreateForDownMixingAndReconstruction(user_metadata,
-                                                           audio_elements);
+      DemixingModule::CreateForDownMixingAndReconstruction(
+          std::move(id_to_config_map));
   EXPECT_THAT(demixing_module, IsOk());
 }
 
-TEST(CreateForDownMixingAndReconstruction, FailswithNoMatchingAudioElement) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        audio_element_id: 137
-        channel_metadatas: { channel_label: CHANNEL_LABEL_L_2 }
-        channel_metadatas: { channel_label: CHANNEL_LABEL_R_2 }
-      )pb",
-      user_metadata.add_audio_frame_metadata()));
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kNoMatchingAudioElement;
-
+TEST(CreateForDownMixingAndReconstruction, ValidWithTwoLayerStereo) {
+  DecodedUleb128 id = 137;
+  DemixingModule::DownmixingAndReconstructionConfig config = {
+      .user_labels = {kL2, kR2},
+      .substream_id_to_labels = {{0, {kMono}}, {1, {kL2}}},
+      .label_to_output_gain = {}};
+  absl::flat_hash_map<DecodedUleb128,
+                      DemixingModule::DownmixingAndReconstructionConfig>
+      id_to_config_map = {{id, config}};
   const auto demixing_module =
       DemixingModule::CreateForDownMixingAndReconstruction(
-          user_metadata, kNoMatchingAudioElement);
-  EXPECT_FALSE(demixing_module.ok());
+          std::move(id_to_config_map));
+  EXPECT_THAT(demixing_module, IsOk());
 }
 
 TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
@@ -536,9 +523,14 @@ class DemixingModuleTestBase {
                                    /*codec_config_id=*/0),
             .substream_id_to_labels = substream_id_to_labels_,
         });
-
+    const absl::StatusOr<absl::flat_hash_map<
+        DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
+        audio_element_id_to_demixing_metadata =
+            CreateAudioElementIdToDemixingMetadata(user_metadata,
+                                                   audio_elements_);
+    ASSERT_THAT(audio_element_id_to_demixing_metadata.status(), IsOk());
     auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-        user_metadata, audio_elements_);
+        std::move(audio_element_id_to_demixing_metadata.value()));
     ASSERT_THAT(demixing_module, IsOk());
     demixing_module_.emplace(*std::move(demixing_module));
   }
@@ -1035,13 +1027,8 @@ class DemixingModuleTest : public DemixingModuleTestBase,
 };  // namespace
 
 TEST(DemixingModule, DemixingAudioSamplesSucceedsWithEmptyInputs) {
-  const iamf_tools_cli_proto::UserMetadata kEmptyUserMetadata;
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      kEmptyAudioElements;
-
   const auto demixing_module =
-      DemixingModule::CreateForDownMixingAndReconstruction(kEmptyUserMetadata,
-                                                           kEmptyAudioElements);
+      DemixingModule::CreateForDownMixingAndReconstruction({});
   ASSERT_THAT(demixing_module, IsOk());
 
   // Call `DemixAudioSamples()`.

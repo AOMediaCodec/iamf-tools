@@ -28,6 +28,30 @@ cc_library(
 )
 
 cc_library(
+    name = "downmixing_reconstruction_util",
+    srcs = ["downmixing_reconstruction_util.cc"],
+    hdrs = ["downmixing_reconstruction_util.h"],
+    visibility = [
+        "//iamf/cli:__pkg__",
+        "//iamf/cli/proto_conversion/tests:__pkg__",
+        "//iamf/cli/tests:__pkg__",
+    ],
+    deps = [
+        ":channel_label_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "lookup_tables",
     hdrs = ["lookup_tables.h"],
     visibility = ["//iamf/cli/proto_conversion:__subpackages__"],

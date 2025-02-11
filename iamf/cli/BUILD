@@ -230,6 +230,7 @@ cc_library(
         ":rendering_mix_presentation_finalizer",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:downmixing_reconstruction_util",
         "//iamf/cli/proto_conversion/proto_to_obu:arbitrary_obu_generator",
         "//iamf/cli/proto_conversion/proto_to_obu:audio_element_generator",
         "//iamf/cli/proto_conversion/proto_to_obu:audio_frame_generator",

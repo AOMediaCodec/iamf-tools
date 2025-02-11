@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -93,9 +94,15 @@ typedef absl::Status (*Demixer)(const DownMixingParams&, LabelSamplesMap&);
  */
 class DemixingModule {
  public:
-  struct DemxingMetadataForAudioElementId {
+  struct DemixingMetadataForAudioElementId {
     std::list<Demixer> demixers;
     std::list<Demixer> down_mixers;
+    SubstreamIdLabelsMap substream_id_to_labels;
+    LabelGainMap label_to_output_gain;
+  };
+
+  struct DownmixingAndReconstructionConfig {
+    absl::flat_hash_set<ChannelLabel::Label> user_labels;
     SubstreamIdLabelsMap substream_id_to_labels;
     LabelGainMap label_to_output_gain;
   };
@@ -110,15 +117,16 @@ class DemixingModule {
    * information about the channels and the specific down-mixers and demixers
    * needed for that audio element.
    *
-   * \param user_metadata Input user metadata.
-   * \param audio_elements Audio elements. Used only for `audio_element_id`,
-   *        `substream_id_to_labels`, and `label_to_output_gain`.
+   * \param id_to_config_map Map of Audio Element IDs to
+   * `DownmixingAndReconstructionConfig`, which contains the user-provided
+   * labels and the `substream_id_to_labels` and `label_to_output_gain` from
+   * the corresponding `AudioElementWithData`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<DemixingModule> CreateForDownMixingAndReconstruction(
-      const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements);
+      const absl::flat_hash_map<DecodedUleb128,
+                                DownmixingAndReconstructionConfig>&&
+          id_to_config_map);
 
   /*!\brief Initializes for reconstruction (demixing) the input audio elements.
    *
@@ -210,12 +218,12 @@ class DemixingModule {
    *        to demixing metadata.
    */
   DemixingModule(
-      absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>&&
+      absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>&&
           audio_element_id_to_demixing_metadata)
       : audio_element_id_to_demixing_metadata_(
             std::move(audio_element_id_to_demixing_metadata)) {}
 
-  const absl::flat_hash_map<DecodedUleb128, DemxingMetadataForAudioElementId>
+  const absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
       audio_element_id_to_demixing_metadata_;
 };
 

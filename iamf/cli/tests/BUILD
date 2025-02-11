@@ -173,6 +173,7 @@ cc_test(
         "//iamf/cli:demixing_module",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:channel_label_utils",
+        "//iamf/cli/proto_conversion:downmixing_reconstruction_util",
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
@@ -183,9 +184,9 @@ cc_test(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
     ],
 )
 
