@@ -118,9 +118,10 @@ class DemixingModule {
    * needed for that audio element.
    *
    * \param id_to_config_map Map of Audio Element IDs to
-   * `DownmixingAndReconstructionConfig`, which contains the user-provided
-   * labels and the `substream_id_to_labels` and `label_to_output_gain` from
-   * the corresponding `AudioElementWithData`.
+   *        `DownmixingAndReconstructionConfig`, which contains the
+   *        user-provided labels and the `substream_id_to_labels` and
+   *        `label_to_output_gain` from the corresponding
+   *        `AudioElementWithData`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<DemixingModule> CreateForDownMixingAndReconstruction(
