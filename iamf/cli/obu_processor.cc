@@ -667,6 +667,11 @@ absl::Status ObuProcessor::InitializeForRendering(
   RETURN_IF_NOT_OK(GetIndicesForLayout(mix_presentation_to_render->sub_mixes_,
                                        playback_layout, desired_sub_mix_index,
                                        desired_layout_index));
+  decoding_layout_info_ = {
+      .mix_presentation_id = mix_presentation_to_render->GetMixPresentationId(),
+      .sub_mix_index = desired_sub_mix_index,
+      .layout_index = desired_layout_index,
+  };
   auto forward_on_desired_layout =
       [&sample_processor_factory, mix_presentation_to_render,
        desired_sub_mix_index, desired_layout_index](
@@ -777,7 +782,8 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
 absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     InternalTimestamp start_timestamp,
     const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks) {
+    const std::list<ParameterBlockWithData>& parameter_blocks,
+    absl::Span<const std::vector<int32_t>>& output_rendered_pcm_samples) {
   if (audio_frames.empty()) {
     // Nothing to decode, render, or measure loudness of.
     return absl::OkStatus();
@@ -842,8 +848,15 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
       decoded_labeled_frames_for_temporal_unit, start_timestamp, *end_timestamp,
       parameter_blocks));
 
-  // TODO(b/379122580): Expose the "rendered" samples from the finalizer's
-  //                    `GetPostProcessedSamplesAsSpan`.
+  auto rendered_samples =
+      mix_presentation_finalizer_->GetPostProcessedSamplesAsSpan(
+          decoding_layout_info_.mix_presentation_id,
+          decoding_layout_info_.sub_mix_index,
+          decoding_layout_info_.layout_index);
+  if (!rendered_samples.ok()) {
+    return rendered_samples.status();
+  }
+  output_rendered_pcm_samples = *rendered_samples;
 
   // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits`, then a
   //                    final call to `GetPostProcessedSamplesAsSpan` when there

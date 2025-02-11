@@ -1514,7 +1514,6 @@ TEST(NonStatic, ProcessTemporalUnitObu) {
 }
 
 // TODO(b/381068413): Add more tests for the new iterative API.
-
 void RenderUsingObuProcessorExpectOk(
     absl::string_view output_filename, bool write_wav_header,
     const std::optional<uint8_t> output_file_bit_depth_override,
@@ -1533,10 +1532,12 @@ void RenderUsingObuProcessorExpectOk(
       insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
-
+  absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, audio_frames, parameter_blocks),
+                  /*timestamp=*/0, audio_frames, parameter_blocks,
+                  output_rendered_pcm_samples),
               IsOk());
+  EXPECT_TRUE(output_rendered_pcm_samples.empty());
 }
 
 void RenderOneSampleFoaToStereoWavExpectOk(
@@ -1722,6 +1723,73 @@ void AddOneLayerStereoAudioElement(
       {substream_id}, codec_config_obus, audio_elements);
 }
 
+TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
+                                kFirstSubstreamId, codec_config_obus,
+                                audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  std::list<AudioFrameWithData> audio_frames_with_data;
+  const std::list<ParameterBlockWithData> kNoParameterBlocks = {};
+
+  audio_frames_with_data.push_back(AudioFrameWithData{
+      .obu = AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                           /*audio_frame=*/
+                           {// First left sample.
+                            0x11, 0x33,
+                            // First right sample.
+                            0x22, 0x44,
+                            // Second left sample.
+                            0x55, 0x77,
+                            // Second right sample.
+                            0x66, 0x08,
+                            // Third left sample.
+                            0x99, 0x0a,
+                            // Third right sample.
+                            0xbb, 0x0d}),
+      .start_timestamp = 0,
+      .end_timestamp = 1,
+      .audio_element_with_data =
+          &audio_elements_with_data.at(kFirstAudioElementId),
+  });
+
+  auto bitstream = InitObuSequenceAddSequenceHeader(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+
+  bool insufficient_data = false;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kStereoLayout,
+      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+  absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
+  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
+                  /*timestamp=*/0, audio_frames_with_data, kNoParameterBlocks,
+                  output_rendered_pcm_samples),
+              IsOk());
+
+  // Outer vector is for each tick, inner vector is for each channel.
+  std::vector<std::vector<int32_t>> expected_pcm_samples = {
+      {0x33110000, 0x44220000},
+      {0x77550000, 0x08660000},
+      {0x0a990000, 0x0dbb0000},
+  };
+  EXPECT_EQ(output_rendered_pcm_samples, expected_pcm_samples);
+}
+
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
      RendersPassthroughStereoToWav) {
   const auto output_filename = GetAndCleanupOutputFileName(".wav");
@@ -1831,10 +1899,11 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           .audio_element_with_data =
               &audio_elements_with_data.at(kFirstAudioElementId),
       });
-      EXPECT_THAT(
-          obu_processor->RenderTemporalUnitAndMeasureLoudness(
-              /*timestamp=*/i, audio_frames_with_data, kNoParameterBlocks),
-          IsOk());
+      absl::Span<const std::vector<int32_t>> unused_output_rendered_pcm_samples;
+      EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
+                      /*timestamp=*/i, audio_frames_with_data,
+                      kNoParameterBlocks, unused_output_rendered_pcm_samples),
+                  IsOk());
     }
   }
 
