@@ -67,7 +67,8 @@ absl::Status CopyDMixPMode(DemixingInfoParameterData::DMixPMode obu_dmixp_mode,
 
 /*!\brief Creates a `LebGenerator` based on the input config.
  *
- * \param user_config from a UserMetadata proto.
+ * \param user_config An instance of a `Leb128Generator` proto, from the
+ *        `UserMetadata.TestVectorMetadata` proto.
  * \return `LebGenerator` on success. `nullptr` if the config is invalid.
  */
 std::unique_ptr<LebGenerator> CreateLebGenerator(

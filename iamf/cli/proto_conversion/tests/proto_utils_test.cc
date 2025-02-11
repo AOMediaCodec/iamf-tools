@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/proto_conversion/proto_utils.h"
 
-#include <array>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -24,24 +23,12 @@
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-
-constexpr DecodedUleb128 kCodecConfigId = 21;
-constexpr DecodedUleb128 kAudioElementId = 100;
-constexpr DecodedUleb128 kSecondAudioElementId = 101;
-constexpr DecodedUleb128 kMixPresentationId = 100;
-constexpr DecodedUleb128 kParameterId = 99999;
-constexpr DecodedUleb128 kParameterRate = 48000;
-constexpr DecodedUleb128 kFirstSubstreamId = 31;
-constexpr DecodedUleb128 kSecondSubstreamId = 32;
-constexpr std::array<DecodedUleb128, 1> kZerothOrderAmbisonicsSubstreamId{
-    kFirstSubstreamId};
 
 TEST(CopyDemixingInfoParameterData, Basic) {
   iamf_tools_cli_proto::DemixingInfoParameterData
