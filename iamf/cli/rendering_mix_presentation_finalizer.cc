@@ -805,7 +805,7 @@ RenderingMixPresentationFinalizer::Create(
       if (CanRenderAnyLayout(temp_sub_mix_rendering_metadata)) {
         mix_presentation_id_to_rendering_metadata.emplace(
             mix_presentation_obu.GetMixPresentationId(),
-            std::move(temp_sub_mix_rendering_metadata), );
+            std::move(temp_sub_mix_rendering_metadata));
       }
     }
   }
