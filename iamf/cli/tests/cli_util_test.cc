@@ -28,12 +28,11 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
-#include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
-#include "iamf/common/leb_generator.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -561,7 +560,7 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   SubstreamIdLabelsMap substream_id_labels_map;
   LabelGainMap label_gain_map;
   std::vector<ChannelNumbers> channel_numbers;
-  ASSERT_THAT(AudioElementGenerator::FinalizeScalableChannelLayoutConfig(
+  ASSERT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
                   obu.audio_substream_ids_, two_layer_stereo_config,
                   substream_id_labels_map, label_gain_map, channel_numbers),
               IsOk());

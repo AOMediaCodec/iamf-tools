@@ -44,6 +44,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/obu_processor.h"
+#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -266,7 +267,7 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
 
   AudioElementWithData audio_element = {
       .obu = std::move(obu), .codec_config = &codec_config_iter->second};
-  ASSERT_THAT(AudioElementGenerator::FinalizeAmbisonicsConfig(
+  ASSERT_THAT(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
                   audio_element.obu, audio_element.substream_id_to_labels),
               IsOk());
 
