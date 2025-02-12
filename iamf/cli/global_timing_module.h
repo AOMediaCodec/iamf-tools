@@ -19,7 +19,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 

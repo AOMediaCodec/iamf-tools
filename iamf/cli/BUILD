@@ -175,8 +175,6 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":cli_util",
-        "//iamf/cli/proto:parameter_block_cc_proto",
-        "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
@@ -495,8 +493,6 @@ cc_library(
         ":parameter_block_with_data",
         ":renderer_factory",
         ":sample_processor_base",
-        "//iamf/cli/proto:mix_presentation_cc_proto",
-        "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/renderer:audio_element_renderer_base",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",

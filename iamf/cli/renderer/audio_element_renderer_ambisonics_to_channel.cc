@@ -25,8 +25,6 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/proto/mix_presentation.pb.h"
-#include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/utils/macros.h"
