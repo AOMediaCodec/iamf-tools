@@ -17,6 +17,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

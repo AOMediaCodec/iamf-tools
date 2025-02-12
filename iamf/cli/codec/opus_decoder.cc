@@ -22,7 +22,6 @@
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/opus_utils.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"

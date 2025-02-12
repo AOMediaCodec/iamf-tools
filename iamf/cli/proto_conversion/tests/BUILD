@@ -19,6 +19,8 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
+        "//iamf/cli/proto:audio_frame_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:downmixing_reconstruction_util",
         "//iamf/obu:audio_element",
         "//iamf/obu:obu_header",

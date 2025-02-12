@@ -28,8 +28,6 @@
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/proto/audio_frame.pb.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"

@@ -22,7 +22,6 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "libAACdec/include/aacdecoder_lib.h"

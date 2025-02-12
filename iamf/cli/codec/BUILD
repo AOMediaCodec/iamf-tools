@@ -10,7 +10,6 @@ cc_library(
     deps = [
         ":aac_utils",
         ":decoder_base",
-        "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:sample_processing_utils",
@@ -171,7 +170,6 @@ cc_library(
     deps = [
         ":decoder_base",
         ":opus_utils",
-        "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:sample_processing_utils",

@@ -32,7 +32,6 @@
 #include "absl/strings/string_view.h"
 #include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/codec_config.h"
