@@ -11,13 +11,17 @@
 
 # ADM to IAMF Conversion Tool
 
-This is a C++ implementation of the tool to convert an ADM-BWF file (conformant
-to
-[Recommendation ITU-R BS.2076-2](https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.2076-2-201910-I!!PDF-E.pdf))
-to Immersive Audio Model and Formats (IAMF) textproto file and the associated
-set of wav file(s) to be used as inputs for an IAMF encoder. The tool does not
-handle the ADM-BWF files with <metadata/features> not supported by the IAMF
-specification [v1.0.0-errata](https://aomediacodec.github.io/iamf/v1.0.0-errata.html).
+This is a C++ implementation of a tool to extract metadata and audio from an
+ADM-BWF file (conformant to
+[Recommendation ITU-R BS.2076-2](https://www.itu.int/dms_pubrec/itu-r/rec/bs/R-REC-BS.2076-2-201910-I!!PDF-E.pdf)).
+
+Information is extracted and written to a `UserMetadata` proto file and a set of
+wav file(s). These files can be consumed by the `iamf-tools` encoder to produce
+an Immersive Audio Model and Formats (IAMF) file.
+
+Most users do not need to use this tool directly. ADM conversion is available
+through various command line flags in
+[encoder_main](../../../README.md##using-the-encoder-with-adm-bwf-input).
 
 ## Folder Structure
 
@@ -35,19 +39,27 @@ The description of each directory is as follows:
 
 ### Prerequisites
 
-1.  [Git](https://git-scm.com/).
-2.  [Bazel](https://bazel.build/start).
+See [docs/build_instructions.md](../../../docs/build_instructions.md) for
+further details.
+
+-   Bazelisk: `iamf-tools` uses the Bazel build system, via bazelisk. See
+    [Bazelisk installation instructions](https://bazel.build/install/bazelisk).
+    For further information on Bazel, see
+    [Getting started](https://bazel.build/start).
+-   CMake: required to build some dependencies. See CMake's
+    [Download](https://cmake.org/download/) page to install.
+-   Clang 13+ or GCC 10+ for Linux-like systems or MSVC for Windows.
 
 ### Build the binary
 
 ```
-bazelisk build -c opt app:adm_to_user_metadata_main
+bazelisk build -c opt //iamf/cli/adm_to_user_metadata/app:adm_to_user_metadata_main
 ```
 
 ### Run the binary
 
-Running `bazelisk build` creates the binary file `adm_to_user_metadata_main`. The
-input format required to run the binary is as below:
+Running `bazelisk build` creates the binary file `adm_to_user_metadata_main`.
+The input format required to run the binary is as below:
 
 ```
  ./adm_to_user_metadata_main <options>
@@ -73,11 +85,24 @@ options:
 -   Codec Config OBU: an LPCM codec config is created with sample rate and
     bit-depth determined based on the input file. `number_of_samples_per_frame`
     is determined based on the `--frame_duration_ms` flag.
--   Audio Element OBUs: audio elements are created based on ADM `audioObjects`.
-    Low importance objects are filtered out based on the
-    `--importance_threshold` flag.
+-   Audio Element OBUs:
+    -   When audio elements are a type directly representable in IAMF, they are
+        created based on ADM `audioObjects`.
+    -   When audio elements aren't directly representable in IAMF, they may be
+        folded to third-order ambisonics. See the "Warning" at the end of this
+        section.
+    -   Some types directly representable in IAMF include {stereo, 5.1, 7.1.4,
+        third_order_ambisonics}. One type that is not representable directly in
+        IAMF includes objects.
+    -   Low importance objects are filtered out based on the
+        `--importance_threshold` flag.
 -   Mix Presentation OBUs: mix presentations are generated based on ADM
     `audioProgramme`s.
+
+> [!WARNING]
+>
+> Some ADM conversions are a work in progress and are experimental
+> (b/392958726).
 
 ## License
 
