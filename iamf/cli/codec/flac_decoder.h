@@ -19,8 +19,6 @@
 
 #include "absl/status/status.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
@@ -32,10 +30,10 @@ class FlacDecoder : public DecoderBase {
  public:
   /*!brief Constructor.
    *
-   * \param codec_config_obu Codec Config OBU with initialization settings.
    * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame.
    */
-  FlacDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
+  FlacDecoder(int num_channels, uint32_t num_samples_per_frame);
 
   ~FlacDecoder() override;
 
@@ -155,7 +153,6 @@ class FlacDecoder : public DecoderBase {
  private:
   std::vector<uint8_t> encoded_frame_ = {};
   std::vector<std::vector<int32_t>> decoded_frame_ = {};
-  const FlacDecoderConfig decoder_config_;
   // A pointer to the `libflac` decoder.
   FLAC__StreamDecoder* decoder_ = nullptr;
 };

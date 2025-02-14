@@ -33,7 +33,7 @@ class DecoderBase {
    * \param num_channels Number of channels for this stream.
    * \param num_samples_per_channel Number of samples per channel.
    */
-  DecoderBase(int num_channels, int num_samples_per_channel)
+  DecoderBase(int num_channels, uint32_t num_samples_per_channel)
       : num_channels_(num_channels),
         num_samples_per_channel_(num_samples_per_channel),
         decoded_samples_(num_samples_per_channel_,
@@ -69,7 +69,7 @@ class DecoderBase {
 
  protected:
   const int num_channels_;
-  const int num_samples_per_channel_;
+  const uint32_t num_samples_per_channel_;
 
   // Stores the output decoded frames arranged in (time, sample) axes. That
   // is to say, each inner vector has one sample for per channel and the outer

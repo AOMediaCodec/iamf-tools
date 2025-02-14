@@ -15,8 +15,8 @@
 #include <utility>
 
 #include "absl/container/node_hash_map.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -47,7 +47,8 @@ absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
       decoder = std::make_unique<AacDecoder>(codec_config, num_channels);
       break;
     case kCodecIdFlac:
-      decoder = std::make_unique<FlacDecoder>(codec_config, num_channels);
+      decoder = std::make_unique<FlacDecoder>(
+          num_channels, codec_config.GetNumSamplesPerFrame());
       break;
     default:
       return absl::InvalidArgumentError(absl::StrCat(

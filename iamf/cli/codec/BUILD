@@ -85,8 +85,6 @@ cc_library(
     hdrs = ["flac_decoder.h"],
     deps = [
         ":decoder_base",
-        "//iamf/obu:codec_config",
-        "//iamf/obu/decoder_config:flac_decoder_config",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",

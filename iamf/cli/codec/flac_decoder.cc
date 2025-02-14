@@ -21,8 +21,6 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
@@ -104,12 +102,8 @@ void FlacDecoder::LibFlacErrorCallback(const FLAC__StreamDecoder* /*decoder*/,
   }
 }
 
-FlacDecoder::FlacDecoder(const CodecConfigObu& codec_config_obu,
-                         int num_channels)
-    : DecoderBase(num_channels,
-                  static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
-      decoder_config_(std::get<FlacDecoderConfig>(
-          codec_config_obu.GetCodecConfig().decoder_config)) {}
+FlacDecoder::FlacDecoder(int num_channels, uint32_t num_samples_per_frame)
+    : DecoderBase(num_channels, num_samples_per_frame) {}
 
 FlacDecoder::~FlacDecoder() {
   if (decoder_ != nullptr) {
