@@ -14,10 +14,10 @@
 
 #include <cstdint>
 #include <limits>
-#include <memory>
 #include <optional>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -52,17 +52,6 @@ class ParamDefinition {
   /*!\brief Default destructor.
    */
   virtual ~ParamDefinition() = default;
-
-  friend bool operator==(const ParamDefinition& lhs,
-                         const ParamDefinition& rhs);
-
-  /*!\brief Deep clones a `ParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  virtual std::unique_ptr<ParamDefinition> Clone() {
-    return std::make_unique<ParamDefinition>(*this);
-  };
 
   /*!\brief Gets the number of subblocks.
    *
@@ -130,6 +119,9 @@ class ParamDefinition {
    */
   virtual void Print() const;
 
+  friend bool operator==(const ParamDefinition& lhs,
+                         const ParamDefinition& rhs) = default;
+
   DecodedUleb128 parameter_id_ = 0;
   DecodedUleb128 parameter_rate_ = 0;
   uint8_t param_definition_mode_ = 0;  // 1 bit.
@@ -145,15 +137,6 @@ class ParamDefinition {
    * \param type Type of the specific parameter definition.
    */
   ParamDefinition(ParameterDefinitionType type) : type_(type) {}
-
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  virtual bool EquivalentDerived(const ParamDefinition& /*other*/) const {
-    return true;
-  }
 
  private:
   /*!\brief Whether the subblock durations are included in this object.
@@ -185,20 +168,6 @@ class MixGainParamDefinition : public ParamDefinition {
    */
   ~MixGainParamDefinition() override = default;
 
-  friend bool operator==(const MixGainParamDefinition& lhs,
-                         const MixGainParamDefinition& rhs) {
-    return static_cast<const ParamDefinition&>(lhs) ==
-           static_cast<const ParamDefinition&>(rhs);
-  }
-
-  /*!\brief Deep clones a `MixGainParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  std::unique_ptr<ParamDefinition> Clone() override {
-    return std::make_unique<MixGainParamDefinition>(*this);
-  };
-
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.
@@ -217,19 +186,10 @@ class MixGainParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int16_t default_mix_gain_;
+  friend bool operator==(const MixGainParamDefinition& lhs,
+                         const MixGainParamDefinition& rhs) = default;
 
- private:
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  bool EquivalentDerived(const ParamDefinition& other) const override {
-    const auto& other_mix_gain =
-        dynamic_cast<const MixGainParamDefinition&>(other);
-    return default_mix_gain_ == other_mix_gain.default_mix_gain_;
-  }
+  int16_t default_mix_gain_;
 };
 
 /* !\brief Parameter definition for recon gain.
@@ -249,20 +209,6 @@ class ReconGainParamDefinition : public ParamDefinition {
    */
   ~ReconGainParamDefinition() override = default;
 
-  friend bool operator==(const ReconGainParamDefinition& lhs,
-                         const ReconGainParamDefinition& rhs) {
-    return static_cast<const ParamDefinition&>(lhs) ==
-           static_cast<const ParamDefinition&>(rhs);
-  }
-
-  /*!\brief Deep clones a `ReconGainParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  std::unique_ptr<ParamDefinition> Clone() override {
-    return std::make_unique<ReconGainParamDefinition>(*this);
-  };
-
   /*!\brief Validates and writes to a buffer.
    *
    * \param wb Buffer to write to.
@@ -281,21 +227,12 @@ class ReconGainParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
+  friend bool operator==(const ReconGainParamDefinition& lhs,
+                         const ReconGainParamDefinition& rhs) = default;
+
   /*!\brief ID of the Audio Element OBU that uses this recon gain parameter.
    */
   const uint32_t audio_element_id_;
-
- private:
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  bool EquivalentDerived(const ParamDefinition& other) const override {
-    const auto& other_recon_gain =
-        dynamic_cast<const ReconGainParamDefinition&>(other);
-    return audio_element_id_ == other_recon_gain.audio_element_id_;
-  }
 };
 
 /* !\brief Parameter definition reserved for future use; should be ignored.
@@ -311,20 +248,6 @@ class ExtendedParamDefinition : public ParamDefinition {
   /*!\brief Default destructor.
    */
   ~ExtendedParamDefinition() override = default;
-
-  friend bool operator==(const ExtendedParamDefinition& lhs,
-                         const ExtendedParamDefinition& rhs) {
-    return static_cast<const ParamDefinition&>(lhs) ==
-           static_cast<const ParamDefinition&>(rhs);
-  }
-
-  /*!\brief Deep clones a `ExtendedParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  std::unique_ptr<ParamDefinition> Clone() override {
-    return std::make_unique<ExtendedParamDefinition>(*this);
-  };
 
   /*!\brief Validates and writes a `ExtendedParamDefinition` to a buffer.
    *
@@ -344,25 +267,12 @@ class ExtendedParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
+  friend bool operator==(const ExtendedParamDefinition& lhs,
+                         const ExtendedParamDefinition& rhs) = default;
+
   // Size and vector of the bytes the OBU parser should ignore.
   DecodedUleb128 param_definition_size_ = 0;
   std::vector<uint8_t> param_definition_bytes_ = {};
-
- private:
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  bool EquivalentDerived(const ParamDefinition& other) const override {
-    const auto& other_extended =
-        dynamic_cast<const ExtendedParamDefinition&>(other);
-
-    if (param_definition_size_ != other_extended.param_definition_size_) {
-      return false;
-    }
-    return param_definition_bytes_ == other_extended.param_definition_bytes_;
-  }
 };
 
 struct ChannelNumbers {
@@ -377,8 +287,6 @@ struct ChannelNumbers {
 };
 
 struct PerIdParameterMetadata {
-  ParamDefinition::ParameterDefinitionType param_definition_type;
-
   // Common (base) part of the parameter definition.
   ParamDefinition param_definition;
 

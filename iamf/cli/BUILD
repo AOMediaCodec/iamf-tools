@@ -95,6 +95,7 @@ cc_library(
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_param_definition",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",

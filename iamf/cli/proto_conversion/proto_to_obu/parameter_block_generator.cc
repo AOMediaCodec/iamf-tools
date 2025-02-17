@@ -38,6 +38,7 @@
 #include "iamf/cli/recon_gain_generator.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
@@ -394,7 +395,10 @@ absl::Status GenerateParameterBlockSubblock(
   }
 
   auto& obu_subblock_param_data = obu.subblocks_[subblock_index].param_data;
-  switch (per_id_metadata.param_definition_type) {
+  const auto param_definition_type = per_id_metadata.param_definition.GetType();
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(param_definition_type, "`param_definition_type`."));
+  switch (*param_definition_type) {
     using enum ParamDefinition::ParameterDefinitionType;
     case kParameterDefinitionMixGain: {
       auto mix_gain_parameter_data = std::make_unique<MixGainParameterData>();
@@ -439,9 +443,8 @@ absl::Status GenerateParameterBlockSubblock(
     }
     default:
       // TODO(b/289080630): Support the extension fields here.
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unsupported param definition type= ",
-                       per_id_metadata.param_definition_type));
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Unsupported param definition type= ", *param_definition_type));
   }
 
   return absl::OkStatus();
@@ -581,10 +584,11 @@ absl::Status ParameterBlockGenerator::AddMetadata(
         absl::StrCat("No per-id parameter metadata found for parameter ID= ",
                      parameter_block_metadata.parameter_id()));
   }
-  auto& per_id_metadata =
-      parameter_id_to_metadata_.at(parameter_block_metadata.parameter_id());
-
-  typed_proto_metadata_[per_id_metadata.param_definition_type].push_back(
+  const auto& param_definition_type =
+      per_id_metadata_iter->second.param_definition.GetType();
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(param_definition_type, "`param_definition_type`."));
+  typed_proto_metadata_[*param_definition_type].push_back(
       parameter_block_metadata);
 
   return absl::OkStatus();

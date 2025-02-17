@@ -18,6 +18,7 @@
 #include <list>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -33,6 +34,7 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
@@ -40,6 +42,40 @@
 namespace iamf_tools {
 
 namespace {
+
+typedef std::variant<
+    const MixGainParamDefinition*, const DemixingParamDefinition*,
+    const ReconGainParamDefinition*, const ExtendedParamDefinition*>
+    ConcreteParamDefinition;
+absl::Status InsertParamDefinitionAndCheckEquivalence(
+    const ConcreteParamDefinition param_definition_to_insert,
+    absl::flat_hash_map<DecodedUleb128, ConcreteParamDefinition>&
+        concrete_param_definitions) {
+  const auto parameter_id = std::visit(
+      [](const auto* concrete_param_definition) {
+        return concrete_param_definition->parameter_id_;
+      },
+      param_definition_to_insert);
+  const auto [existing_param_definition_iter, inserted] =
+      concrete_param_definitions.insert(
+          {parameter_id, param_definition_to_insert});
+
+  // Use double dispatch to check equivalence. Note this automatically returns
+  // false when the two variants do not hold the same type of objects.
+  const auto equivalent_to_param_definition_to_insert =
+      [&param_definition_to_insert](const auto* rhs) {
+        return std::visit([&rhs](const auto& lhs) { return (*lhs == *rhs); },
+                          param_definition_to_insert);
+      };
+
+  if (!inserted && !std::visit(equivalent_to_param_definition_to_insert,
+                               existing_param_definition_iter->second)) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Unequivalent `param_definition_mode` for id = ", parameter_id));
+  }
+
+  return absl::OkStatus();
+};
 
 absl::Status GetPerIdMetadata(
     const DecodedUleb128 parameter_id,
@@ -50,12 +86,11 @@ absl::Status GetPerIdMetadata(
   RETURN_IF_NOT_OK(ValidateHasValue(param_definition->GetType(),
                                     "`param_definition_type`."));
   // Initialize common fields.
-  per_id_metadata.param_definition_type = param_definition->GetType().value();
   per_id_metadata.param_definition = *param_definition;
 
   // Return early if this is not a recon gain parameter and the rest of the
   // fields are not present.
-  if (per_id_metadata.param_definition_type !=
+  if (per_id_metadata.param_definition.GetType() !=
       ParamDefinition::kParameterDefinitionReconGain) {
     return absl::OkStatus();
   }
@@ -122,18 +157,11 @@ absl::Status CollectAndValidateParamDefinitions(
     const std::list<MixPresentationObu>& mix_presentation_obus,
     absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
         param_definitions) {
-  auto insert_and_check_equivalence =
-      [&](const ParamDefinition* param_definition) -> absl::Status {
-    const auto parameter_id = param_definition->parameter_id_;
-    const auto [iter, inserted] =
-        param_definitions.insert({parameter_id, param_definition});
-    if (!inserted && *iter->second != *param_definition) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Inequivalent `param_definition_mode` for id = ", parameter_id));
-    }
-
-    return absl::OkStatus();
-  };
+  // A temporary map that stores param definitions in their original concrete
+  // types, which will later be transferred to the output `param_definitions`
+  // that stores only the base pointers.
+  absl::flat_hash_map<DecodedUleb128, ConcreteParamDefinition>
+      concrete_param_definitions;
 
   // Collect all `param_definition`s in Audio Element and Mix Presentation
   // OBUs.
@@ -141,18 +169,20 @@ absl::Status CollectAndValidateParamDefinitions(
        audio_elements) {
     for (const auto& audio_element_param :
          audio_element.obu.audio_element_params_) {
-      const auto param_definition_type =
-          audio_element_param.param_definition_type;
+      const auto param_definition_type = audio_element_param.GetType();
       switch (param_definition_type) {
         case ParamDefinition::kParameterDefinitionDemixing:
-        case ParamDefinition::kParameterDefinitionReconGain:
-          RETURN_IF_NOT_OK(insert_and_check_equivalence(
-              audio_element_param.param_definition.get()));
+          RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
+              &std::get<DemixingParamDefinition>(
+                  audio_element_param.param_definition),
+              concrete_param_definitions));
           break;
-        case ParamDefinition::kParameterDefinitionMixGain:
-          return absl::InvalidArgumentError(absl::StrCat(
-              "Mix gain parameters are not allowed in an audio element= ",
-              audio_element_id_for_debugging));
+        case ParamDefinition::kParameterDefinitionReconGain:
+          RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
+              &std::get<ReconGainParamDefinition>(
+                  audio_element_param.param_definition),
+              concrete_param_definitions));
+          break;
         default:
           LOG(WARNING) << "Ignoring parameter definition of type= "
                        << param_definition_type << " in audio element= "
@@ -165,11 +195,22 @@ absl::Status CollectAndValidateParamDefinitions(
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
       for (const auto& audio_element : sub_mix.audio_elements) {
-        RETURN_IF_NOT_OK(
-            insert_and_check_equivalence(&audio_element.element_mix_gain));
+        RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
+            &audio_element.element_mix_gain, concrete_param_definitions));
       }
-      RETURN_IF_NOT_OK(insert_and_check_equivalence(&sub_mix.output_mix_gain));
+      RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
+          &sub_mix.output_mix_gain, concrete_param_definitions));
     }
+  }
+
+  // Now cast to base pointers and store in the output `param_definitions`.
+  const auto cast_to_base_pointer = [](const auto* concrete_param_definition) {
+    return static_cast<const ParamDefinition*>(concrete_param_definition);
+  };
+  for (const auto& [parameter_id, concrete_param_definition] :
+       concrete_param_definitions) {
+    param_definitions[parameter_id] =
+        std::visit(cast_to_base_pointer, concrete_param_definition);
   }
 
   return absl::OkStatus();

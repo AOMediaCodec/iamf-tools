@@ -180,6 +180,7 @@ cc_library(
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",

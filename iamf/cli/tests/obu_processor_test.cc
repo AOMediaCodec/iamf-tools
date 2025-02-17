@@ -1247,7 +1247,6 @@ TEST(ProcessTemporalUnitObusTest,
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
   parameter_id_to_metadata[kParameterBlockId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = param_definition,
   };
   ParameterBlockObu parameter_block_obu(
@@ -1567,7 +1566,6 @@ void RenderOneSampleFoaToStereoWavExpectOk(
   });
   // Create a single parameter block consistent with the mix presentation OBU.
   PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition =
           mix_presentation_obus.front().sub_mixes_[0].output_mix_gain};
   std::list<ParameterBlockWithData> parameter_blocks_with_data = {};

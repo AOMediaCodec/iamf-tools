@@ -12,7 +12,6 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -125,68 +124,64 @@ absl::Status GenerateParameterDefinitions(
 
   audio_element_obu.InitializeParams(audio_element_metadata.num_parameters());
   for (int i = 0; i < audio_element_metadata.num_parameters(); ++i) {
-    AudioElementParam& audio_element_param =
-        audio_element_obu.audio_element_params_[i];
     const auto& user_data_parameter =
         audio_element_metadata.audio_element_params(i);
 
+    ParamDefinition::ParameterDefinitionType copied_param_definition_type;
     RETURN_IF_NOT_OK(CopyAudioElementParamDefinitionType(
-        user_data_parameter, audio_element_param.param_definition_type));
-    switch (audio_element_param.param_definition_type) {
+        user_data_parameter, copied_param_definition_type));
+    switch (copied_param_definition_type) {
       using enum ParamDefinition::ParameterDefinitionType;
       case kParameterDefinitionDemixing: {
-        auto demixing_param_definition =
-            std::make_unique<DemixingParamDefinition>();
+        DemixingParamDefinition demixing_param_definition;
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.demixing_param().param_definition(),
-            *demixing_param_definition));
+            demixing_param_definition));
         // Copy the `DemixingInfoParameterData` in the IAMF spec.
         RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
             user_data_parameter.demixing_param()
                 .default_demixing_info_parameter_data(),
-            demixing_param_definition->default_demixing_info_parameter_data_));
+            demixing_param_definition.default_demixing_info_parameter_data_));
         // Copy the extension portion of `DefaultDemixingInfoParameterData` in
         // the IAMF spec.
         RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
             "DemixingParamDefinition.default_w",
             user_data_parameter.demixing_param().default_w(),
-            demixing_param_definition->default_demixing_info_parameter_data_
+            demixing_param_definition.default_demixing_info_parameter_data_
                 .default_w));
         RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
             "DemixingParamDefinition.reserved",
             user_data_parameter.demixing_param().reserved(),
-            demixing_param_definition->default_demixing_info_parameter_data_
+            demixing_param_definition.default_demixing_info_parameter_data_
                 .reserved_for_future_use));
-        if (demixing_param_definition->duration_ !=
+        if (demixing_param_definition.duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(
               StrCat("Demixing parameter duration= ",
-                     demixing_param_definition->duration_,
+                     demixing_param_definition.duration_,
                      " is inconsistent with num_samples_per_frame=",
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
-
-        audio_element_param.param_definition =
-            std::move(demixing_param_definition);
+        audio_element_obu.audio_element_params_.emplace_back(
+            demixing_param_definition);
         break;
       }
       case kParameterDefinitionReconGain: {
-        auto recon_gain_param_definition =
-            std::make_unique<ReconGainParamDefinition>(
-                audio_element_obu.GetAudioElementId());
+        ReconGainParamDefinition recon_gain_param_definition(
+            audio_element_obu.GetAudioElementId());
         RETURN_IF_NOT_OK(CopyParamDefinition(
             user_data_parameter.recon_gain_param().param_definition(),
-            *recon_gain_param_definition));
-        if (recon_gain_param_definition->duration_ !=
+            recon_gain_param_definition));
+        if (recon_gain_param_definition.duration_ !=
             codec_config_obu.GetCodecConfig().num_samples_per_frame) {
           return InvalidArgumentError(
               StrCat("Recon gain parameter duration= ",
-                     recon_gain_param_definition->duration_,
+                     recon_gain_param_definition.duration_,
                      " is inconsistent with num_samples_per_frame=",
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
-        audio_element_param.param_definition =
-            std::move(recon_gain_param_definition);
+        audio_element_obu.audio_element_params_.emplace_back(
+            recon_gain_param_definition);
         break;
       }
       case kParameterDefinitionMixGain:
@@ -195,22 +190,20 @@ absl::Status GenerateParameterDefinitions(
       default: {
         const auto& user_param_definition =
             user_data_parameter.param_definition_extension();
-        auto metadata_param_definition =
-            std::make_unique<ExtendedParamDefinition>(
-                audio_element_param.param_definition_type);
+        ExtendedParamDefinition extended_param_definition(
+            copied_param_definition_type);
         // Copy the extension bytes.
-        metadata_param_definition->param_definition_size_ =
+        extended_param_definition.param_definition_size_ =
             user_param_definition.param_definition_size();
-        metadata_param_definition->param_definition_bytes_.resize(
+        extended_param_definition.param_definition_bytes_.resize(
             user_param_definition.param_definition_size());
         RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
             "param_definition_bytes",
             absl::MakeConstSpan(user_param_definition.param_definition_bytes()),
-            absl::MakeSpan(
-                metadata_param_definition->param_definition_bytes_)));
+            absl::MakeSpan(extended_param_definition.param_definition_bytes_)));
 
-        audio_element_param.param_definition =
-            std::move(metadata_param_definition);
+        audio_element_obu.audio_element_params_.emplace_back(
+            extended_param_definition);
       } break;
     }
   }
@@ -252,7 +245,8 @@ absl::Status ValidateReconGainDefined(
   bool recon_gain_defined = false;
   for (const auto& audio_element_param :
        audio_element_obu.audio_element_params_) {
-    if (audio_element_param.param_definition_type ==
+    const auto param_definition_type = audio_element_param.GetType();
+    if (param_definition_type ==
         ParamDefinition::kParameterDefinitionReconGain) {
       recon_gain_defined = true;
       break;

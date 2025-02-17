@@ -1040,7 +1040,6 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
 
   PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition =
           obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
   std::list<ParameterBlockWithData> parameter_blocks;
@@ -1063,7 +1062,6 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
 
   PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition =
           obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
   std::list<ParameterBlockWithData> parameter_blocks;
@@ -1099,7 +1097,6 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
 
   PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition =
           obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
   std::list<ParameterBlockWithData> parameter_blocks;

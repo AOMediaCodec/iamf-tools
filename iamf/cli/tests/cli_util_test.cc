@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <list>
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -455,28 +454,6 @@ TEST(CollectAndValidateParamDefinitions,
 }
 
 TEST(CollectAndValidateParamDefinitions,
-     IsInvalidWhenMixGainParamDefinitionIsPresentInAudioElement) {
-  // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
-  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
-  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kAudioElementId, kCodecConfigId, kZerothOrderAmbisonicsSubstreamId,
-      input_codec_configs, audio_elements);
-  auto& audio_element = audio_elements.at(kAudioElementId);
-  audio_element.obu.InitializeParams(1);
-  audio_element.obu.audio_element_params_[0] = AudioElementParam{
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
-      .param_definition = std::make_unique<MixGainParamDefinition>()};
-
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
-  EXPECT_FALSE(CollectAndValidateParamDefinitions(
-                   audio_elements, kNoMixPresentationObus, result)
-                   .ok());
-}
-
-TEST(CollectAndValidateParamDefinitions,
      DoesNotCollectParamDefinitionsFromExtensionParamDefinitions) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
@@ -491,11 +468,8 @@ TEST(CollectAndValidateParamDefinitions,
   // to determine the ID to store it or to use further processing.
   auto& audio_element = audio_elements.at(kAudioElementId);
   audio_element.obu.InitializeParams(1);
-  audio_element.obu.audio_element_params_[0] = AudioElementParam{
-      .param_definition_type =
-          ParamDefinition::kParameterDefinitionReservedStart,
-      .param_definition = std::make_unique<ExtendedParamDefinition>(
-          ParamDefinition::kParameterDefinitionReservedStart)};
+  audio_element.obu.audio_element_params_.emplace_back(ExtendedParamDefinition(
+      ParamDefinition::kParameterDefinitionReservedStart));
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(
@@ -520,8 +494,6 @@ TEST(GenerateParamIdToMetadataMapTest, MixGainParamDefinition) {
   EXPECT_EQ(param_id_to_metadata_map->size(), 1);
   auto iter = param_id_to_metadata_map->find(kParameterId);
   EXPECT_NE(iter, param_id_to_metadata_map->end());
-  EXPECT_EQ(iter->second.param_definition_type,
-            ParamDefinition::kParameterDefinitionMixGain);
   EXPECT_EQ(iter->second.param_definition, param_definition);
 }
 
@@ -585,8 +557,6 @@ TEST(GenerateParamIdToMetadataMapTest, ReconGainParamDefinition) {
   EXPECT_EQ(param_id_to_metadata_map->size(), 1);
   auto param_iter = param_id_to_metadata_map->find(kParameterId);
   EXPECT_NE(param_iter, param_id_to_metadata_map->end());
-  EXPECT_EQ(param_iter->second.param_definition_type,
-            ParamDefinition::kParameterDefinitionReconGain);
   EXPECT_EQ(param_iter->second.param_definition, param_definition);
   EXPECT_EQ(param_iter->second.audio_element_id, kAudioElementId);
   EXPECT_EQ(param_iter->second.num_layers, 2);

@@ -12,7 +12,6 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
 
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -656,9 +655,7 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
   expected_default_demixing_info_parameter_data.reserved_for_future_use = 12;
 
   const AudioElementParam kExpectedAudioElementParam = {
-      ParamDefinition::kParameterDefinitionDemixing,
-      std::make_unique<DemixingParamDefinition>(
-          expected_demixing_param_definition)};
+      expected_demixing_param_definition};
 
   // Generate and validate the parameter-related information matches expected
   // results.
@@ -739,9 +736,7 @@ TEST_F(AudioElementGeneratorTest, GeneratesReconGainParameterDefinition) {
   expected_recon_gain_param_definition.reserved_ = 10;
 
   const AudioElementParam kExpectedAudioElementParam = {
-      ParamDefinition::kParameterDefinitionReconGain,
-      std::make_unique<ReconGainParamDefinition>(
-          expected_recon_gain_param_definition)};
+      expected_recon_gain_param_definition};
 
   // Generate and validate the parameter-related information matches expected
   // results.

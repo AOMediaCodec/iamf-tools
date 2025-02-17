@@ -14,15 +14,16 @@
 
 #include <cstdint>
 #include <limits>
-#include <memory>
 #include <optional>
 #include <variant>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
@@ -33,13 +34,7 @@ namespace iamf_tools {
 /*!\brief One of the parameters associated with an Audio Element OBU. */
 struct AudioElementParam {
   friend bool operator==(const AudioElementParam& lhs,
-                         const AudioElementParam& rhs) {
-    if (lhs.param_definition_type != rhs.param_definition_type) {
-      return false;
-    }
-    // Compare the underlying `ParamDefinition` data by value.
-    return *lhs.param_definition == *rhs.param_definition;
-  }
+                         const AudioElementParam& rhs) = default;
 
   /*!\brief Reads from a buffer and validates the resulting output.
    *
@@ -48,11 +43,27 @@ struct AudioElementParam {
    */
   absl::Status ReadAndValidate(uint32_t audio_element_id, ReadBitBuffer& rb);
 
-  // Serialized to a ULEB128.
-  ParamDefinition::ParameterDefinitionType param_definition_type;
+  // One of the parameter definition subclasses allowed in an Audio Element.
+  std::variant<DemixingParamDefinition, ReconGainParamDefinition,
+               ExtendedParamDefinition>
+      param_definition;
 
-  // Actual sub-class stored depends on `param_definition_type`.
-  std::unique_ptr<ParamDefinition> param_definition;
+  /*!\brief Gets the actual type of parameter definition.
+   *
+   * \return Type of the stored parameter definition.
+   */
+  ParamDefinition::ParameterDefinitionType GetType() const {
+    return std::visit(
+        [](const auto& concrete_param_definition) {
+          const auto param_definition_type =
+              concrete_param_definition.GetType();
+
+          // All alternatives have well-defined types.
+          CHECK(param_definition_type.has_value());
+          return *param_definition_type;
+        },
+        param_definition);
+  }
 };
 
 /*!\brief An element of the `ScalableChannelLayoutConfig` vector.
@@ -304,12 +315,8 @@ class AudioElementObu : public ObuBase {
   static absl::StatusOr<AudioElementObu> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb);
 
-  /*!\brief Deep clones an `AudioElementObu`.
-   *
-   * \param other `AudioElementObu` to clone.
-   * \return A deep clone of `other`.
-   */
-  static AudioElementObu Clone(const AudioElementObu& other);
+  /*!\brief Copy constructor.*/
+  AudioElementObu(const AudioElementObu& other) = default;
 
   /*!\brief Move constructor.*/
   AudioElementObu(AudioElementObu&& other) = default;

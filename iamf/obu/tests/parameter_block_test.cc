@@ -74,7 +74,6 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
   per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
@@ -133,7 +132,6 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
   per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
@@ -193,7 +191,6 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
   auto& param_definition = per_id_metadata[kParameterId].param_definition;
@@ -262,7 +259,6 @@ TEST(ParameterBlockObu,
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
   per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
@@ -295,7 +291,6 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresPerIdParameterMetadata) {
       1024, absl::MakeConstSpan(source_data));
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionMixGain,
       .param_definition = MixGainParamDefinition(),
   };
   per_id_metadata[kParameterId].param_definition.parameter_id_ = kParameterId;
@@ -329,7 +324,6 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
   // Usually metadata would live in the descriptor OBUs.
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata> per_id_metadata;
   per_id_metadata[kParameterId] = {
-      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
       .param_definition = DemixingParamDefinition(),
   };
   auto& param_definition = per_id_metadata[kParameterId].param_definition;
@@ -425,7 +419,6 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // Presentation OBU and use that metadata. For testing here the metadata is
     // initialized based on `metadata_args_`.
     ASSERT_TRUE(metadata_.param_definition.GetType().has_value());
-    metadata_.param_definition_type = *metadata_.param_definition.GetType();
     metadata_.param_definition.parameter_id_ = parameter_id_;
     metadata_.param_definition.parameter_rate_ = metadata_args_.parameter_rate;
     metadata_.param_definition.param_definition_mode_ =

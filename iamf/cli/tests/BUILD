@@ -57,36 +57,6 @@ cc_library(
     ],
 )
 
-cc_library(
-    name = "obu_with_data_generator_tests",
-    testonly = True,
-    srcs = ["obu_with_data_generator_tests.cc"],
-    deps = [
-        ":cli_test_utils",
-        "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:channel_label",
-        "//iamf/cli:global_timing_module",
-        "//iamf/cli:obu_with_data_generator",
-        "//iamf/cli:parameter_block_with_data",
-        "//iamf/cli:parameters_manager",
-        "//iamf/obu:audio_element",
-        "//iamf/obu:audio_frame",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_param_definition",
-        "//iamf/obu:obu_header",
-        "//iamf/obu:param_definitions",
-        "//iamf/obu:parameter_block",
-        "//iamf/obu:parameter_data",
-        "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:node_hash_map",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_googletest//:gtest",
-    ],
-)
-
 cc_test(
     name = "audio_frame_decoder_test",
     srcs = ["audio_frame_decoder_test.cc"],
@@ -357,6 +327,35 @@ cc_test(
 )
 
 cc_test(
+    name = "obu_with_data_generator_test",
+    srcs = ["obu_with_data_generator_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:global_timing_module",
+        "//iamf/cli:obu_with_data_generator",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:parameters_manager",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_param_definition",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:node_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "parameter_block_partitioner_test",
     size = "small",
     srcs = ["parameter_block_partitioner_test.cc"],
@@ -382,6 +381,7 @@ cc_test(
         "//iamf/cli:parameters_manager",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_param_definition",
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",

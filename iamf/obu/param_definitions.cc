@@ -64,56 +64,6 @@ absl::Status ValidateSpecificParamDefinition(
 
 }  // namespace
 
-bool operator==(const ParamDefinition& lhs, const ParamDefinition& rhs) {
-  if (lhs.type_ != rhs.type_) {
-    return false;
-  }
-  if (!lhs.type_.has_value()) {
-    return true;
-  }
-  switch (*lhs.type_) {
-    using enum ParamDefinition::ParameterDefinitionType;
-    case kParameterDefinitionMixGain:
-    case kParameterDefinitionDemixing:
-    case kParameterDefinitionReconGain:
-      if (!lhs.EquivalentDerived(rhs)) {
-        return false;
-      }
-      break;
-    case kParameterDefinitionReservedStart:
-    case kParameterDefinitionReservedEnd:
-      // Other fields are virtual. Only compare the derived "extended" bytes.
-      return lhs.EquivalentDerived(rhs);
-  }
-
-  // First check always-present fields.
-  if (lhs.param_definition_mode_ != rhs.param_definition_mode_) {
-    return false;
-  }
-
-  if (lhs.param_definition_mode_ == 1) {
-    // Equivalent. We can filter out below irrelevant fields.
-    return true;
-  }
-
-  if (lhs.duration_ != rhs.duration_ ||
-      lhs.constant_subblock_duration_ != rhs.constant_subblock_duration_) {
-    return false;
-  }
-
-  if (lhs.constant_subblock_duration_ != 0) {
-    // Equivalent. We can filter out below irrelevant fields.
-    return true;
-  }
-
-  if (lhs.num_subblocks_ != rhs.num_subblocks_ ||
-      lhs.subblock_durations_ != rhs.subblock_durations_) {
-    return false;
-  }
-
-  return true;
-}
-
 DecodedUleb128 ParamDefinition::GetNumSubblocks() const {
   return num_subblocks_;
 }
@@ -202,6 +152,8 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 }
 
 void ParamDefinition::Print() const {
+  LOG(INFO) << "  parameter_type= "
+            << (type_.has_value() ? absl::StrCat(*type_) : "NONE");
   LOG(INFO) << "  parameter_id= " << parameter_id_;
   LOG(INFO) << "  parameter_rate= " << parameter_rate_;
   LOG(INFO) << "  param_definition_mode= "

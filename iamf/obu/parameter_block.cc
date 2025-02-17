@@ -71,7 +71,7 @@ absl::Status ParameterSubblock::Write(
     RETURN_IF_NOT_OK(wb.WriteUleb128(*subblock_duration));
   }
 
-  // Write the specific parameter data depending on `param_definition_type`.
+  // Write the specific parameter data depending on the specific type.
   RETURN_IF_NOT_OK(param_data->Write(per_id_metadata, wb));
 
   return absl::OkStatus();
@@ -253,7 +253,7 @@ absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
 
 absl::Status ParameterBlockObu::GetLinearMixGain(
     InternalTimestamp obu_relative_time, float& linear_mix_gain) const {
-  if (metadata_.param_definition_type !=
+  if (metadata_.param_definition.GetType() !=
       ParamDefinition::kParameterDefinitionMixGain) {
     return absl::InvalidArgumentError("Expected Mix Gain Parameter Definition");
   }
@@ -329,8 +329,6 @@ void ParameterBlockObu::PrintObu() const {
   }
 
   LOG(INFO) << "Parameter Block OBU:";
-  LOG(INFO) << "  // param_definition_type= "
-            << metadata_.param_definition_type;
   LOG(INFO) << "  // param_definition:";
   metadata_.param_definition.Print();
 

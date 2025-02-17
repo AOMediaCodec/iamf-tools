@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
@@ -97,28 +98,30 @@ absl::Status ParametersManager::Initialize() {
     const DemixingParamDefinition* demixing_param_definition = nullptr;
     const ReconGainParamDefinition* recon_gain_param_definition = nullptr;
     for (const auto& param : audio_element.obu.audio_element_params_) {
-      if (param.param_definition_type ==
+      const auto param_definition_type = param.GetType();
+      if (param_definition_type ==
           ParamDefinition::kParameterDefinitionDemixing) {
         if (demixing_param_definition != nullptr) {
           return absl::InvalidArgumentError(
               "Not allowed to have multiple demixing parameters in a "
               "single Audio Element.");
         }
-
         demixing_param_definition =
-            static_cast<DemixingParamDefinition*>(param.param_definition.get());
+            std::get_if<DemixingParamDefinition>(&param.param_definition);
+        CHECK_NE(demixing_param_definition, nullptr);
 
         // Continue searching. Only to validate that there is at most one
         // `DemixingParamDefinition`.
-      } else if (param.param_definition_type ==
+      } else if (param_definition_type ==
                  ParamDefinition::kParameterDefinitionReconGain) {
         if (recon_gain_param_definition != nullptr) {
           return absl::InvalidArgumentError(
               "Not allowed to have multiple recon gain parameters in a "
               "single Audio Element.");
         }
-        recon_gain_param_definition = static_cast<ReconGainParamDefinition*>(
-            param.param_definition.get());
+        recon_gain_param_definition =
+            std::get_if<ReconGainParamDefinition>(&param.param_definition);
+        CHECK_NE(recon_gain_param_definition, nullptr);
       }
     }
 

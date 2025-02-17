@@ -10,6 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
+#include "iamf/cli/obu_with_data_generator.h"
+
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -29,7 +31,6 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/global_timing_module.h"
-#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -244,10 +245,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
     param_definition.default_demixing_info_parameter_data_.dmixp_mode =
         dmixp_mode;
     param_definition.default_demixing_info_parameter_data_.default_w = 0;
-    AudioElementParam param = {
-        .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
-        .param_definition =
-            std::make_unique<DemixingParamDefinition>(param_definition)};
+    AudioElementParam param = {.param_definition = param_definition};
     AddAudioParam(parameter_id,
                   DemixingParamDefinition::kParameterDefinitionDemixing,
                   std::move(param), param_definition);
@@ -258,10 +256,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
         ReconGainParamDefinition(kFirstAudioElementId);
     FillCommonParamDefinition(parameter_id, param_definition);
 
-    AudioElementParam param = {
-        .param_definition_type = ParamDefinition::kParameterDefinitionReconGain,
-        .param_definition =
-            std::make_unique<ReconGainParamDefinition>(param_definition)};
+    AudioElementParam param = {.param_definition = param_definition};
     AddAudioParam(parameter_id,
                   DemixingParamDefinition::kParameterDefinitionReconGain,
                   std::move(param), param_definition);
@@ -388,7 +383,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
       }
       auto param_definition_type =
           parameter_id_to_metadata_.at(parameter_block.obu->parameter_id_)
-              .param_definition_type;
+              .param_definition.GetType();
       if (param_definition_type ==
           ParamDefinition::kParameterDefinitionDemixing) {
         parameters_manager_->AddDemixingParameterBlock(&parameter_block);
@@ -488,8 +483,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
 
     // Create per-ID metadata for this parameter.
     parameter_id_to_metadata_[parameter_id] =
-        PerIdParameterMetadata{.param_definition_type = param_definition_type,
-                               .param_definition = param_definition};
+        PerIdParameterMetadata{.param_definition = param_definition};
     param_definitions_.emplace(
         parameter_id,
         &parameter_id_to_metadata_.at(parameter_id).param_definition);

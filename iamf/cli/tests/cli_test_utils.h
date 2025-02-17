@@ -178,8 +178,7 @@ void AddMixPresentationObuWithAudioElementIds(
 void AddParamDefinitionWithMode0AndOneSubblock(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
     DecodedUleb128 duration,
-    absl::flat_hash_map<DecodedUleb128, std::unique_ptr<ParamDefinition>>&
-        param_definitions);
+    absl::flat_hash_map<DecodedUleb128, ParamDefinition>& param_definitions);
 
 /*!\brief Adds a demixing parameter definition to an Audio Element OBU.
  *

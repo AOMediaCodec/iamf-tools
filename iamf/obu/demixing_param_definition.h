@@ -12,8 +12,6 @@
 #ifndef OBU_DEMIXING_PARAM_DEFINITION_H_
 #define OBU_DEMIXING_PARAM_DEFINITION_H_
 
-#include <memory>
-
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -35,18 +33,7 @@ class DemixingParamDefinition : public ParamDefinition {
   ~DemixingParamDefinition() override = default;
 
   friend bool operator==(const DemixingParamDefinition& lhs,
-                         const DemixingParamDefinition& rhs) {
-    return static_cast<const ParamDefinition&>(lhs) ==
-           static_cast<const ParamDefinition&>(rhs);
-  }
-
-  /*!\brief Deep clones a `DemixingParamDefinition`.
-   *
-   * \return A deep clone of this param definition.
-   */
-  std::unique_ptr<ParamDefinition> Clone() override {
-    return std::make_unique<DemixingParamDefinition>(*this);
-  };
+                         const DemixingParamDefinition& rhs) = default;
 
   /*!\brief Validates and writes to a buffer.
    *
@@ -67,19 +54,6 @@ class DemixingParamDefinition : public ParamDefinition {
   void Print() const override;
 
   DefaultDemixingInfoParameterData default_demixing_info_parameter_data_;
-
- private:
-  /*!\brief Validates the specific `ParamDefinition`s are equivalent.
-   *
-   * \param other `ParamDefinition` to compare.
-   * \return `true` if equivalent. `false` otherwise.
-   */
-  bool EquivalentDerived(const ParamDefinition& other) const override {
-    const auto& other_demixing =
-        dynamic_cast<const DemixingParamDefinition&>(other);
-    return default_demixing_info_parameter_data_ ==
-           other_demixing.default_demixing_info_parameter_data_;
-  }
 };
 
 }  // namespace iamf_tools

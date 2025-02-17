@@ -158,9 +158,8 @@ PerIdParameterMetadata CreatePerIdMetadataForDemixing(
   expected_demixing_param_definition.constant_subblock_duration_ = 8;
   expected_demixing_param_definition.reserved_ = 10;
 
-  return PerIdParameterMetadata{
-      .param_definition_type = ParamDefinition::kParameterDefinitionDemixing,
-      .param_definition = expected_demixing_param_definition};
+  return PerIdParameterMetadata{.param_definition =
+                                    expected_demixing_param_definition};
 }
 
 TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
