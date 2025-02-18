@@ -37,6 +37,11 @@ proto_library(
 )
 
 proto_library(
+    name = "encoder_control_metadata_proto",
+    srcs = ["encoder_control_metadata.proto"],
+)
+
+proto_library(
     name = "ia_sequence_header_proto",
     srcs = ["ia_sequence_header.proto"],
     deps = [":obu_header_proto"],
@@ -94,6 +99,7 @@ proto_library(
         ":audio_element_proto",
         ":audio_frame_proto",
         ":codec_config_proto",
+        ":encoder_control_metadata_proto",
         ":ia_sequence_header_proto",
         ":mix_presentation_proto",
         ":parameter_block_proto",
@@ -120,6 +126,11 @@ cc_proto_library(
 cc_proto_library(
     name = "codec_config_cc_proto",
     deps = [":codec_config_proto"],
+)
+
+cc_proto_library(
+    name = "encoder_control_metadata_cc_proto",
+    deps = [":encoder_control_metadata_proto"],
 )
 
 cc_proto_library(

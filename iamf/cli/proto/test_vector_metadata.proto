@@ -27,6 +27,8 @@ message Leb128Generator {
   optional int32 fixed_size = 2 [default = 5];
 }
 
+// Metadata to describe and annotate test vectors. For historical reasons, some
+// of the fields here are used to control encoder behavior.
 message TestVectorMetadata {
   reserved 5;
 
@@ -43,7 +45,7 @@ message TestVectorMetadata {
   // `true` when a compliant decoder would decode at least one valid mix. Some
   // other mixes may be invalid or use reserved values which may be ignored.
   optional bool is_valid_to_decode = 14 [default = true];
-  optional string mp4_fixed_timestamp = 4;
+
   // Tags to identify the repository this test vector belongs to. A repository
   // could be a git branch or it could refer to some other way to organize a
   // test suite.
@@ -58,13 +60,31 @@ message TestVectorMetadata {
   repeated string test_repository_tags = 15;
   repeated string primary_tested_spec_sections = 6;
   optional string base_test = 7;
+
+  // TODO(b/384960137): Migrate `mp4_fixed_timestamp`, `ms_per_fragment`,
+  //                    `override_computed_recon_gains`,
+  //                    `validate_user_loudness`,
+  //                    `output_wav_file_bit_depth_override`,
+  //                    `partition_mix_gain_parameter_blocks`, `leb_generator`
+  //                    to `EncoderControlMetadata`.
+
+  // MP4 controls.
+  optional string mp4_fixed_timestamp = 4;
   optional int32 ms_per_fragment = 8 [default = 10000];
+
+  // TODO(b/309461674): Deprecate and add a mode in `EncoderControlMetadata` to
+  //                    use the computed gains, without checking the
+  //                    user-provided gains.
+  // `false` to check that user-provided recon gains match the computed gains.
+  // `true` to override the computed recon gains with the user-provided gains.
   optional bool override_computed_recon_gains = 9 [default = false];
 
   // Controls whether to validate the user-provided loudness against the
   // computed loudness.
   optional bool validate_user_loudness = 13 [default = false];
 
+  // TODO(b/390392510): Migrate to `EncoderControlMetadata` and update to limit
+  //                    the possible values.
   // An override to control the output bit-depth of the output `rendered` wav
   // file. Or 0, to use a default bit-depth depending on the bitstream. The
   // value may be clamped to a supported-bit depth.
