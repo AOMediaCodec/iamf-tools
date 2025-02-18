@@ -101,8 +101,8 @@ class AudioElementObuTestBase : public ObuTestBase {
             .audio_element_params = {},
         }) {
     required_args_.audio_element_params.emplace_back(
-        CreateDemixingInfoParamDefinition(
-            DemixingInfoParameterData::kDMixPMode1));
+        AudioElementParam{CreateDemixingInfoParamDefinition(
+            DemixingInfoParameterData::kDMixPMode1)});
   }
 
   ~AudioElementObuTestBase() = default;
@@ -137,7 +137,7 @@ class AudioElementObuTestBase : public ObuTestBase {
     obu_->InitializeParams(required_args_.num_parameters);
     for (auto& audio_element_param : required_args_.audio_element_params) {
       obu_->audio_element_params_.emplace_back(
-          audio_element_param.param_definition);
+          AudioElementParam{audio_element_param.param_definition});
     }
   }
 };
@@ -341,8 +341,9 @@ TEST_F(AudioElementScalableChannelTest,
 
 TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
   required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(ExtendedParamDefinition(
-      ParamDefinition::kParameterDefinitionReservedStart));
+  required_args_.audio_element_params.emplace_back(
+      AudioElementParam{ExtendedParamDefinition{
+          ParamDefinition::kParameterDefinitionReservedStart}});
 
   expected_header_ = {kObuIaAudioElement << 3, 15};
 
@@ -382,8 +383,9 @@ TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
 
 TEST_F(AudioElementScalableChannelTest, MaxParamDefinitionType) {
   required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(ExtendedParamDefinition(
-      ParamDefinition::kParameterDefinitionReservedEnd));
+  required_args_.audio_element_params.emplace_back(
+      AudioElementParam{ExtendedParamDefinition{
+          ParamDefinition::kParameterDefinitionReservedEnd}});
 
   expected_header_ = {kObuIaAudioElement << 3, 19};
 
@@ -428,7 +430,8 @@ TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
   param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(param_definition);
+  required_args_.audio_element_params.emplace_back(
+      AudioElementParam{param_definition});
 
   expected_header_ = {kObuIaAudioElement << 3, 20};
 
@@ -1053,7 +1056,8 @@ TEST_F(AudioElementScalableChannelTest,
   const auto demixing_param_definition =
       CreateDemixingInfoParamDefinition(DemixingInfoParameterData::kDMixPMode1);
   for (int i = 0; i < 2; i++) {
-    required_args_.audio_element_params.emplace_back(demixing_param_definition);
+    required_args_.audio_element_params.emplace_back(
+        AudioElementParam{demixing_param_definition});
   }
 
   InitExpectOk();

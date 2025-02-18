@@ -163,7 +163,7 @@ absl::Status GenerateParameterDefinitions(
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
         audio_element_obu.audio_element_params_.emplace_back(
-            demixing_param_definition);
+            AudioElementParam{demixing_param_definition});
         break;
       }
       case kParameterDefinitionReconGain: {
@@ -181,7 +181,7 @@ absl::Status GenerateParameterDefinitions(
                      codec_config_obu.GetCodecConfig().num_samples_per_frame));
         }
         audio_element_obu.audio_element_params_.emplace_back(
-            recon_gain_param_definition);
+            AudioElementParam{recon_gain_param_definition});
         break;
       }
       case kParameterDefinitionMixGain:
@@ -203,7 +203,7 @@ absl::Status GenerateParameterDefinitions(
             absl::MakeSpan(extended_param_definition.param_definition_bytes_)));
 
         audio_element_obu.audio_element_params_.emplace_back(
-            extended_param_definition);
+            AudioElementParam{extended_param_definition});
       } break;
     }
   }

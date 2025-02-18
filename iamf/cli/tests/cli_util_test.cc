@@ -468,8 +468,9 @@ TEST(CollectAndValidateParamDefinitions,
   // to determine the ID to store it or to use further processing.
   auto& audio_element = audio_elements.at(kAudioElementId);
   audio_element.obu.InitializeParams(1);
-  audio_element.obu.audio_element_params_.emplace_back(ExtendedParamDefinition(
-      ParamDefinition::kParameterDefinitionReservedStart));
+  audio_element.obu.audio_element_params_.emplace_back(
+      AudioElementParam{ExtendedParamDefinition(
+          ParamDefinition::kParameterDefinitionReservedStart)});
 
   absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(

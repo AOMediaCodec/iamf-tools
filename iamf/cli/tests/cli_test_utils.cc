@@ -104,7 +104,8 @@ void AddParamDefinition(
 
   // Add to the Audio Element OBU.
   audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
-  audio_element_obu.audio_element_params_.emplace_back(param_definition);
+  audio_element_obu.audio_element_params_.emplace_back(
+      AudioElementParam{param_definition});
 
   // Insert the newly added param definition to the map `param_definitions`.
   if (param_definitions != nullptr) {
