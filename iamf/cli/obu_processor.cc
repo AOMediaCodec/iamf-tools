@@ -585,10 +585,10 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
   }
   std::unique_ptr<ObuProcessor> obu_processor =
       absl::WrapUnique(new ObuProcessor(read_bit_buffer));
-  auto initialization_status = obu_processor->InitializeInternal(
-      is_exhaustive_and_exact, insufficient_data);
-  if (!initialization_status.ok()) {
-    LOG(INFO) << initialization_status;
+  if (const auto status = obu_processor->InitializeInternal(
+          is_exhaustive_and_exact, insufficient_data);
+      !status.ok()) {
+    LOG(ERROR) << status;
     return nullptr;
   }
   return obu_processor;
@@ -605,14 +605,17 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
   std::unique_ptr<ObuProcessor> obu_processor =
       absl::WrapUnique(new ObuProcessor(read_bit_buffer));
-  if (!obu_processor
-           ->InitializeInternal(is_exhaustive_and_exact, insufficient_data)
-           .ok()) {
+  if (const auto status = obu_processor->InitializeInternal(
+          is_exhaustive_and_exact, insufficient_data);
+      !status.ok()) {
+    LOG(ERROR) << status;
     return nullptr;
   }
-  if (!obu_processor
-           ->InitializeForRendering(playback_layout, sample_processor_factory)
-           .ok()) {
+
+  if (const auto status = obu_processor->InitializeForRendering(
+          playback_layout, sample_processor_factory);
+      !status.ok()) {
+    LOG(ERROR) << status;
     return nullptr;
   }
   return obu_processor;
