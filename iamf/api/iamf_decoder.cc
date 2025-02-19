@@ -16,13 +16,16 @@
 #include <iterator>
 #include <list>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/obu_processor.h"
+#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -63,6 +66,46 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
   auto num_bits_read = read_bit_buffer->Tell() - start_position;
   RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
   return obu_processor;
+}
+
+absl::Status ProcessAllTemporalUnits(
+    StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
+    std::vector<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
+  LOG(INFO) << "Processing Temporal Units";
+  int32_t num_bits_read = 0;
+  bool continue_processing = true;
+  while (continue_processing) {
+    auto start_position_for_temporal_unit = read_bit_buffer->Tell();
+    std::list<AudioFrameWithData> audio_frames_for_temporal_unit;
+    std::list<ParameterBlockWithData> parameter_blocks_for_temporal_unit;
+    std::optional<int32_t> timestamp_for_temporal_unit;
+    // TODO(b/395889878): Add support for partial temporal units.
+    RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
+        audio_frames_for_temporal_unit, parameter_blocks_for_temporal_unit,
+        timestamp_for_temporal_unit, continue_processing));
+
+    // Trivial IA Sequences may have empty temporal units. Do not try to
+    // render empty temporal unit.
+    if (timestamp_for_temporal_unit.has_value()) {
+      absl::Span<const std::vector<int32_t>>
+          rendered_pcm_samples_for_temporal_unit;
+      RETURN_IF_NOT_OK(obu_processor->RenderTemporalUnitAndMeasureLoudness(
+          *timestamp_for_temporal_unit, audio_frames_for_temporal_unit,
+          parameter_blocks_for_temporal_unit,
+          rendered_pcm_samples_for_temporal_unit));
+      rendered_pcm_samples.push_back(
+          std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
+                      rendered_pcm_samples_for_temporal_unit.end()));
+    }
+    num_bits_read +=
+        (read_bit_buffer->Tell() - start_position_for_temporal_unit);
+  }
+  // Empty the buffer of the data that was processed thus far.
+  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
+  LOG(INFO) << "Rendered " << rendered_pcm_samples.size()
+            << " temporal units. Please call GetOutputTemporalUnit() to get "
+               "the rendered PCM samples.";
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -111,6 +154,10 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
       return obu_processor.status();
     }
   }
+
+  // At this stage, we know that we've processed all descriptor OBUs.
+  RETURN_IF_NOT_OK(ProcessAllTemporalUnits(
+      read_bit_buffer_.get(), obu_processor_.get(), rendered_pcm_samples_));
   return absl::OkStatus();
 }
 

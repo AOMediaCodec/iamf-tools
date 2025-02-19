@@ -7,6 +7,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:write_bit_buffer",
+        "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",

@@ -12,6 +12,7 @@
 
 #include "iamf/api/iamf_decoder.h"
 
+#include <array>
 #include <cstdint>
 #include <list>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -44,6 +46,8 @@ constexpr DecodedUleb128 kFirstSubstreamId = 18;
 constexpr DecodedUleb128 kFirstMixPresentationId = 3;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
+constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
 // TODO(b/396453922): Move this to a common test utils file.
 std::vector<uint8_t> SerializeObus(
@@ -62,7 +66,8 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
-  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_configs);
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
@@ -99,6 +104,14 @@ TEST(CreateFromDescriptors, Succeeds) {
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 }
 
+TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
+  auto descriptors = GenerateBasicDescriptorObus();
+  // remove the last byte to make the descriptor OBUs incomplete.
+  descriptors.pop_back();
+  auto decoder = IamfDecoder::CreateFromDescriptors(descriptors);
+  EXPECT_FALSE(decoder.ok());
+}
+
 TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
   auto decoder = IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
@@ -132,9 +145,7 @@ TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 }
 
-// TODO(b/396466476): Switch to failing this test once we process temporal units
-// and detect extra descriptor OBUs in a contract-breaking way.
-TEST(CreateFromDescriptors, SucceedsWithDescriptorObuInSubsequentDecode) {
+TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
   auto decoder =
       IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
   EXPECT_THAT(decoder, IsOk());
@@ -145,15 +156,45 @@ TEST(CreateFromDescriptors, SucceedsWithDescriptorObuInSubsequentDecode) {
       kFirstMixPresentationId + 1, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
   auto second_chunk = SerializeObus({&mix_presentation_obus.front()});
-  EXPECT_THAT(decoder->Decode(second_chunk), IsOk());
+
+  EXPECT_FALSE(decoder->Decode(second_chunk).ok());
 }
 
-TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
-  auto descriptors = GenerateBasicDescriptorObus();
-  // remove the last byte to make the descriptor OBUs incomplete.
-  descriptors.pop_back();
-  auto decoder = IamfDecoder::CreateFromDescriptors(descriptors);
-  EXPECT_FALSE(decoder.ok());
+TEST(Decode, SucceeedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  auto decoder = IamfDecoder::CreateFromDescriptors(source_data);
+  ASSERT_THAT(decoder, IsOk());
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObus({&audio_frame});
+
+  EXPECT_THAT(decoder->Decode(temporal_unit), IsOk());
+}
+
+TEST(Decode, SucceedsWithOneTemporalUnit) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObus({&audio_frame});
+  source_data.insert(source_data.end(), temporal_unit.begin(),
+                     temporal_unit.end());
+
+  EXPECT_THAT(decoder->Decode(source_data), IsOk());
+}
+
+TEST(Decode, SucceedsWithMultipleTemporalUnits) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+
+  EXPECT_THAT(decoder->Decode(source_data), IsOk());
 }
 
 }  // namespace

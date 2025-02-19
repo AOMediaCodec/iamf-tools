@@ -251,6 +251,12 @@ class IamfDecoder {
 
   // Buffer that is filled with data from Decode().
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer_;
+
+  // Rendered PCM samples. Each element in the outer vector corresponds to a
+  // temporal unit. A temporal unit will never be partially filled, so the
+  // number of elements in the outer vector is equal to the number of decoded
+  // temporal units currently available.
+  std::vector<std::vector<std::vector<int32_t>>> rendered_pcm_samples_;
 };
 }  // namespace iamf_tools
 
