@@ -17,6 +17,7 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -70,7 +71,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
 
 absl::Status ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
-    std::vector<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
+    std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
   LOG(INFO) << "Processing Temporal Units";
   int32_t num_bits_read = 0;
   bool continue_processing = true;
@@ -93,7 +94,7 @@ absl::Status ProcessAllTemporalUnits(
           *timestamp_for_temporal_unit, audio_frames_for_temporal_unit,
           parameter_blocks_for_temporal_unit,
           rendered_pcm_samples_for_temporal_unit));
-      rendered_pcm_samples.push_back(
+      rendered_pcm_samples.push(
           std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
                       rendered_pcm_samples_for_temporal_unit.end()));
     }
@@ -158,6 +159,17 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   // At this stage, we know that we've processed all descriptor OBUs.
   RETURN_IF_NOT_OK(ProcessAllTemporalUnits(
       read_bit_buffer_.get(), obu_processor_.get(), rendered_pcm_samples_));
+  return absl::OkStatus();
+}
+
+absl::Status IamfDecoder::GetOutputTemporalUnit(
+    std::vector<std::vector<int32_t>>& output_decoded_temporal_unit) {
+  if (rendered_pcm_samples_.empty()) {
+    output_decoded_temporal_unit.clear();
+    return absl::OkStatus();
+  }
+  output_decoded_temporal_unit = rendered_pcm_samples_.front();
+  rendered_pcm_samples_.pop();
   return absl::OkStatus();
 }
 

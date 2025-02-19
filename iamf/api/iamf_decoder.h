@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -162,12 +163,13 @@ class IamfDecoder {
    * user should call Decode() again with more data.
    *
    * \param output_decoded_temporal_unit Output parameter for the next temporal
-   *        unit of decoded audio.
+   *        unit of decoded audio. The outer vector corresponds to a tick, while
+   *        the inner vector corresponds to a channel.
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
   absl::Status GetOutputTemporalUnit(
-      std::vector<uint8_t>& output_decoded_temporal_unit);
+      std::vector<std::vector<int32_t>>& output_decoded_temporal_unit);
 
   /*!\brief Returns true iff a decoded temporal unit is available.
    *
@@ -261,11 +263,11 @@ class IamfDecoder {
   // Buffer that is filled with data from Decode().
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer_;
 
-  // Rendered PCM samples. Each element in the outer vector corresponds to a
+  // Rendered PCM samples. Each element in the queue corresponds to a
   // temporal unit. A temporal unit will never be partially filled, so the
   // number of elements in the outer vector is equal to the number of decoded
   // temporal units currently available.
-  std::vector<std::vector<std::vector<int32_t>>> rendered_pcm_samples_;
+  std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples_;
 };
 }  // namespace iamf_tools
 

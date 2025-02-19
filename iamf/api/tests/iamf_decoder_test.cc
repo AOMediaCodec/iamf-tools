@@ -112,6 +112,21 @@ TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
   EXPECT_FALSE(decoder.ok());
 }
 
+TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
+  auto decoder =
+      IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
+  EXPECT_THAT(decoder, IsOk());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId + 1, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  auto second_chunk = SerializeObus({&mix_presentation_obus.front()});
+
+  EXPECT_FALSE(decoder->Decode(second_chunk).ok());
+}
+
 TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
   auto decoder = IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
@@ -143,21 +158,6 @@ TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
   EXPECT_FALSE(decoder->IsDescriptorProcessingComplete());
   EXPECT_THAT(decoder->Decode(second_chunk), IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-}
-
-TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
-  auto decoder =
-      IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
-  EXPECT_THAT(decoder, IsOk());
-  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-
-  std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(
-      kFirstMixPresentationId + 1, {kFirstAudioElementId},
-      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
-  auto second_chunk = SerializeObus({&mix_presentation_obus.front()});
-
-  EXPECT_FALSE(decoder->Decode(second_chunk).ok());
 }
 
 TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
@@ -231,6 +231,63 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
 
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObus({&audio_frame});
+  source_data.insert(source_data.end(), temporal_unit.begin(),
+                     temporal_unit.end());
+
+  ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  ASSERT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
+              IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  ASSERT_THAT(decoder->Decode(source_data), IsOk());
+
+  const std::vector<std::vector<int32_t>> expected_decoded_temporal_unit = {
+      {23772706, 23773107},   {47591754, 47592556},   {71410802, 71412005},
+      {95229849, 95231454},   {119048897, 119050903}, {142867944, 142870353},
+      {166686992, 166689802}, {190506039, 190509251}};
+
+  // Get the first temporal unit.
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
+              IsOk());
+  EXPECT_EQ(output_decoded_temporal_unit, expected_decoded_temporal_unit);
+  output_decoded_temporal_unit.clear();
+  // Get the second temporal unit.
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
+              IsOk());
+  EXPECT_EQ(output_decoded_temporal_unit, expected_decoded_temporal_unit);
+}
+
+TEST(GetOutputTemporalUnit,
+     DoesNotFillOutputVectorWhenNoTemporalUnitIsAvailable) {
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  auto decoder = IamfDecoder::CreateFromDescriptors(source_data);
+  ASSERT_THAT(decoder, IsOk());
+
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
+              IsOk());
+  EXPECT_TRUE(output_decoded_temporal_unit.empty());
 }
 
 }  // namespace
