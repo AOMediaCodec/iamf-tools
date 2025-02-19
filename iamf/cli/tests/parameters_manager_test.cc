@@ -54,16 +54,14 @@ constexpr DemixingInfoParameterData::DMixPMode kDMixPMode =
 
 absl::Status AppendParameterBlock(
     DecodedUleb128 parameter_id, InternalTimestamp start_timestamp,
-    PerIdParameterMetadata& per_id_metadata,
+    const PerIdParameterMetadata& per_id_metadata,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
   parameter_blocks.emplace_back(ParameterBlockWithData{
       std::make_unique<ParameterBlockObu>(ObuHeader(), parameter_id,
                                           per_id_metadata),
       start_timestamp, start_timestamp + kDurationAsInternalTimestamp});
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
-  absl::Status status =
-      parameter_block_obu.InitializeSubblocks(kDuration, kDuration, 1);
-  status.Update(parameter_block_obu.SetSubblockDuration(0, kDuration));
+  absl::Status status = parameter_block_obu.InitializeSubblocks();
   return status;
 }
 

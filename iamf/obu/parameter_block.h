@@ -88,7 +88,7 @@ class ParameterBlockObu : public ObuBase {
    */
   static absl::StatusOr<std::unique_ptr<ParameterBlockObu>> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size,
-      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
+      const absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
           parameter_id_to_metadata,
       ReadBitBuffer& rb);
 
@@ -102,7 +102,7 @@ class ParameterBlockObu : public ObuBase {
    * \param metadata Per-ID parameter metadata.
    */
   ParameterBlockObu(const ObuHeader& header, DecodedUleb128 parameter_id,
-                    PerIdParameterMetadata& metadata);
+                    const PerIdParameterMetadata& metadata);
 
   /*!\brief Destructor. */
   ~ParameterBlockObu() override = default;
@@ -258,7 +258,7 @@ class ParameterBlockObu : public ObuBase {
   DecodedUleb128 num_subblocks_;
 
   // Per-ID parameter metadata.
-  PerIdParameterMetadata& metadata_;
+  const PerIdParameterMetadata& metadata_;
 
   // Tracks whether the OBU was initialized correctly.
   absl::Status init_status_ =
