@@ -17,11 +17,14 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/obu_processor.h"
+#include "iamf/common/read_bit_buffer.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 namespace iamf_tools {
@@ -63,7 +66,7 @@ class IamfDecoder {
    * sample usage of the API.
    *
    * Reconfigurable Standalone IAMF Usage
-   * IamfDecoder streaming_decoder;
+   * IamfDecoder streaming_decoder = IamfDecoder::Create();
    * for chunk of data in iamf stream:
    *    Decode()
    *    if (IsDescriptorProcessingComplete()) {
@@ -74,18 +77,39 @@ class IamfDecoder {
    *    }
    * for chunk of data in iamf stream:
    *    Decode()
-   *    while (output_temporal_unit!=empty()) {
+   *    while (IsTemporalUnitAvailable()) {
    *      GetOutputTemporalUnit(output_temporal_unit)
    *      Playback(output_temporal_unit)
    *    }
-   * while (output_temporal_unit!=empty()) {
+   * while (IsTemporalUnitAvailable()) {
    *      Flush(output_temporal_unit)
    *      Playback(output_temporal_unit)
    *  }
    * Close();
    */
 
-  IamfDecoder() = default;
+  /*!\brief Creates an IamfDecoder.
+   *
+   * This function should be used for pure streaming applications in which the
+   * descriptor OBUs are not known in advance.
+   *
+   * \return IamfDecoder upon success. Other specific statuses on
+   *         failure.
+   */
+  static absl::StatusOr<IamfDecoder> Create();
+
+  /*!\brief Creates an IamfDecoder from a known set of descriptor OBUs.
+   *
+   * This function should be used for applications in which the descriptor OBUs
+   * are known in advance.
+   *
+   * \param descriptor_obus Bitstream containing all the descriptor OBUs and
+   *        only descriptor OBUs.
+   * \return IamfDecoder upon success. Other specific statuses on
+   *         failure.
+   */
+  static absl::StatusOr<IamfDecoder> CreateFromDescriptors(
+      absl::Span<const uint8_t> descriptor_obus);
 
   /*!\brief Configures the decoder with the desired mix presentation.
    *
@@ -213,9 +237,20 @@ class IamfDecoder {
   absl::Status Close();
 
  private:
+  /*!\brief Private constructor only used by Create functions.
+   *
+   * \param read_bit_buffer Read bit buffer to use for reading data. Expected to
+   *        not be null.
+   */
+  IamfDecoder(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer)
+      : read_bit_buffer_(std::move(read_bit_buffer)) {}
+
   // Used to process descriptor OBUs and temporal units. Is only created after
   // the descriptor OBUs have been parsed.
   std::unique_ptr<ObuProcessor> obu_processor_;
+
+  // Buffer that is filled with data from Decode().
+  std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer_;
 };
 }  // namespace iamf_tools
 
