@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <optional>
@@ -304,10 +305,14 @@ absl::Status FillLayouts(
 absl::Status FillMixPresentationTags(
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
+  if (mix_presentation_tags.has_num_tags()) {
+    LOG(WARNING) << "Ignoring deprecated `num_tags` field. Please remove it.";
+  }
   obu_mix_presentation_tags = MixPresentationTags{};
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "MixPresentationTags.num_tags", mix_presentation_tags.num_tags(),
+  RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
+      "Number of MixPresentationTags.tags", mix_presentation_tags.tags().size(),
       obu_mix_presentation_tags->num_tags));
+  obu_mix_presentation_tags->tags.reserve(mix_presentation_tags.tags().size());
   for (const auto& input_tag : mix_presentation_tags.tags()) {
     obu_mix_presentation_tags->tags.push_back(MixPresentationTags::Tag{
         .tag_name = input_tag.tag_name(),

@@ -39,6 +39,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
+using ::testing::Not;
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::MixPresentationObuMetadata>
     MixPresentationObuMetadatas;
@@ -426,6 +427,45 @@ TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
   EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 0);
   EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
+}
+
+TEST(Generate, IgnoresDeprecatedNumTags) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+  constexpr uint32_t kIncorrectIgnoredNumTags = 1;
+  mix_presentation.mutable_mix_presentation_tags()->set_num_tags(
+      kIncorrectIgnoredNumTags);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(generated_obus), IsOk());
+
+  // Ok safely ignore the deprecated `num_tags` field.
+  const auto& first_obu = generated_obus.front();
+  ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
+  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 0);
+  EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
+}
+
+TEST(Generate, ReturnsErrorWhenTooManyTagsArePresent) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+  constexpr int kMaxNumTags = 255;
+  for (int i = 0; i < kMaxNumTags + 1; ++i) {
+    auto* tag = mix_presentation.mutable_mix_presentation_tags()->add_tags();
+    tag->set_tag_name("tag_name");
+    tag->set_tag_value("tag_value");
+  }
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> ignored_generated_obus;
+  EXPECT_THAT(generator.Generate(ignored_generated_obus), Not(IsOk()));
 }
 
 TEST(Generate, CopiesDuplicateContentLanguageTags) {

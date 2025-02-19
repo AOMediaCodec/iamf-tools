@@ -198,7 +198,9 @@ message MixPresentationTag {
 }
 
 message MixPresentationTags {
-  optional uint32 num_tags = 1;
+  // `num_tags` is ignored. The value in the bitstream is inferred based on the
+  // number of tags.
+  optional uint32 num_tags = 1 [deprecated = true];
   repeated MixPresentationTag tags = 2;
 }
 
