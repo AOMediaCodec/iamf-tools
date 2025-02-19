@@ -161,6 +161,10 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   return absl::OkStatus();
 }
 
+bool IamfDecoder::IsTemporalUnitAvailable() {
+  return !rendered_pcm_samples_.empty();
+}
+
 bool IamfDecoder::IsDescriptorProcessingComplete() {
   return obu_processor_ != nullptr;
 }

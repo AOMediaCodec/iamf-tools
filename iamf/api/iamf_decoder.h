@@ -169,6 +169,15 @@ class IamfDecoder {
   absl::Status GetOutputTemporalUnit(
       std::vector<uint8_t>& output_decoded_temporal_unit);
 
+  /*!\brief Returns true iff a decoded temporal unit is available.
+   *
+   * This function can be used to determine when the user should call
+   * GetOutputTemporalUnit().
+   *
+   * \return true iff a decoded temporal unit is available.
+   */
+  bool IsTemporalUnitAvailable();
+
   /*!\brief Returns true iff the descriptor OBUs have been parsed.
    *
    * This function can be used for determining when configuration setters that
