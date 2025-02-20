@@ -138,6 +138,10 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
 }
 
 absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
+  if (state_ == kFlushCalled) {
+    return absl::FailedPreconditionError(
+        "Decode() cannot be called after Flush() has been called.");
+  }
   RETURN_IF_NOT_OK(read_bit_buffer_->PushBytes(
       std::vector<uint8_t>(std::begin(bitstream), std::end(bitstream))));
   if (!IsDescriptorProcessingComplete()) {
@@ -170,6 +174,17 @@ absl::Status IamfDecoder::GetOutputTemporalUnit(
   }
   output_decoded_temporal_unit = rendered_pcm_samples_.front();
   rendered_pcm_samples_.pop();
+  return absl::OkStatus();
+}
+
+absl::Status IamfDecoder::Flush(
+    std::vector<std::vector<int32_t>>& output_decoded_temporal_unit,
+    bool& output_is_done) {
+  if (state_ == kAcceptingData) {
+    state_ = kFlushCalled;
+  }
+  RETURN_IF_NOT_OK(GetOutputTemporalUnit(output_decoded_temporal_unit));
+  output_is_done = rendered_pcm_samples_.empty();
   return absl::OkStatus();
 }
 

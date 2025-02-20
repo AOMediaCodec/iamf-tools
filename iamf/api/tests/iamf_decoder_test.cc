@@ -198,6 +198,23 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
   EXPECT_THAT(decoder->Decode(source_data), IsOk());
 }
 
+TEST(Decode, FailsWhenCalledAfterFlush) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  EXPECT_THAT(decoder->Decode(source_data), IsOk());
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  bool output_is_done;
+  EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
+              IsOk());
+  EXPECT_FALSE(decoder->Decode(source_data).ok());
+}
+
 TEST(IsTemporalUnitAvailable, ReturnsFalseAfterCreateFromDescriptorObus) {
   auto decoder =
       IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
@@ -288,6 +305,36 @@ TEST(GetOutputTemporalUnit,
   EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
               IsOk());
   EXPECT_TRUE(output_decoded_temporal_unit.empty());
+}
+
+TEST(Flush, SucceedsWithMultipleTemporalUnits) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  bool output_is_done;
+  EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
+              IsOk());
+  EXPECT_FALSE(output_is_done);
+  EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
+              IsOk());
+  EXPECT_TRUE(output_is_done);
+}
+
+TEST(Flush, SucceedsWithNoTemporalUnits) {
+  auto decoder = IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
+  bool output_is_done;
+  EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
+              IsOk());
+  EXPECT_TRUE(output_is_done);
 }
 
 }  // namespace

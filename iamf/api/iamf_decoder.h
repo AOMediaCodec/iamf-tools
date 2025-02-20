@@ -233,8 +233,9 @@ class IamfDecoder {
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status Flush(std::vector<uint8_t>& output_decoded_temporal_unit,
-                     bool& output_is_done);
+  absl::Status Flush(
+      std::vector<std::vector<int32_t>>& output_decoded_temporal_unit,
+      bool& output_is_done);
 
   /*!\brief Closes the decoder.
    *
@@ -248,6 +249,9 @@ class IamfDecoder {
   absl::Status Close();
 
  private:
+  enum State { kAcceptingData, kFlushCalled };
+
+  State state_ = kAcceptingData;
   /*!\brief Private constructor only used by Create functions.
    *
    * \param read_bit_buffer Read bit buffer to use for reading data. Expected to
