@@ -385,7 +385,7 @@ class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the stream push fails.
    */
-  absl::Status PushBytes(const std::vector<uint8_t>& bytes);
+  absl::Status PushBytes(absl::Span<const uint8_t> bytes);
 
   /*!\brief Flush already processed data from StreamBasedReadBitBuffer.
    *

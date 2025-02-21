@@ -472,7 +472,7 @@ std::unique_ptr<StreamBasedReadBitBuffer> StreamBasedReadBitBuffer::Create(
 }
 
 absl::Status StreamBasedReadBitBuffer::PushBytes(
-    const std::vector<uint8_t>& bytes) {
+    absl::Span<const uint8_t> bytes) {
   if (bytes.size() > ((max_source_size_ / 8) - source_vector_.size())) {
     return absl::InvalidArgumentError(
         "Cannot push more bytes than the available space in the source.");

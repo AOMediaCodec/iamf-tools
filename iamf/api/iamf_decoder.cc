@@ -13,7 +13,6 @@
 #include "iamf/api/iamf_decoder.h"
 
 #include <cstdint>
-#include <iterator>
 #include <list>
 #include <memory>
 #include <optional>
@@ -125,8 +124,7 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
   if (!decoder.ok()) {
     return decoder.status();
   }
-  RETURN_IF_NOT_OK(decoder->read_bit_buffer_->PushBytes(std::vector<uint8_t>(
-      std::begin(descriptor_obus), std::end(descriptor_obus))));
+  RETURN_IF_NOT_OK(decoder->read_bit_buffer_->PushBytes(descriptor_obus));
   auto obu_processor =
       CreateObuProcessor(/*contains_all_descriptor_obus=*/true, descriptor_obus,
                          decoder->read_bit_buffer_.get());
@@ -142,8 +140,7 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
     return absl::FailedPreconditionError(
         "Decode() cannot be called after Flush() has been called.");
   }
-  RETURN_IF_NOT_OK(read_bit_buffer_->PushBytes(
-      std::vector<uint8_t>(std::begin(bitstream), std::end(bitstream))));
+  RETURN_IF_NOT_OK(read_bit_buffer_->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
     auto obu_processor = CreateObuProcessor(
         /*contains_all_descriptor_obus=*/false, bitstream,

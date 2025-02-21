@@ -37,6 +37,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:bit_buffer_util",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",

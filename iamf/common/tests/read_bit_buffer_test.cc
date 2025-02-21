@@ -43,6 +43,8 @@ using ::absl_testing::StatusIs;
 constexpr int kBitsPerByte = 8;
 constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
 
+constexpr std::array<uint8_t, 3> kThreeBytes = {0x01, 0x23, 0x45};
+
 TEST(MemoryBasedReadBitBufferTest, CreateFromVectorFailsWithNegativeCapacity) {
   const std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
   EXPECT_THAT(MemoryBasedReadBitBuffer::CreateFromSpan(
@@ -64,36 +66,36 @@ TEST(StreamBasedReadBitBufferTest, PushBytesFailsWithTooManyBytes) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   const std::vector<uint8_t> source_data(
       (kEntireObuSizeMaxTwoMegabytes * 2) + 1, 0);
-  EXPECT_FALSE(rb->PushBytes(source_data).ok());
+  EXPECT_FALSE(rb->PushBytes(absl::MakeConstSpan(source_data)).ok());
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesSucceedsWithTwoMaxSizedObus) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   const std::vector<uint8_t> source_data(kEntireObuSizeMaxTwoMegabytes, 0);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(source_data)), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(source_data)), IsOk());
   const std::vector<uint8_t> one_byte(1, 0);
-  EXPECT_FALSE(rb->PushBytes(one_byte).ok());
+  EXPECT_FALSE(rb->PushBytes(absl::MakeConstSpan(one_byte)).ok());
 }
 
 template <typename BufferReaderType>
 std::unique_ptr<BufferReaderType> CreateConcreteReadBitBuffer(
-    int64_t capacity, std::vector<uint8_t>& source_data);
+    int64_t capacity, absl::Span<const uint8_t> source_data);
 
 template <>
 std::unique_ptr<MemoryBasedReadBitBuffer> CreateConcreteReadBitBuffer(
-    int64_t capacity, std::vector<uint8_t>& source_data) {
-  return MemoryBasedReadBitBuffer::CreateFromSpan(
-      capacity, absl::MakeConstSpan(source_data));
+    int64_t capacity, absl::Span<const uint8_t> source_data) {
+  return MemoryBasedReadBitBuffer::CreateFromSpan(capacity, source_data);
 }
 
 template <>
 std::unique_ptr<FileBasedReadBitBuffer> CreateConcreteReadBitBuffer(
-    int64_t capacity, std::vector<uint8_t>& source_data) {
+    int64_t capacity, absl::Span<const uint8_t> source_data) {
   // First write the content of `source_data` into a temporary file.
   const auto output_filename = GetAndCleanupOutputFileName(".iamf");
   std::ofstream ofs(output_filename, std::ios::binary | std::ios::out);
-  ofs.write(reinterpret_cast<char*>(source_data.data()), source_data.size());
+  ofs.write(reinterpret_cast<const char*>(source_data.data()),
+            source_data.size());
   ofs.close();
 
   // Then create a `FileBasedReadBitBuffer` from the temporary file.
@@ -102,7 +104,7 @@ std::unique_ptr<FileBasedReadBitBuffer> CreateConcreteReadBitBuffer(
 
 template <>
 std::unique_ptr<StreamBasedReadBitBuffer> CreateConcreteReadBitBuffer(
-    int64_t capacity, std::vector<uint8_t>& source_data) {
+    int64_t capacity, absl::Span<const uint8_t> source_data) {
   auto rb = StreamBasedReadBitBuffer::Create(capacity);
   EXPECT_NE(rb, nullptr);
   EXPECT_THAT(rb->PushBytes(source_data), IsOk());
@@ -113,8 +115,8 @@ template <typename BufferReaderType>
 class ReadBitBufferTest : public ::testing::Test {
  protected:
   void CreateReadBitBuffer() {
-    rb_ = CreateConcreteReadBitBuffer<BufferReaderType>(this->rb_capacity_,
-                                                        source_data_);
+    rb_ = CreateConcreteReadBitBuffer<BufferReaderType>(
+        this->rb_capacity_, absl::MakeConstSpan(source_data_));
     EXPECT_NE(this->rb_, nullptr);
     EXPECT_EQ(this->rb_->Tell(), 0);
   }
@@ -408,13 +410,13 @@ TEST_P(ReadIso14496_1ExpandedTest, ReadIso14496_1Expanded) {
   std::unique_ptr<ReadBitBuffer> rb;
   if (buffer_reader_type == kMemoryBased) {
     rb = CreateConcreteReadBitBuffer<MemoryBasedReadBitBuffer>(
-        source_data.size() * kBitsPerByte, source_data);
+        source_data.size() * kBitsPerByte, absl::MakeSpan(source_data));
   } else if (buffer_reader_type == kFileBased) {
     rb = CreateConcreteReadBitBuffer<FileBasedReadBitBuffer>(
-        source_data.size() * kBitsPerByte, source_data);
+        source_data.size() * kBitsPerByte, absl::MakeSpan(source_data));
   } else {
     rb = CreateConcreteReadBitBuffer<StreamBasedReadBitBuffer>(
-        source_data.size() * kBitsPerByte, source_data);
+        source_data.size() * kBitsPerByte, absl::MakeSpan(source_data));
   }
 
   uint32_t output_size_of_instance = 0;
@@ -822,30 +824,29 @@ TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
 
 // --- `Flush` tests ---
 TEST(StreamBasedReadBitBufferTest, FlushFailsWhenTryingToFlushTooManyBytes) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
-  EXPECT_FALSE(rb->Flush(source_data.size() + 1).ok());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
+  std::vector<uint8_t> output_buffer(kThreeBytes.size());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
+  EXPECT_FALSE(rb->Flush(kThreeBytes.size() + 1).ok());
 }
 
 TEST(StreamBasedReadBitBufferTest, FlushSuccessfullyEmptiesSource) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
-  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
+  std::vector<uint8_t> output_buffer(kThreeBytes.size());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
+  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
   EXPECT_FALSE(rb->IsDataAvailable());
 }
 
 TEST(StreamBasedReadBitBufferTest,
      FlushPartiallyEmptiesSourceButSubsequentReadsSucceed) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   std::vector<uint8_t> output = {0};
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output)), IsOk());
   EXPECT_THAT(rb->Flush(output.size()), IsOk());
@@ -855,49 +856,47 @@ TEST(StreamBasedReadBitBufferTest,
 }
 
 TEST(StreamBasedReadBitBufferTest, FlushAndPushingMoreDataSucceeds) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
-  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
+  std::vector<uint8_t> output_buffer(kThreeBytes.size());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
+  EXPECT_THAT(rb->Flush(output_buffer.size()), IsOk());
   EXPECT_FALSE(rb->IsDataAvailable());
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   EXPECT_TRUE(rb->IsDataAvailable());
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
 }
 
 TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   EXPECT_EQ(rb->Tell(), 0);
-  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
   // Seeking is disabled after Flush().
   EXPECT_FALSE(rb->Seek(0).ok());
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesCanReadBytesSucceeds) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
   EXPECT_FALSE(rb->CanReadBytes(1));
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
   EXPECT_TRUE(rb->CanReadBytes(3));
-  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(source_data)), IsOk());
+  std::vector<uint8_t> output_buffer(kThreeBytes.size());
+  EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
   EXPECT_FALSE(rb->CanReadBytes(1));
-  EXPECT_THAT(rb->Flush(source_data.size()), IsOk());
+  EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
   EXPECT_FALSE(rb->CanReadBytes(1));
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+  EXPECT_THAT(rb->PushBytes(kThreeBytes), IsOk());
   EXPECT_TRUE(rb->CanReadBytes(3));
 }
 
 TEST(StreamBasedReadBitBufferTest, PushBytesFailsOnNegativeNumBytes) {
-  std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_THAT(rb->PushBytes(source_data), IsOk());
+
   EXPECT_DEATH(rb->CanReadBytes(-1), "");
 }
 }  // namespace
