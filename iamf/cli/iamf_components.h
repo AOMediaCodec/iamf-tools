@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "iamf/cli/loudness_calculator_factory_base.h"
-#include "iamf/cli/obu_sequencer.h"
+#include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer_factory.h"

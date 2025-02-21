@@ -30,7 +30,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/iamf_encoder.h"
-#include "iamf/cli/obu_sequencer.h"
+#include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"

@@ -147,7 +147,7 @@ cc_library(
         ":demixing_module",
         ":iamf_components",
         ":iamf_encoder",
-        ":obu_sequencer",
+        ":obu_sequencer_base",
         ":parameter_block_partitioner",
         ":parameter_block_with_data",
         ":wav_sample_provider",
@@ -196,7 +196,8 @@ cc_library(
     hdrs = ["iamf_components.h"],
     deps = [
         ":loudness_calculator_factory_base",
-        ":obu_sequencer",
+        ":obu_sequencer_base",
+        ":obu_sequencer_iamf",
         ":renderer_factory",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
@@ -316,9 +317,9 @@ cc_library(
 )
 
 cc_library(
-    name = "obu_sequencer",
-    srcs = ["obu_sequencer.cc"],
-    hdrs = ["obu_sequencer.h"],
+    name = "obu_sequencer_base",
+    srcs = ["obu_sequencer_base.cc"],
+    hdrs = ["obu_sequencer_base.h"],
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
@@ -339,6 +340,29 @@ cc_library(
         "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "obu_sequencer_iamf",
+    srcs = ["obu_sequencer_iamf.cc"],
+    hdrs = ["obu_sequencer_iamf.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":audio_frame_with_data",
+        ":obu_sequencer_base",
+        ":parameter_block_with_data",
+        "//iamf/common:leb_generator",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:arbitrary_obu",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",

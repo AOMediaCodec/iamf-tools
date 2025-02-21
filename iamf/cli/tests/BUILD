@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(default_visibility = ["//iamf/cli/tests:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_library,cc_test newline_separated=yes
@@ -296,15 +298,14 @@ cc_test(
 )
 
 cc_test(
-    name = "obu_sequencer_test",
-    srcs = ["obu_sequencer_test.cc"],
+    name = "obu_sequencer_base_test",
+    srcs = ["obu_sequencer_base_test.cc"],
     deps = [
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:obu_sequencer",
+        "//iamf/cli:obu_sequencer_base",
         "//iamf/cli:parameter_block_with_data",
-        "//iamf/common:leb_generator",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:audio_frame",
@@ -318,6 +319,33 @@ cc_test(
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:temporal_delimiter",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "obu_sequencer_iamf_test",
+    srcs = ["obu_sequencer_iamf_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:obu_sequencer_iamf",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/common:leb_generator",
+        "//iamf/obu:arbitrary_obu",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:demixing_param_definition",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
