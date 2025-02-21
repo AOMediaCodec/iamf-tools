@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/types.h"
 
@@ -86,13 +87,13 @@ class WriteBitBuffer {
    */
   absl::Status WriteString(const std::string& data);
 
-  /*!\brief Writes a `std::vector<uint8_t>` to the write buffer.
+  /*!\brief Writes a `absl::Span<const uint8_t>` to the write buffer.
    *
    * \param data Data to write.
    * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
    *         `wb->bit_offset` is negative.
    */
-  absl::Status WriteUint8Vector(const std::vector<uint8_t>& data);
+  absl::Status WriteUint8Span(absl::Span<const uint8_t> data);
 
   /*!\brief Writes a ULEB128 to the buffer using an implicit generator.
    *

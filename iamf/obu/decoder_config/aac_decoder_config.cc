@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -59,7 +61,8 @@ absl::Status PrependWithIso14496_1Expanded(const WriteBitBuffer& original_wb,
   }
   RETURN_IF_NOT_OK(
       output_wb.WriteIso14496_1Expanded(original_wb.bit_buffer().size()));
-  RETURN_IF_NOT_OK(output_wb.WriteUint8Vector(original_wb.bit_buffer()));
+  RETURN_IF_NOT_OK(
+      output_wb.WriteUint8Span(absl::MakeConstSpan(original_wb.bit_buffer())));
   return absl::OkStatus();
 }
 
@@ -77,8 +80,8 @@ absl::Status WriteDecoderSpecificInfo(
         decoder_specific_info.audio_specific_config.ValidateAndWrite(
             wb_internal));
     // Write the `DecoderSpecificInfo` extension.
-    RETURN_IF_NOT_OK(wb_internal.WriteUint8Vector(
-        decoder_specific_info.decoder_specific_info_extension));
+    RETURN_IF_NOT_OK(wb_internal.WriteUint8Span(absl::MakeConstSpan(
+        decoder_specific_info.decoder_specific_info_extension)));
     RETURN_IF_NOT_OK(PrependWithIso14496_1Expanded(wb_internal, wb));
   }
   return absl::OkStatus();
@@ -220,7 +223,8 @@ absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
     RETURN_IF_NOT_OK(
         WriteDecoderSpecificInfo(decoder_specific_info_, wb_internal));
 
-    RETURN_IF_NOT_OK(wb_internal.WriteUint8Vector(decoder_config_extension_));
+    RETURN_IF_NOT_OK(wb_internal.WriteUint8Span(
+        absl::MakeConstSpan(decoder_config_extension_)));
 
     RETURN_IF_NOT_OK(PrependWithIso14496_1Expanded(wb_internal, wb));
   }

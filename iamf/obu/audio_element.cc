@@ -243,7 +243,8 @@ absl::Status ValidateAndWriteAmbisonicsMono(
       wb.WriteUnsignedLiteral(mono_config.output_channel_count, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(mono_config.substream_count, 8));
 
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(mono_config.channel_mapping));
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(absl::MakeConstSpan(mono_config.channel_mapping)));
 
   return absl::OkStatus();
 }
@@ -771,8 +772,8 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
           "audio_element_config_bytes",
           extension_config.audio_element_config_bytes,
           extension_config.audio_element_config_size));
-      RETURN_IF_NOT_OK(
-          wb.WriteUint8Vector(extension_config.audio_element_config_bytes));
+      RETURN_IF_NOT_OK(wb.WriteUint8Span(
+          absl::MakeConstSpan(extension_config.audio_element_config_bytes)));
 
       return absl::OkStatus();
     }

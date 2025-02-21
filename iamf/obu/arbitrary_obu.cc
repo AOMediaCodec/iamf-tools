@@ -17,6 +17,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -37,7 +38,7 @@ absl::Status ArbitraryObu::WriteObusWithHook(
 }
 
 absl::Status ArbitraryObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(payload_));
+  RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(payload_)));
   // Usually we want to fail when an arbitrary OBU signals an invalid bitstream.
   // However, to create invalid test files we still want to insert them.
   MAYBE_RETURN_IF_NOT_OK(ValidateNotEqual(

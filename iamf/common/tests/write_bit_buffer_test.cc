@@ -11,6 +11,7 @@
  */
 #include "iamf/common/write_bit_buffer.h"
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -24,6 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -40,13 +42,13 @@ using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 
 TEST(FlushAndWriteToStream, WritesToOutputStream) {
-  const std::vector<uint8_t> kDataToOutput = {0x00, '\r', '\n', 0x1a};
+  constexpr std::array<uint8_t, 4> kDataToOutput = {0x00, '\r', '\n', 0x1a};
   const auto file_to_write_to = GetAndCleanupOutputFileName(".bin");
   auto output_stream = std::make_optional<std::fstream>(
       file_to_write_to, std::ios::binary | std::ios::out);
 
   WriteBitBuffer wb(0);
-  EXPECT_THAT(wb.WriteUint8Vector(kDataToOutput), IsOk());
+  EXPECT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(kDataToOutput)), IsOk());
   EXPECT_THAT(wb.FlushAndWriteToFile(output_stream), IsOk());
   output_stream->close();
 
@@ -310,23 +312,36 @@ TEST_F(WriteBitBufferTest, InvalidStringTooLong) {
   EXPECT_EQ(wb_->bit_offset(), 0);
 }
 
-TEST_F(WriteBitBufferTest, Uint8ArrayLengthZero) {
-  EXPECT_THAT(wb_->WriteUint8Vector({}), IsOk());
+TEST_F(WriteBitBufferTest, WriteUint8SpanWorksForEmptySpan) {
+  constexpr absl::Span<const uint8_t> kEmptySpan = {};
+
+  EXPECT_THAT(wb_->WriteUint8Span(kEmptySpan), IsOk());
+
   ValidateWriteResults(*wb_, {});
 }
 
-TEST_F(WriteBitBufferTest, Uint8ArrayByteAligned) {
-  const std::vector<uint8_t> input = {0, 10, 20, 30, 255};
+TEST_F(WriteBitBufferTest, WriteUint8SpanWorksWhenBufferIsByteAligned) {
+  const std::vector<uint8_t> kFivebytes = {0, 10, 20, 30, 255};
 
-  EXPECT_THAT(wb_->WriteUint8Vector(input), IsOk());
-  ValidateWriteResults(*wb_, input);
+  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kFivebytes)), IsOk());
+
+  ValidateWriteResults(*wb_, kFivebytes);
 }
 
-TEST_F(WriteBitBufferTest, Uint8ArrayNotByteAligned) {
+TEST_F(WriteBitBufferTest, WriteUint8SpanWorksWhenBufferIsNotByteAligned) {
+  // Force the buffer to be mis-aligned.
   EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 1), IsOk());
-  EXPECT_THAT(wb_->WriteUint8Vector({0xff}), IsOk());
+  // It is OK to write a span, even when the underlying buffer is mis-aligned.
+  EXPECT_THAT(wb_->WriteUint8Span({0xff}), IsOk());
   EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 7), IsOk());
-  ValidateWriteResults(*wb_, {0x7f, 0x80});
+
+  ValidateWriteResults(*wb_,
+                       {
+                           0b0111'1111,  // The first mis-aligned bit, then
+                                         // the first 7-bits of the span.
+                           0b1000'0000   // The final bit of the span, then the
+                                         // final 7 mis-aligned bits.
+                       });
 }
 
 TEST_F(WriteBitBufferTest, WriteUleb128Min) {
@@ -410,20 +425,21 @@ INSTANTIATE_TEST_SUITE_P(MaxOutput, WriteIso14496_1Expanded,
 
 TEST_F(WriteBitBufferTest, CapacityMayBeSmaller) {
   // The buffer may have a small initial capacity and resize as needed.
-  wb_ = std::make_unique<WriteBitBuffer>(/*initial_capacity=*/0);
-  const std::vector<uint8_t> input = {0, 1, 2, 3, 4, 5};
+  constexpr int64_t kInitialCapacity = 0;
+  wb_ = std::make_unique<WriteBitBuffer>(kInitialCapacity);
+  const std::vector<uint8_t> kSixBytes = {0, 1, 2, 3, 4, 5};
 
-  EXPECT_THAT(wb_->WriteUint8Vector(input), IsOk());
-  ValidateWriteResults(*wb_, input);
+  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
+  ValidateWriteResults(*wb_, kSixBytes);
 }
 
 TEST_F(WriteBitBufferTest, CapacityMayBeLarger) {
   // The buffer may have a larger that capacity that necessary.
   wb_ = std::make_unique<WriteBitBuffer>(/*initial_capacity=*/100);
-  const std::vector<uint8_t> input = {0, 1, 2, 3, 4, 5};
+  const std::vector<uint8_t> kSixBytes = {0, 1, 2, 3, 4, 5};
 
-  EXPECT_THAT(wb_->WriteUint8Vector(input), IsOk());
-  ValidateWriteResults(*wb_, input);
+  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
+  ValidateWriteResults(*wb_, kSixBytes);
 }
 
 TEST_F(WriteBitBufferTest, ConsecutiveWrites) {

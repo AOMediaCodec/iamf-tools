@@ -140,8 +140,8 @@ absl::Status WriteStreamInfo(const FlacMetaBlockStreamInfo& stream_info,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(stream_info.bits_per_sample, 5));
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral64(stream_info.total_samples_in_stream, 36));
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(std::vector<uint8_t>(
-      stream_info.md5_signature.begin(), stream_info.md5_signature.end())));
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(absl::MakeConstSpan(stream_info.md5_signature)));
   return absl::OkStatus();
 }
 
@@ -201,8 +201,8 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
             std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), wb));
         break;
       default:
-        RETURN_IF_NOT_OK(wb.WriteUint8Vector(
-            std::get<std::vector<uint8_t>>(metadata_block.payload)));
+        RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
+            std::get<std::vector<uint8_t>>(metadata_block.payload))));
         break;
     }
 

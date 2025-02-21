@@ -69,7 +69,7 @@ void WriteVectorToFile(const std::filesystem::path filename,
   std::filesystem::remove(filename);
   WriteBitBuffer wb(0);
 
-  ASSERT_THAT(wb.WriteUint8Vector(bytes), IsOk());
+  ASSERT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(bytes)), IsOk());
   auto output_file = std::make_optional<std::fstream>(
       filename.string(), std::ios::binary | std::ios::out);
   ASSERT_THAT(wb.FlushAndWriteToFile(output_file), IsOk());

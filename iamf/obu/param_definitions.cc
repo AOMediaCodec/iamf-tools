@@ -287,7 +287,8 @@ absl::Status ExtendedParamDefinition::ValidateAndWrite(
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual("param_definition_bytes_",
                                               param_definition_bytes_,
                                               param_definition_size_));
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(param_definition_bytes_));
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(absl::MakeConstSpan(param_definition_bytes_)));
 
   return absl::OkStatus();
 }

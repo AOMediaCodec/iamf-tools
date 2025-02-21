@@ -35,9 +35,9 @@ void WriteReadString(const std::string& data) {
 
 FUZZ_TEST(WriteReadFuzzTest, WriteReadString);
 
-void WriteReadUint8Vector(const std::vector<uint8_t>& data) {
+void WriteReadUint8Span(const std::vector<uint8_t>& data) {
   WriteBitBuffer wb(0);
-  auto write_status = wb.WriteUint8Vector(data);
+  auto write_status = wb.WriteUint8Span(absl::MakeConstSpan(data));
 
   if (write_status.ok()) {
     std::vector<uint8_t> source_data = wb.bit_buffer();
@@ -52,7 +52,7 @@ void WriteReadUint8Vector(const std::vector<uint8_t>& data) {
   }
 }
 
-FUZZ_TEST(WriteReadFuzzTest, WriteReadUint8Vector);
+FUZZ_TEST(WriteReadFuzzTest, WriteReadUint8Span);
 
 }  // namespace
 }  // namespace iamf_tools

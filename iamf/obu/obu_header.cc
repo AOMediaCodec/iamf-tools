@@ -120,7 +120,8 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
     RETURN_IF_NOT_OK(ValidateContainerSizeEqual("extension_header_bytes_",
                                                 header.extension_header_bytes,
                                                 header.extension_header_size));
-    RETURN_IF_NOT_OK(wb.WriteUint8Vector(header.extension_header_bytes));
+    RETURN_IF_NOT_OK(
+        wb.WriteUint8Span(absl::MakeConstSpan(header.extension_header_bytes)));
   }
 
   return absl::OkStatus();

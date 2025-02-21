@@ -89,8 +89,8 @@ absl::Status ValidateAndWriteSubMixAudioElement(
       "rendering_config_extension_bytes",
       element.rendering_config.rendering_config_extension_bytes,
       element.rendering_config.rendering_config_extension_size));
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(
-      element.rendering_config.rendering_config_extension_bytes));
+  RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
+      element.rendering_config.rendering_config_extension_bytes)));
 
   RETURN_IF_NOT_OK(element.element_mix_gain.ValidateAndWrite(wb));
   return absl::OkStatus();
@@ -155,8 +155,8 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
     RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
         "info_type_bytes", layout.loudness.layout_extension.info_type_bytes,
         layout.loudness.layout_extension.info_type_size));
-    RETURN_IF_NOT_OK(
-        wb.WriteUint8Vector(layout.loudness.layout_extension.info_type_bytes));
+    RETURN_IF_NOT_OK(wb.WriteUint8Span(
+        absl::MakeConstSpan(layout.loudness.layout_extension.info_type_bytes)));
   }
 
   return absl::OkStatus();

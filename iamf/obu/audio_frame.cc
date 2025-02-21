@@ -16,6 +16,7 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -62,7 +63,7 @@ absl::Status AudioFrameObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
     // it is implied by `obu_type`.
     RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id_));
   }
-  RETURN_IF_NOT_OK(wb.WriteUint8Vector(audio_frame_));
+  RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(audio_frame_)));
 
   return absl::OkStatus();
 }
