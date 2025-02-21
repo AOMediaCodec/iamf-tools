@@ -133,21 +133,6 @@ TEST(SetFromMap, DoesNotCallSetterAndReturnsStatusNotFoundWhenLookupFails) {
               StatusIs(absl::StatusCode::kNotFound));
 }
 
-TEST(SetFromMap, ForwardsStatusFromSetter) {
-  constexpr int kKey = 1;
-  const absl::Status kFailureToForward = absl::InternalError("forwarded error");
-  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
-      {1, false}, {2, true}, {3, true}, {4, false}};
-
-  testing::MockFunction<absl::Status(bool)> setter;
-  EXPECT_CALL(setter, Call).WillOnce(Return(kFailureToForward));
-
-  EXPECT_EQ(
-      SetFromMap(kIntegerToIsPrime, kKey, kOmitContext,
-                 absl::FunctionRef<absl::Status(bool)>(setter.AsStdFunction())),
-      kFailureToForward);
-}
-
 TEST(SetFromMap, MessageContainsContextOnError) {
   constexpr int kAbsentKey = -1;
   const absl::flat_hash_map<int, bool> kEmptyMap = {};

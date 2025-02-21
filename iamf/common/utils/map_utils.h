@@ -94,29 +94,19 @@ absl::Status CopyFromMap(const absl::flat_hash_map<Key, Value>& map,
  * \param context Context to insert into the error message for debugging
  *        purposes. Forwared to `LookupInMap` which has detailed documentation
  *        on usage.
- * \param setter Function to call with the found value. The return type must be
- *        `void` or `absl::Status`. When the return type is `absl::Status` the
- *        result is forwarded.
+ * \param setter Function to call with the found value.
  * \return `absl::OkStatus()` if lookup is successful. `absl::NotFoundError()`
  *         when lookup fails. Or an error code forwarded from the setter.
  */
-template <typename Key, typename Value, typename SetterReturnType>
+template <typename Key, typename Value>
 absl::Status SetFromMap(const absl::flat_hash_map<Key, Value>& map,
                         const Key& key, absl::string_view context,
-                        absl::FunctionRef<SetterReturnType(Value)> setter) {
+                        absl::FunctionRef<void(Value)> setter) {
   const auto& result = LookupInMap(map, key, context);
-  if (!result.ok()) [[unlikely]] {
-    return result.status();
-  }
-
-  if constexpr (std::is_same_v<SetterReturnType, void>) {
+  if (result.ok()) [[likely]] {
     setter(*result);
-    return absl::OkStatus();
-  } else if constexpr (std::is_same_v<SetterReturnType, absl::Status>) {
-    return setter(*result);
-  } else {
-    static_assert(false, "Setter must return `void` or `absl::Status`.");
   }
+  return result.status();
 }
 
 /*!\brief Returns a map for static storage from a container of pairs.
