@@ -115,7 +115,11 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // calculated later.
   MixPresentationGenerator mix_presentation_generator(
       user_metadata.mix_presentation_metadata());
-  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(mix_presentation_obus));
+  // TODO(b/388577499): Configure build information based on a new
+  //                    `EncoderControlMetadata` field.
+  constexpr bool kOmitIamfEncoderBuildInformation = false;
+  RETURN_IF_NOT_OK(mix_presentation_generator.Generate(
+      kOmitIamfEncoderBuildInformation, mix_presentation_obus));
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(

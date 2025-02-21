@@ -92,10 +92,14 @@ class MixPresentationGenerator {
    * Note that `finalize_mix_presentation_obus` must be called afterwards to
    * populate the loudness information for the OBUs.
    *
+   * \param append_build_information_tag Whether to append an additional
+   *        `MixPresentationTag` which signals the encoder version which
+   *        generated the bitstream.
    * \param mix_presentation_obus Output list of OBUs.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status Generate(std::list<MixPresentationObu>& mix_presentation_obus);
+  absl::Status Generate(bool append_build_information_tag,
+                        std::list<MixPresentationObu>& mix_presentation_obus);
 
  private:
   const ::google::protobuf::RepeatedPtrField<

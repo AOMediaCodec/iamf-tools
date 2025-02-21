@@ -303,20 +303,35 @@ absl::Status FillLayouts(
 }
 
 absl::Status FillMixPresentationTags(
+    bool append_build_information_tag,
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
   if (mix_presentation_tags.has_num_tags()) {
     LOG(WARNING) << "Ignoring deprecated `num_tags` field. Please remove it.";
   }
   obu_mix_presentation_tags = MixPresentationTags{};
+
+  // Calculate the total number of tags, including automatically added ones.
+  const size_t num_tags = mix_presentation_tags.tags().size() +
+                          (append_build_information_tag ? 1 : 0);
+  // At the OBU it must fit into a `uint8_t`.
   RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
-      "Number of MixPresentationTags.tags", mix_presentation_tags.tags().size(),
+      "MixPresentationTags.num_tags", num_tags,
       obu_mix_presentation_tags->num_tags));
-  obu_mix_presentation_tags->tags.reserve(mix_presentation_tags.tags().size());
+  obu_mix_presentation_tags->tags.reserve(num_tags);
   for (const auto& input_tag : mix_presentation_tags.tags()) {
-    obu_mix_presentation_tags->tags.push_back(MixPresentationTags::Tag{
+    obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
         .tag_name = input_tag.tag_name(),
         .tag_value = input_tag.tag_value(),
+    });
+  }
+  // Append the build information tag.
+  if (append_build_information_tag) {
+    // TODO(b/388577499): Include the commit hash at build time, in the
+    //                    `iamf_encoder` tag value.
+    obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
+        .tag_name = "iamf_encoder",
+        .tag_value = "GitHub/iamf-tools",
     });
   }
 
@@ -456,6 +471,7 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
 }
 
 absl::Status MixPresentationGenerator::Generate(
+    bool append_build_information_tag,
     std::list<MixPresentationObu>& mix_presentation_obus) {
   for (const auto& mix_presentation_metadata : mix_presentation_metadata_) {
     struct {
@@ -511,8 +527,10 @@ absl::Status MixPresentationGenerator::Generate(
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));
     }
-    if (mix_presentation_metadata.include_mix_presentation_tags()) {
+    if (mix_presentation_metadata.include_mix_presentation_tags() ||
+        append_build_information_tag) {
       RETURN_IF_NOT_OK(FillMixPresentationTags(
+          append_build_information_tag,
           mix_presentation_metadata.mix_presentation_tags(),
           obu_args.mix_presentation_tags));
     } else {

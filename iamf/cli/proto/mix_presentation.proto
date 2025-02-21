@@ -225,6 +225,8 @@ message MixPresentationObuMetadata {
   repeated MixPresentationSubMix sub_mixes = 4;
 
   // When true, `mix_presentation_tags` will be examined.
+  // TODO(b/388577499): Document interaction when `EncoderControlMetadata` has
+  //                    an option to stamp the build information.
   optional bool include_mix_presentation_tags = 11;
   optional MixPresentationTags mix_presentation_tags = 12;
 
