@@ -13,7 +13,7 @@
 
 #include <functional>
 
-#include "absl/functional/any_invocable.h"
+#include "absl/functional/function_ref.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -33,7 +33,7 @@ namespace {
 typedef ::iamf_tools_cli_proto::IASequenceHeaderObuMetadata
     IASequenceHeaderObuMetadata;
 
-typedef absl::AnyInvocable<void(iamf_tools_cli_proto::ProfileVersion)>
+typedef absl::FunctionRef<void(iamf_tools_cli_proto::ProfileVersion)>
     ProfileSetter;
 
 absl::Status SetProfileVersion(ProfileVersion obu_profile_version,
@@ -48,12 +48,9 @@ absl::Status SetProfileVersion(ProfileVersion obu_profile_version,
       BuildStaticMapFromInvertedPairs(
           LookupTables::kProtoAndInternalProfileVersions);
 
-  iamf_tools_cli_proto::ProfileVersion result;
-  RETURN_IF_NOT_OK(
-      CopyFromMap(*kInternalToProtoProfileVersion, obu_profile_version,
-                  "Proto version of internal `ProfileVersion`", result));
-  profile_setter(result);
-  return absl::OkStatus();
+  return SetFromMap(*kInternalToProtoProfileVersion, obu_profile_version,
+                    "Proto version of internal `ProfileVersion`",
+                    profile_setter);
 }
 
 }  // namespace

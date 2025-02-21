@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/function_ref.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -28,9 +29,13 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::testing::HasSubstr;
+using ::testing::MockFunction;
+using ::testing::Return;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
+
+void DoNothing(bool /*ignored_value*/) {}
 
 TEST(CopyFromMap, ReturnsOkWhenLookupSucceeds) {
   const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
@@ -97,6 +102,69 @@ TEST(LookupInMapStatusOr, MessageContainsEmptyWhenMapIsEmpty) {
   const absl::flat_hash_map<int, bool> kEmptyMap = {};
 
   EXPECT_THAT(LookupInMap(kEmptyMap, 3, kOmitContext).status().message(),
+              HasSubstr("empty"));
+}
+
+TEST(SetFromMap, CallsSetterWithValueWhenLookupSucceeds) {
+  constexpr int kKey = 3;
+  constexpr bool kExpectedValue = true;
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+  testing::MockFunction<void(bool)> mock_setter;
+
+  EXPECT_CALL(mock_setter, Call(kExpectedValue));
+
+  EXPECT_THAT(
+      SetFromMap(kIntegerToIsPrime, kKey, kOmitContext,
+                 absl::FunctionRef<void(bool)>(mock_setter.AsStdFunction())),
+      IsOk());
+}
+
+TEST(SetFromMap, DoesNotCallSetterAndReturnsStatusNotFoundWhenLookupFails) {
+  constexpr int kAbsentKey = 99;
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  testing::MockFunction<void(bool)> setter;
+  EXPECT_CALL(setter, Call).Times(0);
+
+  EXPECT_THAT(SetFromMap(kIntegerToIsPrime, kAbsentKey, kOmitContext,
+                         absl::FunctionRef<void(bool)>(setter.AsStdFunction())),
+              StatusIs(absl::StatusCode::kNotFound));
+}
+
+TEST(SetFromMap, ForwardsStatusFromSetter) {
+  constexpr int kKey = 1;
+  const absl::Status kFailureToForward = absl::InternalError("forwarded error");
+  const absl::flat_hash_map<int, bool> kIntegerToIsPrime = {
+      {1, false}, {2, true}, {3, true}, {4, false}};
+
+  testing::MockFunction<absl::Status(bool)> setter;
+  EXPECT_CALL(setter, Call).WillOnce(Return(kFailureToForward));
+
+  EXPECT_EQ(
+      SetFromMap(kIntegerToIsPrime, kKey, kOmitContext,
+                 absl::FunctionRef<absl::Status(bool)>(setter.AsStdFunction())),
+      kFailureToForward);
+}
+
+TEST(SetFromMap, MessageContainsContextOnError) {
+  constexpr int kAbsentKey = -1;
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+
+  EXPECT_THAT(SetFromMap(kEmptyMap, kAbsentKey, kCustomUserContext,
+                         absl::FunctionRef<void(bool)>(DoNothing))
+                  .message(),
+              HasSubstr(kCustomUserContext));
+}
+
+TEST(SetFromMap, MessageContainsEmptyWhenMapIsEmpty) {
+  constexpr int kAbsentKey = -1;
+  const absl::flat_hash_map<int, bool> kEmptyMap = {};
+
+  EXPECT_THAT(SetFromMap(kEmptyMap, kAbsentKey, kOmitContext,
+                         absl::FunctionRef<void(bool)>(DoNothing))
+                  .message(),
               HasSubstr("empty"));
 }
 
