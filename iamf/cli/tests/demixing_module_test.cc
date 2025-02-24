@@ -496,8 +496,9 @@ TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
       1);
   const auto& recon_gain_element =
       labeled_frame.recon_gain_info_parameter_data.recon_gain_elements.at(0);
-  EXPECT_EQ(recon_gain_element.recon_gain_flag, DecodedUleb128(1));
-  EXPECT_THAT(recon_gain_element.recon_gain,
+  ASSERT_TRUE(recon_gain_element.has_value());
+  EXPECT_EQ(recon_gain_element->recon_gain_flag, DecodedUleb128(1));
+  EXPECT_THAT(recon_gain_element->recon_gain,
               testing::ElementsAreArray(kReconGainValues));
   EXPECT_EQ(labeled_frame.loudspeaker_layout_per_layer.size(), 2);
   EXPECT_THAT(labeled_frame.loudspeaker_layout_per_layer,

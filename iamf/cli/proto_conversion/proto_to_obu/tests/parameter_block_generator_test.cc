@@ -37,6 +37,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -481,6 +482,30 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   ValidateParameterBlocksCommon(output_parameter_blocks, kParameterId,
                                 /*expected_start_timestamps=*/{0, 8},
                                 /*expected_end_timestamps=*/{8, 16});
+
+  // Validate `ReconGainInfoParameterData` parts.
+  int block_index = 0;
+  for (const auto& parameter_block : output_parameter_blocks) {
+    auto recon_gain_info_parameter_data =
+        static_cast<ReconGainInfoParameterData*>(
+            parameter_block.obu->subblocks_[0].param_data.get());
+    // Expect the first recon gain element to hold no value.
+    EXPECT_FALSE(
+        recon_gain_info_parameter_data->recon_gain_elements[0].has_value());
+
+    // Expect the second recon gain element to hold values as specified in
+    // the user metadata via `ConfigureReconGainParameterBlocks()`:
+    // - `recon_gain_flag` =  (1 << 0 | 1 << 2 | 1 << 3 | 1 << 4) = 29.
+    // - `recon_gain` value = 255 at positions 0, 2, 3, 4.
+    const auto& recon_gain_element_1 =
+        recon_gain_info_parameter_data->recon_gain_elements[1];
+    EXPECT_TRUE(recon_gain_element_1.has_value());
+    EXPECT_EQ(recon_gain_element_1->recon_gain_flag, 29);
+    EXPECT_THAT(recon_gain_element_1->recon_gain,
+                testing::ElementsAreArray(
+                    {255, 0, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0}));
+    block_index++;
+  }
 }
 
 TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {

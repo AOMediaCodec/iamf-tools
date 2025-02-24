@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
@@ -207,15 +208,18 @@ TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
   constexpr uint32_t kExpectedCentreReconGainIndex = 1;
   constexpr uint32_t kExpectedRightReconGainLayer = 1;
   constexpr uint32_t kExpectedRightReconGainIndex = 2;
+
+  // Set up recon gain elements.
+  ReconGainInfoParameterData param_data;
+  param_data.recon_gain_elements.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagC,
+                       {0, kCentreReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+  param_data.recon_gain_elements.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagR,
+                       {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
   const ParameterSubblock kReconGainSubblock{
       .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<ReconGainInfoParameterData>(
-          std::vector<ReconGainElement>{
-              {ReconGainElement::kReconGainFlagC,
-               {0, kCentreReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-              {ReconGainElement::kReconGainFlagR,
-               {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-          })};
+      .param_data = std::make_unique<ReconGainInfoParameterData>(param_data)};
 
   auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
@@ -231,6 +235,52 @@ TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {
                 .recon_gain()
                 .at(kExpectedCentreReconGainIndex),
             kCentreReconGain);
+  EXPECT_EQ(subblock_metadata->recon_gain_info_parameter_data()
+                .recon_gains_for_layer(kExpectedRightReconGainLayer)
+                .recon_gain()
+                .at(kExpectedRightReconGainIndex),
+            kRightReconGain);
+}
+
+TEST(GenerateParameterSubblockMetadata,
+     GenerateReconGainParameterSubblocksSkipElementsWithNoValue) {
+  constexpr uint8_t kRightReconGain = 200;
+  constexpr size_t kExpectedNumLayers = 2;
+  constexpr uint32_t kExpectedCentreReconGainLayer = 0;
+  constexpr uint32_t kExpectedRightReconGainLayer = 1;
+  constexpr uint32_t kExpectedRightReconGainIndex = 2;
+
+  // Set up recon gain elements: the first one does not hold any value, and
+  // the second one holds `kRightReconGain` at the correct position.
+  ReconGainInfoParameterData param_data;
+  param_data.recon_gain_elements.emplace_back(std::nullopt);
+  param_data.recon_gain_elements.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagR,
+                       {0, 0, kRightReconGain, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+
+  const ParameterSubblock kReconGainSubblock{
+      .subblock_duration = kSubblockDuration,
+      .param_data = std::make_unique<ReconGainInfoParameterData>(param_data)};
+
+  auto subblock_metadata =
+      ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
+          kParameterDefinitionReconGain, kReconGainSubblock);
+  ASSERT_THAT(subblock_metadata, IsOk());
+  ASSERT_TRUE(subblock_metadata->has_recon_gain_info_parameter_data());
+
+  EXPECT_EQ(subblock_metadata->recon_gain_info_parameter_data()
+                .recon_gains_for_layer_size(),
+            kExpectedNumLayers);
+
+  // Expect the centre-layer recon gain to have no values set because it's
+  // skipped.
+  EXPECT_TRUE(subblock_metadata->recon_gain_info_parameter_data()
+                  .recon_gains_for_layer(kExpectedCentreReconGainLayer)
+                  .recon_gain()
+                  .empty());
+
+  // Expect the right-layer recon gain to hold the correct value at the
+  // correct position.
   EXPECT_EQ(subblock_metadata->recon_gain_info_parameter_data()
                 .recon_gains_for_layer(kExpectedRightReconGainLayer)
                 .recon_gain()

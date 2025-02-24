@@ -438,8 +438,9 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
     EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
     const auto& recon_gain_element =
         recon_gain_info_parameter_data.recon_gain_elements[0];
-    EXPECT_EQ(recon_gain_element.recon_gain_flag, DecodedUleb128(1));
-    EXPECT_THAT(recon_gain_element.recon_gain,
+    ASSERT_TRUE(recon_gain_element.has_value());
+    EXPECT_EQ(recon_gain_element->recon_gain_flag, DecodedUleb128(1));
+    EXPECT_THAT(recon_gain_element->recon_gain,
                 ElementsAreArray(expected_recon_gain_values));
   }
 

@@ -299,8 +299,19 @@ absl::Status GenerateReconGainSubblock(
   }
   recon_gain_info_parameter_data->recon_gain_elements.resize(num_layers);
 
-  ChannelNumbers accumulated_channels = {0, 0, 0};
   for (int layer_index = 0; layer_index < num_layers; layer_index++) {
+    // Write out the user supplied gains. Depending on the mode these either
+    // match the computed recon gains or are used as an override. Write to
+    // output.
+    auto& output_recon_gain_element =
+        recon_gain_info_parameter_data->recon_gain_elements[layer_index];
+    if (!recon_gain_is_present_flags[layer_index]) {
+      // Skip computation and store no value in the output.
+      output_recon_gain_element.reset();
+      continue;
+    }
+    output_recon_gain_element.emplace(ReconGainElement{});
+
     // Construct the bitmask indicating the channels where recon gains are
     // present.
     std::vector<uint8_t> user_recon_gains(12, 0);
@@ -310,25 +321,18 @@ absl::Status GenerateReconGainSubblock(
       user_recon_gain_flag |= 1 << bit_position;
       user_recon_gains[bit_position] = user_recon_gain;
     }
-
-    // Write out the user supplied gains. Depending on the mode these either
-    // match the computed recon gains or are used as an override. Write to
-    // output.
-    auto& output_recon_gain_element =
-        recon_gain_info_parameter_data->recon_gain_elements[layer_index];
     for (const auto& [bit_position, user_recon_gain] :
          user_recon_gains_layers[layer_index].recon_gain()) {
-      output_recon_gain_element.recon_gain[bit_position] =
+      output_recon_gain_element->recon_gain[bit_position] =
           user_recon_gains[bit_position];
     }
-    output_recon_gain_element.recon_gain_flag = user_recon_gain_flag;
+    output_recon_gain_element->recon_gain_flag = user_recon_gain_flag;
 
     if (override_computed_recon_gains) {
       continue;
     }
 
     // Compute the recon gains and validate they match the user supplied values.
-    const auto& layer_channels = channel_numbers_for_layers[layer_index];
     std::vector<uint8_t> computed_recon_gains;
     DecodedUleb128 computed_recon_gain_flag = 0;
 
@@ -342,6 +346,11 @@ absl::Status GenerateReconGainSubblock(
           audio_element_id, " not found when computing recon gains"));
     }
 
+    const auto layer_channels = channel_numbers_for_layers[layer_index];
+    const auto accumulated_channels =
+        (layer_index > 0 ? channel_numbers_for_layers[layer_index - 1]
+                         : ChannelNumbers{0, 0, 0});
+    channel_numbers_for_layers[layer_index];
     RETURN_IF_NOT_OK(
         ComputeReconGains(layer_index, layer_channels, accumulated_channels,
                           additional_recon_gains_logging,
@@ -349,11 +358,6 @@ absl::Status GenerateReconGainSubblock(
                           labeled_decoded_frame_iter->second.label_to_samples,
                           recon_gain_is_present_flags, computed_recon_gains,
                           computed_recon_gain_flag));
-    accumulated_channels = layer_channels;
-
-    if (!recon_gain_is_present_flags[layer_index]) {
-      continue;
-    }
 
     // Compare computed and user specified flag and recon gain values.
     if (computed_recon_gain_flag != user_recon_gain_flag) {
@@ -496,7 +500,7 @@ absl::Status PopulateSubblocks(
     const bool additional_recon_gains_logging,
     const IdLabeledFrameMap* id_to_labeled_frame,
     const IdLabeledFrameMap* id_to_labeled_decoded_frame,
-    PerIdParameterMetadata& per_id_metadata,
+    const PerIdParameterMetadata& per_id_metadata,
     ParameterBlockWithData& output_parameter_block) {
   auto& parameter_block_obu = *output_parameter_block.obu;
   const DecodedUleb128 num_subblocks = parameter_block_obu.GetNumSubblocks();

@@ -796,21 +796,22 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
 TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode0) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
-  recon_gain_parameter_data_ = {
-      {{{
-            0,
-            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            // clang-format off
+  recon_gain_parameter_data_.resize(1);
+  auto& recon_gain_elements = recon_gain_parameter_data_[0].recon_gain_elements;
+  recon_gain_elements.emplace_back(ReconGainElement{
+      0,
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-            // clang-format on
-        },
-        {
-            ReconGainElement::kReconGainFlagR,
-            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagR,
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
             {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-            // clang-format on
-        }}}};
+      // clang-format on
+  });
 
   expected_header_ = {kObuIaParameterBlock << 3, 3};
   expected_payload_ = {
@@ -826,21 +827,22 @@ TEST_F(ReconGainBlockTest, TwoLayerParamDefinitionMode0) {
 TEST_F(ReconGainBlockTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
-  recon_gain_parameter_data_ = {
-      {{{
-            0,
-            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            // clang-format off
+  recon_gain_parameter_data_.resize(1);
+  auto& recon_gain_elements = recon_gain_parameter_data_[0].recon_gain_elements;
+  recon_gain_elements.emplace_back(ReconGainElement{
+      0,
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
             {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-            // clang-format on
-        },
-        {
-            ReconGainElement::kReconGainFlagR,
-            // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-            // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagR,
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
             {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-            // clang-format on
-        }}}};
+      // clang-format on
+  });
 
   // Configure the `LebGenerator`.
   leb_generator_ =
@@ -869,53 +871,54 @@ TEST_F(ReconGainBlockTest, MaxLayer7_1_4) {
   metadata_args_.num_layers = 6;
   metadata_args_.recon_gain_is_present_flags = {false, true, true,
                                                 true,  true, true};
-  recon_gain_parameter_data_ = {
-      {{{{
-             0,  // Mono.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+  recon_gain_parameter_data_.resize(1);
+  auto& recon_gain_elements = recon_gain_parameter_data_[0].recon_gain_elements;
+  recon_gain_elements.emplace_back(ReconGainElement{
+      0,  // Mono.
+          // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+          // clang-format off
              {  0, 0,  0,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-             // clang-format on
-         },
-         {
-             ReconGainElement::kReconGainFlagR,  // M + R stereo.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+          // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagR,  // M + R stereo.
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
              {  0, 0,  1,       0,       0,   0,   0,   0,   0,   0,   0,   0},
-             // clang-format on
-         },
-         {
-             ReconGainElement::kReconGainFlagRss |
-                 ReconGainElement::kReconGainFlagLss,  // 5.1.0.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagRss |
+          ReconGainElement::kReconGainFlagLss,  // 5.1.0.
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
              {  0, 0,  0,       2,       3,   0,   0,   0,   0,   0,   0,   0},
-             // clang-format on
-         },
-         {
-             ReconGainElement::kReconGainFlagLrs |
-                 ReconGainElement::kReconGainFlagRrs,  // 7.1.0.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagLrs |
+          ReconGainElement::kReconGainFlagRrs,  // 7.1.0.
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
              {  0, 0,  0,       0,       0,   0,   0,   4,   5,   0,   0,   0},
-             // clang-format on
-         },
-         {
-             ReconGainElement::kReconGainFlagLtf |
-                 ReconGainElement::kReconGainFlagRtf,  // 7.1.2.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagLtf |
+          ReconGainElement::kReconGainFlagRtf,  // 7.1.2.
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
              {  0, 0,  0,       0,       0,   6,   7,   0,   0,   0,   0,   0},
-             // clang-format on
-         },
-         {
-             ReconGainElement::kReconGainFlagLtb |
-                 ReconGainElement::kReconGainFlagRtb,  // 7.1.4.
-             // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
-             // clang-format off
+      // clang-format on
+  });
+  recon_gain_elements.emplace_back(ReconGainElement{
+      ReconGainElement::kReconGainFlagLtb |
+          ReconGainElement::kReconGainFlagRtb,  // 7.1.4.
+      // L, C,  R, Ls(Lss), Rs(Rss), Ltf, Rtf, Lrs, Rrs, Ltb, Rtb, LFE.
+      // clang-format off
              {  0, 0,  0,       0,       0,   0,   0,   0,   0,   8,   9,   0},
-             // clang-format on
-         }}}}};
+      // clang-format on
+  });
 
   expected_header_ = {kObuIaParameterBlock << 3, 17};
   expected_payload_ = {
@@ -948,14 +951,26 @@ TEST_F(ReconGainBlockTest, ValidateAndWriteObuFailsWithMoreThanOneSubblock) {
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
 
+  // In Spec, for recon gain param definition: `num_subblocks` SHALL be set
+  // to 1, and `constant_subblock_duration` SHALL be same as `duration`.
+  // The following violates these rules.
   duration_args_ = {
       .duration = 64, .constant_subblock_duration = 32, .num_subblocks = 2};
-  recon_gain_parameter_data_ = {{{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-                                  {ReconGainElement::kReconGainFlagR,
-                                   {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}},
-                                {{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-                                  {ReconGainElement::kReconGainFlagR,
-                                   {0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}}};
+  recon_gain_parameter_data_.resize(2);
+  auto& recon_gain_elements_0 =
+      recon_gain_parameter_data_[0].recon_gain_elements;
+  recon_gain_elements_0.emplace_back(
+      ReconGainElement{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+  recon_gain_elements_0.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagR,
+                       {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+  auto& recon_gain_elements_1 =
+      recon_gain_parameter_data_[1].recon_gain_elements;
+  recon_gain_elements_1.emplace_back(
+      ReconGainElement{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+  recon_gain_elements_1.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagR,
+                       {0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -968,9 +983,13 @@ TEST_F(ReconGainBlockTest,
   metadata_args_.num_layers = 2;
   metadata_args_.recon_gain_is_present_flags = {false, true};
 
-  recon_gain_parameter_data_ = {{{{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
-                                  {ReconGainElement::kReconGainFlagR,
-                                   {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}}}}};
+  recon_gain_parameter_data_.resize(1);
+  auto& recon_gain_elements = recon_gain_parameter_data_[0].recon_gain_elements;
+  recon_gain_elements.emplace_back(
+      ReconGainElement{0, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
+  recon_gain_elements.emplace_back(
+      ReconGainElement{ReconGainElement::kReconGainFlagR,
+                       {0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0}});
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);

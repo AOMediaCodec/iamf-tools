@@ -223,11 +223,13 @@ TEST_F(ParametersManagerTest, GetReconGainInfoParameterDataSucceeds) {
       IsOk());
 
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  ASSERT_TRUE(
+      recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
-      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
       DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
-            0);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0], 0);
 }
 
 TEST_F(ParametersManagerTest,
@@ -245,11 +247,14 @@ TEST_F(ParametersManagerTest,
       IsOk());
 
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  ASSERT_TRUE(
+      recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
-      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
       DecodedUleb128(0));
-  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
-            255);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0],
+      255);
 }
 
 TEST_F(ParametersManagerTest,
@@ -264,11 +269,14 @@ TEST_F(ParametersManagerTest,
       IsOk());
 
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 1);
+  ASSERT_TRUE(
+      recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
-      recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain_flag,
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
       DecodedUleb128(0));
-  EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements[0].recon_gain[0],
-            255);
+  EXPECT_EQ(
+      recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0],
+      255);
 }
 
 TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
@@ -298,9 +306,10 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
           kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_0),
       IsOk());
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0].recon_gain_flag,
+  ASSERT_TRUE(recon_gain_parameter_data_0.recon_gain_elements[0].has_value());
+  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0]->recon_gain_flag,
             DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0].recon_gain[0],
+  EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0]->recon_gain[0],
             0);
 
   EXPECT_THAT(parameters_manager_->UpdateReconGainState(
@@ -325,9 +334,10 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
           kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_1),
       IsOk());
   EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements.size(), 1);
-  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0].recon_gain_flag,
+  ASSERT_TRUE(recon_gain_parameter_data_1.recon_gain_elements[0].has_value());
+  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0]->recon_gain_flag,
             DecodedUleb128(1));
-  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0].recon_gain[0],
+  EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0]->recon_gain[0],
             0);
   // Updating should succeed a second time with the expected timestamp now
   // offset by the duration of the parameter block.

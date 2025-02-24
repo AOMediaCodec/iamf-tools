@@ -137,11 +137,15 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
         *result.mutable_recon_gain_info_parameter_data()
              ->add_recon_gains_for_layer()
              ->mutable_recon_gain();
+    if (!recon_gain_element.has_value()) {
+      recon_gains_for_layer.clear();
+      continue;
+    }
+
     DecodedUleb128 bitmask = 1;
-    for (int counter = 0; counter < recon_gain_element.recon_gain.size();
-         ++counter) {
-      if (recon_gain_element.recon_gain_flag & bitmask) {
-        recon_gains_for_layer[counter] = recon_gain_element.recon_gain[counter];
+    for (int i = 0; i < recon_gain_element->recon_gain.size(); ++i) {
+      if (recon_gain_element->recon_gain_flag & bitmask) {
+        recon_gains_for_layer[i] = recon_gain_element->recon_gain[i];
       }
 
       bitmask <<= 1;

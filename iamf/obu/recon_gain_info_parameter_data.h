@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "absl/log/log.h"
@@ -62,13 +63,6 @@ struct ReconGainElement {
 };
 
 struct ReconGainInfoParameterData : public ParameterData {
-  /*!\brief Constructor.
-   *
-   * \param input_recon_gain_elements Input vector of recon gain elements.
-   */
-  ReconGainInfoParameterData(
-      const std::vector<ReconGainElement>& input_recon_gain_elements)
-      : ParameterData(), recon_gain_elements(input_recon_gain_elements) {}
   ReconGainInfoParameterData() = default;
 
   /*!\brief Overridden destructor.*/
@@ -97,7 +91,9 @@ struct ReconGainInfoParameterData : public ParameterData {
   void Print() const override;
 
   // Vector of length `num_layers` in the Audio associated Audio Element OBU.
-  std::vector<ReconGainElement> recon_gain_elements;
+  // Each element may hold no value if the corresponding
+  // `recon_gain_is_present_flag` is false.
+  std::vector<std::optional<ReconGainElement>> recon_gain_elements;
 };
 
 }  // namespace iamf_tools
