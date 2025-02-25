@@ -12,11 +12,14 @@
 #include "iamf/cli/global_timing_module.h"
 
 #include <cstdint>
+#include <memory>
 #include <optional>
+#include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -30,34 +33,14 @@
 
 namespace iamf_tools {
 
-absl::Status GlobalTimingModule::GetTimestampsForId(
-    const DecodedUleb128 id, const uint32_t duration,
-    absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
-    InternalTimestamp& start_timestamp, InternalTimestamp& end_timestamp) {
-  auto timing_data_iter = id_to_timing_data.find(id);
-  if (timing_data_iter == id_to_timing_data.end()) {
-    // This allows generating timing information when
-    // `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is defined.
-    // TODO(b/278865608): Find better solutions to generate negative test
-    //                    vectors.
-    start_timestamp = 0;
-    end_timestamp = duration;
-    return absl::InvalidArgumentError(
-        absl::StrCat("Timestamps for ID: ", id, " not found"));
-  }
+namespace {
 
-  auto& timing_data = timing_data_iter->second;
-  start_timestamp = timing_data.timestamp;
-  end_timestamp = start_timestamp + duration;
-  timing_data.timestamp += duration;
-  return absl::OkStatus();
-}
-
-absl::Status GlobalTimingModule::Initialize(
+absl::Status InitializeInternal(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
     const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions) {
+        param_definitions,
+    auto& audio_frame_timing_data, auto& parameter_block_timing_data) {
   // TODO(b/283281856): Handle cases where `parameter_rate` and `sample_rate`
   //                    differ.
   for (const auto& [unused_id, audio_element] : audio_elements) {
@@ -70,7 +53,7 @@ absl::Status GlobalTimingModule::Initialize(
       RETURN_IF_NOT_OK(
           ValidateNotEqual(sample_rate, uint32_t{0}, "sample rate"));
 
-      const auto [unused_iter, inserted] = audio_frame_timing_data_.insert(
+      const auto [unused_iter, inserted] = audio_frame_timing_data.insert(
           {audio_substream_id, {.rate = sample_rate, .timestamp = 0}});
 
       if (!inserted) {
@@ -87,7 +70,7 @@ absl::Status GlobalTimingModule::Initialize(
     RETURN_IF_NOT_OK(
         ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
 
-    const auto [unused_iter, inserted] = parameter_block_timing_data_.insert(
+    const auto [unused_iter, inserted] = parameter_block_timing_data.insert(
         {parameter_id, {.rate = parameter_rate, .timestamp = 0}});
     if (!inserted) {
       return absl::InvalidArgumentError(
@@ -97,6 +80,28 @@ absl::Status GlobalTimingModule::Initialize(
   }
 
   return absl::OkStatus();
+}
+
+}  // namespace
+
+std::unique_ptr<GlobalTimingModule> GlobalTimingModule::Create(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
+        param_definitions) {
+  absl::flat_hash_map<DecodedUleb128, TimingData> audio_frame_timing_data;
+  absl::flat_hash_map<DecodedUleb128, TimingData> parameter_block_timing_data;
+  const auto status =
+      InitializeInternal(audio_elements, param_definitions,
+                         audio_frame_timing_data, parameter_block_timing_data);
+  if (!status.ok()) {
+    LOG(ERROR) << status;
+    return nullptr;
+  }
+
+  return absl::WrapUnique(
+      new GlobalTimingModule(std::move(audio_frame_timing_data),
+                             std::move(parameter_block_timing_data)));
 }
 
 absl::Status GlobalTimingModule::GetNextAudioFrameTimestamps(
@@ -138,6 +143,29 @@ absl::Status GlobalTimingModule::GetGlobalAudioFrameTimestamp(
   }
 
   global_timestamp = common_timestamp;
+  return absl::OkStatus();
+}
+
+absl::Status GlobalTimingModule::GetTimestampsForId(
+    const DecodedUleb128 id, const uint32_t duration,
+    absl::flat_hash_map<DecodedUleb128, TimingData>& id_to_timing_data,
+    InternalTimestamp& start_timestamp, InternalTimestamp& end_timestamp) {
+  auto timing_data_iter = id_to_timing_data.find(id);
+  if (timing_data_iter == id_to_timing_data.end()) {
+    // This allows generating timing information when
+    // `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is defined.
+    // TODO(b/278865608): Find better solutions to generate negative test
+    //                    vectors.
+    start_timestamp = 0;
+    end_timestamp = duration;
+    return absl::InvalidArgumentError(
+        absl::StrCat("Timestamps for ID: ", id, " not found"));
+  }
+
+  auto& timing_data = timing_data_iter->second;
+  start_timestamp = timing_data.timestamp;
+  end_timestamp = start_timestamp + duration;
+  timing_data.timestamp += duration;
   return absl::OkStatus();
 }
 

@@ -21,7 +21,6 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
@@ -337,7 +336,7 @@ class ObuProcessor {
       parameter_id_to_metadata_;
   absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element_;
-  GlobalTimingModule global_timing_module_;
+  std::unique_ptr<GlobalTimingModule> global_timing_module_;
   std::optional<ParametersManager> parameters_manager_;
   ReadBitBuffer* read_bit_buffer_;
 

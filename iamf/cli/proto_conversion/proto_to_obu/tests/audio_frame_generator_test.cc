@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <optional>
 #include <thread>
 #include <utility>
@@ -55,6 +56,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::NotNull;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
 constexpr uint32_t kSampleRate = 48000;
@@ -283,7 +285,7 @@ void InitializeAudioFrameGenerator(
         param_definitions,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    GlobalTimingModule& global_timing_module,
+    std::unique_ptr<GlobalTimingModule>& global_timing_module,
     std::optional<ParametersManager>& parameters_manager,
     std::optional<AudioFrameGenerator>& audio_frame_generator,
     bool expected_initialize_is_ok = true) {
@@ -302,9 +304,10 @@ void InitializeAudioFrameGenerator(
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
-  ASSERT_THAT(
-      global_timing_module.Initialize(audio_elements, param_definitions),
-      IsOk());
+  global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
+
   parameters_manager.emplace(audio_elements);
   ASSERT_TRUE(parameters_manager.has_value());
   ASSERT_THAT(parameters_manager->Initialize(), IsOk());
@@ -313,7 +316,7 @@ void InitializeAudioFrameGenerator(
   audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
                                 user_metadata.codec_config_metadata(),
                                 audio_elements, *demixing_module,
-                                *parameters_manager, global_timing_module);
+                                *parameters_manager, *global_timing_module);
   ASSERT_TRUE(audio_frame_generator.has_value());
 
   // Initialize.
@@ -330,7 +333,7 @@ void ExpectAudioFrameGeneratorInitializeIsNotOk(
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
 
@@ -392,7 +395,7 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
   // containers.
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   // For delayed initialization.
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
@@ -518,7 +521,7 @@ TEST(AudioFrameGenerator, AddSamplesAfterFinalizeHasNoEffect) {
       param_definitions = {};
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   // For delayed initialization.
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
@@ -564,7 +567,7 @@ TEST(AudioFrameGenerator, AddZeroSamplesBeforeFinalizeFails) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -844,7 +847,7 @@ TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -891,7 +894,7 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -919,7 +922,7 @@ TEST(AudioFrameGenerator,
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
 
@@ -949,7 +952,7 @@ TEST(AudioFrameGenerator,
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -1112,7 +1115,7 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -1135,7 +1138,7 @@ TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
@@ -1166,7 +1169,7 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   const absl::flat_hash_map<uint32_t, const ParamDefinition*>
       param_definitions = {};
-  GlobalTimingModule global_timing_module;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(

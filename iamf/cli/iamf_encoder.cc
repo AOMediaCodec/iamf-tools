@@ -141,9 +141,12 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
       audio_elements, mix_presentation_obus, param_definitions));
 
   // Initialize the global timing module.
-  auto global_timing_module = std::make_unique<GlobalTimingModule>();
-  RETURN_IF_NOT_OK(
-      global_timing_module->Initialize(audio_elements, param_definitions));
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  if (global_timing_module == nullptr) {
+    return absl::InvalidArgumentError(
+        "Failed to initialize the global timing module");
+  }
 
   // Initialize the parameter block generator.
   auto parameter_id_to_metadata = std::make_unique<

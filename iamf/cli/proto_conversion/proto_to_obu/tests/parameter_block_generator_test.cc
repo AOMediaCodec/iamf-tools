@@ -45,6 +45,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::NotNull;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -69,13 +70,15 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
 
   // Generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
-  GlobalTimingModule global_timing_module;
-  EXPECT_THAT(
-      generator.GenerateDemixing(global_timing_module, output_parameter_blocks),
-      IsOk());
+  auto global_timing_module = GlobalTimingModule::Create(
+      /*audio_elements=*/{}, /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
+  EXPECT_THAT(generator.GenerateDemixing(*global_timing_module,
+                                         output_parameter_blocks),
+              IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
   EXPECT_THAT(
-      generator.GenerateMixGain(global_timing_module, output_parameter_blocks),
+      generator.GenerateMixGain(*global_timing_module, output_parameter_blocks),
       IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
 
@@ -83,7 +86,7 @@ TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
   IdLabeledFrameMap id_to_labeled_decoded_frame;
   EXPECT_THAT(generator.GenerateReconGain(
                   id_to_labeled_frame, id_to_labeled_decoded_frame,
-                  global_timing_module, output_parameter_blocks),
+                  *global_timing_module, output_parameter_blocks),
               IsOk());
   EXPECT_TRUE(output_parameter_blocks.empty());
 }
@@ -174,10 +177,9 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
   EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(
-      global_timing_module.Initialize(audio_elements, param_definitions),
-      IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -187,7 +189,7 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-    EXPECT_THAT(generator.GenerateDemixing(global_timing_module,
+    EXPECT_THAT(generator.GenerateDemixing(*global_timing_module,
                                            parameter_blocks_for_frame),
                 IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
@@ -290,10 +292,9 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(
-      global_timing_module.Initialize(audio_elements, param_definitions),
-      IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add and generate.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -303,7 +304,7 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
 
     // Generate parameter blocks.
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-    EXPECT_THAT(generator.GenerateMixGain(global_timing_module,
+    EXPECT_THAT(generator.GenerateMixGain(*global_timing_module,
                                           parameter_blocks_for_frame),
                 IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
@@ -452,10 +453,9 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(
-      global_timing_module.Initialize(audio_elements, param_definitions),
-      IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add all metadata and generate recon gain parameter blocks.
   std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -471,7 +471,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
     std::list<ParameterBlockWithData> parameter_blocks_for_frame;
     EXPECT_THAT(generator.GenerateReconGain(
                     id_to_labeled_frame, id_to_labeled_decoded_frame,
-                    global_timing_module, parameter_blocks_for_frame),
+                    *global_timing_module, parameter_blocks_for_frame),
                 IsOk());
     EXPECT_EQ(parameter_blocks_for_frame.size(), 1);
     output_parameter_blocks.splice(output_parameter_blocks.end(),

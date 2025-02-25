@@ -50,6 +50,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
+using ::testing::NotNull;
 
 using enum ChannelLabel::Label;
 
@@ -264,9 +265,9 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
 
   void SetUpModules() {
     // Set up the global timing module.
-    ASSERT_THAT(global_timing_module_.Initialize(audio_elements_with_data_,
-                                                 param_definitions_),
-                IsOk());
+    global_timing_module_ = GlobalTimingModule::Create(
+        audio_elements_with_data_, param_definitions_);
+    ASSERT_THAT(global_timing_module_, NotNull());
 
     // Set up the parameters manager.
     parameters_manager_ =
@@ -343,7 +344,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
               {parameter_id, kStartTimestamp});
       auto parameter_block_with_data =
           ObuWithDataGenerator::GenerateParameterBlockWithData(
-              last_end_timestamp_iter->second, global_timing_module_,
+              last_end_timestamp_iter->second, *global_timing_module_,
               std::move(parameter_block_obu));
       ASSERT_THAT(parameter_block_with_data, IsOk());
       last_end_timestamp_iter->second =
@@ -372,7 +373,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
       std::list<ParameterBlockWithData>::iterator& parameter_block_iter) {
     std::optional<int32_t> global_timestamp = std::nullopt;
     ASSERT_THAT(
-        global_timing_module_.GetGlobalAudioFrameTimestamp(global_timestamp),
+        global_timing_module_->GetGlobalAudioFrameTimestamp(global_timestamp),
         IsOk());
     for (; parameter_block_iter != parameter_blocks_with_data_.end();
          parameter_block_iter++) {
@@ -397,7 +398,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   void UpdateParameterStatesIfNeeded() {
     std::optional<int32_t> global_timestamp = std::nullopt;
     EXPECT_THAT(
-        global_timing_module_.GetGlobalAudioFrameTimestamp(global_timestamp),
+        global_timing_module_->GetGlobalAudioFrameTimestamp(global_timestamp),
         IsOk());
     if (!global_timestamp.has_value()) {
       return;
@@ -460,7 +461,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   // Using `node_hash_map` because pointer stability is desired.
   absl::node_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata_;
-  GlobalTimingModule global_timing_module_;
+  std::unique_ptr<GlobalTimingModule> global_timing_module_;
   std::unique_ptr<ParametersManager> parameters_manager_;
 
  private:
@@ -502,7 +503,7 @@ TEST_F(GenerateAudioFrameWithDataTest, ValidAudioFrame) {
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     ASSERT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
   }
@@ -542,7 +543,7 @@ TEST_F(GenerateAudioFrameWithDataTest,
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
   }
@@ -584,7 +585,7 @@ TEST_F(GenerateAudioFrameWithDataTest,
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
     UpdateParameterStatesIfNeeded();
@@ -643,7 +644,7 @@ TEST_F(GenerateAudioFrameWithDataTest,
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
     UpdateParameterStatesIfNeeded();
@@ -716,7 +717,7 @@ TEST_F(GenerateAudioFrameWithDataTest,
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
     UpdateParameterStatesIfNeeded();
@@ -773,7 +774,7 @@ TEST_F(GenerateAudioFrameWithDataTest,
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_THAT(audio_frame_with_data, IsOk());
     audio_frames_with_data.push_back(std::move(*audio_frame_with_data));
     UpdateParameterStatesIfNeeded();
@@ -809,7 +810,7 @@ TEST_F(GenerateAudioFrameWithDataTest, RejectMismatchingAudioElement) {
   // Set up inputs. Notice that the substream ID recorded in the audio element
   // (`kSecondSubstreamId`) is different from that in the audio frame OBU
   // (`kFirstSubstreamId`). This will cause `GenerateAudioFrameWithData()`
-  // to fail, because it cannot find the correspoinding audio element of the
+  // to fail, because it cannot find the corresponding audio element of the
   // audio frame being processed.
   SetUpObus({kSecondSubstreamId}, {kFirstSubstreamAudioFrameObu}, 1);
   SetUpModules();
@@ -819,7 +820,7 @@ TEST_F(GenerateAudioFrameWithDataTest, RejectMismatchingAudioElement) {
     auto audio_frame_with_data =
         ObuWithDataGenerator::GenerateAudioFrameWithData(
             audio_elements_with_data_.at(kFirstAudioElementId), audio_frame_obu,
-            global_timing_module_, *parameters_manager_);
+            *global_timing_module_, *parameters_manager_);
     EXPECT_FALSE(audio_frame_with_data.ok());
   }
 }
@@ -841,10 +842,9 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
   param_definition.duration_ = static_cast<DecodedUleb128>(kDuration);
   param_definition.parameter_rate_ = 1;
   param_definitions.emplace(kFirstParameterId, &param_definition);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              param_definitions),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
   std::list<std::unique_ptr<ParameterBlockObu>> parameter_block_obus;
   PerIdParameterMetadata per_id_metadata = {.param_definition =
                                                 param_definition};
@@ -857,7 +857,7 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
   for (auto& parameter_block_obu : parameter_block_obus) {
     auto parameter_block_with_data =
         ObuWithDataGenerator::GenerateParameterBlockWithData(
-            start_timestamp, global_timing_module,
+            start_timestamp, *global_timing_module,
             std::move(parameter_block_obu));
     EXPECT_THAT(parameter_block_with_data, IsOk());
     start_timestamp += kDuration;

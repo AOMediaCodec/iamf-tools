@@ -291,8 +291,12 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
       }
     }
   }
-  RETURN_IF_NOT_OK(
-      global_timing_module_.Initialize(audio_elements_, param_definitions_));
+  global_timing_module_ =
+      GlobalTimingModule::Create(audio_elements_, param_definitions_);
+  if (global_timing_module_ == nullptr) {
+    return absl::InvalidArgumentError(
+        "Failed to initialize the global timing module");
+  }
   parameters_manager_.emplace(audio_elements_);
   RETURN_IF_NOT_OK(parameters_manager_->Initialize());
   return absl::OkStatus();
@@ -720,6 +724,11 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
         "Parameters manager is not constructed; "
         "remember to call `Initialize()` first.");
   }
+  if (global_timing_module_ == nullptr) {
+    return absl::InvalidArgumentError(
+        "Global timing module is not constructed; "
+        "remember to call `Initialize()` first.");
+  }
   if (read_bit_buffer_ == nullptr) {
     return absl::InvalidArgumentError(
         "Read bit buffer is not constructed; "
@@ -729,7 +738,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
   return ObuProcessor::ProcessTemporalUnitObu(
       audio_elements_, codec_config_obus_, substream_id_to_audio_element_,
       *parameters_manager_, parameter_id_to_metadata_, *read_bit_buffer_,
-      global_timing_module_, output_audio_frame_with_data,
+      *global_timing_module_, output_audio_frame_with_data,
       output_parameter_block_with_data, output_temporal_delimiter,
       continue_processing);
 }

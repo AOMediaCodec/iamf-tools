@@ -14,7 +14,9 @@
 #define CLI_GLOBAL_TIMING_MODULE_H_
 
 #include <cstdint>
+#include <memory>
 #include <optional>
+#include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -26,21 +28,14 @@ namespace iamf_tools {
 
 class GlobalTimingModule {
  public:
-  /*!\brief Constructor.
-   */
-  GlobalTimingModule() = default;
-
-  /*!\brief Initializes a Global Timing Module.
-   *
-   * Must be called before calling `GetNextAudioFrameTimestamps()` and
-   * `GetNextParameterBlockTimestamps()`.
+  /*!\brief Creates a Global Timing Module.
    *
    * \param audio_elements Audio Element OBUs with data to search for sample
    *        rates.
    * \param param_definitions Parameter definitions keyed by parameter IDs.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return `GlobalTimingModule` on success. A specific status on failure.
    */
-  absl::Status Initialize(
+  static std::unique_ptr<GlobalTimingModule> Create(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
       const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
@@ -96,6 +91,22 @@ class GlobalTimingModule {
     // Measured in ticks implied by `rate`.
     InternalTimestamp timestamp;
   };
+
+  /*!\brief Constructor.
+   *
+   * Used only by `Create()`.
+   *
+   * \param audio_frame_timing_data Timing data for Audio Frames keyed by
+   *        substream ID.
+   * \param parameter_block_timing_data Timing data for Parameter Blocks keyed
+   *        by parameter ID.
+   */
+  GlobalTimingModule(
+      absl::flat_hash_map<DecodedUleb128, TimingData>&& audio_frame_timing_data,
+      absl::flat_hash_map<DecodedUleb128, TimingData>&&
+          parameter_block_timing_data)
+      : audio_frame_timing_data_(std::move(audio_frame_timing_data)),
+        parameter_block_timing_data_(std::move(parameter_block_timing_data)) {}
 
   absl::Status GetTimestampsForId(
       DecodedUleb128 id, uint32_t duration,

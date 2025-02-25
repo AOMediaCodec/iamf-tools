@@ -112,8 +112,8 @@ std::vector<uint8_t> InitObuSequenceAddSequenceHeader(
 auto CreateAllWavWriters(const std::string output_filename_string,
                          bool write_wav_header) {
   return [output_filename_string, write_wav_header](
-             DecodedUleb128 mix_presentation_id, int /*sub_mix_index*/,
-             int /*layout_index*/, const Layout& layout, int num_channels,
+             DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
+             int /*layout_index*/, const Layout& /*layout*/, int num_channels,
              int sample_rate, int bit_depth, size_t max_input_samples_per_frame)
              -> std::unique_ptr<SampleProcessorBase> {
     return WavWriter::Create(output_filename_string, num_channels, sample_rate,
@@ -647,10 +647,10 @@ TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
       {};
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kNoAudioElementsWithData = {};
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(kNoAudioElementsWithData,
-                                              /*param_definitions=*/{}),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(kNoAudioElementsWithData,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
       parameter_id_to_metadata;
 
@@ -667,7 +667,7 @@ TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
           kNoAudioElementsWithData, kNoCodecConfigs,
           substream_id_to_audio_element, parameters_manager,
           parameter_id_to_metadata, *empty_read_bit_buffer,
-          global_timing_module, audio_frame_with_data,
+          *global_timing_module, audio_frame_with_data,
           parameter_block_with_data, temporal_delimiter, continue_processing),
       IsOk());
 
@@ -691,10 +691,10 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
 
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
@@ -715,7 +715,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -745,10 +745,10 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
 
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
@@ -771,7 +771,7 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -786,7 +786,7 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -822,10 +822,10 @@ TEST(ProcessTemporalUnitObus,
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
@@ -846,7 +846,7 @@ TEST(ProcessTemporalUnitObus,
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -861,7 +861,7 @@ TEST(ProcessTemporalUnitObus,
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -876,7 +876,7 @@ TEST(ProcessTemporalUnitObus,
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -907,10 +907,10 @@ TEST(ProcessTemporalUnitObus,
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
@@ -931,7 +931,7 @@ TEST(ProcessTemporalUnitObus,
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -946,7 +946,7 @@ TEST(ProcessTemporalUnitObus,
                    audio_elements_with_data, codec_config_obus,
                    substream_id_to_audio_element, parameters_manager,
                    parameter_id_to_metadata, *read_bit_buffer,
-                   global_timing_module, audio_frame_with_data,
+                   *global_timing_module, audio_frame_with_data,
                    parameter_block_with_data, temporal_delimiter,
                    continue_processing)
                    .ok());
@@ -973,11 +973,10 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
-
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
@@ -999,7 +998,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -1013,7 +1012,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -1027,7 +1026,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
@@ -1061,11 +1060,10 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
       kFirstAudioElementId, kFirstCodecConfigId,
       {kFirstSubstreamId, kSecondSubstreamId, kImplicitSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
-
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const auto* first_audio_element =
       &audio_elements_with_data.at(kFirstAudioElementId);
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
@@ -1091,7 +1089,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
         ObuProcessor::ProcessTemporalUnitObu(
             audio_elements_with_data, codec_config_obus,
             substream_id_to_audio_element, parameters_manager,
-            parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+            parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
             audio_frame_with_data, parameter_block_with_data,
             temporal_delimiter, continue_processing),
         IsOk());
@@ -1119,11 +1117,10 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
-
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const auto* first_audio_element =
       &audio_elements_with_data.at(kFirstAudioElementId);
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
@@ -1147,7 +1144,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
         ObuProcessor::ProcessTemporalUnitObu(
             audio_elements_with_data, codec_config_obus,
             substream_id_to_audio_element, parameters_manager,
-            parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+            parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
             audio_frame_with_data, parameter_block_with_data,
             temporal_delimiter, continue_processing),
         IsOk());
@@ -1179,11 +1176,10 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
       codec_config_obus, audio_elements_with_data);
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              /*param_definitions=*/{}),
-              IsOk());
-
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data,
+                                 /*param_definitions=*/{});
+  ASSERT_THAT(global_timing_module, NotNull());
   const auto* first_audio_element =
       &audio_elements_with_data.at(kFirstAudioElementId);
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
@@ -1211,7 +1207,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
         ObuProcessor::ProcessTemporalUnitObu(
             audio_elements_with_data, codec_config_obus,
             substream_id_to_audio_element, parameters_manager,
-            parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+            parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
             audio_frame_with_data, parameter_block_with_data,
             temporal_delimiter, continue_processing),
         IsOk());
@@ -1260,11 +1256,9 @@ TEST(ProcessTemporalUnitObusTest,
 
   // Initialize the sequence with a single parameter block.
   auto one_parameter_block_obu = InitObuSequence({&parameter_block_obu});
-  GlobalTimingModule global_timing_module;
-  ASSERT_THAT(global_timing_module.Initialize(audio_elements_with_data,
-                                              param_definitions),
-              IsOk());
-
+  auto global_timing_module =
+      GlobalTimingModule::Create(audio_elements_with_data, param_definitions);
+  ASSERT_THAT(global_timing_module, NotNull());
   const auto* first_audio_element =
       &audio_elements_with_data.at(kFirstAudioElementId);
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
@@ -1283,7 +1277,7 @@ TEST(ProcessTemporalUnitObusTest,
       ObuProcessor::ProcessTemporalUnitObu(
           audio_elements_with_data, codec_config_obus,
           substream_id_to_audio_element, parameters_manager,
-          parameter_id_to_metadata, *read_bit_buffer, global_timing_module,
+          parameter_id_to_metadata, *read_bit_buffer, *global_timing_module,
           audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
           continue_processing),
       IsOk());
