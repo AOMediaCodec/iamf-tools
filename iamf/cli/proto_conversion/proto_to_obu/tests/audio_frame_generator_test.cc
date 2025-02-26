@@ -29,7 +29,6 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
-#include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameters_manager.h"
@@ -56,6 +55,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::ElementsAre;
 using ::testing::NotNull;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
@@ -86,6 +86,11 @@ constexpr auto kFrame0R2EightSamples = []() -> auto {
                             absl::MakeSpan(result));
   return result;
 }();
+
+MATCHER_P(NumSamplesToTrimAtStartIs, expected_samples_to_trim_at_start, "") {
+  return arg.obu.header_.num_samples_to_trim_at_start ==
+         expected_samples_to_trim_at_start;
+}
 
 constexpr std::array<InternalSampleType, 0> kEmptyFrame = {};
 
@@ -1013,24 +1018,23 @@ TEST(AudioFrameGenerator, EncodingSucceedsWithFullFramesTrimmedAtStart) {
   GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
   ASSERT_FALSE(audio_frames.empty());
 
-  // Check the "cumulative" samples to trim from the start matches the requested
-  // value.
-  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
-  uint32_t unused_common_samples_to_trim_at_end = 0;
-  ASSERT_THAT(
-      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
-                               unused_common_samples_to_trim_at_end,
-                               observed_cumulative_samples_to_trim_at_start),
-      IsOk());
-  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
-            kAacNumSamplesToTrimAtStart);
+  // AAC frames are 1024 samples long, but (when encoding using `fdk_aac`) it
+  // has a delay of 2048 samples. This means the first two frames are trimmed,
+  // and the third frame contains the first "real" sample.
+  constexpr uint32_t kFullAacFrameTrimmed = 1024;
+  EXPECT_THAT(audio_frames,
+              ElementsAre(NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(0)));
 }
 
 TEST(AudioFrameGenerator, TrimsAdditionalSamplesAtStart) {
   // Request more samples to be trimmed from the start than required by the
   // codec delay. The output audio will have one fewer sample than the input
   // audio.
-  constexpr uint32_t kNumSamplesToTrimAtStart = kAacNumSamplesToTrimAtStart + 1;
+  constexpr uint32_t kAdditionalSampleTrimmed = 1;
+  constexpr uint32_t kNumSamplesToTrimAtStart =
+      kAacNumSamplesToTrimAtStart + kAdditionalSampleTrimmed;
   iamf_tools_cli_proto::UserMetadata user_metadata = {};
   ConfigureAacCodecConfigMetadata(
       *user_metadata.mutable_codec_config_metadata()->Add());
@@ -1047,17 +1051,14 @@ TEST(AudioFrameGenerator, TrimsAdditionalSamplesAtStart) {
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
 
-  // Check the "cumulative" samples to trim from the start matches the requested
-  // value.
-  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
-  uint32_t unused_common_samples_to_trim_at_end = 0;
-  ASSERT_THAT(
-      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
-                               unused_common_samples_to_trim_at_end,
-                               observed_cumulative_samples_to_trim_at_start),
-      IsOk());
-  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
-            kNumSamplesToTrimAtStart);
+  // In total the user requested 2049 samples to be trimmed. Of those 2048
+  // include the codec delay, plus one additional user-requested sample to be
+  // trimmed.
+  constexpr uint32_t kFullAacFrameTrimmed = 1024;
+  EXPECT_THAT(audio_frames,
+              ElementsAre(NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(kAdditionalSampleTrimmed)));
 }
 
 TEST(AudioFrameGenerator, AddsCodecDelayToSamplesToTrimAtStartWhenRequested) {
@@ -1066,32 +1067,27 @@ TEST(AudioFrameGenerator, AddsCodecDelayToSamplesToTrimAtStartWhenRequested) {
       *user_metadata.mutable_codec_config_metadata()->Add());
   AddStereoAudioElementAndAudioFrameMetadata(
       user_metadata, kFirstAudioElementId, kFirstSubstreamId);
-  // Request one sample to be trimmed. In addition to the codec delay.
-  constexpr uint32_t kNumSamplesToTrimAtStart = 1;
+  // Request one sample to be trimmed. In addition to the codec delay, plus the
+  // codec delay.
+  constexpr uint32_t kAdditionalSampleTrimmed = 1;
   user_metadata.mutable_audio_frame_metadata(0)
       ->set_samples_to_trim_at_start_includes_codec_delay(
           kSamplesToTrimAtStartExcludesCodecDelay);
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_start(
-      kNumSamplesToTrimAtStart);
+      kAdditionalSampleTrimmed);
   user_metadata.mutable_audio_frame_metadata(0)
       ->set_samples_to_trim_at_end_includes_padding(false);
 
   std::list<AudioFrameWithData> audio_frames;
   GenerateAudioFrameWithEightSamplesExpectOk(user_metadata, audio_frames);
 
-  uint32_t observed_cumulative_samples_to_trim_at_start = 0;
-  uint32_t unused_common_samples_to_trim_at_end = 0;
-  ASSERT_THAT(
-      ValidateAndGetCommonTrim(kAacNumSamplesPerFrame, audio_frames,
-                               unused_common_samples_to_trim_at_end,
-                               observed_cumulative_samples_to_trim_at_start),
-      IsOk());
-  // The actual cumulative trim values in the OBU include both the codec delay
-  // and the user requested trim.
-  constexpr uint32_t kExpectedNumSamplesToTrimAtStart =
-      kAacNumSamplesToTrimAtStart + kNumSamplesToTrimAtStart;
-  EXPECT_EQ(observed_cumulative_samples_to_trim_at_start,
-            kExpectedNumSamplesToTrimAtStart);
+  // In total we expect the first two frames to be full trimmed, to account for
+  // AAC pre-skip. Plus the additional user-requested sample to be trimmed.
+  constexpr uint32_t kFullAacFrameTrimmed = 1024;
+  EXPECT_THAT(audio_frames,
+              ElementsAre(NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(kFullAacFrameTrimmed),
+                          NumSamplesToTrimAtStartIs(kAdditionalSampleTrimmed)));
 }
 
 TEST(AudioFrameGenerator, InitFailsWithTooFewSamplesToTrimAtStart) {

@@ -43,7 +43,6 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
-        "//iamf/cli:cli_util",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameters_manager",
