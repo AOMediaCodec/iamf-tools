@@ -55,8 +55,10 @@
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -67,6 +69,7 @@
 #include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
@@ -438,6 +441,18 @@ std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
   EXPECT_TRUE(
       std::filesystem::create_directories(output_directory, error_code));
   return output_directory;
+}
+
+std::vector<uint8_t> SerializeObusExpectOk(
+    const std::list<const ObuBase*>& obus, const LebGenerator& leb_generator) {
+  using ::absl_testing::IsOk;
+  WriteBitBuffer serialized_obus(0, leb_generator);
+  for (const auto* obu : obus) {
+    EXPECT_NE(obu, nullptr);
+    EXPECT_THAT(obu->ValidateAndWriteObu(serialized_obus), IsOk());
+  }
+
+  return serialized_obus.bit_buffer();
 }
 
 void ParseUserMetadataAssertSuccess(

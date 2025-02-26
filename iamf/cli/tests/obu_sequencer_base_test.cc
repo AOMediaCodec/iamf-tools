@@ -278,12 +278,6 @@ TEST(GenerateTemporalUnitMap, CreatesTemporalUnitsForEachInsertionTick) {
 void ValidateWriteTemporalUnitSequence(
     bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
     const std::list<const ObuBase*>& expected_sequence) {
-  WriteBitBuffer expected_wb(128);
-  for (const auto* expected_obu : expected_sequence) {
-    ASSERT_NE(expected_obu, nullptr);
-    EXPECT_THAT(expected_obu->ValidateAndWriteObu(expected_wb), IsOk());
-  }
-
   WriteBitBuffer result_wb(128);
   int unused_num_samples;
   EXPECT_THAT(ObuSequencerBase::WriteTemporalUnit(include_temporal_delimiters,
@@ -291,7 +285,7 @@ void ValidateWriteTemporalUnitSequence(
                                                   unused_num_samples),
               IsOk());
 
-  EXPECT_EQ(result_wb.bit_buffer(), expected_wb.bit_buffer());
+  EXPECT_EQ(result_wb.bit_buffer(), SerializeObusExpectOk(expected_sequence));
 }
 
 void InitializeOneParameterBlockAndOneAudioFrame(

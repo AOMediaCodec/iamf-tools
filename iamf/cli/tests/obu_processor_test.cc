@@ -41,7 +41,6 @@
 #include "iamf/cli/wav_reader.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -88,25 +87,14 @@ constexpr std::optional<uint8_t> kNoOutputFileBitDepthOverride = std::nullopt;
 constexpr uint8_t kOutputBitDepth24 = 24;
 constexpr uint8_t kOutputBitDepth32 = 32;
 
-std::vector<uint8_t> InitObuSequence(
-    const std::list<const ObuBase*>& input_ia_sequence) {
-  WriteBitBuffer expected_wb(0);
-  for (const auto* expected_obu : input_ia_sequence) {
-    EXPECT_NE(expected_obu, nullptr);
-    EXPECT_THAT(expected_obu->ValidateAndWriteObu(expected_wb), IsOk());
-  }
-
-  return expected_wb.bit_buffer();
-}
-
-std::vector<uint8_t> InitObuSequenceAddSequenceHeader(
+std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
     const std::list<const ObuBase*>& input_ia_sequence_without_header) {
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   std::list<const ObuBase*> input_ia_sequence(input_ia_sequence_without_header);
   input_ia_sequence.push_front(&ia_sequence_header);
-  return InitObuSequence(input_ia_sequence);
+  return SerializeObusExpectOk(input_ia_sequence);
 }
 
 auto CreateAllWavWriters(const std::string output_filename_string,
@@ -123,8 +111,8 @@ auto CreateAllWavWriters(const std::string output_filename_string,
 }
 
 TEST(ProcessDescriptorObus, InvalidWithoutIaSequenceHeader) {
-  std::vector<uint8_t> bitstream_without_ia_sequence_header =
-      InitObuSequence({});
+  const std::vector<uint8_t> bitstream_without_ia_sequence_header =
+      SerializeObusExpectOk({});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obu;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -150,9 +138,10 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   AudioFrameObu input_audio_frame(
       ObuHeader(), kFirstSubstreamId, /*audio_frame=*/
       {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16});
-  auto two_codec_configs_and_audio_frame = InitObuSequenceAddSequenceHeader(
-      {&input_codec_configs.at(kFirstCodecConfigId),
-       &input_codec_configs.at(kSecondCodecConfigId), &input_audio_frame});
+  const auto two_codec_configs_and_audio_frame =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &input_codec_configs.at(kSecondCodecConfigId), &input_audio_frame});
   IASequenceHeaderObu unused_ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -178,9 +167,10 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
-  auto two_codec_configs_at_end_of_bitstream = InitObuSequenceAddSequenceHeader(
-      {&input_codec_configs.at(kFirstCodecConfigId),
-       &input_codec_configs.at(kSecondCodecConfigId)});
+  const auto two_codec_configs_at_end_of_bitstream =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &input_codec_configs.at(kSecondCodecConfigId)});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -209,9 +199,10 @@ TEST(ProcessDescriptorObus,
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
-  auto two_codec_configs_at_end_of_bitstream = InitObuSequenceAddSequenceHeader(
-      {&input_codec_configs.at(kFirstCodecConfigId),
-       &input_codec_configs.at(kSecondCodecConfigId)});
+  const auto two_codec_configs_at_end_of_bitstream =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &input_codec_configs.at(kSecondCodecConfigId)});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -235,7 +226,8 @@ TEST(ProcessDescriptorObus,
 }
 
 TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
-  auto only_ia_sequence_header = InitObuSequenceAddSequenceHeader({});
+  const auto only_ia_sequence_header =
+      AddSequenceHeaderAndSerializeObusExpectOk({});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -272,9 +264,9 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   std::list<MixPresentationObu> unused_mix_presentation_obus;
 
   // Descriptor OBUs must start with IA Sequence Header.
-  auto ia_sequence_header_then_codec_config =
-      InitObuSequence({&input_ia_sequence_header,
-                       &input_codec_configs.at(kFirstCodecConfigId)});
+  const auto ia_sequence_header_then_codec_config =
+      SerializeObusExpectOk({&input_ia_sequence_header,
+                             &input_codec_configs.at(kFirstCodecConfigId)});
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
@@ -289,9 +281,9 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   EXPECT_FALSE(insufficient_data);
   // The reverse order is not valid according to
   // https://aomediacodec.github.io/iamf/#standalone-descriptor-obus
-  auto codec_config_then_ia_sequence_header =
-      InitObuSequence({&input_codec_configs.at(kFirstCodecConfigId),
-                       &input_ia_sequence_header});
+  const auto codec_config_then_ia_sequence_header =
+      SerializeObusExpectOk({&input_codec_configs.at(kFirstCodecConfigId),
+                             &input_ia_sequence_header});
 
   read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
@@ -308,8 +300,8 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
   const IASequenceHeaderObu input_redundant_ia_sequence_header(
       ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
-  auto bitstream =
-      InitObuSequenceAddSequenceHeader({&input_redundant_ia_sequence_header});
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&input_redundant_ia_sequence_header});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -332,12 +324,13 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
-  auto buffer = InitObuSequence({&input_non_redundant_ia_sequence_header});
+  auto buffer =
+      SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   const int64_t first_ia_sequence_size = buffer.size();
 
   // Add a second non-redundant sequence header.
   const auto second_non_redundant_ia_sequence =
-      InitObuSequence({&input_non_redundant_ia_sequence_header});
+      SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   buffer.insert(buffer.end(), second_non_redundant_ia_sequence.begin(),
                 second_non_redundant_ia_sequence.end());
 
@@ -369,9 +362,10 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
   const DecodedUleb128 kSecondCodecConfigId = 124;
   AddOpusCodecConfigWithId(kSecondCodecConfigId, input_codec_configs);
-  auto ia_sequence_header_with_codec_configs = InitObuSequenceAddSequenceHeader(
-      {&input_codec_configs.at(kFirstCodecConfigId),
-       &input_codec_configs.at(kSecondCodecConfigId)});
+  const auto ia_sequence_header_with_codec_configs =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &input_codec_configs.at(kSecondCodecConfigId)});
   IASequenceHeaderObu ia_sequence_header;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -412,7 +406,7 @@ std::vector<uint8_t> InitAllDescriptorsForZerothOrderAmbisonics() {
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
 
-  return InitObuSequenceAddSequenceHeader(
+  return AddSequenceHeaderAndSerializeObusExpectOk(
       {&input_codec_configs.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -494,7 +488,7 @@ TEST(ProcessDescriptorObusTest,
 
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
 
@@ -531,7 +525,7 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
 
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
 
@@ -640,7 +634,7 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
 }
 
 TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
-  auto empty_temporal_unit = InitObuSequence({});
+  const auto empty_temporal_unit = SerializeObusExpectOk({});
   auto empty_read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(empty_temporal_unit));
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigs =
@@ -681,7 +675,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
 
-  auto one_temporal_unit = InitObuSequence({&audio_frame_obu});
+  const auto one_temporal_unit = SerializeObusExpectOk({&audio_frame_obu});
 
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -734,8 +728,9 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
       ObuHeader{.obu_redundant_copy = false}, IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
 
-  auto one_temporal_unit_before_non_redundant_descriptor_obu =
-      InitObuSequence({&audio_frame_obu, &non_redundant_ia_sequence_header});
+  const auto one_temporal_unit_before_non_redundant_descriptor_obu =
+      SerializeObusExpectOk(
+          {&audio_frame_obu, &non_redundant_ia_sequence_header});
 
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -813,9 +808,9 @@ TEST(ProcessTemporalUnitObus,
   auto& redundant_codec_config = codec_config_obus.at(kFirstCodecConfigId);
   redundant_codec_config.header_.obu_redundant_copy = true;
 
-  auto one_temporal_unit_before_redundant_descriptor_obu =
-      InitObuSequence({&audio_frame_obu, &redundant_ia_sequence_header,
-                       &redundant_codec_config});
+  const auto one_temporal_unit_before_redundant_descriptor_obu =
+      SerializeObusExpectOk({&audio_frame_obu, &redundant_ia_sequence_header,
+                             &redundant_codec_config});
 
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
@@ -899,8 +894,8 @@ TEST(ProcessTemporalUnitObus,
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
 
-  auto temporal_unit_with_non_redundant_codec_config_obu =
-      InitObuSequence({&audio_frame_obu, &non_redundant_codec_config});
+  const auto temporal_unit_with_non_redundant_codec_config_obu =
+      SerializeObusExpectOk({&audio_frame_obu, &non_redundant_codec_config});
 
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
@@ -962,9 +957,9 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
       kObuIaReserved29, ObuHeader{.obu_redundant_copy = true},
       /*payload=*/{0, 99}, ArbitraryObu::kInsertionHookAfterDescriptors);
 
-  auto temporal_unit_with_reserved_obus =
-      InitObuSequence({&reserved_obu_before_audio_frame, &audio_frame_obu,
-                       &reserved_obu_after_audio_frame});
+  const auto temporal_unit_with_reserved_obus =
+      SerializeObusExpectOk({&reserved_obu_before_audio_frame, &audio_frame_obu,
+                             &reserved_obu_after_audio_frame});
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
@@ -1049,7 +1044,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
   audio_frame_obus.push_back(
       AudioFrameObu(ObuHeader(), kImplicitSubstreamId,
                     /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8, 9}));
-  auto multiple_audio_substreams = InitObuSequence(
+  const auto multiple_audio_substreams = SerializeObusExpectOk(
       {&audio_frame_obus[0], &audio_frame_obus[1], &audio_frame_obus[2]});
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -1107,8 +1102,8 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
   audio_frame_obus.push_back(
       AudioFrameObu(ObuHeader(), kFirstSubstreamId,
                     /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}));
-  auto audio_substream_with_two_frames =
-      InitObuSequence({&audio_frame_obus[0], &audio_frame_obus[1]});
+  const auto audio_substream_with_two_frames =
+      SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
@@ -1165,9 +1160,9 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
       AudioFrameObu(ObuHeader(), kFirstSubstreamId,
                     /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
 
-  auto two_temporal_units_with_delimiter_obu =
-      InitObuSequence({&audio_frame_obus[0], &temporal_delimiter_obu,
-                       &audio_frame_obus[1], &temporal_delimiter_obu});
+  const auto two_temporal_units_with_delimiter_obu =
+      SerializeObusExpectOk({&audio_frame_obus[0], &temporal_delimiter_obu,
+                             &audio_frame_obus[1], &temporal_delimiter_obu});
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
@@ -1255,7 +1250,8 @@ TEST(ProcessTemporalUnitObusTest,
           AnimationStepInt16{.start_point_value = 99});
 
   // Initialize the sequence with a single parameter block.
-  auto one_parameter_block_obu = InitObuSequence({&parameter_block_obu});
+  const auto one_parameter_block_obu =
+      SerializeObusExpectOk({&parameter_block_obu});
   auto global_timing_module =
       GlobalTimingModule::Create(audio_elements_with_data, param_definitions);
   ASSERT_THAT(global_timing_module, NotNull());
@@ -1312,7 +1308,7 @@ TEST(CollectObusFromIaSequence, ConsumesIaSequenceAndCollectsAllObus) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
   const int64_t ia_sequence_size = bitstream.size();
@@ -1349,11 +1345,11 @@ TEST(CollectObusFromIaSequence, ConsumesTrivialIaSequence) {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   const auto trivial_ia_sequence =
-      InitObuSequence({&input_non_redundant_ia_sequence_header});
+      SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   auto non_trivial_ia_sequence = InitAllDescriptorsForZerothOrderAmbisonics();
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   non_trivial_ia_sequence.insert(non_trivial_ia_sequence.end(),
                                  temporal_unit_obus.begin(),
                                  temporal_unit_obus.end());
@@ -1401,15 +1397,15 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
   const int64_t first_ia_sequence_size = bitstream.size();
   const IASequenceHeaderObu non_redundant_ia_sequence_header(
       ObuHeader{.obu_redundant_copy = false}, IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
-  auto start_of_second_ia_sequence =
-      InitObuSequence({&non_redundant_ia_sequence_header});
+  const auto start_of_second_ia_sequence =
+      SerializeObusExpectOk({&non_redundant_ia_sequence_header});
   bitstream.insert(bitstream.end(), start_of_second_ia_sequence.begin(),
                    start_of_second_ia_sequence.end());
 
@@ -1477,7 +1473,7 @@ TEST(NonStatic, ProcessTemporalUnitObu) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
                                 /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
-  auto temporal_unit_obus = InitObuSequence({&audio_frame_obu});
+  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
 
@@ -1512,7 +1508,7 @@ void RenderUsingObuProcessorExpectOk(
     const std::optional<uint8_t> output_file_bit_depth_override,
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    std::vector<uint8_t>& bitstream_of_descriptors) {
+    const std::vector<uint8_t>& bitstream_of_descriptors) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream_of_descriptors));
   bool insufficient_data = false;
@@ -1577,7 +1573,7 @@ void RenderOneSampleFoaToStereoWavExpectOk(
       .end_timestamp = 1,
   });
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -1603,7 +1599,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
 
   const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -1662,7 +1658,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
       .audio_element_with_data = common_audio_element_with_data,
   });
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -1752,7 +1748,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
           &audio_elements_with_data.at(kFirstAudioElementId),
   });
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -1821,7 +1817,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           &audio_elements_with_data.at(kFirstAudioElementId),
   });
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
@@ -1863,7 +1859,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   // Render using `ObuProcessor`, which closes the output WAV file upon
   // going out of scope.
   {
-    auto bitstream = InitObuSequenceAddSequenceHeader(
+    const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
         {&codec_config_obus.at(kFirstCodecConfigId),
          &audio_elements_with_data.at(kFirstAudioElementId).obu,
          &mix_presentation_obus.front()});
@@ -1954,7 +1950,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       kSecondMixPresentationId, {kSecondAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &audio_elements_with_data.at(kSecondAudioElementId).obu,
@@ -2020,7 +2016,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       {kFirstAudioElementId, kSecondAudioElementId, kThirdAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &audio_elements_with_data.at(kSecondAudioElementId).obu,
@@ -2101,7 +2097,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
 
   auto mix_presentation_obus_iter = mix_presentation_obus.begin();
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &audio_elements_with_data.at(kSecondAudioElementId).obu,
@@ -2137,7 +2133,7 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
   const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
 
-  auto bitstream = InitObuSequenceAddSequenceHeader(
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});

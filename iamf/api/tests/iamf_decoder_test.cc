@@ -24,12 +24,10 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
@@ -49,18 +47,6 @@ constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
-// TODO(b/396453922): Move this to a common test utils file.
-std::vector<uint8_t> SerializeObus(
-    const std::list<const ObuBase*>& input_ia_sequence) {
-  WriteBitBuffer expected_wb(0);
-  for (const auto* expected_obu : input_ia_sequence) {
-    EXPECT_NE(expected_obu, nullptr);
-    EXPECT_THAT(expected_obu->ValidateAndWriteObu(expected_wb), IsOk());
-  }
-
-  return expected_wb.bit_buffer();
-}
-
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
@@ -76,10 +62,10 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
-  return SerializeObus({&ia_sequence_header,
-                        &codec_configs.at(kFirstCodecConfigId),
-                        &audio_elements.at(kFirstAudioElementId).obu,
-                        &mix_presentation_obus.front()});
+  return SerializeObusExpectOk({&ia_sequence_header,
+                                &codec_configs.at(kFirstCodecConfigId),
+                                &audio_elements.at(kFirstAudioElementId).obu,
+                                &mix_presentation_obus.front()});
 }
 
 TEST(IsDescriptorProcessingComplete,
@@ -122,7 +108,7 @@ TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
   AddMixPresentationObuWithAudioElementIds(
       kFirstMixPresentationId + 1, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
-  auto second_chunk = SerializeObus({&mix_presentation_obus.front()});
+  auto second_chunk = SerializeObusExpectOk({&mix_presentation_obus.front()});
 
   EXPECT_FALSE(decoder->Decode(second_chunk).ok());
 }
@@ -133,7 +119,8 @@ TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
       TemporalDelimiterObu(ObuHeader());
-  auto temporal_delimiter_bytes = SerializeObus({&temporal_delimiter_obu});
+  auto temporal_delimiter_bytes =
+      SerializeObusExpectOk({&temporal_delimiter_obu});
   source_data.insert(source_data.end(), temporal_delimiter_bytes.begin(),
                      temporal_delimiter_bytes.end());
 
@@ -147,7 +134,8 @@ TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
       TemporalDelimiterObu(ObuHeader());
-  auto temporal_delimiter_bytes = SerializeObus({&temporal_delimiter_obu});
+  auto temporal_delimiter_bytes =
+      SerializeObusExpectOk({&temporal_delimiter_obu});
   source_data.insert(source_data.end(), temporal_delimiter_bytes.begin(),
                      temporal_delimiter_bytes.end());
   auto first_chunk = absl::MakeConstSpan(source_data).first(2);
@@ -167,7 +155,7 @@ TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_unit = SerializeObus({&audio_frame});
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
 
   EXPECT_THAT(decoder->Decode(temporal_unit), IsOk());
 }
@@ -178,7 +166,7 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_unit = SerializeObus({&audio_frame});
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
   source_data.insert(source_data.end(), temporal_unit.begin(),
                      temporal_unit.end());
 
@@ -191,7 +179,7 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
 
@@ -204,7 +192,7 @@ TEST(Decode, FailsWhenCalledAfterFlush) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   EXPECT_THAT(decoder->Decode(source_data), IsOk());
@@ -228,7 +216,7 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingOneTemporalUnit) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_unit = SerializeObus({&audio_frame});
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
   source_data.insert(source_data.end(), temporal_unit.begin(),
                      temporal_unit.end());
 
@@ -242,7 +230,7 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
 
@@ -256,7 +244,7 @@ TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_unit = SerializeObus({&audio_frame});
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
   source_data.insert(source_data.end(), temporal_unit.begin(),
                      temporal_unit.end());
 
@@ -273,7 +261,7 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
@@ -313,7 +301,7 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObus({&audio_frame, &audio_frame});
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());

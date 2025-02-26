@@ -11,11 +11,13 @@
  */
 #include "iamf/cli/tests/cli_test_utils.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <list>
 #include <numeric>
 #include <optional>
 #include <vector>
@@ -27,6 +29,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/obu_base.h"
+#include "iamf/obu/obu_header.h"
+#include "iamf/obu/tests/obu_test_utils.h"
 
 namespace iamf_tools {
 namespace {
@@ -114,6 +119,26 @@ TEST(ReadFileToBytes, ReadsBinaryFileWithPlatformDependentControlCharacters) {
   EXPECT_THAT(ReadFileToBytes(file_to_read, bytes), IsOk());
 
   EXPECT_THAT(bytes, kBinaryDataWithPlatformDependentControlCharacters);
+}
+
+TEST(SerializeObusExpectOk, SerializesObus) {
+  MockObu mock_obu(ObuHeader{}, ObuType::kObuIaCodecConfig);
+  constexpr size_t kObuHeaderSize = 2;
+  constexpr std::array<uint8_t, 6> kExpectedBytes = {// OBU header.
+                                                     0x00, 0x04,
+                                                     // OBU payload.
+                                                     0x01, 0x02, 0x00, 0x03};
+
+  ON_CALL(mock_obu, ValidateAndWritePayload)
+      .WillByDefault([&](WriteBitBuffer& wb) {
+        return wb.WriteUint8Span(
+            absl::MakeConstSpan(kExpectedBytes).subspan(kObuHeaderSize));
+      });
+  const std::vector<uint8_t> serialized_obus =
+      SerializeObusExpectOk(std::list<const ObuBase*>{&mock_obu});
+
+  EXPECT_EQ(absl::MakeConstSpan(serialized_obus),
+            absl::MakeConstSpan(kExpectedBytes));
 }
 
 TEST(OneFrameDelayer, ValidatesInputShapeWithTooManyChannels) {

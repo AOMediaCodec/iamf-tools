@@ -39,12 +39,14 @@
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/obu_base.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
@@ -250,6 +252,16 @@ std::string GetAndCleanupOutputFileName(absl::string_view suffix);
  * \return Unique file path based on the current unit test info.
  */
 std::string GetAndCreateOutputDirectory(absl::string_view suffix);
+
+/*!\brief Serializes a list of OBUs.
+ *
+ * \param obus OBUs to serialize.
+ * \param leb_generator Leb generator to use.
+ * \return Vector of serialized OBU data.
+ */
+std::vector<uint8_t> SerializeObusExpectOk(
+    const std::list<const ObuBase*>& obus,
+    const LebGenerator& leb_generator = *LebGenerator::Create());
 
 /*!\brief Parses a textproto file into a `UserMetadata` proto.
  *
