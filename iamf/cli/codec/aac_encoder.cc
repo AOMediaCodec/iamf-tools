@@ -79,8 +79,7 @@ absl::Status AacEncErrorToAbslStatus(AACENC_ERROR aac_error_code,
 
 absl::Status ConfigureAacEncoder(
     const iamf_tools_cli_proto::AacEncoderMetadata& encoder_metadata,
-    int num_channels, uint32_t num_samples_per_frame,
-    uint32_t output_sample_rate, AACENCODER* const encoder) {
+    int num_channels, uint32_t output_sample_rate, AACENCODER* const encoder) {
   // IAMF requires metadata is not embedded in the stream.
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
       aacEncoder_SetParam(encoder, AACENC_METADATA_MODE, 0),
@@ -121,12 +120,7 @@ absl::Status ConfigureAacEncoder(
       absl::StrCat("Failed to configure encoder channel mode= ",
                    aac_channel_mode)));
 
-  // Set bitrate based on the equation recommended by the documentation.
-  RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
-      aacEncoder_SetParam(
-          encoder, AACENC_BITRATE,
-          3 * num_channels * num_samples_per_frame * output_sample_rate / 2),
-      "Failed to configure encoder bitrate."));
+  // Let AACENC_BITRATE be configured automatically.
 
   // Set some arguments configured by the user-provided `encoder_metadata_`.
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
@@ -185,7 +179,6 @@ absl::Status AacEncoder::InitializeEncoder() {
 
   // Configure the encoder.
   RETURN_IF_NOT_OK(ConfigureAacEncoder(encoder_metadata_, num_channels_,
-                                       num_samples_per_frame_,
                                        output_sample_rate_, encoder_));
 
   // Call `aacEncEncode` with `nullptr` arguments to initialize the encoder.
