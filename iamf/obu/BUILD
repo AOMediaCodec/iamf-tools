@@ -26,7 +26,6 @@ cc_library(
     srcs = ["audio_element.cc"],
     hdrs = ["audio_element.h"],
     deps = [
-        ":demixing_param_definition",
         ":obu_base",
         ":obu_header",
         ":param_definitions",
@@ -86,21 +85,6 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
-    ],
-)
-
-cc_library(
-    name = "demixing_param_definition",
-    srcs = ["demixing_param_definition.cc"],
-    hdrs = ["demixing_param_definition.h"],
-    deps = [
-        ":param_definitions",
-        ":parameter_data",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
     ],
 )
 
@@ -186,9 +170,17 @@ cc_library(
 
 cc_library(
     name = "param_definitions",
-    srcs = ["param_definitions.cc"],
-    hdrs = ["param_definitions.h"],
+    srcs = [
+        "demixing_param_definition.cc",
+        "param_definitions.cc",
+    ],
+    hdrs = [
+        "demixing_param_definition.h",
+        "param_definition_variant.h",
+        "param_definitions.h",
+    ],
     deps = [
+        ":parameter_data",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -220,7 +212,6 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -243,7 +234,6 @@ cc_library(
         "recon_gain_info_parameter_data.h",
     ],
     deps = [
-        ":param_definitions",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",

@@ -52,7 +52,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -136,26 +136,25 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
 
   // Collect and validate consistency of all `ParamDefinition`s in all
   // Audio Element and Mix Presentation OBUs.
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  auto param_definition_variants = std::make_unique<
+      absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>();
+
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
-      audio_elements, mix_presentation_obus, param_definitions));
+      audio_elements, mix_presentation_obus, *param_definition_variants));
 
   // Initialize the global timing module.
   auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements, param_definitions);
+      GlobalTimingModule::Create(audio_elements, *param_definition_variants);
   if (global_timing_module == nullptr) {
     return absl::InvalidArgumentError(
         "Failed to initialize the global timing module");
   }
 
   // Initialize the parameter block generator.
-  auto parameter_id_to_metadata = std::make_unique<
-      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>();
   ParameterBlockGenerator parameter_block_generator(
       user_metadata.test_vector_metadata().override_computed_recon_gains(),
-      *parameter_id_to_metadata);
-  RETURN_IF_NOT_OK(
-      parameter_block_generator.Initialize(audio_elements, param_definitions));
+      *param_definition_variants);
+  RETURN_IF_NOT_OK(parameter_block_generator.Initialize(audio_elements));
 
   // Put generated parameter blocks in a manager that supports easier queries.
   auto parameters_manager = std::make_unique<ParametersManager>(audio_elements);
@@ -191,7 +190,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
 
   return IamfEncoder(
       user_metadata.test_vector_metadata().validate_user_loudness(),
-      std::move(parameter_id_to_metadata), std::move(param_definitions),
+      std::move(param_definition_variants),
       std::move(parameter_block_generator), std::move(parameters_manager),
       *demixing_module, std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),

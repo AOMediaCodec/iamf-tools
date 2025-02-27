@@ -15,6 +15,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -28,7 +29,7 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -38,8 +39,8 @@ namespace {
 absl::Status InitializeInternal(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions,
+    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants,
     auto& audio_frame_timing_data, auto& parameter_block_timing_data) {
   // TODO(b/283281856): Handle cases where `parameter_rate` and `sample_rate`
   //                    differ.
@@ -65,8 +66,13 @@ absl::Status InitializeInternal(
   }
 
   // Initialize all parameter IDs to start with a timestamp 0.
-  for (const auto& [parameter_id, param_definition] : param_definitions) {
-    const DecodedUleb128 parameter_rate = param_definition->parameter_rate_;
+  for (const auto& [parameter_id, param_definition_variant] :
+       param_definition_variants) {
+    const DecodedUleb128 parameter_rate = std::visit(
+        [](const auto& param_definition) {
+          return param_definition.parameter_rate_;
+        },
+        param_definition_variant);
     RETURN_IF_NOT_OK(
         ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
 
@@ -87,12 +93,12 @@ absl::Status InitializeInternal(
 std::unique_ptr<GlobalTimingModule> GlobalTimingModule::Create(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions) {
+    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants) {
   absl::flat_hash_map<DecodedUleb128, TimingData> audio_frame_timing_data;
   absl::flat_hash_map<DecodedUleb128, TimingData> parameter_block_timing_data;
   const auto status =
-      InitializeInternal(audio_elements, param_definitions,
+      InitializeInternal(audio_elements, param_definition_variants,
                          audio_frame_timing_data, parameter_block_timing_data);
   if (!status.ok()) {
     LOG(ERROR) << status;

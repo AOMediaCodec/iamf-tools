@@ -51,7 +51,7 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
@@ -172,13 +172,12 @@ absl::Status GetAndStoreAudioFrameWithData(
 
 absl::Status GetAndStoreParameterBlockWithData(
     const ObuHeader& header, const int64_t payload_size,
-    ReadBitBuffer& read_bit_buffer,
-    absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-        parameter_id_to_metadata,
-    GlobalTimingModule& global_timing_module,
+    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants,
+    ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
     std::optional<ParameterBlockWithData>& output_parameter_block_with_data) {
   auto parameter_block_obu = ParameterBlockObu::CreateFromBuffer(
-      header, payload_size, parameter_id_to_metadata, read_bit_buffer);
+      header, payload_size, param_definition_variants, read_bit_buffer);
   if (!parameter_block_obu.ok()) {
     return parameter_block_obu.status();
   }
@@ -266,16 +265,7 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
       insufficient_data));
   LOG(INFO) << "Processed Descriptor OBUs";
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
-      audio_elements_, mix_presentations_, param_definitions_));
-
-  // Initialize the internal states and modules.
-  if (auto param_metadata =
-          GenerateParamIdToMetadataMap(param_definitions_, audio_elements_);
-      param_metadata.ok()) {
-    parameter_id_to_metadata_ = *std::move(param_metadata);
-  } else {
-    return param_metadata.status();
-  }
+      audio_elements_, mix_presentations_, param_definition_variants_));
 
   // Mapping from substream IDs to pointers to audio element with data.
   for (const auto& [audio_element_id, audio_element_with_data] :
@@ -292,7 +282,7 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
     }
   }
   global_timing_module_ =
-      GlobalTimingModule::Create(audio_elements_, param_definitions_);
+      GlobalTimingModule::Create(audio_elements_, param_definition_variants_);
   if (global_timing_module_ == nullptr) {
     return absl::InvalidArgumentError(
         "Failed to initialize the global timing module");
@@ -467,10 +457,10 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
         codec_config_obus,
     const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
         substream_id_to_audio_element,
-    ParametersManager& parameters_manager,
-    absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-        parameter_id_to_metadata,
-    ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
+    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants,
+    ParametersManager& parameters_manager, ReadBitBuffer& read_bit_buffer,
+    GlobalTimingModule& global_timing_module,
     std::optional<AudioFrameWithData>& output_audio_frame_with_data,
     std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
     std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
@@ -524,10 +514,8 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
     }
     case kObuIaParameterBlock: {
       RETURN_IF_NOT_OK(GetAndStoreParameterBlockWithData(
-          header, payload_size, read_bit_buffer, parameter_id_to_metadata,
-          global_timing_module,
-          // parameters_manager,
-          output_parameter_block_with_data));
+          header, payload_size, param_definition_variants, read_bit_buffer,
+          global_timing_module, output_parameter_block_with_data));
       break;
     }
     case kObuIaTemporalDelimiter: {
@@ -737,7 +725,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
 
   return ObuProcessor::ProcessTemporalUnitObu(
       audio_elements_, codec_config_obus_, substream_id_to_audio_element_,
-      *parameters_manager_, parameter_id_to_metadata_, *read_bit_buffer_,
+      param_definition_variants_, *parameters_manager_, *read_bit_buffer_,
       *global_timing_module_, output_audio_frame_with_data,
       output_parameter_block_with_data, output_temporal_delimiter,
       continue_processing);

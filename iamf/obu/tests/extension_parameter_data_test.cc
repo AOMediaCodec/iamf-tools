@@ -35,9 +35,7 @@ TEST(ExtensionParameterDataReadTest, NineBytes) {
       1024, absl::MakeConstSpan(source_data));
 
   ExtensionParameterData extension_parameter_data;
-  EXPECT_THAT(
-      extension_parameter_data.ReadAndValidate(/*per_id_metadata=*/{}, *buffer),
-      IsOk());
+  EXPECT_THAT(extension_parameter_data.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(extension_parameter_data.parameter_data_size, 9);
   EXPECT_EQ(extension_parameter_data.parameter_data_bytes.size(), 9);
   const std::vector<uint8_t> expected_parameter_data_bytes = {

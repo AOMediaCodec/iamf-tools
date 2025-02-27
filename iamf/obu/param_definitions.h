@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -21,9 +22,13 @@
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+/* !\brief Forward declarartion of `ParameterData`. */
+struct ParameterData;
 
 /* !\brief Common part of the parameter definitions.
  *
@@ -115,6 +120,15 @@ class ParamDefinition {
    */
   std::optional<ParameterDefinitionType> GetType() const { return type_; }
 
+  /*!\brief Creates a parameter data.
+   *
+   * The created instance will one of the subclassees of `ParameterData`,
+   * depending on the specific subclass implementing this function.
+   *
+   * \return Unique pointer to the created parameter data.
+   */
+  virtual std::unique_ptr<ParameterData> CreateParameterData() const = 0;
+
   /*!\brief Prints the parameter definition.
    */
   virtual void Print() const;
@@ -146,14 +160,14 @@ class ParamDefinition {
   bool IncludeSubblockDurationArray() const;
 
   // Type of this parameter definition.
-  std::optional<ParameterDefinitionType> type_;
+  std::optional<ParameterDefinitionType> type_ = std::nullopt;
 
   // `num_subblocks` is only included if `param_definition_mode_ == 0` and
   // `constant_subblock_duration == 0`.
   DecodedUleb128 num_subblocks_ = 0;
 
   // Vector of length `num_subblocks`.
-  std::vector<DecodedUleb128> subblock_durations_;
+  std::vector<DecodedUleb128> subblock_durations_ = {};
 };
 
 /* !\brief Parameter definition of mix gains to be applied to a signal.
@@ -181,6 +195,13 @@ class MixGainParamDefinition : public ParamDefinition {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+  /*!\brief Creates a parameter data.
+   *
+   * The created instance will be of type `MixGainParameterData`.
+   *
+   * \return Unique pointer to the created parameter data.
+   */
+  std::unique_ptr<ParameterData> CreateParameterData() const override;
 
   /*!\brief Prints the parameter definition.
    */
@@ -192,10 +213,33 @@ class MixGainParamDefinition : public ParamDefinition {
   int16_t default_mix_gain_;
 };
 
+struct ChannelNumbers {
+  friend bool operator==(const ChannelNumbers& lhs,
+                         const ChannelNumbers& rhs) = default;
+  // Number of surround channels.
+  int surround;
+  // Number of low-frequency effects channels.
+  int lfe;
+  // Number of height channels.
+  int height;
+};
+
 /* !\brief Parameter definition for recon gain.
  */
 class ReconGainParamDefinition : public ParamDefinition {
  public:
+  /* Additional data useful for creating parameter (sub)blocks.
+   *
+   * Present only in some intermediate stages of encoder, decoder, and
+   * transcoder and are will not be read from/written to bitstreams.
+   */
+  struct ReconGainAuxiliaryData {
+    bool recon_gain_is_present_flag;
+    ChannelNumbers channel_numbers_for_layer;
+    friend bool operator==(const ReconGainAuxiliaryData& lhs,
+                           const ReconGainAuxiliaryData& rhs) = default;
+  };
+
   /*!\brief Constructor.
    *
    * \param audio_element_id ID of the Audio Element OBU that uses this
@@ -223,6 +267,14 @@ class ReconGainParamDefinition : public ParamDefinition {
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
+  /*!\brief Creates a parameter data.
+   *
+   * The created instance will be of type `ReconGainInfoParameterData`.
+   *
+   * \return Unique pointer to the created parameter data.
+   */
+  std::unique_ptr<ParameterData> CreateParameterData() const override;
+
   /*!\brief Prints the parameter definition.
    */
   void Print() const override;
@@ -233,6 +285,10 @@ class ReconGainParamDefinition : public ParamDefinition {
   /*!\brief ID of the Audio Element OBU that uses this recon gain parameter.
    */
   const uint32_t audio_element_id_;
+
+  // Vector of size equal to the number of layers in the corresponding
+  // audio element.
+  std::vector<ReconGainAuxiliaryData> aux_data_;
 };
 
 /* !\brief Parameter definition reserved for future use; should be ignored.
@@ -263,6 +319,14 @@ class ExtendedParamDefinition : public ParamDefinition {
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
+  /*!\brief Creates a parameter data.
+   *
+   * The created instance will be of type `ExtensionParameterData`.
+   *
+   * \return Unique pointer to the created parameter data.
+   */
+  std::unique_ptr<ParameterData> CreateParameterData() const override;
+
   /*!\brief Prints the parameter definition.
    */
   void Print() const override;
@@ -273,33 +337,6 @@ class ExtendedParamDefinition : public ParamDefinition {
   // Size and vector of the bytes the OBU parser should ignore.
   DecodedUleb128 param_definition_size_ = 0;
   std::vector<uint8_t> param_definition_bytes_ = {};
-};
-
-struct ChannelNumbers {
-  friend bool operator==(const ChannelNumbers& lhs,
-                         const ChannelNumbers& rhs) = default;
-  // Number of surround channels.
-  int surround;
-  // Number of low-frequency effects channels.
-  int lfe;
-  // Number of height channels.
-  int height;
-};
-
-struct PerIdParameterMetadata {
-  // Common (base) part of the parameter definition.
-  ParamDefinition param_definition;
-
-  // Below are from the Audio Element. Only used when `param_definition_type` =
-  // `kParameterDefinitionReconGain`.
-  uint32_t audio_element_id;
-  uint8_t num_layers;
-
-  // Whether recon gain is present per layer.
-  std::vector<bool> recon_gain_is_present_flags;
-
-  // Channel numbers per layer.
-  std::vector<ChannelNumbers> channel_numbers_for_layers;
 };
 
 }  // namespace iamf_tools

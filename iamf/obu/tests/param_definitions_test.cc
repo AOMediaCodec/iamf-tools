@@ -45,18 +45,6 @@ void PopulateParameterDefinition(ParamDefinition& param_definition) {
   param_definition.reserved_ = 0;
 }
 
-TEST(ParamDefinitionBase, CopyConstructible) {
-  ParamDefinition param_definition;
-  param_definition.param_definition_mode_ = 0;
-  param_definition.parameter_id_ = kParameterId;
-  param_definition.parameter_rate_ = kParameterRate;
-  param_definition.duration_ = kDuration;
-  param_definition.constant_subblock_duration_ = kDuration;
-
-  const auto other = param_definition;
-  EXPECT_EQ(param_definition, other);
-}
-
 class ParamDefinitionTestBase : public testing::Test {
  public:
   ParamDefinitionTestBase() = default;
@@ -89,12 +77,6 @@ class ParamDefinitionTestBase : public testing::Test {
 
   std::unique_ptr<LebGenerator> leb_generator_ = LebGenerator::Create();
 };
-
-TEST(ParamDefinitionTest, GetTypeHasNoValueWithDefaultConstructor) {
-  std::unique_ptr<ParamDefinition> param_definition =
-      std::make_unique<ParamDefinition>();
-  EXPECT_FALSE(param_definition->GetType().has_value());
-}
 
 TEST(MixGainParamDefinition, CopyConstructible) {
   MixGainParamDefinition mix_gain_param_definition;
@@ -470,6 +452,7 @@ class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
  public:
   ReconGainParamDefinitionTest() {
     auto recon_gain = std::make_unique<ReconGainParamDefinition>(0);
+    recon_gain_param_definition_ = recon_gain.get();
     PopulateParameterDefinition(*recon_gain);
     recon_gain->param_definition_mode_ = 0;
     recon_gain->reserved_ = 0;
@@ -477,6 +460,9 @@ class ReconGainParamDefinitionTest : public ParamDefinitionTestBase {
     recon_gain->constant_subblock_duration_ = kDuration;
     param_definition_ = std::move(recon_gain);
   }
+
+  // Alias for accessing the sub-class data.
+  ReconGainParamDefinition* recon_gain_param_definition_;
 };
 
 TEST_F(ReconGainParamDefinitionTest, GetTypeHasCorrectValue) {
@@ -531,6 +517,35 @@ TEST_F(ReconGainParamDefinitionTest, Duration) {
              32,
              // Constant Subblock Duration.
              32});
+}
+
+TEST_F(ReconGainParamDefinitionTest, AuxiliaryDataNotWritten) {
+  Init();
+
+  // Fill in some auxililary data.
+  recon_gain_param_definition_->aux_data_ = {
+      {
+          .recon_gain_is_present_flag = false,
+          .channel_numbers_for_layer = {2, 0, 0},
+      },
+      {
+          .recon_gain_is_present_flag = true,
+          .channel_numbers_for_layer = {5, 1, 2},
+      },
+  };
+
+  // Same as the bitstream in the `ReconGainParamDefinitionTest.Default` test
+  // above, without the auxiliary data.
+  TestWrite({// Parameter ID.
+             0x00,
+             // Parameter Rate.
+             0x01,
+             // Parameter Definition Mode (upper bit).
+             0x00,
+             // Duration.
+             64,
+             // Constant Subblock Duration.
+             64});
 }
 
 TEST_F(ReconGainParamDefinitionTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
@@ -656,63 +671,6 @@ TEST_F(ExtendedParamDefinitionTest, WriteFailsIfSizeIsInconsistent) {
   TestWrite({});
 }
 
-TEST(ReadParamDefinitionTest, Mode1) {
-  ParamDefinition param_definition;
-  std::vector<uint8_t> source = {
-      // Parameter ID.
-      0x00,
-      // Parameter Rate.
-      1,
-      // Param Definition Mode (upper bit), next 7 bits reserved.
-      0x80};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
-  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-}
-
-TEST(ReadParamDefinitionTest, Mode0NonZeroSubblockDuration) {
-  ParamDefinition param_definition;
-  std::vector<uint8_t> source = {
-      // Parameter ID.
-      0x00,
-      // Parameter Rate.
-      1,
-      // Param Definition Mode (upper bit), next 7 bits reserved.
-      0x00,
-      // `duration`.
-      0xc0, 0x00,
-      // `constant_subblock_duration`.
-      0xc0, 0x00};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
-  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-}
-
-TEST(ReadParamDefinitionTest, Mode0SubblockArray) {
-  ParamDefinition param_definition;
-  std::vector<uint8_t> source = {
-      // Parameter ID.
-      0x00,
-      // Parameter Rate.
-      1,
-      // Param Definition Mode (upper bit), next 7 bits reserved.
-      0x00,
-      // `duration` (64).
-      0xc0, 0x00,
-      // `constant_subblock_duration`.
-      0x00,
-      // `num_subblocks`
-      0x02,
-      // `subblock_durations`
-      // `subblock_duration`
-      40,
-      // `subblock_duration`
-      24};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
-  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
-}
-
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
   MixGainParamDefinition param_definition;
   std::vector<uint8_t> source = {
@@ -748,9 +706,9 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
       // `num_subblocks`
       0x02,
       // `subblock_durations`
-      // `subblock_duration`
+      // `subblock_duration[0]`
       40,
-      // `subblock_duration`
+      // `subblock_duration[1]`
       24,
       // Default Mix Gain.
       0, 3};
@@ -779,6 +737,61 @@ TEST(ReadReconGainParamDefinitionTest, Default) {
   EXPECT_TRUE(param_definition.ReadAndValidate(*buffer).ok());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionReconGain);
+}
+
+TEST(ReadReconGainParamDefinitionTest, Mode1) {
+  std::vector<uint8_t> bitstream = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(bitstream));
+  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
+}
+
+TEST(ReadReconGainParamDefinitionTest, Mode0NonZeroSubblockDuration) {
+  std::vector<uint8_t> bitstream = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x00,
+      // `duration`.
+      0xc0, 0x00,
+      // `constant_subblock_duration`.
+      0xc0, 0x00};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(bitstream));
+  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
+}
+
+TEST(ReadReconGainParamDefinitionTest, Mode0SubblockArray) {
+  std::vector<uint8_t> bitstream = {
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x00,
+      // `duration` (64).
+      0xc0, 0x00,
+      // `constant_subblock_duration` (64).
+      0xc0, 0x00,
+      // `num_subblocks`
+      0x02,
+      // `subblock_durations`
+      // `subblock_duration[0]`
+      64};
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      1024, absl::MakeConstSpan(bitstream));
+  ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
+  EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
 
 TEST(ReadDemixingParamDefinitionTest, DefaultDmixPMode) {

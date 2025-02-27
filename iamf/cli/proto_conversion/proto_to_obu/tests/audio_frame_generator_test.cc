@@ -46,7 +46,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
@@ -286,7 +286,7 @@ void ValidateAudioFrames(
 
 void InitializeAudioFrameGenerator(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const absl::flat_hash_map<uint32_t, const ParamDefinition*>&
+    const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>&
         param_definitions,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
@@ -336,7 +336,7 @@ void ExpectAudioFrameGeneratorInitializeIsNotOk(
     const iamf_tools_cli_proto::UserMetadata& user_metadata) {
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -398,7 +398,7 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   // For simplicity this function does not use parameters. Pass in empty
   // containers.
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   // For delayed initialization.
@@ -522,7 +522,7 @@ TEST(AudioFrameGenerator, AddSamplesAfterFinalizeHasNoEffect) {
   iamf_tools_cli_proto::UserMetadata user_metadata = {};
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
 
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
@@ -570,7 +570,7 @@ TEST(AudioFrameGenerator, AddZeroSamplesBeforeFinalizeFails) {
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -850,7 +850,7 @@ TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(1);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -897,7 +897,7 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(4);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -925,7 +925,7 @@ TEST(AudioFrameGenerator,
       kTooManySamplesToTrimAtEnd);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -955,7 +955,7 @@ TEST(AudioFrameGenerator,
   user_metadata.mutable_audio_frame_metadata(0)->set_samples_to_trim_at_end(4);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -1109,7 +1109,7 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
   const iamf_tools_cli_proto::UserMetadata& user_metadata = {};
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -1132,7 +1132,7 @@ TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;
@@ -1163,7 +1163,7 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   ConfigureOneStereoSubstreamLittleEndian(user_metadata);
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
-  const absl::flat_hash_map<uint32_t, const ParamDefinition*>
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant>
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::optional<ParametersManager> parameters_manager;

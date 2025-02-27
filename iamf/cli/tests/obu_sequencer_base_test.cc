@@ -36,7 +36,6 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
@@ -141,18 +140,17 @@ TEST(GenerateTemporalUnitMap, SubstreamsOrderedByAudioElementIdSubstreamId) {
   }
 }
 
-PerIdParameterMetadata CreatePerIdMetadataForDemixing(
-    DecodedUleb128 parameter_id) {
-  DemixingParamDefinition expected_demixing_param_definition;
-  expected_demixing_param_definition.parameter_id_ = parameter_id;
-  expected_demixing_param_definition.parameter_rate_ = 48000;
-  expected_demixing_param_definition.param_definition_mode_ = 0;
-  expected_demixing_param_definition.duration_ = 8;
-  expected_demixing_param_definition.constant_subblock_duration_ = 8;
-  expected_demixing_param_definition.reserved_ = 10;
+DemixingParamDefinition CreateDemixingParamDefinition(
+    const DecodedUleb128 parameter_id) {
+  DemixingParamDefinition demixing_param_definition;
+  demixing_param_definition.parameter_id_ = parameter_id;
+  demixing_param_definition.parameter_rate_ = 48000;
+  demixing_param_definition.param_definition_mode_ = 0;
+  demixing_param_definition.duration_ = 8;
+  demixing_param_definition.constant_subblock_duration_ = 8;
+  demixing_param_definition.reserved_ = 10;
 
-  return PerIdParameterMetadata{.param_definition =
-                                    expected_demixing_param_definition};
+  return demixing_param_definition;
 }
 
 TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
@@ -160,7 +158,6 @@ TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
   constexpr DecodedUleb128 kHigherParameterId = 9000;
   constexpr InternalTimestamp kStartTimestamp = 0;
   constexpr InternalTimestamp kEndTimestamp = 16;
-  constexpr DecodedUleb128 kSecondParameterId = kCommonMixGainParameterId + 1;
   std::list<ParameterBlockWithData> parameter_blocks;
   const std::list<ArbitraryObu> kNoArbitraryObus;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
@@ -174,23 +171,22 @@ TEST(GenerateTemporalUnitMap, ParameterBlocksAreOrderedByAscendingParameterId) {
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
       kFirstAudioElementId, kFirstSubstreamId, kStartTimestamp, kEndTimestamp,
       audio_elements, audio_frames);
-  PerIdParameterMetadata lower_per_id_metadata =
-      CreatePerIdMetadataForDemixing(kLowerParameterId);
-  PerIdParameterMetadata higher_per_id_metadata =
-      CreatePerIdMetadataForDemixing(kHigherParameterId);
+  DemixingParamDefinition lower_param_definition =
+      CreateDemixingParamDefinition(kLowerParameterId);
+  DemixingParamDefinition higher_param_definition =
+      CreateDemixingParamDefinition(kHigherParameterId);
   auto common_demixing_info_parameter_data =
       std::make_unique<DemixingInfoParameterData>();
   common_demixing_info_parameter_data->dmixp_mode =
       DemixingInfoParameterData::kDMixPMode1;
   common_demixing_info_parameter_data->reserved = 0;
   auto higher_id_parameter_block = std::make_unique<ParameterBlockObu>(
-      ObuHeader(), higher_per_id_metadata.param_definition.parameter_id_,
-      higher_per_id_metadata);
+      ObuHeader(), kHigherParameterId, higher_param_definition);
   ASSERT_THAT(higher_id_parameter_block->InitializeSubblocks(), IsOk());
   higher_id_parameter_block->subblocks_[0].param_data =
       std::move(common_demixing_info_parameter_data);
   auto lower_id_parameter_block = std::make_unique<ParameterBlockObu>(
-      ObuHeader(), kSecondParameterId, lower_per_id_metadata);
+      ObuHeader(), kLowerParameterId, lower_param_definition);
   ASSERT_THAT(lower_id_parameter_block->InitializeSubblocks(), IsOk());
   const auto& higher_id__parameter_block_with_data =
       parameter_blocks.emplace_back(ParameterBlockWithData{
@@ -289,7 +285,7 @@ void ValidateWriteTemporalUnitSequence(
 }
 
 void InitializeOneParameterBlockAndOneAudioFrame(
-    PerIdParameterMetadata& per_id_metadata,
+    DemixingParamDefinition& param_definition,
     std::list<ParameterBlockWithData>& parameter_blocks,
     std::list<AudioFrameWithData>& audio_frames,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
@@ -308,8 +304,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   data->dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
   data->reserved = 0;
   auto parameter_block = std::make_unique<ParameterBlockObu>(
-      ObuHeader(), per_id_metadata.param_definition.parameter_id_,
-      per_id_metadata);
+      ObuHeader(), param_definition.parameter_id_, param_definition);
   ASSERT_THAT(parameter_block->InitializeSubblocks(), IsOk());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
@@ -324,11 +319,11 @@ TEST(WriteTemporalUnit, WritesArbitraryObuBeforeParameterBlocksAtTime) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   const std::list<ArbitraryObu> kArbitraryObuBeforeParameterBlocks(
       {ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
                     ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick)});
@@ -354,11 +349,11 @@ TEST(WriteTemporalUnit, WritesArbitraryObuAfterParameterBlocksAtTime) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   const std::list<ArbitraryObu> kArbitraryObuAfterParameterBlocks(
       {ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
                     ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick)});
@@ -385,11 +380,11 @@ TEST(WriteTemporalUnit, WritesArbitraryObuAfterAudioFramesAtTime) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   const std::list<ArbitraryObu> kArbitraryObuAfterAudioFrames(
       {ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
                     ArbitraryObu::kInsertionHookAfterAudioFramesAtTick)});
@@ -415,11 +410,11 @@ TEST(WriteTemporalUnit, AddsNumberOfUntrimmedSamplesToNumSamples) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   audio_frames.front().obu.header_.num_samples_to_trim_at_end = 2;
   audio_frames.front().obu.header_.num_samples_to_trim_at_start = 1;
   constexpr uint32_t kNumUntrimmedSamples = kNumSamplesPerFrame - 1 - 2;
@@ -449,11 +444,11 @@ TEST(WriteTemporalUnit, FailsWhenAudioFrameHasNoAudioElement) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   // Corrupt the audio frame by disassociating the audio element.
   audio_frames.front().audio_element_with_data = nullptr;
 
@@ -475,11 +470,11 @@ TEST(WriteTemporalUnit, FailsWhenAudioElementHasNoCodecConfig) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   // Corrupt the audio element by disassociating the codec config.
   audio_elements.at(kFirstAudioElementId).codec_config = nullptr;
   std::list<ArbitraryObu> arbitrary_obus;
@@ -502,11 +497,11 @@ TEST(WriteTemporalUnit, WritesTemporalDelimiterObuWhenEnabled) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   const TemporalUnit temporal_unit = {
       .audio_frames = {&audio_frames.front()},
       .parameter_blocks = {&parameter_blocks.front()},
@@ -528,11 +523,11 @@ TEST(WriteTemporalUnit, OmitsTemporalDelimiterObuWhenDisabled) {
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
-  PerIdParameterMetadata per_id_metadata =
-      CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
-  InitializeOneParameterBlockAndOneAudioFrame(per_id_metadata, parameter_blocks,
-                                              audio_frames, codec_config_obus,
-                                              audio_elements);
+  DemixingParamDefinition param_definition =
+      CreateDemixingParamDefinition(kFirstDemixingParameterId);
+  InitializeOneParameterBlockAndOneAudioFrame(
+      param_definition, parameter_blocks, audio_frames, codec_config_obus,
+      audio_elements);
   const TemporalUnit temporal_unit = {
       .audio_frames = {&audio_frames.front()},
       .parameter_blocks = {&parameter_blocks.front()},
@@ -573,10 +568,10 @@ class ObuSequencerTest : public ::testing::Test {
     ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
-    per_id_metadata_ =
-        CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
+    param_definition_ =
+        CreateDemixingParamDefinition(kFirstDemixingParameterId);
     InitializeOneParameterBlockAndOneAudioFrame(
-        per_id_metadata_, parameter_blocks_, audio_frames_, codec_config_obus_,
+        param_definition_, parameter_blocks_, audio_frames_, codec_config_obus_,
         audio_elements_);
     AddMixPresentationObuWithAudioElementIds(
         kFirstMixPresentationId, {audio_elements_.begin()->first},
@@ -608,7 +603,7 @@ class ObuSequencerTest : public ::testing::Test {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements_;
   std::list<MixPresentationObu> mix_presentation_obus_;
 
-  PerIdParameterMetadata per_id_metadata_;
+  DemixingParamDefinition param_definition_;
   std::list<ParameterBlockWithData> parameter_blocks_;
   std::list<AudioFrameWithData> audio_frames_;
 

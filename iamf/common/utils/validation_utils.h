@@ -109,6 +109,24 @@ absl::Status ValidateHasValue(const std::optional<T>& argument,
       absl::StrCat("Invalid ", context, ". Expected to have a value."));
 }
 
+/*!\brief Returns `absl::OkStatus()` if the argument is not NULL.
+ *
+ * \param argument Argument to check.
+ * \param context Context to insert into the error message for debugging
+ *        purposes.
+ * \return `absl::OkStatus()` if the arguments is not NULL.
+ *        `absl::InvalidArgumentError()` otherwise.
+ */
+template <typename T>
+absl::Status ValidateNotNull(const T& pointer, absl::string_view context) {
+  if (pointer != nullptr) [[likely]] {
+    return absl::OkStatus();
+  }
+
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid pointer: ", context, ". Expected to be not NULL"));
+}
+
 /*!\brief Validates that all values in the range [first, last) are unique.
  *
  * \param first Iterator to start from.

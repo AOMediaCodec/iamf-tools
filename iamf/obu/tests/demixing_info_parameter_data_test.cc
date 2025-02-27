@@ -120,7 +120,7 @@ TEST(WriteDemixingInfoParameterData, WriteDMixPMode1) {
   constexpr auto kExpectedDMixPMode = kDMixPMode1;
   DemixingInfoParameterData data(kExpectedDMixPMode, 0);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(wb, {kExpectedDMixPMode << kDMixPModeBitShift});
 }
 
@@ -128,7 +128,7 @@ TEST(WriteDemixingInfoParameterData, WriteDMixPMode3) {
   constexpr auto kExpectedDMixPMode = kDMixPMode3;
   DemixingInfoParameterData data(kExpectedDMixPMode, 0);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(wb, {kExpectedDMixPMode << kDMixPModeBitShift});
 }
 
@@ -138,7 +138,7 @@ TEST(WriteDemixingInfoParameterData, WriteReservedMax) {
   const uint32_t kReservedMax = 31;
   DemixingInfoParameterData data(kExpectedDMixPMode, kReservedMax);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(
       wb, {kExpectedDMixPMode << kDMixPModeBitShift | kReservedMax});
 }
@@ -147,7 +147,7 @@ TEST(WriteDemixingInfoParameterData, IllegalWriteDMixPModeReserved) {
   constexpr auto kReservedDMixPMode = kDMixPModeReserved1;
   DemixingInfoParameterData data(kReservedDMixPMode, 0);
   WriteBitBuffer undetermined_wb(1);
-  EXPECT_FALSE(data.Write(/*per_id_metadata=*/{}, undetermined_wb).ok());
+  EXPECT_FALSE(data.Write(undetermined_wb).ok());
 }
 
 TEST(WriteDefaultDemixingInfoParameterData, Writes) {
@@ -159,7 +159,7 @@ TEST(WriteDefaultDemixingInfoParameterData, Writes) {
                                         kExpectedDefaultW,
                                         kExpectedReservedDefault);
   WriteBitBuffer wb(1);
-  EXPECT_THAT(data.Write(/*per_id_metadata=*/{}, wb), IsOk());
+  EXPECT_THAT(data.Write(wb), IsOk());
   ValidateWriteResults(
       wb, {kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
            kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault});
@@ -170,7 +170,7 @@ TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 0);
 }
@@ -180,7 +180,7 @@ TEST(ReadDemixingInfoParameterData, ReadDMixPMode3) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode3);
   EXPECT_EQ(data.reserved, 0);
 }
@@ -192,7 +192,7 @@ TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
   EXPECT_EQ(data.reserved, 31);
 }
@@ -208,7 +208,7 @@ TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(source_data));
   DefaultDemixingInfoParameterData data;
-  EXPECT_THAT(data.ReadAndValidate(/*per_id_metadata=*/{}, *rb), IsOk());
+  EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kExpectedDMixPMode);
   EXPECT_EQ(data.reserved, kExpectedReserved);
   EXPECT_EQ(data.default_w, kExpectedDefaultW);

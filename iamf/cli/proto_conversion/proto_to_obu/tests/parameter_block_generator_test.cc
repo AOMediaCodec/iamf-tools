@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -35,6 +36,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -57,10 +59,10 @@ constexpr std::array<DecodedUleb128, 1> kOneSubstreamId{0};
 constexpr std::array<DecodedUleb128, 4> kFourSubtreamIds{0, 1, 2, 3};
 
 TEST(ParameterBlockGeneratorTest, NoParameterBlocks) {
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    parameter_id_to_metadata);
+                                    param_definition_variants);
 
   // Add metadata.
   iamf_tools_cli_proto::UserMetadata user_metadata;
@@ -154,8 +156,6 @@ void ValidateParameterBlocksCommon(
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ConfigureDemixingParameterBlocks(user_metadata);
 
@@ -166,19 +166,23 @@ TEST(ParameterBlockGeneratorTest, GenerateTwoDemixingParameterBlocks) {
                              codec_config_obus, audio_elements);
 
   // Add a demixing parameter definition inside the Audio Element OBU.
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   AddDemixingParamDefinition(kParameterId, kParameterRate, kDuration,
-                             audio_elements.begin()->second.obu,
-                             &param_definitions);
+                             audio_elements.begin()->second.obu);
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
+  ASSERT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 /*mix_presentation_obus=*/{},
+                                                 param_definition_variants),
+              IsOk());
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
+                                    param_definition_variants);
+  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements, param_definitions);
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add and generate.
@@ -256,20 +260,17 @@ void ConfigureMixGainParameterBlocks(
 
 void AddMixGainParamDefinition(
     const int16_t default_mix_gain, MixGainParamDefinition& param_definition,
-    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions) {
-  param_definitions.insert({kParameterId, &param_definition});
-
+    absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants) {
   param_definition.default_mix_gain_ = default_mix_gain;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 48000;
   param_definition.param_definition_mode_ = 1;
   param_definition.reserved_ = 0;
+  param_definition_variants.emplace(kParameterId, param_definition);
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ConfigureMixGainParameterBlocks(user_metadata);
 
@@ -282,18 +283,19 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   // Add param definition. It would normally be owned by a Mix Presentation OBU.
   MixGainParamDefinition param_definition;
   const int16_t kDefaultMixGain = -123;
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
   AddMixGainParamDefinition(kDefaultMixGain, param_definition,
-                            param_definitions);
+                            param_definition_variants);
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
+                                    param_definition_variants);
+  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements, param_definitions);
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add and generate.
@@ -427,8 +429,6 @@ IdLabeledFrameMap PrepareIdLabeledFrameMap() {
 }
 
 TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ConfigureReconGainParameterBlocks(user_metadata);
 
@@ -442,19 +442,23 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
   PrepareAudioElementWithDataForReconGain(audio_elements.begin()->second);
 
   // Add a recon gain parameter definition inside the Audio Element OBU.
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*> param_definitions;
   AddReconGainParamDefinition(kParameterId, kParameterRate, kDuration,
-                              audio_elements.begin()->second.obu,
-                              &param_definitions);
+                              audio_elements.begin()->second.obu);
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
+  ASSERT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 /*mix_presentation_obus=*/{},
+                                                 param_definition_variants),
+              IsOk());
 
   // Construct and initialize.
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    parameter_id_to_metadata);
-  EXPECT_THAT(generator.Initialize(audio_elements, param_definitions), IsOk());
+                                    param_definition_variants);
+  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
 
   // Global timing Module; needed when calling `GenerateDemixing()`.
   auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements, param_definitions);
+      GlobalTimingModule::Create(audio_elements, param_definition_variants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   // Loop to add all metadata and generate recon gain parameter blocks.
@@ -489,6 +493,7 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
     auto recon_gain_info_parameter_data =
         static_cast<ReconGainInfoParameterData*>(
             parameter_block.obu->subblocks_[0].param_data.get());
+
     // Expect the first recon gain element to hold no value.
     EXPECT_FALSE(
         recon_gain_info_parameter_data->recon_gain_elements[0].has_value());
@@ -510,8 +515,6 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
 
 TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata;
   // Initialize pre-requisite OBUs.
   ConfigureDemixingParameterBlocks(user_metadata);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -520,12 +523,11 @@ TEST(Initialize, FailsWhenThereAreStrayParameterBlocks) {
                              codec_config_obus, audio_elements);
 
   // Construct and initialize.
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      empty_param_definition_variants;
   ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    parameter_id_to_metadata);
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      empty_param_definitions;
-  EXPECT_THAT(generator.Initialize(audio_elements, empty_param_definitions),
-              IsOk());
+                                    empty_param_definition_variants);
+  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
 
   // Try to add metadata, but since the param definitions are empty, these
   // will fail because the generator cannot find the corresponding param

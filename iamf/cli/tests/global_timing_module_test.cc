@@ -24,6 +24,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
@@ -43,16 +44,16 @@ constexpr DecodedUleb128 kFirstParameterId = 0;
 // Normally the `ParamDefinitions` are stored in the descriptor OBUs. Tests can
 // hold the raw definitions, for simplicity tests can hold the raw
 // definitions and use this function to adapt to a map of pointers for the API.
-absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-GetParamDefinitionMap(
-    const absl::flat_hash_map<DecodedUleb128, ParamDefinition>&
+absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+GetParamDefinitionVariantMap(
+    const absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition>&
         param_definitions) {
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      parameter_id_to_param_definition_pointer;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants;
   for (const auto& [parameter_id, param_definition] : param_definitions) {
-    parameter_id_to_param_definition_pointer[parameter_id] = &param_definition;
+    param_definition_variants[parameter_id] = param_definition;
   }
-  return parameter_id_to_param_definition_pointer;
+  return param_definition_variants;
 }
 
 class GlobalTimingModuleTest : public ::testing::Test {
@@ -76,49 +77,49 @@ class GlobalTimingModuleTest : public ::testing::Test {
 TEST(Create, SucceedsForEmptyAudioElementsAndParamDefinitions) {
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
 
   // OK. To support "trivial IA Sequences" it is convenient to be able to
   // support a null case.
-  EXPECT_THAT(
-      GlobalTimingModule::Create(kEmptyAudioElements, kEmptyParamDefinitions),
-      NotNull());
+  EXPECT_THAT(GlobalTimingModule::Create(kEmptyAudioElements,
+                                         kEmptyParamDefinitionVariants),
+              NotNull());
 }
 
 TEST_F(GlobalTimingModuleTest, CreateFailsForDuplicateSubstreamIds) {
   const DecodedUleb128 kDuplicateSubsteamId = kFirstAudioFrameId;
   SetupObusForSubstreamIds({kDuplicateSubsteamId, kDuplicateSubsteamId});
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
 
-  EXPECT_THAT(
-      GlobalTimingModule::Create(audio_elements_, kEmptyParamDefinitions),
-      IsNull());
+  EXPECT_THAT(GlobalTimingModule::Create(audio_elements_,
+                                         kEmptyParamDefinitionVariants),
+              IsNull());
 }
 
 TEST(Create, FailsForParameterIdWithZeroRate) {
   constexpr DecodedUleb128 kInvalidParameterRate = 0;
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinition> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
   AddParamDefinitionWithMode0AndOneSubblock(
       kFirstParameterId, kInvalidParameterRate, 64, param_definitions);
 
   EXPECT_THAT(
-      GlobalTimingModule::Create(kEmptyAudioElements,
-                                 GetParamDefinitionMap(param_definitions)),
+      GlobalTimingModule::Create(
+          kEmptyAudioElements, GetParamDefinitionVariantMap(param_definitions)),
       IsNull());
 }
 
 TEST_F(GlobalTimingModuleTest, GetNextAudioFrameTimestampAdvancesTimestamps) {
   SetupObusForSubstreamIds({kFirstAudioFrameId});
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements_, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      audio_elements_, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 128;
@@ -138,10 +139,10 @@ TEST_F(GlobalTimingModuleTest,
   constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
   SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements_, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      audio_elements_, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 128;
@@ -169,10 +170,10 @@ TEST(GetNextAudioFrameTimestamp, FailsForUnknownSubstreamId) {
   constexpr DecodedUleb128 kUnknownSubstreamId = 1000;
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(kEmptyAudioElements, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      kEmptyAudioElements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   InternalTimestamp start_timestamp;
@@ -191,14 +192,14 @@ TEST(GetNextAudioFrameTimestamp, FailsForUnknownSubstreamId) {
 TEST(GetNextParameterBlockTimestamps, AdvancesTimestamps) {
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinition> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
   AddParamDefinitionWithMode0AndOneSubblock(kFirstParameterId,
                                             /*parameter_rate=*/kSampleRate, 64,
                                             param_definitions);
   auto global_timing_module = GlobalTimingModule::Create(
-      kEmptyAudioElements, GetParamDefinitionMap(param_definitions));
+      kEmptyAudioElements, GetParamDefinitionVariantMap(param_definitions));
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 64;
@@ -222,14 +223,14 @@ TEST(GetNextParameterBlockTimestamps, AdvancesTimestamps) {
 TEST(GetNextParameterBlockTimestamps, FailsWhenInputTimestampDoesNotAgree) {
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinition> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
   AddParamDefinitionWithMode0AndOneSubblock(kFirstParameterId,
                                             /*parameter_rate=*/kSampleRate, 64,
                                             param_definitions);
   auto global_timing_module = GlobalTimingModule::Create(
-      kEmptyAudioElements, GetParamDefinitionMap(param_definitions));
+      kEmptyAudioElements, GetParamDefinitionVariantMap(param_definitions));
   ASSERT_THAT(global_timing_module, NotNull());
 
   constexpr uint32_t kDuration = 64;
@@ -250,14 +251,14 @@ TEST(GetNextParameterBlockTimestamps, FailsForUnknownParameterId) {
   constexpr DecodedUleb128 kStrayParameterBlockId = kFirstParameterId + 1;
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinition> param_definitions;
+  absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition> param_definitions;
   // The timing model does not care about the specific type of parameter. Use a
   // generic one.
   AddParamDefinitionWithMode0AndOneSubblock(kFirstParameterId,
                                             /*parameter_rate=*/kSampleRate, 64,
                                             param_definitions);
   auto global_timing_module = GlobalTimingModule::Create(
-      kEmptyAudioElements, GetParamDefinitionMap(param_definitions));
+      kEmptyAudioElements, GetParamDefinitionVariantMap(param_definitions));
   ASSERT_THAT(global_timing_module, NotNull());
 
   InternalTimestamp start_timestamp;
@@ -272,10 +273,10 @@ TEST(GetNextParameterBlockTimestamps, FailsForUnknownParameterId) {
 TEST(GetGlobalAudioFrameTimestamp, ReturnsErrorWhenNoAudioFrames) {
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       kEmptyAudioElements;
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(kEmptyAudioElements, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      kEmptyAudioElements, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   std::optional<InternalTimestamp> global_timestamp;
@@ -292,10 +293,10 @@ TEST_F(
   constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
   SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements_, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      audio_elements_, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
 
   // Simulate a full temporal unit; two substreams are in sync.
@@ -325,10 +326,10 @@ TEST_F(
   constexpr DecodedUleb128 kFirstSubstreamId = kFirstAudioFrameId;
   constexpr DecodedUleb128 kSecondSubstreamId = 2000;
   SetupObusForSubstreamIds({kFirstSubstreamId, kSecondSubstreamId});
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      kEmptyParamDefinitions;
-  auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements_, kEmptyParamDefinitions);
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      kEmptyParamDefinitionVariants;
+  auto global_timing_module = GlobalTimingModule::Create(
+      audio_elements_, kEmptyParamDefinitionVariants);
   ASSERT_THAT(global_timing_module, NotNull());
   // Simulate substreams which are desynchronized.
   constexpr uint32_t kDuration = 128;
@@ -354,8 +355,6 @@ TEST_F(
 
   EXPECT_EQ(global_timestamp, std::nullopt);
 }
-
-// TODO(b/291732058): Bring back parameter block coverage validation.
 
 }  // namespace
 }  // namespace iamf_tools

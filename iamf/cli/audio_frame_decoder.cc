@@ -130,6 +130,8 @@ absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
           audio_frame.obu.header_.num_samples_to_trim_at_start,
       .decoded_samples = decoder.ValidDecodedSamples(),
       .down_mixing_params = audio_frame.down_mixing_params,
+      .recon_gain_info_parameter_data =
+          audio_frame.recon_gain_info_parameter_data,
       .audio_element_with_data = audio_frame.audio_element_with_data,
   };
 }

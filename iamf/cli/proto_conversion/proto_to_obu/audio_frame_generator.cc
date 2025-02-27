@@ -53,6 +53,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -518,6 +519,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
               .end_timestamp = end_timestamp,
               .pcm_samples = samples_obu,
               .down_mixing_params = down_mixing_params,
+              .recon_gain_info_parameter_data = ReconGainInfoParameterData(),
               .audio_element_with_data = &audio_element_with_data});
 
       RETURN_IF_NOT_OK(

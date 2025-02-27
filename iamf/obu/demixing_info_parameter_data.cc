@@ -22,7 +22,6 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
 
@@ -89,8 +88,7 @@ absl::Status DemixingInfoParameterData::DMixPModeToDownMixingParams(
   return absl::OkStatus();
 }
 
-absl::Status DemixingInfoParameterData::Write(const PerIdParameterMetadata&,
-                                              WriteBitBuffer& wb) const {
+absl::Status DemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(dmixp_mode, 3));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved, 5));
 
@@ -109,8 +107,7 @@ absl::Status DemixingInfoParameterData::Write(const PerIdParameterMetadata&,
   }
 }
 
-absl::Status DemixingInfoParameterData::ReadAndValidate(
-    const PerIdParameterMetadata&, ReadBitBuffer& rb) {
+absl::Status DemixingInfoParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   uint8_t dmixp_mode_int;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, dmixp_mode_int));
   dmixp_mode = static_cast<DMixPMode>(dmixp_mode_int);
@@ -136,9 +133,8 @@ void DemixingInfoParameterData::Print() const {
   LOG(INFO) << "    reserved= " << absl::StrCat(reserved);
 }
 
-absl::Status DefaultDemixingInfoParameterData::Write(
-    const PerIdParameterMetadata& per_id_metadata, WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(DemixingInfoParameterData::Write(per_id_metadata, wb));
+absl::Status DefaultDemixingInfoParameterData::Write(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(DemixingInfoParameterData::Write(wb));
 
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(default_w, 4));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_for_future_use, 4));
@@ -147,9 +143,8 @@ absl::Status DefaultDemixingInfoParameterData::Write(
 }
 
 absl::Status DefaultDemixingInfoParameterData::ReadAndValidate(
-    const PerIdParameterMetadata& per_id_metadata, ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(
-      DemixingInfoParameterData::ReadAndValidate(per_id_metadata, rb));
+    ReadBitBuffer& rb) {
+  RETURN_IF_NOT_OK(DemixingInfoParameterData::ReadAndValidate(rb));
 
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, default_w));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, reserved_for_future_use));

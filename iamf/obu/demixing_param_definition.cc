@@ -11,6 +11,8 @@
  */
 #include "iamf/obu/demixing_param_definition.h"
 
+#include <memory>
+
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -27,8 +29,7 @@ absl::Status DemixingParamDefinition::ValidateAndWrite(
   RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
 
   // The sub-class specific part.
-  RETURN_IF_NOT_OK(
-      default_demixing_info_parameter_data_.Write(/*per_id_metadata=*/{}, wb));
+  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.Write(wb));
 
   return absl::OkStatus();
 }
@@ -38,10 +39,14 @@ absl::Status DemixingParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
 
   // The sub-class specific part.
-  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.ReadAndValidate(
-      /*per_id_metadata=*/{}, rb));
+  RETURN_IF_NOT_OK(default_demixing_info_parameter_data_.ReadAndValidate(rb));
 
   return absl::OkStatus();
+}
+
+std::unique_ptr<ParameterData> DemixingParamDefinition::CreateParameterData()
+    const {
+  return std::make_unique<DemixingInfoParameterData>();
 }
 
 void DemixingParamDefinition::Print() const {

@@ -21,7 +21,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -32,14 +32,15 @@ class GlobalTimingModule {
    *
    * \param audio_elements Audio Element OBUs with data to search for sample
    *        rates.
-   * \param param_definitions Parameter definitions keyed by parameter IDs.
-   * \return `GlobalTimingModule` on success. A specific status on failure.
+   * \param param_definition_variants Parameter definitions keyed by parameter
+   *        IDs.
+   * \return `GlobalTimingModule` on success. Null pointer on failure.
    */
   static std::unique_ptr<GlobalTimingModule> Create(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements,
-      const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-          param_definitions);
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+          param_definition_variants);
 
   /*!\brief Gets the start and end timestamps of the next Audio Frame.
    *

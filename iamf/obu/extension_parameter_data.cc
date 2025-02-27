@@ -21,20 +21,16 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
 
-absl::Status ExtensionParameterData::ReadAndValidate(
-    const PerIdParameterMetadata&, ReadBitBuffer& rb) {
+absl::Status ExtensionParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_data_size));
   parameter_data_bytes.resize(parameter_data_size);
   return rb.ReadUint8Span(absl::MakeSpan(parameter_data_bytes));
 }
 
-absl::Status ExtensionParameterData::Write(
-    const PerIdParameterMetadata& /*per_id_metadata*/,
-    WriteBitBuffer& wb) const {
+absl::Status ExtensionParameterData::Write(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_data_size));
   RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
       "parameter_data_bytes", parameter_data_bytes, parameter_data_size));

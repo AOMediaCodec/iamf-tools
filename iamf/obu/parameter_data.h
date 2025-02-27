@@ -12,11 +12,9 @@
 #ifndef OBU_PARAMETER_DATA_H_
 #define OBU_PARAMETER_DATA_H_
 
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 
 namespace iamf_tools {
 
@@ -31,21 +29,17 @@ struct ParameterData {
 
   /*!\brief Reads and validates the parameter data.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()`. Or a specific error code on failure.
    */
-  virtual absl::Status ReadAndValidate(
-      const PerIdParameterMetadata& per_id_metadata, ReadBitBuffer& rb) = 0;
+  virtual absl::Status ReadAndValidate(ReadBitBuffer& rb) = 0;
 
   /*!\brief Validates and writes to a buffer.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  virtual absl::Status Write(const PerIdParameterMetadata& per_id_metadata,
-                             WriteBitBuffer& wb) const = 0;
+  virtual absl::Status Write(WriteBitBuffer& wb) const = 0;
 
   /*!\brief Prints the parameter data.
    */

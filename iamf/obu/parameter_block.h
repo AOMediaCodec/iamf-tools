@@ -25,6 +25,7 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
@@ -35,21 +36,19 @@ namespace iamf_tools {
 struct ParameterSubblock {
   /*!\brief Reads and validates the parameter subblock.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
+   * \param param_definition Parameter definition.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()`. Or a specific error code on failure.
    */
-  absl::Status ReadAndValidate(const PerIdParameterMetadata& per_id_metadata,
+  absl::Status ReadAndValidate(const ParamDefinition& param_definition,
                                ReadBitBuffer& rb);
 
   /*!\brief Validates and writes to a buffer.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Write(const PerIdParameterMetadata& per_id_metadata,
-                     WriteBitBuffer& wb) const;
+  absl::Status Write(WriteBitBuffer& wb) const;
 
   /*!\brief Prints the parameter subblock.
    */
@@ -79,8 +78,8 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
-   * \param parameter_id_to_metadata Mapping from parameter ID to the
-   *        Per-ID parameter metadata.
+   * \param param_definition_variants Mapping from parameter IDs to param
+   *        definitions.
    * \param rb `ReadBitBuffer` where the `ParameterBlockObu` data is stored.
    *        Data read from the buffer is consumed.
    * \return Unique pointer to a `ParameterBlockObu` on success. A specific
@@ -88,8 +87,8 @@ class ParameterBlockObu : public ObuBase {
    */
   static absl::StatusOr<std::unique_ptr<ParameterBlockObu>> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size,
-      const absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-          parameter_id_to_metadata,
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+          param_definition_variants,
       ReadBitBuffer& rb);
 
   /*!\brief Constructor.
@@ -99,10 +98,10 @@ class ParameterBlockObu : public ObuBase {
    *
    * \param header `ObuHeader` of the OBU.
    * \param parameter_id Parameter ID.
-   * \param metadata Per-ID parameter metadata.
+   * \param param_definition Parameter definition.
    */
   ParameterBlockObu(const ObuHeader& header, DecodedUleb128 parameter_id,
-                    const PerIdParameterMetadata& metadata);
+                    const ParamDefinition& param_definition);
 
   /*!\brief Destructor. */
   ~ParameterBlockObu() override = default;
@@ -257,8 +256,8 @@ class ParameterBlockObu : public ObuBase {
   // `constant_subblock_duration_ == 0`.
   DecodedUleb128 num_subblocks_;
 
-  // Per-ID parameter metadata.
-  const PerIdParameterMetadata& metadata_;
+  // Parameter definition corresponding to this parameter block.
+  const ParamDefinition& param_definition_;
 
   // Tracks whether the OBU was initialized correctly.
   absl::Status init_status_ =

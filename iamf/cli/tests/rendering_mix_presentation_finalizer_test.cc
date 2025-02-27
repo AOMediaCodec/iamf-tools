@@ -50,7 +50,6 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -1039,20 +1038,15 @@ TEST_F(FinalizerTest, PushTemporalUnitSucceedsWithValidInput) {
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
 
-  PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition =
-          obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
-  std::list<ParameterBlockWithData> parameter_blocks;
-
   ASSERT_EQ(ordered_labeled_frames_.size(), 1);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   renderer_factory_ = std::make_unique<RendererFactory>();
   auto finalizer = CreateFinalizerExpectOk();
-  EXPECT_THAT(
-      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
-                                 /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks),
-      IsOk());
+  EXPECT_THAT(finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                         /*start_timestamp=*/0,
+                                         /*end_timestamp=*/10,
+                                         /*parameter_blocks=*/{}),
+              IsOk());
 }
 
 TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
@@ -1060,11 +1054,6 @@ TEST_F(FinalizerTest, FullIterativeRenderingSucceedsWithValidInput) {
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
-
-  PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition =
-          obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
-  std::list<ParameterBlockWithData> parameter_blocks;
 
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   renderer_factory_ = std::make_unique<RendererFactory>();
@@ -1096,11 +1085,6 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, /*end_timestamp=*/10);
 
-  PerIdParameterMetadata common_mix_gain_parameter_metadata = {
-      .param_definition =
-          obus_to_finalize_.front().sub_mixes_[0].output_mix_gain};
-  std::list<ParameterBlockWithData> parameter_blocks;
-
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   renderer_factory_ = std::make_unique<RendererFactory>();
 
@@ -1117,11 +1101,11 @@ TEST_F(FinalizerTest, InvalidComputedLoudnessFails) {
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
 
   auto finalizer = CreateFinalizerExpectOk();
-  EXPECT_THAT(
-      finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
-                                 /*start_timestamp=*/0,
-                                 /*end_timestamp=*/10, parameter_blocks),
-      IsOk());
+  EXPECT_THAT(finalizer.PushTemporalUnit(ordered_labeled_frames_[0],
+                                         /*start_timestamp=*/0,
+                                         /*end_timestamp=*/10,
+                                         /*parameter_blocks=*/{}),
+              IsOk());
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
   // Do validate that computed loudness matches the user provided loudness -
   // since kArbitraryLoudnessInfo is the `computed` loudness, it won't.

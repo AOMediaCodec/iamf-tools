@@ -42,7 +42,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -206,7 +206,7 @@ class IamfEncoder {
    *        loudness.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
    *        parameter metadata.
-   * \param param_definitions Parameter definitions for the IA Sequence.
+   * \param param_definition_variants Parameter definitions for the IA Sequence.
    * \param parameters_manager Manager to support internal querying
    *        of parameters.
    * \param demixing_module Module to demix audio elements.
@@ -217,10 +217,8 @@ class IamfEncoder {
    */
   IamfEncoder(bool validate_user_loudness,
               std::unique_ptr<
-                  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>
-                  parameter_id_to_metadata,
-              absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&&
-                  param_definitions,
+                  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
+                  param_definition_variants,
               ParameterBlockGenerator&& parameter_block_generator,
               std::unique_ptr<ParametersManager> parameters_manager,
               const DemixingModule& demixing_module,
@@ -229,8 +227,7 @@ class IamfEncoder {
               std::unique_ptr<GlobalTimingModule> global_timing_module,
               RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
       : validate_user_loudness_(validate_user_loudness),
-        parameter_id_to_metadata_(std::move(parameter_id_to_metadata)),
-        param_definitions_(std::move(param_definitions)),
+        param_definition_variants_(std::move(param_definition_variants)),
         parameter_block_generator_(std::move(parameter_block_generator)),
         parameters_manager_(std::move(parameters_manager)),
         demixing_module_(demixing_module),
@@ -241,16 +238,12 @@ class IamfEncoder {
 
   const bool validate_user_loudness_;
 
-  // Mapping from parameter IDs to per-ID parameter metadata.
+  // Mapping from parameter IDs to parameter definitions.
   // Parameter block generator owns a reference to this map. Wrapped in
   // `std::unique_ptr` for reference stability after move.
   absl::Nonnull<std::unique_ptr<
-      const absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>>>
-      parameter_id_to_metadata_;
-
-  // Mapping from parameter IDs to param definitions.
-  const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      param_definitions_;
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>>
+      param_definition_variants_;
 
   // Saved parameter blocks generated in one iteration.
   std::list<ParameterBlockWithData> temp_mix_gain_parameter_blocks_;

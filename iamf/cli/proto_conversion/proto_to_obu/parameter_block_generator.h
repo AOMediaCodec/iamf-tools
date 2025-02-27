@@ -22,8 +22,8 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
-#include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -50,16 +50,16 @@ class ParameterBlockGenerator {
    *
    * \param override_computed_recon_gains Whether to override recon gains
    *        with user provided values.
-   * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
-   *        parameter metadata.
+   * \param param_definition_variants Mapping from parameter IDs to param
+   *        definitions.
    */
   ParameterBlockGenerator(
       bool override_computed_recon_gains,
-      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-          parameter_id_to_metadata)
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+          param_definition_variants)
       : override_computed_recon_gains_(override_computed_recon_gains),
         additional_recon_gains_logging_(true),
-        parameter_id_to_metadata_(parameter_id_to_metadata) {}
+        param_definition_variants_(param_definition_variants) {}
 
   /*!\brief Initializes the class.
    *
@@ -67,14 +67,11 @@ class ParameterBlockGenerator {
    * be no-ops (not failing).
    *
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param param_definitions Mapping from parameter IDs to param definitions.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status Initialize(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements,
-      const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-          param_definitions);
+          audio_elements);
 
   /*!\brief Adds one parameter block metadata.
    *
@@ -143,9 +140,9 @@ class ParameterBlockGenerator {
 
   bool additional_recon_gains_logging_;
 
-  // Mapping from parameter IDs to parameter metadata.
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-      parameter_id_to_metadata_;
+  // Mapping from parameter IDs to param definitions.
+  const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+      param_definition_variants_;
 
   // User metadata about Parameter Block OBUs categorized based on
   // the parameter definition type.

@@ -40,7 +40,6 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_param_definition",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",

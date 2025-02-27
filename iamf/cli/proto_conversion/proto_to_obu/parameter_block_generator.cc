@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -40,7 +39,9 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
+#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -50,10 +51,31 @@ namespace iamf_tools {
 
 namespace {
 
+std::optional<ParamDefinition::ParameterDefinitionType>
+GetParameterDefinitionType(
+    const ParamDefinitionVariant& parameter_definition_variant) {
+  return std::visit(
+      [](const auto& param_definition) { return param_definition.GetType(); },
+      parameter_definition_variant);
+}
+
+uint8_t GetParameterDefinitionMode(
+    const ParamDefinitionVariant& parameter_definition_variant) {
+  return std::visit(
+      [](const auto& param_definition) {
+        return param_definition.param_definition_mode_;
+      },
+      parameter_definition_variant);
+}
+
 absl::Status GenerateMixGainSubblock(
     const iamf_tools_cli_proto::MixGainParameterData&
         metadata_mix_gain_parameter_data,
-    MixGainParameterData* mix_gain_parameter_data) {
+    const MixGainParamDefinition* param_definition,
+    std::unique_ptr<ParameterData>& parameter_data) {
+  parameter_data = param_definition->CreateParameterData();
+  auto* mix_gain_parameter_data =
+      static_cast<MixGainParameterData*>(parameter_data.get());
   switch (metadata_mix_gain_parameter_data.animation_type()) {
     using enum iamf_tools_cli_proto::AnimationType;
     case ANIMATE_STEP: {
@@ -281,17 +303,17 @@ absl::Status GenerateReconGainSubblock(
     const bool additional_recon_gains_logging,
     const IdLabeledFrameMap& id_to_labeled_frame,
     const IdLabeledFrameMap& id_to_labeled_decoded_frame,
-    const uint8_t num_layers,
-    const std::vector<bool>& recon_gain_is_present_flags,
-    const std::vector<ChannelNumbers>& channel_numbers_for_layers,
     const iamf_tools_cli_proto::ReconGainInfoParameterData&
         metadata_recon_gain_info_parameter_data,
-    const DecodedUleb128 audio_element_id,
-    ReconGainInfoParameterData* recon_gain_info_parameter_data) {
+    const ReconGainParamDefinition* param_definition,
+    std::unique_ptr<ParameterData>& parameter_data) {
+  parameter_data = param_definition->CreateParameterData();
+  auto* recon_gain_info_parameter_data =
+      static_cast<ReconGainInfoParameterData*>(parameter_data.get());
+  const auto num_layers = param_definition->aux_data_.size();
   const auto& user_recon_gains_layers =
       metadata_recon_gain_info_parameter_data.recon_gains_for_layer();
-  if (num_layers > 1 &&
-      static_cast<size_t>(num_layers) != user_recon_gains_layers.size()) {
+  if (num_layers > 1 && num_layers != user_recon_gains_layers.size()) {
     return absl::InvalidArgumentError(
         absl::StrCat("There are ", num_layers, " layers of scalable  ",
                      "audio element, but the user only specifies ",
@@ -299,13 +321,15 @@ absl::Status GenerateReconGainSubblock(
   }
   recon_gain_info_parameter_data->recon_gain_elements.resize(num_layers);
 
+  const std::vector<bool>& recon_gain_is_present_flags =
+      recon_gain_info_parameter_data->recon_gain_is_present_flags;
   for (int layer_index = 0; layer_index < num_layers; layer_index++) {
     // Write out the user supplied gains. Depending on the mode these either
     // match the computed recon gains or are used as an override. Write to
     // output.
     auto& output_recon_gain_element =
         recon_gain_info_parameter_data->recon_gain_elements[layer_index];
-    if (!recon_gain_is_present_flags[layer_index]) {
+    if (!param_definition->aux_data_[layer_index].recon_gain_is_present_flag) {
       // Skip computation and store no value in the output.
       output_recon_gain_element.reset();
       continue;
@@ -335,7 +359,7 @@ absl::Status GenerateReconGainSubblock(
     // Compute the recon gains and validate they match the user supplied values.
     std::vector<uint8_t> computed_recon_gains;
     DecodedUleb128 computed_recon_gain_flag = 0;
-
+    const DecodedUleb128 audio_element_id = param_definition->audio_element_id_;
     const auto labeled_frame_iter = id_to_labeled_frame.find(audio_element_id);
     const auto labeled_decoded_frame_iter =
         id_to_labeled_decoded_frame.find(audio_element_id);
@@ -346,11 +370,12 @@ absl::Status GenerateReconGainSubblock(
           audio_element_id, " not found when computing recon gains"));
     }
 
-    const auto layer_channels = channel_numbers_for_layers[layer_index];
+    const auto& layer_channels =
+        param_definition->aux_data_[layer_index].channel_numbers_for_layer;
     const auto accumulated_channels =
-        (layer_index > 0 ? channel_numbers_for_layers[layer_index - 1]
+        (layer_index > 0 ? param_definition->aux_data_[layer_index - 1]
+                               .channel_numbers_for_layer
                          : ChannelNumbers{0, 0, 0});
-    channel_numbers_for_layers[layer_index];
     RETURN_IF_NOT_OK(
         ComputeReconGains(layer_index, layer_channels, accumulated_channels,
                           additional_recon_gains_logging,
@@ -389,7 +414,7 @@ absl::Status GenerateParameterBlockSubblock(
     const bool additional_recon_gains_logging,
     const IdLabeledFrameMap* id_to_labeled_frame,
     const IdLabeledFrameMap* id_to_labeled_decoded_frame,
-    const PerIdParameterMetadata& per_id_metadata,
+    const ParamDefinitionVariant& param_definition_variant,
     const bool include_subblock_duration, const int subblock_index,
     const iamf_tools_cli_proto::ParameterSubblock& metadata_subblock,
     ParameterBlockObu& obu) {
@@ -399,17 +424,21 @@ absl::Status GenerateParameterBlockSubblock(
   }
 
   auto& obu_subblock_param_data = obu.subblocks_[subblock_index].param_data;
-  const auto param_definition_type = per_id_metadata.param_definition.GetType();
+  const auto param_definition_type =
+      GetParameterDefinitionType(param_definition_variant);
+  std::unique_ptr<ParameterData> parameter_data;
   RETURN_IF_NOT_OK(
       ValidateHasValue(param_definition_type, "`param_definition_type`."));
   switch (*param_definition_type) {
     using enum ParamDefinition::ParameterDefinitionType;
     case kParameterDefinitionMixGain: {
-      auto mix_gain_parameter_data = std::make_unique<MixGainParameterData>();
+      auto* mix_gain_param_definition =
+          std::get_if<MixGainParamDefinition>(&param_definition_variant);
+      RETURN_IF_NOT_OK(
+          ValidateNotNull(mix_gain_param_definition, "MixGainParamDefinition"));
       RETURN_IF_NOT_OK(
           GenerateMixGainSubblock(metadata_subblock.mix_gain_parameter_data(),
-                                  mix_gain_parameter_data.get()));
-      obu_subblock_param_data = std::move(mix_gain_parameter_data);
+                                  mix_gain_param_definition, parameter_data));
       break;
     }
     case kParameterDefinitionDemixing: {
@@ -417,13 +446,14 @@ absl::Status GenerateParameterBlockSubblock(
         return absl::InvalidArgumentError(
             "There should be only one subblock for demixing info.");
       }
-      DemixingInfoParameterData param_data;
-      auto demixing_info_parameter_data =
-          std::make_unique<DemixingInfoParameterData>();
+      auto* demixing_param_definition =
+          std::get_if<DemixingParamDefinition>(&param_definition_variant);
+      RETURN_IF_NOT_OK(ValidateNotNull(demixing_param_definition,
+                                       "DemixingParamDefinition"));
+      parameter_data = demixing_param_definition->CreateParameterData();
       RETURN_IF_NOT_OK(CopyDemixingInfoParameterData(
           metadata_subblock.demixing_info_parameter_data(),
-          *demixing_info_parameter_data));
-      obu_subblock_param_data = std::move(demixing_info_parameter_data);
+          *static_cast<DemixingInfoParameterData*>(parameter_data.get())));
       break;
     }
     case kParameterDefinitionReconGain: {
@@ -431,18 +461,15 @@ absl::Status GenerateParameterBlockSubblock(
         return absl::InvalidArgumentError(
             "There should be only one subblock for recon gain info.");
       }
-      auto recon_gain_info_parameter_data =
-          std::make_unique<ReconGainInfoParameterData>();
+      auto* recon_gain_param_definition =
+          std::get_if<ReconGainParamDefinition>(&param_definition_variant);
+      RETURN_IF_NOT_OK(ValidateNotNull(recon_gain_param_definition,
+                                       "ReconGainParamDefinition"));
       RETURN_IF_NOT_OK(GenerateReconGainSubblock(
           override_computed_recon_gains, additional_recon_gains_logging,
           *id_to_labeled_frame, *id_to_labeled_decoded_frame,
-          per_id_metadata.num_layers,
-          per_id_metadata.recon_gain_is_present_flags,
-          per_id_metadata.channel_numbers_for_layers,
           metadata_subblock.recon_gain_info_parameter_data(),
-          per_id_metadata.audio_element_id,
-          recon_gain_info_parameter_data.get()));
-      obu_subblock_param_data = std::move(recon_gain_info_parameter_data);
+          recon_gain_param_definition, parameter_data));
       break;
     }
     default:
@@ -450,6 +477,7 @@ absl::Status GenerateParameterBlockSubblock(
       return absl::InvalidArgumentError(absl::StrCat(
           "Unsupported param definition type= ", *param_definition_type));
   }
+  obu_subblock_param_data = std::move(parameter_data);
 
   return absl::OkStatus();
 }
@@ -457,15 +485,14 @@ absl::Status GenerateParameterBlockSubblock(
 absl::Status PopulateCommonFields(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata,
-    PerIdParameterMetadata& per_id_metadata,
+    const ParamDefinition& param_definition,
     GlobalTimingModule& global_timing_module,
     ParameterBlockWithData& parameter_block_with_data) {
   // Get the duration from the parameter definition or the OBU itself as
   // applicable.
-  const DecodedUleb128 duration =
-      per_id_metadata.param_definition.param_definition_mode_ == 1
-          ? parameter_block_metadata.duration()
-          : per_id_metadata.param_definition.duration_;
+  const DecodedUleb128 duration = param_definition.param_definition_mode_ == 1
+                                      ? parameter_block_metadata.duration()
+                                      : param_definition.duration_;
 
   // Populate the timing information.
   RETURN_IF_NOT_OK(global_timing_module.GetNextParameterBlockTimestamps(
@@ -478,10 +505,10 @@ absl::Status PopulateCommonFields(
   const DecodedUleb128 parameter_id = parameter_block_metadata.parameter_id();
   parameter_block_with_data.obu = std::make_unique<ParameterBlockObu>(
       GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-      parameter_id, per_id_metadata);
+      parameter_id, param_definition);
 
   // Several fields are dependent on `param_definition_mode`.
-  if (per_id_metadata.param_definition.param_definition_mode_ == 1) {
+  if (param_definition.param_definition_mode_ == 1) {
     RETURN_IF_NOT_OK(parameter_block_with_data.obu->InitializeSubblocks(
         parameter_block_metadata.duration(),
         parameter_block_metadata.constant_subblock_duration(),
@@ -500,14 +527,14 @@ absl::Status PopulateSubblocks(
     const bool additional_recon_gains_logging,
     const IdLabeledFrameMap* id_to_labeled_frame,
     const IdLabeledFrameMap* id_to_labeled_decoded_frame,
-    const PerIdParameterMetadata& per_id_metadata,
+    const ParamDefinitionVariant& param_definition_variant,
     ParameterBlockWithData& output_parameter_block) {
   auto& parameter_block_obu = *output_parameter_block.obu;
   const DecodedUleb128 num_subblocks = parameter_block_obu.GetNumSubblocks();
 
   // All subblocks will include `subblock_duration` or none will include it.
   const bool include_subblock_duration =
-      per_id_metadata.param_definition.param_definition_mode_ == 1 &&
+      GetParameterDefinitionMode(param_definition_variant) == 1 &&
       parameter_block_obu.GetConstantSubblockDuration() == 0;
 
   if (num_subblocks != parameter_block_metadata.subblocks_size()) {
@@ -518,9 +545,9 @@ absl::Status PopulateSubblocks(
   for (int i = 0; i < num_subblocks; ++i) {
     RETURN_IF_NOT_OK(GenerateParameterBlockSubblock(
         override_computed_recon_gains, additional_recon_gains_logging,
-        id_to_labeled_frame, id_to_labeled_decoded_frame, per_id_metadata,
-        include_subblock_duration, i, parameter_block_metadata.subblocks(i),
-        parameter_block_obu));
+        id_to_labeled_frame, id_to_labeled_decoded_frame,
+        param_definition_variant, include_subblock_duration, i,
+        parameter_block_metadata.subblocks(i), parameter_block_obu));
   }
 
   return absl::OkStatus();
@@ -553,25 +580,20 @@ absl::Status LogParameterBlockObus(
 
 absl::Status ParameterBlockGenerator::Initialize(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
-    const absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>&
-        param_definitions) {
-  auto generated_parameter_id_to_metadata =
-      GenerateParamIdToMetadataMap(param_definitions, audio_elements);
-  if (!generated_parameter_id_to_metadata.ok()) {
-    return generated_parameter_id_to_metadata.status();
-  }
-  parameter_id_to_metadata_ = std::move(*generated_parameter_id_to_metadata);
-
-  for (const auto [parameter_id, param_definition] : param_definitions) {
-    const auto param_definition_type = *param_definition->GetType();
+        audio_elements) {
+  for (const auto& [parameter_id, param_definition_variant] :
+       param_definition_variants_) {
+    const auto param_definition_type =
+        GetParameterDefinitionType(param_definition_variant);
+    RETURN_IF_NOT_OK(
+        ValidateHasValue(param_definition_type, "param_definition_type"));
     if (param_definition_type !=
             ParamDefinition::kParameterDefinitionDemixing &&
         param_definition_type != ParamDefinition::kParameterDefinitionMixGain &&
         param_definition_type !=
             ParamDefinition::kParameterDefinitionReconGain) {
       return absl::InvalidArgumentError(
-          absl::StrCat("Unsupported parameter type: ", param_definition_type));
+          absl::StrCat("Unsupported parameter type: ", *param_definition_type));
     }
   }
 
@@ -581,15 +603,16 @@ absl::Status ParameterBlockGenerator::Initialize(
 absl::Status ParameterBlockGenerator::AddMetadata(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
         parameter_block_metadata) {
-  const auto& per_id_metadata_iter =
-      parameter_id_to_metadata_.find(parameter_block_metadata.parameter_id());
-  if (per_id_metadata_iter == parameter_id_to_metadata_.end()) {
+  const auto& param_definition_iter =
+      param_definition_variants_.find(parameter_block_metadata.parameter_id());
+  if (param_definition_iter == param_definition_variants_.end()) {
     return absl::InvalidArgumentError(
-        absl::StrCat("No per-id parameter metadata found for parameter ID= ",
+        absl::StrCat("No parameter definition found for parameter ID= ",
                      parameter_block_metadata.parameter_id()));
   }
-  const auto& param_definition_type =
-      per_id_metadata_iter->second.param_definition.GetType();
+  const auto& param_definition_type = std::visit(
+      [](const auto& param_definition) { return param_definition.GetType(); },
+      param_definition_iter->second);
   RETURN_IF_NOT_OK(
       ValidateHasValue(param_definition_type, "`param_definition_type`."));
   typed_proto_metadata_[*param_definition_type].push_back(
@@ -645,16 +668,22 @@ absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
     std::list<ParameterBlockWithData>& output_parameter_blocks) {
   for (auto& parameter_block_metadata : proto_metadata_list) {
     ParameterBlockWithData output_parameter_block;
-    auto& per_id_metadata =
-        parameter_id_to_metadata_.at(parameter_block_metadata.parameter_id());
-    RETURN_IF_NOT_OK(PopulateCommonFields(parameter_block_metadata,
-                                          per_id_metadata, global_timing_module,
-                                          output_parameter_block));
+    const auto& param_definition_variant =
+        param_definition_variants_.at(parameter_block_metadata.parameter_id());
+    const auto* param_definition_base = std::visit(
+        [](const auto& param_definition) {
+          return static_cast<const ParamDefinition*>(&param_definition);
+        },
+        param_definition_variant);
+    RETURN_IF_NOT_OK(
+        PopulateCommonFields(parameter_block_metadata, *param_definition_base,
+                             global_timing_module, output_parameter_block));
 
     RETURN_IF_NOT_OK(PopulateSubblocks(
         parameter_block_metadata, override_computed_recon_gains_,
         additional_recon_gains_logging_, id_to_labeled_frame,
-        id_to_labeled_decoded_frame, per_id_metadata, output_parameter_block));
+        id_to_labeled_decoded_frame, param_definition_variant,
+        output_parameter_block));
 
     // Disable some verbose logging after the first recon gain block is
     // produced.

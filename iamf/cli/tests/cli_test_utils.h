@@ -168,51 +168,47 @@ void AddMixPresentationObuWithAudioElementIds(
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     std::list<MixPresentationObu>& mix_presentations);
 
-/*!\brief Adds a configurable generic `ParamDefinition` to the output argument.
+/*!\brief Adds a configurable mix gain param definition to the output argument.
  *
- * \param parameter_id `parameter_id` of the `ParamDefinition` to create.
- * \param parameter_rate `parameter_rate` of the `ParamDefinition` to create.
+ * \param parameter_id `parameter_id` of the param definition to create.
+ * \param parameter_rate `parameter_rate` of the param definition to
+ *        create.
  * \param duration `duration` and `constant_subblock_duration` of the
- *        `ParamDefinition` to create.
- * \param param_definitions Map to add the `ParamDefinition` to keyed by
+ *        param definition to create.
+ * \param param_definitions Map to add the param definition to keyed by
  *        `parameter_id`.
  */
 void AddParamDefinitionWithMode0AndOneSubblock(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
     DecodedUleb128 duration,
-    absl::flat_hash_map<DecodedUleb128, ParamDefinition>& param_definitions);
+    absl::flat_hash_map<DecodedUleb128, MixGainParamDefinition>&
+        param_definitions);
 
 /*!\brief Adds a demixing parameter definition to an Audio Element OBU.
  *
- * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
- * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.
+ * \param parameter_id `parameter_id` of the param definition to add.
+ * \param parameter_rate `parameter_rate` of the param definition to add.
  * \param duration `duration` and `constant_subblock_duration` of the
- *        `ParamDefinition` to add.
- * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
- * \param param_definitions Output pointer to the map to add the
- *        `ParamDefinition*` to keyed by `parameter_id`.
+ *        param definition to add.
+ * \param audio_element_obu Audio Element OBU to add the param definition to.
  */
-void AddDemixingParamDefinition(
-    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
-    DecodedUleb128 duration, AudioElementObu& audio_element_obu,
-    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
-        param_definitions);
+void AddDemixingParamDefinition(DecodedUleb128 parameter_id,
+                                DecodedUleb128 parameter_rate,
+                                DecodedUleb128 duration,
+                                AudioElementObu& audio_element_obu);
 
 /*!\brief Adds a recon gain parameter definition to an Audio Element OBU.
  *
- * \param parameter_id `parameter_id` of the `ParamDefinition` to add.
- * \param parameter_rate `parameter_rate` of the `ParamDefinition` to add.
+ * \param parameter_id `parameter_id` of the param definition to add.
+ * \param parameter_rate `parameter_rate` of the param definition to add.
  * \param duration `duration` and `constant_subblock_duration` of the
- *        `ParamDefinition` to add.
- * \param audio_element_obu Audio Element OBU to add the `ParamDefinition` to.
- * \param param_definitions Output pointer to the map to add the
- *        `ParamDefinition*` to keyed by `parameter_id`.
+ *        param definition to add.
+ * \param audio_element_obu Audio Element OBU to add the param definition to.
  */
-void AddReconGainParamDefinition(
-    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate,
-    DecodedUleb128 duration, AudioElementObu& audio_element_obu,
-    absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>*
-        param_definitions);
+void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
+                                 DecodedUleb128 parameter_rate,
+                                 DecodedUleb128 duration,
+                                 AudioElementObu& audio_element_obu);
 
 /*!\brief Calls `CreateWavReader` and unwraps the `StatusOr`.
  *

@@ -12,6 +12,8 @@
 #include "iamf/obu/param_definitions.h"
 
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
@@ -22,6 +24,10 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/extension_parameter_data.h"
+#include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/parameter_data.h"
+#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -163,7 +169,7 @@ void ParamDefinition::Print() const {
     LOG(INFO) << "  duration= " << duration_;
     LOG(INFO) << "  constant_subblock_duration= "
               << constant_subblock_duration_;
-    LOG(INFO) << "  num_subblocks=" << GetNumSubblocks();
+    LOG(INFO) << "  num_subblocks= " << GetNumSubblocks();
 
     // Subblock durations.
     if (constant_subblock_duration_ == 0) {
@@ -249,6 +255,11 @@ absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
+std::unique_ptr<ParameterData> MixGainParamDefinition::CreateParameterData()
+    const {
+  return std::make_unique<MixGainParameterData>();
+}
+
 void MixGainParamDefinition::Print() const {
   LOG(INFO) << "MixGainParamDefinition:";
   ParamDefinition::Print();
@@ -274,9 +285,33 @@ absl::Status ReconGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
+std::unique_ptr<ParameterData> ReconGainParamDefinition::CreateParameterData()
+    const {
+  auto recon_gain_parameter_data =
+      std::make_unique<ReconGainInfoParameterData>();
+  recon_gain_parameter_data->recon_gain_is_present_flags.resize(
+      aux_data_.size());
+  for (int i = 0; i < aux_data_.size(); i++) {
+    recon_gain_parameter_data->recon_gain_is_present_flags[i] =
+        aux_data_[i].recon_gain_is_present_flag;
+  }
+  recon_gain_parameter_data->recon_gain_elements.resize(aux_data_.size());
+  return recon_gain_parameter_data;
+}
+
 void ReconGainParamDefinition::Print() const {
   LOG(INFO) << "ReconGainParamDefinition:";
   ParamDefinition::Print();
+  LOG(INFO) << "  audio_element_id= " << audio_element_id_;
+
+  for (int i = 0; i < aux_data_.size(); i++) {
+    LOG(INFO) << "  // recon_gain_is_present_flags[" << i
+              << "]= " << absl::StrCat(aux_data_[i].recon_gain_is_present_flag);
+    const auto& channel_numbers = aux_data_[i].channel_numbers_for_layer;
+    LOG(INFO) << "  // channel_numbers_for_layer[" << i
+              << "]= " << channel_numbers.surround << "." << channel_numbers.lfe
+              << "." << channel_numbers.height;
+  }
 }
 
 absl::Status ExtendedParamDefinition::ValidateAndWrite(
@@ -301,6 +336,11 @@ absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
 
   return absl::OkStatus();
+}
+
+std::unique_ptr<ParameterData> ExtendedParamDefinition::CreateParameterData()
+    const {
+  return std::make_unique<ExtensionParameterData>();
 }
 
 void ExtendedParamDefinition::Print() const {

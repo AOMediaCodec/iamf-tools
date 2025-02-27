@@ -17,7 +17,6 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -81,8 +80,7 @@ absl::Status AnimationBezierInt16::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-absl::Status MixGainParameterData::ReadAndValidate(
-    const PerIdParameterMetadata&, ReadBitBuffer& rb) {
+absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   DecodedUleb128 animation_type_uleb;
   RETURN_IF_NOT_OK(rb.ReadULeb128(animation_type_uleb));
   animation_type =
@@ -112,8 +110,7 @@ absl::Status MixGainParameterData::ReadAndValidate(
   return absl::OkStatus();
 }
 
-absl::Status MixGainParameterData::Write(const PerIdParameterMetadata&,
-                                         WriteBitBuffer& wb) const {
+absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {
   // Write the `animation_type` field.
   RETURN_IF_NOT_OK(
       wb.WriteUleb128(static_cast<DecodedUleb128>(animation_type)));

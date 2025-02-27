@@ -38,7 +38,6 @@
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 
@@ -81,22 +80,21 @@ void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
       .audio_element_with_data = &audio_elements.at(audio_element_id)});
 }
 
-PerIdParameterMetadata CreatePerIdMetadataForDemixing(
-    DecodedUleb128 parameter_id) {
-  DemixingParamDefinition expected_demixing_param_definition;
-  expected_demixing_param_definition.parameter_id_ = parameter_id;
-  expected_demixing_param_definition.parameter_rate_ = 48000;
-  expected_demixing_param_definition.param_definition_mode_ = 0;
-  expected_demixing_param_definition.duration_ = 8;
-  expected_demixing_param_definition.constant_subblock_duration_ = 8;
-  expected_demixing_param_definition.reserved_ = 10;
+DemixingParamDefinition CreateDemixingParamDefinition(
+    const DecodedUleb128 parameter_id) {
+  DemixingParamDefinition demixing_param_definition;
+  demixing_param_definition.parameter_id_ = parameter_id;
+  demixing_param_definition.parameter_rate_ = 48000;
+  demixing_param_definition.param_definition_mode_ = 0;
+  demixing_param_definition.duration_ = 8;
+  demixing_param_definition.constant_subblock_duration_ = 8;
+  demixing_param_definition.reserved_ = 10;
 
-  return PerIdParameterMetadata{.param_definition =
-                                    expected_demixing_param_definition};
+  return demixing_param_definition;
 }
 
 void InitializeOneParameterBlockAndOneAudioFrame(
-    PerIdParameterMetadata& per_id_metadata,
+    DemixingParamDefinition& param_definition,
     std::list<ParameterBlockWithData>& parameter_blocks,
     std::list<AudioFrameWithData>& audio_frames,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
@@ -115,8 +113,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   data->dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
   data->reserved = 0;
   auto parameter_block = std::make_unique<ParameterBlockObu>(
-      ObuHeader(), per_id_metadata.param_definition.parameter_id_,
-      per_id_metadata);
+      ObuHeader(), param_definition.parameter_id_, param_definition);
   ASSERT_THAT(parameter_block->InitializeSubblocks(), IsOk());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
@@ -152,10 +149,10 @@ class ObuSequencerTest : public ::testing::Test {
     ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
-    per_id_metadata_ =
-        CreatePerIdMetadataForDemixing(kFirstDemixingParameterId);
+    param_definition_ =
+        CreateDemixingParamDefinition(kFirstDemixingParameterId);
     InitializeOneParameterBlockAndOneAudioFrame(
-        per_id_metadata_, parameter_blocks_, audio_frames_, codec_config_obus_,
+        param_definition_, parameter_blocks_, audio_frames_, codec_config_obus_,
         audio_elements_);
     AddMixPresentationObuWithAudioElementIds(
         kFirstMixPresentationId, {audio_elements_.begin()->first},
@@ -169,7 +166,7 @@ class ObuSequencerTest : public ::testing::Test {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements_;
   std::list<MixPresentationObu> mix_presentation_obus_;
 
-  PerIdParameterMetadata per_id_metadata_;
+  DemixingParamDefinition param_definition_;
   std::list<ParameterBlockWithData> parameter_blocks_;
   std::list<AudioFrameWithData> audio_frames_;
 

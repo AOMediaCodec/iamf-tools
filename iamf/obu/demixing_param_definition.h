@@ -12,11 +12,14 @@
 #ifndef OBU_DEMIXING_PARAM_DEFINITION_H_
 #define OBU_DEMIXING_PARAM_DEFINITION_H_
 
+#include <memory>
+
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
 
@@ -48,6 +51,14 @@ class DemixingParamDefinition : public ParamDefinition {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
+
+  /*!\brief Creates a parameter data.
+   *
+   * The created instance will be of type `DemixingInfoParameterData`.
+   *
+   * \return Unique pointer to the created parameter data.
+   */
+  std::unique_ptr<ParameterData> CreateParameterData() const override;
 
   /*!\brief Prints the parameter definition.
    */

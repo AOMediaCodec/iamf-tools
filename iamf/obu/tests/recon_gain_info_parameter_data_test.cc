@@ -20,7 +20,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 
 namespace iamf_tools {
@@ -31,19 +30,19 @@ using absl_testing::IsOk;
 constexpr uint32_t kAudioElementId = 0;
 
 TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
-  PerIdParameterMetadata per_id_metadata = {
-      .recon_gain_is_present_flags = {false, true}};
+  const std::vector<bool> recon_gain_is_present_flags = {false, true};
+
   std::vector<uint8_t> source_data = {
-      // Layer 0 is omitted due to `recon_gain_is_present_flags`.
+      // Layer 0 is omitted due to `recon_gain_is_present_flags[0] == false`.
       // `layer[1]`.
       ReconGainElement::kReconGainFlagR, 1};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       1024, absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
-  EXPECT_THAT(
-      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, *buffer),
-      IsOk());
+  recon_gain_info_parameter_data.recon_gain_is_present_flags =
+      recon_gain_is_present_flags;
+  EXPECT_THAT(recon_gain_info_parameter_data.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 2);
   ASSERT_TRUE(
       recon_gain_info_parameter_data.recon_gain_elements[1].has_value());
@@ -57,8 +56,8 @@ TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
 }
 
 TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
-  PerIdParameterMetadata per_id_metadata = {
-      .recon_gain_is_present_flags = {false, true, true, true, true, true}};
+  const std::vector<bool> recon_gain_is_present_flags = {false, true, true,
+                                                         true,  true, true};
   std::vector<uint8_t> source_data = {
       // Layer 0 is omitted due to `recon_gain_is_present_flags`.
       // `layer[1]`.
@@ -83,9 +82,9 @@ TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
       1024, absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
-  EXPECT_THAT(
-      recon_gain_info_parameter_data.ReadAndValidate(per_id_metadata, *buffer),
-      IsOk());
+  recon_gain_info_parameter_data.recon_gain_is_present_flags =
+      recon_gain_is_present_flags;
+  EXPECT_THAT(recon_gain_info_parameter_data.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(recon_gain_info_parameter_data.recon_gain_elements.size(), 6);
 
   // Layer 0 is omitted due to `recon_gain_is_present_flags`.

@@ -17,7 +17,6 @@
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
@@ -92,21 +91,17 @@ struct DemixingInfoParameterData : public ParameterData {
 
   /*!\brief Reads and validates a `DemixingInfoParameterData` from a buffer.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status ReadAndValidate(const PerIdParameterMetadata& per_id_metadata,
-                               ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
   /*!\brief Validates and writes to a buffer.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Write(const PerIdParameterMetadata& per_id_metadata,
-                     WriteBitBuffer& wb) const override;
+  absl::Status Write(WriteBitBuffer& wb) const override;
 
   /*!\brief Prints the demixing info parameter data.
    */
@@ -139,21 +134,17 @@ struct DefaultDemixingInfoParameterData : public DemixingInfoParameterData {
 
   /*!\brief Reads and validates a `DefaultDemixingInfoParameterData`.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param rb Buffer to read from.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status ReadAndValidate(const PerIdParameterMetadata& per_id_metadata,
-                               ReadBitBuffer& rb) override;
+  absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
 
   /*!\brief Validates and writes to a buffer.
    *
-   * \param per_id_metadata Per-ID parameter metadata.
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Write(const PerIdParameterMetadata& per_id_metadata,
-                     WriteBitBuffer& wb) const override;
+  absl::Status Write(WriteBitBuffer& wb) const override;
 
   /*!\brief Prints the default demixing info parameter data.
    */

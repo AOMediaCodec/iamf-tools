@@ -34,7 +34,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
 
@@ -93,9 +93,9 @@ class ObuProcessor {
    *        present in the descriptor OBUs, keyed by codec config ID.
    * \param substream_id_to_audio_element Mapping from substream IDs to the
    *        audio elements that they belong to.
+   * \param param_definition_variants Map containing the param definitions that
+   *        were present in the descriptor OBUs, keyed by parameter ID.
    * \param parameters_manager Manager of parameters.
-   * \param param_definitions Map containing the param definitions that were
-   *        present in the descriptor OBUs, keyed by parameter ID.
    * \param read_bit_buffer Buffer reader that reads the IAMF bitstream.
    * \param global_timing_module Module to keep track of the timing of audio
    *        frames and parameters.
@@ -115,10 +115,10 @@ class ObuProcessor {
           codec_config_obus,
       const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
           substream_id_to_audio_element,
-      ParametersManager& parameters_manager,
-      absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>&
-          parameter_id_to_metadata,
-      ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+          param_definition_variants,
+      ParametersManager& parameters_manager, ReadBitBuffer& read_bit_buffer,
+      GlobalTimingModule& global_timing_module,
       std::optional<AudioFrameWithData>& output_audio_frame_with_data,
       std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
       std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
@@ -330,10 +330,8 @@ class ObuProcessor {
     };
   };
 
-  absl::flat_hash_map<DecodedUleb128, const ParamDefinition*>
-      param_definitions_;
-  absl::flat_hash_map<DecodedUleb128, PerIdParameterMetadata>
-      parameter_id_to_metadata_;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
+      param_definition_variants_;
   absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element_;
   std::unique_ptr<GlobalTimingModule> global_timing_module_;

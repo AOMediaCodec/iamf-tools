@@ -25,7 +25,6 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
-        "//iamf/obu:demixing_param_definition",
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
@@ -136,6 +135,7 @@ cc_test(
     deps = [
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
+        "//iamf/cli:cli_util",
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameter_block_with_data",
