@@ -10,7 +10,8 @@ The [Immersive Audio Model and Formats](https://aomediacodec.github.io/iamf/)
 `iamf-tools` implements tools to help users process and work with the IAMF
 format. These tools can be used as a complement to the `libiamf`
 [reference decoder](https://github.com/AOMediaCodec/libiamf/) and other tools
-such as [ffmpeg](https://ffmpeg.org/).
+such as [ffmpeg](https://ffmpeg.org/) and
+[MP4Box](https://github.com/gpac/gpac?tab=readme-ov-file#mp4box).
 
 ### Encoding IAMF files
 
@@ -21,8 +22,8 @@ of inputs.
 
 -   [Encode an ADM-BWF file to IAMF](#using-the-encoder-with-adm-bwf-input)
 -   [Encode wav files to IAMF using the iamf-tools encoder](#using-the-encoder-with-wav-files-and-proto-input)
+-   [Merge IAMF files and video into an mp4 file](docs/external/encoding_with_external_tools.md#merge-an-iamf-file-with-video-into-mp4)
 -   [Encode wav files to IAMF using ffmpeg](docs/external/encoding_with_external_tools.md#encode-wav-files-to-iamf-with-ffmpeg)
--   [Merge IAMF files and video into an mp4 file](docs/external/encoding_with_external_tools.md#merge-an-iamf-file-with-video-into-mp4-using-ffmpeg)
 
 ### Decoding IAMF files
 
