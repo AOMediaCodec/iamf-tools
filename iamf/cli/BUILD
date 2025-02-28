@@ -222,6 +222,7 @@ cc_library(
         ":parameters_manager",
         ":renderer_factory",
         ":rendering_mix_presentation_finalizer",
+        "//iamf/cli/proto:encoder_control_metadata_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:downmixing_reconstruction_util",

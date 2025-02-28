@@ -387,6 +387,27 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
          equivalent_integral_sample == testing::get<1>(arg);
 }
 
+/*!\brief Matches a tag that is the build information of the IAMF encoder.
+ *
+ * A matcher that checks that the tag name is "iamf_encoder" and the tag value
+ * starts with the prefix of the build information of the IAMF encoder. In the
+ * future we may add a suffix, such as the commit hash, to the tag value. This
+ * matcher will match both the old and new formats.
+ *
+ * For example:
+ * const MixPresentationTags::Tag tag{.tag_name = "iamf_encoder",
+ *                                    .tag_value = "GitHub/iamf-tools"};
+ * EXPECT_THAT(tag, TagMatchesBuildInformation());
+ */
+MATCHER(TagMatchesBuildInformation, "") {
+  constexpr absl::string_view kIamfEncoderBuildInformationPrefix =
+      "GitHub/iamf-tools";
+  return arg.tag_name == "iamf_encoder" &&
+         ExplainMatchResult(
+             ::testing::StartsWith(kIamfEncoderBuildInformationPrefix),
+             arg.tag_value, result_listener);
+}
+
 /*!\brief A mock sample processor. */
 class MockSampleProcessor : public SampleProcessorBase {
  public:

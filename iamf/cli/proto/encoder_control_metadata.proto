@@ -13,4 +13,10 @@ syntax = "proto2";
 package iamf_tools_cli_proto;
 
 // Controls for the encoder behavior.
-message EncoderControlMetadata {}
+message EncoderControlMetadata {
+  // If true [default]: Each Mix Presentation OBU will get an extra
+  //                    `MixPresentationTag` with metadata describing the build
+  //                    information.
+  //  If false: The encoder omit adding an extra build information tag.
+  optional bool add_build_information_tag = 1 [default = true];
+}

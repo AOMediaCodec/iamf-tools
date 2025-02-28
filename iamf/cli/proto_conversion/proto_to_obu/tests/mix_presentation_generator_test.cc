@@ -41,7 +41,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
 using ::testing::Not;
-using ::testing::StartsWith;
 typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::MixPresentationObuMetadata>
     MixPresentationObuMetadatas;
@@ -57,17 +56,6 @@ constexpr int16_t kZeroMixGain = 0;
 constexpr int16_t kNonZeroMixGain = 100;
 constexpr bool kOmitBuildInformationTag = false;
 constexpr bool kAppendBuildInformationTag = true;
-constexpr absl::string_view kIamfEncoderBuildInformationPrefix =
-    "GitHub/iamf-tools";
-
-// A matcher that checks that the tag name is "iamf_encoder" and the tag value
-// starts with the prefix of the build information of the IAMF encoder. In the
-// future we may add a suffix, such as the commit hash, to the tag value.
-MATCHER(TagMatchesBuildInformation, "") {
-  return arg.tag_name == "iamf_encoder" &&
-         ExplainMatchResult(StartsWith(kIamfEncoderBuildInformationPrefix),
-                            arg.tag_value, result_listener);
-}
 
 void FillMixGainParamDefinition(
     uint32_t parameter_id, int16_t output_mix_gain,

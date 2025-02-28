@@ -224,9 +224,14 @@ message MixPresentationObuMetadata {
   optional uint32 num_sub_mixes = 3;
   repeated MixPresentationSubMix sub_mixes = 4;
 
-  // When true, `mix_presentation_tags` will be examined.
-  // TODO(b/388577499): Document interaction when `EncoderControlMetadata` has
-  //                    an option to stamp the build information.
+  // When false [default]: The encoder will ignore the below
+  //                      `mix_presentation_tags`. Beware that other features
+  //                      may still result in additional non-user specified
+  //                      tags. To stricly encode a file without any tags, set
+  //                      both `include_mix_presentation_tags` and
+  //                      `EncoderControlMetadata.add_build_information_tag`
+  //                      fields to false.
+  // When true: The encoder will use the `mix_presentation_tags` field.
   optional bool include_mix_presentation_tags = 11;
   optional MixPresentationTags mix_presentation_tags = 12;
 

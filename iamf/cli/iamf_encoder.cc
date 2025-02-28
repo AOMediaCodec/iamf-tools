@@ -35,6 +35,7 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
+#include "iamf/cli/proto/encoder_control_metadata.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
@@ -115,11 +116,9 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   // calculated later.
   MixPresentationGenerator mix_presentation_generator(
       user_metadata.mix_presentation_metadata());
-  // TODO(b/388577499): Configure build information based on a new
-  //                    `EncoderControlMetadata` field.
-  constexpr bool kOmitIamfEncoderBuildInformation = false;
   RETURN_IF_NOT_OK(mix_presentation_generator.Generate(
-      kOmitIamfEncoderBuildInformation, mix_presentation_obus));
+      user_metadata.encoder_control_metadata().add_build_information_tag(),
+      mix_presentation_obus));
   // Initialize a mix presentation mix presentation finalizer. Requires
   // rendering data for every submix to accurately compute loudness.
   auto mix_presentation_finalizer = RenderingMixPresentationFinalizer::Create(

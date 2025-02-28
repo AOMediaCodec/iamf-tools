@@ -34,6 +34,10 @@ test_vector_metadata {
   base_test: "test_000631"
 }
 
+encoder_control_metadata {
+  add_build_information_tag: false
+}
+
 ia_sequence_header_metadata {
   primary_profile: PROFILE_VERSION_BASE_ENHANCED
   additional_profile: PROFILE_VERSION_BASE_ENHANCED

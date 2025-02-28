@@ -51,6 +51,7 @@ using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::iamf_tools_cli_proto::UserMetadata;
 using ::testing::_;
+using ::testing::Contains;
 using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::Return;
@@ -286,6 +287,20 @@ TEST_F(IamfEncoderTest, CreateGeneratesArbitraryObus) {
   auto iamf_encoder = CreateExpectOk();
 
   EXPECT_EQ(arbitrary_obus_.size(), 1);
+}
+
+TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
+  SetupDescriptorObus();
+
+  auto iamf_encoder = CreateExpectOk();
+  ASSERT_FALSE(mix_presentation_obus_.empty());
+
+  // We don't care which slot the build information tag is in. But we want it to
+  // be present by default, to help with debugging.
+  const auto& first_obu_tags =
+      mix_presentation_obus_.front().mix_presentation_tags_;
+  ASSERT_TRUE(first_obu_tags.has_value());
+  EXPECT_THAT(first_obu_tags->tags, Contains(TagMatchesBuildInformation()));
 }
 
 TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {

@@ -29,6 +29,10 @@ test_vector_metadata {
   output_wav_file_bit_depth_override: 16
 }
 
+encoder_control_metadata {
+  add_build_information_tag: false
+}
+
 ia_sequence_header_metadata {
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
