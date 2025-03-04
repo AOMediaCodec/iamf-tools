@@ -10,8 +10,8 @@
  * www.aomedia.org/license/patent.
  */
 
-#ifndef API_IAMF_DECODER_H_
-#define API_IAMF_DECODER_H_
+#ifndef API_DECODER_IAMF_DECODER_H_
+#define API_DECODER_IAMF_DECODER_H_
 
 #include <sys/types.h>
 
@@ -275,4 +275,4 @@ class IamfDecoder {
 };
 }  // namespace iamf_tools
 
-#endif  // API_IAMF_DECODER_H_
+#endif  // API_DECODER_IAMF_DECODER_H_

@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/api/iamf_decoder.h"
+#include "iamf/api/decoder/iamf_decoder.h"
 
 #include <cstdint>
 #include <list>
