@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/check.h"
@@ -29,6 +28,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/profile_filter.h"
+#include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -40,6 +40,7 @@
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -57,96 +58,10 @@ std::vector<uint32_t> SortedKeys(const KeyValueMap& map,
   return keys;
 }
 
-}  // namespace
-
-absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::list<ArbitraryObu>& arbitrary_obus,
-    TemporalUnitMap& temporal_unit_map) {
-  // Put all audio frames into the map based on their start time.
-  for (auto& audio_frame : audio_frames) {
-    auto& temporal_unit_audio_frames =
-        temporal_unit_map[audio_frame.start_timestamp].audio_frames;
-    if (!temporal_unit_audio_frames.empty() &&
-        temporal_unit_audio_frames.back()->end_timestamp !=
-            audio_frame.end_timestamp) {
-      return absl::InvalidArgumentError(
-          "Temporal units must have the same start time and duration.");
-    }
-    temporal_unit_audio_frames.push_back(&audio_frame);
-  }
-
-  // Sort within each temporal unit, first by Audio Element ID and then
-  // by Audio Substream ID.
-  auto compare_audio_element_id_audio_substream_id =
-      [](const AudioFrameWithData* a, const AudioFrameWithData* b) {
-        const auto audio_element_id_a =
-            a->audio_element_with_data->obu.GetAudioElementId();
-        const auto audio_element_id_b =
-            b->audio_element_with_data->obu.GetAudioElementId();
-        if (audio_element_id_a == audio_element_id_b) {
-          return a->obu.GetSubstreamId() < b->obu.GetSubstreamId();
-        } else {
-          return audio_element_id_a < audio_element_id_b;
-        }
-      };
-
-  for (auto& [unused_timestamp, temporal_unit] : temporal_unit_map) {
-    std::sort(temporal_unit.audio_frames.begin(),
-              temporal_unit.audio_frames.end(),
-              compare_audio_element_id_audio_substream_id);
-  }
-
-  // Put all parameter blocks into every temporal unit they overlap.
-  for (const auto& parameter_block : parameter_blocks) {
-    // Get the start and end time of the parameter block.
-    const int32_t obu_start_time = parameter_block.start_timestamp;
-    const int32_t obu_end_time = parameter_block.end_timestamp;
-
-    for (auto& temporal_unit : temporal_unit_map) {
-      const int32_t temporal_unit_start = temporal_unit.first;
-      if (temporal_unit.second.audio_frames.empty()) {
-        return absl::InvalidArgumentError("Temporal unit has no audio frames.");
-      }
-      const int32_t temporal_unit_end =
-          temporal_unit.second.audio_frames[0]->end_timestamp;
-
-      // Check if the temporal unit starts or ends during the parameter block.
-      if ((obu_start_time < temporal_unit_start &&
-           temporal_unit_start < obu_end_time) ||
-          (temporal_unit_start <= obu_start_time &&
-           obu_start_time < temporal_unit_end)) {
-        temporal_unit.second.parameter_blocks.push_back(&parameter_block);
-      }
-    }
-  }
-
-  // Sort within each temporal unit by Parameter ID.
-  auto compare_parameter_id = [](const ParameterBlockWithData* a,
-                                 const ParameterBlockWithData* b) {
-    return a->obu->parameter_id_ < b->obu->parameter_id_;
-  };
-
-  for (auto& [unused_timestamp, temporal_unit] : temporal_unit_map) {
-    std::sort(temporal_unit.parameter_blocks.begin(),
-              temporal_unit.parameter_blocks.end(), compare_parameter_id);
-  }
-
-  for (const auto& arbitrary_obu : arbitrary_obus) {
-    if (arbitrary_obu.insertion_tick_ == std::nullopt) {
-      continue;
-    }
-    temporal_unit_map[*arbitrary_obu.insertion_tick_].arbitrary_obus.push_back(
-        &arbitrary_obu);
-  }
-
-  return absl::OkStatus();
-}
-
 absl::Status WriteObusWithHook(
     ArbitraryObu::InsertionHook insertion_hook,
-    const std::list<const ArbitraryObu*>& arbitrary_obus, WriteBitBuffer& wb) {
+    const std::vector<const ArbitraryObu*>& arbitrary_obus,
+    WriteBitBuffer& wb) {
   for (const auto& arbitrary_obu : arbitrary_obus) {
     if (arbitrary_obu->insertion_hook_ == insertion_hook) {
       RETURN_IF_NOT_OK(arbitrary_obu->ValidateAndWriteObu(wb));
@@ -155,37 +70,59 @@ absl::Status WriteObusWithHook(
   return absl::OkStatus();
 }
 
-[[deprecated("Use TemporalUnitView::num_untrimmed_samples_ instead.")]]
-absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
-                                  int& num_samples) {
-  if (temporal_unit.audio_frames.empty()) {
-    // Exit early even when `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is set.
-    return absl::InvalidArgumentError(
-        "Every temporal unit must have an audio frame.");
-  }
-  const auto& first_audio_frame = temporal_unit.audio_frames[0];
-  if (first_audio_frame->audio_element_with_data == nullptr ||
-      first_audio_frame->audio_element_with_data->codec_config == nullptr) {
-    return absl::InvalidArgumentError(
-        "Every temporal unit must have an audio frame with a codec config.");
-  }
-  const uint32_t num_samples_per_frame =
-      temporal_unit.audio_frames[0]
-          ->audio_element_with_data->codec_config->GetNumSamplesPerFrame();
+}  // namespace
 
-  num_samples +=
-      (num_samples_per_frame -
-       (temporal_unit.audio_frames[0]
-            ->obu.header_.num_samples_to_trim_at_start +
-        temporal_unit.audio_frames[0]->obu.header_.num_samples_to_trim_at_end));
+absl::Status ObuSequencerBase::GenerateTemporalUnitMap(
+    const std::list<AudioFrameWithData>& audio_frames,
+    const std::list<ParameterBlockWithData>& parameter_blocks,
+    const std::list<ArbitraryObu>& arbitrary_obus,
+    TemporalUnitMap& temporal_unit_map) {
+  // Initially, guess the temporal units by the start time. Deeper validation
+  // and sanitization occurs when creating the TemporalUnitView.
+  struct UnsanitizedTemporalUnit {
+    std::vector<const ParameterBlockWithData*> parameter_blocks;
+    std::vector<const AudioFrameWithData*> audio_frames;
+    std::vector<const ArbitraryObu*> arbitrary_obus;
+  };
+  typedef absl::flat_hash_map<InternalTimestamp, UnsanitizedTemporalUnit>
+      UnsanitizedTemporalUnitMap;
+  UnsanitizedTemporalUnitMap unsanitized_temporal_unit_map;
+
+  for (const auto& parameter_block : parameter_blocks) {
+    unsanitized_temporal_unit_map[parameter_block.start_timestamp]
+        .parameter_blocks.push_back(&parameter_block);
+  }
+  for (auto& audio_frame : audio_frames) {
+    unsanitized_temporal_unit_map[audio_frame.start_timestamp]
+        .audio_frames.push_back(&audio_frame);
+  }
+  for (const auto& arbitrary_obu : arbitrary_obus) {
+    if (arbitrary_obu.insertion_tick_ == std::nullopt) {
+      continue;
+    }
+    unsanitized_temporal_unit_map[*arbitrary_obu.insertion_tick_]
+        .arbitrary_obus.push_back(&arbitrary_obu);
+  }
+  // Sanitize and build a map on the sanitized temporal units.
+  for (const auto& [timestamp, unsanitized_temporal_unit] :
+       unsanitized_temporal_unit_map) {
+    auto temporal_unit_view = TemporalUnitView::CreateFromPointers(
+        unsanitized_temporal_unit.parameter_blocks,
+        unsanitized_temporal_unit.audio_frames,
+        unsanitized_temporal_unit.arbitrary_obus);
+    if (!temporal_unit_view.ok()) {
+      return temporal_unit_view.status();
+    }
+    temporal_unit_map.emplace(timestamp, *std::move(temporal_unit_view));
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status ObuSequencerBase::WriteTemporalUnit(
-    bool include_temporal_delimiters, const TemporalUnit& temporal_unit,
+    bool include_temporal_delimiters, const TemporalUnitView& temporal_unit,
     WriteBitBuffer& wb, int& num_samples) {
-  MAYBE_RETURN_IF_NOT_OK(AccumulateNumSamples(temporal_unit, num_samples));
+  num_samples += temporal_unit.num_untrimmed_samples_;
 
   if (include_temporal_delimiters) {
     // Temporal delimiter has no payload.
@@ -195,20 +132,20 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
 
   RETURN_IF_NOT_OK(
       WriteObusWithHook(ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick,
-                        temporal_unit.arbitrary_obus, wb));
+                        temporal_unit.arbitrary_obus_, wb));
 
   // Write the Parameter Block OBUs.
-  for (const auto& parameter_blocks : temporal_unit.parameter_blocks) {
+  for (const auto& parameter_blocks : temporal_unit.parameter_blocks_) {
     const auto& parameter_block = parameter_blocks;
     RETURN_IF_NOT_OK(parameter_block->obu->ValidateAndWriteObu(wb));
   }
 
   RETURN_IF_NOT_OK(
       WriteObusWithHook(ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
-                        temporal_unit.arbitrary_obus, wb));
+                        temporal_unit.arbitrary_obus_, wb));
 
   // Write Audio Frame OBUs.
-  for (const auto& audio_frame : temporal_unit.audio_frames) {
+  for (const auto& audio_frame : temporal_unit.audio_frames_) {
     RETURN_IF_NOT_OK(audio_frame->obu.ValidateAndWriteObu(wb));
     LOG_FIRST_N(INFO, 10) << "wb.bit_offset= " << wb.bit_offset()
                           << " after Audio Frame";
@@ -216,7 +153,7 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
 
   RETURN_IF_NOT_OK(
       WriteObusWithHook(ArbitraryObu::kInsertionHookAfterAudioFramesAtTick,
-                        temporal_unit.arbitrary_obus, wb));
+                        temporal_unit.arbitrary_obus_, wb));
 
   if (!wb.IsByteAligned()) {
     return absl::InvalidArgumentError("Write buffer not byte-aligned");

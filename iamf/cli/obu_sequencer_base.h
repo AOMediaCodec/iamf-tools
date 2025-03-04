@@ -14,7 +14,6 @@
 
 #include <cstdint>
 #include <list>
-#include <vector>
 
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
@@ -22,6 +21,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/arbitrary_obu.h"
@@ -31,20 +31,8 @@
 
 namespace iamf_tools {
 
-/*!\brief All OBUs associated with a temporal unit as defined by the spec.
- *
- * A temporal unit is defined as a set of all audio frames with the same start
- * timestamp and the same duration from all substreams and all parameter blocks
- * with the start timestamp within the duration.
- */
-struct [[deprecated("Use `TemporalUnitView` instead.")]] TemporalUnit {
-  std::vector<const AudioFrameWithData*> audio_frames;
-  std::vector<const ParameterBlockWithData*> parameter_blocks;
-  std::list<const ArbitraryObu*> arbitrary_obus;
-};
-
 /*!\brief Map of start timestamp -> OBUs in that temporal unit.*/
-typedef absl::btree_map<int32_t, TemporalUnit> TemporalUnitMap;
+typedef absl::btree_map<int32_t, TemporalUnitView> TemporalUnitMap;
 
 class ObuSequencerBase {
  public:
@@ -68,6 +56,8 @@ class ObuSequencerBase {
    *        frames starting at that timestamp.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
+  [[deprecated(
+      "Process one temporal unit at a time with `TemporalUnitView::Create`")]]
   static absl::Status GenerateTemporalUnitMap(
       const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks,
@@ -87,7 +77,7 @@ class ObuSequencerBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
-                                        const TemporalUnit& temporal_unit,
+                                        const TemporalUnitView& temporal_unit,
                                         WriteBitBuffer& wb, int& num_samples);
 
   /*!\brief Writes the input descriptor OBUs.

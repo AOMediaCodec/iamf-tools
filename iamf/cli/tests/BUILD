@@ -309,6 +309,7 @@ cc_test(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:obu_sequencer_base",
         "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:temporal_unit_view",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:audio_frame",
@@ -324,6 +325,7 @@ cc_test(
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
