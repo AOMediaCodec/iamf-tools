@@ -13,10 +13,12 @@
 #define OBU_CODEC_CONFIG_H_
 
 #include <cstdint>
+#include <string>
 #include <variant>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
@@ -41,6 +43,31 @@ struct CodecConfig {
     kCodecIdLpcm = 0x6970636d,   // "ipcm"
     kCodecIdAacLc = 0x6d703461,  // "mp4a"
   };
+
+  template <typename Sink>
+  friend void AbslStringify(Sink& sink, const CodecId& codec_id) {
+    std::string human_readable_codec_id;
+    switch (codec_id) {
+      case kCodecIdOpus:
+        human_readable_codec_id = "Opus";
+        break;
+      case kCodecIdFlac:
+        human_readable_codec_id = "FLAC";
+        break;
+      case kCodecIdLpcm:
+        human_readable_codec_id = "LPCM";
+        break;
+      case kCodecIdAacLc:
+        human_readable_codec_id = "AAC LC";
+        break;
+      default:
+        human_readable_codec_id = "Unknown";
+        break;
+    }
+
+    sink.Append(absl::StrCat("0x", absl::Hex(codec_id, absl::kZeroPad8), " ( ",
+                             human_readable_codec_id, " )"));
+  }
 
   friend bool operator==(const CodecConfig& lhs,
                          const CodecConfig& rhs) = default;
