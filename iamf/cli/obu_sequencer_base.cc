@@ -155,6 +155,7 @@ absl::Status WriteObusWithHook(
   return absl::OkStatus();
 }
 
+[[deprecated("Use TemporalUnitView::num_untrimmed_samples_ instead.")]]
 absl::Status AccumulateNumSamples(const TemporalUnit& temporal_unit,
                                   int& num_samples) {
   if (temporal_unit.audio_frames.empty()) {

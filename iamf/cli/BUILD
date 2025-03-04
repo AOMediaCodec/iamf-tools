@@ -552,6 +552,28 @@ cc_library(
 )
 
 cc_library(
+    name = "temporal_unit_view",
+    srcs = ["temporal_unit_view.cc"],
+    hdrs = ["temporal_unit_view.h"],
+    deps = [
+        ":audio_frame_with_data",
+        ":parameter_block_with_data",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
+        "//iamf/obu:arbitrary_obu",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:string_view",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "wav_reader",
     srcs = ["wav_reader.cc"],
     hdrs = ["wav_reader.h"],

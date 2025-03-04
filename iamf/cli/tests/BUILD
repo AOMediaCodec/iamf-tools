@@ -526,6 +526,30 @@ cc_test(
 )
 
 cc_test(
+    name = "temporal_unit_view_test",
+    srcs = ["temporal_unit_view_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:temporal_unit_view",
+        "//iamf/obu:arbitrary_obu",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:parameter_block",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "textproto_templates_test",
     srcs = ["textproto_templates_test.cc"],
     data = [

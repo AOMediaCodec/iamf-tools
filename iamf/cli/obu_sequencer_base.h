@@ -37,7 +37,7 @@ namespace iamf_tools {
  * timestamp and the same duration from all substreams and all parameter blocks
  * with the start timestamp within the duration.
  */
-struct TemporalUnit {
+struct [[deprecated("Use `TemporalUnitView` instead.")]] TemporalUnit {
   std::vector<const AudioFrameWithData*> audio_frames;
   std::vector<const ParameterBlockWithData*> parameter_blocks;
   std::list<const ArbitraryObu*> arbitrary_obus;
