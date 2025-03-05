@@ -5,6 +5,7 @@ load("@com_google_protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 # [internal] load cc_proto_library.bzl
 
 package(default_visibility = [
+    # TODO(b/400697000): Break up visibility for the api directory.
     "//iamf/api:__subpackages__",
     "//iamf/cli:__subpackages__",
 ])

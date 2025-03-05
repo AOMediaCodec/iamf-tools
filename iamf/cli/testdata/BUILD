@@ -1,4 +1,5 @@
 package(default_visibility = [
+    # TODO(b/400697000): Break up visibility for the api directory.
     "//iamf/api:__subpackages__",
     "//iamf/cli:__subpackages__",
 ])

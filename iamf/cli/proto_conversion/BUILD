@@ -8,8 +8,8 @@ cc_library(
     srcs = ["channel_label_utils.cc"],
     hdrs = ["channel_label_utils.h"],
     visibility = [
-        "//iamf/api/google:__pkg__",
-        "//iamf/api/google/tests:__pkg__",
+        # TODO(b/400697000): Break up visibility for the api directory.
+        "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
         "//iamf/cli/internal/transmuxer:__pkg__",
         "//iamf/cli/proto_conversion/proto_to_obu:__pkg__",
@@ -81,7 +81,8 @@ cc_library(
     srcs = ["proto_utils.cc"],
     hdrs = ["proto_utils.h"],
     visibility = [
-        "//iamf/api/google:__pkg__",
+        # TODO(b/400697000): Break up visibility for the api directory.
+        "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
         "//iamf/cli/proto_conversion:__subpackages__",
     ],

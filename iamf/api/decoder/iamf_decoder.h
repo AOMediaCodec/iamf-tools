@@ -17,50 +17,57 @@
 
 #include <cstdint>
 #include <memory>
-#include <queue>
-#include <utility>
+#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "iamf/cli/obu_processor.h"
-#include "iamf/common/read_bit_buffer.h"
-#include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/types.h"
-namespace iamf_tools {
 
+namespace iamf_tools {
+namespace api {
+
+/*!\brief Determines the format of the output file. */
+enum OutputFileBitDepth {
+  kBitDepthAutomatic,  // Automatically determine based on the bit-depth of
+                       // the input file.
+  kBitDepth16,
+  kBitDepth24,
+  kBitDepth32,
+};
+
+// TODO(b/339500539): Add support for other IAMF supported layouts
+/*!\brief Determines the layout of the output file.
+ *
+ * Typically these correspond with `sound_system`s in the IAMF spec
+ * (https://aomediacodec.github.io/iamf/#syntax-layout).
+ */
+enum OutputLayout {
+  kOutputStereo,
+};
+
+/*!\brief A unique identifier for a `MixPresentation` in the IAMF stream. */
+using MixPresentationId = uint32_t;
+
+/*!\brief A name:value tag describing a `MixPresentation` in the IAMF stream. */
+struct MixPresentationTag {
+  std::string tag_name;
+  std::string tag_value;
+};
+
+/*!\brief Metadata that describes a mix presentation.
+ *
+ * Used by a user to determine which mix presentation they would like to
+ * configure the decoder with.
+ */
+struct MixPresentationMetadata {
+  MixPresentationId id;
+  std::vector<MixPresentationTag> tags;
+};
+
+/*!brief The class and entrypoint for decoding IAMF bitstreams. */
 class IamfDecoder {
  public:
-  /*!\brief Determines the format of the output file. */
-  enum OutputFileBitDepth {
-    kBitDepthAutomatic,  // Automatically determine based on the bit-depth of
-                         // the input file.
-    kBitDepth16,
-    kBitDepth24,
-    kBitDepth32,
-  };
-
-  // TODO(b/339500539): Add support for other IAMF supported layouts
-  /*!\brief Determines the layout of the output file.
-   *
-   * Typically these correspond with `sound_system`s in the IAMF spec
-   * (https://aomediacodec.github.io/iamf/#syntax-layout).
-   */
-  enum OutputLayout {
-    kOutputStereo,
-  };
-
-  /*!\brief Metadata that describes a mix presentation.
-   *
-   * Used by a user to determine which mix presentation they would like to
-   * configure the decoder with.
-   */
-  struct MixPresentationMetadata {
-    uint32_t mix_presentation_id;
-    MixPresentationTags mix_presentation_tags;
-  };
-
   /* WARNING: API is currently in flux and will change.
    *
    * The functions below constitute our IAMF Iterative Decoder API. Below is a
@@ -88,6 +95,13 @@ class IamfDecoder {
    *  }
    * Close();
    */
+
+  // Dtor cannot be inline (so it must be declared and defined in the source
+  // file) because this class holds a (unique) pointer to the partial class,
+  // DecoderState.  Moves must be declared and defined because dtor is defined.
+  ~IamfDecoder();
+  IamfDecoder(IamfDecoder&&);
+  IamfDecoder& operator=(IamfDecoder&&);
 
   /*!\brief Creates an IamfDecoder.
    *
@@ -118,7 +132,8 @@ class IamfDecoder {
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status ConfigureMixPresentationId(DecodedUleb128 mix_presentation_id);
+  absl::Status ConfigureMixPresentationId(
+      MixPresentationId mix_presentation_id);
 
   /*!\brief Configures the decoder with the desired output layout.
    *
@@ -249,30 +264,16 @@ class IamfDecoder {
   absl::Status Close();
 
  private:
-  enum State { kAcceptingData, kFlushCalled };
+  // Forward declaration of the internal state of the decoder.
+  class DecoderState;
 
-  State state_ = kAcceptingData;
-  /*!\brief Private constructor only used by Create functions.
-   *
-   * \param read_bit_buffer Read bit buffer to use for reading data. Expected to
-   *        not be null.
-   */
-  IamfDecoder(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer)
-      : read_bit_buffer_(std::move(read_bit_buffer)) {}
+  // Private constructor only used by Create functions.
+  IamfDecoder(std::unique_ptr<DecoderState> state);
 
-  // Used to process descriptor OBUs and temporal units. Is only created after
-  // the descriptor OBUs have been parsed.
-  std::unique_ptr<ObuProcessor> obu_processor_;
-
-  // Buffer that is filled with data from Decode().
-  std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer_;
-
-  // Rendered PCM samples. Each element in the queue corresponds to a
-  // temporal unit. A temporal unit will never be partially filled, so the
-  // number of elements in the outer vector is equal to the number of decoded
-  // temporal units currently available.
-  std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples_;
+  // Internal state of the decoder.
+  std::unique_ptr<DecoderState> state_;
 };
+}  // namespace api
 }  // namespace iamf_tools
 
 #endif  // API_DECODER_IAMF_DECODER_H_

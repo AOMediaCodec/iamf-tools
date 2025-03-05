@@ -70,12 +70,12 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
 
 TEST(IsDescriptorProcessingComplete,
      ReturnsFalseBeforeDescriptorObusAreProcessed) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   EXPECT_FALSE(decoder->IsDescriptorProcessingComplete());
 }
 
 TEST(Create, SucceedsAndDecodeSucceedsWithPartialData) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   EXPECT_THAT(decoder, IsOk());
 
   std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
@@ -85,7 +85,7 @@ TEST(Create, SucceedsAndDecodeSucceedsWithPartialData) {
 
 TEST(CreateFromDescriptors, Succeeds) {
   auto decoder =
-      IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
+      api::IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
   EXPECT_THAT(decoder, IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 }
@@ -94,13 +94,13 @@ TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
   auto descriptors = GenerateBasicDescriptorObus();
   // remove the last byte to make the descriptor OBUs incomplete.
   descriptors.pop_back();
-  auto decoder = IamfDecoder::CreateFromDescriptors(descriptors);
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(descriptors);
   EXPECT_FALSE(decoder.ok());
 }
 
 TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
   auto decoder =
-      IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
+      api::IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
   EXPECT_THAT(decoder, IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 
@@ -114,7 +114,7 @@ TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
 }
 
 TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
@@ -129,7 +129,7 @@ TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
 }
 
 TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
@@ -150,7 +150,7 @@ TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
 
 TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
-  auto decoder = IamfDecoder::CreateFromDescriptors(source_data);
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(source_data);
   ASSERT_THAT(decoder, IsOk());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -161,7 +161,7 @@ TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
 }
 
 TEST(Decode, SucceedsWithOneTemporalUnit) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -174,7 +174,7 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
 }
 
 TEST(Decode, SucceedsWithMultipleTemporalUnits) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -187,7 +187,7 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
 }
 
 TEST(Decode, FailsWhenCalledAfterFlush) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -205,13 +205,13 @@ TEST(Decode, FailsWhenCalledAfterFlush) {
 
 TEST(IsTemporalUnitAvailable, ReturnsFalseAfterCreateFromDescriptorObus) {
   auto decoder =
-      IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
+      api::IamfDecoder::CreateFromDescriptors(GenerateBasicDescriptorObus());
   ASSERT_THAT(decoder, IsOk());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
 TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingOneTemporalUnit) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -225,7 +225,7 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingOneTemporalUnit) {
 }
 
 TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -239,7 +239,7 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
 }
 
 TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -256,7 +256,7 @@ TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
 }
 
 TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -286,7 +286,7 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
 TEST(GetOutputTemporalUnit,
      DoesNotFillOutputVectorWhenNoTemporalUnitIsAvailable) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
-  auto decoder = IamfDecoder::CreateFromDescriptors(source_data);
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(source_data);
   ASSERT_THAT(decoder, IsOk());
 
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
@@ -296,7 +296,7 @@ TEST(GetOutputTemporalUnit,
 }
 
 TEST(Flush, SucceedsWithMultipleTemporalUnits) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -316,7 +316,7 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
 }
 
 TEST(Flush, SucceedsWithNoTemporalUnits) {
-  auto decoder = IamfDecoder::Create();
+  auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
   bool output_is_done;
