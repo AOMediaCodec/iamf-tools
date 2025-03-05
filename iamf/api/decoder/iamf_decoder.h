@@ -172,13 +172,13 @@ class IamfDecoder {
    * would like to configure the decoder with. It will fail if the descriptor
    * OBUs have not been parsed yet.
    *
-   * \param output_mix_presentation_ids Output parameter for the mix
+   * \param output_mix_presentation_metadatas Output parameter for the mix
    *        presentation metadata.
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
   absl::Status GetMixPresentations(
-      std::vector<MixPresentationMetadata>& output_mix_presentation_ids);
+      std::vector<MixPresentationMetadata>& output_mix_presentation_metadatas);
 
   /*!\brief Gets the sample rate.
    *

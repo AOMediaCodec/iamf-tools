@@ -26,7 +26,7 @@ namespace api {
  * Typically these correspond with `sound_system`s in the IAMF spec
  * (https://aomediacodec.github.io/iamf/#syntax-layout).
  */
-enum OutputLayout {
+enum class OutputLayout {
   kOutputStereo,
 };
 
