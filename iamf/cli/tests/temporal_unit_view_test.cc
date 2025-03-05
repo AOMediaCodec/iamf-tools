@@ -288,6 +288,23 @@ TEST(Create, MaintainsArbitraryObusInInputOrder) {
   EXPECT_EQ(temporal_unit->arbitrary_obus_, arbitrary_obus_ptrs);
 }
 
+TEST(Create, SetsNumSamplesToTrimAtStart) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<AudioFrameWithData> audio_frames;
+  InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
+  const uint32_t kExpectedNumSamplesToTrimAtStart = 4;
+  audio_frames.front().obu.header_ = ObuHeader{
+      .num_samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart};
+
+  const auto temporal_unit = TemporalUnitView::Create(
+      kNoParameterBlocks, audio_frames, kNoArbitraryObus);
+  ASSERT_THAT(temporal_unit, IsOk());
+
+  EXPECT_EQ(temporal_unit->num_samples_to_trim_at_start_,
+            kExpectedNumSamplesToTrimAtStart);
+}
+
 TEST(Create, SetsNumUntrimmedSamplesToZeroForFullyTrimmedAudioFrame) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;

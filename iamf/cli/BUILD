@@ -322,6 +322,7 @@ cc_library(
     deps = [
         ":audio_element_with_data",
         ":audio_frame_with_data",
+        ":cli_util",
         ":parameter_block_with_data",
         ":profile_filter",
         ":temporal_unit_view",
@@ -344,6 +345,7 @@ cc_library(
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -352,21 +354,14 @@ cc_library(
     srcs = ["obu_sequencer_iamf.cc"],
     hdrs = ["obu_sequencer_iamf.h"],
     deps = [
-        ":audio_element_with_data",
-        ":audio_frame_with_data",
         ":obu_sequencer_base",
-        ":parameter_block_with_data",
         "//iamf/common:leb_generator",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
-        "//iamf/obu:arbitrary_obu",
-        "//iamf/obu:codec_config",
-        "//iamf/obu:ia_sequence_header",
-        "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

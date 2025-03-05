@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
+#include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
@@ -529,6 +531,41 @@ typedef testing::MockFunction<std::unique_ptr<SampleProcessorBase>(
     const Layout& layout, int num_channels, int sample_rate, int bit_depth,
     size_t num_samples_per_frame)>
     MockSampleProcessorFactory;
+
+/*!\brief A mock OBU sequencer. */
+class MockObuSequencer : public ObuSequencerBase {
+ public:
+  /*!\brief Constructor.
+   *
+   * \param leb_generator Leb generator to use when writing OBUs.
+   * \param include_temporal_delimiters Whether the serialized data should
+   *        include a temporal delimiter.
+   * \param delay_descriptors_until_first_untrimmed_sample Whether the
+   *        descriptor OBUs should be delayed until the first untrimmed frame
+   *        is known.
+   */
+  MockObuSequencer(const LebGenerator& leb_generator,
+                   bool include_temporal_delimiters,
+                   bool delay_descriptors_until_first_untrimmed_sample)
+      : ObuSequencerBase(leb_generator, include_temporal_delimiters,
+                         delay_descriptors_until_first_untrimmed_sample) {}
+
+  MOCK_METHOD(void, Abort, (), (override));
+
+  MOCK_METHOD(absl::Status, PushSerializedDescriptorObus,
+              (uint32_t common_samples_per_frame, uint32_t common_sample_rate,
+               uint8_t common_bit_depth,
+               std::optional<int64_t> first_untrimmed_timestamp,
+               int num_channels, absl::Span<const uint8_t> descriptor_obus),
+              (override));
+
+  MOCK_METHOD(absl::Status, PushSerializedTemporalUnit,
+              (int64_t timestamp, int num_samples,
+               absl::Span<const uint8_t> temporal_unit),
+              (override));
+
+  MOCK_METHOD(void, Flush, (), (override));
+};
 
 }  // namespace iamf_tools
 

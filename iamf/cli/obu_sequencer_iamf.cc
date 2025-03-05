@@ -15,26 +15,18 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
-#include <list>
 #include <optional>
 #include <string>
 #include <system_error>
-#include <utility>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_with_data.h"
+#include "absl/types/span.h"
 #include "iamf/cli/obu_sequencer_base.h"
-#include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/common/leb_generator.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/arbitrary_obu.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 
@@ -42,35 +34,9 @@ namespace {
 
 constexpr int64_t kBufferStartSize = 65536;
 
-// The caller of this function should pre-seed the write buffer with Descriptor
-// OBUs.
-absl::Status WriteIaSequenceToFile(const std::string& iamf_filename,
-                                   bool include_temporal_delimiters,
-                                   const TemporalUnitMap& temporal_unit_map,
-                                   WriteBitBuffer& wb) {
-  std::optional<std::fstream> output_iamf;
-  if (!iamf_filename.empty()) {
-    output_iamf.emplace(iamf_filename, std::fstream::out | std::ios::binary);
-  }
-
-  // Write all Audio Frame and Parameter Block OBUs ordered by temporal unit.
-  int num_samples = 0;
-  for (const auto& temporal_unit : temporal_unit_map) {
-    // The temporal units will typically be the largest part of an IAMF
-    // sequence. Occasionally flush to buffer to avoid keeping it all in memory.
-    RETURN_IF_NOT_OK(wb.MaybeFlushIfCloseToCapacity(output_iamf));
-
-    RETURN_IF_NOT_OK(ObuSequencerBase::WriteTemporalUnit(
-        include_temporal_delimiters, temporal_unit.second, wb, num_samples));
-  }
-  LOG(INFO) << "Wrote " << temporal_unit_map.size()
-            << " temporal units with a total of " << num_samples
-            << " samples excluding padding.";
-
-  // Flush any unwritten bytes before exiting.
-  RETURN_IF_NOT_OK(wb.FlushAndWriteToFile(output_iamf));
-  return absl::OkStatus();
-}
+// This sequencer does not care about the delay or timing information. It would
+// be pointless to delay the descriptor OBUs.
+constexpr bool kDoNotDelayDescriptorsUntilFirstUntrimmedSample = false;
 
 void MaybeRemoveFile(const std::string& filename) {
   if (filename.empty()) {
@@ -86,40 +52,46 @@ void MaybeRemoveFile(const std::string& filename) {
 
 }  // namespace
 
-absl::Status ObuSequencerIamf::PickAndPlace(
-    const IASequenceHeaderObu& ia_sequence_header_obu,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::list<ArbitraryObu>& arbitrary_obus) {
-  // Seed with a reasonable starting size. It is arbitrary because
-  // `WriteBitBuffer`s automatically resize as needed.
-  WriteBitBuffer wb(kBufferStartSize, leb_generator_);
+ObuSequencerIamf::ObuSequencerIamf(const std::string& iamf_filename,
+                                   bool include_temporal_delimiters,
+                                   const LebGenerator& leb_generator)
+    : ObuSequencerBase(leb_generator, include_temporal_delimiters,
+                       kDoNotDelayDescriptorsUntilFirstUntrimmedSample),
+      iamf_filename_(iamf_filename),
+      wb_(kBufferStartSize, leb_generator) {}
 
-  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
-      ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb));
-  // Write out the descriptor OBUs.
-  RETURN_IF_NOT_OK(ObuSequencerBase::WriteDescriptorObus(
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus, arbitrary_obus, wb));
-  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
-      ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb));
+absl::Status ObuSequencerIamf::PushSerializedDescriptorObus(
+    uint32_t /*common_samples_per_frame*/, uint32_t /*common_sample_rate*/,
+    uint8_t /*common_bit_depth*/,
+    std::optional<int64_t> /*first_untrimmed_timestamp*/, int /*num_channels*/,
+    absl::Span<const uint8_t> descriptor_obus) {
+  if (!iamf_filename_.empty()) {
+    LOG(INFO) << "Writing descriptor OBUs to " << iamf_filename_;
 
-  // Map of temporal unit start time -> OBUs that overlap this temporal unit.
-  // Using absl::btree_map for convenience as this allows iterating by
-  // timestamp (which is the key).
-  TemporalUnitMap temporal_unit_map;
-  RETURN_IF_NOT_OK(ObuSequencerBase::GenerateTemporalUnitMap(
-      audio_frames, parameter_blocks, arbitrary_obus, temporal_unit_map));
-
-  const auto write_status = WriteIaSequenceToFile(
-      iamf_filename_, include_temporal_delimiters_, temporal_unit_map, wb);
-  if (!write_status.ok()) {
-    MaybeRemoveFile(iamf_filename_);
+    output_iamf_.emplace(iamf_filename_, std::fstream::out | std::ios::binary);
   }
-  return write_status;
+
+  RETURN_IF_NOT_OK(wb_.WriteUint8Span(descriptor_obus));
+  return wb_.FlushAndWriteToFile(output_iamf_);
+}
+
+absl::Status ObuSequencerIamf::PushSerializedTemporalUnit(
+    int64_t /*timestamp*/, int /*num_samples*/,
+    absl::Span<const uint8_t> temporal_unit) {
+  RETURN_IF_NOT_OK(wb_.WriteUint8Span(temporal_unit));
+  return wb_.FlushAndWriteToFile(output_iamf_);
+}
+
+void ObuSequencerIamf::Flush() {
+  if (output_iamf_.has_value() && output_iamf_->is_open()) {
+    output_iamf_->close();
+    output_iamf_ = std::nullopt;
+  }
+}
+
+void ObuSequencerIamf::Abort() {
+  LOG(INFO) << "Aborting ObuSequencerIamf.";
+  MaybeRemoveFile(iamf_filename_);
 }
 
 }  // namespace iamf_tools

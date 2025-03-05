@@ -13,23 +13,22 @@
 #define CLI_OBU_SEQUENCER_IAMF_H_
 
 #include <cstdint>
-#include <list>
+#include <fstream>
+#include <optional>
 #include <string>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
-#include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_with_data.h"
+#include "absl/types/span.h"
 #include "iamf/cli/obu_sequencer_base.h"
-#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/common/leb_generator.h"
-#include "iamf/obu/arbitrary_obu.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/ia_sequence_header.h"
-#include "iamf/obu/mix_presentation.h"
+#include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 
+/*!\brief OBU sequencer for standalone .iamf files.
+ *
+ * Used via the abstract `ObuSequencerBase` interface.
+ */
 class ObuSequencerIamf : public ObuSequencerBase {
  public:
   /*!\brief Constructor.
@@ -41,36 +40,51 @@ class ObuSequencerIamf : public ObuSequencerBase {
    */
   ObuSequencerIamf(const std::string& iamf_filename,
                    bool include_temporal_delimiters,
-                   const LebGenerator& leb_generator)
-      : ObuSequencerBase(leb_generator),
-        iamf_filename_(iamf_filename),
-        include_temporal_delimiters_(include_temporal_delimiters) {}
+                   const LebGenerator& leb_generator);
 
   ~ObuSequencerIamf() override = default;
 
-  /*!\brief Pick and place OBUs and write to the standalone .iamf file.
+ private:
+  /*!\brief Pushes the descriptor OBUs to some output.
    *
-   * \param ia_sequence_header_obu IA Sequence Header OBU to write.
-   * \param codec_config_obus Codec Config OBUs to write.
-   * \param audio_elements Audio Element OBUs with data to write.
-   * \param mix_presentation_obus Mix Presentation OBUs to write.
-   * \param audio_frames Data about Audio Frame OBUs to write.
-   * \param parameter_blocks Data about Parameter Block OBUs to write.
-   * \param arbitrary_obus Arbitrary OBUs to write.
+   * \param common_samples_per_frame Ignored.
+   * \param common_sample_rate Ignored.
+   * \param common_bit_depth Ignored.
+   * \param first_untrimmed_timestamp Ignored.
+   * \param num_channels Ignored..
+   * \param descriptor_obus Serialized descriptor OBUs to write.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PickAndPlace(
-      const IASequenceHeaderObu& ia_sequence_header_obu,
-      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const std::list<MixPresentationObu>& mix_presentation_obus,
-      const std::list<AudioFrameWithData>& audio_frames,
-      const std::list<ParameterBlockWithData>& parameter_blocks,
-      const std::list<ArbitraryObu>& arbitrary_obus) override;
+  absl::Status PushSerializedDescriptorObus(
+      uint32_t /*common_samples_per_frame*/, uint32_t /*common_sample_rate*/,
+      uint8_t /*common_bit_depth*/,
+      std::optional<int64_t> /*first_untrimmed_timestamp*/,
+      int /*num_channels*/, absl::Span<const uint8_t> descriptor_obus) override;
 
- private:
+  /*!\brief Pushes a single temporal unit to some output.
+   *
+   * \param timestamp Ignored.
+   * \param num_samples Ignored.
+   * \param temporal_unit Temporal unit to push.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushSerializedTemporalUnit(
+      int64_t /*timestamp*/, int /*num_samples*/,
+      absl::Span<const uint8_t> temporal_unit) override;
+
+  /*!\brief Signals that no more data is coming. */
+  void Flush() override;
+
+  /*!\brief Aborts writing the output.
+   *
+   * Cleans up the output file if it exists.
+   */
+  void Abort() override;
+
   const std::string iamf_filename_;
-  const bool include_temporal_delimiters_;
+  std::optional<std::fstream> output_iamf_;
+  // Reusable write buffer between calls.
+  WriteBitBuffer wb_;
 };
 
 }  // namespace iamf_tools
