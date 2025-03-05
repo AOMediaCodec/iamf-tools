@@ -3,6 +3,7 @@ cc_test(
     name = "iamf_decoder_test",
     srcs = ["iamf_decoder_test.cc"],
     deps = [
+        "//iamf/api:types",
         "//iamf/api/decoder:iamf_decoder",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli/tests:cli_test_utils",

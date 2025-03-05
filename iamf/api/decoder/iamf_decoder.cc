@@ -23,13 +23,14 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/api/conversion/mix_presentation_conversion.h"
+#include "iamf/api/types.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace api {
@@ -57,27 +58,27 @@ struct IamfDecoder::DecoderState {
   // number of elements in the outer vector is equal to the number of decoded
   // temporal units currently available.
   std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples;
+
+  // The layout requested by the caller for the rendered output audio.
+  OutputLayout requested_layout = OutputLayout::kOutputStereo;
 };
 
 namespace {
 constexpr int kInitialBufferSize = 1024;
-constexpr Layout kStereoLayout = {
-    .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-    .specific_layout = LoudspeakersSsConventionLayout{
-        .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
 
 // Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
 // OBUs have been processed. Contracted to only return a resource exhausted
 // error if there is not enough data to process the descriptor OBUs.
 absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
-    bool contains_all_descriptor_obus, absl::Span<const uint8_t> bitstream,
+    const OutputLayout& requested_layout, bool contains_all_descriptor_obus,
+    absl::Span<const uint8_t> bitstream,
     StreamBasedReadBitBuffer* read_bit_buffer) {
   // Happens only in the pure streaming case.
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   // TODO(b/394376153): Update once we support other layouts.
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout,
+      ApiToInternalType(requested_layout),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
       insufficient_data);
@@ -166,7 +167,8 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
   RETURN_IF_NOT_OK(
       decoder->state_->read_bit_buffer->PushBytes(descriptor_obus));
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(/*contains_all_descriptor_obus=*/true, descriptor_obus,
+      CreateObuProcessor(decoder->state_->requested_layout,
+                         /*contains_all_descriptor_obus=*/true, descriptor_obus,
                          decoder->state_->read_bit_buffer.get());
   if (!obu_processor.ok()) {
     return obu_processor.status();
@@ -182,9 +184,10 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   }
   RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
-    auto obu_processor = CreateObuProcessor(
-        /*contains_all_descriptor_obus=*/false, bitstream,
-        state_->read_bit_buffer.get());
+    auto obu_processor =
+        CreateObuProcessor(state_->requested_layout,
+                           /*contains_all_descriptor_obus=*/false, bitstream,
+                           state_->read_bit_buffer.get());
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
     } else if (absl::IsResourceExhausted(obu_processor.status())) {
@@ -204,6 +207,21 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   return absl::OkStatus();
 }
 
+absl::Status IamfDecoder::ConfigureMixPresentationId(
+    MixPresentationId mix_presentation_id) {
+  return absl::UnimplementedError(
+      "ConfigureMixPresentationId is not yet implemented.");
+}
+
+absl::Status IamfDecoder::ConfigureOutputLayout(OutputLayout output_layout) {
+  return absl::UnimplementedError(
+      "ConfigureOutputLayout is not yet implemented.");
+}
+
+absl::Status IamfDecoder::ConfigureBitDepth(OutputFileBitDepth bit_depth) {
+  return absl::UnimplementedError("ConfigureBitDepth is not yet implemented.");
+}
+
 absl::Status IamfDecoder::GetOutputTemporalUnit(
     std::vector<std::vector<int32_t>>& output_decoded_temporal_unit) {
   if (state_->rendered_pcm_samples.empty()) {
@@ -215,6 +233,28 @@ absl::Status IamfDecoder::GetOutputTemporalUnit(
   return absl::OkStatus();
 }
 
+bool IamfDecoder::IsTemporalUnitAvailable() {
+  return !state_->rendered_pcm_samples.empty();
+}
+
+bool IamfDecoder::IsDescriptorProcessingComplete() {
+  return state_->obu_processor != nullptr;
+}
+
+absl::Status IamfDecoder::GetMixPresentations(
+    std::vector<MixPresentationMetadata>& output_mix_presentation_metadata) {
+  return absl::UnimplementedError(
+      "GetMixPresentations is not yet implemented.");
+}
+
+absl::Status IamfDecoder::GetSampleRate(uint32_t& output_sample_rate) {
+  return absl::UnimplementedError("GetSampleRate is not yet implemented.");
+}
+
+absl::Status IamfDecoder::GetFrameSize(uint32_t& output_frame_size) {
+  return absl::UnimplementedError("GetFrameSize is not yet implemented.");
+}
+
 absl::Status IamfDecoder::Flush(
     std::vector<std::vector<int32_t>>& output_decoded_temporal_unit,
     bool& output_is_done) {
@@ -224,12 +264,7 @@ absl::Status IamfDecoder::Flush(
   return absl::OkStatus();
 }
 
-bool IamfDecoder::IsTemporalUnitAvailable() {
-  return !state_->rendered_pcm_samples.empty();
-}
+absl::Status IamfDecoder::Close() { return absl::OkStatus(); }
 
-bool IamfDecoder::IsDescriptorProcessingComplete() {
-  return state_->obu_processor != nullptr;
-}
 }  // namespace api
 }  // namespace iamf_tools

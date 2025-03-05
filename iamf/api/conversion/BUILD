@@ -1,5 +1,6 @@
 package(default_visibility = [
     "//iamf/api/conversion/tests:__pkg__",
+    "//iamf/api/decoder:__pkg__",
 ])
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
