@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-
+// TODO(b/400635711): Use the one in the iamfbr library once it is open-sourced.
 #include "iamf/cli/ambisonic_encoder/associated_legendre_polynomials_generator.h"
 
 #include <cmath>

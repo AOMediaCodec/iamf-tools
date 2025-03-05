@@ -23,6 +23,7 @@
 
 namespace iamf_tools {
 
+// TODO(b/400635711): Use the one in the iamfbr library once it is open-sourced.
 class AmbisonicEncoder {
  public:
   /*!\brief Ambisonic Encoder constructor.
