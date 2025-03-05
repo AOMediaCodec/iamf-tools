@@ -8,6 +8,7 @@ cc_library(
     srcs = ["iamf_decoder.cc"],
     hdrs = ["iamf_decoder.h"],
     deps = [
+        "//iamf/api:types",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:obu_processor",
         "//iamf/cli:parameter_block_with_data",

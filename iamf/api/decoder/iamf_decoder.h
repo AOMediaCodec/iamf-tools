@@ -17,53 +17,15 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
+#include "iamf/api/types.h"
 
 namespace iamf_tools {
 namespace api {
-
-/*!\brief Determines the format of the output file. */
-enum OutputFileBitDepth {
-  kBitDepthAutomatic,  // Automatically determine based on the bit-depth of
-                       // the input file.
-  kBitDepth16,
-  kBitDepth24,
-  kBitDepth32,
-};
-
-// TODO(b/339500539): Add support for other IAMF supported layouts
-/*!\brief Determines the layout of the output file.
- *
- * Typically these correspond with `sound_system`s in the IAMF spec
- * (https://aomediacodec.github.io/iamf/#syntax-layout).
- */
-enum OutputLayout {
-  kOutputStereo,
-};
-
-/*!\brief A unique identifier for a `MixPresentation` in the IAMF stream. */
-using MixPresentationId = uint32_t;
-
-/*!\brief A name:value tag describing a `MixPresentation` in the IAMF stream. */
-struct MixPresentationTag {
-  std::string tag_name;
-  std::string tag_value;
-};
-
-/*!\brief Metadata that describes a mix presentation.
- *
- * Used by a user to determine which mix presentation they would like to
- * configure the decoder with.
- */
-struct MixPresentationMetadata {
-  MixPresentationId id;
-  std::vector<MixPresentationTag> tags;
-};
 
 /*!brief The class and entrypoint for decoding IAMF bitstreams. */
 class IamfDecoder {
