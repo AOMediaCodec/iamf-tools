@@ -38,10 +38,15 @@ constexpr int64_t kBufferStartSize = 65536;
 // be pointless to delay the descriptor OBUs.
 constexpr bool kDoNotDelayDescriptorsUntilFirstUntrimmedSample = false;
 
-void MaybeRemoveFile(const std::string& filename) {
-  if (filename.empty()) {
+void MaybeRemoveFile(const std::string& filename,
+                     std::optional<std::fstream>& file_to_remove) {
+  if (filename.empty() || !file_to_remove.has_value()) {
     return;
   }
+
+  // Close and delete the file.
+  file_to_remove->close();
+  file_to_remove = std::nullopt;
   std::error_code error_code;
   std::filesystem::remove(filename, error_code);
   if (!error_code) {
@@ -91,7 +96,7 @@ void ObuSequencerIamf::Flush() {
 
 void ObuSequencerIamf::Abort() {
   LOG(INFO) << "Aborting ObuSequencerIamf.";
-  MaybeRemoveFile(iamf_filename_);
+  MaybeRemoveFile(iamf_filename_, output_iamf_);
 }
 
 }  // namespace iamf_tools
