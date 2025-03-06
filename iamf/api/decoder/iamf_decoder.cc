@@ -60,7 +60,7 @@ struct IamfDecoder::DecoderState {
   std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples;
 
   // The layout requested by the caller for the rendered output audio.
-  OutputLayout requested_layout = OutputLayout::kOutputStereo;
+  OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
 };
 
 namespace {
