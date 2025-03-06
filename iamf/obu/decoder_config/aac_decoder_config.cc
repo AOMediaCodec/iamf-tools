@@ -27,7 +27,15 @@
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+
+// These defines are not part of an official API and are likely to change or be
+// removed.  Please do not depend on them.
+// TODO(b/401063570): Remove these statements when no longer disabling FLAC/AAC.
+#if !defined(IAMF_TOOLS_DISABLE_AAC_DECODER)
 #include "libSYS/include/machine_type.h"
+#else
+#define INT_PCM 16
+#endif
 
 namespace iamf_tools {
 

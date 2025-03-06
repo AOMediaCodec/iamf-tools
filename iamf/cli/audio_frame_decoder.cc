@@ -27,6 +27,7 @@
 
 // These defines are not part of an official API and are likely to change or be
 // removed.  Please do not depend on them.
+// TODO(b/401063570): Remove these statements when no longer disabling FLAC/AAC.
 #ifndef IAMF_TOOLS_DISABLE_AAC_DECODER
 #include "iamf/cli/codec/aac_decoder.h"
 #endif
