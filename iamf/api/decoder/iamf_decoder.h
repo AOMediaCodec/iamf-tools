@@ -227,7 +227,7 @@ class IamfDecoder {
 
  private:
   // Forward declaration of the internal state of the decoder.
-  class DecoderState;
+  struct DecoderState;
 
   // Private constructor only used by Create functions.
   IamfDecoder(std::unique_ptr<DecoderState> state);
