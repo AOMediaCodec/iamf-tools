@@ -174,11 +174,9 @@ absl::Status ValidateInRange(const T& value,
     return absl::InvalidArgumentError(absl::StrCat(
         "Invalid range: [", min, ", ", max, "]. Expected min <= max."));
   }
-  if (value < min || value > max) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Invalid ", context, ". Expected ", value, " in range [",
-                     min, ", ", max, "]."));
-  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid ", context, ". Expected ", value, " in range [",
+                   min, ", ", max, "]."));
 }
 
 /*!\brief Returns `absl::OkStatus()` if `value` (comparison) `reference` is true
