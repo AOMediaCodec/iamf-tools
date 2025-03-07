@@ -465,15 +465,31 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
     std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
     std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
     bool& continue_processing) {
-  if (!read_bit_buffer.IsDataAvailable()) {
-    continue_processing = false;
-    return absl::OkStatus();
-  }
-
   continue_processing = true;
   output_audio_frame_with_data.reset();
   output_parameter_block_with_data.reset();
   output_temporal_delimiter.reset();
+
+  auto header_metadata = ObuHeader::PeekObuTypeAndTotalObuSize(read_bit_buffer);
+  if (!header_metadata.ok()) {
+    if (header_metadata.status().code() ==
+        absl::StatusCode::kResourceExhausted) {
+      // Can't read header because there is not enough data. This is not an
+      // error, but we're done processing for now.
+      continue_processing = false;
+      return absl::OkStatus();
+    } else {
+      // Some other error occurred, propagate it.
+      return header_metadata.status();
+    }
+  }
+
+  if (!read_bit_buffer.CanReadBytes(header_metadata->total_obu_size)) {
+    // This is a temporal unit OBU for which we don't have enough data. This is
+    // not an error, but we're done processing for now.
+    continue_processing = false;
+    return absl::OkStatus();
+  }
 
   const int64_t position_before_header = read_bit_buffer.Tell();
 
