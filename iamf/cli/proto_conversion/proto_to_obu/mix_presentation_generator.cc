@@ -89,16 +89,24 @@ void FillNumSubMixes(const iamf_tools_cli_proto::MixPresentationObuMetadata&
                          mix_presentation_metadata,
                      DecodedUleb128& num_sub_mixes,
                      std::vector<MixPresentationSubMix>& sub_mixes) {
-  num_sub_mixes = mix_presentation_metadata.num_sub_mixes();
+  if (mix_presentation_metadata.has_num_sub_mixes()) {
+    LOG(WARNING) << "Ignoring deprecated `num_sub_mixes` field."
+                 << "Please remove it.";
+  }
+  num_sub_mixes = mix_presentation_metadata.sub_mixes_size();
 
-  sub_mixes.reserve(mix_presentation_metadata.num_sub_mixes());
+  sub_mixes.reserve(num_sub_mixes);
 }
 
 void FillSubMixNumAudioElements(
     const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
     MixPresentationSubMix& sub_mix) {
-  sub_mix.num_audio_elements = input_sub_mix.num_audio_elements();
-  sub_mix.audio_elements.reserve(input_sub_mix.num_audio_elements());
+  if (input_sub_mix.has_num_audio_elements()) {
+    LOG(WARNING) << "Ignoring deprecated `num_audio_elements` field."
+                 << "Please remove it.";
+  }
+  sub_mix.num_audio_elements = input_sub_mix.audio_elements_size();
+  sub_mix.audio_elements.reserve(sub_mix.num_audio_elements);
 }
 
 absl::Status FillLocalizedElementAnnotations(
@@ -228,15 +236,11 @@ absl::Status CopyReservedOrBinauralLayout(
 absl::Status FillLayouts(
     const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
     MixPresentationSubMix& sub_mix) {
-  sub_mix.num_layouts = input_sub_mix.num_layouts();
-
-  if (input_sub_mix.layouts().size() != input_sub_mix.num_layouts()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Inconsistent number of layouts in user input. "
-        "input_sub_mix.num_layouts()= ",
-        input_sub_mix.num_layouts(), " vs  input_sub_mix.layouts().size()= ",
-        input_sub_mix.layouts().size()));
+  if (input_sub_mix.has_num_layouts()) {
+    LOG(WARNING) << "Ignoring deprecated `num_layouts` field."
+                 << "Please remove it.";
   }
+  sub_mix.num_layouts = input_sub_mix.layouts_size();
 
   // Reserve the layouts vector and copy in the layouts.
   sub_mix.layouts.reserve(input_sub_mix.num_layouts());
@@ -316,7 +320,7 @@ absl::Status FillMixPresentationTags(
                           (append_build_information_tag ? 1 : 0);
   // At the OBU it must fit into a `uint8_t`.
   RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
-      "MixPresentationTags.num_tags", num_tags,
+      "Total number of MixPresentationTags.tags", num_tags,
       obu_mix_presentation_tags->num_tags));
   obu_mix_presentation_tags->tags.reserve(num_tags);
   for (const auto& input_tag : mix_presentation_tags.tags()) {
@@ -416,10 +420,14 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     // Not using anchored loudness.
     return absl::OkStatus();
   }
+  if (user_loudness.anchored_loudness().has_num_anchored_loudness()) {
+    LOG(WARNING) << "Ignoring deprecated `num_anchored_loudness` field. Please "
+                    "remove it.";
+  }
 
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "LoudnessInfo.anchored_loudness.num_anchored_loudness",
-      user_loudness.anchored_loudness().num_anchored_loudness(),
+  RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
+      "Number of LoudnessInfo.anchored_loudness",
+      user_loudness.anchored_loudness().anchor_elements_size(),
       output_loudness.anchored_loudness.num_anchored_loudness));
 
   for (const auto& metadata_anchor_element :

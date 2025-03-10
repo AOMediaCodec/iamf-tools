@@ -135,7 +135,9 @@ message AnchorElement {
 }
 
 message AnchoredLoudness {
-  optional uint32 num_anchored_loudness = 1;
+  // `num_anchored_loudness` is ignored. The value in the bitstream is inferred
+  // based on the number of `anchor_elements`.
+  optional uint32 num_anchored_loudness = 1 [deprecated = true];
   repeated AnchorElement anchor_elements = 2;
 }
 
@@ -179,14 +181,18 @@ message MixPresentationLayout {
 }
 
 message MixPresentationSubMix {
-  optional uint32 num_audio_elements = 1;
+  // `num_audio_elements` is ignored. The value in the bitstream is inferred
+  // based on the number of `audio_elements`.
+  optional uint32 num_audio_elements = 1 [deprecated = true];
   repeated SubMixAudioElement audio_elements = 2;
 
   // Superseded by `output_mix_gain`.
   optional OutputMixConfig output_mix_config = 3 [deprecated = true];
   optional MixGainParamDefinition output_mix_gain = 6;
 
-  optional uint32 num_layouts = 4;
+  // `num_layouts` is ignored. The value in the bitstream is inferred
+  // based on the number of `layouts`.
+  optional uint32 num_layouts = 4 [deprecated = true];
   repeated MixPresentationLayout layouts = 5;
 
   // Next ID: 7
@@ -221,7 +227,9 @@ message MixPresentationObuMetadata {
   // Length should be equal to `count_label`.
   repeated string localized_presentation_annotations = 10;
 
-  optional uint32 num_sub_mixes = 3;
+  // `num_sub_mixes` is ignored. The value in the bitstream is inferred
+  // based on the number of `sub_mixes`.
+  optional uint32 num_sub_mixes = 3 [deprecated = true];
   repeated MixPresentationSubMix sub_mixes = 4;
 
   // When false [default]: The encoder will ignore the below

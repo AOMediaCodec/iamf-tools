@@ -879,17 +879,68 @@ TEST_F(MixPresentationGeneratorTest, InvalidHeadphonesRenderingMode) {
       generator.Generate(kAppendBuildInformationTag, generated_obus_).ok());
 }
 
-TEST_F(MixPresentationGeneratorTest, InvalidInconsistentNumberOfLayouts) {
-  // There is one element in the `layouts` array.
-  ASSERT_EQ(mix_presentation_metadata_.at(0).sub_mixes(0).layouts().size(), 1);
-  // `num_layouts` is inconsistent with the number of layouts in the array.
-  const uint32_t kInconsistentNumLayouts = 2;
-  mix_presentation_metadata_.at(0).mutable_sub_mixes(0)->set_num_layouts(
-      kInconsistentNumLayouts);
+TEST_F(MixPresentationGeneratorTest, IgnoresDeprecatedNumSubMixes) {
+  // This test assumes the default metadata has one sub mix.
+  constexpr uint32_t kExpectedNumSubMixes = 1;
+  ASSERT_EQ(mix_presentation_metadata_.at(0).sub_mixes_size(),
+            kExpectedNumSubMixes);
+  // Include a strange value for the deprecated `num_sub_mixes` field.
+  constexpr uint32_t kIncorrectIgnoredNumSubMixes = 2;
+  mix_presentation_metadata_.at(0).set_num_sub_mixes(
+      kIncorrectIgnoredNumSubMixes);
   MixPresentationGenerator generator(mix_presentation_metadata_);
 
-  EXPECT_FALSE(
-      generator.Generate(kAppendBuildInformationTag, generated_obus_).ok());
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus_),
+              IsOk());
+
+  // Regardless of the deprecated `num_layouts` field, the number of layouts is
+  // inferred the `layouts` array.
+  EXPECT_EQ(generated_obus_.back().GetNumSubMixes(), kExpectedNumSubMixes);
+  EXPECT_EQ(generated_obus_.back().sub_mixes_.size(), kExpectedNumSubMixes);
+}
+
+TEST_F(MixPresentationGeneratorTest, IgnoresDeprecatedNumAudioElements) {
+  // This test assumes the default metadata has one audio element.
+  constexpr uint32_t kExpectedNumAudioElements = 1;
+  ASSERT_EQ(mix_presentation_metadata_.at(0).sub_mixes(0).audio_elements_size(),
+            kExpectedNumAudioElements);
+  // Include a strange value for the deprecated `num_audio_elements`.
+  constexpr uint32_t kIncorrectIgnoredNumAudioElements = 2;
+  mix_presentation_metadata_.at(0).mutable_sub_mixes(0)->set_num_audio_elements(
+      kIncorrectIgnoredNumAudioElements);
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus_),
+              IsOk());
+
+  // Regardless of the deprecated `num_audio_elements` field, the number of
+  // audio elements the `audio_elements` array.
+  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].num_audio_elements,
+            kExpectedNumAudioElements);
+  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].audio_elements.size(),
+            kExpectedNumAudioElements);
+}
+
+TEST_F(MixPresentationGeneratorTest, IgnoresDeprecatedNumLayouts) {
+  // This test assumes the default metadata has one layout.
+  constexpr uint32_t kExpectedNumLayouts = 1;
+  ASSERT_EQ(mix_presentation_metadata_.at(0).sub_mixes(0).layouts().size(),
+            kExpectedNumLayouts);
+  // Include a strange value for the deprecated `num_layouts`.
+  constexpr uint32_t kIncorrectIgnoredNumLayouts = 2;
+  mix_presentation_metadata_.at(0).mutable_sub_mixes(0)->set_num_layouts(
+      kIncorrectIgnoredNumLayouts);
+  MixPresentationGenerator generator(mix_presentation_metadata_);
+
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus_),
+              IsOk());
+
+  // Regardless of the deprecated `num_layouts` field, the number of layouts is
+  // inferred from the `layouts` array.
+  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].num_layouts,
+            kExpectedNumLayouts);
+  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].layouts.size(),
+            kExpectedNumLayouts);
 }
 
 TEST_F(MixPresentationGeneratorTest, CopiesUserLoudness) {
@@ -1159,6 +1210,23 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
                   user_loudness, output_loudness),
               IsOk());
   EXPECT_EQ(output_loudness.anchored_loudness, expected_output_loudness);
+}
+
+TEST(CopyUserAnchoredLoudness, IgnoresDeprecatedNumAnchoredLoudnessField) {
+  // Set up an anchored loudness which no anchor elements, but incorrectly
+  // claims there is one.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.mutable_anchored_loudness()->set_num_anchored_loudness(1);
+
+  EXPECT_THAT(MixPresentationGenerator::CopyUserAnchoredLoudness(
+                  user_loudness, output_loudness),
+              IsOk());
+
+  // Regardless of the deprecated `num_anchored_loudness` field, the number of
+  // anchor elements is inferred from the `anchor_elements` array.
+  EXPECT_EQ(output_loudness.anchored_loudness.num_anchored_loudness, 0);
+  EXPECT_TRUE(output_loudness.anchored_loudness.anchor_elements.empty());
 }
 
 TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
