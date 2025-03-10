@@ -157,7 +157,10 @@ absl::Status InitializeRenderingMetadata(
     const uint32_t output_sample_rate =
         sub_mix_audio_element.codec_config->GetOutputSampleRate();
     if (common_sample_rate != output_sample_rate) {
-      // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
+      // Theoretically, we would have to resample this audio element to the
+      // common sample rate. However, as of IAMF v1.1.0, the spec forbids
+      // multiple Codec Config OBUs. This case is not possible to occur with a
+      // single Codec Config OBU.
       return absl::UnimplementedError(
           absl::StrCat("OBUs with different sample rates not supported yet: (",
                        common_sample_rate, " != ", output_sample_rate, ")."));
@@ -622,10 +625,13 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         rendering_bit_depth, common_num_samples_per_frame,
         requires_resampling));
     if (requires_resampling) {
-      // TODO(b/274689885): Convert to a common sample rate and/or bit-depth.
+      // Detected multiple Codec Config OBUs with different sample rates or
+      // bit-depths. As of IAMF v1.1.0, multiple Codec  Config OBUs in the same
+      // IA sequence are never permitted. The spec implies we would have to
+      // resample to a common sample rate and/or bit-depth.
       return absl::UnimplementedError(
-          "This implementation does not support mixing different sample rates "
-          "or bit-depths.");
+          "This implementation does not support mixing Codec Config OBUs with "
+          "different sample rates or bit-depths.");
     }
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
         renderer_factory, loudness_calculator_factory, sample_processor_factory,
