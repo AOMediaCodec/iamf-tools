@@ -1394,6 +1394,8 @@ TEST(ProcessTemporalUnitObus,
   EXPECT_EQ(read_bit_buffer->Tell(), start_position);
 }
 
+using OutputTemporalUnit = ObuProcessor::OutputTemporalUnit;
+
 TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
   // Set up inputs with a single audio frame.
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
@@ -1411,17 +1413,46 @@ TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
 
-  std::list<AudioFrameWithData> output_audio_frames;
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  std::optional<int32_t> output_timestamp;
+  // Call `ProcessTemporalUnit()` with `eos_is_end_of_sequence` set to true.
+  // This means that we can assume that the end of the stream implies the end of
+  // the temporal unit.
+  std::optional<OutputTemporalUnit> output_temporal_unit;
   bool continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  output_audio_frames, output_parameter_blocks,
-                  output_timestamp, continue_processing),
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
               IsOk());
 
   EXPECT_FALSE(continue_processing);
-  EXPECT_EQ(output_audio_frames.size(), 1);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, DoesNotConsumeOneAudioFrameAsTemporalUnit) {
+  // Set up inputs with a single audio frame.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8});
+  auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data = false;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
 }
 
 TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
@@ -1448,32 +1479,28 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
 
-  std::list<AudioFrameWithData> output_audio_frames;
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  std::optional<int32_t> output_timestamp;
+  std::optional<OutputTemporalUnit> output_temporal_unit;
   bool continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  output_audio_frames, output_parameter_blocks,
-                  output_timestamp, continue_processing),
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
               IsOk());
 
   // The first temporal unit is consumed; it should only contain the first
   // audio frame.
   EXPECT_TRUE(continue_processing);
-  EXPECT_EQ(output_audio_frames.size(), 1);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 
-  output_audio_frames.clear();
-  output_parameter_blocks.clear();
-  output_timestamp.reset();
+  output_temporal_unit.reset();
   continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  output_audio_frames, output_parameter_blocks,
-                  output_timestamp, continue_processing),
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
               IsOk());
   // Seeing a temporal delimiter at the end of the stream implies that the
   // stream is incomplete.
   EXPECT_TRUE(continue_processing);
-  EXPECT_EQ(output_audio_frames.size(), 1);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 
 TEST(ProcessTemporalUnit,
@@ -1500,31 +1527,231 @@ TEST(ProcessTemporalUnit,
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
 
-  std::list<AudioFrameWithData> output_audio_frames;
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  std::optional<int32_t> output_timestamp;
+  std::optional<OutputTemporalUnit> output_temporal_unit;
   bool continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  output_audio_frames, output_parameter_blocks,
-                  output_timestamp, continue_processing),
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
               IsOk());
 
   // The first temporal unit is consumed; it should only contain the first
   // audio frame.
   EXPECT_TRUE(continue_processing);
-  EXPECT_EQ(output_audio_frames.size(), 1);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 
-  output_audio_frames.clear();
-  output_parameter_blocks.clear();
-  output_timestamp.reset();
+  output_temporal_unit.reset();
   continue_processing = true;
   EXPECT_THAT(obu_processor->ProcessTemporalUnit(
-                  output_audio_frames, output_parameter_blocks,
-                  output_timestamp, continue_processing),
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
               IsOk());
 
   EXPECT_FALSE(continue_processing);
-  EXPECT_EQ(output_audio_frames.size(), 1);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, ConsumesOnlyOneTemporalUnitFromTwoAudioFrames) {
+  // eos_is_end_of_sequence is false. Only one temporal unit is consumed because
+  // we don't know that the second temporal unit is finished.
+
+  // Set up inputs with two audio frames. Two audio
+  // frames are known to be in a separate temporal unit if they have the same
+  // substream ID. Their underlying timestamps are different.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  std::vector<AudioFrameObu> audio_frame_obus;
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  const auto two_temporal_units =
+      SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
+  bitstream.insert(bitstream.end(), two_temporal_units.begin(),
+                   two_temporal_units.end());
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data = false;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // The first temporal unit is consumed; it should only contain the first
+  // audio frame.
+  EXPECT_TRUE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+
+  output_temporal_unit.reset();
+  continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
+}
+
+TEST(ProcessTemporalUnit,
+     ConsumesOnlyOneTemporalUnitFromTwoAudioFramesAndIncompleteObuAtEnd) {
+  // eos_is_end_of_sequence is false. Only one temporal unit is consumed because
+  // we don't know that the second temporal unit is finished.
+
+  // Set up inputs with two audio frames. Two audio
+  // frames are known to be in a separate temporal unit if they have the same
+  // substream ID. Their underlying timestamps are different.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  std::vector<AudioFrameObu> audio_frame_obus;
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  auto two_temporal_units =
+      SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
+  std::vector<uint8_t> extra_audio_frame_obu_header_bytes = {
+      kObuIaAudioFrameId0 << kObuTypeBitShift,
+      // `obu_size`. -> Non-zero size, but we have no bytes following.
+      0x7f};
+  two_temporal_units.insert(two_temporal_units.end(),
+                            extra_audio_frame_obu_header_bytes.begin(),
+                            extra_audio_frame_obu_header_bytes.end());
+  bitstream.insert(bitstream.end(), two_temporal_units.begin(),
+                   two_temporal_units.end());
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data = false;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = false;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // The first temporal unit is consumed; it should only contain the first
+  // audio frame.
+  EXPECT_TRUE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+
+  output_temporal_unit.reset();
+  continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // The second temporal unit is not consumed since we don't know that it is
+  // complete.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
+}
+
+TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsChunkedArbitrarily) {
+  // Set up inputs with two audio frames. Two audio frames are known to be in a
+  // separate temporal unit if they have the same substream ID. Their underlying
+  // timestamps are different.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  auto read_bit_buffer = StreamBasedReadBitBuffer::Create(kBufferCapacity);
+  // Push descriptors.
+  ASSERT_THAT(read_bit_buffer->PushBytes(bitstream), IsOk());
+  bool insufficient_data = false;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::vector<AudioFrameObu> audio_frame_obus;
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId,
+                    /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
+  const auto two_temporal_units =
+      SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
+
+  // Split the temporal units into three chunks.
+  const int64_t chunk_size = two_temporal_units.size() / 3;
+  std::vector<uint8_t> chunk_1(two_temporal_units.begin(),
+                               two_temporal_units.begin() + chunk_size);
+  std::vector<uint8_t> chunk_2(two_temporal_units.begin() + chunk_size,
+                               two_temporal_units.begin() + 2 * chunk_size);
+  std::vector<uint8_t> chunk_3(two_temporal_units.begin() + 2 * chunk_size,
+                               two_temporal_units.end());
+
+  // Chunk 1.
+  ASSERT_THAT(read_bit_buffer->PushBytes(chunk_1), IsOk());
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // Chunk 1 is not enough to finish reading the first audio frame, so the
+  // first temporal unit is not finished.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
+
+  // Chunk 2.
+  ASSERT_THAT(read_bit_buffer->PushBytes(chunk_2), IsOk());
+  continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // Chunk 2 is enough to finish reading the first audio frame, but not the
+  // second. Since we haven't finished reading the second audio frame, we cannot
+  // know that the first temporal unit is complete. Therefore we still do not
+  // have a temporal unit.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
+
+  // Chunk 3.
+  ASSERT_THAT(read_bit_buffer->PushBytes(chunk_3), IsOk());
+  continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // Chunk 3 is enough to finish reading the second audio frame, so the first
+  // temporal unit is now complete. But we don't know that the second temporal
+  // unit is complete since more data could be coming behind it.
+  EXPECT_TRUE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+
+  // To get the second temporal unit, we make one final call with
+  // `eos_is_end_of_sequence` set to true. At this point, the bitstream is
+  // exhausted, but we can get the second temporal unit that we previously
+  // processed since we now know that the sequence is complete.
+  continue_processing = true;
+  output_temporal_unit.reset();
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  EXPECT_FALSE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 
 // TODO(b/377772983): Test rejecting processing temporal units with mismatching

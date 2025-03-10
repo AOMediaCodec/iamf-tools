@@ -211,13 +211,31 @@ TEST(IsTemporalUnitAvailable, ReturnsFalseAfterCreateFromDescriptorObus) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
-TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingOneTemporalUnit) {
+TEST(IsTemporalUnitAvailable,
+     TemporalUnitIsNotAvailableAfterDecodeWithNoTemporalDelimiterAtEnd) {
   auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
   auto temporal_unit = SerializeObusExpectOk({&audio_frame});
+  source_data.insert(source_data.end(), temporal_unit.begin(),
+                     temporal_unit.end());
+
+  ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(IsTemporalUnitAvailable,
+     ReturnsTrueAfterDecodingOneTemporalUnitWithTemporalDelimiterAtEnd) {
+  auto decoder = api::IamfDecoder::Create();
+  ASSERT_THAT(decoder, IsOk());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
+  auto temporal_unit =
+      SerializeObusExpectOk({&audio_frame, &temporal_delimiter_obu});
   source_data.insert(source_data.end(), temporal_unit.begin(),
                      temporal_unit.end());
 
@@ -256,7 +274,7 @@ TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
-TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
+TEST(GetOutputTemporalUnit, FillsOutputVectorWithAllButLastTemporalUnit) {
   auto decoder = api::IamfDecoder::Create();
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
@@ -274,11 +292,6 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithMultipleTemporalUnits) {
 
   // Get the first temporal unit.
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
-  EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
-              IsOk());
-  EXPECT_EQ(output_decoded_temporal_unit, expected_decoded_temporal_unit);
-  output_decoded_temporal_unit.clear();
-  // Get the second temporal unit.
   EXPECT_THAT(decoder->GetOutputTemporalUnit(output_decoded_temporal_unit),
               IsOk());
   EXPECT_EQ(output_decoded_temporal_unit, expected_decoded_temporal_unit);
@@ -302,7 +315,10 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
+  auto temporal_units =
+      SerializeObusExpectOk({&audio_frame, &temporal_delimiter_obu,
+                             &audio_frame, &temporal_delimiter_obu});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());

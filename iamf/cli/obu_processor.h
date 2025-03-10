@@ -192,26 +192,28 @@ class ObuProcessor {
       std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
       bool& continue_processing);
 
+  struct OutputTemporalUnit {
+    std::list<AudioFrameWithData> output_audio_frames;
+    std::list<ParameterBlockWithData> output_parameter_blocks;
+    InternalTimestamp output_timestamp;
+  };
+
   // TODO(b/379819959): Also handle Temporal Delimiter OBUs.
   /*!\brief Processes all OBUs from a Temporal Unit from the stored IA Sequence.
    *
-   * `Initialize()` must be called first to ready the input bitstream.
-   *
-   * \param output_audio_frames Output Audio Frames with the requisite
-   *        data.
-   * \param output_parameter_blocks Output Parameter Blocks with the
-   *        requisite data.
-   * \param output_timestamp Timestamp for the output temporal unit.
-   * \param insufficient_data Whether the bitstream provided is insufficient to
-   *        process all descriptor OBUs.
+   * \param eos_is_end_of_sequence Whether reaching the end of the stream
+   *        should be considered as the end of the sequence, and therefore the
+   *        end of the temporal unit.
+   * \param output_temporal_unit Contains the data from the temporal unit that
+   *        is processed.
    * \param continue_processing Whether the processing should be continued.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status ProcessTemporalUnit(
-      std::list<AudioFrameWithData>& output_audio_frames,
-      std::list<ParameterBlockWithData>& output_parameter_blocks,
-      std::optional<int32_t>& output_timestamp, bool& continue_processing);
+      bool eos_is_end_of_sequence,
+      std::optional<OutputTemporalUnit>& output_temporal_unit,
+      bool& continue_processing);
 
   /*!\brief Renders a temporal unit and measures loudness.
    *

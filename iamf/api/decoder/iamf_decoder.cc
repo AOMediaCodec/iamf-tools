@@ -103,22 +103,24 @@ absl::Status ProcessAllTemporalUnits(
   bool continue_processing = true;
   while (continue_processing) {
     auto start_position_for_temporal_unit = read_bit_buffer->Tell();
-    std::list<AudioFrameWithData> audio_frames_for_temporal_unit;
-    std::list<ParameterBlockWithData> parameter_blocks_for_temporal_unit;
-    std::optional<int32_t> timestamp_for_temporal_unit;
+    std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     // TODO(b/395889878): Add support for partial temporal units.
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
-        audio_frames_for_temporal_unit, parameter_blocks_for_temporal_unit,
-        timestamp_for_temporal_unit, continue_processing));
+        /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+        continue_processing));
+    if (!output_temporal_unit.has_value()) {
+      break;
+    }
 
     // Trivial IA Sequences may have empty temporal units. Do not try to
     // render empty temporal unit.
-    if (timestamp_for_temporal_unit.has_value()) {
+    if (output_temporal_unit.has_value()) {
       absl::Span<const std::vector<int32_t>>
           rendered_pcm_samples_for_temporal_unit;
       RETURN_IF_NOT_OK(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-          *timestamp_for_temporal_unit, audio_frames_for_temporal_unit,
-          parameter_blocks_for_temporal_unit,
+          output_temporal_unit->output_timestamp,
+          output_temporal_unit->output_audio_frames,
+          output_temporal_unit->output_parameter_blocks,
           rendered_pcm_samples_for_temporal_unit));
       rendered_pcm_samples.push(
           std::vector(rendered_pcm_samples_for_temporal_unit.begin(),

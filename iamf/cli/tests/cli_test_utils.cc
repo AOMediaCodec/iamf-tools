@@ -128,15 +128,14 @@ absl::Status CollectObusFromIaSequence(
   int temporal_unit_count = 0;
   LOG(INFO) << "Starting Temporal Unit OBU processing";
   while (continue_processing) {
-    std::list<AudioFrameWithData> audio_frames_for_temporal_unit;
-    std::list<ParameterBlockWithData> parameter_blocks_for_temporal_unit;
-    std::optional<int32_t> timestamp_for_temporal_unit;
+    std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
-        audio_frames_for_temporal_unit, parameter_blocks_for_temporal_unit,
-        timestamp_for_temporal_unit, continue_processing));
-    audio_frames.splice(audio_frames.end(), audio_frames_for_temporal_unit);
+        /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+        continue_processing));
+    audio_frames.splice(audio_frames.end(),
+                        output_temporal_unit->output_audio_frames);
     parameter_blocks.splice(parameter_blocks.end(),
-                            parameter_blocks_for_temporal_unit);
+                            output_temporal_unit->output_parameter_blocks);
     temporal_unit_count++;
   }
   LOG(INFO) << "Processed " << temporal_unit_count << " Temporal Unit OBUs";

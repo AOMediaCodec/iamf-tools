@@ -748,11 +748,11 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
 }
 
 absl::Status ObuProcessor::ProcessTemporalUnit(
-    std::list<AudioFrameWithData>& output_audio_frames,
-    std::list<ParameterBlockWithData>& output_parameter_blocks,
-    std::optional<InternalTimestamp>& output_timestamp,
+    bool eos_is_end_of_sequence,
+    std::optional<OutputTemporalUnit>& output_temporal_unit,
     bool& continue_processing) {
-  while (true) {
+  continue_processing = true;
+  while (continue_processing) {
     std::optional<AudioFrameWithData> audio_frame_with_data;
     std::optional<ParameterBlockWithData> parameter_block_with_data;
     std::optional<TemporalDelimiterObu> temporal_delimiter;
@@ -775,17 +775,22 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
 
     // The current temporal unit is considered finished if any of the
     // following conditions is met:
-    // - No more data to consume (i.e. `continue_processing == true`).
+    // - The end of sequence is reached.
     // - The timestamp has advanced (i.e. when the next temporal unit gets its
     //   timestamp).
     // - A temporal delimiter is encountered.
-    if (!continue_processing || next_temporal_unit_.timestamp.has_value() ||
+    if ((!continue_processing && eos_is_end_of_sequence) ||
+        next_temporal_unit_.timestamp.has_value() ||
         current_temporal_unit_.temporal_delimiter.has_value()) {
-      output_audio_frames.splice(output_audio_frames.end(),
-                                 current_temporal_unit_.audio_frames);
-      output_parameter_blocks.splice(output_parameter_blocks.end(),
-                                     current_temporal_unit_.parameter_blocks);
-      output_timestamp = current_temporal_unit_.timestamp;
+      output_temporal_unit = OutputTemporalUnit();
+      output_temporal_unit->output_audio_frames =
+          std::move(current_temporal_unit_.audio_frames);
+      output_temporal_unit->output_parameter_blocks =
+          std::move(current_temporal_unit_.parameter_blocks);
+      if (current_temporal_unit_.timestamp.has_value()) {
+        output_temporal_unit->output_timestamp =
+            current_temporal_unit_.timestamp.value();
+      }
       current_temporal_unit_ = std::move(next_temporal_unit_);
       next_temporal_unit_ = TemporalUnitData();
       break;
