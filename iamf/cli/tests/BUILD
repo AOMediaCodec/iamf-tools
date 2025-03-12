@@ -342,6 +342,7 @@ cc_test(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:obu_sequencer_iamf",
         "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:temporal_unit_view",
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/obu:arbitrary_obu",

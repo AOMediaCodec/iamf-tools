@@ -51,15 +51,18 @@ namespace iamf_tools {
  *    // Call the `PushTemporalUnit` method.
  *    RETURN_IF_NOT_OK(sequencer->PushTemporalUnit(...));
  *   }
- * // Signal that no more data is coming.
- * // TODO(b/397637224): Allow updating the mix presentations during or
- *                       immediately before closing.
- * RETURN_IF_NOT_OK(sequencer->Close());
+ *  // Signal that no more data is coming.
+ *  // Depending on the context, choose one of the closing functions. Either
+ *  // `UpdateDescriptorObusAndClose` (preferred) or `Close`.
+ *  RETURN_IF_NOT_OK(sequencer->UpdateDescriptorObusAndClose(...));
+ *  // Or:
+ *  RETURN_IF_NOT_OK(sequencer->Close());
  *
  * // Optionally. `Abort` may be called to clean up output. E.g. file-based
  * // sequencers could delete their output file. `Abort` is most useful when
- * // some component outside the class failes; failures in `PushDescriptorObus`
- * // or `PushTemporalUnit` automatically call `Abort`.
+ * // some component outside the class failes; failures in `PushDescriptorObus`,
+ * `PushTemporalUnit`, or `UpdateDescriptorObusAndClose` automatically call
+ * `Abort`.
  */
 class ObuSequencerBase {
  public:
@@ -140,6 +143,22 @@ class ObuSequencerBase {
    */
   absl::Status PushTemporalUnit(const TemporalUnitView& temporal_unit);
 
+  /*!\brief Finalizes the descriptor OBUs and closes the output.
+   *
+   * \param ia_sequence_header_obu IA Sequence Header OBU to write.
+   * \param codec_config_obus Codec Config OBUs to write.
+   * \param audio_elements Audio Element OBUs with data to write.
+   * \param mix_presentation_obus Mix Presentation OBUs to write.
+   * \param arbitrary_obus Arbitrary OBUs to write.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status UpdateDescriptorObusAndClose(
+      const IASequenceHeaderObu& ia_sequence_header_obu,
+      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const std::list<MixPresentationObu>& mix_presentation_obus,
+      const std::list<ArbitraryObu>& arbitrary_obus);
+
   /*!\brief Signals that no more data is coming, and closes the output.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
@@ -210,6 +229,14 @@ class ObuSequencerBase {
       int64_t timestamp, int num_samples,
       absl::Span<const uint8_t> temporal_unit) = 0;
 
+  /*!\brief Pushes the finalized descriptor OBUs to some output.
+   *
+   * \param descriptor_obus Serialized finalized descriptor OBUs to push.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  virtual absl::Status PushFinalizedDescriptorObus(
+      absl::Span<const uint8_t> descriptor_obus) = 0;
+
   /*!\brief Signals that no more data is coming, and closes the output. */
   virtual void CloseDerived() = 0;
 
@@ -255,13 +282,15 @@ class ObuSequencerBase {
   const bool delay_descriptors_until_first_untrimmed_sample_;
   const bool include_temporal_delimiters_;
 
-  // Statistics for the current IA Sequence.
+  // Statistics for the current IA Sequence. Convenient to hold, in order to
+  // validate that the finalized OBUs are consistent with the initial ones.
   struct DescriptorStatistics {
     uint32_t common_samples_per_frame = 0;
     uint32_t common_sample_rate = 0;
     uint8_t common_bit_depth = 0;
     int num_channels = 0;
     std::optional<int64_t> first_untrimmed_timestamp;
+    std::vector<uint8_t> descriptor_obus;
   };
   std::optional<DescriptorStatistics> descriptor_statistics_;
 
@@ -275,7 +304,6 @@ class ObuSequencerBase {
   // true` implies we must cache and delayed OBUs until the first untrimmed
   // sample is seen. In practical IA Sequences, this is rarely more than a few
   // temporal units.
-  std::vector<uint8_t> delayed_descriptor_obus_;
   struct SerializedTemporalUnit {
     int64_t start_timestamp;
     uint32_t num_untrimmed_samples;

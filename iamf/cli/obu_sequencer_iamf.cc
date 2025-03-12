@@ -87,6 +87,23 @@ absl::Status ObuSequencerIamf::PushSerializedTemporalUnit(
   return wb_.FlushAndWriteToFile(output_iamf_);
 }
 
+absl::Status ObuSequencerIamf::PushFinalizedDescriptorObus(
+    absl::Span<const uint8_t> descriptor_obus) {
+  if (output_iamf_.has_value()) {
+    // For good practice, restore the previous position in the file after we
+    // rewrite. But in reality this function usually will be called right before
+    // closing the file.
+    const auto previous_position = output_iamf_->tellg();
+    output_iamf_->seekg(0, std::ios::beg);
+    RETURN_IF_NOT_OK(wb_.WriteUint8Span(descriptor_obus));
+    RETURN_IF_NOT_OK(wb_.FlushAndWriteToFile(output_iamf_));
+
+    output_iamf_->seekg(previous_position);
+  }
+
+  return absl::OkStatus();
+}
+
 void ObuSequencerIamf::CloseDerived() {
   if (output_iamf_.has_value() && output_iamf_->is_open()) {
     output_iamf_->close();

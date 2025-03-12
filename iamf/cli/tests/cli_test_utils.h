@@ -564,6 +564,9 @@ class MockObuSequencer : public ObuSequencerBase {
                absl::Span<const uint8_t> temporal_unit),
               (override));
 
+  MOCK_METHOD(absl::Status, PushFinalizedDescriptorObus,
+              (absl::Span<const uint8_t> descriptor_obus), (override));
+
   MOCK_METHOD(void, CloseDerived, (), (override));
 };
 

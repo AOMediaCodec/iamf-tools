@@ -28,6 +28,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/temporal_unit_view.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -126,7 +127,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   });
 }
 
-class ObuSequencerTest : public ::testing::Test {
+class ObuSequencerIamfTest : public ::testing::Test {
  public:
   void InitializeDescriptorObus() {
     ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
@@ -270,7 +271,7 @@ TEST(ObuSequencerIamf, PickAndPlaceSucceedsWithEmptyOutputFile) {
               IsOk());
 }
 
-TEST_F(ObuSequencerTest, PickAndPlaceCreatesFileWithOneFrameIaSequence) {
+TEST_F(ObuSequencerIamfTest, PickAndPlaceCreatesFileWithOneFrameIaSequence) {
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   InitObusForOneFrameIaSequence();
   ObuSequencerIamf sequencer(kOutputIamfFilename,
@@ -286,7 +287,7 @@ TEST_F(ObuSequencerTest, PickAndPlaceCreatesFileWithOneFrameIaSequence) {
   EXPECT_TRUE(std::filesystem::exists(kOutputIamfFilename));
 }
 
-TEST_F(ObuSequencerTest, PickAndPlaceFileCanBeReadBacks) {
+TEST_F(ObuSequencerIamfTest, PickAndPlaceFileCanBeReadBacks) {
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   InitializeDescriptorObus();
   AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
@@ -327,7 +328,8 @@ TEST_F(ObuSequencerTest, PickAndPlaceFileCanBeReadBacks) {
   EXPECT_TRUE(parameter_blocks.empty());
 }
 
-TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenDescriptorsAreInvalid) {
+TEST_F(ObuSequencerIamfTest,
+       PickAndPlaceLeavesNoFileWhenDescriptorsAreInvalid) {
   constexpr uint32_t kInvalidIaCode = IASequenceHeaderObu::kIaCode + 1;
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   InitObusForOneFrameIaSequence();
@@ -349,7 +351,8 @@ TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenDescriptorsAreInvalid) {
   EXPECT_FALSE(std::filesystem::exists(kOutputIamfFilename));
 }
 
-TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenTemporalUnitsAreInvalid) {
+TEST_F(ObuSequencerIamfTest,
+       PickAndPlaceLeavesNoFileWhenTemporalUnitsAreInvalid) {
   constexpr bool kInvalidateTemporalUnit = true;
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   InitObusForOneFrameIaSequence();
@@ -371,7 +374,7 @@ TEST_F(ObuSequencerTest, PickAndPlaceLeavesNoFileWhenTemporalUnitsAreInvalid) {
   EXPECT_FALSE(std::filesystem::exists(kOutputIamfFilename));
 }
 
-TEST_F(ObuSequencerTest,
+TEST_F(ObuSequencerIamfTest,
        PickAndPlaceOnInvalidTemporalUnitFailsWhenOutputFileIsOmitted) {
   constexpr bool kInvalidateTemporalUnit = true;
   InitObusForOneFrameIaSequence();
@@ -389,6 +392,58 @@ TEST_F(ObuSequencerTest,
                                  audio_frames_, parameter_blocks_,
                                  arbitrary_obus_)
                    .ok());
+}
+
+TEST_F(ObuSequencerIamfTest,
+       FileContainsUpdatedDescriptorObusAfterUpdateDescriptorObusAndClose) {
+  const ProfileVersion kOriginalProfile = ProfileVersion::kIamfBaseProfile;
+  const ProfileVersion kUpdatedProfile =
+      ProfileVersion::kIamfBaseEnhancedProfile;
+  InitObusForOneFrameIaSequence();
+  parameter_blocks_.clear();
+  ia_sequence_header_obu_ =
+      IASequenceHeaderObu(ObuHeader(), IASequenceHeaderObu::kIaCode,
+                          kOriginalProfile, kOriginalProfile);
+  const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
+  ObuSequencerIamf sequencer(kOutputIamfFilename,
+                             kDoNotIncludeTemporalDelimiters,
+                             *LebGenerator::Create());
+  EXPECT_THAT(sequencer.PushDescriptorObus(
+                  *ia_sequence_header_obu_, codec_config_obus_, audio_elements_,
+                  mix_presentation_obus_, arbitrary_obus_),
+              IsOk());
+  const auto temporal_unit = TemporalUnitView::Create(
+      parameter_blocks_, audio_frames_, arbitrary_obus_);
+  ASSERT_THAT(temporal_unit, IsOk());
+  EXPECT_THAT(sequencer.PushTemporalUnit(*temporal_unit), IsOk());
+  // As a toy example, we will update the IA Sequence Header.
+  ia_sequence_header_obu_ =
+      IASequenceHeaderObu(ObuHeader(), IASequenceHeaderObu::kIaCode,
+                          kUpdatedProfile, kUpdatedProfile);
+
+  // Finalize the descriptor OBUs with a new IA Sequence Header.
+  EXPECT_THAT(sequencer.UpdateDescriptorObusAndClose(
+                  *ia_sequence_header_obu_, codec_config_obus_, audio_elements_,
+                  mix_presentation_obus_, arbitrary_obus_),
+              IsOk());
+
+  auto read_bit_buffer = FileBasedReadBitBuffer::CreateFromFilePath(
+      kReadBitBufferCapacity, kOutputIamfFilename);
+  ASSERT_NE(read_bit_buffer, nullptr);
+  IASequenceHeaderObu read_ia_sequence_header;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> read_codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> read_audio_elements;
+  std::list<MixPresentationObu> read_mix_presentation_obus;
+  std::list<AudioFrameWithData> read_audio_frames;
+  std::list<ParameterBlockWithData> read_parameter_blocks;
+  EXPECT_THAT(
+      CollectObusFromIaSequence(*read_bit_buffer, read_ia_sequence_header,
+                                read_codec_config_obus, read_audio_elements,
+                                read_mix_presentation_obus, read_audio_frames,
+                                read_parameter_blocks),
+      IsOk());
+  // Finally we expect to see evidence of the modified IA Sequence Header.
+  EXPECT_EQ(read_ia_sequence_header.GetPrimaryProfile(), kUpdatedProfile);
 }
 
 }  // namespace

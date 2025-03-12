@@ -72,6 +72,14 @@ class ObuSequencerIamf : public ObuSequencerBase {
       int64_t /*timestamp*/, int /*num_samples*/,
       absl::Span<const uint8_t> temporal_unit) override;
 
+  /*!\brief Pushes the finalized descriptor OBUs to the IAMF file.
+   *
+   * \param descriptor_obus Serialized finalized descriptor OBUs to push.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushFinalizedDescriptorObus(
+      absl::Span<const uint8_t> descriptor_obus) override;
+
   /*!\brief Signals that no more data is coming. */
   void CloseDerived() override;
 

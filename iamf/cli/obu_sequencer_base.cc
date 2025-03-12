@@ -183,6 +183,32 @@ absl::Status WriteObusWithHook(
   return absl::OkStatus();
 }
 
+absl::Status FillDescriptorStatistics(
+    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    auto& descriptor_statistics) {
+  descriptor_statistics.common_samples_per_frame = kFallbackSamplesPerFrame;
+  descriptor_statistics.common_sample_rate = kFallbackSampleRate;
+  descriptor_statistics.common_bit_depth = kFallbackBitDepth;
+  descriptor_statistics.num_channels = kFallbackNumChannels;
+
+  bool requires_resampling = false;
+  RETURN_IF_NOT_OK(GetCommonSampleRateAndBitDepth(
+      codec_config_obus, descriptor_statistics.common_sample_rate,
+      descriptor_statistics.common_bit_depth, requires_resampling));
+  if (requires_resampling) {
+    return absl::UnimplementedError(
+        "Codec Config OBUs with different bit-depths and/or sample "
+        "rates are not in base-enhanced/base/simple profile; they are not "
+        "allowed in ISOBMFF.");
+  }
+
+  // This assumes all Codec Configs have the same sample rate and frame size.
+  // We may need to be more careful if IA Samples do not all (except the
+  // final) have the same duration in the future.
+  return GetCommonSamplesPerFrame(
+      codec_config_obus, descriptor_statistics.common_samples_per_frame);
+}
+
 [[deprecated("Remove this, and related types when `PickAndPlace` is removed.")]]
 absl::Status GenerateTemporalUnitMap(
     const std::list<AudioFrameWithData>& audio_frames,
@@ -400,33 +426,6 @@ absl::Status ObuSequencerBase::PushDescriptorObus(
   state_ = kPushDescriptorObusCalled;
   wb_.Reset();
 
-  uint32_t common_samples_per_frame = kFallbackSamplesPerFrame;
-  uint32_t common_sample_rate;
-  uint8_t common_bit_depth;
-  bool requires_resampling;
-  RETURN_IF_NOT_OK(
-      GetCommonSampleRateAndBitDepth(codec_config_obus, common_sample_rate,
-                                     common_bit_depth, requires_resampling));
-  if (requires_resampling) {
-    return absl::UnimplementedError(
-        "Codec Config OBUs with different bit-depths and/or sample "
-        "rates are not in base-enhanced/base/simple profile; they are not "
-        "allowed in ISOBMFF.");
-  }
-
-  // This assumes all Codec Configs have the same sample rate and frame size.
-  // We may need to be more careful if IA Samples do not all (except the
-  // final) have the same duration in the future.
-  RETURN_IF_NOT_OK(
-      GetCommonSamplesPerFrame(codec_config_obus, common_samples_per_frame));
-  descriptor_statistics_.emplace(DescriptorStatistics{
-      .common_samples_per_frame = common_samples_per_frame,
-      .common_sample_rate = common_sample_rate,
-      .common_bit_depth = common_bit_depth,
-      .num_channels = GetNumberOfChannels(audio_elements),
-      .first_untrimmed_timestamp = std::nullopt,
-  });
-
   // Serialize descriptor OBUS and adjacent arbitrary OBUs.
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
@@ -436,22 +435,24 @@ absl::Status ObuSequencerBase::PushDescriptorObus(
       mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb_));
+  // Cache the descriptor OBUs, so we can validate "functional" equivalence if
+  // the user calls `UpdateDescriptorObusAndClose`.
+  DescriptorStatistics descriptor_statistics{.descriptor_obus =
+                                                 wb_.bit_buffer()};
+  RETURN_IF_NOT_OK(
+      FillDescriptorStatistics(codec_config_obus, descriptor_statistics));
+  descriptor_statistics_.emplace(std::move(descriptor_statistics));
 
-  if (delay_descriptors_until_first_untrimmed_sample_) {
-    // Delay the descriptor OBUs, the concrete class requested the
-    // `first_pts`.
-    delayed_descriptor_obus_ = wb_.bit_buffer();
-  } else {
+  if (!delay_descriptors_until_first_untrimmed_sample_) {
     // Avoid unnecessary delay, for concrete classes that don't need
     // `first_pts`.
-
     RETURN_IF_NOT_OK(PushSerializedDescriptorObus(
         descriptor_statistics_->common_samples_per_frame,
         descriptor_statistics_->common_sample_rate,
         descriptor_statistics_->common_bit_depth,
         descriptor_statistics_->first_untrimmed_timestamp,
         descriptor_statistics_->num_channels,
-        absl::MakeConstSpan(wb_.bit_buffer())));
+        descriptor_statistics_->descriptor_obus));
 
     state_ = kPushSerializedDescriptorsCalled;
   }
@@ -530,6 +531,72 @@ absl::Status ObuSequencerBase::PickAndPlace(
   return Close();
 }
 
+absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
+    const IASequenceHeaderObu& ia_sequence_header_obu,
+    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const std::list<ArbitraryObu>& arbitrary_obus) {
+  // Many failure points should call `Abort`. We want to avoid leaving
+  // sequencers open if they may have invalid or corrupted IAMF data.
+  AbortOnDestruct abort_on_destruct(this);
+  switch (state_) {
+    case kInitialized:
+      return absl::FailedPreconditionError(
+          "`UpdateDescriptorObusAndClose` must be called after "
+          "`PushDescriptorObus`.");
+    case kPushDescriptorObusCalled:
+    case kPushSerializedDescriptorsCalled:
+      break;
+    case kClosed:
+      return absl::FailedPreconditionError(
+          "`Abort` or `Close` previously called.");
+  }
+  wb_.Reset();
+
+  // Serialize descriptor OBUS and adjacent arbitrary OBUs.
+  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
+      ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
+  // Write out the descriptor OBUs.
+  RETURN_IF_NOT_OK(ObuSequencerBase::WriteDescriptorObus(
+      ia_sequence_header_obu, codec_config_obus, audio_elements,
+      mix_presentation_obus, arbitrary_obus, wb_));
+  RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
+      ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb_));
+
+  // We're a bit loose with what types of metadata we allow to change. Check
+  // at least the "functional" statistics are equivalent.
+  DescriptorStatistics descriptor_statistics{.descriptor_obus =
+                                                 wb_.bit_buffer()};
+  RETURN_IF_NOT_OK(
+      FillDescriptorStatistics(codec_config_obus, descriptor_statistics));
+  if (descriptor_statistics_->common_samples_per_frame !=
+          descriptor_statistics.common_samples_per_frame ||
+      descriptor_statistics_->common_sample_rate !=
+          descriptor_statistics.common_sample_rate ||
+      descriptor_statistics_->common_bit_depth !=
+          descriptor_statistics.common_bit_depth ||
+      descriptor_statistics_->num_channels !=
+          descriptor_statistics.num_channels) {
+    return absl::FailedPreconditionError(
+        "Descriptor OBUs have changed size between finalizing and "
+        "closing.");
+  }
+  if (descriptor_statistics_->descriptor_obus.size() !=
+      descriptor_statistics.descriptor_obus.size()) {
+    return absl::UnimplementedError(
+        "Descriptor OBUs have changed size between finalizing and closing.");
+  }
+
+  RETURN_IF_NOT_OK(
+      PushFinalizedDescriptorObus(absl::MakeConstSpan(wb_.bit_buffer())));
+  state_ = kPushSerializedDescriptorsCalled;
+  RETURN_IF_NOT_OK(Close());
+
+  abort_on_destruct.CancelAbort();
+  return absl::OkStatus();
+}
+
 absl::Status ObuSequencerBase::Close() {
   switch (state_) {
     case kInitialized:
@@ -545,7 +612,7 @@ absl::Status ObuSequencerBase::Close() {
           descriptor_statistics_->common_bit_depth,
           descriptor_statistics_->first_untrimmed_timestamp,
           descriptor_statistics_->num_channels,
-          absl::MakeConstSpan(delayed_descriptor_obus_)));
+          descriptor_statistics_->descriptor_obus));
       state_ = kPushSerializedDescriptorsCalled;
       break;
     }
@@ -602,8 +669,7 @@ absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
       descriptor_statistics_->common_bit_depth,
       descriptor_statistics_->first_untrimmed_timestamp,
       descriptor_statistics_->num_channels,
-      absl::MakeConstSpan(delayed_descriptor_obus_)));
-  delayed_descriptor_obus_.clear();
+      descriptor_statistics_->descriptor_obus));
   state_ = kPushSerializedDescriptorsCalled;
 
   // Flush any delayed temporal units.
