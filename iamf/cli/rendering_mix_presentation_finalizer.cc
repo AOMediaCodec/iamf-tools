@@ -916,6 +916,7 @@ RenderingMixPresentationFinalizer::GetFinalizedMixPresentationObus(
     RETURN_IF_NOT_OK(FillLoudnessForMixPresentation(
         validate_loudness, sub_mix_rendering_metadata_it->second,
         mix_presentation_obu));
+    mix_presentation_obu.PrintObu();
   }
 
   // Flush the finalized OBUs and mark that this class should not use them

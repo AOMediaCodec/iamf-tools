@@ -656,6 +656,17 @@ void MixPresentationObu::PrintObu() const {
       }
     }
   }
+  if (mix_presentation_tags_.has_value()) {
+    LOG(INFO) << "  mix_presentation_tags:";
+    for (int i = 0; i < mix_presentation_tags_->num_tags; ++i) {
+      const auto& tag = mix_presentation_tags_->tags[i];
+      LOG(INFO) << "    tags[" << i << "]:";
+      LOG(INFO) << "      tag_name= \"" << tag.tag_name << "\"";
+      LOG(INFO) << "      tag_value= \"" << tag.tag_value << "\"";
+    }
+  } else {
+    LOG(INFO) << "  No mix_presentation_tags detected.";
+  }
 }
 
 }  // namespace iamf_tools
