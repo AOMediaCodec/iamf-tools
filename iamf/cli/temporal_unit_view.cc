@@ -216,21 +216,23 @@ absl::StatusOr<TemporalUnitView> TemporalUnitView::CreateFromPointers(
                                                          arbitrary_obus.end());
   absl::c_sort(sorted_parameter_blocks, CompareParameterId);
   absl::c_sort(sorted_audio_frames, CompareAudioElementIdAudioSubstreamId);
-  return TemporalUnitView(std::move(sorted_parameter_blocks),
-                          std::move(sorted_audio_frames),
-                          std::move(copied_arbitrary_obus),
-                          statistics->num_samples_to_trim_at_start,
-                          statistics->num_untrimmed_samples);
+  return TemporalUnitView(
+      std::move(sorted_parameter_blocks), std::move(sorted_audio_frames),
+      std::move(copied_arbitrary_obus), statistics->start_timestamp,
+      statistics->num_samples_to_trim_at_start,
+      statistics->num_untrimmed_samples);
 }
 
 TemporalUnitView::TemporalUnitView(
     std::vector<const ParameterBlockWithData*>&& parameter_blocks,
     std::vector<const AudioFrameWithData*>&& audio_frames,
     std::vector<const ArbitraryObu*>&& arbitrary_obus,
-    uint32_t num_samples_to_trim_at_start, uint32_t num_untrimmed_samples)
+    InternalTimestamp start_timestamp, uint32_t num_samples_to_trim_at_start,
+    uint32_t num_untrimmed_samples)
     : parameter_blocks_(std::move(parameter_blocks)),
       audio_frames_(std::move(audio_frames)),
       arbitrary_obus_(std::move(arbitrary_obus)),
+      start_timestamp_(start_timestamp),
       num_samples_to_trim_at_start_(num_samples_to_trim_at_start),
       num_untrimmed_samples_(num_untrimmed_samples) {}
 

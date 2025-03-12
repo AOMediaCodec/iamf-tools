@@ -22,6 +22,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -93,6 +94,7 @@ struct TemporalUnitView {
   const std::vector<const ArbitraryObu*> arbitrary_obus_;
 
   // Common statistics for this temporal unit.
+  const InternalTimestamp start_timestamp_;
   const uint32_t num_samples_to_trim_at_start_;
   const uint32_t num_untrimmed_samples_;
 
@@ -104,6 +106,7 @@ struct TemporalUnitView {
    * \param parameter_blocks Parameter blocks to include in the view.
    * \param audio_frames Audio frames to include in the view.
    * \param arbitrary_obus Arbitrary OBUs to include in the view.
+   * \param start_timestamp Start timestamp of the temporal unit.
    * \param num_samples_to_trim_at_start Number of samples to trim at the start
    *        of the audio frames.
    * \param num_untrimmed_samples Number of samples in the audio frames before
@@ -113,7 +116,8 @@ struct TemporalUnitView {
       std::vector<const ParameterBlockWithData*>&& parameter_blocks,
       std::vector<const AudioFrameWithData*>&& audio_frames,
       std::vector<const ArbitraryObu*>&& arbitrary_obus,
-      uint32_t num_samples_to_trim_at_start, uint32_t num_untrimmed_samples);
+      InternalTimestamp start_timestamp, uint32_t num_samples_to_trim_at_start,
+      uint32_t num_untrimmed_samples);
 };
 
 }  // namespace iamf_tools

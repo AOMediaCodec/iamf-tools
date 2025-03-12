@@ -550,7 +550,7 @@ class MockObuSequencer : public ObuSequencerBase {
       : ObuSequencerBase(leb_generator, include_temporal_delimiters,
                          delay_descriptors_until_first_untrimmed_sample) {}
 
-  MOCK_METHOD(void, Abort, (), (override));
+  MOCK_METHOD(void, AbortDerived, (), (override));
 
   MOCK_METHOD(absl::Status, PushSerializedDescriptorObus,
               (uint32_t common_samples_per_frame, uint32_t common_sample_rate,
@@ -564,7 +564,7 @@ class MockObuSequencer : public ObuSequencerBase {
                absl::Span<const uint8_t> temporal_unit),
               (override));
 
-  MOCK_METHOD(void, Flush, (), (override));
+  MOCK_METHOD(void, CloseDerived, (), (override));
 };
 
 }  // namespace iamf_tools

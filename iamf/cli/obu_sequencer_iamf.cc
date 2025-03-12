@@ -87,14 +87,14 @@ absl::Status ObuSequencerIamf::PushSerializedTemporalUnit(
   return wb_.FlushAndWriteToFile(output_iamf_);
 }
 
-void ObuSequencerIamf::Flush() {
+void ObuSequencerIamf::CloseDerived() {
   if (output_iamf_.has_value() && output_iamf_->is_open()) {
     output_iamf_->close();
     output_iamf_ = std::nullopt;
   }
 }
 
-void ObuSequencerIamf::Abort() {
+void ObuSequencerIamf::AbortDerived() {
   LOG(INFO) << "Aborting ObuSequencerIamf.";
   MaybeRemoveFile(iamf_filename_, output_iamf_);
 }

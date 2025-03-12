@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <optional>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
@@ -42,10 +43,23 @@ namespace iamf_tools {
  *   // Create a concrete sequencer. Interface is dependent on the conreate
  *   // sequencer.
  *   std::unique_ptr<ObuSequencerBase> sequencer = ...;
- *   // Gather all the OBUs.
- *   // Sequence all of the OBUs.
- *   sequencer->.PickAndPlace(...);
  *
+ *  // Call the `PushDescriptorObus` method.
+ *  RETURN_IF_NOT_OK(sequencer->PushDescriptorObus(...));
+ *
+ *  while (more data is available) {
+ *    // Call the `PushTemporalUnit` method.
+ *    RETURN_IF_NOT_OK(sequencer->PushTemporalUnit(...));
+ *   }
+ * // Signal that no more data is coming.
+ * // TODO(b/397637224): Allow updating the mix presentations during or
+ *                       immediately before closing.
+ * RETURN_IF_NOT_OK(sequencer->Close());
+ *
+ * // Optionally. `Abort` may be called to clean up output. E.g. file-based
+ * // sequencers could delete their output file. `Abort` is most useful when
+ * // some component outside the class failes; failures in `PushDescriptorObus`
+ * // or `PushTemporalUnit` automatically call `Abort`.
  */
 class ObuSequencerBase {
  public:
@@ -61,6 +75,7 @@ class ObuSequencerBase {
    * \param num_samples Number of samples written out.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
+  [[deprecated("Use this class as per the class documentation instead.")]]
   static absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
                                         const TemporalUnitView& temporal_unit,
                                         WriteBitBuffer& wb, int& num_samples);
@@ -78,6 +93,7 @@ class ObuSequencerBase {
    * \param wb Write buffer to write to.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
+  [[deprecated("Use this class as per the class documentation instead.")]]
   static absl::Status WriteDescriptorObus(
       const IASequenceHeaderObu& ia_sequence_header_obu,
       const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
@@ -101,6 +117,42 @@ class ObuSequencerBase {
   /*!\brief Destructor.*/
   virtual ~ObuSequencerBase() = 0;
 
+  /*!\brief Gathers statistics on and pushes the OBUs to some output.
+   *
+   * \param ia_sequence_header_obu IA Sequence Header OBU to write.
+   * \param codec_config_obus Codec Config OBUs to write.
+   * \param audio_elements Audio Element OBUs with data to write.
+   * \param mix_presentation_obus Mix Presentation OBUs to write.
+   * \param arbitrary_obus Arbitrary OBUs to write.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushDescriptorObus(
+      const IASequenceHeaderObu& ia_sequence_header_obu,
+      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+      const std::list<MixPresentationObu>& mix_presentation_obus,
+      const std::list<ArbitraryObu>& arbitrary_obus);
+
+  /*!\brief Gathers statistics on and pushes the temporal unit to some output.
+   *
+   * \param temporal_unit Temporal unit to push.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status PushTemporalUnit(const TemporalUnitView& temporal_unit);
+
+  /*!\brief Signals that no more data is coming, and closes the output.
+   *
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status Close();
+
+  /*!\brief Aborts writing the output.
+   *
+   * Useful for sequencers which want to clean up their output. Such as to avoid
+   * leaving a stray file when encoding fails.
+   */
+  void Abort();
+
   /*!\brief Pick and places OBUs and write to some output.
    *
    * \param ia_sequence_header_obu IA Sequence Header OBU to write.
@@ -112,6 +164,7 @@ class ObuSequencerBase {
    * \param arbitrary_obus Arbitrary OBUs to write.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
+  [[deprecated("Use this class as per the class documentation instead.")]]
   absl::Status PickAndPlace(
       const IASequenceHeaderObu& ia_sequence_header_obu,
       const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
@@ -157,25 +210,78 @@ class ObuSequencerBase {
       int64_t timestamp, int num_samples,
       absl::Span<const uint8_t> temporal_unit) = 0;
 
-  /*!\brief Signals that no more data is coming. */
-  virtual void Flush() = 0;
+  /*!\brief Signals that no more data is coming, and closes the output. */
+  virtual void CloseDerived() = 0;
 
   /*!\brief Aborts writing the output.
    *
    * Useful for sequencers which want to clean up their output. Such as to avoid
    * leaving a stray file when encoding fails.
    */
-  virtual void Abort() = 0;
+  virtual void AbortDerived() = 0;
 
   // The `LebGenerator` to use when writing OBUs.
   const LebGenerator leb_generator_;
 
  private:
-  enum State { kInitialized, kFlushed };
+  /*!\brief Handles the initial temporal units.
+   *
+   * This function manages state to help process the initial temporal units up
+   * to and including the first one that has a real sample. In a typical IA
+   * Sequence, this would rarely be more few frames.
+   *
+   * \param temporal_unit Temporal unit to push.
+   * \param serialized_temporal_unit Serialized temporla unit.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  absl::Status HandleInitialTemporalUnits(
+      const TemporalUnitView& temporal_unit,
+      absl::Span<const uint8_t> serialized_temporal_unit);
+
+  enum State {
+    // Initial state.
+    kInitialized,
+    // `PushDescriptorObus` has been called, but it may have been delayed when
+    // `delay_descriptors_until_first_untrimmed_sample_` is `true`.
+    kPushDescriptorObusCalled,
+    // Descriptors have been pushed, in this state temporal units are no longer
+    // delayed.
+    kPushSerializedDescriptorsCalled,
+    // `Close` or `Abort` has been called.
+    kClosed
+  };
   State state_ = kInitialized;
 
   const bool delay_descriptors_until_first_untrimmed_sample_;
   const bool include_temporal_delimiters_;
+
+  // Statistics for the current IA Sequence.
+  struct DescriptorStatistics {
+    uint32_t common_samples_per_frame = 0;
+    uint32_t common_sample_rate = 0;
+    uint8_t common_bit_depth = 0;
+    int num_channels = 0;
+    std::optional<int64_t> first_untrimmed_timestamp;
+  };
+  std::optional<DescriptorStatistics> descriptor_statistics_;
+
+  // Reusable scratch buffer.
+  WriteBitBuffer wb_;
+
+  int64_t num_temporal_units_for_logging_ = 0;
+  int64_t cumulative_num_samples_for_logging_ = 0;
+
+  // State for delayed OBUs. `delay_descriptors_until_first_untrimmed_sample_ ==
+  // true` implies we must cache and delayed OBUs until the first untrimmed
+  // sample is seen. In practical IA Sequences, this is rarely more than a few
+  // temporal units.
+  std::vector<uint8_t> delayed_descriptor_obus_;
+  struct SerializedTemporalUnit {
+    int64_t start_timestamp;
+    uint32_t num_untrimmed_samples;
+    std::vector<uint8_t> data;
+  };
+  std::list<SerializedTemporalUnit> delayed_temporal_units_;
 };
 
 }  // namespace iamf_tools

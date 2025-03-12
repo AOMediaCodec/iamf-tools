@@ -73,13 +73,13 @@ class ObuSequencerIamf : public ObuSequencerBase {
       absl::Span<const uint8_t> temporal_unit) override;
 
   /*!\brief Signals that no more data is coming. */
-  void Flush() override;
+  void CloseDerived() override;
 
   /*!\brief Aborts writing the output.
    *
    * Cleans up the output file if it exists.
    */
-  void Abort() override;
+  void AbortDerived() override;
 
   const std::string iamf_filename_;
   std::optional<std::fstream> output_iamf_;

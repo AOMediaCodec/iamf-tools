@@ -62,6 +62,42 @@ constexpr int64_t kBufferStartSize = 65536;
  */
 typedef absl::btree_map<int32_t, TemporalUnitView> TemporalUnitMap;
 
+/*!\brief Helper class to abort an `ObuSequencerBase` on destruction.
+ *
+ * This class calls on an `ObuSequencerBase::Abort` on destruction. Or does
+ * nothing if `CancelAbort` is called.
+ *
+ * Typically, this is useful to create an instance of this class on the stack,
+ * in the scope of a function which has many locations where it may return an
+ * un-recoverable error. When those exit points are reached, the sequencer will
+ * automatically be aborted.
+ *
+ * Before any successful exit point, `CancelAbort` should be called, which will
+ * prevent the sequencer from being aborting.
+ */
+class AbortOnDestruct {
+ public:
+  /*!\brief Constructor
+   *
+   * \param obu_sequencer The `ObuSequencerBase` to abort on destruction.
+   */
+  explicit AbortOnDestruct(ObuSequencerBase* obu_sequencer)
+      : obu_sequencer(obu_sequencer) {}
+
+  /*!\brief Destructor */
+  ~AbortOnDestruct() {
+    if (obu_sequencer != nullptr) {
+      obu_sequencer->Abort();
+    }
+  }
+
+  /*!\brief Cancels the abort on destruction. */
+  void CancelAbort() { obu_sequencer = nullptr; }
+
+ private:
+  ObuSequencerBase* obu_sequencer;
+};
+
 template <typename KeyValueMap, typename KeyComparator>
 std::vector<uint32_t> SortedKeys(const KeyValueMap& map,
                                  const KeyComparator& comparator) {
@@ -77,6 +113,8 @@ std::vector<uint32_t> SortedKeys(const KeyValueMap& map,
 // frames. These would decode to an empty stream. Fallback to some reasonable,
 // but arbitrary default values, when the true value is undefined.
 
+// Fallback number of samples per frame when there are no audio frames.
+constexpr uint32_t kFallbackSamplesPerFrame = 1024;
 // Fallback sample rate when there are no Codec Config OBUs.
 constexpr uint32_t kFallbackSampleRate = 48000;
 // Fallback bit-depth when there are no Codec Config OBUs.
@@ -104,38 +142,6 @@ int32_t GetNumberOfChannels(
     }
   }
   return num_channels;
-}
-
-// Gets the first Presentation Timestamp (PTS); the timestamp of the first
-// sample that is not trimmed. Or zero of there are no untrimmed samples.
-absl::StatusOr<int64_t> GetFirstUntrimmedTimestamp(
-    const TemporalUnitMap& temporal_unit_map) {
-  if (temporal_unit_map.empty()) {
-    return kFallbackFirstPts;
-  }
-
-  std::optional<int64_t> first_untrimmed_timestamp;
-  for (const auto& [start_timestamp, temporal_unit] : temporal_unit_map) {
-    if (temporal_unit.num_untrimmed_samples_ == 0) {
-      // Fully trimmed frame. Wait for more.
-      continue;
-    }
-    if (temporal_unit.num_samples_to_trim_at_start_ > 0 &&
-        first_untrimmed_timestamp.has_value()) {
-      return absl::InvalidArgumentError(
-          "Temporal units must not have samples trimmed from the start, after "
-          "the first untrimmed sample.");
-    }
-
-    // Found the first untrimmed sample. Get the timestamp. We only continue
-    // looping to check that no more temporal units have samples trimmed from
-    // the start, after the first untrimmed sample.
-    first_untrimmed_timestamp =
-        start_timestamp + temporal_unit.num_samples_to_trim_at_start_;
-  }
-
-  return first_untrimmed_timestamp.has_value() ? *first_untrimmed_timestamp
-                                               : kFallbackFirstPts;
 }
 
 // Gets the common sample rate and bit depth for the given codec config OBUs. Or
@@ -177,6 +183,7 @@ absl::Status WriteObusWithHook(
   return absl::OkStatus();
 }
 
+[[deprecated("Remove this, and related types when `PickAndPlace` is removed.")]]
 absl::Status GenerateTemporalUnitMap(
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
@@ -223,6 +230,7 @@ absl::Status GenerateTemporalUnitMap(
 
   return absl::OkStatus();
 }
+
 }  // namespace
 
 absl::Status ObuSequencerBase::WriteTemporalUnit(
@@ -350,26 +358,49 @@ ObuSequencerBase::ObuSequencerBase(
     : leb_generator_(leb_generator),
       delay_descriptors_until_first_untrimmed_sample_(
           delay_descriptors_until_first_untrimmed_sample),
-      include_temporal_delimiters_(include_temporal_delimiters) {}
+      include_temporal_delimiters_(include_temporal_delimiters),
+      wb_(kBufferStartSize, leb_generator) {}
 
-ObuSequencerBase::~ObuSequencerBase() {};
+ObuSequencerBase::~ObuSequencerBase() {
+  switch (state_) {
+    case kInitialized:
+      return;
+    case kPushDescriptorObusCalled:
+    case kPushSerializedDescriptorsCalled:
+      LOG(ERROR) << "OBUs have been pushed, but `ObuSequencerBase` is being "
+                    "destroyed without calling `Close` or `Abort`.";
+      return;
+    case kClosed:
+      return;
+  }
+  // The above switch is exhaustive.
+  LOG(FATAL) << "Unexpected state: " << static_cast<int>(state_);
+};
 
-absl::Status ObuSequencerBase::PickAndPlace(
+absl::Status ObuSequencerBase::PushDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const std::list<MixPresentationObu>& mix_presentation_obus,
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
     const std::list<ArbitraryObu>& arbitrary_obus) {
+  // Many failure points should call `Abort`. We want to avoid leaving
+  // sequencers open if they may have invalid or corrupted IAMF data.
+  AbortOnDestruct abort_on_destruct(this);
   switch (state_) {
     case kInitialized:
       break;
-    case kFlushed:
+    case kPushDescriptorObusCalled:
+    case kPushSerializedDescriptorsCalled:
       return absl::FailedPreconditionError(
-          "`PickAndPlace` should only be called once per instance.");
+          "`PushDescriptorObus` can only be called once.");
+    case kClosed:
+      return absl::FailedPreconditionError(
+          "`PushDescriptorObus` cannot be called after `Close` or `Abort`.");
   }
+  state_ = kPushDescriptorObusCalled;
+  wb_.Reset();
 
+  uint32_t common_samples_per_frame = kFallbackSamplesPerFrame;
   uint32_t common_sample_rate;
   uint8_t common_bit_depth;
   bool requires_resampling;
@@ -386,82 +417,207 @@ absl::Status ObuSequencerBase::PickAndPlace(
   // This assumes all Codec Configs have the same sample rate and frame size.
   // We may need to be more careful if IA Samples do not all (except the
   // final) have the same duration in the future.
-  uint32_t common_samples_per_frame = 0;
   RETURN_IF_NOT_OK(
       GetCommonSamplesPerFrame(codec_config_obus, common_samples_per_frame));
+  descriptor_statistics_.emplace(DescriptorStatistics{
+      .common_samples_per_frame = common_samples_per_frame,
+      .common_sample_rate = common_sample_rate,
+      .common_bit_depth = common_bit_depth,
+      .num_channels = GetNumberOfChannels(audio_elements),
+      .first_untrimmed_timestamp = std::nullopt,
+  });
 
-  // Write the descriptor OBUs.
-  WriteBitBuffer wb(kBufferStartSize, leb_generator_);
-
+  // Serialize descriptor OBUS and adjacent arbitrary OBUs.
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
-      ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb));
+      ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
   // Write out the descriptor OBUs.
   RETURN_IF_NOT_OK(ObuSequencerBase::WriteDescriptorObus(
       ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus, arbitrary_obus, wb));
+      mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
-      ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb));
+      ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb_));
+
+  if (delay_descriptors_until_first_untrimmed_sample_) {
+    // Delay the descriptor OBUs, the concrete class requested the
+    // `first_pts`.
+    delayed_descriptor_obus_ = wb_.bit_buffer();
+  } else {
+    // Avoid unnecessary delay, for concrete classes that don't need
+    // `first_pts`.
+
+    RETURN_IF_NOT_OK(PushSerializedDescriptorObus(
+        descriptor_statistics_->common_samples_per_frame,
+        descriptor_statistics_->common_sample_rate,
+        descriptor_statistics_->common_bit_depth,
+        descriptor_statistics_->first_untrimmed_timestamp,
+        descriptor_statistics_->num_channels,
+        absl::MakeConstSpan(wb_.bit_buffer())));
+
+    state_ = kPushSerializedDescriptorsCalled;
+  }
+
+  abort_on_destruct.CancelAbort();
+  return absl::OkStatus();
+}
+
+absl::Status ObuSequencerBase::PushTemporalUnit(
+    const TemporalUnitView& temporal_unit) {
+  // Many failure points should call `Abort`. We want to avoid leaving
+  // sequencers open if they may have invalid or corrupted IAMF data.
+  AbortOnDestruct abort_on_destruct(this);
+  switch (state_) {
+    case kInitialized:
+      return absl::FailedPreconditionError(
+          "PushDescriptorObus must be called before PushTemporalUnit.");
+      break;
+    case kPushDescriptorObusCalled:
+    case kPushSerializedDescriptorsCalled:
+      break;
+    case kClosed:
+      return absl::FailedPreconditionError(
+          "PushTemporalUnit can only be called before `Close` or `Abort`.");
+  }
+  wb_.Reset();
+
+  // Cache the frame for later
+  const int64_t start_timestamp =
+      static_cast<int64_t>(temporal_unit.start_timestamp_);
+  int num_samples = 0;
+  RETURN_IF_NOT_OK(WriteTemporalUnit(include_temporal_delimiters_,
+                                     temporal_unit, wb_, num_samples));
+  cumulative_num_samples_for_logging_ += num_samples;
+  num_temporal_units_for_logging_++;
+
+  if (!descriptor_statistics_->first_untrimmed_timestamp.has_value()) {
+    // Treat the initial temporal units as a special case, this helps gather
+    // statistics about the first untrimmed sample.
+    RETURN_IF_NOT_OK(HandleInitialTemporalUnits(
+        temporal_unit, absl::MakeConstSpan(wb_.bit_buffer())));
+
+  } else if (temporal_unit.num_samples_to_trim_at_start_ > 0) {
+    return absl::InvalidArgumentError(
+        "A unit has samples to trim at start, but the first untrimmed sample "
+        "was already found.");
+  } else [[likely]] {
+    // This is by far the most common case, after we have seen the first real
+    // frame of audio, we can handle this simply.
+    RETURN_IF_NOT_OK(PushSerializedTemporalUnit(
+        start_timestamp, num_samples, absl::MakeConstSpan(wb_.bit_buffer())));
+  }
+
+  abort_on_destruct.CancelAbort();
+  return absl::OkStatus();
+}
+
+absl::Status ObuSequencerBase::PickAndPlace(
+    const IASequenceHeaderObu& ia_sequence_header_obu,
+    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const std::list<MixPresentationObu>& mix_presentation_obus,
+    const std::list<AudioFrameWithData>& audio_frames,
+    const std::list<ParameterBlockWithData>& parameter_blocks,
+    const std::list<ArbitraryObu>& arbitrary_obus) {
+  RETURN_IF_NOT_OK(PushDescriptorObus(ia_sequence_header_obu, codec_config_obus,
+                                      audio_elements, mix_presentation_obus,
+                                      arbitrary_obus));
 
   TemporalUnitMap temporal_unit_map;
   RETURN_IF_NOT_OK(GenerateTemporalUnitMap(audio_frames, parameter_blocks,
                                            arbitrary_obus, temporal_unit_map));
-
-  // If `delay_descriptors_until_first_untrimmed_sample` is true, then concrete
-  // class needs `first_untrimmed_timestamp`. Otherwise, it would cause an
-  // unnecessary delay, because the PTS cannot be determined until the first
-  // untrimmed sample is received.
-  std::optional<int64_t> first_untrimmed_timestamp;
-  if (delay_descriptors_until_first_untrimmed_sample_) {
-    // TODO(b/397637224): When this class can be used iteratively, we need to
-    //                    determine the first PTS from the initial audio frames
-    //                    only.
-    const auto temp_first_untrimmed_timestamp =
-        GetFirstUntrimmedTimestamp(temporal_unit_map);
-    if (!temp_first_untrimmed_timestamp.ok()) {
-      return temp_first_untrimmed_timestamp.status();
-    }
-    first_untrimmed_timestamp = *temp_first_untrimmed_timestamp;
+  for (const auto& [timestamp, temporal_unit] : temporal_unit_map) {
+    RETURN_IF_NOT_OK(PushTemporalUnit(temporal_unit));
   }
+  return Close();
+}
 
-  int64_t cumulative_num_samples_for_logging = 0;
-  int64_t num_temporal_units_for_logging = 0;
-  const auto wrote_ia_sequence = [&]() -> absl::Status {
-    RETURN_IF_NOT_OK(PushSerializedDescriptorObus(
-        common_samples_per_frame, common_sample_rate, common_bit_depth,
-        first_untrimmed_timestamp, GetNumberOfChannels(audio_elements),
-        absl::MakeConstSpan(wb.bit_buffer())));
-    wb.Reset();
+absl::Status ObuSequencerBase::Close() {
+  switch (state_) {
+    case kInitialized:
+      break;
+    case kPushDescriptorObusCalled: {
+      // Ok, trivial IA sequences don't have a first untrimmed timestamp. So
+      // we will simply push the descriptors with a fallback PTS of 0.
+      descriptor_statistics_->first_untrimmed_timestamp = kFallbackFirstPts;
 
-    for (const auto& [timestamp, temporal_unit] : temporal_unit_map) {
-      // Write the IA Sample to a `MediaSample`.
-      int num_samples = 0;
-
-      RETURN_IF_NOT_OK(WriteTemporalUnit(include_temporal_delimiters_,
-                                         temporal_unit, wb, num_samples));
-      RETURN_IF_NOT_OK(PushSerializedTemporalUnit(
-          static_cast<int64_t>(timestamp), num_samples, wb.bit_buffer()));
-
-      cumulative_num_samples_for_logging += num_samples;
-      num_temporal_units_for_logging++;
-      wb.Reset();
+      RETURN_IF_NOT_OK(PushSerializedDescriptorObus(
+          descriptor_statistics_->common_samples_per_frame,
+          descriptor_statistics_->common_sample_rate,
+          descriptor_statistics_->common_bit_depth,
+          descriptor_statistics_->first_untrimmed_timestamp,
+          descriptor_statistics_->num_channels,
+          absl::MakeConstSpan(delayed_descriptor_obus_)));
+      state_ = kPushSerializedDescriptorsCalled;
+      break;
     }
-    return absl::OkStatus();
-  }();
-  if (!wrote_ia_sequence.ok()) {
-    // Something failed when writing the IA Sequence. Signal to clean up the
-    // output, such as removing a bad file.
-    Abort();
-    return wrote_ia_sequence;
+    case kPushSerializedDescriptorsCalled:
+      break;
+    case kClosed:
+      return absl::FailedPreconditionError(
+          "`Abort` or `Close` previously called.");
   }
-
-  LOG(INFO) << "Wrote " << num_temporal_units_for_logging
-            << " temporal units with a total of "
-            << cumulative_num_samples_for_logging
-            << " samples excluding padding.";
-
-  Flush();
-  state_ = kFlushed;
+  CloseDerived();
+  state_ = kClosed;
   return absl::OkStatus();
+}
+
+void ObuSequencerBase::Abort() {
+  AbortDerived();
+  state_ = kClosed;
+}
+
+absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
+    const TemporalUnitView& temporal_unit,
+    absl::Span<const uint8_t> serialized_temporal_unit) {
+  const bool found_first_untrimmed_sample =
+      temporal_unit.num_untrimmed_samples_ != 0;
+  if (found_first_untrimmed_sample) {
+    // Gather the PTS. For internal accuracy, we store this even if we don't
+    // need to delay the descriptors.
+    descriptor_statistics_->first_untrimmed_timestamp =
+        temporal_unit.start_timestamp_ +
+        temporal_unit.num_samples_to_trim_at_start_;
+  }
+
+  // Push immediately if we don't need to delay the descriptors.
+  if (!delay_descriptors_until_first_untrimmed_sample_) {
+    return PushSerializedTemporalUnit(temporal_unit.start_timestamp_,
+                                      temporal_unit.num_untrimmed_samples_,
+                                      serialized_temporal_unit);
+  }
+
+  if (!found_first_untrimmed_sample) {
+    // This frame is fully trimmed. Cache it for later.
+    delayed_temporal_units_.push_back(SerializedTemporalUnit{
+        .start_timestamp = temporal_unit.start_timestamp_,
+        .num_untrimmed_samples = temporal_unit.num_untrimmed_samples_,
+        .data = std::vector<uint8_t>(serialized_temporal_unit.begin(),
+                                     serialized_temporal_unit.end())});
+    return absl::OkStatus();
+  }
+
+  // Found the first untrimmed sample. Push out all delayed OBUs.
+  RETURN_IF_NOT_OK(PushSerializedDescriptorObus(
+      descriptor_statistics_->common_samples_per_frame,
+      descriptor_statistics_->common_sample_rate,
+      descriptor_statistics_->common_bit_depth,
+      descriptor_statistics_->first_untrimmed_timestamp,
+      descriptor_statistics_->num_channels,
+      absl::MakeConstSpan(delayed_descriptor_obus_)));
+  delayed_descriptor_obus_.clear();
+  state_ = kPushSerializedDescriptorsCalled;
+
+  // Flush any delayed temporal units.
+  for (const auto& delayed_temporal_unit : delayed_temporal_units_) {
+    RETURN_IF_NOT_OK(PushSerializedTemporalUnit(
+        delayed_temporal_unit.start_timestamp,
+        delayed_temporal_unit.num_untrimmed_samples,
+        absl::MakeConstSpan(delayed_temporal_unit.data)));
+  }
+  delayed_temporal_units_.clear();
+  // Then finally, flush the current temporal unit.
+  return PushSerializedTemporalUnit(temporal_unit.start_timestamp_,
+                                    temporal_unit.num_untrimmed_samples_,
+                                    serialized_temporal_unit);
 }
 
 }  // namespace iamf_tools
