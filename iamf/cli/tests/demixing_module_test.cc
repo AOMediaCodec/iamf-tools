@@ -48,10 +48,13 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using enum ChannelLabel::Label;
-using testing::DoubleEq;
-using testing::DoubleNear;
-using testing::Pointwise;
+using ::testing::DoubleEq;
+using ::testing::DoubleNear;
+using ::testing::IsEmpty;
+using ::testing::Not;
+using ::testing::Pointwise;
 
 constexpr DecodedUleb128 kAudioElementId = 137;
 constexpr std::array<uint8_t, 12> kReconGainValues = {
@@ -263,7 +266,21 @@ TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
   EXPECT_TRUE(demixer->empty());
 }
 
-TEST(DemixAudioSamples, OutputContainsOriginalAndDemixedSamples) {
+TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers(
+      {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
+      {ChannelAudioLayerConfig::kLayoutMono,
+       ChannelAudioLayerConfig::kLayoutStereo},
+      audio_elements);
+  auto demixing_module =
+      DemixingModule::CreateForReconstruction(audio_elements);
+  ASSERT_THAT(demixing_module, IsOk());
+
+  EXPECT_THAT(demixing_module->DemixOriginalAudioSamples({}), Not(IsOk()));
+}
+
+TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -290,23 +307,18 @@ TEST(DemixAudioSamples, OutputContainsOriginalAndDemixedSamples) {
   auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
-  IdLabeledFrameMap id_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples({}, decoded_audio_frames,
-                                                 id_labeled_frame,
-                                                 id_to_labeled_decoded_frame),
-              IsOk());
+  const auto id_to_labeled_decoded_frame =
+      demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
+  ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+  ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
-  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kL2));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kMono));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kDemixedR2));
-  // When being used for reconstruction the original audio frames are not
-  // output.
-  EXPECT_FALSE(id_labeled_frame.contains(kAudioElementId));
 }
 
-TEST(DemixAudioSamples, OutputEchoesTimingInformation) {
+TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   // These values are not very sensible, but as long as they are consistent
   // between related frames it is OK.
   const DecodedUleb128 kExpectedStartTimestamp = 99;
@@ -340,14 +352,13 @@ TEST(DemixAudioSamples, OutputEchoesTimingInformation) {
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
-  IdLabeledFrameMap unused_id_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples({}, decoded_audio_frames,
-                                                 unused_id_labeled_frame,
-                                                 id_to_labeled_decoded_frame),
-              IsOk());
 
-  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  const auto id_to_labeled_decoded_frame =
+      demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
+  ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+  ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
+
+  const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
   EXPECT_EQ(labeled_frame.end_timestamp, kExpectedEndTimestamp);
   EXPECT_EQ(labeled_frame.samples_to_trim_at_end,
             kExpectedNumSamplesToTrimAtEnd);
@@ -355,7 +366,7 @@ TEST(DemixAudioSamples, OutputEchoesTimingInformation) {
             kExpectedNumSamplesToTrimAtStart);
 }
 
-TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
+TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -384,14 +395,13 @@ TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
   ASSERT_THAT(demixing_module, IsOk());
 
   IdLabeledFrameMap unused_id_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples({}, decoded_audio_frames,
-                                                 unused_id_labeled_frame,
-                                                 id_to_labeled_decoded_frame),
-              IsOk());
+  const auto id_to_labeled_decoded_frame =
+      demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
+  ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+  ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
   // Examine the demixed frame.
-  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
   constexpr std::array<int32_t, 3> kExpectedMonoSamples = {1, 2, 3};
   constexpr std::array<int32_t, 3> kExpectedL2Samples = {9, 10, 11};
   EXPECT_THAT(
@@ -402,7 +412,7 @@ TEST(DemixAudioSamples, OutputEchoesOriginalLabels) {
       Pointwise(InternalSampleMatchesIntegralSample(), kExpectedL2Samples));
 }
 
-TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
+TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
 
   InitAudioElementWithLabelsAndLayers(
@@ -431,21 +441,19 @@ TEST(DemixAudioSamples, OutputHasReconstructedLayers) {
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
 
-  IdLabeledFrameMap unused_id_time_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples({}, decoded_audio_frames,
-                                                 unused_id_time_labeled_frame,
-                                                 id_to_labeled_decoded_frame),
-              IsOk());
+  const auto id_to_labeled_decoded_frame =
+      demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
+  ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+  ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
   // Examine the demixed frame.
-  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
   // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
   EXPECT_THAT(labeled_frame.label_to_samples.at(kDemixedR2),
               Pointwise(InternalSampleMatchesIntegralSample(), {500}));
 }
 
-TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
+TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -479,14 +487,12 @@ TEST(DemixAudioSamples, OutputContainsReconGainAndLayerInfo) {
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
-  IdLabeledFrameMap id_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples({}, decoded_audio_frames,
-                                                 id_labeled_frame,
-                                                 id_to_labeled_decoded_frame),
-              IsOk());
+  const auto id_to_labeled_decoded_frame =
+      demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
+  ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+  ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
-  const auto& labeled_frame = id_to_labeled_decoded_frame.at(kAudioElementId);
+  const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kL2));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kMono));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kDemixedR2));
@@ -995,19 +1001,18 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .label_to_samples[label] = expected_demixed_samples_as_internal_type;
   }
 
-  void TestDemixing(int expected_number_of_down_mixers) {
-    IdLabeledFrameMap unused_id_to_labeled_frame, id_to_labeled_decoded_frame;
-
+  void TestLosslessDemixing(int expected_number_of_down_mixers) {
     TestCreateDemixingModule(expected_number_of_down_mixers);
 
-    EXPECT_THAT(demixing_module_->DemixAudioSamples(
-                    audio_frames_, decoded_audio_frames_,
-                    unused_id_to_labeled_frame, id_to_labeled_decoded_frame),
-                IsOk());
+    const auto id_to_labeled_decoded_frame =
+        demixing_module_->DemixDecodedAudioSamples(decoded_audio_frames_);
+    ASSERT_THAT(id_to_labeled_decoded_frame, IsOk());
+    ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
     // Check that the demixed samples have the correct values.
     const auto& actual_label_to_samples =
-        id_to_labeled_decoded_frame[kAudioElementId].label_to_samples;
+        id_to_labeled_decoded_frame->at(kAudioElementId).label_to_samples;
+
     const auto& expected_label_to_samples =
         expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
     EXPECT_EQ(actual_label_to_samples.size(), expected_label_to_samples.size());
@@ -1018,6 +1023,15 @@ class DemixingModuleTest : public DemixingModuleTestBase,
       EXPECT_THAT(samples, Pointwise(DoubleNear(kErrorTolerance),
                                      expected_label_to_samples.at(label)));
     }
+
+    // Also, since this is lossless, we expect demixing the original samples
+    // should give the same result.
+    const auto id_to_labeled_frame =
+        demixing_module_->DemixOriginalAudioSamples(audio_frames_);
+    ASSERT_THAT(id_to_labeled_frame, IsOk());
+    ASSERT_TRUE(id_to_labeled_frame->contains(kAudioElementId));
+    EXPECT_EQ(id_to_labeled_frame->at(kAudioElementId).label_to_samples,
+              actual_label_to_samples);
   }
 
  protected:
@@ -1027,22 +1041,22 @@ class DemixingModuleTest : public DemixingModuleTestBase,
   IdLabeledFrameMap expected_id_to_labeled_decoded_frame_;
 };  // namespace
 
-TEST(DemixingModule, DemixingAudioSamplesSucceedsWithEmptyInputs) {
+TEST(DemixingModule, DemixingOriginalAudioSamplesSucceedsWithEmptyInputs) {
   const auto demixing_module =
       DemixingModule::CreateForDownMixingAndReconstruction({});
   ASSERT_THAT(demixing_module, IsOk());
 
-  // Call `DemixAudioSamples()`.
-  IdLabeledFrameMap id_to_labeled_frame, id_to_labeled_decoded_frame;
-  EXPECT_THAT(demixing_module->DemixAudioSamples(
-                  /*audio_frames=*/{},
-                  /*decoded_audio_frames=*/{}, id_to_labeled_frame,
-                  id_to_labeled_decoded_frame),
-              IsOk());
+  EXPECT_THAT(demixing_module->DemixOriginalAudioSamples({}),
+              IsOkAndHolds(IsEmpty()));
+}
 
-  // Expect empty outputs.
-  EXPECT_TRUE(id_to_labeled_frame.empty());
-  EXPECT_TRUE(id_to_labeled_decoded_frame.empty());
+TEST(DemixingModule, DemixingDecodedAudioSamplesSucceedsWithEmptyInputs) {
+  const auto demixing_module =
+      DemixingModule::CreateForDownMixingAndReconstruction({});
+  ASSERT_THAT(demixing_module, IsOk());
+
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples({}),
+              IsOkAndHolds(IsEmpty()));
 }
 
 TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {
@@ -1053,7 +1067,7 @@ TEST_F(DemixingModuleTest, AmbisonicsHasNoDemixers) {
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kA2}, {{1}});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kA3}, {{1}});
 
-  TestDemixing(0);
+  TestLosslessDemixing(0);
 }
 
 TEST_F(DemixingModuleTest, S1ToS2Demixer) {
@@ -1069,11 +1083,11 @@ TEST_F(DemixingModuleTest, S1ToS2Demixer) {
   // D_R2 =  M - (L2 - 6 dB)  + 6 dB.
   ConfiguredExpectedDemixingChannelFrame(kDemixedR2, {500, 1000});
 
-  TestDemixing(1);
+  TestLosslessDemixing(1);
 }
 
 TEST_F(DemixingModuleTest,
-       DemixAudioSamplesReturnsErrorIfAudioFrameIsMissingPcmSamples) {
+       DemixOriginalAudioSamplesReturnsErrorIfAudioFrameIsMissingPcmSamples) {
   ConfigureAudioFrameMetadata({kL2, kR2});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kMono}, {{750}, {1500}});
   ConfigureLosslessAudioFrameAndDecodedAudioFrame({kL2}, {{1000}, {2000}});
@@ -1082,11 +1096,8 @@ TEST_F(DemixingModuleTest,
   // Destroy the raw samples.
   audio_frames_.back().pcm_samples = std::nullopt;
 
-  EXPECT_FALSE(demixing_module_
-                   ->DemixAudioSamples(audio_frames_, decoded_audio_frames_,
-                                       unused_id_to_labeled_frame,
-                                       id_to_labeled_decoded_frame)
-                   .ok());
+  EXPECT_THAT(demixing_module_->DemixOriginalAudioSamples(audio_frames_),
+              Not(IsOk()));
 }
 
 TEST_F(DemixingModuleTest, S2ToS3Demixer) {
@@ -1108,7 +1119,7 @@ TEST_F(DemixingModuleTest, S2ToS3Demixer) {
   ConfiguredExpectedDemixingChannelFrame(kDemixedL3, {-1344, 993});
   ConfiguredExpectedDemixingChannelFrame(kDemixedR3, {-1344, 993});
 
-  TestDemixing(1);
+  TestLosslessDemixing(1);
 }
 
 TEST_F(DemixingModuleTest, S3ToS5AndTf2ToT2Demixers) {
@@ -1143,7 +1154,7 @@ TEST_F(DemixingModuleTest, S3ToS5AndTf2ToT2Demixers) {
   ConfiguredExpectedDemixingChannelFrame(kDemixedLtf2, {-1165});
   ConfiguredExpectedDemixingChannelFrame(kDemixedRtf2, {-165});
 
-  TestDemixing(2);
+  TestLosslessDemixing(2);
 }
 
 TEST_F(DemixingModuleTest, S5ToS7Demixer) {
@@ -1176,7 +1187,7 @@ TEST_F(DemixingModuleTest, S5ToS7Demixer) {
   ConfiguredExpectedDemixingChannelFrame(kDemixedLrs7, {8000});
   ConfiguredExpectedDemixingChannelFrame(kDemixedRrs7, {7000});
 
-  TestDemixing(1);
+  TestLosslessDemixing(1);
 }
 
 TEST_F(DemixingModuleTest, T2ToT4Demixer) {
@@ -1205,7 +1216,7 @@ TEST_F(DemixingModuleTest, T2ToT4Demixer) {
   ConfiguredExpectedDemixingChannelFrame(kDemixedLtb4, {9000});
   ConfiguredExpectedDemixingChannelFrame(kDemixedRtb4, {18000});
 
-  TestDemixing(1);
+  TestLosslessDemixing(1);
 }
 
 }  // namespace

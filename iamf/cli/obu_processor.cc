@@ -827,8 +827,6 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   }
 
   // Decode the temporal unit.
-  const std::list<AudioFrameWithData> kIgnoreOriginalAudioFrames;
-  IdLabeledFrameMap unused_original_labeled_frames;
   std::optional<InternalTimestamp> end_timestamp;
 
   // This resizing should happen only once per IA sequence, since all the
@@ -856,18 +854,16 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   }
 
   // Reconstruct the temporal unit and store the result in the output map.
-  IdLabeledFrameMap decoded_labeled_frames_for_temporal_unit;
-  RETURN_IF_NOT_OK(demixing_module_->DemixAudioSamples(
-      kIgnoreOriginalAudioFrames, decoded_frames_for_temporal_unit_,
-      unused_original_labeled_frames,
-      decoded_labeled_frames_for_temporal_unit));
-
-  // To be safe clear the unused map. But we expect it to be empty.
-  unused_original_labeled_frames.clear();
+  const auto decoded_labeled_frames_for_temporal_unit =
+      demixing_module_->DemixDecodedAudioSamples(
+          decoded_frames_for_temporal_unit_);
+  if (!decoded_labeled_frames_for_temporal_unit.ok()) {
+    return decoded_labeled_frames_for_temporal_unit.status();
+  }
 
   RETURN_IF_NOT_OK(mix_presentation_finalizer_->PushTemporalUnit(
-      decoded_labeled_frames_for_temporal_unit, start_timestamp, *end_timestamp,
-      parameter_blocks));
+      *decoded_labeled_frames_for_temporal_unit, start_timestamp,
+      *end_timestamp, parameter_blocks));
 
   auto rendered_samples =
       mix_presentation_finalizer_->GetPostProcessedSamplesAsSpan(

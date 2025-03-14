@@ -306,18 +306,24 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     decoded_audio_frames.emplace_back(*decoded_audio_frame);
   }
 
-  // Demix the audio frames.
-  IdLabeledFrameMap id_to_labeled_frame;
-  IdLabeledFrameMap id_to_labeled_decoded_frame;
-  RETURN_IF_NOT_OK(demixing_module_.DemixAudioSamples(
-      audio_frames, decoded_audio_frames, id_to_labeled_frame,
-      id_to_labeled_decoded_frame));
+  // Demix the original and decoded audio frames, differences between them are
+  // useful to compute the recon gain parameters.
+  const auto id_to_labeled_frame =
+      demixing_module_.DemixOriginalAudioSamples(audio_frames);
+  if (!id_to_labeled_frame.ok()) {
+    return id_to_labeled_frame.status();
+  }
+  const auto id_to_labeled_decoded_frame =
+      demixing_module_.DemixDecodedAudioSamples(decoded_audio_frames);
+  if (!id_to_labeled_decoded_frame.ok()) {
+    return id_to_labeled_decoded_frame.status();
+  }
 
   // Recon gain parameter blocks are generated based on the original and
   // demixed audio frames.
   RETURN_IF_NOT_OK(parameter_block_generator_.GenerateReconGain(
-      id_to_labeled_frame, id_to_labeled_decoded_frame, *global_timing_module_,
-      temp_recon_gain_parameter_blocks_));
+      *id_to_labeled_frame, *id_to_labeled_decoded_frame,
+      *global_timing_module_, temp_recon_gain_parameter_blocks_));
 
   // Move all generated parameter blocks belonging to this temporal unit to
   // the output.
@@ -335,7 +341,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   }
 
   return mix_presentation_finalizer_.PushTemporalUnit(
-      id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
+      *id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
       parameter_blocks);
 }
 

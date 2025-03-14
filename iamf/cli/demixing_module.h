@@ -174,20 +174,28 @@ class DemixingModule {
       absl::flat_hash_map<uint32_t, SubstreamData>&
           substream_id_to_substream_data) const;
 
-  /*!\brief Demix audio samples.
+  /*!\brief Demix original audio samples.
+   *
+   * This is most useful when the original (before lossy codec) samples are
+   * known, such as when encoding original audio.
    *
    * \param audio_frames Audio Frames.
-   * \param decoded_audio_frames Decoded Audio Frames.
-   * \param id_to_labeled_frame Output data structure for samples.
-   * \param id_to_labeled_decoded_frame Output data structure for decoded
-   *        samples.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \return Output data structure for samples, or a specific status on failure.
    */
-  absl::Status DemixAudioSamples(
-      const std::list<AudioFrameWithData>& audio_frames,
-      const std::list<DecodedAudioFrame>& decoded_audio_frames,
-      IdLabeledFrameMap& id_to_labeled_frame,
-      IdLabeledFrameMap& id_to_labeled_decoded_frame) const;
+  absl::StatusOr<IdLabeledFrameMap> DemixOriginalAudioSamples(
+      const std::list<AudioFrameWithData>& audio_frames) const;
+
+  /*!\brief Demix decoded audio samples.
+   *
+   * This is most useful when the decoded (after lossy codec) samples are
+   * known, such as when decoding an IA Sequence, or when analyzing the effect
+   * of a lossy codec to determine appropriate recon gain values.
+   *
+   * \param decoded_audio_frames Decoded Audio Frames.
+   * \return Output data structure for samples, or a specific status on failure.
+   */
+  absl::StatusOr<IdLabeledFrameMap> DemixDecodedAudioSamples(
+      const std::list<DecodedAudioFrame>& decoded_audio_frame) const;
 
   /*!\brief Gets the down-mixers associated with an Audio Element ID.
    *
@@ -208,19 +216,26 @@ class DemixingModule {
                            const std::list<Demixer>*& demixers) const;
 
  private:
+  enum class DemixingMode { kDownMixingAndReconstruction, kReconstruction };
+
   /*!\brief Private constructor.
    *
    * For use with `CreateForDownMixingAndReconstruction` and
    * `CreateForReconstruction`.
    *
+   * \param demixing_mode Mode of the class.
    * \param audio_element_id_to_demixing_metadata Mapping from audio element ID
    *        to demixing metadata.
    */
   DemixingModule(
+      DemixingMode demixing_mode,
       absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>&&
           audio_element_id_to_demixing_metadata)
-      : audio_element_id_to_demixing_metadata_(
+      : demixing_mode_(demixing_mode),
+        audio_element_id_to_demixing_metadata_(
             std::move(audio_element_id_to_demixing_metadata)) {}
+
+  DemixingMode demixing_mode_;
 
   const absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
       audio_element_id_to_demixing_metadata_;

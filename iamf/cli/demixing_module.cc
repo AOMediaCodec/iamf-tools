@@ -28,6 +28,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -614,8 +615,8 @@ const std::vector<std::vector<int32_t>>* GetSamples(
 }
 
 // NOOP function if the frame is not a DecodedAudioFrame.
-absl::Status PassThroughReconGainData(const AudioFrameWithData& audio_frame,
-                                      LabeledFrame& labeled_frame) {
+absl::Status PassThroughReconGainData(const AudioFrameWithData& /*audio_frame*/,
+                                      LabeledFrame& /*labeled_frame*/) {
   return absl::OkStatus();
 }
 
@@ -757,21 +758,16 @@ LookupLabelsToReconstruct(const AudioElementObu& obu) {
           "Unsupported audio element type= ", obu.GetAudioElementType()));
   }
 }
-void LogForAudioElementId(
-    DecodedUleb128 audio_element_id,
-    const IdLabeledFrameMap& id_to_labeled_frame,
-    const IdLabeledFrameMap& id_to_labeled_decoded_frame) {
-  if (!id_to_labeled_frame.contains(audio_element_id) ||
-      id_to_labeled_decoded_frame.contains(audio_element_id)) {
+void LogForAudioElementId(absl::string_view log_prefix,
+                          DecodedUleb128 audio_element_id,
+                          const IdLabeledFrameMap& id_to_labeled_frame) {
+  if (!id_to_labeled_frame.contains(audio_element_id)) {
     return;
   }
   for (const auto& [label, samples] :
        id_to_labeled_frame.at(audio_element_id).label_to_samples) {
-    const auto& decoded_samples =
-        id_to_labeled_decoded_frame.at(audio_element_id)
-            .label_to_samples.at(label);
-    LOG(INFO) << "  Channel " << label << ":\tframe size= " << samples.size()
-              << "; decoded frame size= " << decoded_samples.size();
+    LOG(INFO) << "  Channel " << label << ":\t" << log_prefix
+              << " frame size= " << samples.size() << ".";
   }
 }
 
@@ -813,7 +809,8 @@ DemixingModule::CreateForDownMixingAndReconstruction(
         audio_element_id_to_demixing_metadata[audio_element_id]));
   }
 
-  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
+  return DemixingModule(DemixingMode::kDownMixingAndReconstruction,
+                        std::move(audio_element_id_to_demixing_metadata));
 }
 
 absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
@@ -839,7 +836,8 @@ absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
     iter->second.down_mixers.clear();
   }
 
-  return DemixingModule(std::move(audio_element_id_to_demixing_metadata));
+  return DemixingModule(DemixingMode::kReconstruction,
+                        std::move(audio_element_id_to_demixing_metadata));
 }
 
 absl::Status DemixingModule::DownMixSamplesToSubstreams(
@@ -923,11 +921,14 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
 }
 
 // TODO(b/288240600): Down-mix audio samples in a standalone function too.
-absl::Status DemixingModule::DemixAudioSamples(
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<DecodedAudioFrame>& decoded_audio_frames,
-    IdLabeledFrameMap& id_to_labeled_frame,
-    IdLabeledFrameMap& id_to_labeled_decoded_frame) const {
+absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixOriginalAudioSamples(
+    const std::list<AudioFrameWithData>& audio_frames) const {
+  if (demixing_mode_ == DemixingMode::kReconstruction) {
+    return absl::FailedPreconditionError(
+        "Demixing original audio samples is not available in reconstruction "
+        "mode.");
+  }
+  IdLabeledFrameMap id_to_labeled_frame;
   for (const auto& [audio_element_id, demixing_metadata] :
        audio_element_id_to_demixing_metadata_) {
     // Process the original audio frames.
@@ -939,6 +940,18 @@ absl::Status DemixingModule::DemixAudioSamples(
           ApplyDemixers(demixing_metadata.demixers, labeled_frame));
       id_to_labeled_frame[audio_element_id] = std::move(labeled_frame);
     }
+
+    LogForAudioElementId("Original", audio_element_id, id_to_labeled_frame);
+  }
+
+  return id_to_labeled_frame;
+}
+
+absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
+    const std::list<DecodedAudioFrame>& decoded_audio_frames) const {
+  IdLabeledFrameMap id_to_labeled_decoded_frame;
+  for (const auto& [audio_element_id, demixing_metadata] :
+       audio_element_id_to_demixing_metadata_) {
     // Process the decoded audio frames.
     LabeledFrame labeled_decoded_frame;
     RETURN_IF_NOT_OK(StoreSamplesForAudioElementId(
@@ -951,11 +964,11 @@ absl::Status DemixingModule::DemixAudioSamples(
           std::move(labeled_decoded_frame);
     }
 
-    LogForAudioElementId(audio_element_id, id_to_labeled_frame,
+    LogForAudioElementId("Decoded", audio_element_id,
                          id_to_labeled_decoded_frame);
   }
 
-  return absl::OkStatus();
+  return id_to_labeled_decoded_frame;
 }
 
 absl::Status DemixingModule::GetDownMixers(
