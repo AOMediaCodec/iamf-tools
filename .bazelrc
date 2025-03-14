@@ -10,16 +10,20 @@ build --enable_runfiles
 # build.
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_platform_specific_config
+build --stamp
 
 # Platform specific configuration.
 build:linux --linkopt=-lm
 build:linux --cxxopt=-std=c++20
 build:linux --cxxopt=-Wno-sign-compare
+build:linux --workspace_status_command=external/git_status_command.sh
 
 build:macos --macos_minimum_os=12.0
 build:macos --linkopt=-lm
 build:macos --cxxopt=-std=c++20
 build:macos --cxxopt=-Wno-sign-compare
+build:macos --workspace_status_command=external/git_status_command.sh
 
 build:windows --cxxopt=/std:c++20
+# TODO(b/388577499): Implement a Windows compatible `workspace_status_command`.
 startup --windows_enable_symlinks

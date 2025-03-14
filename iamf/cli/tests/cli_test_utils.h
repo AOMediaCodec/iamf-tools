@@ -403,7 +403,7 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
  */
 MATCHER(TagMatchesBuildInformation, "") {
   constexpr absl::string_view kIamfEncoderBuildInformationPrefix =
-      "GitHub/iamf-tools";
+      "GitHub/iamf-tools@";
   return arg.tag_name == "iamf_encoder" &&
          ExplainMatchResult(
              ::testing::StartsWith(kIamfEncoderBuildInformationPrefix),

@@ -24,6 +24,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "iamf/cli/build_info.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
@@ -331,12 +332,13 @@ absl::Status FillMixPresentationTags(
   }
   // Append the build information tag.
   if (append_build_information_tag) {
-    // TODO(b/388577499): Include the commit hash at build time, in the
-    //                    `iamf_encoder` tag value.
     obu_mix_presentation_tags->tags.emplace_back(MixPresentationTags::Tag{
         .tag_name = "iamf_encoder",
-        .tag_value = "GitHub/iamf-tools",
+        .tag_value =
+            absl::StrCat("GitHub/iamf-tools@", std::string(GetBuildVersion())),
     });
+    LOG(INFO) << "Adding build information tag: "
+              << obu_mix_presentation_tags->tags.back().tag_value;
   }
 
   return absl::OkStatus();
