@@ -13,8 +13,6 @@
 #ifndef API_DECODER_IAMF_DECODER_H_
 #define API_DECODER_IAMF_DECODER_H_
 
-#include <sys/types.h>
-
 #include <cstdint>
 #include <memory>
 #include <vector>

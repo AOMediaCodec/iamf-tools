@@ -13,7 +13,6 @@
 #include "iamf/api/decoder/iamf_decoder.h"
 
 #include <cstdint>
-#include <list>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -25,9 +24,7 @@
 #include "absl/types/span.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
 #include "iamf/api/types.h"
-#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/obu_processor.h"
-#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"

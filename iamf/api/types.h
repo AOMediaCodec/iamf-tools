@@ -58,7 +58,7 @@ enum class OutputLayout {
 };
 
 /*!\brief Determines the format of the output file. */
-enum OutputFileBitDepth {
+enum class OutputFileBitDepth {
   kBitDepthAutomatic,  // Automatically determine based on the bit-depth of
                        // the input file.
   kBitDepth16,
