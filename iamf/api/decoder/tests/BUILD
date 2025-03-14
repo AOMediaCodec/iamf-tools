@@ -1,4 +1,19 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
+cc_test(
+    name = "iamf_decoder_fuzz_test",
+    srcs = ["iamf_decoder_fuzz_test.cc"],
+    deps = [
+        "//iamf/api:types",
+        "//iamf/api/decoder:iamf_decoder",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_fuzztest//fuzztest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "iamf_decoder_test",
     srcs = ["iamf_decoder_test.cc"],
@@ -20,5 +35,4 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
 # keep-sorted end
