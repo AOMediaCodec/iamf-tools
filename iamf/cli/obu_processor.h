@@ -113,7 +113,7 @@ class ObuProcessor {
           audio_elements_with_data,
       const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
           codec_config_obus,
-      const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
+      const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
           substream_id_to_audio_element,
       const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
           param_definition_variants,
@@ -134,13 +134,14 @@ class ObuProcessor {
    *        descriptor OBUs.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
-   * \param insufficient_data Whether the bitstream provided is insufficient to
-   *        process all descriptor OBUs.
+   * \param output_insufficient_data True iff the bitstream provided is
+   *        insufficient to process all descriptor OBUs and there is no other
+   *        error.
    * \return std::unique_ptr<ObuProcessor> on success. `nullptr` on failure.
    */
   static std::unique_ptr<ObuProcessor> Create(bool is_exhaustive_and_exact,
                                               ReadBitBuffer* read_bit_buffer,
-                                              bool& insufficient_data);
+                                              bool& output_insufficient_data);
 
   /*!\brief Move constructor. */
   ObuProcessor(ObuProcessor&& obu_processor) = delete;
@@ -159,8 +160,9 @@ class ObuProcessor {
    *        descriptor OBUs.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
-   * \param insufficient_data Whether the bitstream provided is insufficient to
-   *        process all descriptor OBUs.
+   * \param output_insufficient_data True iff the bitstream provided is
+   *        insufficient to process all descriptor OBUs and there is no other
+   *        error.
    * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
    */
   static std::unique_ptr<ObuProcessor> CreateForRendering(
@@ -168,7 +170,7 @@ class ObuProcessor {
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
       bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-      bool& insufficient_data);
+      bool& output_insufficient_data);
 
   // TODO(b/381072155): Consider removing this one in favor of
   //                    `ProcessTemporalUnit()`, which outputs all OBUs
@@ -260,11 +262,14 @@ class ObuProcessor {
    *        include all descriptor OBUs and no other data. This should only be
    *        set to true if the user knows the exact boundaries of their set of
    *        descriptor OBUs.
+    \param output_insufficient_data True iff the bitstream provided is
+   *        insufficient to process all descriptor OBUs and there is no other
+   *        error.
    * \return `absl::OkStatus()` if initialization is successful. A specific
    *        status on failure.
    */
   absl::Status InitializeInternal(bool is_exhaustive_and_exact,
-                                  bool& insufficient_data);
+                                  bool& output_insufficient_data);
 
   /*!\brief Initializes the OBU processor for rendering.
    *
@@ -314,9 +319,11 @@ class ObuProcessor {
         current_temporal_unit.timestamp = new_timestamp;
       }
       if (*current_temporal_unit.timestamp == new_timestamp) {
-        current_temporal_unit.GetList<T>().push_back(std::move(obu_with_data));
+        current_temporal_unit.GetList<T>().push_back(
+            std::forward<T>(obu_with_data));
       } else {
-        next_temporal_unit.GetList<T>().push_back(std::move(obu_with_data));
+        next_temporal_unit.GetList<T>().push_back(
+            std::forward<T>(obu_with_data));
         next_temporal_unit.timestamp = new_timestamp;
       }
     }

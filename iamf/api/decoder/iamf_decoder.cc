@@ -80,6 +80,8 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
       /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
       insufficient_data);
   if (obu_processor == nullptr) {
+    // `insufficient_data` is true iff everything so far is valid but more data
+    // is needed.
     if (insufficient_data && !contains_all_descriptor_obus) {
       return absl::ResourceExhaustedError(
           "Have not received enough data yet to process descriptor "

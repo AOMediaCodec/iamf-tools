@@ -256,13 +256,13 @@ absl::Status InsufficientDataReset(
 }  // namespace
 
 absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
-                                              bool& insufficient_data) {
+                                              bool& output_insufficient_data) {
   // Process the descriptor OBUs.
   LOG(INFO) << "Starting Descriptor OBU processing";
   RETURN_IF_NOT_OK(ObuProcessor::ProcessDescriptorObus(
       is_exhaustive_and_exact, *read_bit_buffer_, ia_sequence_header_,
       codec_config_obus_, audio_elements_, mix_presentations_,
-      insufficient_data));
+      output_insufficient_data));
   LOG(INFO) << "Processed Descriptor OBUs";
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
       audio_elements_, mix_presentations_, param_definition_variants_));
@@ -300,7 +300,10 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         output_audio_elements_with_data,
     std::list<MixPresentationObu>& output_mix_presentation_obus,
-    bool& insufficient_data) {
+    bool& output_insufficient_data) {
+  // `output_insufficient_data` indicates a specific error condition and so is
+  // true iff we've received valid data but need more of it.
+  output_insufficient_data = false;
   auto audio_element_obu_map =
       absl::flat_hash_map<DecodedUleb128, AudioElementObu>();
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
@@ -314,9 +317,9 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
           absl::StatusCode::kResourceExhausted) {
         // Can't read header because there is not enough data.
         return InsufficientDataReset(
-            read_bit_buffer, global_position_before_all_obus, insufficient_data,
-            output_codec_config_obus, output_audio_elements_with_data,
-            output_mix_presentation_obus);
+            read_bit_buffer, global_position_before_all_obus,
+            output_insufficient_data, output_codec_config_obus,
+            output_audio_elements_with_data, output_mix_presentation_obus);
       } else {
         // Some other error occurred, propagate it.
         return header_metadata.status();
@@ -342,8 +345,7 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
       if (!processed_ia_header) {
         return absl::InvalidArgumentError(
             "An IA Sequence and/or descriptor OBUs must always start with an "
-            "IA "
-            "Header.");
+            "IA Header.");
       }
       // Break out of the while loop since we've reached the end of the
       // descriptor OBUs; should not seek back to the beginning of the buffer
@@ -355,9 +357,9 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
     if (!read_bit_buffer.CanReadBytes(header_metadata->total_obu_size)) {
       // This is a descriptor OBU for which we don't have enough data.
       return InsufficientDataReset(
-          read_bit_buffer, global_position_before_all_obus, insufficient_data,
-          output_codec_config_obus, output_audio_elements_with_data,
-          output_mix_presentation_obus);
+          read_bit_buffer, global_position_before_all_obus,
+          output_insufficient_data, output_codec_config_obus,
+          output_audio_elements_with_data, output_mix_presentation_obus);
     }
     // Now we know we can read the entire obu.
     const int64_t position_before_header = read_bit_buffer.Tell();
@@ -455,7 +457,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
         audio_elements_with_data,
     const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
         codec_config_obus,
-    const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
+    const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
         substream_id_to_audio_element,
     const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants,
@@ -587,14 +589,17 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
 
 std::unique_ptr<ObuProcessor> ObuProcessor::Create(
     bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-    bool& insufficient_data) {
+    bool& output_insufficient_data) {
+  // `output_insufficient_data` indicates a specific error condition and so is
+  // true iff we've received valid data but need more of it.
+  output_insufficient_data = false;
   if (read_bit_buffer == nullptr) {
     return nullptr;
   }
   std::unique_ptr<ObuProcessor> obu_processor =
       absl::WrapUnique(new ObuProcessor(read_bit_buffer));
   if (const auto status = obu_processor->InitializeInternal(
-          is_exhaustive_and_exact, insufficient_data);
+          is_exhaustive_and_exact, output_insufficient_data);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;
@@ -607,14 +612,17 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
     bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-    bool& insufficient_data) {
+    bool& output_insufficient_data) {
+  // `output_insufficient_data` indicates a specific error condition and so is
+  // true iff we've received valid data but need more of it.
+  output_insufficient_data = false;
   if (read_bit_buffer == nullptr) {
     return nullptr;
   }
   std::unique_ptr<ObuProcessor> obu_processor =
       absl::WrapUnique(new ObuProcessor(read_bit_buffer));
   if (const auto status = obu_processor->InitializeInternal(
-          is_exhaustive_and_exact, insufficient_data);
+          is_exhaustive_and_exact, output_insufficient_data);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;

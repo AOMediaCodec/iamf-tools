@@ -86,8 +86,6 @@ constexpr int kObuTypeBitShift = 3;
 constexpr int64_t kBufferCapacity = 1024;
 
 constexpr std::optional<uint8_t> kNoOutputFileBitDepthOverride = std::nullopt;
-constexpr uint8_t kOutputBitDepth24 = 24;
-constexpr uint8_t kOutputBitDepth32 = 32;
 constexpr std::array<uint8_t, 16> kArbitraryAudioFrame = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
@@ -114,7 +112,7 @@ auto CreateAllWavWriters(const std::string output_filename_string,
   };
 }
 
-TEST(ProcessDescriptorObus, InvalidWithoutIaSequenceHeader) {
+TEST(ProcessDescriptorObus, FailsWithEmptyBitstream) {
   const std::vector<uint8_t> bitstream_without_ia_sequence_header =
       SerializeObusExpectOk({});
   IASequenceHeaderObu ia_sequence_header;
@@ -126,13 +124,16 @@ TEST(ProcessDescriptorObus, InvalidWithoutIaSequenceHeader) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
       absl::MakeConstSpan(bitstream_without_ia_sequence_header));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_FALSE(ObuProcessor::ProcessDescriptorObus(
                    /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
                    ia_sequence_header, codec_config_obu,
                    audio_elements_with_data, mix_presentation_obus,
                    insufficient_data)
                    .ok());
+  // There's no data (and `is_exhaustive_and_exact` is false), so we need more
+  // data to proceed.
+  EXPECT_TRUE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
@@ -154,7 +155,7 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(two_codec_configs_and_audio_frame));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
@@ -165,6 +166,10 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   EXPECT_EQ(output_codec_config_obus.size(), 2);
   EXPECT_TRUE(output_codec_config_obus.contains(kFirstCodecConfigId));
   EXPECT_TRUE(output_codec_config_obus.contains(kSecondCodecConfigId));
+  // `insufficient_data` is false because we have successfully read all provided
+  // descriptor obus AND `is_exhaustive_and_exact` is true, meaning that the
+  // caller has indicated that there are no future Descriptor OBUs coming.
+  EXPECT_FALSE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
@@ -184,13 +189,14 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
           ia_sequence_header, codec_config_obus, audio_elements_with_data,
           mix_presentation_obus, insufficient_data),
       IsOk());
+  // `is_exhaustive_and_exact` is true so it could not be a more-data situation.
   EXPECT_FALSE(insufficient_data);
 
   EXPECT_EQ(codec_config_obus.size(), 2);
@@ -217,13 +223,15 @@ TEST(ProcessDescriptorObus,
       kBufferCapacity,
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
   auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/false, *read_bit_buffer,
           ia_sequence_header, codec_config_obus, audio_elements_with_data,
           mix_presentation_obus, insufficient_data),
       Not(IsOk()));
+  // `is_exhaustive_and_exact` is false so we won't know it's the end of the
+  // bitstream until we see a temporal unit.  Need more data to know we're done.
   EXPECT_TRUE(insufficient_data);
   EXPECT_EQ(codec_config_obus.size(), 0);
   EXPECT_EQ(read_bit_buffer->Tell(), start_position);
@@ -240,7 +248,7 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(only_ia_sequence_header));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
@@ -252,6 +260,7 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
             ProfileVersion::kIamfSimpleProfile);
   EXPECT_EQ(ia_sequence_header.GetAdditionalProfile(),
             ProfileVersion::kIamfBaseProfile);
+  EXPECT_FALSE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
@@ -275,7 +284,7 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
       absl::MakeConstSpan(ia_sequence_header_then_codec_config));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(ObuProcessor::ProcessDescriptorObus(
                   /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
                   unused_ia_sequence_header, unused_codec_config_obus,
@@ -298,6 +307,9 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
                    unused_audio_elements_with_data,
                    unused_mix_presentation_obus, insufficient_data)
                    .ok());
+  // `insufficient_data` is false as the error was due to an invalid ordering of
+  // OBUs, rather than not having enough data.
+  EXPECT_FALSE(insufficient_data);
 }
 
 TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
@@ -314,7 +326,7 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
@@ -346,7 +358,7 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(buffer));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
@@ -379,7 +391,7 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
       absl::MakeConstSpan(ia_sequence_header_with_codec_configs));
-  bool insufficient_data = false;
+  bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
           /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
@@ -430,7 +442,7 @@ TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity,
       absl::MakeConstSpan(zeroth_order_ambisonics_descriptor_obus));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -467,7 +479,7 @@ TEST(ProcessDescriptorObus,
       kBufferCapacity,
       absl::MakeConstSpan(zeroth_order_ambisonics_descriptor_obus));
   auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -476,6 +488,7 @@ TEST(ProcessDescriptorObus,
           mix_presentation_obus, insufficient_data),
       Not(IsOk()));
 
+  // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
   EXPECT_EQ(codec_config_obus.size(), 0);
   EXPECT_EQ(audio_elements_with_data.size(), 0);
@@ -505,7 +518,7 @@ TEST(ProcessDescriptorObusTest,
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -541,7 +554,7 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -589,7 +602,7 @@ TEST(ProcessDescriptorObusTest,
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -598,6 +611,7 @@ TEST(ProcessDescriptorObusTest,
           mix_presentation_obus, insufficient_data),
       Not(IsOk()));
 
+  // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
   // Expect the reader position to be unchanged since we returned an error.
   EXPECT_EQ(read_bit_buffer->Tell(), start_position);
@@ -620,7 +634,7 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -629,6 +643,7 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
           mix_presentation_obus, insufficient_data),
       Not(IsOk()));
 
+  // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
   EXPECT_EQ(codec_config_obus.size(), 0);
   EXPECT_EQ(audio_elements_with_data.size(), 0);
@@ -1406,7 +1421,7 @@ TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
                    temporal_unit_obus.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1437,7 +1452,7 @@ TEST(ProcessTemporalUnit, DoesNotConsumeOneAudioFrameAsTemporalUnit) {
                    temporal_unit_obus.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1472,7 +1487,7 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
                    two_temporal_units_with_delimiter_obu.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1520,7 +1535,7 @@ TEST(ProcessTemporalUnit,
                    two_temporal_units.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1571,7 +1586,7 @@ TEST(ProcessTemporalUnit, ConsumesOnlyOneTemporalUnitFromTwoAudioFrames) {
                    two_temporal_units.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1630,7 +1645,7 @@ TEST(ProcessTemporalUnit,
                    two_temporal_units.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
@@ -1670,7 +1685,7 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsChunkedArbitrarily) {
   auto read_bit_buffer = StreamBasedReadBitBuffer::Create(kBufferCapacity);
   // Push descriptors.
   ASSERT_THAT(read_bit_buffer->PushBytes(bitstream), IsOk());
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
                            read_bit_buffer.get(), insufficient_data);
@@ -1895,7 +1910,7 @@ TEST(NonStatic, CreateSucceeds) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -1909,7 +1924,7 @@ TEST(NonStatic, CreateSucceeds) {
 }
 
 TEST(NonStatic, CreateFailsOnNullReadBitBuffer) {
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                                             nullptr, insufficient_data);
@@ -1922,13 +1937,14 @@ TEST(NonStatic, CreateFailsOnInsufficientData) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = true;
+  bool insufficient_data;
 
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
                            read_bit_buffer.get(), insufficient_data);
 
   EXPECT_THAT(obu_processor, IsNull());
+  // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
 }
 
@@ -1942,7 +1958,7 @@ TEST(NonStatic, ProcessTemporalUnitObu) {
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1974,7 +1990,7 @@ void RenderUsingObuProcessorExpectOk(
     const std::vector<uint8_t>& bitstream_of_descriptors) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream_of_descriptors));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   const std::string output_filename_string(output_filename);
   auto obu_processor = ObuProcessor::CreateForRendering(
@@ -2215,7 +2231,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
 
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
       kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
@@ -2325,7 +2341,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
          &mix_presentation_obus.front()});
     auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
         kBufferCapacity, absl::MakeConstSpan(bitstream));
-    bool insufficient_data = false;
+    bool insufficient_data;
 
     const std::string output_filename_string(output_filename);
     auto obu_processor = ObuProcessor::CreateForRendering(
@@ -2486,7 +2502,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   // Expect that the `ObuProcessor` rejects the rendering request.
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
       kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
@@ -2599,7 +2615,7 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
        &mix_presentation_obus.front()});
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
-  bool insufficient_data = false;
+  bool insufficient_data;
 
   // We expect arguments to be forwarded from the OBUs to the sample processor
   // factory.
@@ -2628,6 +2644,20 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
                   insufficient_data),
               NotNull());
+}
+
+TEST(CreateForRendering, NullReadBitBufferRejected) {
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  auto sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+  ReadBitBuffer* read_bit_buffer_nullptr = nullptr;
+  bool insufficient_data;
+
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kStereoLayout, sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
+                  insufficient_data),
+              IsNull());
+  EXPECT_FALSE(insufficient_data);
 }
 
 }  // namespace
