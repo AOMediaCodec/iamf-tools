@@ -91,6 +91,19 @@ struct DecodeSpecification {
 /*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param num_samples_per_frame Number of samples per frame.
+ * \param sample_size Sample size.
+ * \param sample_rate `sample_rate` of the OBU to create.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddLpcmCodecConfig(
+    DecodedUleb128 codec_config_id, uint32_t num_samples_per_frame,
+    uint8_t sample_size, uint32_t sample_rate,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
+/*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param sample_rate `sample_rate` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */

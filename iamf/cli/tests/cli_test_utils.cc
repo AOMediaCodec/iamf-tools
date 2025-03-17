@@ -148,8 +148,9 @@ absl::Status CollectObusFromIaSequence(
   return absl::OkStatus();
 }
 
-void AddLpcmCodecConfigWithIdAndSampleRate(
-    uint32_t codec_config_id, uint32_t sample_rate,
+void AddLpcmCodecConfig(
+    DecodedUleb128 codec_config_id, uint32_t num_samples_per_frame,
+    uint8_t sample_size, uint32_t sample_rate,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
@@ -157,13 +158,24 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
   CodecConfigObu obu(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdLpcm,
-       .num_samples_per_frame = 8,
+       .num_samples_per_frame = num_samples_per_frame,
        .decoder_config = LpcmDecoderConfig{
            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
-           .sample_size_ = 16,
+           .sample_size_ = sample_size,
            .sample_rate_ = sample_rate}});
   EXPECT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
   codec_config_obus.emplace(codec_config_id, std::move(obu));
+}
+
+void AddLpcmCodecConfigWithIdAndSampleRate(
+    uint32_t codec_config_id, uint32_t sample_rate,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
+  // Many tests either don't care about the details. Or assumed these "default"
+  // values.
+  constexpr uint32_t kNumSamplesPerFrame = 8;
+  constexpr uint8_t kSampleSize = 16;
+  return AddLpcmCodecConfig(codec_config_id, kNumSamplesPerFrame, kSampleSize,
+                            sample_rate, codec_config_obus);
 }
 
 void AddOpusCodecConfigWithId(
