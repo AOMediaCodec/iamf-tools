@@ -95,6 +95,7 @@ struct TemporalUnitView {
 
   // Common statistics for this temporal unit.
   const InternalTimestamp start_timestamp_;
+  const InternalTimestamp end_timestamp_;
   const uint32_t num_samples_to_trim_at_start_;
   const uint32_t num_untrimmed_samples_;
 
@@ -107,6 +108,7 @@ struct TemporalUnitView {
    * \param audio_frames Audio frames to include in the view.
    * \param arbitrary_obus Arbitrary OBUs to include in the view.
    * \param start_timestamp Start timestamp of the temporal unit.
+   * \param end_timestamp End timestamp of the temporal unit.
    * \param num_samples_to_trim_at_start Number of samples to trim at the start
    *        of the audio frames.
    * \param num_untrimmed_samples Number of samples in the audio frames before
@@ -116,8 +118,8 @@ struct TemporalUnitView {
       std::vector<const ParameterBlockWithData*>&& parameter_blocks,
       std::vector<const AudioFrameWithData*>&& audio_frames,
       std::vector<const ArbitraryObu*>&& arbitrary_obus,
-      InternalTimestamp start_timestamp, uint32_t num_samples_to_trim_at_start,
-      uint32_t num_untrimmed_samples);
+      InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
+      uint32_t num_samples_to_trim_at_start, uint32_t num_untrimmed_samples);
 };
 
 }  // namespace iamf_tools

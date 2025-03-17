@@ -305,6 +305,23 @@ TEST(Create, SetsStartTimestamp) {
   EXPECT_EQ(temporal_unit->start_timestamp_, kExpectedStartTimestamp);
 }
 
+TEST(Create, SetsEndTimestamp) {
+  constexpr InternalTimestamp kStartTimestamp = 123456789;
+  constexpr InternalTimestamp kExpectedEndTimestamp = kStartTimestamp + 8;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<AudioFrameWithData> audio_frames;
+  InitializeOneFrameIaSequence(codec_config_obus, audio_elements, audio_frames);
+  audio_frames.front().start_timestamp = kStartTimestamp;
+  audio_frames.front().end_timestamp = kExpectedEndTimestamp;
+
+  const auto temporal_unit = TemporalUnitView::Create(
+      kNoParameterBlocks, audio_frames, kNoArbitraryObus);
+  ASSERT_THAT(temporal_unit, IsOk());
+
+  EXPECT_EQ(temporal_unit->end_timestamp_, kExpectedEndTimestamp);
+}
+
 TEST(Create, SetsNumSamplesToTrimAtStart) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
