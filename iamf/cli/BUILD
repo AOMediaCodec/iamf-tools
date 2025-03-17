@@ -65,12 +65,6 @@ cc_library(
 )
 
 cc_library(
-    name = "build_info",
-    hdrs = ["build_info.h"],
-    linkstamp = "build_info.cc",
-)
-
-cc_library(
     name = "channel_label",
     srcs = ["channel_label.cc"],
     hdrs = ["channel_label.h"],

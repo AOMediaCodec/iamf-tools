@@ -141,7 +141,6 @@ cc_library(
     srcs = ["mix_presentation_generator.cc"],
     hdrs = ["mix_presentation_generator.h"],
     deps = [
-        "//iamf/cli:build_info",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
