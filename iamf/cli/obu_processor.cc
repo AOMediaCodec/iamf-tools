@@ -204,9 +204,9 @@ absl::Status GetAndStoreParameterBlockWithData(
   return absl::OkStatus();
 }
 
-// Returns an iterator to the first supported mix presentation in the list of
-// mix presentation OBUs or nullptr if none are supported.
-std::list<MixPresentationObu>::iterator GetFirstSupportedMixPresentation(
+// Returns a list of pointers to the supported mix presentations. Empty if none
+// are supported.
+std::list<MixPresentationObu*> GetSupportedMixPresentations(
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus) {
   // TODO(b/377554944): Support `ProfileVersion::kIamfBaseEnhancedProfile`.
@@ -214,6 +214,7 @@ std::list<MixPresentationObu>::iterator GetFirstSupportedMixPresentation(
   const absl::flat_hash_set<ProfileVersion> kSupportedProfiles = {
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
 
+  std::list<MixPresentationObu*> supported_mix_presentations;
   std::string cumulative_error_message;
   for (auto iter = mix_presentation_obus.begin();
        iter != mix_presentation_obus.end(); ++iter) {
@@ -221,14 +222,14 @@ std::list<MixPresentationObu>::iterator GetFirstSupportedMixPresentation(
     const auto status = ProfileFilter::FilterProfilesForMixPresentation(
         audio_elements, *iter, profiles);
     if (status.ok()) {
-      return iter;
+      supported_mix_presentations.push_back(&*iter);
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
   LOG(ERROR) << absl::StrCat(
       "No supported mix presentation presentation found in the bitstream.",
       cumulative_error_message);
-  return mix_presentation_obus.end();
+  return supported_mix_presentations;
 }
 
 // Resets the buffer to `start_position` and sets the `insufficient_data` flag
@@ -676,11 +677,12 @@ absl::Status ObuProcessor::InitializeForRendering(
 
   // TODO(b/340289717): Add a way to select the mix presentation if multiple
   //                    are supported.
-  const auto mix_presentation_to_render =
-      GetFirstSupportedMixPresentation(audio_elements_, mix_presentations_);
-  if (mix_presentation_to_render == mix_presentations_.end()) {
-    return absl::NotFoundError("No supportedmix presentation OBUs found.");
+  const std::list<MixPresentationObu*> supported_mix_presentations =
+      GetSupportedMixPresentations(audio_elements_, mix_presentations_);
+  if (supported_mix_presentations.empty()) {
+    return absl::NotFoundError("No supported mix presentation OBUs found.");
   }
+  const auto mix_presentation_to_render = supported_mix_presentations.front();
   int desired_sub_mix_index;
   int desired_layout_index;
   RETURN_IF_NOT_OK(GetIndicesForLayout(mix_presentation_to_render->sub_mixes_,
