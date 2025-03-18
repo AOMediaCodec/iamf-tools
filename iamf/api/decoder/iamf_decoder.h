@@ -121,8 +121,10 @@ class IamfDecoder {
    * both. User can provide as much data as they would like. To receive decoded
    * temporal units, GetOutputTemporalUnit() should be called. If
    * GetOutputTemporalUnit() has not been called, this function guarantees that
-   * any temporal units received thus far have not been lost. See sample usages
-   * for more details.
+   * any temporal units received thus far have not been lost. If descriptors are
+   * processed for the first time, function will exit before processing any
+   * temporal units. This provides the user a chance to configure the decoder as
+   * they see fit. See sample usages for more details.
    *
    * \param bitstream Bitstream to decode.
    * \return `absl::OkStatus()` upon success. Other specific statuses on

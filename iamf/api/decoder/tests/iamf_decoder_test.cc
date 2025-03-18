@@ -240,6 +240,17 @@ TEST(IsTemporalUnitAvailable,
                      temporal_unit.end());
 
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  // Even though a temporal unit was provided, it has not been decoded yet. This
+  // is because Decode() returns after processing the descriptor OBUs, even if
+  // there is more data available. This is done to give the user a chance to do
+  // any configurations based on the descriptors before beginning to decode the
+  // temporal units.
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  // The user can call Decode() again to process the temporal unit still
+  // available in the buffer.
+  EXPECT_THAT(decoder->Decode({}), IsOk());
+  // Now, the temporal unit has been decoded and is available for output.
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 }
 
@@ -254,6 +265,8 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
                      temporal_units.end());
 
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->Decode({}), IsOk());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 }
 
@@ -284,6 +297,9 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithAllButLastTemporalUnit) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->Decode({}), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
   const std::vector<std::vector<int32_t>> expected_decoded_temporal_unit = {
       {23772706, 23773107},   {47591754, 47592556},   {71410802, 71412005},
@@ -322,6 +338,10 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->Decode({}), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
   bool output_is_done;
   EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),

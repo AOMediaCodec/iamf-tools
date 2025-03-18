@@ -191,6 +191,7 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
                            state_->read_bit_buffer.get());
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
+      return absl::OkStatus();
     } else if (absl::IsResourceExhausted(obu_processor.status())) {
       // Don't have enough data to process the descriptor OBUs yet, but no
       // errors have occurred.
