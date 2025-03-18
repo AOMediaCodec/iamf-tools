@@ -36,6 +36,7 @@
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -419,19 +420,17 @@ void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
 std::string GetAndCleanupOutputFileName(absl::string_view suffix) {
   const testing::TestInfo* const test_info =
       testing::UnitTest::GetInstance()->current_test_info();
-  std::string file_name =
-      absl::StrCat(test_info->name(), "-", test_info->test_suite_name(), "-",
-                   test_info->test_case_name(), suffix);
+  std::string filename = absl::StrCat(test_info->name(), "-",
+                                      test_info->test_suite_name(), suffix);
 
-  // It is possible that the test suite name and test case name contain the '/'
-  // character. Replace it with '-' to form a legal file name.
-  std::transform(file_name.begin(), file_name.end(), file_name.begin(),
-                 [](char c) { return (c == '/') ? '-' : c; });
-  const std::filesystem::path test_specific_file_name =
-      std::filesystem::path(::testing::TempDir()) / file_name;
+  // It is possible that the test suite name contains the '/' character.
+  // Replace it with '-' to form a legal file name.
+  absl::StrReplaceAll({{"/", "-"}}, &filename);
+  const std::filesystem::path test_specific_filename =
+      std::filesystem::path(::testing::TempDir()) / filename;
 
-  std::filesystem::remove(test_specific_file_name);
-  return test_specific_file_name.string();
+  std::filesystem::remove(test_specific_filename);
+  return test_specific_filename.string();
 }
 
 std::string GetAndCreateOutputDirectory(absl::string_view suffix) {
