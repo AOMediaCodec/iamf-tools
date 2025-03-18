@@ -18,7 +18,7 @@
 
 #include "absl/log/check.h"
 
-// TODO(b/400635711): Use the one in the iamfbr library once it is open-sourced.
+// TODO(b/400635711): Use the one in the obr library once it is open-sourced.
 // This code is forked from Resonance Audio's `misc_math.h`.
 namespace iamf_tools {
 // Defines conversion factor from degrees to radians.

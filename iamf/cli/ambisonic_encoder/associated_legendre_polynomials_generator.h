@@ -9,7 +9,7 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-// TODO(b/400635711): Use the one in the iamfbr library once it is open-sourced.
+// TODO(b/400635711): Use the one in the obr library once it is open-sourced.
 #ifndef CLI_AMBISONIC_ENCODER_ASSOCIATED_LEGENDRE_POLYNOMIALS_GENERATOR_H_
 #define CLI_AMBISONIC_ENCODER_ASSOCIATED_LEGENDRE_POLYNOMIALS_GENERATOR_H_
 
