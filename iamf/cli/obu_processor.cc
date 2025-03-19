@@ -226,14 +226,47 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
-  LOG(ERROR) << absl::StrCat(
-      "No supported mix presentation presentation found in the bitstream.",
-      cumulative_error_message);
+  LOG(INFO) << "Filtered mix presentations: " << cumulative_error_message;
   return supported_mix_presentations;
 }
 
-// Resets the buffer to `start_position` and sets the `insufficient_data` flag
-// to `true`. Clears the output maps.
+// Searches for the desired layout in the supported mix presentations. If found,
+// the output_playback_layout is the same as the desired_layout. Otherwise, we
+// default to the first layout in the first unsupported mix presentation.
+absl::StatusOr<MixPresentationObu*> GetPlaybackLayoutAndMixPresentation(
+    const std::list<MixPresentationObu*>& supported_mix_presentations,
+    const Layout& desired_layout, Layout& output_playback_layout) {
+  for (const auto& mix_presentation : supported_mix_presentations) {
+    for (const auto& sub_mix : mix_presentation->sub_mixes_) {
+      for (const auto& layout : sub_mix.layouts) {
+        if (layout.loudness_layout == desired_layout) {
+          output_playback_layout = layout.loudness_layout;
+          return mix_presentation;
+        }
+      }
+    }
+  }
+  // If we get here, we didn't find the desired layout in any of the supported
+  // mix presentations. We default to the first layout in the first mix
+  // presentation.
+  MixPresentationObu* output_mix_presentation =
+      supported_mix_presentations.front();
+  if (output_mix_presentation->sub_mixes_.empty()) {
+    return absl::InvalidArgumentError(
+        "No submixes found in the first mix presentation.");
+  }
+  if (output_mix_presentation->sub_mixes_.front().layouts.empty()) {
+    return absl::InvalidArgumentError(
+        "No layouts found in the first submix of the first mix presentation.");
+  }
+  output_playback_layout = output_mix_presentation->sub_mixes_.front()
+                               .layouts.front()
+                               .loudness_layout;
+  return output_mix_presentation;
+}
+
+// Resets the buffer to `start_position` and sets the `insufficient_data`
+// flag to `true`. Clears the output maps.
 absl::Status InsufficientDataReset(
     ReadBitBuffer& read_bit_buffer, const int64_t start_position,
     bool& insufficient_data,
@@ -609,7 +642,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
 }
 
 std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
-    const Layout& playback_layout,
+    const Layout& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
     bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
@@ -630,7 +663,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          playback_layout, sample_processor_factory);
+          desired_layout, sample_processor_factory);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;
@@ -639,18 +672,9 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
 }
 
 absl::Status ObuProcessor::InitializeForRendering(
-    const Layout& playback_layout,
+    const Layout& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory) {
-  // TODO(b/339500539): Add support for other layouts. Downstream code is simple
-  //                    and assumes there will be a matching layout in the first
-  //                    Mix Presentation OBU. The IAMF spec REQUIRES this for
-  //                    stereo. In general, layouts may require more careful
-  //                    selection according to 7.3.1.
-  // TODO(b/395625514): Add test coverage for this.
-  if (!IsStereoLayout(playback_layout)) {
-    return absl::InvalidArgumentError("Layout type is not supported.");
-  }
   if (mix_presentations_.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
@@ -682,28 +706,34 @@ absl::Status ObuProcessor::InitializeForRendering(
   if (supported_mix_presentations.empty()) {
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }
-  const auto mix_presentation_to_render = supported_mix_presentations.front();
-  int desired_sub_mix_index;
-  int desired_layout_index;
-  RETURN_IF_NOT_OK(GetIndicesForLayout(mix_presentation_to_render->sub_mixes_,
-                                       playback_layout, desired_sub_mix_index,
-                                       desired_layout_index));
+  Layout playback_layout;
+  auto mix_presentation_to_render = GetPlaybackLayoutAndMixPresentation(
+      supported_mix_presentations, desired_layout, playback_layout);
+  if (!mix_presentation_to_render.ok()) {
+    return mix_presentation_to_render.status();
+  }
+  int playback_sub_mix_index;
+  int playback_layout_index;
+  RETURN_IF_NOT_OK(GetIndicesForLayout(
+      (*mix_presentation_to_render)->sub_mixes_, playback_layout,
+      playback_sub_mix_index, playback_layout_index));
   decoding_layout_info_ = {
-      .mix_presentation_id = mix_presentation_to_render->GetMixPresentationId(),
-      .sub_mix_index = desired_sub_mix_index,
-      .layout_index = desired_layout_index,
+      .mix_presentation_id =
+          (*mix_presentation_to_render)->GetMixPresentationId(),
+      .sub_mix_index = playback_sub_mix_index,
+      .layout_index = playback_layout_index,
   };
   auto forward_on_desired_layout =
       [&sample_processor_factory, mix_presentation_to_render,
-       desired_sub_mix_index, desired_layout_index](
+       playback_sub_mix_index, playback_layout_index](
           DecodedUleb128 mix_presentation_id, int sub_mix_index,
           int layout_index, const Layout& layout, int num_channels,
           int sample_rate, int bit_depth, size_t max_input_samples_per_frame)
       -> std::unique_ptr<SampleProcessorBase> {
     if (mix_presentation_id ==
-            mix_presentation_to_render->GetMixPresentationId() &&
-        desired_sub_mix_index == sub_mix_index &&
-        desired_layout_index == layout_index) {
+            (*mix_presentation_to_render)->GetMixPresentationId() &&
+        playback_sub_mix_index == sub_mix_index &&
+        playback_layout_index == layout_index) {
       return sample_processor_factory(
           mix_presentation_id, sub_mix_index, layout_index, layout,
           num_channels, sample_rate, bit_depth, max_input_samples_per_frame);

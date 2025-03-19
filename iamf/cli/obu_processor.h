@@ -151,8 +151,10 @@ class ObuProcessor {
    * Creation succeeds only if the descriptor OBUs are successfully processed
    * and all rendering modules are successfully initialized.
    *
-   * \param playback_layout Specifies the layout that will be used to render the
-   *        audio.
+   * \param desired_layout Specifies the desired layout that will be used to
+   *        render the audio, if available in the mix presentations. If not
+   *        available, the first layout in the first mix presentation will be
+   *        used.
    * \param sample_processor_factory Factory to create post processors.
    * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
    *        include all descriptor OBUs and no other data. This should only be
@@ -166,7 +168,7 @@ class ObuProcessor {
    * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
    */
   static std::unique_ptr<ObuProcessor> CreateForRendering(
-      const Layout& playback_layout,
+      const Layout& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
       bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
@@ -275,14 +277,14 @@ class ObuProcessor {
    *
    * Must be called after `Initialize()` is called.
    *
-   * \param playback_layout Specifies the layout that will be used to render the
-   *        audio.
+   * \param desired_layout Specifies the layout that will be used to render the
+   *        audio, if available.
    * \param sample_processor_factory Factory to create post processors.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status InitializeForRendering(
-      const Layout& playback_layout,
+      const Layout& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory);
 

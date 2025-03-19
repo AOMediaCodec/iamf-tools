@@ -317,30 +317,45 @@ void AddMixPresentationObuWithAudioElementIds(
     const std::vector<DecodedUleb128>& audio_element_ids,
     DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
     std::list<MixPresentationObu>& mix_presentations) {
+  // Configure one of the simplest mix presentation. Mix presentations REQUIRE
+  // at least one sub-mix and a stereo layout.
+  AddMixPresentationObuWithConfigurableLayouts(
+      mix_presentation_id, audio_element_ids, common_parameter_id,
+      common_parameter_rate,
+      {LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}, mix_presentations);
+}
+
+void AddMixPresentationObuWithConfigurableLayouts(
+    DecodedUleb128 mix_presentation_id,
+    const std::vector<DecodedUleb128>& audio_element_ids,
+    DecodedUleb128 common_parameter_id, DecodedUleb128 common_parameter_rate,
+    const std::vector<LoudspeakersSsConventionLayout::SoundSystem>&
+        sound_system_layouts,
+    std::list<MixPresentationObu>& mix_presentations) {
   MixGainParamDefinition common_mix_gain_param_definition;
   common_mix_gain_param_definition.parameter_id_ = common_parameter_id;
   common_mix_gain_param_definition.parameter_rate_ = common_parameter_rate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
   common_mix_gain_param_definition.default_mix_gain_ = 0;
+  std::vector<MixPresentationLayout> layouts;
+  for (const auto& sound_system : sound_system_layouts) {
+    layouts.push_back(
+        {.loudness_layout = {.layout_type =
+                                 Layout::kLayoutTypeLoudspeakersSsConvention,
+                             .specific_layout =
+                                 LoudspeakersSsConventionLayout{
+                                     .sound_system = sound_system,
+                                     .reserved = 0}},
+         .loudness = {
+             .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}});
+  }
 
-  // Configure one of the simplest mix presentation. Mix presentations REQUIRE
-  // at least one sub-mix and a stereo layout.
   std::vector<MixPresentationSubMix> sub_mixes = {
       {.num_audio_elements =
            static_cast<DecodedUleb128>(audio_element_ids.size()),
        .output_mix_gain = common_mix_gain_param_definition,
-       .num_layouts = 1,
-       .layouts = {
-           {.loudness_layout =
-                {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-                 .specific_layout =
-                     LoudspeakersSsConventionLayout{
-                         .sound_system = LoudspeakersSsConventionLayout::
-                             kSoundSystemA_0_2_0,
-                         .reserved = 0}},
-            .loudness = {.info_type = 0,
-                         .integrated_loudness = 0,
-                         .digital_peak = 0}}}}};
+       .num_layouts = static_cast<DecodedUleb128>(sound_system_layouts.size()),
+       .layouts = layouts}};
   for (const auto& audio_element_id : audio_element_ids) {
     sub_mixes[0].audio_elements.push_back({
         .audio_element_id = audio_element_id,

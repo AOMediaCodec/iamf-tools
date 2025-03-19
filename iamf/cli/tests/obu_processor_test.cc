@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <list>
 #include <memory>
 #include <optional>
@@ -2641,6 +2642,184 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
 
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   kStereoLayout, sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
+}
+
+using testing::_;
+
+constexpr Layout k5_1_Layout = {
+    .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+    .specific_layout = LoudspeakersSsConventionLayout{
+        .sound_system = LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0}};
+
+TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
+      mix_presentation_obus);
+
+  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
+  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  // We expect to use the second layout, since this is the only one that matches
+  // the desired layout.
+  constexpr int kSubmixIndex = 0;
+  constexpr int kLayoutIndex = 1;
+  const auto& forwarded_layout =
+      mix_presentation_obus.front().sub_mixes_[0].layouts[1].loudness_layout;
+
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kFirstMixPresentationId, kSubmixIndex, kLayoutIndex,
+                   forwarded_layout, /*num_channels=*/6, _, _, _));
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  k5_1_Layout, sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
+}
+
+TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemJ_4_7_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
+      mix_presentation_obus);
+
+  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
+  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  // We expect to use the first layout as default, since the desired layout is
+  // not available in the mix presentation.
+  constexpr int kSubmixIndex = 0;
+  constexpr int kLayoutIndex = 0;
+  const auto& forwarded_layout =
+      mix_presentation_obus.front().sub_mixes_[0].layouts[0].loudness_layout;
+
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kFirstMixPresentationId, kSubmixIndex, kLayoutIndex,
+                   forwarded_layout, /*num_channels=*/2, _, _, _));
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  k5_1_Layout, sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
+}
+
+TEST(CreateForRendering,
+     ForwardsChosenLayoutToSampleProcessorFactoryWithMultipleMixPresentations) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts_first_mix_presentation = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystem10_2_7_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate,
+      sound_system_layouts_first_mix_presentation, mix_presentation_obus);
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts_second_mix_presentation = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate,
+      sound_system_layouts_second_mix_presentation, mix_presentation_obus);
+
+  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
+  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front(),
+       &*(std::next(mix_presentation_obus.begin()))});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  // We expect to use the second layout in the second mix presentation, since
+  // this is the only one that matches the desired layout.
+  constexpr int kSubmixIndex = 0;
+  constexpr int kLayoutIndex = 1;
+  const auto& forwarded_layout = (std::next(mix_presentation_obus.begin()))
+                                     ->sub_mixes_[0]
+                                     .layouts[1]
+                                     .loudness_layout;
+
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kSecondMixPresentationId, kSubmixIndex, kLayoutIndex,
+                   forwarded_layout, /*num_channels=*/6, _, _, _));
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  k5_1_Layout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
                   insufficient_data),
               NotNull());
