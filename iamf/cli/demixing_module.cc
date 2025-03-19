@@ -766,8 +766,8 @@ void LogForAudioElementId(absl::string_view log_prefix,
   }
   for (const auto& [label, samples] :
        id_to_labeled_frame.at(audio_element_id).label_to_samples) {
-    LOG(INFO) << "  Channel " << label << ":\t" << log_prefix
-              << " frame size= " << samples.size() << ".";
+    LOG_FIRST_N(INFO, 1) << "  Channel " << label << ":\t" << log_prefix
+                         << " frame size= " << samples.size() << ".";
   }
 }
 
