@@ -73,7 +73,6 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
   // Happens only in the pure streaming case.
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
-  // TODO(b/394376153): Update once we support other layouts.
   auto obu_processor = ObuProcessor::CreateForRendering(
       ApiToInternalType(requested_layout),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
@@ -148,7 +147,8 @@ IamfDecoder::~IamfDecoder() = default;
 IamfDecoder::IamfDecoder(IamfDecoder&&) = default;
 IamfDecoder& IamfDecoder::operator=(IamfDecoder&&) = default;
 
-absl::StatusOr<IamfDecoder> IamfDecoder::Create() {
+absl::StatusOr<IamfDecoder> IamfDecoder::Create(
+    const OutputLayout& requested_layout) {
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer =
       StreamBasedReadBitBuffer::Create(kInitialBufferSize);
   if (read_bit_buffer == nullptr) {
@@ -156,12 +156,14 @@ absl::StatusOr<IamfDecoder> IamfDecoder::Create() {
   }
   std::unique_ptr<DecoderState> state =
       std::make_unique<DecoderState>(std::move(read_bit_buffer));
+  state->requested_layout = requested_layout;
   return IamfDecoder(std::move(state));
 }
 
 absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
+    const OutputLayout& requested_layout,
     absl::Span<const uint8_t> descriptor_obus) {
-  absl::StatusOr<IamfDecoder> decoder = Create();
+  absl::StatusOr<IamfDecoder> decoder = Create(requested_layout);
   if (!decoder.ok()) {
     return decoder.status();
   }

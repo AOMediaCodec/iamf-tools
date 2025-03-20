@@ -68,22 +68,32 @@ class IamfDecoder {
    * This function should be used for pure streaming applications in which the
    * descriptor OBUs are not known in advance.
    *
+   * \param requested_layout Specifies the desired output layout. This layout
+   *        will be used so long as it is present in the descriptor obus that
+   *        are later provided to Decode(). If not, a default layout will be
+   *        selected.
+   *
    * \return IamfDecoder upon success. Other specific statuses on
    *         failure.
    */
-  static absl::StatusOr<IamfDecoder> Create();
+  static absl::StatusOr<IamfDecoder> Create(
+      const OutputLayout& requested_layout);
 
   /*!\brief Creates an IamfDecoder from a known set of descriptor OBUs.
    *
    * This function should be used for applications in which the descriptor OBUs
    * are known in advance.
    *
+   * \param requested_layout Specifies the desired output layout. This layout
+   *        will be used so long as it is present in the descriptor obus that
+   *        are provided. If not, a default layout will be selected.
    * \param descriptor_obus Bitstream containing all the descriptor OBUs and
    *        only descriptor OBUs.
    * \return IamfDecoder upon success. Other specific statuses on
    *         failure.
    */
   static absl::StatusOr<IamfDecoder> CreateFromDescriptors(
+      const OutputLayout& requested_layout,
       absl::Span<const uint8_t> descriptor_obus);
 
   /*!\brief Configures the decoder with the desired mix presentation.

@@ -25,11 +25,16 @@
 namespace iamf_tools {
 namespace {
 
+using api::OutputLayout;
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
 
+constexpr OutputLayout kStereoLayout =
+    OutputLayout::kItu2051_SoundSystemA_0_2_0;
+
 void DoesNotDieWithBasicDecode(const std::string& data) {
-  absl::StatusOr<api::IamfDecoder> iamf_decoder = api::IamfDecoder::Create();
+  absl::StatusOr<api::IamfDecoder> iamf_decoder =
+      api::IamfDecoder::Create(kStereoLayout);
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   ASSERT_THAT(iamf_decoder, ::absl_testing::IsOk());
 
@@ -42,7 +47,7 @@ void DoesNotDieCreateFromDescriptors(const std::string& data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
 
   absl::StatusOr<api::IamfDecoder> iamf_decoder =
-      api::IamfDecoder::CreateFromDescriptors(bitstream);
+      api::IamfDecoder::CreateFromDescriptors(kStereoLayout, bitstream);
 
   if (iamf_decoder.ok()) {
     auto decoder_status = iamf_decoder->Decode(bitstream);
@@ -56,7 +61,8 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
                          api::OutputFileBitDepth output_file_bit_depth,
                          uint32_t mix_presentation_id, std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
-  absl::StatusOr<api::IamfDecoder> iamf_decoder = api::IamfDecoder::Create();
+  absl::StatusOr<api::IamfDecoder> iamf_decoder =
+      api::IamfDecoder::Create(kStereoLayout);
   ASSERT_THAT(iamf_decoder, ::absl_testing::IsOk());
 
   auto decode_status = iamf_decoder->Decode(bitstream);
