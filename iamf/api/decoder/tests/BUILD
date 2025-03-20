@@ -4,6 +4,9 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 cc_test(
     name = "iamf_decoder_fuzz_test",
     srcs = ["iamf_decoder_fuzz_test.cc"],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
     deps = [
         "//iamf/api:types",
         "//iamf/api/decoder:iamf_decoder",
