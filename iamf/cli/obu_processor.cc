@@ -646,7 +646,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
     bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-    bool& output_insufficient_data) {
+    Layout& output_layout, bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
@@ -663,7 +663,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          desired_layout, sample_processor_factory);
+          desired_layout, sample_processor_factory, output_layout);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;
@@ -674,7 +674,8 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
 absl::Status ObuProcessor::InitializeForRendering(
     const Layout& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-        sample_processor_factory) {
+        sample_processor_factory,
+    Layout& output_layout) {
   if (mix_presentations_.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
@@ -708,14 +709,14 @@ absl::Status ObuProcessor::InitializeForRendering(
   }
   Layout playback_layout;
   auto mix_presentation_to_render = GetPlaybackLayoutAndMixPresentation(
-      supported_mix_presentations, desired_layout, playback_layout);
+      supported_mix_presentations, desired_layout, output_layout);
   if (!mix_presentation_to_render.ok()) {
     return mix_presentation_to_render.status();
   }
   int playback_sub_mix_index;
   int playback_layout_index;
   RETURN_IF_NOT_OK(GetIndicesForLayout(
-      (*mix_presentation_to_render)->sub_mixes_, playback_layout,
+      (*mix_presentation_to_render)->sub_mixes_, output_layout,
       playback_sub_mix_index, playback_layout_index));
   decoding_layout_info_ = {
       .mix_presentation_id =

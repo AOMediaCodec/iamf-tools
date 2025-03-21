@@ -162,6 +162,9 @@ class ObuProcessor {
    *        descriptor OBUs.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
+   * \param output_layout The layout that will be used to render the audio. This
+   *        is the same as `desired_layout` if it is available in the mix
+   *        presentations, otherwise a default layout is used.
    * \param output_insufficient_data True iff the bitstream provided is
    *        insufficient to process all descriptor OBUs and there is no other
    *        error.
@@ -172,7 +175,7 @@ class ObuProcessor {
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
       bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-      bool& output_insufficient_data);
+      Layout& output_layout, bool& output_insufficient_data);
 
   // TODO(b/381072155): Consider removing this one in favor of
   //                    `ProcessTemporalUnit()`, which outputs all OBUs
@@ -280,13 +283,17 @@ class ObuProcessor {
    * \param desired_layout Specifies the layout that will be used to render the
    *        audio, if available.
    * \param sample_processor_factory Factory to create post processors.
+   * \param output_layout The layout that will be used to render the audio. This
+   *        is the same as `desired_layout` if it is available, otherwise a
+   *        default layout is used.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status InitializeForRendering(
       const Layout& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory);
+          sample_processor_factory,
+      Layout& output_layout);
 
   struct DecodingLayoutInfo {
     DecodedUleb128 mix_presentation_id;

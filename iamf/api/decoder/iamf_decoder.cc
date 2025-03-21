@@ -28,6 +28,7 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace api {
@@ -73,11 +74,12 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
   // Happens only in the pure streaming case.
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
+  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
       ApiToInternalType(requested_layout),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
-      insufficient_data);
+      unused_output_layout, insufficient_data);
   if (obu_processor == nullptr) {
     // `insufficient_data` is true iff everything so far is valid but more data
     // is needed.

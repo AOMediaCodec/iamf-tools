@@ -1994,11 +1994,12 @@ void RenderUsingObuProcessorExpectOk(
   bool insufficient_data;
 
   const std::string output_filename_string(output_filename);
+  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
       kStereoLayout,
       CreateAllWavWriters(output_filename_string, write_wav_header),
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
   absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
@@ -2232,12 +2233,13 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
 
+  Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
       kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
   absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
@@ -2342,14 +2344,15 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
          &mix_presentation_obus.front()});
     auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
         kBufferCapacity, absl::MakeConstSpan(bitstream));
-    bool insufficient_data;
 
+    Layout unused_output_layout;
+    bool insufficient_data;
     const std::string output_filename_string(output_filename);
     auto obu_processor = ObuProcessor::CreateForRendering(
         kStereoLayout,
         CreateAllWavWriters(output_filename_string, kWriteWavHeader),
         /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-        insufficient_data);
+        unused_output_layout, insufficient_data);
     ASSERT_THAT(obu_processor, NotNull());
     ASSERT_FALSE(insufficient_data);
 
@@ -2503,12 +2506,13 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   // Expect that the `ObuProcessor` rejects the rendering request.
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
+  Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
       kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      insufficient_data);
+      unused_output_layout, insufficient_data);
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, IsNull());
 }
@@ -2640,10 +2644,11 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
+  Layout unused_output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   kStereoLayout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  insufficient_data),
+                  unused_output_layout, insufficient_data),
               NotNull());
 }
 
@@ -2700,11 +2705,13 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
+  Layout output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   k5_1_Layout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  insufficient_data),
+                  output_layout, insufficient_data),
               NotNull());
+  EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
 TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
@@ -2753,10 +2760,11 @@ TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
+  Layout unused_output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   k5_1_Layout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  insufficient_data),
+                  unused_output_layout, insufficient_data),
               NotNull());
 }
 
@@ -2818,11 +2826,13 @@ TEST(CreateForRendering,
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
+  Layout output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   k5_1_Layout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  insufficient_data),
+                  output_layout, insufficient_data),
               NotNull());
+  EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
 TEST(CreateForRendering, NullReadBitBufferRejected) {
@@ -2831,10 +2841,11 @@ TEST(CreateForRendering, NullReadBitBufferRejected) {
   ReadBitBuffer* read_bit_buffer_nullptr = nullptr;
   bool insufficient_data;
 
+  Layout unused_output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   kStereoLayout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
-                  insufficient_data),
+                  unused_output_layout, insufficient_data),
               IsNull());
   EXPECT_FALSE(insufficient_data);
 }
