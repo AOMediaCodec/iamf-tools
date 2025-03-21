@@ -69,7 +69,7 @@ class IamfDecoder {
    * descriptor OBUs are not known in advance.
    *
    * \param requested_layout Specifies the desired output layout. This layout
-   *        will be used so long as it is present in the descriptor obus that
+   *        will be used so long as it is present in the Descriptor OBUs that
    *        are later provided to Decode(). If not, a default layout will be
    *        selected.
    *
@@ -85,7 +85,7 @@ class IamfDecoder {
    * are known in advance.
    *
    * \param requested_layout Specifies the desired output layout. This layout
-   *        will be used so long as it is present in the descriptor obus that
+   *        will be used so long as it is present in the Descriptor OBUs that
    *        are provided. If not, a default layout will be selected.
    * \param descriptor_obus Bitstream containing all the descriptor OBUs and
    *        only descriptor OBUs.
@@ -170,17 +170,35 @@ class IamfDecoder {
   /*!\brief Returns true iff the descriptor OBUs have been parsed.
    *
    * This function can be used for determining when configuration setters that
-   * rely on descriptor OBU parsing can be called.
+   * rely on Descriptor OBU parsing can be called.
    *
-   * \return true iff the descriptor OBUs have been parsed.
+   * \return true iff the Descriptor OBUs have been parsed.
    */
   bool IsDescriptorProcessingComplete();
+
+  /*!\brief Gets the layout that will be used to render the audio.
+   *
+   * The actual Layout used for rendering may not the same as requested when
+   * creating the IamfDecoder, if the requested Layout could not be used.
+   * This function allows verifying the actual Layout used after Descriptor OBU
+   * parsing is complete.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
+   *
+   * \param output_layout Output parameter for layout.
+   * \return `absl::OkStatus()` upon success. Other specific statuses on
+   *         failure.
+   */
+  absl::Status GetOutputLayout(OutputLayout& output_layout);
 
   /*!\brief Provides mix presentation information from the descriptor OBUs.
    *
    * This function can be used to determine which mix presentation the user
-   * would like to configure the decoder with. It will fail if the descriptor
-   * OBUs have not been parsed yet.
+   * would like to configure the decoder with.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
    *
    * \param output_mix_presentation_metadatas Output parameter for the mix
    *        presentation metadata.
@@ -192,6 +210,9 @@ class IamfDecoder {
 
   /*!\brief Gets the sample rate.
    *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
+   *
    * \param output_sample_rate Output parameter for the sample rate.
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
@@ -199,6 +220,9 @@ class IamfDecoder {
   absl::Status GetSampleRate(uint32_t& output_sample_rate);
 
   /*!\brief Gets the number of samples per frame.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
    *
    * \param output_frame_size Output parameter for the frame size.
    * \return `absl::OkStatus()` upon success. Other specific statuses on

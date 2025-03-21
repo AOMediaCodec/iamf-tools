@@ -81,6 +81,83 @@ TEST(IsDescriptorProcessingComplete,
   EXPECT_FALSE(decoder->IsDescriptorProcessingComplete());
 }
 
+TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      kStereoLayout, GenerateBasicDescriptorObus());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  OutputLayout output_layout;
+  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
+  EXPECT_EQ(output_layout, kStereoLayout);
+}
+
+TEST(GetOutputLayout, ReturnsDefaultStereoLayoutIfNoMatchingLayoutExists) {
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      api::OutputLayout::kItu2051_SoundSystemE_4_5_1,
+      GenerateBasicDescriptorObus());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  OutputLayout output_layout;
+  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
+  EXPECT_EQ(output_layout, kStereoLayout);
+}
+
+TEST(GetOutputLayout,
+     ReturnsDefaultStereoLayoutIfNoMatchingLayoutExistsUsingDecode) {
+  auto decoder =
+      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemE_4_5_1);
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  TemporalDelimiterObu temporal_delimiter_obu =
+      TemporalDelimiterObu(ObuHeader());
+  auto temporal_delimiter_bytes =
+      SerializeObusExpectOk({&temporal_delimiter_obu});
+  source_data.insert(source_data.end(), temporal_delimiter_bytes.begin(),
+                     temporal_delimiter_bytes.end());
+  EXPECT_THAT(decoder->Decode(source_data), IsOk());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  OutputLayout output_layout;
+  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
+  EXPECT_EQ(output_layout, kStereoLayout);
+}
+
+TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {
+  // Add a mix presentation with a non-stereo layout.
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_configs);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      codec_configs, audio_elements);
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      mix_presentation_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0};
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_layouts,
+      mix_presentation_obus);
+  std::vector<uint8_t> descriptor_obus = SerializeObusExpectOk(
+      {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
+       &audio_elements.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      api::OutputLayout::kItu2051_SoundSystemB_0_5_0, descriptor_obus);
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  OutputLayout output_layout;
+  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
+  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
+}
+
+TEST(GetOutputLayout, FailsIfCalledBeforeDescriptorObusAreProcessed) {
+  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  ASSERT_THAT(decoder, IsOk());
+  OutputLayout output_layout;
+  EXPECT_FALSE(decoder->GetOutputLayout(output_layout).ok());
+}
+
 TEST(Create, SucceedsAndDecodeSucceedsWithPartialData) {
   auto decoder = api::IamfDecoder::Create(kStereoLayout);
   EXPECT_THAT(decoder, IsOk());

@@ -57,8 +57,8 @@ struct IamfDecoder::DecoderState {
   // temporal units currently available.
   std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples;
 
-  // The layout requested by the caller for the rendered output audio.
-  OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
+  // The layout used for the rendered output audio.
+  OutputLayout layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
 };
 
 namespace {
@@ -70,16 +70,15 @@ constexpr int kInitialBufferSize = 1024;
 absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
     const OutputLayout& requested_layout, bool contains_all_descriptor_obus,
     absl::Span<const uint8_t> bitstream,
-    StreamBasedReadBitBuffer* read_bit_buffer) {
+    StreamBasedReadBitBuffer* read_bit_buffer, Layout& output_layout) {
   // Happens only in the pure streaming case.
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
-  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
       ApiToInternalType(requested_layout),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
-      unused_output_layout, insufficient_data);
+      output_layout, insufficient_data);
   if (obu_processor == nullptr) {
     // `insufficient_data` is true iff everything so far is valid but more data
     // is needed.
@@ -158,7 +157,7 @@ absl::StatusOr<IamfDecoder> IamfDecoder::Create(
   }
   std::unique_ptr<DecoderState> state =
       std::make_unique<DecoderState>(std::move(read_bit_buffer));
-  state->requested_layout = requested_layout;
+  state->layout = requested_layout;
   return IamfDecoder(std::move(state));
 }
 
@@ -171,13 +170,19 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
   }
   RETURN_IF_NOT_OK(
       decoder->state_->read_bit_buffer->PushBytes(descriptor_obus));
+  Layout output_layout;
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(decoder->state_->requested_layout,
+      CreateObuProcessor(decoder->state_->layout,
                          /*contains_all_descriptor_obus=*/true, descriptor_obus,
-                         decoder->state_->read_bit_buffer.get());
+                         decoder->state_->read_bit_buffer.get(), output_layout);
   if (!obu_processor.ok()) {
     return obu_processor.status();
   }
+  auto api_output_layout = InternalToApiType(output_layout);
+  if (!api_output_layout.ok()) {
+    return api_output_layout.status();
+  }
+  decoder->state_->layout = *api_output_layout;
   decoder->state_->obu_processor = *std::move(obu_processor);
   return decoder;
 }
@@ -189,10 +194,16 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   }
   RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
+    Layout output_layout;
     auto obu_processor =
-        CreateObuProcessor(state_->requested_layout,
+        CreateObuProcessor(state_->layout,
                            /*contains_all_descriptor_obus=*/false, bitstream,
-                           state_->read_bit_buffer.get());
+                           state_->read_bit_buffer.get(), output_layout);
+    auto api_output_layout = InternalToApiType(output_layout);
+    if (!api_output_layout.ok()) {
+      return api_output_layout.status();
+    }
+    state_->layout = *api_output_layout;
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
       return absl::OkStatus();
@@ -245,6 +256,16 @@ bool IamfDecoder::IsTemporalUnitAvailable() {
 
 bool IamfDecoder::IsDescriptorProcessingComplete() {
   return state_->obu_processor != nullptr;
+}
+
+absl::Status IamfDecoder::GetOutputLayout(OutputLayout& output_layout) {
+  if (!IsDescriptorProcessingComplete()) {
+    return absl::FailedPreconditionError(
+        "GetOutputLayout() cannot be called before descriptor processing is "
+        "complete.");
+  }
+  output_layout = state_->layout;
+  return absl::OkStatus();
 }
 
 absl::Status IamfDecoder::GetMixPresentations(
