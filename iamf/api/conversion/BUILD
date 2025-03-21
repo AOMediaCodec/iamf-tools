@@ -12,6 +12,9 @@ cc_library(
         "//iamf/api:types",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
     ],
 )
 # keep-sorted end

@@ -6,6 +6,7 @@ cc_test(
         "//iamf/api:types",
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

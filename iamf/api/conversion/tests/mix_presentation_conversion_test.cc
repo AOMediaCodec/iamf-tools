@@ -15,6 +15,8 @@
 #include <utility>
 #include <variant>
 
+#include "absl/status/status_matchers.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/api/types.h"
 #include "iamf/obu/mix_presentation.h"
@@ -22,11 +24,42 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl_testing::IsOk;
 using ::testing::TestWithParam;
 
 using LayoutPair =
     std::pair<api::OutputLayout, LoudspeakersSsConventionLayout::SoundSystem>;
 using ApiToInternalType_OutputLayout = TestWithParam<LayoutPair>;
+
+auto kApiOutputToInternalSoundSystemPairs = ::testing::Values(
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
+               LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemB_0_5_0,
+               LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemC_2_5_0,
+               LoudspeakersSsConventionLayout::kSoundSystemC_2_5_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemD_4_5_0,
+               LoudspeakersSsConventionLayout::kSoundSystemD_4_5_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemE_4_5_1,
+               LoudspeakersSsConventionLayout::kSoundSystemE_4_5_1),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemF_3_7_0,
+               LoudspeakersSsConventionLayout::kSoundSystemF_3_7_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemG_4_9_0,
+               LoudspeakersSsConventionLayout::kSoundSystemG_4_9_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemH_9_10_3,
+               LoudspeakersSsConventionLayout::kSoundSystemH_9_10_3),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemI_0_7_0,
+               LoudspeakersSsConventionLayout::kSoundSystemI_0_7_0),
+    LayoutPair(api::OutputLayout::kItu2051_SoundSystemJ_4_7_0,
+               LoudspeakersSsConventionLayout::kSoundSystemJ_4_7_0),
+    LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_2_7_0,
+               LoudspeakersSsConventionLayout::kSoundSystem10_2_7_0),
+    LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_2_3_0,
+               LoudspeakersSsConventionLayout::kSoundSystem11_2_3_0),
+    LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0,
+               LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0),
+    LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_6_9_0,
+               LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0));
 
 TEST_P(ApiToInternalType_OutputLayout, ConvertsOutputStereoToInternalLayout) {
   const auto& [api_output_layout, expected_specific_layout] = GetParam();
@@ -43,38 +76,30 @@ TEST_P(ApiToInternalType_OutputLayout, ConvertsOutputStereoToInternalLayout) {
       expected_specific_layout);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ApiToInternalType_OutputLayout_Instantiation,
-    ApiToInternalType_OutputLayout,
-    ::testing::Values(
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemB_0_5_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemC_2_5_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemC_2_5_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemD_4_5_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemD_4_5_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemE_4_5_1,
-                   LoudspeakersSsConventionLayout::kSoundSystemE_4_5_1),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemF_3_7_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemF_3_7_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemG_4_9_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemG_4_9_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemH_9_10_3,
-                   LoudspeakersSsConventionLayout::kSoundSystemH_9_10_3),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemI_0_7_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemI_0_7_0),
-        LayoutPair(api::OutputLayout::kItu2051_SoundSystemJ_4_7_0,
-                   LoudspeakersSsConventionLayout::kSoundSystemJ_4_7_0),
-        LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_2_7_0,
-                   LoudspeakersSsConventionLayout::kSoundSystem10_2_7_0),
-        LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_2_3_0,
-                   LoudspeakersSsConventionLayout::kSoundSystem11_2_3_0),
-        LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0,
-                   LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0),
-        LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_6_9_0,
-                   LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0)));
+INSTANTIATE_TEST_SUITE_P(ApiToInternalType_OutputLayout_Instantiation,
+                         ApiToInternalType_OutputLayout,
+                         kApiOutputToInternalSoundSystemPairs);
 
+Layout MakeLayout(LoudspeakersSsConventionLayout::SoundSystem sound_system) {
+  return {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+          .specific_layout =
+              LoudspeakersSsConventionLayout{.sound_system = sound_system}};
+};
+
+using InternalTypeToApi_OutputLayout = TestWithParam<LayoutPair>;
+
+TEST_P(InternalTypeToApi_OutputLayout, ConvertsInternalStereoToOutputLayout) {
+  const auto& [expected_api_output_layout, internal_sound_system] = GetParam();
+  Layout internal_layout = MakeLayout(internal_sound_system);
+
+  auto api_output_layout = InternalToApiType(internal_layout);
+
+  EXPECT_THAT(api_output_layout, IsOk());
+  EXPECT_EQ(*api_output_layout, expected_api_output_layout);
+}
+
+INSTANTIATE_TEST_SUITE_P(InternalTypeToApi_OutputLayout_Instantiation,
+                         InternalTypeToApi_OutputLayout,
+                         kApiOutputToInternalSoundSystemPairs);
 }  // namespace
 }  // namespace iamf_tools
