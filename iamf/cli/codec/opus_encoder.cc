@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/codec/opus_encoder.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -90,7 +91,7 @@ absl::StatusOr<int> EncodeInt16(
   // Convert input to the array that will be passed to `opus_encode`.
   std::vector<opus_int16> encoder_input_pcm(
       num_samples_per_channel * num_channels, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   for (int t = 0; t < samples.size(); t++) {
     for (int c = 0; c < samples[0].size(); ++c) {
       // Convert all frames to 16-bit samples for input to Opus.

@@ -13,6 +13,7 @@
 #ifndef API_DECODER_IAMF_DECODER_H_
 #define API_DECODER_IAMF_DECODER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -107,15 +108,11 @@ class IamfDecoder {
 
   /*!\brief Configures the decoder with the desired bit depth.
    *
-   * \param bit_depth Specifies the desired bit depth.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
+   * Call this method to specify a specific output sample type.  If it is not
+   * called, the output samples will be a default value, retrievable by
+   * `GetOutputSampleType`.
    */
-  // TODO(b/379124235): Update OutputFileBitDepth to OutputBitDepth to
-  //                  indicate that this is not specific to file-based decoding.
-  // TODO(b/379122580): Decide how we would like to support float-based
-  // decoding.
-  absl::Status ConfigureBitDepth(OutputFileBitDepth bit_depth);
+  void ConfigureOutputSampleType(OutputSampleType output_sample_type);
 
   /*!\brief Decodes the bitstream provided.
    *
@@ -141,14 +138,15 @@ class IamfDecoder {
    * may be more than one temporal unit available. When this returns empty, the
    * user should call Decode() again with more data.
    *
-   * \param output_decoded_temporal_unit Output parameter for the next temporal
-   *        unit of decoded audio. The outer vector corresponds to a tick, while
-   *        the inner vector corresponds to a channel.
+   * \param output_bytes Output buffer to receive bytes.  Must be large enough
+   *        to receive bytes.  Maximum necessary size can be determined by
+   *        GetFrameSize and GetOutputSampleType.
+   * \param bytes_written Number of bytes written to the output_bytes.
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status GetOutputTemporalUnit(
-      std::vector<std::vector<int32_t>>& output_decoded_temporal_unit);
+  absl::Status GetOutputTemporalUnit(absl::Span<uint8_t> output_bytes,
+                                     size_t& bytes_written);
 
   /*!\brief Returns true iff a decoded temporal unit is available.
    *
@@ -207,6 +205,16 @@ class IamfDecoder {
   absl::Status GetMixPresentations(std::vector<MixPresentationMetadata>&
                                        output_mix_presentation_metadatas) const;
 
+  /*!\brief Returns the current OutputSampleType.
+   *
+   * The value is either the value set by ConfigureOutputSampleType or a default
+   * which may vary based on content.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
+   */
+  OutputSampleType GetOutputSampleType() const;
+
   /*!\brief Gets the sample rate.
    *
    * This function can only be used after all Descriptor OBUs have been parsed,
@@ -245,9 +253,8 @@ class IamfDecoder {
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status Flush(
-      std::vector<std::vector<int32_t>>& output_decoded_temporal_unit,
-      bool& output_is_done);
+  absl::Status Flush(absl::Span<uint8_t> output_bytes, size_t& bytes_written,
+                     bool& output_is_done);
 
   /*!\brief Closes the decoder.
    *

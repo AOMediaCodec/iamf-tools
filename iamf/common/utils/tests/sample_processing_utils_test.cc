@@ -33,7 +33,7 @@ using ::testing::ElementsAreArray;
 
 TEST(WritePcmSample, LittleEndian32Bits) {
   std::vector<uint8_t> buffer(4, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12345678, 32, /*big_endian=*/false,
                              buffer.data(), write_position),
               IsOk());
@@ -44,7 +44,7 @@ TEST(WritePcmSample, LittleEndian32Bits) {
 
 TEST(WritePcmSample, BigEndian32bits) {
   std::vector<uint8_t> buffer(4, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12345678, 32, /*big_endian=*/true, buffer.data(),
                              write_position),
               IsOk());
@@ -55,7 +55,7 @@ TEST(WritePcmSample, BigEndian32bits) {
 
 TEST(WritePcmSample, LittleEndian24Bits) {
   std::vector<uint8_t> buffer(3, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12345600, 24, /*big_endian=*/false,
                              buffer.data(), write_position),
               IsOk());
@@ -66,7 +66,7 @@ TEST(WritePcmSample, LittleEndian24Bits) {
 
 TEST(WritePcmSample, BigEndian24Bits) {
   std::vector<uint8_t> buffer(3, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12345600, 24, /*big_endian=*/true, buffer.data(),
                              write_position),
               IsOk());
@@ -77,7 +77,7 @@ TEST(WritePcmSample, BigEndian24Bits) {
 
 TEST(WritePcmSample, LittleEndian16Bits) {
   std::vector<uint8_t> buffer(2, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12340000, 16, /*big_endian=*/false,
                              buffer.data(), write_position),
               IsOk());
@@ -88,7 +88,7 @@ TEST(WritePcmSample, LittleEndian16Bits) {
 
 TEST(WritePcmSample, BigEndian16Bits) {
   std::vector<uint8_t> buffer(2, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_THAT(WritePcmSample(0x12340000, 16, /*big_endian=*/true, buffer.data(),
                              write_position),
               IsOk());
@@ -99,7 +99,7 @@ TEST(WritePcmSample, BigEndian16Bits) {
 
 TEST(WritePcmSample, InvalidOver32Bits) {
   std::vector<uint8_t> buffer(5, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   EXPECT_EQ(WritePcmSample(0x00000000, 40, /*big_endian=*/false, buffer.data(),
                            write_position)
                 .code(),

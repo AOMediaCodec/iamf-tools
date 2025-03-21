@@ -57,13 +57,10 @@ enum class OutputLayout {
   kIAMF_SoundSystemExtension_6_9_0 = 13,
 };
 
-/*!\brief Determines the format of the output file. */
-enum class OutputFileBitDepth {
-  kBitDepthAutomatic,  // Automatically determine based on the bit-depth of
-                       // the input file.
-  kBitDepth16,
-  kBitDepth24,
-  kBitDepth32,
+/*!\brief The requested format of the output samples. */
+enum class OutputSampleType {
+  kInt16LittleEndian = 1,
+  kInt32LittleEndian = 2,
 };
 
 /*!\brief A unique identifier for a `MixPresentation` in the IAMF stream. */

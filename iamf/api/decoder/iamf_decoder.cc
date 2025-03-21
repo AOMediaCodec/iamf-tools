@@ -12,6 +12,7 @@
 
 #include "iamf/api/decoder/iamf_decoder.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -28,6 +29,7 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -62,6 +64,10 @@ struct IamfDecoder::DecoderState {
   // The layout used for the rendered output audio.
   // Initially set to the requested Layout but updated by ObuProcessor.
   Layout layout;
+
+  // TODO(b/379122580):  Use the bit depth of the underlying content.
+  // Defaulting to int32 for now.
+  OutputSampleType output_sample_type = OutputSampleType::kInt32LittleEndian;
 };
 
 namespace {
@@ -135,6 +141,43 @@ absl::Status ProcessAllTemporalUnits(
   LOG(INFO) << "Rendered " << rendered_pcm_samples.size()
             << " temporal units. Please call GetOutputTemporalUnit() to get "
                "the rendered PCM samples.";
+  return absl::OkStatus();
+}
+
+size_t BytesPerSample(OutputSampleType sample_type) {
+  switch (sample_type) {
+    case OutputSampleType::kInt16LittleEndian:
+      return 2;
+    case OutputSampleType::kInt32LittleEndian:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+absl::Status WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
+                              OutputSampleType sample_type,
+                              absl::Span<uint8_t>& output_bytes,
+                              size_t& bytes_written) {
+  const size_t bytes_per_sample = BytesPerSample(sample_type);
+  const size_t bits_per_sample = bytes_per_sample * 8;
+  const size_t required_size =
+      frame.size() * frame[0].size() * bytes_per_sample;
+  if (output_bytes.size() < required_size) {
+    return absl::InvalidArgumentError(
+        "Span does not have enough space to write output bytes.");
+  }
+  const bool big_endian = false;
+  size_t write_position = 0;
+  uint8_t* data = output_bytes.data();
+  for (int t = 0; t < frame.size(); t++) {
+    for (int c = 0; c < frame[0].size(); ++c) {
+      const uint32_t sample = static_cast<uint32_t>(frame[t][c]);
+      RETURN_IF_NOT_OK(WritePcmSample(sample, bits_per_sample, big_endian, data,
+                                      write_position));
+    }
+  }
+  bytes_written = write_position;
   return absl::OkStatus();
 }
 
@@ -218,19 +261,26 @@ absl::Status IamfDecoder::ConfigureMixPresentationId(
       "ConfigureMixPresentationId is not yet implemented.");
 }
 
-absl::Status IamfDecoder::ConfigureBitDepth(OutputFileBitDepth bit_depth) {
-  return absl::UnimplementedError("ConfigureBitDepth is not yet implemented.");
+void IamfDecoder::ConfigureOutputSampleType(
+    OutputSampleType output_sample_type) {
+  state_->output_sample_type = output_sample_type;
 }
 
 absl::Status IamfDecoder::GetOutputTemporalUnit(
-    std::vector<std::vector<int32_t>>& output_decoded_temporal_unit) {
+    absl::Span<uint8_t> output_bytes, size_t& bytes_written) {
+  bytes_written = 0;
   if (state_->rendered_pcm_samples.empty()) {
-    output_decoded_temporal_unit.clear();
     return absl::OkStatus();
   }
-  output_decoded_temporal_unit = state_->rendered_pcm_samples.front();
-  state_->rendered_pcm_samples.pop();
-  return absl::OkStatus();
+  OutputSampleType output_sample_type = GetOutputSampleType();
+  absl::Status status =
+      WriteFrameToSpan(state_->rendered_pcm_samples.front(), output_sample_type,
+                       output_bytes, bytes_written);
+  if (status.ok()) {
+    state_->rendered_pcm_samples.pop();
+    return absl::OkStatus();
+  }
+  return status;
 }
 
 bool IamfDecoder::IsTemporalUnitAvailable() const {
@@ -268,6 +318,9 @@ absl::Status IamfDecoder::GetMixPresentations(
   return absl::UnimplementedError(
       "GetMixPresentations is not yet implemented.");
 }
+OutputSampleType IamfDecoder::GetOutputSampleType() const {
+  return state_->output_sample_type;
+}
 
 absl::StatusOr<uint32_t> IamfDecoder::GetSampleRate() const {
   if (!IsDescriptorProcessingComplete()) {
@@ -275,7 +328,6 @@ absl::StatusOr<uint32_t> IamfDecoder::GetSampleRate() const {
         "GetSampleRate() cannot be called before descriptor processing is "
         "complete.");
   }
-
   return state_->obu_processor->GetOutputSampleRate();
 }
 
@@ -289,11 +341,10 @@ absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
   return state_->obu_processor->GetOutputFrameSize();
 }
 
-absl::Status IamfDecoder::Flush(
-    std::vector<std::vector<int32_t>>& output_decoded_temporal_unit,
-    bool& output_is_done) {
+absl::Status IamfDecoder::Flush(absl::Span<uint8_t> output_bytes,
+                                size_t& bytes_written, bool& output_is_done) {
   state_->status = Status::kFlushCalled;
-  RETURN_IF_NOT_OK(GetOutputTemporalUnit(output_decoded_temporal_unit));
+  RETURN_IF_NOT_OK(GetOutputTemporalUnit(output_bytes, bytes_written));
   output_is_done = state_->rendered_pcm_samples.empty();
   return absl::OkStatus();
 }

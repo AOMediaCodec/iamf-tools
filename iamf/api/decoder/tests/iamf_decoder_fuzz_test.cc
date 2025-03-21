@@ -58,7 +58,7 @@ FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytesToDescriptors,
           DoesNotDieCreateFromDescriptors);
 
 void DoesNotDieAllParams(api::OutputLayout output_layout,
-                         api::OutputFileBitDepth output_file_bit_depth,
+                         api::OutputSampleType output_sample_type,
                          uint32_t mix_presentation_id, std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   absl::StatusOr<api::IamfDecoder> iamf_decoder =
@@ -66,6 +66,7 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
   ASSERT_THAT(iamf_decoder, ::absl_testing::IsOk());
 
   auto decode_status = iamf_decoder->Decode(bitstream);
+  iamf_decoder->ConfigureOutputSampleType(output_sample_type);
 }
 
 // // TODO(b/378912426): Update this to support all output layouts.
@@ -88,18 +89,16 @@ auto AnyOutputLayout() {
   });
 }
 
-auto AnyOutputFileBitDepth() {
-  return ElementOf<api::OutputFileBitDepth>({
-      api::OutputFileBitDepth::kBitDepthAutomatic,
-      api::OutputFileBitDepth::kBitDepth16,
-      api::OutputFileBitDepth::kBitDepth24,
-      api::OutputFileBitDepth::kBitDepth32,
+auto AnyOutputSampleType() {
+  return ElementOf<api::OutputSampleType>({
+      api::OutputSampleType::kInt16LittleEndian,
+      api::OutputSampleType::kInt32LittleEndian,
   });
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_AllArbitraryParams, DoesNotDieAllParams)
     .WithDomains(AnyOutputLayout(),          // output_layout,
-                 AnyOutputFileBitDepth(),    // output_file_bit_depth,
+                 AnyOutputSampleType(),      // output_sample_type,
                  Arbitrary<uint32_t>(),      // mix_presentation_id,
                  Arbitrary<std::string>());  // data
 

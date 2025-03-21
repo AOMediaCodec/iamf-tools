@@ -44,7 +44,7 @@ namespace iamf_tools {
  */
 absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* buffer,
-                            int& write_position);
+                            size_t& write_position);
 
 /*!\brief Arranges the input samples by time and channel.
  *

@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/codec/aac_encoder.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -221,7 +222,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
   const bool big_endian = IsNativeBigEndian();
   std::vector<INT_PCM> encoder_input_pcm(
       num_samples_per_channel * num_channels_, 0);
-  int write_position = 0;
+  size_t write_position = 0;
   for (int t = 0; t < samples.size(); t++) {
     for (int c = 0; c < samples[0].size(); ++c) {
       // Convert all frames to INT_PCM samples for input for `fdk_aac` (usually

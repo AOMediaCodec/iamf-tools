@@ -178,7 +178,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     std::vector<uint8_t> output_buffer_char(
         num_samples_to_read * op_wav_nch *
         (ip_wav_bits_per_sample / kBitsPerByte));
-    int write_position = 0;
+    size_t write_position = 0;
     for (size_t i = 0; i < num_samples_to_read * op_wav_nch; ++i) {
       RETURN_IF_NOT_OK(WritePcmSample(
           op_buffer_int32[i], ip_wav_bits_per_sample,

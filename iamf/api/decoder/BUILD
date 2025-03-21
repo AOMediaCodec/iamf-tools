@@ -14,6 +14,7 @@ cc_library(
         "//iamf/cli:rendering_mix_presentation_finalizer",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:sample_processing_utils",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

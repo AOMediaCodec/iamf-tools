@@ -225,7 +225,7 @@ absl::Status WavWriter::PushFrameDerived(
 
   std::vector<uint8_t> samples_as_pcm(num_channels * num_ticks * bit_depth_ / 8,
                                       0);
-  int write_position = 0;
+  size_t write_position = 0;
   for (const auto& tick : time_channel_samples) {
     for (const auto& channel_sample : tick) {
       RETURN_IF_NOT_OK(WritePcmSample(channel_sample, bit_depth_,
