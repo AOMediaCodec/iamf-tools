@@ -72,10 +72,8 @@ absl::Status LpcmEncoder::EncodeAudioFrame(
   auto& audio_frame = partial_audio_frame_with_data->obu.audio_frame_;
   const bool big_endian = !(decoder_config_.sample_format_flags_bitmask_ &
                             LpcmDecoderConfig::kLpcmLittleEndian);
-  RETURN_IF_NOT_OK(WritePcmFrameToBuffer(
-      samples, /*samples_to_trim_at_start=*/0,
-      /*samples_to_trim_at_end=*/0, decoder_config_.sample_size_, big_endian,
-      audio_frame));
+  RETURN_IF_NOT_OK(WritePcmFrameToBuffer(samples, decoder_config_.sample_size_,
+                                         big_endian, audio_frame));
 
   absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(

@@ -90,8 +90,6 @@ absl::Status CompareTimestamps(InternalTimestamp expected_timestamp,
 /*!\brief Writes interlaced PCM samples into the output buffer.
  *
  * \param frame Input frames arranged in (time, channel) axes.
- * \param samples_to_trim_at_start Samples to trim at the beginning.
- * \param samples_to_trim_at_end Samples to trim at the end.
  * \param bit_depth Sample size in bits.
  * \param big_endian Whether the sample should be written as big or little
  *        endian.
@@ -99,9 +97,8 @@ absl::Status CompareTimestamps(InternalTimestamp expected_timestamp,
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status WritePcmFrameToBuffer(
-    const std::vector<std::vector<int32_t>>& frame,
-    uint32_t samples_to_trim_at_start, uint32_t samples_to_trim_at_end,
-    uint8_t bit_depth, bool big_endian, std::vector<uint8_t>& buffer);
+    const std::vector<std::vector<int32_t>>& frame, uint8_t bit_depth,
+    bool big_endian, std::vector<uint8_t>& buffer);
 
 /*!\brief Gets the common output sample rate and bit-deph of the input sets.
  *

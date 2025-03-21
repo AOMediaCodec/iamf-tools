@@ -48,7 +48,6 @@ using ::absl_testing::IsOk;
 
 constexpr DecodedUleb128 kCodecConfigId = 21;
 constexpr DecodedUleb128 kAudioElementId = 100;
-constexpr DecodedUleb128 kSecondAudioElementId = 101;
 constexpr DecodedUleb128 kMixPresentationId = 100;
 constexpr DecodedUleb128 kParameterId = 99999;
 constexpr DecodedUleb128 kParameterRate = 48000;
@@ -62,12 +61,9 @@ TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
   std::vector<std::vector<int32_t>> frame_to_write = {{0x7f000000, 0x7e000000},
                                                       {0x7f000000, 0x7e000000}};
   const uint8_t kBitDepth = 24;
-  const uint32_t kSamplesToTrimAtStart = 0;
-  const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
-  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
-                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
                                     output_buffer),
               IsOk());
 
@@ -78,12 +74,9 @@ TEST(WritePcmFrameToBuffer, WritesBigEndian) {
   std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
                                                       {0x7f005600, 0x7e007800}};
   const uint8_t kBitDepth = 24;
-  const uint32_t kSamplesToTrimAtStart = 0;
-  const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = true;
   std::vector<uint8_t> output_buffer;
-  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
-                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
                                     output_buffer),
               IsOk());
 
@@ -96,12 +89,9 @@ TEST(WritePcmFrameToBuffer, WritesLittleEndian) {
   std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
                                                       {0x7f005600, 0x7e007800}};
   const uint8_t kBitDepth = 24;
-  const uint32_t kSamplesToTrimAtStart = 0;
-  const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
-  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
-                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
                                     output_buffer),
               IsOk());
 
@@ -110,35 +100,14 @@ TEST(WritePcmFrameToBuffer, WritesLittleEndian) {
   EXPECT_EQ(output_buffer, kExpectedBytes);
 }
 
-TEST(WritePcmFrameToBuffer, TrimsSamples) {
-  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
-                                                      {0x7f005600, 0x7e007800}};
-  const uint8_t kBitDepth = 24;
-  const uint32_t kSamplesToTrimAtStart = 1;
-  const uint32_t kSamplesToTrimAtEnd = 0;
-  const bool kBigEndian = false;
-  std::vector<uint8_t> output_buffer;
-  EXPECT_THAT(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
-                                    kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
-                                    output_buffer),
-              IsOk());
-
-  const std::vector<uint8_t> kExpectedBytes = {0x56, 0x00, 0x7f,
-                                               0x78, 0x00, 0x7e};
-  EXPECT_EQ(output_buffer, kExpectedBytes);
-}
-
 TEST(WritePcmFrameToBuffer, RequiresBitDepthIsMultipleOfEight) {
   std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
                                                       {0x7f005600, 0x7e007800}};
   const uint8_t kBitDepth = 23;
-  const uint32_t kSamplesToTrimAtStart = 0;
-  const uint32_t kSamplesToTrimAtEnd = 0;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;
 
-  EXPECT_FALSE(WritePcmFrameToBuffer(frame_to_write, kSamplesToTrimAtStart,
-                                     kSamplesToTrimAtEnd, kBitDepth, kBigEndian,
+  EXPECT_FALSE(WritePcmFrameToBuffer(frame_to_write, kBitDepth, kBigEndian,
                                      output_buffer)
                    .ok());
 }
