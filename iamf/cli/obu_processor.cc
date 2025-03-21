@@ -45,6 +45,7 @@
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -287,6 +288,21 @@ absl::Status InsufficientDataReset(
       "more data and try again.");
 }
 
+void GetSampleRateAndFrameSize(
+    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+        output_codec_config_obus,
+    std::optional<uint32_t>& output_sample_rate,
+    std::optional<uint32_t>& output_frame_size) {
+  if (output_codec_config_obus.size() != 1) {
+    LOG(WARNING) << "Expected exactly one codec config OBUs, but found "
+                 << output_codec_config_obus.size();
+    return;
+  }
+  const auto& first_codec_config_obu = output_codec_config_obus.begin()->second;
+  output_sample_rate = first_codec_config_obu.GetOutputSampleRate();
+  output_frame_size = first_codec_config_obu.GetNumSamplesPerFrame();
+}
+
 }  // namespace
 
 absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
@@ -300,7 +316,8 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
   LOG(INFO) << "Processed Descriptor OBUs";
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
       audio_elements_, mix_presentations_, param_definition_variants_));
-
+  GetSampleRateAndFrameSize(codec_config_obus_, output_sample_rate_,
+                            output_frame_size_);
   // Mapping from substream IDs to pointers to audio element with data.
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements_) {
@@ -669,6 +686,20 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     return nullptr;
   }
   return obu_processor;
+}
+
+absl::StatusOr<uint32_t> ObuProcessor::GetOutputSampleRate() const {
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(output_sample_rate_,
+                       "Output sample rate, was this a trivial IA Sequence?"));
+  return *output_sample_rate_;
+}
+
+absl::StatusOr<uint32_t> ObuProcessor::GetOutputFrameSize() const {
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(output_frame_size_,
+                       "Output frame size, was this a trivial IA Sequence?"));
+  return *output_frame_size_;
 }
 
 absl::Status ObuProcessor::InitializeForRendering(

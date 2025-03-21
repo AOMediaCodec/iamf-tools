@@ -40,9 +40,14 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
+using ::testing::Not;
+
 using api::OutputLayout;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
+constexpr uint32_t kNumSamplesPerFrame = 8;
+constexpr uint32_t kBitDepth = 16;
 constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr DecodedUleb128 kFirstAudioElementId = 2;
 constexpr DecodedUleb128 kFirstSubstreamId = 18;
@@ -59,8 +64,8 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
-  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
-                                        codec_configs);
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddAmbisonicsMonoAudioElementWithSubstreamIds(
       kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
@@ -511,6 +516,40 @@ TEST(Flush, SucceedsWithNoTemporalUnits) {
   EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
               IsOk());
   EXPECT_TRUE(output_is_done);
+}
+
+TEST(GetSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      api::OutputLayout::kItu2051_SoundSystemA_0_2_0, source_data);
+  ASSERT_THAT(decoder, IsOk());
+
+  EXPECT_THAT(decoder->GetSampleRate(), IsOkAndHolds(kSampleRate));
+}
+
+TEST(GetSampleRate, ReturnsErrorBeforeDescriptorProcessingIsComplete) {
+  const auto decoder =
+      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  ASSERT_THAT(decoder, IsOk());
+
+  EXPECT_THAT(decoder->GetSampleRate(), Not(IsOk()));
+}
+
+TEST(GetFrameSize, ReturnsFrameSizeBasedOnCodecConfigObu) {
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      api::OutputLayout::kItu2051_SoundSystemA_0_2_0, source_data);
+  ASSERT_THAT(decoder, IsOk());
+
+  EXPECT_THAT(decoder->GetFrameSize(), IsOkAndHolds(kNumSamplesPerFrame));
+}
+
+TEST(GetFrameSize, ReturnsErrorBeforeDescriptorProcessingIsComplete) {
+  const auto decoder =
+      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  ASSERT_THAT(decoder, IsOk());
+
+  EXPECT_THAT(decoder->GetSampleRate(), Not(IsOk()));
 }
 
 }  // namespace

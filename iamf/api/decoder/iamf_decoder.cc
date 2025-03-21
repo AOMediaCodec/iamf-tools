@@ -250,11 +250,11 @@ absl::Status IamfDecoder::GetOutputTemporalUnit(
   return absl::OkStatus();
 }
 
-bool IamfDecoder::IsTemporalUnitAvailable() {
+bool IamfDecoder::IsTemporalUnitAvailable() const {
   return !state_->rendered_pcm_samples.empty();
 }
 
-bool IamfDecoder::IsDescriptorProcessingComplete() {
+bool IamfDecoder::IsDescriptorProcessingComplete() const {
   return state_->obu_processor != nullptr;
 }
 
@@ -274,12 +274,24 @@ absl::Status IamfDecoder::GetMixPresentations(
       "GetMixPresentations is not yet implemented.");
 }
 
-absl::Status IamfDecoder::GetSampleRate(uint32_t& output_sample_rate) {
-  return absl::UnimplementedError("GetSampleRate is not yet implemented.");
+absl::StatusOr<uint32_t> IamfDecoder::GetSampleRate() const {
+  if (!IsDescriptorProcessingComplete()) {
+    return absl::FailedPreconditionError(
+        "GetSampleRate() cannot be called before descriptor processing is "
+        "complete.");
+  }
+
+  return state_->obu_processor->GetOutputSampleRate();
 }
 
-absl::Status IamfDecoder::GetFrameSize(uint32_t& output_frame_size) {
-  return absl::UnimplementedError("GetFrameSize is not yet implemented.");
+absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
+  if (!IsDescriptorProcessingComplete()) {
+    return absl::FailedPreconditionError(
+        "GetFrameSize() cannot be called before descriptor processing is "
+        "complete.");
+  }
+
+  return state_->obu_processor->GetOutputFrameSize();
 }
 
 absl::Status IamfDecoder::Flush(

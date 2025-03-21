@@ -21,6 +21,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
@@ -70,6 +71,8 @@ class ObuProcessor {
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
+  [[deprecated(
+      "Remove when all tests are ported. Use the non-static version instead.")]]
   static absl::Status ProcessDescriptorObus(
       bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
       IASequenceHeaderObu& output_sequence_header,
@@ -176,6 +179,23 @@ class ObuProcessor {
           sample_processor_factory,
       bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
       Layout& output_layout, bool& output_insufficient_data);
+
+  /*!\brief Gets the sample rate of the output audio.
+   *
+   * \return Sample rate of the output audio, or a specific error code on
+   *         failure.
+   */
+  absl::StatusOr<uint32_t> GetOutputSampleRate() const;
+
+  /*!\brief Gets the frame size of the output audio.
+   *
+   * Useful to determine the maximum number of samples per
+   * `RenderTemporalUnitAndMeasureLoudness` call.
+   *
+   * \return Number of samples in per frame of the output audio, or a specific
+   *         specific error code on failure.
+   */
+  absl::StatusOr<uint32_t> GetOutputFrameSize() const;
 
   // TODO(b/381072155): Consider removing this one in favor of
   //                    `ProcessTemporalUnit()`, which outputs all OBUs
@@ -347,6 +367,9 @@ class ObuProcessor {
       }
     };
   };
+
+  std::optional<uint32_t> output_sample_rate_;
+  std::optional<uint32_t> output_frame_size_;
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
       param_definition_variants_;

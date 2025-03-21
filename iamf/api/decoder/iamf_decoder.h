@@ -165,7 +165,7 @@ class IamfDecoder {
    *
    * \return true iff a decoded temporal unit is available.
    */
-  bool IsTemporalUnitAvailable();
+  bool IsTemporalUnitAvailable() const;
 
   /*!\brief Returns true iff the descriptor OBUs have been parsed.
    *
@@ -174,7 +174,7 @@ class IamfDecoder {
    *
    * \return true iff the Descriptor OBUs have been parsed.
    */
-  bool IsDescriptorProcessingComplete();
+  bool IsDescriptorProcessingComplete() const;
 
   /*!\brief Gets the layout that will be used to render the audio.
    *
@@ -213,22 +213,24 @@ class IamfDecoder {
    * This function can only be used after all Descriptor OBUs have been parsed,
    * i.e. IsDescriptorProcessingComplete() returns true.
    *
-   * \param output_sample_rate Output parameter for the sample rate.
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status GetSampleRate(uint32_t& output_sample_rate);
+  absl::StatusOr<uint32_t> GetSampleRate() const;
 
   /*!\brief Gets the number of samples per frame.
    *
    * This function can only be used after all Descriptor OBUs have been parsed,
    * i.e. IsDescriptorProcessingComplete() returns true.
    *
-   * \param output_frame_size Output parameter for the frame size.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
+   * Returns the number of samples per frame of the output audio. The total
+   * number of samples in a time tick is the number of channels times the number
+   * of samples per frame.
+   *
+   * \return Number of samples per frame upon success. Other specific statuses
+   *         on failure.
    */
-  absl::Status GetFrameSize(uint32_t& output_frame_size);
+  absl::StatusOr<uint32_t> GetFrameSize() const;
 
   /*!\brief Outputs the last temporal unit(s) of decoded audio.
    *

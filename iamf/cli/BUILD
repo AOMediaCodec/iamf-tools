@@ -292,6 +292,7 @@ cc_library(
         ":sample_processor_base",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",

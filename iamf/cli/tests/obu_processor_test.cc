@@ -61,6 +61,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::NotNull;
@@ -78,6 +79,8 @@ constexpr DecodedUleb128 kFirstMixPresentationId = 3;
 constexpr DecodedUleb128 kSecondMixPresentationId = 4;
 constexpr DecodedUleb128 kThirdMixPresentationId = 5;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
+constexpr uint32_t kFrameSize = 1024;
+constexpr uint32_t kBitDepth = 16;
 constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 
@@ -1907,7 +1910,7 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
   EXPECT_EQ(read_bit_buffer->Tell(), first_ia_sequence_size * 8);
 }
 
-TEST(NonStatic, CreateSucceeds) {
+TEST(Create, Succeeds) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
@@ -1924,7 +1927,23 @@ TEST(NonStatic, CreateSucceeds) {
   EXPECT_EQ(obu_processor->mix_presentations_.size(), 1);
 }
 
-TEST(NonStatic, CreateFailsOnNullReadBitBuffer) {
+TEST(Create, SucceedsForTrivialIaSequence) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+
+  EXPECT_THAT(obu_processor, NotNull());
+  EXPECT_FALSE(insufficient_data);
+}
+
+TEST(Create, FailsOnNullReadBitBuffer) {
   bool insufficient_data;
 
   auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1934,7 +1953,7 @@ TEST(NonStatic, CreateFailsOnNullReadBitBuffer) {
   EXPECT_FALSE(insufficient_data);
 }
 
-TEST(NonStatic, CreateFailsOnInsufficientData) {
+TEST(Create, FailsOnInsufficientData) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       kBufferCapacity, absl::MakeConstSpan(bitstream));
@@ -1947,6 +1966,124 @@ TEST(NonStatic, CreateFailsOnInsufficientData) {
   EXPECT_THAT(obu_processor, IsNull());
   // We've received a valid bitstream so far but not complete.
   EXPECT_TRUE(insufficient_data);
+}
+
+TEST(GetOutputSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId)});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), IsOkAndHolds(kSampleRate));
+}
+
+TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), Not(IsOk()));
+}
+
+TEST(GetOutputSampleRate, FailsForMultipleCodecConfigObus) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), Not(IsOk()));
+}
+
+TEST(GetOutputFrameSize, ReturnsSampleRateBasedOnCodecConfigObu) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfig(kFirstCodecConfigId, kFrameSize, kBitDepth, kSampleRate,
+                     codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId)});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputSampleRate(), IsOkAndHolds(kSampleRate));
+}
+
+TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
+}
+
+TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  const auto buffer = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &codec_config_obus.at(kSecondCodecConfigId)});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      kBufferCapacity, absl::MakeConstSpan(buffer));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+
+  EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
 }
 
 TEST(NonStatic, ProcessTemporalUnitObu) {
