@@ -351,10 +351,7 @@ void AddMixPresentationObuWithConfigurableLayouts(
   }
 
   std::vector<MixPresentationSubMix> sub_mixes = {
-      {.num_audio_elements =
-           static_cast<DecodedUleb128>(audio_element_ids.size()),
-       .output_mix_gain = common_mix_gain_param_definition,
-       .num_layouts = static_cast<DecodedUleb128>(sound_system_layouts.size()),
+      {.output_mix_gain = common_mix_gain_param_definition,
        .layouts = layouts}};
   for (const auto& audio_element_id : audio_element_ids) {
     sub_mixes[0].audio_elements.push_back({
@@ -370,9 +367,9 @@ void AddMixPresentationObuWithConfigurableLayouts(
     });
   }
 
-  mix_presentations.push_back(MixPresentationObu(
-      ObuHeader(), mix_presentation_id,
-      /*count_label=*/0, {}, {}, sub_mixes.size(), sub_mixes));
+  mix_presentations.push_back(
+      MixPresentationObu(ObuHeader(), mix_presentation_id,
+                         /*count_label=*/0, {}, {}, sub_mixes));
 }
 
 void AddParamDefinitionWithMode0AndOneSubblock(
@@ -499,8 +496,8 @@ std::vector<DecodeSpecification> GetDecodeSpecifications(
   std::vector<DecodeSpecification> decode_specifications;
   for (const auto& mix_presentation :
        user_metadata.mix_presentation_metadata()) {
-    for (int i = 0; i < mix_presentation.num_sub_mixes(); ++i) {
-      for (int j = 0; j < mix_presentation.sub_mixes(i).num_layouts(); ++j) {
+    for (int i = 0; i < mix_presentation.sub_mixes_size(); ++i) {
+      for (int j = 0; j < mix_presentation.sub_mixes(i).layouts_size(); ++j) {
         DecodeSpecification decode_specification;
         decode_specification.mix_presentation_id =
             mix_presentation.mix_presentation_id();

@@ -79,10 +79,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
         count_label_(1),
         annotations_language_({"en-us"}),
         localized_presentation_annotations_({"Mix 1"}),
-        num_sub_mixes_(1),
         sub_mixes_(
-            {{.num_audio_elements = 1,
-              .audio_elements = {{
+            {{.audio_elements = {{
                   .audio_element_id = 11,
                   .localized_element_annotations = {"Submix 1"},
                   .rendering_config =
@@ -92,7 +90,6 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                        .rendering_config_extension_size = 0,
                        .rendering_config_extension_bytes = {}},
               }},
-              .num_layouts = 1,
               .layouts = {{.loudness_layout =
                                {.layout_type =
                                     Layout::kLayoutTypeLoudspeakersSsConvention,
@@ -143,7 +140,6 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
   // Length `count_label`.
   std::vector<std::string> localized_presentation_annotations_;
 
-  DecodedUleb128 num_sub_mixes_;
   // Length `num_sub_mixes`.
   std::vector<MixPresentationSubMix> sub_mixes_;
 
@@ -205,7 +201,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     // Construct and transfer ownership of the memory to the OBU.
     obu_ = std::make_unique<MixPresentationObu>(
         header_, mix_presentation_id_, count_label_, annotations_language_,
-        localized_presentation_annotations_, num_sub_mixes_, sub_mixes_);
+        localized_presentation_annotations_, sub_mixes_);
   }
 };
 
@@ -252,7 +248,6 @@ TEST_F(MixPresentationObuTest, ExtensionHeader) {
 }
 
 TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidNumSubMixes) {
-  num_sub_mixes_ = 0;
   sub_mixes_.clear();
   dynamic_sub_mix_args_.clear();
 
@@ -301,7 +296,6 @@ TEST_F(MixPresentationObuTest,
   ASSERT_EQ(sub_mixes_.size(), 1);
   ASSERT_EQ(sub_mixes_[0].audio_elements.size(), 1);
   // Add an extra audio element to sub-mix.
-  sub_mixes_[0].num_audio_elements = 2;
   sub_mixes_[0].audio_elements.push_back(sub_mixes_[0].audio_elements[0]);
   dynamic_sub_mix_args_[0].element_mix_gain_subblocks = {{}, {}};
 
@@ -320,7 +314,6 @@ TEST_F(MixPresentationObuTest,
   ASSERT_EQ(sub_mixes_.size(), 1);
   // Reconfigure the sub-mix to have no audio elements and no `element_mix`
   // gains which are typically 1:1 with the audio elements.
-  sub_mixes_[0].num_audio_elements = 0;
   sub_mixes_[0].audio_elements.clear();
   dynamic_sub_mix_args_[0].element_mix_gain_subblocks.clear();
 
@@ -332,7 +325,6 @@ TEST_F(MixPresentationObuTest,
 TEST_F(MixPresentationObuTest, TwoAnchorElements) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
   sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
-      2,
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
         .anchored_loudness = 20},
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
@@ -369,7 +361,6 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
       LoudnessInfo::kAnchoredLoudness | LoudnessInfo::kTruePeak;
   sub_mixes_[0].layouts[0].loudness.true_peak = 22;
   sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
-      1,
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
         .anchored_loudness = 20}}};
 
@@ -405,7 +396,6 @@ TEST_F(MixPresentationObuTest,
        ValidateAndWriteFailsWithInvalidNonUniqueAnchorElement) {
   sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kAnchoredLoudness;
   sub_mixes_[0].layouts[0].loudness.anchored_loudness = {
-      2,
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
         .anchored_loudness = 20},
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
@@ -468,7 +458,7 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       0x80 | 1, 0x00,
       // `language_label` and `mix_presentation_annotations`.
       'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0',
-      // `num_submixes` is affected by the `LebGenerator`.
+      // `num_sub_mixes` is affected by the `LebGenerator`.
       0x80 | 1, 0x00,
       // Start Submix 1
       // `num_audio_elements` is affected by the `LebGenerator`.
@@ -681,10 +671,8 @@ TEST_F(MixPresentationObuTest, RenderingConfigExtension) {
 }
 
 TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
-  num_sub_mixes_ = 2;
   sub_mixes_.push_back(
-      {.num_audio_elements = 1,
-       .audio_elements = {{
+      {.audio_elements = {{
            .audio_element_id = 21,
            .localized_element_annotations = {"Submix 2"},
            .rendering_config =
@@ -694,8 +682,6 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                 .rendering_config_extension_size = 0,
                 .rendering_config_extension_bytes = {}},
        }},
-
-       .num_layouts = 3,
        .layouts = {
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeReserved0,
                                 .specific_layout =
@@ -818,7 +804,7 @@ TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
   };
   InitExpectOk();
   obu_->mix_presentation_tags_ =
-      MixPresentationTags{.num_tags = 1, .tags = {{"tag", "value"}}};
+      MixPresentationTags{.tags = {{"tag", "value"}}};
 
   WriteBitBuffer wb(1024);
   EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
@@ -943,7 +929,6 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithErrorBeyondLayoutType) {
   ASSERT_FALSE(sub_mixes_.empty());
   sub_mixes_[0].layouts.push_back(
       MixPresentationLayout{Layout{.layout_type = kBeyondLayoutType}});
-  sub_mixes_[0].num_layouts = sub_mixes_[0].layouts.size();
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
@@ -986,7 +971,7 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
       'e', 'n', '-', 'u', 's', '\0',
       // localized_presentation_annotations[0]
       'M', 'i', 'x', ' ', '1', '\0',
-      // num_submixes
+      // num_sub_mixes
       0,
       // End Mix OBU.
   };
@@ -1014,7 +999,7 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       'e', 'n', '-', 'u', 's', '\0',
       // localized_presentation_annotations[0]
       'M', 'i', 'x', ' ', '1', '\0',
-      // num_submixes
+      // num_sub_mixes
       1,
       // Start Submix.
       1, 21,
@@ -1069,7 +1054,7 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
       10,
       // count_label
       0,
-      // num_submixes
+      // num_sub_mixes
       1,
       // Start Submix.
       1, 21,
@@ -1119,7 +1104,7 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
       10,
       // count_label
       0,
-      // num_submixes
+      // num_sub_mixes
       1,
       // Start Submix.
       1, 21,
@@ -1217,7 +1202,7 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
                 {.sound_system =
                      LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
   EXPECT_EQ(layout.loudness.info_type, LoudnessInfo::kAnchoredLoudness);
-  EXPECT_EQ(layout.loudness.anchored_loudness.num_anchored_loudness, 2);
+  EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements.size(), 2);
   EXPECT_EQ(layout.loudness.anchored_loudness.anchor_elements[0].anchor_element,
             AnchoredLoudnessElement::kAnchorElementAlbum);
   EXPECT_EQ(
@@ -1372,8 +1357,7 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
 
 TEST(MixPresentationTagsWriteAndValidate, WritesWithZeroTags) {
   constexpr uint8_t kZeroNumTags = 0;
-  const MixPresentationTags kMixPresentationTagsWithZeroTags = {
-      .num_tags = kZeroNumTags};
+  const MixPresentationTags kMixPresentationTagsWithZeroTags = {.tags = {}};
   const std::vector<uint8_t> kExpectedBuffer = {
       // `num_tags`.
       kZeroNumTags,
@@ -1388,7 +1372,7 @@ TEST(MixPresentationTagsWriteAndValidate, WritesWithZeroTags) {
 TEST(MixPresentationTagsWriteAndValidate, WritesContentLanguageTag) {
   constexpr uint8_t kOneTag = 1;
   const MixPresentationTags kMixPresentationTagsWithContentLanguageTag = {
-      .num_tags = kOneTag, .tags = {{"content_language", "eng"}}};
+      .tags = {{"content_language", "eng"}}};
   const std::vector<uint8_t> kExpectedBuffer = {
       // `num_tags`.
       kOneTag,
@@ -1407,9 +1391,8 @@ TEST(MixPresentationTagsWriteAndValidate, WritesContentLanguageTag) {
 
 TEST(MixPresentationTagsWriteAndValidate,
      InvalidWhenContentLanguageTagNotThreeCharacters) {
-  constexpr uint8_t kOneTag = 1;
   const MixPresentationTags kMixPresentationTagsWithContentLanguageTag = {
-      .num_tags = kOneTag, .tags = {{"content_language", "en-us"}}};
+      .tags = {{"content_language", "en-us"}}};
 
   WriteBitBuffer wb(0);
 
@@ -1420,7 +1403,7 @@ TEST(MixPresentationTagsWriteAndValidate,
 TEST(MixPresentationTagsWriteAndValidate, WritesArbitraryTags) {
   constexpr uint8_t kNumTags = 1;
   const MixPresentationTags kMixPresentationTagsWithArbitraryTag = {
-      .num_tags = kNumTags, .tags = {{"ABC", "123"}}};
+      .tags = {{"ABC", "123"}}};
   const std::vector<uint8_t> kExpectedBuffer = {// `num_tags`.
                                                 kNumTags,
                                                 // `tag_name[0]`.
@@ -1438,7 +1421,7 @@ TEST(MixPresentationTagsWriteAndValidate, WritesArbitraryTags) {
 TEST(MixPresentationTagsWriteAndValidate, WritesDuplicateArbitraryTags) {
   constexpr uint8_t kTwoTags = 2;
   const MixPresentationTags kMixPresentationTagsWithArbitraryTag = {
-      .num_tags = kTwoTags, .tags = {{"tag", "value"}, {"tag", "value"}}};
+      .tags = {{"tag", "value"}, {"tag", "value"}}};
   const std::vector<uint8_t> kExpectedBuffer = {// `num_tags`.
                                                 kTwoTags,
                                                 // `tag_name[0]`.
@@ -1458,10 +1441,8 @@ TEST(MixPresentationTagsWriteAndValidate, WritesDuplicateArbitraryTags) {
 }
 
 TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
-  constexpr uint8_t kTwoTags = 2;
   const MixPresentationTags
       kMixPresentationTagsWithDuplicateContentLanguageTag = {
-          .num_tags = kTwoTags,
           .tags = {{"content_language", "eng"}, {"content_language", "kor"}}};
 
   WriteBitBuffer wb(1024);

@@ -225,11 +225,9 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
   mix_presentation_obu_metadata.add_annotations_language("en-us");
   mix_presentation_obu_metadata.add_localized_presentation_annotations(
       "test_mix_pres");
-  mix_presentation_obu_metadata.set_num_sub_mixes(1);
 
   auto& mix_presentation_sub_mix =
       *mix_presentation_obu_metadata.add_sub_mixes();
-  mix_presentation_sub_mix.set_num_audio_elements(audio_objects.size());
   for (const auto& audio_object : audio_objects) {
     const auto status = SubMixAudioElementMetadataBuilder(
         audio_object, audio_object_id_to_audio_element_id_[audio_object.id],

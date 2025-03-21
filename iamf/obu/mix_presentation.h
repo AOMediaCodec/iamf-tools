@@ -92,8 +92,8 @@ struct AnchoredLoudness {
   friend bool operator==(const AnchoredLoudness& lhs,
                          const AnchoredLoudness& rhs) = default;
 
-  uint8_t num_anchored_loudness = 0;
-  // Length `num_anchored_loudness`.
+  // `num_anchored_loudness` is implicit based on the size of
+  // `anchor_elements`.
   std::vector<AnchoredLoudnessElement> anchor_elements = {};
 };
 
@@ -293,16 +293,14 @@ struct MixPresentationSubMix {
    */
   absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
 
-  DecodedUleb128 num_audio_elements;
-  // Length `num_audio_elements`.
+  // `num_audio_elements` is implicit based on the size of `audio_elements`.
   std::vector<SubMixAudioElement> audio_elements;
 
   // The gain value to be applied in post-processing the mixed audio signal to
   // generate the audio signal for playback.
   MixGainParamDefinition output_mix_gain;
 
-  DecodedUleb128 num_layouts;
-  // Length `num_layouts`.
+  // `num_layouts` is implicit based on the size of `layouts`.
   std::vector<MixPresentationLayout> layouts;
 };
 
@@ -325,7 +323,7 @@ struct MixPresentationTags {
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
-  uint8_t num_tags;
+  // `num_tags` is implicit based on the size of `tags`.
   std::vector<Tag> tags;
 };
 
@@ -366,7 +364,6 @@ class MixPresentationObu : public ObuBase {
    *        `annotations_language`s in the OBU.
    * \param localized_presentation_annotations Vector representing all of the
    *        `localized_presentation_annotations`s in the OBU.
-   * \param num_sub_mixes `num_sub_mixes` in the OBU.
    * \param sub_mixes Vector representing all of the sub mixes in the OBU.
    */
   MixPresentationObu(
@@ -374,15 +371,14 @@ class MixPresentationObu : public ObuBase {
       DecodedUleb128 count_label,
       const std::vector<std::string>& annotations_language,
       const std::vector<std::string>& localized_presentation_annotations,
-      DecodedUleb128 num_sub_mixes,
       std::vector<MixPresentationSubMix>& sub_mixes)
       : ObuBase(header, kObuIaMixPresentation),
         sub_mixes_(std::move(sub_mixes)),
         mix_presentation_id_(mix_presentation_id),
         count_label_(count_label),
         annotations_language_(annotations_language),
-        localized_presentation_annotations_(localized_presentation_annotations),
-        num_sub_mixes_(num_sub_mixes) {}
+        localized_presentation_annotations_(
+            localized_presentation_annotations) {}
 
   /*!\brief Creates a `MixPresentationObu` from a `ReadBitBuffer`.
    *
@@ -426,7 +422,7 @@ class MixPresentationObu : public ObuBase {
     return localized_presentation_annotations_;
   }
 
-  DecodedUleb128 GetNumSubMixes() const { return num_sub_mixes_; }
+  DecodedUleb128 GetNumSubMixes() const { return sub_mixes_.size(); }
 
   std::vector<MixPresentationSubMix> sub_mixes_;
 
@@ -442,7 +438,7 @@ class MixPresentationObu : public ObuBase {
   // Length `count_label`.
   std::vector<std::string> localized_presentation_annotations_;
 
-  DecodedUleb128 num_sub_mixes_;
+  // `num_sub_mixes_` is implicit based on the size of `sub_mixes_`.
 
   // Used only by the factory create function.
   explicit MixPresentationObu(const ObuHeader& header)
@@ -451,8 +447,7 @@ class MixPresentationObu : public ObuBase {
         mix_presentation_id_(DecodedUleb128()),
         count_label_(DecodedUleb128()),
         annotations_language_({}),
-        localized_presentation_annotations_({}),
-        num_sub_mixes_(DecodedUleb128()) {}
+        localized_presentation_annotations_({}) {}
   /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.

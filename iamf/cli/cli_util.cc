@@ -102,7 +102,7 @@ absl::Status GetIndicesForLayout(
     const Layout& layout, int& output_submix_index, int& output_layout_index) {
   for (int s = 0; s < mix_presentation_sub_mixes.size(); s++) {
     const auto& sub_mix = mix_presentation_sub_mixes[s];
-    for (int l = 0; l < sub_mix.num_layouts; l++) {
+    for (int l = 0; l < sub_mix.layouts.size(); l++) {
       const auto& mix_presentation_layout = sub_mix.layouts[l];
       if (layout == mix_presentation_layout.loudness_layout) {
         output_submix_index = s;

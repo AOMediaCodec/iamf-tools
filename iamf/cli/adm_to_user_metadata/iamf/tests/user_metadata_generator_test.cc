@@ -197,7 +197,7 @@ TEST(GenerateUserMetadata,
   EXPECT_EQ(user_metadata.mix_presentation_metadata().size(), 1);
   EXPECT_EQ(user_metadata.mix_presentation_metadata(0)
                 .sub_mixes(0)
-                .num_audio_elements(),
+                .audio_elements_size(),
             1);
 }
 
@@ -216,16 +216,16 @@ TEST(GenerateUserMetadata,
       GetAdmWithStereoAndToaObjectsAndTwoAudioProgrammes());
 
   EXPECT_EQ(user_metadata.mix_presentation_metadata().size(), 2);
-  EXPECT_EQ(user_metadata.mix_presentation_metadata(0).num_sub_mixes(), 1);
+  EXPECT_EQ(user_metadata.mix_presentation_metadata(0).sub_mixes_size(), 1);
   EXPECT_EQ(user_metadata.mix_presentation_metadata(0)
                 .sub_mixes(0)
-                .num_audio_elements(),
+                .audio_elements_size(),
             kExpectedFirstMixPresentationNumAudioElements);
 
-  EXPECT_EQ(user_metadata.mix_presentation_metadata(1).num_sub_mixes(), 1);
+  EXPECT_EQ(user_metadata.mix_presentation_metadata(1).sub_mixes_size(), 1);
   EXPECT_EQ(user_metadata.mix_presentation_metadata(1)
                 .sub_mixes(0)
-                .num_audio_elements(),
+                .audio_elements_size(),
             kExpectedSecondMixPresentationNumAudioElements);
 }
 

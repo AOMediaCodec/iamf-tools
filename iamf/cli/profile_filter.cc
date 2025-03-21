@@ -219,9 +219,9 @@ absl::Status FilterAmbisonicsConfig(
 
 absl::Status FilterProfileForNumSubmixes(
     absl::string_view mix_presentation_id_for_debugging,
-    int num_submixes_in_mix_presentation,
+    int num_sub_mixes_in_mix_presentation,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
-  if (num_submixes_in_mix_presentation > 1) {
+  if (num_sub_mixes_in_mix_presentation > 1) {
     profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
@@ -230,7 +230,7 @@ absl::Status FilterProfileForNumSubmixes(
   if (profile_versions.empty()) {
     return absl::InvalidArgumentError(
         absl::StrCat(mix_presentation_id_for_debugging, " has ",
-                     num_submixes_in_mix_presentation,
+                     num_sub_mixes_in_mix_presentation,
                      " sub mixes, but the requested profiles "
                      "do not support this number of sub-mixes."));
   }
@@ -289,7 +289,7 @@ absl::Status FilterAudioElementsAndGetNumberOfAudioElementsAndChannels(
   num_audio_elements_in_mix_presentation = 0;
   num_channels_in_mix_presentation = 0;
   for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
-    num_audio_elements_in_mix_presentation += sub_mix.num_audio_elements;
+    num_audio_elements_in_mix_presentation += sub_mix.audio_elements.size();
     for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
       auto iter = audio_elements.find(sub_mix_audio_element.audio_element_id);
       if (iter == audio_elements.end()) {

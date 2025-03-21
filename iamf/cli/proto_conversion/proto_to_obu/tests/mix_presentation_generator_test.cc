@@ -80,9 +80,7 @@ void FillMixPresentationMetadata(
       R"pb(
         mix_presentation_id: 42
         count_label: 0
-        num_sub_mixes: 1
         sub_mixes {
-          num_audio_elements: 1
           audio_elements {
             audio_element_id: 300
             rendering_config {
@@ -442,7 +440,6 @@ TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
 
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
-  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 0);
   EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
 }
 
@@ -464,7 +461,6 @@ TEST(Generate, IgnoresDeprecatedNumTags) {
   // Ok safely ignore the deprecated `num_tags` field.
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
-  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 0);
   EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
 }
 
@@ -533,7 +529,6 @@ TEST(Generate, CopiesDuplicateContentLanguageTags) {
 
   const auto& first_obu = generated_obus.front();
   ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
-  EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags, 2);
   ASSERT_EQ(first_obu.mix_presentation_tags_->tags.size(), 2);
   EXPECT_EQ(first_obu.mix_presentation_tags_->tags[0].tag_name,
             "content_language");
@@ -596,7 +591,7 @@ TEST_P(MixPresentationTagsPresenceTest, MixPresentationTagsArePresentOrAbsent) {
 
   if (test_case.expected_num_tags.has_value()) {
     EXPECT_TRUE(first_obu.mix_presentation_tags_.has_value());
-    EXPECT_EQ(first_obu.mix_presentation_tags_->num_tags,
+    EXPECT_EQ(first_obu.mix_presentation_tags_->tags.size(),
               *test_case.expected_num_tags);
     // If the tags are present, the last tag may be the build information tag.
     if (test_case.expect_build_information_tag_to_be_present) {
@@ -915,8 +910,6 @@ TEST_F(MixPresentationGeneratorTest, IgnoresDeprecatedNumAudioElements) {
 
   // Regardless of the deprecated `num_audio_elements` field, the number of
   // audio elements the `audio_elements` array.
-  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].num_audio_elements,
-            kExpectedNumAudioElements);
   EXPECT_EQ(generated_obus_.back().sub_mixes_[0].audio_elements.size(),
             kExpectedNumAudioElements);
 }
@@ -937,8 +930,6 @@ TEST_F(MixPresentationGeneratorTest, IgnoresDeprecatedNumLayouts) {
 
   // Regardless of the deprecated `num_layouts` field, the number of layouts is
   // inferred from the `layouts` array.
-  EXPECT_EQ(generated_obus_.back().sub_mixes_[0].num_layouts,
-            kExpectedNumLayouts);
   EXPECT_EQ(generated_obus_.back().sub_mixes_[0].layouts.size(),
             kExpectedNumLayouts);
 }
@@ -1189,7 +1180,6 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         anchored_loudness {
-          num_anchored_loudness: 2
           anchor_elements:
           [ { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1000 }
             , { anchor_element: ANCHOR_TYPE_ALBUM anchored_loudness: 1001 }]
@@ -1199,7 +1189,6 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
   // Configured expected data. The function only writes to the
   // `AnchoredLoudness`.
   const AnchoredLoudness expected_output_loudness = {
-      .num_anchored_loudness = 2,
       .anchor_elements = {
           {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
            .anchored_loudness = 1000},
@@ -1225,7 +1214,6 @@ TEST(CopyUserAnchoredLoudness, IgnoresDeprecatedNumAnchoredLoudnessField) {
 
   // Regardless of the deprecated `num_anchored_loudness` field, the number of
   // anchor elements is inferred from the `anchor_elements` array.
-  EXPECT_EQ(output_loudness.anchored_loudness.num_anchored_loudness, 0);
   EXPECT_TRUE(output_loudness.anchored_loudness.anchor_elements.empty());
 }
 
@@ -1238,7 +1226,6 @@ TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
   google::protobuf::TextFormat::ParseFromString(
       R"pb(
         anchored_loudness {
-          num_anchored_loudness: 1
           anchor_elements:
           [ { anchor_element: ANCHOR_TYPE_NOT_DEFINED anchored_loudness: 1000 }
       )pb",

@@ -109,9 +109,9 @@ TEST(PopulateMixPresentation, PopulatesLabels) {
 TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
   const auto& mix_presentation_metadata = GetMixObuMetataExpectOk();
 
-  EXPECT_EQ(mix_presentation_metadata.num_sub_mixes(), 1);
+  EXPECT_EQ(mix_presentation_metadata.sub_mixes_size(), 1);
   const auto& submix = mix_presentation_metadata.sub_mixes(0);
-  EXPECT_EQ(submix.num_audio_elements(), 1);
+  EXPECT_EQ(submix.audio_elements_size(), 1);
   const auto& audio_element = submix.audio_elements(0);
 
   const uint32_t kExpectedAudioElementId = 0;
@@ -245,14 +245,14 @@ TEST(PopulateMixPresentation,
 TEST(PopulateMixPresentation, AlwaysPopulatesExactlyOneSubmix) {
   EXPECT_EQ(
       GetMixObuMetataExpectOk({GetStereoAudioObject(), Get5_1AudioObject()})
-          .num_sub_mixes(),
+          .sub_mixes_size(),
       1);
 }
 TEST(PopulateMixPresentation, PopulatesOneAudioElementPerAudioObject) {
   EXPECT_EQ(
       GetMixObuMetataExpectOk({GetStereoAudioObject(), Get5_1AudioObject()})
           .sub_mixes(0)
-          .num_audio_elements(),
+          .audio_elements_size(),
       2);
 }
 

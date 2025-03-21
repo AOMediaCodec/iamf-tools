@@ -119,6 +119,7 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",

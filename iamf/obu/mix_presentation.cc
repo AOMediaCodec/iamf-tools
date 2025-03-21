@@ -25,6 +25,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
@@ -137,11 +138,11 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
         layout.loudness.anchored_loudness.anchor_elements));
     const AnchoredLoudness& anchored_loudness =
         layout.loudness.anchored_loudness;
-    RETURN_IF_NOT_OK(
-        wb.WriteUnsignedLiteral(anchored_loudness.num_anchored_loudness, 8));
-    RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-        "anchor_elements", anchored_loudness.anchor_elements,
-        anchored_loudness.num_anchored_loudness));
+    uint8_t num_anchor_elements;
+    RETURN_IF_NOT_OK(StaticCastIfInRange(
+        "num_anchor_elements", anchored_loudness.anchor_elements.size(),
+        num_anchor_elements));
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_anchor_elements, 8));
     for (const auto& anchor_element : anchored_loudness.anchor_elements) {
       RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
           static_cast<uint8_t>(anchor_element.anchor_element), 8));
@@ -166,27 +167,25 @@ absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
                                     const MixPresentationSubMix& sub_mix,
                                     WriteBitBuffer& wb) {
   // IAMF requires there to be at least one audio element.
-  RETURN_IF_NOT_OK(ValidateNotEqual(
-      DecodedUleb128{0}, sub_mix.num_audio_elements, "num_audio_elements"));
+  const DecodedUleb128 num_audio_elements = sub_mix.audio_elements.size();
+  RETURN_IF_NOT_OK(ValidateNotEqual(DecodedUleb128{0}, num_audio_elements,
+                                    "num_audio_elements"));
 
   // Write the main portion of a `MixPresentationSubMix`.
-  RETURN_IF_NOT_OK(wb.WriteUleb128(sub_mix.num_audio_elements));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(num_audio_elements));
 
   // Loop to write the `audio_elements` array.
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "audio_elements", sub_mix.audio_elements, sub_mix.num_audio_elements));
   for (const auto& sub_mix_audio_element : sub_mix.audio_elements) {
     RETURN_IF_NOT_OK(ValidateAndWriteSubMixAudioElement(
         count_label, sub_mix_audio_element, wb));
   }
 
   RETURN_IF_NOT_OK(sub_mix.output_mix_gain.ValidateAndWrite(wb));
-  RETURN_IF_NOT_OK(wb.WriteUleb128(sub_mix.num_layouts));
+  const DecodedUleb128 num_layouts = sub_mix.layouts.size();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(num_layouts));
 
   // Loop to write the `layouts` array.
   bool found_stereo_layout = false;
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("layouts", sub_mix.layouts,
-                                              sub_mix.num_layouts));
   for (const auto& layout : sub_mix.layouts) {
     RETURN_IF_NOT_OK(ValidateAndWriteLayout(layout, found_stereo_layout, wb));
   }
@@ -246,10 +245,10 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   }
   // Conditionally read `anchored_loudness` based on `info_type`.
   if (loudness.info_type & LoudnessInfo::kAnchoredLoudness) {
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
-        8, loudness.anchored_loudness.num_anchored_loudness));
+    uint8_t num_anchored_loudness;
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_anchored_loudness));
 
-    for (int i = 0; i < loudness.anchored_loudness.num_anchored_loudness; ++i) {
+    for (int i = 0; i < num_anchored_loudness; ++i) {
       AnchoredLoudnessElement anchor_loudness_element;
       uint8_t anchor_element;
       RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, anchor_element));
@@ -308,6 +307,7 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
 
 absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
                                                     ReadBitBuffer& rb) {
+  DecodedUleb128 num_audio_elements;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_audio_elements));
   // IAMF requires there to be at least one audio element.
   RETURN_IF_NOT_OK(ValidateNotEqual(DecodedUleb128{0}, num_audio_elements,
@@ -319,6 +319,7 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
   }
 
   RETURN_IF_NOT_OK(output_mix_gain.ReadAndValidate(rb));
+  DecodedUleb128 num_layouts;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_layouts));
   for (int i = 0; i < num_layouts; ++i) {
     MixPresentationLayout mix_presentation_layout;
@@ -343,8 +344,9 @@ absl::Status ValidateCompliesWithIso639_2(absl::string_view string) {
 }
 
 absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
+  uint8_t num_tags;
+  RETURN_IF_NOT_OK(StaticCastIfInRange("num_tags", tags.size(), num_tags));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(num_tags, 8));
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("tags", tags, num_tags));
 
   int count_content_language_tag = 0;
 
@@ -472,13 +474,12 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
     RETURN_IF_NOT_OK(wb.WriteString(localized_presentation_annotation));
   }
 
-  RETURN_IF_NOT_OK(wb.WriteUleb128(num_sub_mixes_));
+  const DecodedUleb128 num_sub_mixes = sub_mixes_.size();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(num_sub_mixes));
 
   // Loop to write the `sub_mixes` array.
-  RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes_));
+  RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
-  RETURN_IF_NOT_OK(
-      ValidateContainerSizeEqual("sub_mixes", sub_mixes_, num_sub_mixes_));
   for (const auto& sub_mix : sub_mixes_) {
     RETURN_IF_NOT_OK(ValidateAndWriteSubMix(count_label_, sub_mix, wb));
   }
@@ -520,10 +521,11 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
         localized_presentation_annotation);
   }
 
-  RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes_));
+  DecodedUleb128 num_sub_mixes;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes));
 
   // Loop to read the `sub_mixes` array.
-  for (int i = 0; i < num_sub_mixes_; ++i) {
+  for (int i = 0; i < num_sub_mixes; ++i) {
     MixPresentationSubMix sub_mix;
     RETURN_IF_NOT_OK(sub_mix.ReadAndValidate(count_label_, rb));
     sub_mixes_.push_back(sub_mix);
@@ -531,7 +533,7 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
   // TODO(b/329705373): Examine how many bytes were read so far. Use this to
   //                    determine if Mix Presentation Tags should be read.
 
-  RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes_));
+  RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
 
   return absl::OkStatus();
@@ -560,15 +562,15 @@ void MixPresentationObu::PrintObu() const {
     LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
               << localized_presentation_annotations_[i] << "\"";
   }
-  LOG(INFO) << "  num_sub_mixes= " << num_sub_mixes_;
+  LOG(INFO) << "  num_sub_mixes= " << sub_mixes_.size();
 
   // Submixes.
-  for (int i = 0; i < num_sub_mixes_; ++i) {
+  for (int i = 0; i < sub_mixes_.size(); ++i) {
     const auto& sub_mix = sub_mixes_[i];
     LOG(INFO) << "  // sub_mixes[" << i << "]:";
-    LOG(INFO) << "    num_audio_elements= " << sub_mix.num_audio_elements;
+    LOG(INFO) << "    num_audio_elements= " << sub_mix.audio_elements.size();
     // Audio elements.
-    for (int j = 0; j < sub_mix.num_audio_elements; ++j) {
+    for (int j = 0; j < sub_mix.audio_elements.size(); ++j) {
       const auto& audio_element = sub_mix.audio_elements[j];
       LOG(INFO) << "    // audio_elements[" << j << "]:";
       LOG(INFO) << "      audio_element_id= " << audio_element.audio_element_id;
@@ -594,10 +596,10 @@ void MixPresentationObu::PrintObu() const {
     LOG(INFO) << "    output_mix_gain:";
     sub_mix.output_mix_gain.Print();
 
-    LOG(INFO) << "    num_layouts= " << sub_mix.num_layouts;
+    LOG(INFO) << "    num_layouts= " << sub_mix.layouts.size();
 
     // Layouts.
-    for (int j = 0; j < sub_mix.num_layouts; j++) {
+    for (int j = 0; j < sub_mix.layouts.size(); j++) {
       const auto& layout = sub_mix.layouts[j];
       LOG(INFO) << "    // layouts[" << j << "]:";
       LOG(INFO) << "      loudness_layout:";
@@ -634,7 +636,7 @@ void MixPresentationObu::PrintObu() const {
         const auto& anchored_loudness = loudness.anchored_loudness;
         LOG(INFO) << "        anchored_loudness: ";
         LOG(INFO) << "          num_anchored_loudness= "
-                  << absl::StrCat(anchored_loudness.num_anchored_loudness);
+                  << absl::StrCat(anchored_loudness.anchor_elements.size());
         for (int i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
           LOG(INFO) << "          anchor_element[" << i << "]= "
                     << absl::StrCat(
@@ -658,7 +660,7 @@ void MixPresentationObu::PrintObu() const {
   }
   if (mix_presentation_tags_.has_value()) {
     LOG(INFO) << "  mix_presentation_tags:";
-    for (int i = 0; i < mix_presentation_tags_->num_tags; ++i) {
+    for (int i = 0; i < mix_presentation_tags_->tags.size(); ++i) {
       const auto& tag = mix_presentation_tags_->tags[i];
       LOG(INFO) << "    tags[" << i << "]:";
       LOG(INFO) << "      tag_name= \"" << tag.tag_name << "\"";

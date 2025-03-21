@@ -107,9 +107,7 @@ void AddMixPresentation(UserMetadata& user_metadata) {
       R"pb(
         mix_presentation_id: 42
         count_label: 0
-        num_sub_mixes: 1
         sub_mixes {
-          num_audio_elements: 1
           audio_elements {
             audio_element_id: 300
             rendering_config {
@@ -134,7 +132,6 @@ void AddMixPresentation(UserMetadata& user_metadata) {
             }
             default_mix_gain: 0
           }
-          num_layouts: 1
           layouts {
             loudness_layout {
               layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION

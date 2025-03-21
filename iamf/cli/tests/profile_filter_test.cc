@@ -453,7 +453,6 @@ void InitializeDescriptorObusWithTwoSubmixes(
       kCommonMixGainParameterRate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
   common_mix_gain_param_definition.default_mix_gain_ = 0;
-  constexpr DecodedUleb128 kNumAudioElementsPerSubmix = 1;
   const RenderingConfig kRenderingConfig = {
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
@@ -471,30 +470,26 @@ void InitializeDescriptorObusWithTwoSubmixes(
       .loudness = {
           .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}};
   std::vector<MixPresentationSubMix> sub_mixes;
-  sub_mixes.push_back({.num_audio_elements = kNumAudioElementsPerSubmix,
-                       .audio_elements = {{
+  sub_mixes.push_back({.audio_elements = {{
                            .audio_element_id = kFirstAudioElementId,
                            .localized_element_annotations = {},
                            .rendering_config = kRenderingConfig,
                            .element_mix_gain = common_mix_gain_param_definition,
                        }},
                        .output_mix_gain = common_mix_gain_param_definition,
-                       .num_layouts = 1,
                        .layouts = {kStereoLayout}});
-  sub_mixes.push_back({.num_audio_elements = kNumAudioElementsPerSubmix,
-                       .audio_elements = {{
+  sub_mixes.push_back({.audio_elements = {{
                            .audio_element_id = kSecondAudioElementId,
                            .localized_element_annotations = {},
                            .rendering_config = kRenderingConfig,
                            .element_mix_gain = common_mix_gain_param_definition,
                        }},
                        .output_mix_gain = common_mix_gain_param_definition,
-                       .num_layouts = 1,
                        .layouts = {kStereoLayout}});
 
-  mix_presentation_obus.push_back(MixPresentationObu(
-      ObuHeader(), kFirstMixPresentationId,
-      /*count_label=*/0, {}, {}, sub_mixes.size(), sub_mixes));
+  mix_presentation_obus.push_back(
+      MixPresentationObu(ObuHeader(), kFirstMixPresentationId,
+                         /*count_label=*/0, {}, {}, sub_mixes));
 }
 
 TEST(FilterProfilesForMixPresentation,
