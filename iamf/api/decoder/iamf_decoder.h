@@ -105,14 +105,6 @@ class IamfDecoder {
   absl::Status ConfigureMixPresentationId(
       MixPresentationId mix_presentation_id);
 
-  /*!\brief Configures the decoder with the desired output layout.
-   *
-   * \param output_layout Specifies the desired output layout.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
-   */
-  absl::Status ConfigureOutputLayout(OutputLayout output_layout);
-
   /*!\brief Configures the decoder with the desired bit depth.
    *
    * \param bit_depth Specifies the desired bit depth.
@@ -186,11 +178,18 @@ class IamfDecoder {
    * This function can only be used after all Descriptor OBUs have been parsed,
    * i.e. IsDescriptorProcessingComplete() returns true.
    *
-   * \param output_layout Output parameter for layout.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
+   * \return OutputLayout or error statuses on failure.
    */
-  absl::Status GetOutputLayout(OutputLayout& output_layout);
+  absl::StatusOr<OutputLayout> GetOutputLayout() const;
+
+  /*!\brief Gets the number of output channels.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
+   *
+   * \return
+   */
+  absl::StatusOr<int> GetNumberOfOutputChannels() const;
 
   /*!\brief Provides mix presentation information from the descriptor OBUs.
    *
@@ -205,8 +204,8 @@ class IamfDecoder {
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.
    */
-  absl::Status GetMixPresentations(
-      std::vector<MixPresentationMetadata>& output_mix_presentation_metadatas);
+  absl::Status GetMixPresentations(std::vector<MixPresentationMetadata>&
+                                       output_mix_presentation_metadatas) const;
 
   /*!\brief Gets the sample rate.
    *

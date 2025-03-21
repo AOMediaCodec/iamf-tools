@@ -44,6 +44,7 @@ using ::absl_testing::IsOkAndHolds;
 using ::testing::Not;
 
 using api::OutputLayout;
+using ::testing::Not;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -56,8 +57,6 @@ constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-constexpr OutputLayout kStereoLayout =
-    OutputLayout::kItu2051_SoundSystemA_0_2_0;
 
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
@@ -82,33 +81,42 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
 
 TEST(IsDescriptorProcessingComplete,
      ReturnsFalseBeforeDescriptorObusAreProcessed) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
+
   EXPECT_FALSE(decoder->IsDescriptorProcessingComplete());
 }
 
 TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      kStereoLayout, GenerateBasicDescriptorObus());
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
+
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  OutputLayout output_layout;
-  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
-  EXPECT_EQ(output_layout, kStereoLayout);
+  auto output_layout = decoder->GetOutputLayout();
+  EXPECT_THAT(output_layout.status(), IsOk());
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
+  EXPECT_THAT(number_of_output_channels.status(), IsOk());
+  EXPECT_EQ(*number_of_output_channels, 2);
 }
 
 TEST(GetOutputLayout, ReturnsDefaultStereoLayoutIfNoMatchingLayoutExists) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      api::OutputLayout::kItu2051_SoundSystemE_4_5_1,
-      GenerateBasicDescriptorObus());
+      OutputLayout::kItu2051_SoundSystemE_4_5_1, GenerateBasicDescriptorObus());
+
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  OutputLayout output_layout;
-  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
-  EXPECT_EQ(output_layout, kStereoLayout);
+  auto output_layout = decoder->GetOutputLayout();
+  EXPECT_THAT(output_layout.status(), IsOk());
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
+  EXPECT_THAT(number_of_output_channels.status(), IsOk());
+  EXPECT_EQ(*number_of_output_channels, 2);
 }
 
 TEST(GetOutputLayout,
      ReturnsDefaultStereoLayoutIfNoMatchingLayoutExistsUsingDecode) {
   auto decoder =
-      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemE_4_5_1);
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemE_4_5_1);
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
       TemporalDelimiterObu(ObuHeader());
@@ -116,11 +124,16 @@ TEST(GetOutputLayout,
       SerializeObusExpectOk({&temporal_delimiter_obu});
   source_data.insert(source_data.end(), temporal_delimiter_bytes.begin(),
                      temporal_delimiter_bytes.end());
+
   EXPECT_THAT(decoder->Decode(source_data), IsOk());
+
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  OutputLayout output_layout;
-  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
-  EXPECT_EQ(output_layout, kStereoLayout);
+  auto output_layout = decoder->GetOutputLayout();
+  EXPECT_THAT(output_layout.status(), IsOk());
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
+  EXPECT_THAT(number_of_output_channels.status(), IsOk());
+  EXPECT_EQ(*number_of_output_channels, 2);
 }
 
 TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {
@@ -148,23 +161,22 @@ TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {
       {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
        &audio_elements.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      api::OutputLayout::kItu2051_SoundSystemB_0_5_0, descriptor_obus);
-  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  OutputLayout output_layout;
-  EXPECT_THAT(decoder->GetOutputLayout(output_layout), IsOk());
-  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
-}
 
-TEST(GetOutputLayout, FailsIfCalledBeforeDescriptorObusAreProcessed) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
-  ASSERT_THAT(decoder, IsOk());
-  OutputLayout output_layout;
-  EXPECT_FALSE(decoder->GetOutputLayout(output_layout).ok());
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemB_0_5_0, descriptor_obus);
+
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+  auto output_layout = decoder->GetOutputLayout();
+  EXPECT_THAT(output_layout.status(), IsOk());
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemB_0_5_0);
+  auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
+  EXPECT_THAT(number_of_output_channels.status(), IsOk());
+  EXPECT_EQ(*number_of_output_channels, 6);
 }
 
 TEST(Create, SucceedsAndDecodeSucceedsWithPartialData) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   EXPECT_THAT(decoder, IsOk());
 
   std::vector<uint8_t> source_data = {0x01, 0x23, 0x45};
@@ -180,7 +192,8 @@ TEST(Create, SucceedsWithNonStereoLayout) {
 
 TEST(CreateFromDescriptors, Succeeds) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      kStereoLayout, GenerateBasicDescriptorObus());
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
+
   EXPECT_THAT(decoder, IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 }
@@ -188,6 +201,7 @@ TEST(CreateFromDescriptors, Succeeds) {
 TEST(CreateFromDescriptors, SucceedsWithNonStereoLayout) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
       OutputLayout::kItu2051_SoundSystemB_0_5_0, GenerateBasicDescriptorObus());
+
   EXPECT_THAT(decoder, IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 }
@@ -196,14 +210,16 @@ TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
   auto descriptors = GenerateBasicDescriptorObus();
   // remove the last byte to make the descriptor OBUs incomplete.
   descriptors.pop_back();
-  auto decoder =
-      api::IamfDecoder::CreateFromDescriptors(kStereoLayout, descriptors);
+
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, descriptors);
+
   EXPECT_FALSE(decoder.ok());
 }
 
 TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      kStereoLayout, GenerateBasicDescriptorObus());
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
   EXPECT_THAT(decoder, IsOk());
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
 
@@ -217,7 +233,8 @@ TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
 }
 
 TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
@@ -232,7 +249,8 @@ TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {
 }
 
 TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
@@ -253,8 +271,8 @@ TEST(Decode, SucceedsWithMultiplePushesOfDescriptorObus) {
 
 TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
-  auto decoder =
-      api::IamfDecoder::CreateFromDescriptors(kStereoLayout, source_data);
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, source_data);
   ASSERT_THAT(decoder, IsOk());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -265,7 +283,8 @@ TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
 }
 
 TEST(Decode, SucceedsWithOneTemporalUnit) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -278,7 +297,8 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
 }
 
 TEST(Decode, SucceedsWithMultipleTemporalUnits) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -343,7 +363,8 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
 }
 
 TEST(Decode, FailsWhenCalledAfterFlush) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -361,14 +382,15 @@ TEST(Decode, FailsWhenCalledAfterFlush) {
 
 TEST(IsTemporalUnitAvailable, ReturnsFalseAfterCreateFromDescriptorObus) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
-      kStereoLayout, GenerateBasicDescriptorObus());
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
   ASSERT_THAT(decoder, IsOk());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
 TEST(IsTemporalUnitAvailable,
      TemporalUnitIsNotAvailableAfterDecodeWithNoTemporalDelimiterAtEnd) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -383,7 +405,8 @@ TEST(IsTemporalUnitAvailable,
 
 TEST(IsTemporalUnitAvailable,
      ReturnsTrueAfterDecodingOneTemporalUnitWithTemporalDelimiterAtEnd) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -410,7 +433,8 @@ TEST(IsTemporalUnitAvailable,
 }
 
 TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -426,7 +450,8 @@ TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
 }
 
 TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -443,7 +468,8 @@ TEST(IsTemporalUnitAvailable, ReturnsFalseAfterPoppingLastTemporalUnit) {
 }
 
 TEST(GetOutputTemporalUnit, FillsOutputVectorWithAllButLastTemporalUnit) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -471,8 +497,8 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithAllButLastTemporalUnit) {
 TEST(GetOutputTemporalUnit,
      DoesNotFillOutputVectorWhenNoTemporalUnitIsAvailable) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
-  auto decoder =
-      api::IamfDecoder::CreateFromDescriptors(kStereoLayout, source_data);
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, source_data);
   ASSERT_THAT(decoder, IsOk());
 
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
@@ -482,7 +508,8 @@ TEST(GetOutputTemporalUnit,
 }
 
 TEST(Flush, SucceedsWithMultipleTemporalUnits) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
@@ -509,13 +536,29 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
 }
 
 TEST(Flush, SucceedsWithNoTemporalUnits) {
-  auto decoder = api::IamfDecoder::Create(kStereoLayout);
+  auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
   bool output_is_done;
   EXPECT_THAT(decoder->Flush(output_decoded_temporal_unit, output_is_done),
               IsOk());
   EXPECT_TRUE(output_is_done);
+}
+
+TEST(IamfDecoder,
+     CertainGettersReturnErrorBeforeDescriptorProcessingIsComplete) {
+  const auto decoder =
+      api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  ASSERT_THAT(decoder, IsOk());
+
+  EXPECT_THAT(decoder->GetOutputLayout(), Not(IsOk()));
+  EXPECT_THAT(decoder->GetNumberOfOutputChannels(), Not(IsOk()));
+  EXPECT_THAT(decoder->GetSampleRate(), Not(IsOk()));
+  EXPECT_THAT(decoder->GetFrameSize(), Not(IsOk()));
+  std::vector<api::MixPresentationMetadata> output_mix_presentation_metadatas;
+  EXPECT_THAT(decoder->GetMixPresentations(output_mix_presentation_metadatas),
+              Not(IsOk()));
 }
 
 TEST(GetSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
@@ -527,14 +570,6 @@ TEST(GetSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
   EXPECT_THAT(decoder->GetSampleRate(), IsOkAndHolds(kSampleRate));
 }
 
-TEST(GetSampleRate, ReturnsErrorBeforeDescriptorProcessingIsComplete) {
-  const auto decoder =
-      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
-  ASSERT_THAT(decoder, IsOk());
-
-  EXPECT_THAT(decoder->GetSampleRate(), Not(IsOk()));
-}
-
 TEST(GetFrameSize, ReturnsFrameSizeBasedOnCodecConfigObu) {
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
@@ -542,14 +577,6 @@ TEST(GetFrameSize, ReturnsFrameSizeBasedOnCodecConfigObu) {
   ASSERT_THAT(decoder, IsOk());
 
   EXPECT_THAT(decoder->GetFrameSize(), IsOkAndHolds(kNumSamplesPerFrame));
-}
-
-TEST(GetFrameSize, ReturnsErrorBeforeDescriptorProcessingIsComplete) {
-  const auto decoder =
-      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
-  ASSERT_THAT(decoder, IsOk());
-
-  EXPECT_THAT(decoder->GetSampleRate(), Not(IsOk()));
 }
 
 }  // namespace
