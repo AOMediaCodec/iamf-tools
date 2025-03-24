@@ -851,6 +851,8 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     // - The timestamp has advanced (i.e. when the next temporal unit gets its
     //   timestamp).
     // - A temporal delimiter is encountered.
+    // TODO(b/405943120): Stop creating buggy first "empty" temporal units when
+    //                    temporal delimiters are encountered.
     if ((!continue_processing && eos_is_end_of_sequence) ||
         next_temporal_unit_.timestamp.has_value() ||
         current_temporal_unit_.temporal_delimiter.has_value()) {
