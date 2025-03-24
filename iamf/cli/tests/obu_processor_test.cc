@@ -62,9 +62,12 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::_;
 using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::NotNull;
+
+using absl::MakeConstSpan;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
@@ -2654,82 +2657,112 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   EXPECT_THAT(obu_processor, IsNull());
 }
 
-TEST(RenderAudioFramesWithDataAndMeasureLoudness,
-     SelectsFirstSupportedMixPresentation) {
-  const auto output_filename = GetAndCleanupOutputFileName(".wav");
+TEST(CreateForRendering, ReturnsNullPtrIfOnlyBaseEnhancedProfileIsDetected) {
+  // Create a minimal fourth-order ambisonics IA Sequence. Fourth-order
+  // ambisonics requires Base-Enhanced profile, as of IAMF v1.1.0. But the
+  // underlying `ObuProcessor` does not (yet) support Base-Enhanced.
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfBaseEnhancedProfile,
+      ProfileVersion::kIamfBaseEnhancedProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
-  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kFirstAudioElementId,
-                                kFirstSubstreamId, codec_config_obus,
-                                audio_elements_with_data);
-  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kSecondAudioElementId,
-                                kSecondSubstreamId, codec_config_obus,
-                                audio_elements_with_data);
-  AddOneLayerStereoAudioElement(kFirstCodecConfigId, kThirdAudioElementId,
-                                kThirdSubstreamId, codec_config_obus,
-                                audio_elements_with_data);
-  std::list<AudioFrameWithData> audio_frames_with_data;
-  const std::list<ParameterBlockWithData> kNoParameterBlocks;
-  audio_frames_with_data.push_back(AudioFrameWithData{
-      .obu = AudioFrameObu(ObuHeader(), kFirstSubstreamId,
-                           /*audio_frame=*/{10, 0, 0, 0}),
-      .start_timestamp = 0,
-      .end_timestamp = 1,
-      .audio_element_with_data =
-          &audio_elements_with_data.at(kFirstAudioElementId),
-  });
-  audio_frames_with_data.push_back(AudioFrameWithData{
-      .obu = AudioFrameObu(ObuHeader(), kSecondSubstreamId,
-                           /*audio_frame=*/{20, 0, 0, 0}),
-      .start_timestamp = 0,
-      .end_timestamp = 1,
-      .audio_element_with_data =
-          &audio_elements_with_data.at(kSecondAudioElementId),
-  });
-  audio_frames_with_data.push_back(AudioFrameWithData{
-      .obu = AudioFrameObu(ObuHeader(), kThirdSubstreamId,
-                           /*audio_frame=*/{40, 0, 0, 0}),
-      .start_timestamp = 0,
-      .end_timestamp = 1,
-      .audio_element_with_data =
-          &audio_elements_with_data.at(kThirdAudioElementId),
-  });
+  constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds =
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+       13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      MakeConstSpan(kFourthOrderAmbisonicsSubstreamIds), codec_config_obus,
+      audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  const auto bitstream = SerializeObusExpectOk(
+      {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      bitstream.size(), MakeConstSpan(bitstream));
+  // Minimize the test, we can exclude audio frames by claiming this is just the
+  // descriptors via `is_exhaustive_and_exact`.
+  constexpr bool kIsExhaustiveAndExact = true;
+
+  // TODO(b/392950028): Support decoding of Base-Enhanced profile for IAMF v1.1.
+  bool insufficient_data;
+  Layout unused_output_layout;
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kStereoLayout,
+                  RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+                  kIsExhaustiveAndExact, read_bit_buffer.get(),
+                  unused_output_layout, insufficient_data),
+              IsNull());
+  EXPECT_FALSE(insufficient_data);
+}
+
+TEST(CreateForRendering,
+     ForwardsFirstSupportedMixPresentationToSampleProcessorFactory) {
+  // Create an IA Sequence with two mix presentations. The first mix
+  // presentation has 32-channels, and is not supported under Simple, Base, or
+  // Base-Enhanced profiles. The second mix presentation has sixteen channels,
+  // and is supported under all profiles defined in IAMF v1.1.0.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  constexpr std::array<DecodedUleb128, 16> kFirstAudioElementSubstreamIds = {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      MakeConstSpan(kFirstAudioElementSubstreamIds), codec_config_obus,
+      audio_elements_with_data);
+  constexpr std::array<DecodedUleb128, 16> kSecondAudioElementSubstreamIds = {
+      100, 101, 102, 103, 104, 105, 106, 107,
+      108, 109, 110, 111, 112, 113, 114, 115};
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kSecondAudioElementId, kFirstCodecConfigId,
+      MakeConstSpan(kSecondAudioElementSubstreamIds), codec_config_obus,
+      audio_elements_with_data);
   // The first mix presentation is not suitable for simple or base profile.
   std::list<MixPresentationObu> mix_presentation_obus;
   AddMixPresentationObuWithAudioElementIds(
-      kFirstMixPresentationId,
-      {kFirstAudioElementId, kSecondAudioElementId, kThirdAudioElementId},
+      kFirstMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
   // The second is suitable.
-  constexpr int32_t kExpectedFirstSampleForFirstSupportedMixPresentation =
-      30 << 16;
   AddMixPresentationObuWithAudioElementIds(
-      kSecondMixPresentationId, {kFirstAudioElementId, kSecondAudioElementId},
+      kSecondMixPresentationId, {kSecondAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
-  // The third is also suitable, but the will not be selected.
-  AddMixPresentationObuWithAudioElementIds(
-      kThirdMixPresentationId, {kFirstAudioElementId, kThirdAudioElementId},
-      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
-
   auto mix_presentation_obus_iter = mix_presentation_obus.begin();
   const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &audio_elements_with_data.at(kSecondAudioElementId).obu,
-       &audio_elements_with_data.at(kThirdAudioElementId).obu,
-       &(*mix_presentation_obus_iter++), &(*mix_presentation_obus_iter++),
-       &(*mix_presentation_obus_iter++)});
-  RenderUsingObuProcessorExpectOk(
-      output_filename, kWriteWavHeader, kNoOutputFileBitDepthOverride,
-      audio_frames_with_data, kNoParameterBlocks, bitstream);
+       &(*mix_presentation_obus_iter++), &(*mix_presentation_obus_iter++)});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      bitstream.size(), MakeConstSpan(bitstream));
+  // Minimize the test, we can exclude audio frames by claiming this is just the
+  // descriptors via `is_exhaustive_and_exact`.
+  constexpr bool kIsExhaustiveAndExact = true;
 
-  auto wav_reader = CreateWavReaderExpectOk(output_filename);
-  EXPECT_EQ(wav_reader.ReadFrame(), 2);
-  EXPECT_EQ(wav_reader.buffers_[0][0],
-            kExpectedFirstSampleForFirstSupportedMixPresentation);
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  // Regardless of the unsupported mix presentation, we expect the first
+  // supported mix presentation to be used.
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kSecondMixPresentationId, _, _, _, _, _, _, _))
+      .Times(1);
+
+  bool insufficient_data;
+  Layout unused_output_layout;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kStereoLayout, mock_sample_processor_factory.AsStdFunction(),
+      kIsExhaustiveAndExact, read_bit_buffer.get(), unused_output_layout,
+      insufficient_data);
+  EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(obu_processor, NotNull());
 }
 
 TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
