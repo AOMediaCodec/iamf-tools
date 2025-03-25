@@ -32,7 +32,7 @@ TEST(ExtensionParameterDataReadTest, NineBytes) {
                                       'a', 'r', 'b', 'i', 't', 'r', 'a', 'r',
                                       'y'};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   ExtensionParameterData extension_parameter_data;
   EXPECT_THAT(extension_parameter_data.ReadAndValidate(*buffer), IsOk());

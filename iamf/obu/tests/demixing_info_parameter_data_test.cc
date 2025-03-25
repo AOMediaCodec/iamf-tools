@@ -168,7 +168,7 @@ TEST(WriteDefaultDemixingInfoParameterData, Writes) {
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
   std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift};
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
   EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
@@ -178,7 +178,7 @@ TEST(ReadDemixingInfoParameterData, ReadDMixPMode1) {
 TEST(ReadDemixingInfoParameterData, ReadDMixPMode3) {
   std::vector<uint8_t> source_data = {kDMixPMode3 << kDMixPModeBitShift};
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
   EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode3);
@@ -190,7 +190,7 @@ TEST(ReadDemixingInfoParameterData, ReadReservedMax) {
   std::vector<uint8_t> source_data = {kDMixPMode1 << kDMixPModeBitShift |
                                       kReservedMax};
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   DemixingInfoParameterData data;
   EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kDMixPMode1);
@@ -206,7 +206,7 @@ TEST(ReadsDefaultDemixingInfoParameterData, Reads) {
       kExpectedDMixPMode << kDMixPModeBitShift | kExpectedReserved,
       kExpectedDefaultW << kDefaultWBitShift | kExpectedReservedDefault};
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   DefaultDemixingInfoParameterData data;
   EXPECT_THAT(data.ReadAndValidate(*rb), IsOk());
   EXPECT_EQ(data.dmixp_mode, kExpectedDMixPMode);

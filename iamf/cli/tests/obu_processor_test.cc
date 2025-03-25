@@ -129,7 +129,6 @@ TEST(ProcessDescriptorObus, FailsWithEmptyBitstream) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(bitstream_without_ia_sequence_header));
   bool insufficient_data;
   EXPECT_FALSE(ObuProcessor::ProcessDescriptorObus(
@@ -161,7 +160,7 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(two_codec_configs_and_audio_frame));
+      absl::MakeConstSpan(two_codec_configs_and_audio_frame));
   bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -194,7 +193,6 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
   bool insufficient_data;
   EXPECT_THAT(
@@ -227,7 +225,6 @@ TEST(ProcessDescriptorObus,
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(two_codec_configs_at_end_of_bitstream));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
@@ -254,7 +251,7 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(only_ia_sequence_header));
+      absl::MakeConstSpan(only_ia_sequence_header));
   bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -289,7 +286,6 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
                              &input_codec_configs.at(kFirstCodecConfigId)});
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(ia_sequence_header_then_codec_config));
   bool insufficient_data;
   EXPECT_THAT(ObuProcessor::ProcessDescriptorObus(
@@ -306,7 +302,6 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
                              &input_ia_sequence_header});
 
   read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(codec_config_then_ia_sequence_header));
   EXPECT_FALSE(ObuProcessor::ProcessDescriptorObus(
                    /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
@@ -331,8 +326,8 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -363,8 +358,8 @@ TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   EXPECT_THAT(
       ObuProcessor::ProcessDescriptorObus(
@@ -396,7 +391,6 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(ia_sequence_header_with_codec_configs));
   bool insufficient_data;
   EXPECT_THAT(
@@ -447,7 +441,6 @@ TEST(ProcessDescriptorObus, SucceedsWithoutTemporalUnitFollowing) {
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(zeroth_order_ambisonics_descriptor_obus));
   bool insufficient_data;
 
@@ -483,7 +476,6 @@ TEST(ProcessDescriptorObus,
   std::list<MixPresentationObu> mix_presentation_obus;
 
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(zeroth_order_ambisonics_descriptor_obus));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
@@ -522,8 +514,8 @@ TEST(ProcessDescriptorObusTest,
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
@@ -559,8 +551,8 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   EXPECT_THAT(
@@ -606,8 +598,8 @@ TEST(ProcessDescriptorObusTest,
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
@@ -638,8 +630,8 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
       audio_elements_with_data;
   std::list<MixPresentationObu> mix_presentation_obus;
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
 
@@ -662,7 +654,7 @@ TEST(ProcessDescriptorObus, RejectsDescriptorObusWithPartialHeaderFollowing) {
 TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
   const auto empty_temporal_unit = SerializeObusExpectOk({});
   auto empty_read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(empty_temporal_unit));
+      absl::MakeConstSpan(empty_temporal_unit));
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigs =
       {};
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
@@ -722,7 +714,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(one_temporal_unit));
+      absl::MakeConstSpan(one_temporal_unit));
 
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
@@ -774,9 +766,8 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
   ParametersManager parameters_manager(audio_elements_with_data);
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
-      absl::MakeConstSpan(
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(
           one_temporal_unit_before_non_redundant_descriptor_obu));
 
   bool continue_processing = true;
@@ -848,7 +839,6 @@ TEST(ProcessTemporalUnitObus,
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(one_temporal_unit_before_redundant_descriptor_obu));
 
   bool continue_processing = true;
@@ -929,7 +919,6 @@ TEST(ProcessTemporalUnitObus,
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(temporal_unit_with_non_redundant_codec_config_obu));
 
   bool continue_processing = true;
@@ -992,7 +981,7 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(temporal_unit_with_reserved_obus));
+      absl::MakeConstSpan(temporal_unit_with_reserved_obus));
 
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
@@ -1078,7 +1067,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(multiple_audio_substreams));
+      absl::MakeConstSpan(multiple_audio_substreams));
 
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
@@ -1131,7 +1120,7 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(audio_substream_with_two_frames));
+      absl::MakeConstSpan(audio_substream_with_two_frames));
 
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
@@ -1188,7 +1177,6 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity,
       absl::MakeConstSpan(two_temporal_units_with_delimiter_obu));
 
   bool continue_processing = true;
@@ -1259,7 +1247,7 @@ TEST(ProcessTemporalUnitObusTest,
   ParametersManager parameters_manager(audio_elements_with_data);
   ASSERT_THAT(parameters_manager.Initialize(), IsOk());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(one_parameter_block_obu));
+      absl::MakeConstSpan(one_parameter_block_obu));
 
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
@@ -1317,7 +1305,7 @@ TEST(ProcessTemporalUnitObus,
   // incomplete header (A header requires at least 2 bytes).
   one_temporal_unit.push_back(0);
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(one_temporal_unit));
+      absl::MakeConstSpan(one_temporal_unit));
 
   // Confirm that the first temporal unit is processed successfully.
   bool continue_processing = true;
@@ -1384,7 +1372,7 @@ TEST(ProcessTemporalUnitObus,
                      extra_audio_frame_obu_header_bytes.begin(),
                      extra_audio_frame_obu_header_bytes.end());
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(ia_sequence));
+      absl::MakeConstSpan(ia_sequence));
 
   // Confirm that the first temporal unit is processed successfully.
   bool continue_processing = true;
@@ -1426,8 +1414,8 @@ TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
   auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1457,8 +1445,8 @@ TEST(ProcessTemporalUnit, DoesNotConsumeOneAudioFrameAsTemporalUnit) {
   auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1492,8 +1480,8 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
   bitstream.insert(bitstream.end(),
                    two_temporal_units_with_delimiter_obu.begin(),
                    two_temporal_units_with_delimiter_obu.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1540,8 +1528,8 @@ TEST(ProcessTemporalUnit,
       SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
   bitstream.insert(bitstream.end(), two_temporal_units.begin(),
                    two_temporal_units.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1591,8 +1579,8 @@ TEST(ProcessTemporalUnit, ConsumesOnlyOneTemporalUnitFromTwoAudioFrames) {
       SerializeObusExpectOk({&audio_frame_obus[0], &audio_frame_obus[1]});
   bitstream.insert(bitstream.end(), two_temporal_units.begin(),
                    two_temporal_units.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1650,8 +1638,8 @@ TEST(ProcessTemporalUnit,
                             extra_audio_frame_obu_header_bytes.end());
   bitstream.insert(bitstream.end(), two_temporal_units.begin(),
                    two_temporal_units.end());
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
@@ -1804,8 +1792,8 @@ TEST(CollectObusFromIaSequence, ConsumesIaSequenceAndCollectsAllObus) {
   std::list<MixPresentationObu> mix_presentation_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
                                         codec_config_obus, audio_elements,
                                         mix_presentation_obus, audio_frames,
@@ -1853,7 +1841,7 @@ TEST(CollectObusFromIaSequence, ConsumesTrivialIaSequence) {
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(two_ia_sequences));
+      absl::MakeConstSpan(two_ia_sequences));
   EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
                                         codec_config_obus, audio_elements,
                                         mix_presentation_obus, audio_frames,
@@ -1900,8 +1888,8 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
   std::list<MixPresentationObu> mix_presentation_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
                                         codec_config_obus, audio_elements,
                                         mix_presentation_obus, audio_frames,
@@ -1915,8 +1903,8 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
 
 TEST(Create, Succeeds) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   auto obu_processor =
@@ -1935,8 +1923,8 @@ TEST(Create, SucceedsForTrivialIaSequence) {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -1958,8 +1946,8 @@ TEST(Create, FailsOnNullReadBitBuffer) {
 
 TEST(Create, FailsOnInsufficientData) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   auto obu_processor =
@@ -1980,8 +1968,8 @@ TEST(GetOutputSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
                                         codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId)});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -1996,8 +1984,8 @@ TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -2019,8 +2007,8 @@ TEST(GetOutputSampleRate, FailsForMultipleCodecConfigObus) {
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
        &codec_config_obus.at(kSecondCodecConfigId)});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -2039,8 +2027,8 @@ TEST(GetOutputFrameSize, ReturnsSampleRateBasedOnCodecConfigObu) {
                      codec_config_obus);
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId)});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -2055,8 +2043,8 @@ TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -2078,8 +2066,8 @@ TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
   const auto buffer = SerializeObusExpectOk(
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
        &codec_config_obus.at(kSecondCodecConfigId)});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(buffer));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
   bool insufficient_data;
   auto obu_processor =
       ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
@@ -2097,8 +2085,8 @@ TEST(NonStatic, ProcessTemporalUnitObu) {
   bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
                    temporal_unit_obus.end());
 
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   auto obu_processor =
@@ -2130,7 +2118,7 @@ void RenderUsingObuProcessorExpectOk(
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const std::vector<uint8_t>& bitstream_of_descriptors) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream_of_descriptors));
+      absl::MakeConstSpan(bitstream_of_descriptors));
   bool insufficient_data;
 
   const std::string output_filename_string(output_filename);
@@ -2370,8 +2358,8 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
 
   Layout unused_output_layout;
   bool insufficient_data;
@@ -2483,7 +2471,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
          &audio_elements_with_data.at(kFirstAudioElementId).obu,
          &mix_presentation_obus.front()});
     auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-        kBufferCapacity, absl::MakeConstSpan(bitstream));
+        absl::MakeConstSpan(bitstream));
 
     Layout unused_output_layout;
     bool insufficient_data;
@@ -2644,8 +2632,8 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
        &mix_presentation_obus.front()});
 
   // Expect that the `ObuProcessor` rejects the rendering request.
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
@@ -2685,8 +2673,8 @@ TEST(CreateForRendering, ReturnsNullPtrIfOnlyBaseEnhancedProfileIsDetected) {
       {&kIaSequenceHeader, &codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      bitstream.size(), MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   // Minimize the test, we can exclude audio frames by claiming this is just the
   // descriptors via `is_exhaustive_and_exact`.
   constexpr bool kIsExhaustiveAndExact = true;
@@ -2742,8 +2730,8 @@ TEST(CreateForRendering,
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &audio_elements_with_data.at(kSecondAudioElementId).obu,
        &(*mix_presentation_obus_iter++), &(*mix_presentation_obus_iter++)});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      bitstream.size(), MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   // Minimize the test, we can exclude audio frames by claiming this is just the
   // descriptors via `is_exhaustive_and_exact`.
   constexpr bool kIsExhaustiveAndExact = true;
@@ -2788,8 +2776,8 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   // We expect arguments to be forwarded from the OBUs to the sample processor
@@ -2857,8 +2845,8 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   // We expect to use the second layout, since this is the only one that matches
@@ -2912,8 +2900,8 @@ TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   // We expect to use the first layout as default, since the desired layout is
@@ -2976,8 +2964,8 @@ TEST(CreateForRendering,
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front(),
        &*(std::next(mix_presentation_obus.begin()))});
-  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kBufferCapacity, absl::MakeConstSpan(bitstream));
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
   // We expect to use the second layout in the second mix presentation, since

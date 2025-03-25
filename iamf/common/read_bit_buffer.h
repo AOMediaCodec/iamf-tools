@@ -283,14 +283,13 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
  public:
   /*!\brief Creates an instance of a memory-based read bit buffer.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
    * \param source Source span from which the buffer will load data. The
    *        entire contents will be copied into the constructed instance.
    * \return Unique pointer of the created instance. `nullptr` if the creation
    *         fails.
    */
   static std::unique_ptr<MemoryBasedReadBitBuffer> CreateFromSpan(
-      int64_t capacity, absl::Span<const uint8_t> source);
+      absl::Span<const uint8_t> source);
 
   /*!\brief Destructor.*/
   ~MemoryBasedReadBitBuffer() override = default;
@@ -404,10 +403,8 @@ class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
   /*!\brief Private constructor.
    *
    * \param capacity Capacity of the internal buffer in bytes.
-   * \param source_size Size of the source data in bits.
-   *
    */
-  StreamBasedReadBitBuffer(size_t capacity, int64_t source_size);
+  StreamBasedReadBitBuffer(size_t capacity);
 
   // Specifies the maximum size of the source data in bits.
   int64_t max_source_size_;

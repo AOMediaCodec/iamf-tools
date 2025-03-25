@@ -203,8 +203,7 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency64000) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
 
@@ -233,7 +232,7 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency24000) {
       kLowerByteSerializedSamplingFrequencyIndex24000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
-  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(1024, data);
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(data);
 
   EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
 
@@ -257,8 +256,7 @@ TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
       ((kSampleFrequency & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   AudioSpecificConfig audio_specific_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
 
@@ -296,8 +294,7 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
@@ -353,8 +350,7 @@ TEST(AacDecoderConfig, ReadAndValidateWithExplicitSampleFrequency) {
       // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
       ((48000 & 1)) | kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
@@ -392,8 +388,7 @@ TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_FALSE(decoder_config.ReadAndValidate(kAudioRollDistance, *rb).ok());
 }
@@ -428,8 +423,7 @@ TEST(AacDecoderConfig, ReadExtensions) {
           kChannelConfigurationAndGaSpecificConfigMask,
       'd', 'e', 'f', 'a', 'b', 'c'};
   AacDecoderConfig decoder_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
 
@@ -469,8 +463,7 @@ TEST(AacDecoderConfig, ValidatesAudioRollDistance) {
       kLowerByteSerializedSamplingFrequencyIndex64000 |
           kChannelConfigurationAndGaSpecificConfigMask};
   AacDecoderConfig decoder_config;
-  auto rb =
-      MemoryBasedReadBitBuffer::CreateFromSpan(1024, absl::MakeConstSpan(data));
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
 
   EXPECT_FALSE(
       decoder_config.ReadAndValidate(kInvalidAudioRollDistance, *rb).ok());

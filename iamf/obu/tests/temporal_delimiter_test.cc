@@ -119,7 +119,7 @@ TEST_F(TemporalDelimiterTest,
 TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
   std::vector<uint8_t> source_data = {};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(
                   ObuHeader(), source_data.size(), *buffer),
@@ -129,7 +129,7 @@ TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
 TEST(CreateFromBuffer, SetsObuType) {
   std::vector<uint8_t> source_data = {};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   absl::StatusOr<TemporalDelimiterObu> obu =
       TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), source_data.size(),
@@ -142,7 +142,7 @@ TEST(CreateFromBuffer, DoesNotConsumeBufferWhenObuPayloadSizeIsZero) {
   const int64_t kObuPayloadSize = 0;
   std::vector<uint8_t> source_data = {99};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(),
                                                      kObuPayloadSize, *buffer),
               IsOk());

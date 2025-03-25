@@ -71,7 +71,7 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   const int64_t kCorrectObuSize = source_data.size();
   constexpr int64_t kIncorrectObuSize = 1;
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
@@ -128,7 +128,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode1) {
   };
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
@@ -185,7 +185,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamDefinitionMode0) {
   };
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
@@ -250,7 +250,7 @@ TEST(ParameterBlockObu,
   };
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
@@ -280,7 +280,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresParamDefinition) {
   };
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   MixGainParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
@@ -297,7 +297,7 @@ TEST(ParameterBlockObu, CreateFromBufferParamRequiresParamDefinition) {
   param_definitions.erase(kParameterId);
   auto buffer_to_use_without_metadata =
       MemoryBasedReadBitBuffer::CreateFromSpan(
-          1024, absl::MakeConstSpan(source_data));
+          absl::MakeConstSpan(source_data));
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
                    param_definitions, *buffer_to_use_without_metadata)
@@ -312,7 +312,7 @@ TEST(ParameterBlockObu, CreateFromBufferDemixingParamDefinitionMode0) {
                                       kDMixPMode2 << 5};
   const int64_t payload_size = source_data.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   DemixingParamDefinition param_definition;
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;

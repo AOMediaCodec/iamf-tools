@@ -682,8 +682,8 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
       0x80,
       // Default Mix Gain.
       0, 4};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
@@ -712,8 +712,8 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
       24,
       // Default Mix Gain.
       0, 3};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
@@ -731,8 +731,8 @@ TEST(ReadReconGainParamDefinitionTest, Default) {
                                     64,
                                     // Constant Subblock Duration.
                                     64};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
   EXPECT_TRUE(param_definition.ReadAndValidate(*buffer).ok());
   EXPECT_EQ(*param_definition.GetType(),
@@ -747,8 +747,8 @@ TEST(ReadReconGainParamDefinitionTest, Mode1) {
       1,
       // Param Definition Mode (upper bit), next 7 bits reserved.
       0x80};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
@@ -765,8 +765,8 @@ TEST(ReadReconGainParamDefinitionTest, Mode0NonZeroSubblockDuration) {
       0xc0, 0x00,
       // `constant_subblock_duration`.
       0xc0, 0x00};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
@@ -788,8 +788,8 @@ TEST(ReadReconGainParamDefinitionTest, Mode0SubblockArray) {
       // `subblock_durations`
       // `subblock_duration[0]`
       64};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ReconGainParamDefinition param_definition = ReconGainParamDefinition(0);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 }
@@ -810,8 +810,8 @@ TEST(ReadDemixingParamDefinitionTest, DefaultDmixPMode) {
                                     // `default_w`.
                                     0};
 
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   DemixingParamDefinition param_definition = DemixingParamDefinition();
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
@@ -836,8 +836,8 @@ TEST(ReadDemixingParamDefinitionTest, DefaultW) {
                                     // `default_w`.
                                     1 << 4};
 
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   DemixingParamDefinition param_definition = DemixingParamDefinition();
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
@@ -854,8 +854,8 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithZeroSize) {
   std::vector<uint8_t> bitstream = {// param_definition_size.
                                     0x00};
 
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ExtendedParamDefinition param_definition =
       ExtendedParamDefinition(kExtensiontype);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
@@ -874,8 +874,8 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
                                     // param_definition_bytes.
                                     'e', 'x', 't', 'r', 'a'};
 
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(bitstream));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   ExtendedParamDefinition param_definition =
       ExtendedParamDefinition(kExtensiontype);
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());

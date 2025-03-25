@@ -45,13 +45,6 @@ constexpr int kMaxUint32 = std::numeric_limits<uint32_t>::max();
 
 constexpr std::array<uint8_t, 3> kThreeBytes = {0x01, 0x23, 0x45};
 
-TEST(MemoryBasedReadBitBufferTest, CreateFromVectorFailsWithNegativeCapacity) {
-  const std::vector<uint8_t> source_data = {0x01, 0x23, 0x45, 0x68, 0x89};
-  EXPECT_THAT(MemoryBasedReadBitBuffer::CreateFromSpan(
-                  -1, absl::MakeConstSpan(source_data)),
-              ::testing::IsNull());
-}
-
 TEST(FileBasedReadBitBufferTest, CreateFromFilePathFailsWithNegativeCapacity) {
   const auto file_path = GetAndCleanupOutputFileName(".iamf");
   EXPECT_THAT(FileBasedReadBitBuffer::CreateFromFilePath(-1, file_path),
@@ -85,7 +78,7 @@ std::unique_ptr<BufferReaderType> CreateConcreteReadBitBuffer(
 template <>
 std::unique_ptr<MemoryBasedReadBitBuffer> CreateConcreteReadBitBuffer(
     int64_t capacity, absl::Span<const uint8_t> source_data) {
-  return MemoryBasedReadBitBuffer::CreateFromSpan(capacity, source_data);
+  return MemoryBasedReadBitBuffer::CreateFromSpan(source_data);
 }
 
 template <>

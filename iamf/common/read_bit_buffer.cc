@@ -386,13 +386,8 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
 // ----- MemoryBasedReadBitBuffer -----
 
 std::unique_ptr<MemoryBasedReadBitBuffer>
-MemoryBasedReadBitBuffer::CreateFromSpan(int64_t capacity,
-                                         absl::Span<const uint8_t> source) {
-  if (capacity < 0) {
-    LOG(ERROR) << "MemoryBasedReadBitBuffer capacity must be >= 0.";
-    return nullptr;
-  }
-  return absl::WrapUnique(new MemoryBasedReadBitBuffer(capacity, source));
+MemoryBasedReadBitBuffer::CreateFromSpan(absl::Span<const uint8_t> source) {
+  return absl::WrapUnique(new MemoryBasedReadBitBuffer(source.size(), source));
 }
 
 absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
@@ -465,10 +460,8 @@ std::unique_ptr<StreamBasedReadBitBuffer> StreamBasedReadBitBuffer::Create(
     LOG(ERROR) << "StreamBasedReadBitBuffer capacity must be >= 0.";
     return nullptr;
   }
-  // Since this is a stream based buffer, we do not initialize with any data,
-  // hence the source size is initially set to 0.
-  return absl::WrapUnique(
-      new StreamBasedReadBitBuffer(capacity, /*source_size=*/0));
+  // Since this is a stream based buffer, we do not initialize with any data.
+  return absl::WrapUnique(new StreamBasedReadBitBuffer(capacity));
 }
 
 absl::Status StreamBasedReadBitBuffer::PushBytes(
@@ -509,8 +502,7 @@ absl::Status StreamBasedReadBitBuffer::Flush(int64_t num_bytes) {
   return absl::OkStatus();
 }
 
-StreamBasedReadBitBuffer::StreamBasedReadBitBuffer(size_t capacity,
-                                                   int64_t source_size)
+StreamBasedReadBitBuffer::StreamBasedReadBitBuffer(size_t capacity)
     : MemoryBasedReadBitBuffer(capacity, absl::Span<const uint8_t>()) {
   max_source_size_ = kEntireObuSizeMaxTwoMegabytes * 2 * 8;
 }

@@ -536,7 +536,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateIncludeAllConditionalFields) {
       // `extension_header_bytes`
       100, 101, 102};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -569,7 +569,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
       // `obu_size == 1024`
       0x80, 0x08};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -598,7 +598,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderNoConditionalFields) {
       // `obu_size == 1024`
       0x80, 0x08};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -627,7 +627,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderRedundantCopy) {
       // `obu_size == 1024`
       0x80, 0x08};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -656,7 +656,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeOneByteLeb128) {
       // `obu_size == 127`
       0x7f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -685,7 +685,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeTwoByteLeb128) {
       // `obu_size == 128`
       0x80, 0x01};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -711,7 +711,7 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FourByteObuSize) {
                                       // `obu_size == 268435456 - 1`
                                       0xff, 0xff, 0xff, 0x7f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
           .ok());
@@ -722,7 +722,7 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FiveByteObuSize) {
                                       // `obu_size == 268435456`
                                       0x80, 0x80, 0x80, 0x80, 0x01};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
           .ok());
@@ -733,7 +733,7 @@ TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_MaxByteObuSize) {
                                       // `obu_size == 4294967295`
                                       0xff, 0xff, 0xff, 0xff, 0x0f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
           .ok());
@@ -746,7 +746,7 @@ TEST_F(ObuHeaderTest, MaxObuSizeWithMinimalLeb128) {
                                       // `obu_size == 2 megabytes - 4`
                                       0xfc, 0xff, 0x7f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -761,7 +761,7 @@ TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithMinimalLeb128) {
                                       // `obu_size == 2 megabytes - 3`
                                       0xfd, 0xff, 0x7f};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
@@ -776,7 +776,7 @@ TEST_F(ObuHeaderTest, MaxObuSizeWithFixesSizeLebEightBytes) {
                                       0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
                                       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -793,7 +793,7 @@ TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithFixedSizeLebEightBytes) {
                                       0xf8, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
                                       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
@@ -812,7 +812,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
       // `num_samples_to_trim_at_start`.
       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -846,7 +846,7 @@ TEST_F(ObuHeaderTest,
       // `num_samples_to_trim_at_start`.
       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_FALSE(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_)
           .ok());
@@ -868,7 +868,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
                                       // `num_samples_to_trim_at_start`.
                                       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -891,7 +891,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
                                       // `num_samples_to_trim_at_start`.
                                       0x02};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -914,7 +914,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
                                       // `num_samples_to_trim_at_start`.
                                       0x02};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       IsOk());
@@ -937,7 +937,7 @@ TEST_F(ObuHeaderTest, NegativePayloadSizeNotAcceptable) {
                                       // `num_samples_to_trim_at_start`.
                                       0x02};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   EXPECT_THAT(
       obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
       Not(IsOk()));
@@ -948,7 +948,7 @@ TEST(PeekObuTypeAndTotalObuSize, Success) {
                                       // `obu_size`
                                       2};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   auto start_position = read_bit_buffer->Tell();
 
   auto header_metadata =
@@ -967,7 +967,7 @@ TEST(PeekObuTypeAndTotalObuSize, SuccessWithMaxSizedObuSize) {
                                       0xf7, 0xff, 0xff, 0x80, 0x80, 0x80, 0x80,
                                       0x00};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   auto start_position = read_bit_buffer->Tell();
 
   auto header_metadata =
@@ -984,7 +984,7 @@ TEST(PeekObuTypeAndTotalObuSize, SuccessWithMaxSizedObuSize) {
 TEST(PeekObuTypeAndTotalObuSize, EmptyBitBufferResourceExhausted) {
   std::vector<uint8_t> source_data = {};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   auto start_position = read_bit_buffer->Tell();
 
   auto header_metadata =
@@ -998,7 +998,7 @@ TEST(PeekObuTypeAndTotalObuSize, EmptyBitBufferResourceExhausted) {
 TEST(PeekObuTypeAndTotalObuSize, NoObuSizeResourceExhausted) {
   std::vector<uint8_t> source_data = {kObuIaAudioFrameId0};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   auto start_position = read_bit_buffer->Tell();
   auto header_metadata =
       ObuHeader::PeekObuTypeAndTotalObuSize(*read_bit_buffer);
@@ -1011,7 +1011,7 @@ TEST(PeekObuTypeAndTotalObuSize, NoObuSizeResourceExhausted) {
 TEST(PeekObuTypeAndTotalObuSize, ReturnsResourceExhaustedForPartialObuSize) {
   std::vector<uint8_t> source_data = {kObuIaAudioFrameId0, 0x80};
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
   auto start_position = read_bit_buffer->Tell();
 
   auto header_metadata =

@@ -160,8 +160,8 @@ TEST(CreateFromBuffer, SimpleAndBaseProfile) {
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
@@ -181,8 +181,8 @@ TEST(CreateFromBuffer, BaseEnhancedProfile) {
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile)};
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
 
   absl::StatusOr<IASequenceHeaderObu> obu =
@@ -203,8 +203,8 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs3) {
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
 
   EXPECT_FALSE(
@@ -221,8 +221,8 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   const int64_t payload_size = source.size();
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source));
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
   ObuHeader header;
 
   EXPECT_FALSE(

@@ -37,7 +37,7 @@ TEST(ReconGainInfoParameterDataReadTest, TwoLayerParamDefinition) {
       // `layer[1]`.
       ReconGainElement::kReconGainFlagR, 1};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   recon_gain_info_parameter_data.recon_gain_is_present_flags =
@@ -79,7 +79,7 @@ TEST(ReconGainInfoParameterDataReadTest, MaxLayer7_1_4) {
           (ReconGainElement::kReconGainFlagRtb >> 7),
       8, 9};
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      1024, absl::MakeConstSpan(source_data));
+      absl::MakeConstSpan(source_data));
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   recon_gain_info_parameter_data.recon_gain_is_present_flags =
