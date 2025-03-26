@@ -215,10 +215,10 @@ class ReadBitBuffer {
  protected:
   /*!\brief Constructor.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \param source_size Size of the source data in bits.
    */
-  ReadBitBuffer(size_t capacity, int64_t source_size);
+  ReadBitBuffer(size_t capacity_bytes, int64_t source_size_bits);
 
   /*!\brief Internal reading function that reads `num_bits` from buffer.
    *
@@ -254,13 +254,13 @@ class ReadBitBuffer {
   int64_t buffer_bit_offset_ = 0;
 
   // Size of the valid data in the buffer in bits.
-  int64_t buffer_size_ = 0;
+  int64_t buffer_size_bits_ = 0;
 
   // Size of the source data in bits. It may refer to the total file size
   // for a file-based buffer, or the total memory size for a memory-based
   // buffer. For a stream-based buffer, it is the current size of the source
   // data, which is updated as bytes are pushed or flushed.
-  int64_t source_size_;
+  int64_t source_size_bits_;
 
   // Specifies the next bit to consume from the source data (the actual storage
   // type is subclass-specific).
@@ -297,11 +297,12 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
  protected:
   /*!\brief Protected constructor. Called by the factory method or subclasses.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \param source Source span from which the buffer will load data. The
    *        entire contents will be copied into the constructed instance.
    */
-  MemoryBasedReadBitBuffer(size_t capacity, absl::Span<const uint8_t> source);
+  MemoryBasedReadBitBuffer(size_t capacity_bytes,
+                           absl::Span<const uint8_t> source);
   /*!\brief Load bytes from the source vector to the buffer.
    *
    * \param starting_byte Starting byte to load from source.
@@ -324,13 +325,13 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
  public:
   /*!\brief Creates an instance of a file-based read bit buffer.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \param file_path Path to the file to load the buffer from.
    * \return Unique pointer of the created instance. `nullptr` if the creation
    *         fails.
    */
   static std::unique_ptr<FileBasedReadBitBuffer> CreateFromFilePath(
-      int64_t capacity, const std::filesystem::path& file_path);
+      int64_t capacity_bytes, const std::filesystem::path& file_path);
 
   /*!\brief Destructor.*/
   ~FileBasedReadBitBuffer() override = default;
@@ -338,13 +339,13 @@ class FileBasedReadBitBuffer : public ReadBitBuffer {
  private:
   /*!\brief Private constructor. Called by the factory method only.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \param source_size Total size of the file in bits.
    * \param ifs Input file stream from which the buffer will load data. At most
    *        a buffer full of data will be read at a given time.
    *
    */
-  FileBasedReadBitBuffer(size_t capacity, int64_t source_size,
+  FileBasedReadBitBuffer(size_t capacity_bytes, int64_t source_size,
                          std::ifstream&& ifs);
 
   /*!\brief Load bytes from the source file to the buffer.
@@ -372,11 +373,12 @@ class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
  public:
   /*!\brief Creates an instance of a stream-based read bit buffer.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    * \return Unique pointer of the created instance. `nullptr` if the creation
    *         fails.
    */
-  static std::unique_ptr<StreamBasedReadBitBuffer> Create(int64_t capacity);
+  static std::unique_ptr<StreamBasedReadBitBuffer> Create(
+      int64_t capacity_bytes);
 
   /*!\brief Adds some chunk of data to StreamBasedReadBitBuffer.
    *
@@ -402,12 +404,12 @@ class StreamBasedReadBitBuffer : public MemoryBasedReadBitBuffer {
  private:
   /*!\brief Private constructor.
    *
-   * \param capacity Capacity of the internal buffer in bytes.
+   * \param capacity_bytes Capacity of the internal buffer in bytes.
    */
-  StreamBasedReadBitBuffer(size_t capacity);
+  StreamBasedReadBitBuffer(size_t capacity_bytes);
 
   // Specifies the maximum size of the source data in bits.
-  int64_t max_source_size_;
+  int64_t max_source_size_bits_;
 };
 
 }  // namespace iamf_tools

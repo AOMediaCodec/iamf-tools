@@ -247,33 +247,35 @@ absl::Status ReadBitBuffer::ReadBoolean(bool& output) {
   return absl::OkStatus();
 }
 
-ReadBitBuffer::ReadBitBuffer(size_t capacity, int64_t source_size)
-    : bit_buffer_(capacity),
+ReadBitBuffer::ReadBitBuffer(size_t capacity_bytes, int64_t source_size_bits)
+    : bit_buffer_(capacity_bytes),
       buffer_bit_offset_(0),
-      buffer_size_(0),
-      source_size_(source_size),
+      buffer_size_bits_(0),
+      source_size_bits_(source_size_bits),
       source_bit_offset_(0) {}
 
 bool ReadBitBuffer::IsDataAvailable() const {
   const bool valid_data_in_buffer =
-      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_);
+      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_bits_);
   const bool valid_data_in_source =
-      (source_bit_offset_ >= 0 && source_bit_offset_ < source_size_);
+      (source_bit_offset_ >= 0 && source_bit_offset_ < source_size_bits_);
   return valid_data_in_buffer || valid_data_in_source;
 }
 
 bool ReadBitBuffer::CanReadBytes(int64_t num_bytes_requested) const {
   CHECK_GE(num_bytes_requested, 0);
-  CHECK(source_bit_offset_ >= 0 && source_bit_offset_ <= source_size_);
-  const int64_t num_bytes_in_source = (source_size_ - source_bit_offset_) / 8;
-  CHECK(buffer_bit_offset_ >= 0 && buffer_bit_offset_ <= buffer_size_);
-  const int64_t num_bytes_in_buffer = (buffer_size_ - buffer_bit_offset_) / 8;
+  CHECK(source_bit_offset_ >= 0 && source_bit_offset_ <= source_size_bits_);
+  const int64_t num_bytes_in_source =
+      (source_size_bits_ - source_bit_offset_) / 8;
+  CHECK(buffer_bit_offset_ >= 0 && buffer_bit_offset_ <= buffer_size_bits_);
+  const int64_t num_bytes_in_buffer =
+      (buffer_size_bits_ - buffer_bit_offset_) / 8;
   return (num_bytes_in_source + num_bytes_in_buffer) >= num_bytes_requested;
 }
 
 int64_t ReadBitBuffer::Tell() {
   is_position_valid_ = true;
-  return source_bit_offset_ - buffer_size_ + buffer_bit_offset_;
+  return source_bit_offset_ - buffer_size_bits_ + buffer_bit_offset_;
 }
 
 absl::Status ReadBitBuffer::Seek(const int64_t position) {
@@ -287,17 +289,17 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
         absl::StrCat("Invalid source position: ", position));
   }
 
-  if (position >= source_size_) {
+  if (position >= source_size_bits_) {
     return absl::ResourceExhaustedError(
         absl::StrCat("Not enough bits in source: position= ", position,
-                     " >= #(bits in source)= ", source_size_));
+                     " >= #(bits in source)= ", source_size_bits_));
   }
 
-  // Simply move the `buffer_bit_offset_` if the requested position lies within
-  // the current buffer.
-  if ((source_bit_offset_ - buffer_size_ <= position) &&
+  // Simply move the `buffer_bit_offset_` if the requested position lies
+  // within the current buffer.
+  if ((source_bit_offset_ - buffer_size_bits_ <= position) &&
       (position < source_bit_offset_)) {
-    buffer_bit_offset_ = position - (source_bit_offset_ - buffer_size_);
+    buffer_bit_offset_ = position - (source_bit_offset_ - buffer_size_bits_);
     return absl::OkStatus();
   }
 
@@ -306,14 +308,14 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
   const int64_t starting_byte = position / 8;
   const int64_t num_bytes =
       std::min(static_cast<int64_t>(bit_buffer_.capacity()),
-               source_size_ / 8 - starting_byte);
+               source_size_bits_ / 8 - starting_byte);
 
   RETURN_IF_NOT_OK(LoadBytesToBuffer(starting_byte, num_bytes));
 
   // Update other bookkeeping data.
   buffer_bit_offset_ = position % 8;
   source_bit_offset_ = (starting_byte + num_bytes) * 8;
-  buffer_size_ = num_bytes * 8;
+  buffer_size_bits_ = num_bytes * 8;
 
   return absl::OkStatus();
 }
@@ -344,7 +346,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
 
   // If the final position and the current position lies within the same byte.
   if (expected_final_position / 8 == Tell() / 8) {
-    ReadUnsignedLiteralBits(bit_buffer_, buffer_size_, buffer_bit_offset_,
+    ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                             remaining_bits_to_read, output);
     CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
     return absl::OkStatus();
@@ -355,7 +357,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   if (buffer_bit_offset_ % 8 != 0) {
     int64_t num_bits_to_byte_aligned = 8 - (buffer_bit_offset_ % 8);
     remaining_bits_to_read -= num_bits_to_byte_aligned;
-    ReadUnsignedLiteralBits(bit_buffer_, buffer_size_, buffer_bit_offset_,
+    ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                             num_bits_to_byte_aligned, output);
   }
 
@@ -365,8 +367,9 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
     RETURN_IF_NOT_OK(Seek(Tell()));
 
     // Read as much as possible from the buffer.
-    int64_t num_bits_from_buffer = std::min(buffer_size_ - buffer_bit_offset_,
-                                            (remaining_bits_to_read / 8) * 8);
+    int64_t num_bits_from_buffer =
+        std::min(buffer_size_bits_ - buffer_bit_offset_,
+                 (remaining_bits_to_read / 8) * 8);
 
     CHECK(CanReadByteAligned(buffer_bit_offset_, num_bits_from_buffer));
     remaining_bits_to_read -= num_bits_from_buffer;
@@ -377,7 +380,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   // Read the final several bits in the last byte.
   int64_t num_bits_in_final_byte = expected_final_position % 8;
   remaining_bits_to_read -= num_bits_in_final_byte;
-  ReadUnsignedLiteralBits(bit_buffer_, buffer_size_, buffer_bit_offset_,
+  ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                           num_bits_in_final_byte, output);
   CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
   return absl::OkStatus();
@@ -405,17 +408,17 @@ absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
 }
 
 MemoryBasedReadBitBuffer::MemoryBasedReadBitBuffer(
-    size_t capacity, absl::Span<const uint8_t> source)
-    : ReadBitBuffer(capacity, static_cast<int64_t>(source.size()) * 8),
+    size_t capacity_bytes, absl::Span<const uint8_t> source)
+    : ReadBitBuffer(capacity_bytes, static_cast<int64_t>(source.size()) * 8),
       source_vector_(source.begin(), source.end()) {}
 
 // ----- FileBasedReadBitBuffer -----
 
 std::unique_ptr<FileBasedReadBitBuffer>
 FileBasedReadBitBuffer::CreateFromFilePath(
-    const int64_t capacity, const std::filesystem::path& file_path) {
-  if (capacity < 0) {
-    LOG(ERROR) << "FileBasedReadBitBuffer capacity must be >= 0.";
+    const int64_t capacity_bytes, const std::filesystem::path& file_path) {
+  if (capacity_bytes < 0) {
+    LOG(ERROR) << "FileBasedReadBitBuffer capacity_bytes must be >= 0.";
     return nullptr;
   }
   if (!std::filesystem::exists(file_path)) {
@@ -432,8 +435,8 @@ FileBasedReadBitBuffer::CreateFromFilePath(
   }
 
   // File size is in bytes, `source_size` is in bits.
-  return absl::WrapUnique(
-      new FileBasedReadBitBuffer(capacity, file_size * 8, std::move(ifs)));
+  return absl::WrapUnique(new FileBasedReadBitBuffer(
+      capacity_bytes, file_size * 8, std::move(ifs)));
 }
 
 absl::Status FileBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
@@ -448,25 +451,25 @@ absl::Status FileBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
   return absl::OkStatus();
 }
 
-FileBasedReadBitBuffer::FileBasedReadBitBuffer(size_t capacity,
+FileBasedReadBitBuffer::FileBasedReadBitBuffer(size_t capacity_bytes,
                                                int64_t source_size,
                                                std::ifstream&& ifs)
-    : ReadBitBuffer(capacity, source_size), source_ifs_(std::move(ifs)) {}
+    : ReadBitBuffer(capacity_bytes, source_size), source_ifs_(std::move(ifs)) {}
 
 // ----- StreamBasedReadBitBuffer -----
 std::unique_ptr<StreamBasedReadBitBuffer> StreamBasedReadBitBuffer::Create(
-    int64_t capacity) {
-  if (capacity < 0) {
-    LOG(ERROR) << "StreamBasedReadBitBuffer capacity must be >= 0.";
+    int64_t capacity_bytes) {
+  if (capacity_bytes < 0) {
+    LOG(ERROR) << "StreamBasedReadBitBuffer capacity_bytes must be >= 0.";
     return nullptr;
   }
   // Since this is a stream based buffer, we do not initialize with any data.
-  return absl::WrapUnique(new StreamBasedReadBitBuffer(capacity));
+  return absl::WrapUnique(new StreamBasedReadBitBuffer(capacity_bytes));
 }
 
 absl::Status StreamBasedReadBitBuffer::PushBytes(
     absl::Span<const uint8_t> bytes) {
-  if (bytes.size() > ((max_source_size_ / 8) - source_vector_.size())) {
+  if (bytes.size() > ((max_source_size_bits_ / 8) - source_vector_.size())) {
     return absl::InvalidArgumentError(
         "Cannot push more bytes than the available space in the source.");
   }
@@ -474,7 +477,7 @@ absl::Status StreamBasedReadBitBuffer::PushBytes(
   // are already some bytes in the source.
   source_vector_.insert(source_vector_.end(), bytes.begin(), bytes.end());
   // The source grows as bytes are pushed.
-  source_size_ += bytes.size() * 8;
+  source_size_bits_ += bytes.size() * 8;
   return absl::OkStatus();
 }
 
@@ -495,16 +498,16 @@ absl::Status StreamBasedReadBitBuffer::Flush(int64_t num_bytes) {
   // Offset needs to be moved back as erase moves the elements of a vector that
   // are not removed to the beginning of the vector.
   source_bit_offset_ -= num_bytes * 8;
-  source_size_ -= num_bytes * 8;
+  source_size_bits_ -= num_bytes * 8;
   // Disable seeking as the position returned by a previous Tell() call is no
   // longer valid.
   is_position_valid_ = false;
   return absl::OkStatus();
 }
 
-StreamBasedReadBitBuffer::StreamBasedReadBitBuffer(size_t capacity)
-    : MemoryBasedReadBitBuffer(capacity, absl::Span<const uint8_t>()) {
-  max_source_size_ = kEntireObuSizeMaxTwoMegabytes * 2 * 8;
+StreamBasedReadBitBuffer::StreamBasedReadBitBuffer(size_t capacity_bytes)
+    : MemoryBasedReadBitBuffer(capacity_bytes, absl::Span<const uint8_t>()) {
+  max_source_size_bits_ = kEntireObuSizeMaxTwoMegabytes * 2 * 8;
 }
 
 }  // namespace iamf_tools
