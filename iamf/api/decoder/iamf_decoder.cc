@@ -80,7 +80,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
     bool contains_all_descriptor_obus, absl::Span<const uint8_t> bitstream,
     StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout) {
   // Happens only in the pure streaming case.
-  auto start_position = read_bit_buffer->Tell();
+  const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
       in_out_layout,
@@ -97,7 +97,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
     }
     return absl::InvalidArgumentError("Failed to create OBU processor.");
   }
-  auto num_bits_read = read_bit_buffer->Tell() - start_position;
+  const auto num_bits_read = read_bit_buffer->Tell() - start_position;
   RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
   return obu_processor;
 }
@@ -106,21 +106,15 @@ absl::Status ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
   LOG(INFO) << "Processing Temporal Units";
-  int32_t num_bits_read = 0;
   bool continue_processing = true;
+  const auto start_position_bits = read_bit_buffer->Tell();
   while (continue_processing) {
-    auto start_position_for_temporal_unit = read_bit_buffer->Tell();
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     // TODO(b/395889878): Add support for partial temporal units.
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
         /*eos_is_end_of_sequence=*/false, output_temporal_unit,
         continue_processing));
-    if (!output_temporal_unit.has_value()) {
-      break;
-    }
-
-    // Trivial IA Sequences may have empty temporal units. Do not try to
-    // render empty temporal unit.
+    // We may have processed bytes but not a full temporal unit.
     if (output_temporal_unit.has_value()) {
       absl::Span<const std::vector<int32_t>>
           rendered_pcm_samples_for_temporal_unit;
@@ -133,14 +127,12 @@ absl::Status ProcessAllTemporalUnits(
           std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
                       rendered_pcm_samples_for_temporal_unit.end()));
     }
-    num_bits_read +=
-        (read_bit_buffer->Tell() - start_position_for_temporal_unit);
   }
   // Empty the buffer of the data that was processed thus far.
+  const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
   RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
-  LOG(INFO) << "Rendered " << rendered_pcm_samples.size()
-            << " temporal units. Please call GetOutputTemporalUnit() to get "
-               "the rendered PCM samples.";
+  LOG_FIRST_N(INFO, 10) << "Rendered " << rendered_pcm_samples.size()
+                        << " temporal units.";
   return absl::OkStatus();
 }
 
