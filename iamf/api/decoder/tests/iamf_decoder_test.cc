@@ -381,7 +381,7 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   EXPECT_EQ(bytes_written, expected_output_size);
 }
 
-TEST(Decode, FailsWhenCalledAfterFlush) {
+TEST(Decode, FailsWhenCalledAfterSignalEndOfStream) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
@@ -392,19 +392,7 @@ TEST(Decode, FailsWhenCalledAfterFlush) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
-  ASSERT_FALSE(decoder->IsTemporalUnitAvailable());
-  ASSERT_THAT(decoder->Decode({}), IsOk());
-  ASSERT_TRUE(decoder->IsTemporalUnitAvailable());
-
-  size_t expected_size = 2 * 8 * 4;  // Stereo * 8 samples * int32.
-  std::vector<uint8_t> output_data(expected_size);
-  size_t bytes_written;
-  bool output_is_done;
-  EXPECT_THAT(decoder->Flush(absl::MakeSpan(output_data), bytes_written,
-                             output_is_done),
-              IsOk());
-  EXPECT_TRUE(output_is_done);
-  EXPECT_EQ(bytes_written, expected_size);
+  decoder->signalEndOfStream();
   EXPECT_FALSE(decoder->Decode(source_data).ok());
 }
 
@@ -572,7 +560,7 @@ TEST(GetOutputTemporalUnit,
   EXPECT_EQ(bytes_written, 0);
 }
 
-TEST(Flush, SucceedsWithMultipleTemporalUnits) {
+TEST(SignalEndOfStream, GetMultipleTemporalUnitsOutAfterCall) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
@@ -590,24 +578,28 @@ TEST(Flush, SucceedsWithMultipleTemporalUnits) {
   EXPECT_THAT(decoder->Decode({}), IsOk());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
+  decoder->signalEndOfStream();
+
   // Stereo * 8 samples * 4 bytes per sample
   const size_t expected_size_per_temp_unit = 2 * 8 * 4;
   std::vector<uint8_t> output_data(expected_size_per_temp_unit);
   size_t bytes_written;
-  bool output_is_done;
-  EXPECT_THAT(decoder->Flush(absl::MakeSpan(output_data), bytes_written,
-                             output_is_done),
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
               IsOk());
   EXPECT_EQ(bytes_written, expected_size_per_temp_unit);
-  EXPECT_FALSE(output_is_done);
-  EXPECT_THAT(decoder->Flush(absl::MakeSpan(output_data), bytes_written,
-                             output_is_done),
+
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
               IsOk());
   EXPECT_EQ(bytes_written, expected_size_per_temp_unit);
-  EXPECT_TRUE(output_is_done);
+
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
-TEST(Flush, SucceedsWithNoTemporalUnits) {
+TEST(SignalEndOfStream, SucceedsWithNoTemporalUnits) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
@@ -615,13 +607,14 @@ TEST(Flush, SucceedsWithNoTemporalUnits) {
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
   std::vector<uint8_t> output_data;
   size_t bytes_written;
-  bool output_is_done;
-  EXPECT_THAT(decoder->Flush(absl::MakeSpan(output_data), bytes_written,
-                             output_is_done),
-              IsOk());
 
+  decoder->signalEndOfStream();
+
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
   EXPECT_EQ(bytes_written, 0);
-  EXPECT_TRUE(output_is_done);
 }
 
 TEST(GetSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {

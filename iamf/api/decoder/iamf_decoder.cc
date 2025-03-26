@@ -333,13 +333,7 @@ absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
   return state_->obu_processor->GetOutputFrameSize();
 }
 
-absl::Status IamfDecoder::Flush(absl::Span<uint8_t> output_bytes,
-                                size_t& bytes_written, bool& output_is_done) {
-  state_->status = Status::kFlushCalled;
-  RETURN_IF_NOT_OK(GetOutputTemporalUnit(output_bytes, bytes_written));
-  output_is_done = state_->rendered_pcm_samples.empty();
-  return absl::OkStatus();
-}
+void IamfDecoder::signalEndOfStream() { state_->status = Status::kFlushCalled; }
 
 absl::Status IamfDecoder::Close() { return absl::OkStatus(); }
 

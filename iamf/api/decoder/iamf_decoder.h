@@ -35,26 +35,29 @@ class IamfDecoder {
    * sample usage of the API.
    *
    * Reconfigurable Standalone IAMF Usage
-   * IamfDecoder streaming_decoder = IamfDecoder::Create();
+   *
+   * StatusOr<IamfDecoder> decoder = IamfDecoder::Create(output_layout);
    * for chunk of data in iamf stream:
-   *    Decode()
+   *    decoder.Decode()
    *    if (IsDescriptorProcessingComplete()) {
-   *      GetMixPresentations(output_mix_presentation_ids)
-   *      ConfigureMixPresentationId(mix_presentation_id)
-   *      ConfigureOutputLayout(output_layout)
-   *      ConfigureBitDepth(bit_depth)
+   *      decoder.GetMixPresentations(output_mix_presentation_ids)
+   *      decoder.ConfigureMixPresentationId(mix_presentation_id)
+   *      decoder.ConfigureOutputSampleType(output_sample_type)
    *    }
    * for chunk of data in iamf stream:
-   *    Decode()
-   *    while (IsTemporalUnitAvailable()) {
-   *      GetOutputTemporalUnit(output_temporal_unit)
-   *      Playback(output_temporal_unit)
+   *    decoder.Decode(chunk)
+   *    while (decoder.IsTemporalUnitAvailable()) {
+   *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
+   *      Playback(output_buffer)
    *    }
-   * while (IsTemporalUnitAvailable()) {
-   *      Flush(output_temporal_unit)
-   *      Playback(output_temporal_unit)
-   *  }
-   * Close();
+   * if (end_of_stream):
+   *    decoder.SignalEndOfStream()
+   *    // Get remaining audio
+   *    while (decoder.IsTemporalUnitAvailable()) {
+   *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
+   *      Playback(output_buffer)
+   *    }
+   * decoder.Close();
    */
 
   // Dtor cannot be inline (so it must be declared and defined in the source
@@ -140,10 +143,9 @@ class IamfDecoder {
    *
    * \param output_bytes Output buffer to receive bytes.  Must be large enough
    *        to receive bytes.  Maximum necessary size can be determined by
-   *        GetFrameSize and GetOutputSampleType.
+   *        GetFrameSize * GetNumberOfOutputChannels * bit depth (as determined
+   *        by GetOutputSampleType).
    * \param bytes_written Number of bytes written to the output_bytes.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
    */
   absl::Status GetOutputTemporalUnit(absl::Span<uint8_t> output_bytes,
                                      size_t& bytes_written);
@@ -239,22 +241,11 @@ class IamfDecoder {
    */
   absl::StatusOr<uint32_t> GetFrameSize() const;
 
-  /*!\brief Outputs the last temporal unit(s) of decoded audio.
+  /*!\brief Signals to the decoder that no more data will be provided.
    *
-   * Signals to the decoder that no more data will be provided; therefore it
-   * should only be called once the user has finished providing data to
-   * Decode(). Temporal units are output one at a time, so this function should
-   * be called until output_is_done is true.
-   *
-   * \param output_decoded_temporal_unit Output parameter for the next temporal
-   *        unit of decoded audio.
-   * \param output_is_done Output parameter for whether there are more temporal
-   *        units to be output.
-   * \return `absl::OkStatus()` upon success. Other specific statuses on
-   *         failure.
+   * Decode cannot be called after this method has been called.
    */
-  absl::Status Flush(absl::Span<uint8_t> output_bytes, size_t& bytes_written,
-                     bool& output_is_done);
+  void signalEndOfStream();
 
   /*!\brief Closes the decoder.
    *
