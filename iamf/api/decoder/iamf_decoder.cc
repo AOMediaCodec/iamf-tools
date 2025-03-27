@@ -35,7 +35,7 @@
 namespace iamf_tools {
 namespace api {
 
-enum class Status { kAcceptingData, kFlushCalled };
+enum class Status { kAcceptingData, kEndOfStream };
 
 // Holds the internal state of the decoder to hide it and necessary includes
 // from API users.
@@ -105,7 +105,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
 absl::Status ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
-  LOG(INFO) << "Processing Temporal Units";
+  LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
   bool continue_processing = true;
   const auto start_position_bits = read_bit_buffer->Tell();
   while (continue_processing) {
@@ -218,9 +218,9 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
 }
 
 absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
-  if (state_->status == Status::kFlushCalled) {
+  if (state_->status == Status::kEndOfStream) {
     return absl::FailedPreconditionError(
-        "Decode() cannot be called after Flush() has been called.");
+        "Decode() cannot be called after SignalEndOfStream() has been called.");
   }
   RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
@@ -333,7 +333,7 @@ absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
   return state_->obu_processor->GetOutputFrameSize();
 }
 
-void IamfDecoder::signalEndOfStream() { state_->status = Status::kFlushCalled; }
+void IamfDecoder::SignalEndOfStream() { state_->status = Status::kEndOfStream; }
 
 absl::Status IamfDecoder::Close() { return absl::OkStatus(); }
 

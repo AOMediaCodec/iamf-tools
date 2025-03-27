@@ -245,13 +245,13 @@ class IamfDecoder {
    *
    * Decode cannot be called after this method has been called.
    */
-  void signalEndOfStream();
+  void SignalEndOfStream();
 
   /*!\brief Closes the decoder.
    *
    * This should be called once the user has finished providing data into
-   * Decode() and has called Flush() until output_is_done is true. Will close
-   * all underlying decoders.
+   * Decode(), has called SignalEndOfStream(), and gotten all output units.
+   * Will close all underlying decoders.
    *
    * \return `absl::OkStatus()` upon success. Other specific statuses on
    *         failure.

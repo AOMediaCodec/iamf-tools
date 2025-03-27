@@ -392,7 +392,7 @@ TEST(Decode, FailsWhenCalledAfterSignalEndOfStream) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
-  decoder->signalEndOfStream();
+  decoder->SignalEndOfStream();
   EXPECT_FALSE(decoder->Decode(source_data).ok());
 }
 
@@ -578,7 +578,7 @@ TEST(SignalEndOfStream, GetMultipleTemporalUnitsOutAfterCall) {
   EXPECT_THAT(decoder->Decode({}), IsOk());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
-  decoder->signalEndOfStream();
+  decoder->SignalEndOfStream();
 
   // Stereo * 8 samples * 4 bytes per sample
   const size_t expected_size_per_temp_unit = 2 * 8 * 4;
@@ -608,7 +608,7 @@ TEST(SignalEndOfStream, SucceedsWithNoTemporalUnits) {
   std::vector<uint8_t> output_data;
   size_t bytes_written;
 
-  decoder->signalEndOfStream();
+  decoder->SignalEndOfStream();
 
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
