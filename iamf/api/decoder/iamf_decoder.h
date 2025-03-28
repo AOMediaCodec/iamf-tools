@@ -86,7 +86,8 @@ class IamfDecoder {
   /*!\brief Creates an IamfDecoder from a known set of descriptor OBUs.
    *
    * This function should be used for applications in which the descriptor OBUs
-   * are known in advance.
+   * are known in advance. When creating the decoder via this mode, future calls
+   * to decode must pass complete temporal units.
    *
    * \param requested_layout Specifies the desired output layout. This layout
    *        will be used so long as it is present in the Descriptor OBUs that
@@ -136,10 +137,10 @@ class IamfDecoder {
 
   /*!\brief Outputs the next temporal unit of decoded audio.
    *
-   * If no decoded data is available, output_decoded_temporal_unit will be
-   * empty. The user can continue calling until the output is empty, as there
-   * may be more than one temporal unit available. When this returns empty, the
-   * user should call Decode() again with more data.
+   * If no decoded data is available, bytes_written will be 0. The user can
+   * continue calling until bytes_written is 0, as there may be more than one
+   * temporal unit available. At this point, the user should call Decode() again
+   * with more data.
    *
    * The output PCM is arranged based on the configured `OutputLayout` and
    * `OutputSampleType`.

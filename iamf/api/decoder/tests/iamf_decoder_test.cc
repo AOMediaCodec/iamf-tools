@@ -295,6 +295,7 @@ TEST(Decode, SucceedsWithSeparatePushesOfDescriptorAndTemporalUnits) {
   auto temporal_unit = SerializeObusExpectOk({&audio_frame});
 
   EXPECT_THAT(decoder->Decode(temporal_unit), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 }
 
 TEST(Decode, SucceedsWithOneTemporalUnit) {
@@ -375,6 +376,141 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   const size_t expected_output_size = 8 * 4;  // 8 samples, 32-bit ints, mono.
   std::vector<uint8_t> output_data(expected_output_size);
   size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_EQ(bytes_written, expected_output_size);
+}
+
+TEST(Decode, CreatedFromDescriptorsSucceedsWithMultipleTemporalUnits) {
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
+  ASSERT_THAT(decoder, IsOk());
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+
+  // We expect for decode to succeed and fully process both temporal units. This
+  // means that we should be able to pull two temporal units from the decoder,
+  // and then there should be nothing left.
+  EXPECT_THAT(decoder->Decode(temporal_units), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, stereo.
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  output_data.clear();
+  output_data.resize(expected_output_size);
+  bytes_written = 0;
+
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(Decode,
+     CreatedFromDescriptorsSucceedsWithTemporalUnitsDecodedInSeparatePushes) {
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kItu2051_SoundSystemA_0_2_0, GenerateBasicDescriptorObus());
+  ASSERT_THAT(decoder, IsOk());
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
+
+  // We expect for decode to succeed and fully process the singular temporal
+  // unit that was pushed.
+  EXPECT_THAT(decoder->Decode(temporal_unit), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, stereo.
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+
+  output_data.clear();
+  output_data.resize(expected_output_size);
+  bytes_written = 0;
+
+  // Now, we expect for decode to succeed and fully process the second temporal
+  // unit that was pushed.
+  EXPECT_THAT(decoder->Decode(temporal_unit), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(
+    Decode,
+    CreatedFromDescriptorsSucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
+      mix_presentation_obus);
+
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  std::list<const ObuBase*> input_ia_sequence(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front()});
+  input_ia_sequence.push_front(&ia_sequence_header);
+  std::vector<uint8_t> descriptors = SerializeObusExpectOk(input_ia_sequence);
+
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      OutputLayout::kIAMF_SoundSystemExtension_0_1_0, descriptors);
+  ASSERT_THAT(decoder, IsOk());
+
+  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
+  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+
+  // Call decode with both temporal units.
+  EXPECT_THAT(decoder->Decode(temporal_units), IsOk());
+
+  // We expect to get the first temporal unit with the correct number of
+  // samples.
+  const size_t expected_output_size = 8 * 4;  // 8 samples, 32-bit ints, mono.
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_EQ(bytes_written, expected_output_size);
+
+  output_data.clear();
+  output_data.resize(expected_output_size);
+  bytes_written = 0;
+
+  // We expect to get the second temporal unit with the correct number of
+  // samples.
   EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
                                              bytes_written),
               IsOk());

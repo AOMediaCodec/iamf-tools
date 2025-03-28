@@ -68,6 +68,9 @@ struct IamfDecoder::DecoderState {
   // TODO(b/379122580):  Use the bit depth of the underlying content.
   // Defaulting to int32 for now.
   OutputSampleType output_sample_type = OutputSampleType::kInt32LittleEndian;
+
+  // True iff the decoder was created via CreateFromDescriptors().
+  bool created_from_descriptors = false;
 };
 
 namespace {
@@ -104,6 +107,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
 
 absl::Status ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
+    bool created_from_descriptors,
     std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
   LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
   bool continue_processing = true;
@@ -112,8 +116,7 @@ absl::Status ProcessAllTemporalUnits(
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     // TODO(b/395889878): Add support for partial temporal units.
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
-        /*eos_is_end_of_sequence=*/false, output_temporal_unit,
-        continue_processing));
+        created_from_descriptors, output_temporal_unit, continue_processing));
     // We may have processed bytes but not a full temporal unit.
     if (output_temporal_unit.has_value()) {
       absl::Span<const std::vector<int32_t>>
@@ -214,6 +217,7 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
     return obu_processor.status();
   }
   decoder->state_->obu_processor = *std::move(obu_processor);
+  decoder->state_->created_from_descriptors = true;
   return decoder;
 }
 
@@ -241,9 +245,9 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   }
 
   // At this stage, we know that we've processed all descriptor OBUs.
-  RETURN_IF_NOT_OK(ProcessAllTemporalUnits(state_->read_bit_buffer.get(),
-                                           state_->obu_processor.get(),
-                                           state_->rendered_pcm_samples));
+  RETURN_IF_NOT_OK(ProcessAllTemporalUnits(
+      state_->read_bit_buffer.get(), state_->obu_processor.get(),
+      state_->created_from_descriptors, state_->rendered_pcm_samples));
   return absl::OkStatus();
 }
 
