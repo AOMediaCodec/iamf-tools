@@ -260,9 +260,12 @@ absl::StatusOr<MixPresentationObu*> GetPlaybackLayoutAndMixPresentation(
     return absl::InvalidArgumentError(
         "No layouts found in the first submix of the first mix presentation.");
   }
-  output_playback_layout = output_mix_presentation->sub_mixes_.front()
-                               .layouts.front()
-                               .loudness_layout;
+  // We add a "virtual" layout here that matches the desired layout if it wasn't
+  // found. This allows us to decode to the user-requested layout even if it
+  // wasn't present in the mix presentation.
+  output_mix_presentation->sub_mixes_.front().layouts.front().loudness_layout =
+      desired_layout;
+  output_playback_layout = desired_layout;
   return output_mix_presentation;
 }
 

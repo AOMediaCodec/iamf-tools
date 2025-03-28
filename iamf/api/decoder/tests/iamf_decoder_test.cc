@@ -115,21 +115,21 @@ TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {
   EXPECT_EQ(*number_of_output_channels, 2);
 }
 
-TEST(GetOutputLayout, ReturnsDefaultStereoLayoutIfNoMatchingLayoutExists) {
+TEST(GetOutputLayout, ReturnVirtualDesiredLayoutIfNoMatchingLayoutExists) {
   auto decoder = api::IamfDecoder::CreateFromDescriptors(
       OutputLayout::kItu2051_SoundSystemE_4_5_1, GenerateBasicDescriptorObus());
 
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
   auto output_layout = decoder->GetOutputLayout();
   EXPECT_THAT(output_layout.status(), IsOk());
-  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemE_4_5_1);
   auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
   EXPECT_THAT(number_of_output_channels.status(), IsOk());
-  EXPECT_EQ(*number_of_output_channels, 2);
+  EXPECT_EQ(*number_of_output_channels, 11);
 }
 
 TEST(GetOutputLayout,
-     ReturnsDefaultStereoLayoutIfNoMatchingLayoutExistsUsingDecode) {
+     ReturnsVirtualDesiredLayoutIfNoMatchingLayoutExistsUsingDecode) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemE_4_5_1);
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
@@ -145,10 +145,10 @@ TEST(GetOutputLayout,
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
   auto output_layout = decoder->GetOutputLayout();
   EXPECT_THAT(output_layout.status(), IsOk());
-  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  EXPECT_EQ(*output_layout, OutputLayout::kItu2051_SoundSystemE_4_5_1);
   auto number_of_output_channels = decoder->GetNumberOfOutputChannels();
   EXPECT_THAT(number_of_output_channels.status(), IsOk());
-  EXPECT_EQ(*number_of_output_channels, 2);
+  EXPECT_EQ(*number_of_output_channels, 11);
 }
 
 TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {

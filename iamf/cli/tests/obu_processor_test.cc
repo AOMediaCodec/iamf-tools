@@ -2872,7 +2872,9 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
   EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
-TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
+TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
+  // Set up inputs; key aspect is that the mix presentation does not contain the
+  // desired layout.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
@@ -2904,26 +2906,28 @@ TEST(CreateForRendering, ForwardsDefaultLayoutToSampleProcessorFactory) {
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   bool insufficient_data;
 
-  // We expect to use the first layout as default, since the desired layout is
-  // not available in the mix presentation.
+  // We expect to default to the first mix presentation and first submix.
+  // However, we expect the layout in the first position to be virtualized to
+  // match the desired layout, which is 5.1 in this case.
   constexpr int kSubmixIndex = 0;
   constexpr int kLayoutIndex = 0;
-  const auto& forwarded_layout =
-      mix_presentation_obus.front().sub_mixes_[0].layouts[0].loudness_layout;
+  const auto& forwarded_layout = k5_1_Layout;
 
   MockSampleProcessorFactory mock_sample_processor_factory;
   EXPECT_CALL(mock_sample_processor_factory,
               Call(kFirstMixPresentationId, kSubmixIndex, kLayoutIndex,
-                   forwarded_layout, /*num_channels=*/2, _, _, _));
+                   forwarded_layout, /*num_channels=*/6, _, _, _));
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
-  Layout unused_output_layout;
+  Layout output_layout;
   EXPECT_THAT(ObuProcessor::CreateForRendering(
                   k5_1_Layout, sample_processor_factory,
                   /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  unused_output_layout, insufficient_data),
+                  output_layout, insufficient_data),
               NotNull());
+  // We also expect the output layout to be the same as the desired layout.
+  EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
 TEST(CreateForRendering,
