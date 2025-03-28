@@ -141,6 +141,9 @@ class IamfDecoder {
    * may be more than one temporal unit available. When this returns empty, the
    * user should call Decode() again with more data.
    *
+   * The output PCM is arranged based on the configured `OutputLayout` and
+   * `OutputSampleType`.
+   *
    * \param output_bytes Output buffer to receive bytes.  Must be large enough
    *        to receive bytes.  Maximum necessary size can be determined by
    *        GetFrameSize * GetNumberOfOutputChannels * bit depth (as determined
