@@ -37,6 +37,9 @@
 namespace iamf_tools {
 
 namespace {
+
+using ::absl::MakeConstSpan;
+
 // Some audio to tactile functions return 0 on success and 1 on failure.
 constexpr int kAudioToTactileResultFailure = 0;
 constexpr int kAudioToTactileResultSuccess = 1;
@@ -49,7 +52,7 @@ constexpr size_t kMaxOutputSamplesPerFrame = 0;
 absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
                                   size_t num_channels, int bit_depth,
                                   size_t max_num_samples_per_frame,
-                                  const std::vector<uint8_t>& buffer,
+                                  absl::Span<const uint8_t> buffer,
                                   size_t& total_samples_accumulator) {
   if (file == nullptr) {
     // Wav writer may have been aborted.
@@ -234,9 +237,9 @@ absl::Status WavWriter::PushFrameDerived(
     }
   }
 
-  return WriteSamplesInternal(file_, num_channels_, bit_depth_,
-                              max_input_samples_per_frame_, samples_as_pcm,
-                              total_samples_written_);
+  return WriteSamplesInternal(
+      file_, num_channels_, bit_depth_, max_input_samples_per_frame_,
+      MakeConstSpan(samples_as_pcm), total_samples_written_);
 }
 
 absl::Status WavWriter::FlushDerived() {
@@ -246,7 +249,7 @@ absl::Status WavWriter::FlushDerived() {
   return absl::OkStatus();
 }
 
-absl::Status WavWriter::WritePcmSamples(const std::vector<uint8_t>& buffer) {
+absl::Status WavWriter::WritePcmSamples(absl::Span<const uint8_t> buffer) {
   return WriteSamplesInternal(file_, num_channels_, bit_depth_,
                               max_input_samples_per_frame_, buffer,
                               total_samples_written_);
