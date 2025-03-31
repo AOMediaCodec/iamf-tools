@@ -363,6 +363,31 @@ cc_test(
 )
 
 cc_test(
+    name = "obu_sequencer_streaming_iamf_test",
+    srcs = ["obu_sequencer_streaming_iamf_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:obu_sequencer_streaming_iamf",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:temporal_unit_view",
+        "//iamf/common:leb_generator",
+        "//iamf/obu:arbitrary_obu",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:obu_base",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "obu_with_data_generator_test",
     srcs = ["obu_with_data_generator_test.cc"],
     deps = [

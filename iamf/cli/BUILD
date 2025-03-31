@@ -367,6 +367,20 @@ cc_library(
 )
 
 cc_library(
+    name = "obu_sequencer_streaming_iamf",
+    srcs = ["obu_sequencer_streaming_iamf.cc"],
+    hdrs = ["obu_sequencer_streaming_iamf.h"],
+    deps = [
+        ":obu_sequencer_base",
+        "//iamf/common:leb_generator",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "obu_with_data_generator",
     srcs = ["obu_with_data_generator.cc"],
     hdrs = ["obu_with_data_generator.h"],
