@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
@@ -30,6 +31,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
+#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -40,10 +42,15 @@ enum class Status { kAcceptingData, kEndOfStream };
 // Holds the internal state of the decoder to hide it and necessary includes
 // from API users.
 struct IamfDecoder::DecoderState {
+  /*!\brief Constructor.
+   *
+   * \param read_bit_buffer Buffer to decode from.
+   * \param requested_layout User-requested layout, the actual layout may be
+   *        different depending on the mix presentations.
+   */
   DecoderState(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer,
-               const Layout& initial_requested_layout)
-      : read_bit_buffer(std::move(read_bit_buffer)),
-        layout(initial_requested_layout) {}
+               const Layout& requested_layout)
+      : read_bit_buffer(std::move(read_bit_buffer)), layout(requested_layout) {}
 
   // Current status of the decoder.
   Status status = Status::kAcceptingData;
@@ -76,17 +83,25 @@ struct IamfDecoder::DecoderState {
 namespace {
 constexpr int kInitialBufferSize = 1024;
 
+// TODO(b/377554944, b/392950028): Add API controls for this. Such as adding
+//                                 support for v1.1 via
+//                                 `kIamfBaseEnhancedProfile`.
+// Only permit profiles defined in v1.0.0-errata, for now.
+const absl::flat_hash_set<ProfileVersion> kSimpleAndBaseProfiles = {
+    ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
+
 // Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
 // OBUs have been processed. Contracted to only return a resource exhausted
 // error if there is not enough data to process the descriptor OBUs.
 absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
+    const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     bool contains_all_descriptor_obus, absl::Span<const uint8_t> bitstream,
     StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout) {
   // Happens only in the pure streaming case.
   const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      in_out_layout,
+      desired_profile_versions, in_out_layout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
       in_out_layout, insufficient_data);
@@ -195,6 +210,7 @@ absl::StatusOr<IamfDecoder> IamfDecoder::Create(
   if (read_bit_buffer == nullptr) {
     return absl::InternalError("Failed to create read bit buffer.");
   }
+
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
       std::move(read_bit_buffer), ApiToInternalType(requested_layout));
   return IamfDecoder(std::move(state));
@@ -210,7 +226,8 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
   RETURN_IF_NOT_OK(
       decoder->state_->read_bit_buffer->PushBytes(descriptor_obus));
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(/*contains_all_descriptor_obus=*/true, descriptor_obus,
+      CreateObuProcessor(kSimpleAndBaseProfiles,
+                         /*contains_all_descriptor_obus=*/true, descriptor_obus,
                          decoder->state_->read_bit_buffer.get(),
                          decoder->state_->layout);
   if (!obu_processor.ok()) {
@@ -228,9 +245,10 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   }
   RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
-    auto obu_processor = CreateObuProcessor(
-        /*contains_all_descriptor_obus=*/false, bitstream,
-        state_->read_bit_buffer.get(), state_->layout);
+    auto obu_processor =
+        CreateObuProcessor(kSimpleAndBaseProfiles,
+                           /*contains_all_descriptor_obus=*/false, bitstream,
+                           state_->read_bit_buffer.get(), state_->layout);
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
       return absl::OkStatus();

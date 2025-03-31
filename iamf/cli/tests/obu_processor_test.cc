@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -95,6 +96,13 @@ constexpr int64_t kBufferCapacity = 1024;
 constexpr std::optional<uint8_t> kNoOutputFileBitDepthOverride = std::nullopt;
 constexpr std::array<uint8_t, 16> kArbitraryAudioFrame = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+const absl::flat_hash_set<ProfileVersion> kIamfV1_0_0ErrataProfiles = {
+    ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
+
+const absl::flat_hash_set<ProfileVersion> kIamfV1_1_1Profiles = {
+    ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile,
+    ProfileVersion::kIamfBaseEnhancedProfile};
 
 std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
     const std::list<const ObuBase*>& input_ia_sequence_without_header) {
@@ -2124,7 +2132,7 @@ void RenderUsingObuProcessorExpectOk(
   const std::string output_filename_string(output_filename);
   Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout,
+      kIamfV1_0_0ErrataProfiles, kStereoLayout,
       CreateAllWavWriters(output_filename_string, write_wav_header),
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
       unused_output_layout, insufficient_data);
@@ -2364,7 +2372,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
   Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout,
+      kIamfV1_0_0ErrataProfiles, kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
       unused_output_layout, insufficient_data);
@@ -2477,7 +2485,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
     bool insufficient_data;
     const std::string output_filename_string(output_filename);
     auto obu_processor = ObuProcessor::CreateForRendering(
-        kStereoLayout,
+        kIamfV1_0_0ErrataProfiles, kStereoLayout,
         CreateAllWavWriters(output_filename_string, kWriteWavHeader),
         /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
         unused_output_layout, insufficient_data);
@@ -2573,8 +2581,8 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
             kExpectedFirstSampleForFirstMixPresentation);
 }
 
-TEST(RenderAudioFramesWithDataAndMeasureLoudness,
-     DoesNotSupportBaseEnhancedProfile) {
+TEST(CreateForRendering,
+     ReturnsNullptrWhenDesiredProfileVersionIsNotSupported) {
   const auto output_filename = GetAndCleanupOutputFileName(".wav");
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
@@ -2631,24 +2639,28 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
        &audio_elements_with_data.at(kThirdAudioElementId).obu,
        &mix_presentation_obus.front()});
 
-  // Expect that the `ObuProcessor` rejects the rendering request.
+  // The only mix presentation requires Base-Enhanced profile, but the user
+  // restricted the profiles to Simple and Base.
+  const absl::flat_hash_set<ProfileVersion> kProfilesTooLow = {
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
   Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout,
+      kProfilesTooLow, kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
       unused_output_layout, insufficient_data);
+
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, IsNull());
 }
 
-TEST(CreateForRendering, ReturnsNullPtrIfOnlyBaseEnhancedProfileIsDetected) {
+TEST(CreateForRendering,
+     ForwardsBaseEnhancedProfileMixToSampleProcessorFactoryWhenConfigured) {
   // Create a minimal fourth-order ambisonics IA Sequence. Fourth-order
-  // ambisonics requires Base-Enhanced profile, as of IAMF v1.1.0. But the
-  // underlying `ObuProcessor` does not (yet) support Base-Enhanced.
+  // ambisonics requires Base-Enhanced profile, as of IAMF v1.1.0.
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfBaseEnhancedProfile,
@@ -2678,17 +2690,19 @@ TEST(CreateForRendering, ReturnsNullPtrIfOnlyBaseEnhancedProfileIsDetected) {
   // Minimize the test, we can exclude audio frames by claiming this is just the
   // descriptors via `is_exhaustive_and_exact`.
   constexpr bool kIsExhaustiveAndExact = true;
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kFirstMixPresentationId, _, _, _, _, _, _, _));
 
-  // TODO(b/392950028): Support decoding of Base-Enhanced profile for IAMF v1.1.
   bool insufficient_data;
   Layout unused_output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  kStereoLayout,
-                  RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-                  kIsExhaustiveAndExact, read_bit_buffer.get(),
-                  unused_output_layout, insufficient_data),
-              IsNull());
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_1_1Profiles, kStereoLayout,
+      mock_sample_processor_factory.AsStdFunction(), kIsExhaustiveAndExact,
+      read_bit_buffer.get(), unused_output_layout, insufficient_data);
+
   EXPECT_FALSE(insufficient_data);
+  EXPECT_THAT(obu_processor, NotNull());
 }
 
 TEST(CreateForRendering,
@@ -2746,9 +2760,9 @@ TEST(CreateForRendering,
   bool insufficient_data;
   Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kStereoLayout, mock_sample_processor_factory.AsStdFunction(),
-      kIsExhaustiveAndExact, read_bit_buffer.get(), unused_output_layout,
-      insufficient_data);
+      kIamfV1_0_0ErrataProfiles, kStereoLayout,
+      mock_sample_processor_factory.AsStdFunction(), kIsExhaustiveAndExact,
+      read_bit_buffer.get(), unused_output_layout, insufficient_data);
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
 }
@@ -2803,14 +2817,13 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
   Layout unused_output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  kStereoLayout, sample_processor_factory,
-                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  unused_output_layout, insufficient_data),
-              NotNull());
+  EXPECT_THAT(
+      ObuProcessor::CreateForRendering(
+          kIamfV1_0_0ErrataProfiles, kStereoLayout, sample_processor_factory,
+          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+          unused_output_layout, insufficient_data),
+      NotNull());
 }
-
-using testing::_;
 
 constexpr Layout k5_1_Layout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
@@ -2864,11 +2877,12 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
   Layout output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  k5_1_Layout, sample_processor_factory,
-                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  output_layout, insufficient_data),
-              NotNull());
+  EXPECT_THAT(
+      ObuProcessor::CreateForRendering(
+          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
+          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+          output_layout, insufficient_data),
+      NotNull());
   EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
@@ -2921,11 +2935,12 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
   Layout output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  k5_1_Layout, sample_processor_factory,
-                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  output_layout, insufficient_data),
-              NotNull());
+  EXPECT_THAT(
+      ObuProcessor::CreateForRendering(
+          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
+          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+          output_layout, insufficient_data),
+      NotNull());
   // We also expect the output layout to be the same as the desired layout.
   EXPECT_EQ(output_layout, k5_1_Layout);
 }
@@ -2989,11 +3004,12 @@ TEST(CreateForRendering,
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
   Layout output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  k5_1_Layout, sample_processor_factory,
-                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-                  output_layout, insufficient_data),
-              NotNull());
+  EXPECT_THAT(
+      ObuProcessor::CreateForRendering(
+          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
+          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+          output_layout, insufficient_data),
+      NotNull());
   EXPECT_EQ(output_layout, k5_1_Layout);
 }
 
@@ -3004,11 +3020,12 @@ TEST(CreateForRendering, NullReadBitBufferRejected) {
   bool insufficient_data;
 
   Layout unused_output_layout;
-  EXPECT_THAT(ObuProcessor::CreateForRendering(
-                  kStereoLayout, sample_processor_factory,
-                  /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
-                  unused_output_layout, insufficient_data),
-              IsNull());
+  EXPECT_THAT(
+      ObuProcessor::CreateForRendering(
+          kIamfV1_0_0ErrataProfiles, kStereoLayout, sample_processor_factory,
+          /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
+          unused_output_layout, insufficient_data),
+      IsNull());
   EXPECT_FALSE(insufficient_data);
 }
 

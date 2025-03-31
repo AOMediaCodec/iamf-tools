@@ -208,18 +208,15 @@ absl::Status GetAndStoreParameterBlockWithData(
 // Returns a list of pointers to the supported mix presentations. Empty if none
 // are supported.
 std::list<MixPresentationObu*> GetSupportedMixPresentations(
+    const absl::flat_hash_set<ProfileVersion> requested_profiles,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus) {
-  // TODO(b/377554944): Support `ProfileVersion::kIamfBaseEnhancedProfile`.
-  // Only permit certain profiles to be used.
-  const absl::flat_hash_set<ProfileVersion> kSupportedProfiles = {
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
-
+  // Find a mix presentation and layout that agrees with the requested profiles.
   std::list<MixPresentationObu*> supported_mix_presentations;
   std::string cumulative_error_message;
   for (auto iter = mix_presentation_obus.begin();
        iter != mix_presentation_obus.end(); ++iter) {
-    auto profiles = kSupportedProfiles;
+    auto profiles = requested_profiles;
     const auto status = ProfileFilter::FilterProfilesForMixPresentation(
         audio_elements, *iter, profiles);
     if (status.ok()) {
@@ -662,6 +659,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
 }
 
 std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
+    const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const Layout& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
@@ -683,7 +681,8 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          desired_layout, sample_processor_factory, output_layout);
+          desired_profile_versions, desired_layout, sample_processor_factory,
+          output_layout);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;
@@ -706,6 +705,7 @@ absl::StatusOr<uint32_t> ObuProcessor::GetOutputFrameSize() const {
 }
 
 absl::Status ObuProcessor::InitializeForRendering(
+    const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const Layout& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
@@ -737,7 +737,8 @@ absl::Status ObuProcessor::InitializeForRendering(
   // TODO(b/340289717): Add a way to select the mix presentation if multiple
   //                    are supported.
   const std::list<MixPresentationObu*> supported_mix_presentations =
-      GetSupportedMixPresentations(audio_elements_, mix_presentations_);
+      GetSupportedMixPresentations(desired_profile_versions, audio_elements_,
+                                   mix_presentations_);
   if (supported_mix_presentations.empty()) {
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }

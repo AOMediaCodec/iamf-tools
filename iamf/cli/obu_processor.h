@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -154,6 +155,8 @@ class ObuProcessor {
    * Creation succeeds only if the descriptor OBUs are successfully processed
    * and all rendering modules are successfully initialized.
    *
+   * \param desired_profile_versions Profiles that are permitted to be used
+   *        selecting the mix presentation.
    * \param desired_layout Specifies the desired layout that will be used to
    *        render the audio, if available in the mix presentations. If not
    *        available, the first layout in the first mix presentation will be
@@ -174,6 +177,7 @@ class ObuProcessor {
    * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
    */
   static std::unique_ptr<ObuProcessor> CreateForRendering(
+      const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const Layout& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
@@ -300,6 +304,8 @@ class ObuProcessor {
    *
    * Must be called after `Initialize()` is called.
    *
+   * \param desired_profile_versions Profiles that are permitted to be used
+   *        selecting the mix presentation.
    * \param desired_layout Specifies the layout that will be used to render the
    *        audio, if available.
    * \param sample_processor_factory Factory to create post processors.
@@ -310,6 +316,7 @@ class ObuProcessor {
    *         on failure.
    */
   absl::Status InitializeForRendering(
+      const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const Layout& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
