@@ -23,7 +23,12 @@
 
 namespace iamf_tools {
 
-struct FlacStreamInfoConstraints {
+/*!\brief Strict constraints for the IAMF or FLAC spec.
+ *
+ * Typically these are "SHALL" requirements from either the FLAC or IAMF spec.
+ * These are used to enforce in all modes.
+ */
+struct FlacStreamInfoStrictConstraints {
   // Required 0 audio_roll_distance as per IAMF spec.
   static constexpr int16_t kAudioRollDistance = 0;
 
@@ -31,17 +36,10 @@ struct FlacStreamInfoConstraints {
   // FLAC spec.
   static constexpr uint16_t kMinMinAndMaxBlockSize = 16;
 
-  // IAMF requires frame_size fields to have fixed values.
-  static constexpr uint32_t kMinFrameSize = 0;
-  static constexpr uint32_t kMaxFrameSize = 0;
-
   // In IAMF the number_of_channels is fixed to `1`, but can be ignored when
   // reading / decoding. The actual number of channels is determined on a
   // per-substream basis based on the audio element.
   static constexpr uint8_t kNumberOfChannels = 1;
-
-  // Required signature, as per IAMF spec.
-  static constexpr std::array<uint8_t, 16> kMd5Signature = {0};
 
   // Acceptable ranges for sample_rate, bits_per_sample, and
   // totals_samples_in_stream from the FLAC documentation.
@@ -54,6 +52,21 @@ struct FlacStreamInfoConstraints {
   static constexpr uint64_t kMaxTotalSamplesInStream = 0xfffffffff;
 };
 
+/*!\brief Loose constraints for the IAMF or FLAC spec.
+ *
+ * Typically these are "SHOULD" requirements from either the FLAC or IAMF spec.
+ * These requirements are enforced loosely to allow some components to handle
+ * bitstreams which may not strictly follow the spec recommendations.
+ */
+struct FlacStreamInfoLooseConstraints {
+  // The IAMF spec notes these SHOULD have fixed values.
+  static constexpr uint32_t kMinFrameSize = 0;
+  static constexpr uint32_t kMaxFrameSize = 0;
+
+  // The IAMF spec notes that the md5_signature SHOULD be fixed to zero.
+  static constexpr std::array<uint8_t, 16> kMd5Signature = {0};
+};
+
 struct FlacMetaBlockStreamInfo {
   friend bool operator==(const FlacMetaBlockStreamInfo& lhs,
                          const FlacMetaBlockStreamInfo& rhs) = default;
@@ -61,16 +74,16 @@ struct FlacMetaBlockStreamInfo {
   uint16_t minimum_block_size;
   uint16_t maximum_block_size;
   uint32_t minimum_frame_size =
-      FlacStreamInfoConstraints::kMinFrameSize;  // 24 bits.
+      FlacStreamInfoLooseConstraints::kMinFrameSize;  // 24 bits.
   uint32_t maximum_frame_size =
-      FlacStreamInfoConstraints::kMaxFrameSize;  // 24 bits.
-  uint32_t sample_rate;                          // 20 bits.
+      FlacStreamInfoLooseConstraints::kMaxFrameSize;  // 24 bits.
+  uint32_t sample_rate;                               // 20 bits.
   uint8_t number_of_channels =
-      FlacStreamInfoConstraints::kNumberOfChannels;  // 3 bits.
-  uint8_t bits_per_sample;                           // 5 bits.
-  uint64_t total_samples_in_stream;                  // 36 bits.
+      FlacStreamInfoStrictConstraints::kNumberOfChannels;  // 3 bits.
+  uint8_t bits_per_sample;                                 // 5 bits.
+  uint64_t total_samples_in_stream;                        // 36 bits.
   std::array<uint8_t, 16> md5_signature =
-      FlacStreamInfoConstraints::kMd5Signature;
+      FlacStreamInfoLooseConstraints::kMd5Signature;
 };
 
 /*!\brief The header portion of a metadata block described in the FLAC spec. */
@@ -120,7 +133,7 @@ class FlacDecoderConfig {
    * \return Audio roll distance required by the IAMF spec.
    */
   static int16_t GetRequiredAudioRollDistance() {
-    return FlacStreamInfoConstraints::kAudioRollDistance;
+    return FlacStreamInfoStrictConstraints::kAudioRollDistance;
   }
 
   /*!\brief Validates and writes the `FlacDecoderConfig` to a buffer.

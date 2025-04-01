@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <variant>
@@ -105,7 +106,7 @@ TEST_F(FlacTest, WriteDefault) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -149,7 +150,7 @@ TEST_F(FlacTest, CanContainAdditionalBlocks) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -228,7 +229,7 @@ TEST_F(FlacTest, IllegalStreamInfoMustBePresent) {
 
 TEST_F(FlacTest, WriteBitsPerSampleMin) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMinBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMinBitsPerSample;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -247,7 +248,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMin) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       3 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -260,7 +261,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMin) {
 
 TEST_F(FlacTest, WriteBitsPerSampleMax) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMaxBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMaxBitsPerSample;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -279,7 +280,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1) | 1,
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1) | 1,
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -316,7 +317,7 @@ TEST_F(FlacTest, WriteVaryMostLegalFields) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          FlacStreamInfoConstraints::kNumberOfChannels << 1,
+          FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
       7 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -329,7 +330,7 @@ TEST_F(FlacTest, WriteVaryMostLegalFields) {
 
 TEST_F(FlacTest, WriteSampleRateMin) {
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMinSampleRate;
+      FlacStreamInfoStrictConstraints::kMinSampleRate;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -348,7 +349,7 @@ TEST_F(FlacTest, WriteSampleRateMin) {
       0x00, 0x00,
       (0x1 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -361,7 +362,7 @@ TEST_F(FlacTest, WriteSampleRateMin) {
 
 TEST_F(FlacTest, WriteSampleRateMax) {
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMaxSampleRate;
+      FlacStreamInfoStrictConstraints::kMaxSampleRate;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -380,7 +381,7 @@ TEST_F(FlacTest, WriteSampleRateMax) {
       0x9f, 0xff,
       (0x6 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -444,7 +445,7 @@ TEST_F(FlacTest, WriteMinimumMaximumBlockSizeMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -494,7 +495,8 @@ TEST_F(FlacTest, IllegalMinimumMaximumBlockSizeNotEqualToEachOther) {
 
 TEST_F(FlacTest, IllegalMinimumFrameSizeNotEqualToZero) {
   const uint32_t kInvalidMinimumFrameSize = 16;
-  ASSERT_NE(kInvalidMinimumFrameSize, FlacStreamInfoConstraints::kMinFrameSize);
+  ASSERT_NE(kInvalidMinimumFrameSize,
+            FlacStreamInfoLooseConstraints::kMinFrameSize);
   first_stream_info_payload_->minimum_frame_size = kInvalidMinimumFrameSize;
 
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
@@ -503,7 +505,8 @@ TEST_F(FlacTest, IllegalMinimumFrameSizeNotEqualToZero) {
 
 TEST_F(FlacTest, IllegalMaximumFrameSizeNotEqualToZero) {
   const uint32_t kInvalidMaximumFrameSize = 16;
-  ASSERT_NE(kInvalidMaximumFrameSize, FlacStreamInfoConstraints::kMaxFrameSize);
+  ASSERT_NE(kInvalidMaximumFrameSize,
+            FlacStreamInfoLooseConstraints::kMaxFrameSize);
   first_stream_info_payload_->maximum_frame_size = kInvalidMaximumFrameSize;
 
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
@@ -513,7 +516,7 @@ TEST_F(FlacTest, IllegalMaximumFrameSizeNotEqualToZero) {
 TEST_F(FlacTest, IllegalNumberOfChannelsNotEqualToOne) {
   const uint8_t kInvalidNumberOfChannels = 2;
   ASSERT_NE(kInvalidNumberOfChannels,
-            FlacStreamInfoConstraints::kNumberOfChannels);
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
   first_stream_info_payload_->number_of_channels = kInvalidNumberOfChannels;
 
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
@@ -522,7 +525,7 @@ TEST_F(FlacTest, IllegalNumberOfChannelsNotEqualToOne) {
 
 TEST_F(FlacTest, WriteTotalSamplesInStreamMax) {
   first_stream_info_payload_->total_samples_in_stream =
-      FlacStreamInfoConstraints::kMaxTotalSamplesInStream;
+      FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream;
 
   expected_decoder_config_payload_ = {
       // `last_metadata_block_flag` and `block_type` fields.
@@ -541,7 +544,7 @@ TEST_F(FlacTest, WriteTotalSamplesInStreamMax) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0xf,
@@ -554,7 +557,7 @@ TEST_F(FlacTest, WriteTotalSamplesInStreamMax) {
 
 TEST_F(FlacTest, IllegalMd5SumNonZero) {
   const uint8_t kInvalidMd5SumFirstByte = 0x01;
-  ASSERT_NE(FlacStreamInfoConstraints::kMd5Signature[0],
+  ASSERT_NE(FlacStreamInfoLooseConstraints::kMd5Signature[0],
             kInvalidMd5SumFirstByte);
   first_stream_info_payload_->md5_signature[0] = kInvalidMd5SumFirstByte;
 
@@ -574,28 +577,30 @@ TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
 
 TEST_F(FlacTest, GetOutputSampleRateMin) {
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMinSampleRate;
+      FlacStreamInfoStrictConstraints::kMinSampleRate;
 
   uint32_t output_sample_rate;
   EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
               IsOk());
-  EXPECT_EQ(output_sample_rate, FlacStreamInfoConstraints::kMinSampleRate);
+  EXPECT_EQ(output_sample_rate,
+            FlacStreamInfoStrictConstraints::kMinSampleRate);
 }
 
 TEST_F(FlacTest, GetOutputSampleRateMax) {
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMaxSampleRate;
+      FlacStreamInfoStrictConstraints::kMaxSampleRate;
 
   uint32_t output_sample_rate;
   EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
               IsOk());
-  EXPECT_EQ(output_sample_rate, FlacStreamInfoConstraints::kMaxSampleRate);
+  EXPECT_EQ(output_sample_rate,
+            FlacStreamInfoStrictConstraints::kMaxSampleRate);
 }
 
 TEST_F(FlacTest, InvalidGetOutputSampleRateTooLow) {
-  ASSERT_GT(FlacStreamInfoConstraints::kMinSampleRate, 0);
+  ASSERT_GT(FlacStreamInfoStrictConstraints::kMinSampleRate, 0);
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMinSampleRate - 1;
+      FlacStreamInfoStrictConstraints::kMinSampleRate - 1;
 
   uint32_t output_sample_rate;
   EXPECT_FALSE(
@@ -603,10 +608,10 @@ TEST_F(FlacTest, InvalidGetOutputSampleRateTooLow) {
 }
 
 TEST_F(FlacTest, InvalidGetOutputSampleRateTooHigh) {
-  ASSERT_LT(FlacStreamInfoConstraints::kMaxSampleRate,
+  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxSampleRate,
             std::numeric_limits<uint32_t>::max());
   first_stream_info_payload_->sample_rate =
-      FlacStreamInfoConstraints::kMaxSampleRate + 1;
+      FlacStreamInfoStrictConstraints::kMaxSampleRate + 1;
 
   uint32_t output_sample_rate;
   EXPECT_FALSE(
@@ -623,30 +628,32 @@ TEST_F(FlacTest, InvalidGetOutputSampleRateWithNoStreamInfo) {
 
 TEST_F(FlacTest, GetBitsPerSampleMin) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMinBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMinBitsPerSample;
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
       flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
-  EXPECT_EQ(output_bit_depth, FlacStreamInfoConstraints::kMinBitsPerSample + 1);
+  EXPECT_EQ(output_bit_depth,
+            FlacStreamInfoStrictConstraints::kMinBitsPerSample + 1);
 }
 
 TEST_F(FlacTest, GetBitsPerSampleMax) {
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMaxBitsPerSample;
+      FlacStreamInfoStrictConstraints::kMaxBitsPerSample;
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
       flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
-  EXPECT_EQ(output_bit_depth, FlacStreamInfoConstraints::kMaxBitsPerSample + 1);
+  EXPECT_EQ(output_bit_depth,
+            FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1);
 }
 
 TEST_F(FlacTest, GetBitsPerSampleMinTooLow) {
-  ASSERT_GT(FlacStreamInfoConstraints::kMinBitsPerSample, 0);
+  ASSERT_GT(FlacStreamInfoStrictConstraints::kMinBitsPerSample, 0);
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMinBitsPerSample - 1;
+      FlacStreamInfoStrictConstraints::kMinBitsPerSample - 1;
   uint8_t unused_output_bit_depth;
   EXPECT_FALSE(
       flac_decoder_config_.GetBitDepthToMeasureLoudness(unused_output_bit_depth)
@@ -654,10 +661,10 @@ TEST_F(FlacTest, GetBitsPerSampleMinTooLow) {
 }
 
 TEST_F(FlacTest, GetBitsPerSampleMaxTooHigh) {
-  ASSERT_LT(FlacStreamInfoConstraints::kMaxBitsPerSample,
+  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxBitsPerSample,
             std::numeric_limits<uint32_t>::max());
   first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoConstraints::kMaxBitsPerSample + 1;
+      FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1;
 
   uint8_t unused_output_bit_depth;
   EXPECT_FALSE(
@@ -676,33 +683,33 @@ TEST_F(FlacTest, InvalidGetBitsPerSampleWithNoStreamInfo) {
 
 TEST_F(FlacTest, GetTotalNumSamplesInStreamMin) {
   first_stream_info_payload_->total_samples_in_stream =
-      FlacStreamInfoConstraints::kMinTotalSamplesInStream;
+      FlacStreamInfoStrictConstraints::kMinTotalSamplesInStream;
 
   uint64_t output_total_samples_in_stream;
   EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
                   output_total_samples_in_stream),
               IsOk());
   EXPECT_EQ(output_total_samples_in_stream,
-            FlacStreamInfoConstraints::kMinTotalSamplesInStream);
+            FlacStreamInfoStrictConstraints::kMinTotalSamplesInStream);
 }
 
 TEST_F(FlacTest, GetTotalNumSamplesInStreamMax) {
   first_stream_info_payload_->total_samples_in_stream =
-      FlacStreamInfoConstraints::kMaxTotalSamplesInStream;
+      FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream;
 
   uint64_t output_total_samples_in_stream;
   EXPECT_THAT(flac_decoder_config_.GetTotalSamplesInStream(
                   output_total_samples_in_stream),
               IsOk());
   EXPECT_EQ(output_total_samples_in_stream,
-            FlacStreamInfoConstraints::kMaxTotalSamplesInStream);
+            FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream);
 }
 
 TEST_F(FlacTest, InvalidGetTotalNumSamplesInStreamTooHigh) {
-  ASSERT_LT(FlacStreamInfoConstraints::kMaxTotalSamplesInStream,
+  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream,
             std::numeric_limits<uint64_t>::max());
   first_stream_info_payload_->total_samples_in_stream =
-      FlacStreamInfoConstraints::kMaxTotalSamplesInStream + 1;
+      FlacStreamInfoStrictConstraints::kMaxTotalSamplesInStream + 1;
 
   uint64_t output_total_samples_in_stream;
   EXPECT_FALSE(flac_decoder_config_
@@ -741,7 +748,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          FlacStreamInfoConstraints::kNumberOfChannels << 1,
+          FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
       7 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -768,11 +775,11 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
   EXPECT_EQ(stream_info.maximum_frame_size, 0);
   EXPECT_EQ(stream_info.sample_rate, 48000);
   EXPECT_EQ(stream_info.number_of_channels,
-            FlacStreamInfoConstraints::kNumberOfChannels);
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
   EXPECT_EQ(stream_info.bits_per_sample, 7);
   EXPECT_EQ(stream_info.total_samples_in_stream, 100);
   EXPECT_EQ(stream_info.md5_signature,
-            FlacStreamInfoConstraints::kMd5Signature);
+            FlacStreamInfoLooseConstraints::kMd5Signature);
 }
 
 TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
@@ -793,7 +800,7 @@ TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          (FlacStreamInfoConstraints::kNumberOfChannels << 1),
+          (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -855,8 +862,10 @@ TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
   EXPECT_THAT(application_payload, ElementsAreArray({'d', 'e', 'f'}));
 }
 
-TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
-  std::vector<uint8_t> payload = {
+TEST(ReadAndValidate, ReadsInvalidMd5Signature) {
+  // The spec notes that the MD5 sum "SHOULD" be fixed. However, to be a robust
+  // decoder, we ignore that do not match the recommended value.
+  const std::vector<uint8_t> payload = {
       // `last_metadata_block_flag` and `block_type` fields.
       1 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
       // `metadata_data_block_length`.
@@ -873,7 +882,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          FlacStreamInfoConstraints::kNumberOfChannels << 1,
+          FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
       7 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -881,15 +890,68 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoFailsOnInvalidMd5Signature) {
       // MD5 sum (invalid bit at end)
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x01};
+  constexpr std::array<uint8_t, 16> kExpectedInvalidMd5Signature = {
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
   auto rb =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(payload));
   FlacDecoderConfig decoder_config;
-  EXPECT_FALSE(
-      decoder_config
-          .ReadAndValidate(
-              /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb)
-          .ok());
+  EXPECT_THAT(decoder_config.ReadAndValidate(
+                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+              IsOk());
+  EXPECT_THAT(decoder_config.metadata_blocks_[0].header.block_type,
+              Eq(FlacMetaBlockHeader::kFlacStreamInfo));
+
+  FlacMetaBlockStreamInfo stream_info = std::get<FlacMetaBlockStreamInfo>(
+      decoder_config.metadata_blocks_[0].payload);
+  EXPECT_EQ(stream_info.md5_signature, kExpectedInvalidMd5Signature);
+}
+
+TEST(ReadAndValidateTest, ReadsInvalidFrameSizes) {
+  // The spec notes that these values "SHOULD" be fixed. However, to be a robust
+  // decoder, we ignore that they do not match the recommended value.
+  constexpr uint8_t kInvalidMinimumFrameSize = 1;
+  constexpr uint8_t kInvalidMaximumFrameSize = 2;
+  const std::vector<uint8_t> payload = {
+      // `last_metadata_block_flag` and `block_type` fields.
+      1 << 7 | FlacMetaBlockHeader::kFlacStreamInfo,
+      // `metadata_data_block_length`.
+      0, 0, 34,
+      // `minimum_block_size`.
+      0, 64,
+      // `maximum_block_size`.
+      0, 64,
+      // `minimum_frame_size`.
+      0, 0, kInvalidMinimumFrameSize,
+      // `maximum_frame_size`.
+      0, 0, kInvalidMaximumFrameSize,
+      // `sample_rate` (20 bits)
+      0x0b, 0xb8,
+      (0 << 4) |
+          // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
+          FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
+      7 << 4 |
+          // `total_samples_in_stream` (36 bits).
+          0,
+      0x00, 0x00, 0x00, 100,
+      // MD5 sum.
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00};
+
+  auto rb =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(payload));
+  FlacDecoderConfig decoder_config;
+
+  EXPECT_THAT(decoder_config.ReadAndValidate(
+                  /*num_samples_per_frame=*/64, /*audio_roll_distance=*/0, *rb),
+              IsOk());
+
+  FlacMetaBlockStreamInfo* stream_info = std::get_if<FlacMetaBlockStreamInfo>(
+      &decoder_config.metadata_blocks_[0].payload);
+  ASSERT_NE(stream_info, nullptr);
+  EXPECT_EQ(stream_info->minimum_frame_size, kInvalidMinimumFrameSize);
+  EXPECT_EQ(stream_info->maximum_frame_size, kInvalidMaximumFrameSize);
 }
 
 }  // namespace

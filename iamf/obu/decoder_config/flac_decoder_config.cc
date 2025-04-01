@@ -44,33 +44,36 @@ absl::Status GetStreamInfo(const FlacDecoderConfig& decoder_config,
   return absl::OkStatus();
 }
 
-using Cons = FlacStreamInfoConstraints;
+using StrictCons = FlacStreamInfoStrictConstraints;
 
 absl::Status ValidateSampleRate(uint32_t sample_rate) {
   return ValidateInRange(
-      sample_rate, {Cons::kMinSampleRate, Cons::kMaxSampleRate}, "sample_rate");
+      sample_rate, {StrictCons::kMinSampleRate, StrictCons::kMaxSampleRate},
+      "sample_rate");
 }
 
 absl::Status ValidateBitsPerSample(uint8_t bits_per_sample) {
   // Validate restrictions from the FLAC specification.
-  return ValidateInRange(bits_per_sample,
-                         {Cons::kMinBitsPerSample, Cons::kMaxBitsPerSample},
-                         "bits_per_sample");
+  return ValidateInRange(
+      bits_per_sample,
+      {StrictCons::kMinBitsPerSample, StrictCons::kMaxBitsPerSample},
+      "bits_per_sample");
 }
 
 absl::Status ValidateTotalSamplesInStream(uint64_t total_samples_in_stream) {
   // The FLAC specification treats this as a 36-bit value which is always valid,
   // but in `iamf_tools` it could be out of bounds because it is stored as a
   // `uint64_t`.
-  return ValidateInRange(
-      total_samples_in_stream,
-      {Cons::kMinTotalSamplesInStream, Cons::kMaxTotalSamplesInStream},
-      "total_samples_in_stream");
+  return ValidateInRange(total_samples_in_stream,
+                         {StrictCons::kMinTotalSamplesInStream,
+                          StrictCons::kMaxTotalSamplesInStream},
+                         "total_samples_in_stream");
 }
 
-// Validates the `FlacDecoderConfig`.
-absl::Status ValidatePayload(uint32_t num_samples_per_frame,
-                             const FlacDecoderConfig& decoder_config) {
+// Validates the `FlacDecoderConfig` for decoding. To be robust and encode files
+// that are not valid, some restrictions are relaxed.
+absl::Status ValidateDecodingRestrictions(
+    uint32_t num_samples_per_frame, const FlacDecoderConfig& decoder_config) {
   for (int i = 0; i < decoder_config.metadata_blocks_.size(); i++) {
     const bool last_metadata_block_flag =
         decoder_config.metadata_blocks_[i].header.last_metadata_block_flag;
@@ -91,13 +94,6 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
   RETURN_IF_NOT_OK(ValidateSampleRate(stream_info->sample_rate));
   RETURN_IF_NOT_OK(ValidateBitsPerSample(stream_info->bits_per_sample));
 
-  RETURN_IF_NOT_OK(Validate(stream_info->minimum_block_size,
-                            std::greater_equal{}, Cons::kMinMinAndMaxBlockSize,
-                            "minimum_block_size >="));
-  RETURN_IF_NOT_OK(Validate(stream_info->maximum_block_size,
-                            std::greater_equal{}, Cons::kMinMinAndMaxBlockSize,
-                            "maximum_block_size >="));
-
   // IAMF restricts some fields.
   RETURN_IF_NOT_OK(
       ValidateEqual(static_cast<uint32_t>(stream_info->maximum_block_size),
@@ -105,18 +101,37 @@ absl::Status ValidatePayload(uint32_t num_samples_per_frame,
   RETURN_IF_NOT_OK(
       ValidateEqual(static_cast<uint32_t>(stream_info->minimum_block_size),
                     num_samples_per_frame, "minimum_block_size"));
-  RETURN_IF_NOT_OK(ValidateEqual(stream_info->minimum_frame_size,
-                                 Cons::kMinFrameSize, "minimum_frame_size"));
-  RETURN_IF_NOT_OK(ValidateEqual(stream_info->maximum_frame_size,
-                                 Cons::kMaxFrameSize, "maximum_frame_size"));
 
   RETURN_IF_NOT_OK(ValidateEqual(stream_info->number_of_channels,
-                                 Cons::kNumberOfChannels,
+                                 StrictCons::kNumberOfChannels,
                                  "number_of_channels"));
 
-  RETURN_IF_NOT_OK(ValidateTotalSamplesInStream(stream_info->bits_per_sample));
+  return ValidateTotalSamplesInStream(stream_info->total_samples_in_stream);
+}
 
-  if (stream_info->md5_signature != Cons::kMd5Signature) {
+// Validates the `FlacDecoderConfig` for encoding, typically we want to enforce
+// both the strict and looser constraints. It's best not to encode or allow
+// producing files that are strange.
+absl::Status ValidateEncodingRestrictions(
+    uint32_t num_samples_per_frame, const FlacDecoderConfig& decoder_config) {
+  // Validate the stricter stricter constaints also used when decoding.
+  RETURN_IF_NOT_OK(
+      ValidateDecodingRestrictions(num_samples_per_frame, decoder_config));
+  using LooseCons = FlacStreamInfoLooseConstraints;
+
+  const FlacMetaBlockStreamInfo* stream_info;
+  RETURN_IF_NOT_OK(GetStreamInfo(decoder_config, &stream_info));
+
+  // The IAMF spec instruct there values "SHOULD" agree. During encoding we take
+  // this strictly, to avoid producing files that are strange.
+  RETURN_IF_NOT_OK(ValidateEqual(stream_info->minimum_frame_size,
+                                 LooseCons::kMinFrameSize,
+                                 "minimum_frame_size"));
+  RETURN_IF_NOT_OK(ValidateEqual(stream_info->maximum_frame_size,
+                                 LooseCons::kMaxFrameSize,
+                                 "maximum_frame_size"));
+
+  if (stream_info->md5_signature != LooseCons::kMd5Signature) {
     return absl::InvalidArgumentError("Invalid md5_signature.");
   }
 
@@ -182,7 +197,7 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
                                                  WriteBitBuffer& wb) const {
   MAYBE_RETURN_IF_NOT_OK(ValidateAudioRollDistance(audio_roll_distance));
 
-  RETURN_IF_NOT_OK(ValidatePayload(num_samples_per_frame, *this));
+  RETURN_IF_NOT_OK(ValidateEncodingRestrictions(num_samples_per_frame, *this));
 
   for (const auto& metadata_block : metadata_blocks_) {
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
@@ -254,7 +269,7 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
     }
     metadata_blocks_.push_back(std::move(metadata_block));
   }
-  RETURN_IF_NOT_OK(ValidatePayload(num_samples_per_frame, *this));
+  RETURN_IF_NOT_OK(ValidateDecodingRestrictions(num_samples_per_frame, *this));
   return absl::OkStatus();
 }
 

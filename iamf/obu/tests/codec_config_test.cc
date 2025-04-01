@@ -879,7 +879,7 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
       0x0b, 0xb8,
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
-          FlacStreamInfoConstraints::kNumberOfChannels << 1,
+          FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
       7 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
@@ -920,11 +920,11 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
   EXPECT_EQ(stream_info.maximum_frame_size, 0);
   EXPECT_EQ(stream_info.sample_rate, 48000);
   EXPECT_EQ(stream_info.number_of_channels,
-            FlacStreamInfoConstraints::kNumberOfChannels);
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
   EXPECT_EQ(stream_info.bits_per_sample, 7);
   EXPECT_EQ(stream_info.total_samples_in_stream, 100);
   EXPECT_EQ(stream_info.md5_signature,
-            FlacStreamInfoConstraints::kMd5Signature);
+            FlacStreamInfoLooseConstraints::kMd5Signature);
   EXPECT_TRUE(obu->IsLossless());
 }
 
