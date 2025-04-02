@@ -78,6 +78,12 @@ struct IamfDecoder::DecoderState {
 
   // True iff the decoder was created via CreateFromDescriptors().
   bool created_from_descriptors = false;
+
+  // Once descriptors have been processed, they are stored here. This is useful
+  // for Reset() purposes, in which we can recreate the ObuProcessor with the
+  // original descriptors in order to ensure that the state of the processor is
+  // clean.
+  std::vector<uint8_t> descriptor_obus;
 };
 
 namespace {
@@ -95,8 +101,9 @@ const absl::flat_hash_set<ProfileVersion> kSimpleAndBaseProfiles = {
 // error if there is not enough data to process the descriptor OBUs.
 absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
-    bool contains_all_descriptor_obus, absl::Span<const uint8_t> bitstream,
-    StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout) {
+    bool contains_all_descriptor_obus,
+    StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout,
+    std::vector<uint8_t>& output_descriptor_obus) {
   // Happens only in the pure streaming case.
   const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
@@ -115,8 +122,15 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
     }
     return absl::InvalidArgumentError("Failed to create OBU processor.");
   }
-  const auto num_bits_read = read_bit_buffer->Tell() - start_position;
-  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
+  const auto num_bytes_read = (read_bit_buffer->Tell() - start_position) / 8;
+
+  // Seek back to the beginning of the data that was processed so that we can
+  // read and store the binary IAMF descriptor OBUs.
+  RETURN_IF_NOT_OK(read_bit_buffer->Seek(start_position));
+  output_descriptor_obus.resize(num_bytes_read);
+  RETURN_IF_NOT_OK(
+      read_bit_buffer->ReadUint8Span(absl::MakeSpan(output_descriptor_obus)));
+  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
   return obu_processor;
 }
 
@@ -227,9 +241,10 @@ absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
       decoder->state_->read_bit_buffer->PushBytes(descriptor_obus));
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
       CreateObuProcessor(kSimpleAndBaseProfiles,
-                         /*contains_all_descriptor_obus=*/true, descriptor_obus,
+                         /*contains_all_descriptor_obus=*/true,
                          decoder->state_->read_bit_buffer.get(),
-                         decoder->state_->layout);
+                         decoder->state_->layout,
+                         decoder->state_->descriptor_obus);
   if (!obu_processor.ok()) {
     return obu_processor.status();
   }
@@ -245,10 +260,10 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
   }
   RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
   if (!IsDescriptorProcessingComplete()) {
-    auto obu_processor =
-        CreateObuProcessor(kSimpleAndBaseProfiles,
-                           /*contains_all_descriptor_obus=*/false, bitstream,
-                           state_->read_bit_buffer.get(), state_->layout);
+    auto obu_processor = CreateObuProcessor(
+        kSimpleAndBaseProfiles,
+        /*contains_all_descriptor_obus=*/false, state_->read_bit_buffer.get(),
+        state_->layout, state_->descriptor_obus);
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
       return absl::OkStatus();
@@ -355,7 +370,44 @@ absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
   return state_->obu_processor->GetOutputFrameSize();
 }
 
-void IamfDecoder::SignalEndOfStream() { state_->status = Status::kEndOfStream; }
+absl::Status IamfDecoder::Reset() {
+  if (!IsDescriptorProcessingComplete()) {
+    return absl::FailedPreconditionError(
+        "Reset() cannot be called before descriptor processing is complete.");
+  }
+
+  // Clear the rendered PCM samples.
+  std::queue<std::vector<std::vector<int32_t>>> empty;
+  std::swap(state_->rendered_pcm_samples, empty);
+
+  // Set state.
+  state_->status = Status::kAcceptingData;
+  // Create a new read bit buffer.
+  std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer =
+      StreamBasedReadBitBuffer::Create(kInitialBufferSize);
+  if (read_bit_buffer == nullptr) {
+    return absl::InternalError("Failed to create read bit buffer.");
+  }
+  state_->read_bit_buffer = std::move(read_bit_buffer);
+
+  // Create a new ObuProcessor with the original descriptor OBUs.
+  RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(state_->descriptor_obus));
+  absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
+      CreateObuProcessor(kSimpleAndBaseProfiles,
+                         /*contains_all_descriptor_obus=*/true,
+                         state_->read_bit_buffer.get(), state_->layout,
+                         state_->descriptor_obus);
+  if (!obu_processor.ok()) {
+    return obu_processor.status();
+  }
+  state_->obu_processor = *std::move(obu_processor);
+
+  return absl::OkStatus();
+}
+
+void IamfDecoder::SignalEndOfDecoding() {
+  state_->status = Status::kEndOfStream;
+}
 
 absl::Status IamfDecoder::Close() { return absl::OkStatus(); }
 

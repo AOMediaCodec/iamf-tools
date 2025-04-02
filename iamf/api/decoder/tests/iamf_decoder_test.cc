@@ -528,7 +528,7 @@ TEST(Decode, FailsWhenCalledAfterSignalEndOfStream) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_THAT(decoder->Decode(source_data), IsOk());
-  decoder->SignalEndOfStream();
+  decoder->SignalEndOfDecoding();
   EXPECT_FALSE(decoder->Decode(source_data).ok());
 }
 
@@ -696,7 +696,7 @@ TEST(GetOutputTemporalUnit,
   EXPECT_EQ(bytes_written, 0);
 }
 
-TEST(SignalEndOfStream, GetMultipleTemporalUnitsOutAfterCall) {
+TEST(SignalEndOfDecoding, GetMultipleTemporalUnitsOutAfterCall) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
@@ -714,7 +714,7 @@ TEST(SignalEndOfStream, GetMultipleTemporalUnitsOutAfterCall) {
   EXPECT_THAT(decoder->Decode({}), IsOk());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
-  decoder->SignalEndOfStream();
+  decoder->SignalEndOfDecoding();
 
   // Stereo * 8 samples * 4 bytes per sample
   const size_t expected_size_per_temp_unit = 2 * 8 * 4;
@@ -735,7 +735,7 @@ TEST(SignalEndOfStream, GetMultipleTemporalUnitsOutAfterCall) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
-TEST(SignalEndOfStream, SucceedsWithNoTemporalUnits) {
+TEST(SignalEndOfDecoding, SucceedsWithNoTemporalUnits) {
   auto decoder =
       api::IamfDecoder::Create(OutputLayout::kItu2051_SoundSystemA_0_2_0);
   ASSERT_THAT(decoder, IsOk());
@@ -744,7 +744,7 @@ TEST(SignalEndOfStream, SucceedsWithNoTemporalUnits) {
   std::vector<uint8_t> output_data;
   size_t bytes_written;
 
-  decoder->SignalEndOfStream();
+  decoder->SignalEndOfDecoding();
 
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
@@ -769,6 +769,89 @@ TEST(GetFrameSize, ReturnsFrameSizeBasedOnCodecConfigObu) {
   ASSERT_THAT(decoder, IsOk());
 
   EXPECT_THAT(decoder->GetFrameSize(), IsOkAndHolds(kNumSamplesPerFrame));
+}
+
+TEST(Reset, DecodingAfterResetSucceedsAfterCreateFromDescriptors) {
+  // Create a decoder from descriptors.
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  auto decoder = api::IamfDecoder::CreateFromDescriptors(
+      api::OutputLayout::kItu2051_SoundSystemA_0_2_0, source_data);
+  ASSERT_THAT(decoder, IsOk());
+  // Decode a temporal unit.
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame});
+  EXPECT_THAT(decoder->Decode(temporal_units), IsOk());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  // Signal end of decoding and reset.
+  decoder->SignalEndOfDecoding();
+  EXPECT_THAT(decoder->Reset(), IsOk());
+
+  // Confirm that there is no temporal unit available after reset.
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+
+  // Decode another temporal unit.
+  EXPECT_THAT(decoder->Decode(temporal_units), IsOk());
+  // Confirm that the temporal unit is available and can be retrieved.
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  size_t expected_size = 2 * 8 * 4;
+  std::vector<uint8_t> output_data(expected_size);
+  size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_EQ(bytes_written, expected_size);
+}
+
+TEST(Reset, DecodingAfterResetSucceedsInStandaloneCase) {
+  // Create a decoder from descriptors.
+  auto decoder =
+      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  ASSERT_THAT(decoder, IsOk());
+  // Add descriptors.
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  // Add temporal unit.
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  EXPECT_THAT(decoder->Decode(source_data), IsOk());
+  // We have an inherent exit when initially decoding the descriptors, so we
+  // call again with an empty vector so that the first temporal unit is
+  // processed.
+  EXPECT_THAT(decoder->Decode({}), IsOk());
+  // We expect one temporal unit to be available since we are decoding in a
+  // standalone case and we've passed two in.
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  // Signal end of decoding and reset.
+  decoder->SignalEndOfDecoding();
+  EXPECT_THAT(decoder->Reset(), IsOk());
+
+  // Confirm that there is no temporal unit available after reset.
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+
+  // Now, we put two temporal units into decode again.
+  EXPECT_THAT(decoder->Decode(temporal_units), IsOk());
+  // Confirm that one temporal unit is available and can be retrieved.
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  size_t expected_size = 2 * 8 * 4;
+  std::vector<uint8_t> output_data(expected_size);
+  size_t bytes_written;
+  EXPECT_THAT(decoder->GetOutputTemporalUnit(absl::MakeSpan(output_data),
+                                             bytes_written),
+              IsOk());
+  EXPECT_EQ(bytes_written, expected_size);
+}
+
+TEST(Reset, ResetFailsWhenDescriptorProcessingIncomplete) {
+  // Create a decoder from descriptors.
+  auto decoder =
+      api::IamfDecoder::Create(api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
+  ASSERT_THAT(decoder, IsOk());
+  EXPECT_THAT(decoder->Reset(), Not(IsOk()));
 }
 
 }  // namespace

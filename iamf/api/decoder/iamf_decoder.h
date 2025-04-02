@@ -245,11 +245,29 @@ class IamfDecoder {
    */
   absl::StatusOr<uint32_t> GetFrameSize() const;
 
+  /*!\brief Resets the decoder to a clean state ready to decode new data.
+   *
+   * A clean state refers to a state in which descriptors OBUs have been parsed,
+   * but no other data has been parsed.
+   *
+   * This function can only be used after all Descriptor OBUs have been parsed,
+   * i.e. IsDescriptorProcessingComplete() returns true.
+   *
+   * This function will result in all decoded temporal units that have not been
+   * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
+   * pending data in the internal buffer being lost.
+   *
+   * return `absl::OkStatus()` upon success. Other specific statuses on
+   *         failure.
+   */
+  absl::Status Reset();
+
   /*!\brief Signals to the decoder that no more data will be provided.
    *
-   * Decode cannot be called after this method has been called.
+   * Decode cannot be called after this method has been called, unless Reset()
+   * is called first.
    */
-  void SignalEndOfStream();
+  void SignalEndOfDecoding();
 
   /*!\brief Closes the decoder.
    *
