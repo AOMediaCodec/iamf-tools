@@ -25,7 +25,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
-#include "iamf/api/types.h"
+#include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"

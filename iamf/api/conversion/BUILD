@@ -9,7 +9,7 @@ cc_library(
     srcs = ["mix_presentation_conversion.cc"],
     hdrs = ["mix_presentation_conversion.h"],
     deps = [
-        "//iamf/api:types",
+        "//iamf/api:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

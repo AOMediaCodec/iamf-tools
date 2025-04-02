@@ -6,7 +6,7 @@ cc_library(
     srcs = ["iamf_decoder.cc"],
     hdrs = ["iamf_decoder.h"],
     deps = [
-        "//iamf/api:types",
+        "//iamf/api:iamf_tools_api_types",
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/cli:obu_processor",
         "//iamf/cli:rendering_mix_presentation_finalizer",

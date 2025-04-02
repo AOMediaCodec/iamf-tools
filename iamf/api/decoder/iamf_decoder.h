@@ -21,7 +21,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
-#include "iamf/api/types.h"
+#include "iamf/api/iamf_tools_api_types.h"
 
 namespace iamf_tools {
 namespace api {

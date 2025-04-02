@@ -20,7 +20,7 @@
 #include "gmock/gmock.h"
 // [internal] Placeholder for FLAC fuzzing include.
 #include "iamf/api/decoder/iamf_decoder.h"
-#include "iamf/api/types.h"
+#include "iamf/api/iamf_tools_api_types.h"
 
 namespace iamf_tools {
 namespace {

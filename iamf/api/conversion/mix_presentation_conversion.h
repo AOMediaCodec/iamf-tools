@@ -14,7 +14,7 @@
 #define API_CONVERSION_MIX_PRESENTATION_METADATA_H_
 
 #include "absl/status/statusor.h"
-#include "iamf/api/types.h"
+#include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
