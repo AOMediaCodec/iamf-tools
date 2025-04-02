@@ -14,11 +14,33 @@
 #define API_DECODER_TYPES_H_
 
 #include <cstdint>
+#include <ostream>
 #include <string>
 #include <vector>
 
 namespace iamf_tools {
 namespace api {
+
+/*!\brief Indicates the result of a method that can fail. */
+// TODO(b/408003095): Add test coverage for this struct.
+struct [[nodiscard]] IamfStatus {
+  const bool success = true;
+  const std::string error_message;
+
+  // Construct a success Status.
+  static IamfStatus OkStatus();
+  // Construct a failure Status.
+  static IamfStatus ErrorStatus(const std::string& error_message);
+
+  // Convenience method for checking results.
+  bool ok() const { return success; }
+
+ private:
+  IamfStatus() = default;
+  IamfStatus(const std::string& error_message);
+};
+
+std::ostream& operator<<(std::ostream& os, const IamfStatus& status);
 
 /*!\brief Determines the layout of the output file.
  *

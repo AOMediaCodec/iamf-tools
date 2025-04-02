@@ -17,11 +17,13 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
@@ -37,7 +39,7 @@
 namespace iamf_tools {
 namespace api {
 
-enum class Status { kAcceptingData, kEndOfStream };
+enum class DecoderStatus { kAcceptingData, kEndOfStream };
 
 // Holds the internal state of the decoder to hide it and necessary includes
 // from API users.
@@ -53,7 +55,7 @@ struct IamfDecoder::DecoderState {
       : read_bit_buffer(std::move(read_bit_buffer)), layout(requested_layout) {}
 
   // Current status of the decoder.
-  Status status = Status::kAcceptingData;
+  DecoderStatus status = DecoderStatus::kAcceptingData;
 
   // Used to process descriptor OBUs and temporal units. Is only created after
   // the descriptor OBUs have been parsed.
@@ -88,6 +90,15 @@ struct IamfDecoder::DecoderState {
 
 namespace {
 constexpr int kInitialBufferSize = 1024;
+
+IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
+  if (absl_status.ok()) {
+    return IamfStatus::OkStatus();
+  } else {
+    return IamfStatus::ErrorStatus(
+        absl_status.ToString(absl::StatusToStringMode::kDefault));
+  }
+}
 
 // TODO(b/377554944, b/392950028): Add API controls for this. Such as adding
 //                                 support for v1.1 via
@@ -134,7 +145,7 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
   return obu_processor;
 }
 
-absl::Status ProcessAllTemporalUnits(
+IamfStatus ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
     std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
@@ -144,17 +155,23 @@ absl::Status ProcessAllTemporalUnits(
   while (continue_processing) {
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     // TODO(b/395889878): Add support for partial temporal units.
-    RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
-        created_from_descriptors, output_temporal_unit, continue_processing));
+    absl::Status absl_status = obu_processor->ProcessTemporalUnit(
+        created_from_descriptors, output_temporal_unit, continue_processing);
+    if (!absl_status.ok()) {
+      return AbslToIamfStatus(absl_status);
+    }
     // We may have processed bytes but not a full temporal unit.
     if (output_temporal_unit.has_value()) {
       absl::Span<const std::vector<int32_t>>
           rendered_pcm_samples_for_temporal_unit;
-      RETURN_IF_NOT_OK(obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
           output_temporal_unit->output_timestamp,
           output_temporal_unit->output_audio_frames,
           output_temporal_unit->output_parameter_blocks,
-          rendered_pcm_samples_for_temporal_unit));
+          rendered_pcm_samples_for_temporal_unit);
+      if (!absl_status.ok()) {
+        return AbslToIamfStatus(absl_status);
+      }
       rendered_pcm_samples.push(
           std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
                       rendered_pcm_samples_for_temporal_unit.end()));
@@ -162,10 +179,13 @@ absl::Status ProcessAllTemporalUnits(
   }
   // Empty the buffer of the data that was processed thus far.
   const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
-  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bits_read / 8));
+  absl::Status absl_status = read_bit_buffer->Flush(num_bits_read / 8);
+  if (!absl_status.ok()) {
+    return AbslToIamfStatus(absl_status);
+  }
   LOG_FIRST_N(INFO, 10) << "Rendered " << rendered_pcm_samples.size()
                         << " temporal units.";
-  return absl::OkStatus();
+  return IamfStatus::OkStatus();
 }
 
 size_t BytesPerSample(OutputSampleType sample_type) {
@@ -179,17 +199,18 @@ size_t BytesPerSample(OutputSampleType sample_type) {
   }
 }
 
-absl::Status WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
-                              OutputSampleType sample_type,
-                              absl::Span<uint8_t>& output_bytes,
-                              size_t& bytes_written) {
+IamfStatus WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
+                            OutputSampleType sample_type,
+                            absl::Span<uint8_t>& output_bytes,
+                            size_t& bytes_written) {
   const size_t bytes_per_sample = BytesPerSample(sample_type);
   const size_t bits_per_sample = bytes_per_sample * 8;
   const size_t required_size =
       frame.size() * frame[0].size() * bytes_per_sample;
   if (output_bytes.size() < required_size) {
-    return absl::InvalidArgumentError(
-        "Span does not have enough space to write output bytes.");
+    return IamfStatus::ErrorStatus(
+        "Invalid Argument: Span does not have enough space to write output "
+        "bytes.");
   }
   const bool big_endian = false;
   size_t write_position = 0;
@@ -197,12 +218,15 @@ absl::Status WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
   for (int t = 0; t < frame.size(); t++) {
     for (int c = 0; c < frame[0].size(); ++c) {
       const uint32_t sample = static_cast<uint32_t>(frame[t][c]);
-      RETURN_IF_NOT_OK(WritePcmSample(sample, bits_per_sample, big_endian, data,
-                                      write_position));
+      absl::Status absl_status = WritePcmSample(
+          sample, bits_per_sample, big_endian, data, write_position);
+      if (!absl_status.ok()) {
+        return AbslToIamfStatus(absl_status);
+      }
     }
   }
   bytes_written = write_position;
-  return absl::OkStatus();
+  return IamfStatus::OkStatus();
 }
 
 }  // namespace
@@ -217,48 +241,66 @@ IamfDecoder::~IamfDecoder() = default;
 IamfDecoder::IamfDecoder(IamfDecoder&&) = default;
 IamfDecoder& IamfDecoder::operator=(IamfDecoder&&) = default;
 
-absl::StatusOr<IamfDecoder> IamfDecoder::Create(
-    const OutputLayout& requested_layout) {
+IamfStatus IamfDecoder::Create(const OutputLayout& requested_layout,
+                               std::unique_ptr<IamfDecoder>& output_decoder) {
+  output_decoder = nullptr;
+
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer =
       StreamBasedReadBitBuffer::Create(kInitialBufferSize);
   if (read_bit_buffer == nullptr) {
-    return absl::InternalError("Failed to create read bit buffer.");
+    return IamfStatus::ErrorStatus(
+        "Internal Error: Failed to create read bit buffer.");
   }
-
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
       std::move(read_bit_buffer), ApiToInternalType(requested_layout));
-  return IamfDecoder(std::move(state));
+  output_decoder = absl::WrapUnique(new IamfDecoder(std::move(state)));
+  return IamfStatus::OkStatus();
 }
 
-absl::StatusOr<IamfDecoder> IamfDecoder::CreateFromDescriptors(
+IamfStatus IamfDecoder::CreateFromDescriptors(
     const OutputLayout& requested_layout,
-    absl::Span<const uint8_t> descriptor_obus) {
-  absl::StatusOr<IamfDecoder> decoder = Create(requested_layout);
-  if (!decoder.ok()) {
-    return decoder.status();
+    absl::Span<const uint8_t> descriptor_obus,
+    std::unique_ptr<IamfDecoder>& output_decoder) {
+  output_decoder = nullptr;
+
+  IamfStatus status = Create(requested_layout, output_decoder);
+  if (!status.ok()) {
+    return status;
   }
-  RETURN_IF_NOT_OK(
-      decoder->state_->read_bit_buffer->PushBytes(descriptor_obus));
+  if (output_decoder == nullptr) {
+    return IamfStatus::ErrorStatus("Internal Error: Unexpected null decoder");
+  }
+  absl::Status absl_status =
+      output_decoder->state_->read_bit_buffer->PushBytes(descriptor_obus);
+  if (!absl_status.ok()) {
+    return AbslToIamfStatus(absl_status);
+  }
+
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
       CreateObuProcessor(kSimpleAndBaseProfiles,
                          /*contains_all_descriptor_obus=*/true,
-                         decoder->state_->read_bit_buffer.get(),
-                         decoder->state_->layout,
-                         decoder->state_->descriptor_obus);
+                         output_decoder->state_->read_bit_buffer.get(),
+                         output_decoder->state_->layout,
+                         output_decoder->state_->descriptor_obus);
   if (!obu_processor.ok()) {
-    return obu_processor.status();
+    return AbslToIamfStatus(obu_processor.status());
   }
-  decoder->state_->obu_processor = *std::move(obu_processor);
-  decoder->state_->created_from_descriptors = true;
-  return decoder;
+  output_decoder->state_->obu_processor = *std::move(obu_processor);
+  output_decoder->state_->created_from_descriptors = true;
+  return IamfStatus::OkStatus();
 }
 
-absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
-  if (state_->status == Status::kEndOfStream) {
-    return absl::FailedPreconditionError(
-        "Decode() cannot be called after SignalEndOfStream() has been called.");
+IamfStatus IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
+  if (state_->status == DecoderStatus::kEndOfStream) {
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: Decode() cannot be called after "
+        "SignalEndOfStream() has been called.");
   }
-  RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(bitstream));
+  absl::Status push_bytes_status =
+      state_->read_bit_buffer->PushBytes(bitstream);
+  if (!push_bytes_status.ok()) {
+    return AbslToIamfStatus(push_bytes_status);
+  }
   if (!IsDescriptorProcessingComplete()) {
     auto obu_processor = CreateObuProcessor(
         kSimpleAndBaseProfiles,
@@ -266,28 +308,27 @@ absl::Status IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
         state_->layout, state_->descriptor_obus);
     if (obu_processor.ok()) {
       state_->obu_processor = *std::move(obu_processor);
-      return absl::OkStatus();
+      return IamfStatus::OkStatus();
     } else if (absl::IsResourceExhausted(obu_processor.status())) {
       // Don't have enough data to process the descriptor OBUs yet, but no
       // errors have occurred.
-      return absl::OkStatus();
+      return IamfStatus::OkStatus();
     } else {
       // Corrupted data or other errors.
-      return obu_processor.status();
+      return AbslToIamfStatus(obu_processor.status());
     }
   }
 
   // At this stage, we know that we've processed all descriptor OBUs.
-  RETURN_IF_NOT_OK(ProcessAllTemporalUnits(
+  return ProcessAllTemporalUnits(
       state_->read_bit_buffer.get(), state_->obu_processor.get(),
-      state_->created_from_descriptors, state_->rendered_pcm_samples));
-  return absl::OkStatus();
+      state_->created_from_descriptors, state_->rendered_pcm_samples);
 }
 
-absl::Status IamfDecoder::ConfigureMixPresentationId(
+IamfStatus IamfDecoder::ConfigureMixPresentationId(
     MixPresentationId mix_presentation_id) {
-  return absl::UnimplementedError(
-      "ConfigureMixPresentationId is not yet implemented.");
+  return IamfStatus::ErrorStatus(
+      "Unimplemented: ConfigureMixPresentationId is not yet implemented.");
 }
 
 void IamfDecoder::ConfigureOutputSampleType(
@@ -295,19 +336,18 @@ void IamfDecoder::ConfigureOutputSampleType(
   state_->output_sample_type = output_sample_type;
 }
 
-absl::Status IamfDecoder::GetOutputTemporalUnit(
-    absl::Span<uint8_t> output_bytes, size_t& bytes_written) {
+IamfStatus IamfDecoder::GetOutputTemporalUnit(absl::Span<uint8_t> output_bytes,
+                                              size_t& bytes_written) {
   bytes_written = 0;
   if (state_->rendered_pcm_samples.empty()) {
-    return absl::OkStatus();
+    return IamfStatus::OkStatus();
   }
   OutputSampleType output_sample_type = GetOutputSampleType();
-  absl::Status status =
+  IamfStatus status =
       WriteFrameToSpan(state_->rendered_pcm_samples.front(), output_sample_type,
                        output_bytes, bytes_written);
   if (status.ok()) {
     state_->rendered_pcm_samples.pop();
-    return absl::OkStatus();
   }
   return status;
 }
@@ -320,60 +360,78 @@ bool IamfDecoder::IsDescriptorProcessingComplete() const {
   return state_->obu_processor != nullptr;
 }
 
-absl::StatusOr<OutputLayout> IamfDecoder::GetOutputLayout() const {
+IamfStatus IamfDecoder::GetOutputLayout(OutputLayout& output_layout) const {
   if (!IsDescriptorProcessingComplete()) {
-    return absl::FailedPreconditionError(
-        "GetOutputLayout() cannot be called before descriptor processing is "
-        "complete.");
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: GetOutputLayout() cannot be called before "
+        "descriptor processing is complete.");
   }
-  return InternalToApiType(state_->layout);
+  absl::StatusOr<OutputLayout> conversion = InternalToApiType(state_->layout);
+  if (conversion.ok()) {
+    output_layout = *conversion;
+    return IamfStatus::OkStatus();
+  }
+  return AbslToIamfStatus(conversion.status());
 }
 
-absl::StatusOr<int> IamfDecoder::GetNumberOfOutputChannels() const {
+IamfStatus IamfDecoder::GetNumberOfOutputChannels(
+    int& output_num_channels) const {
   if (!IsDescriptorProcessingComplete()) {
-    return absl::FailedPreconditionError(
-        "GetNumberOfOutputChannels() cannot be called before descriptor "
-        "processing is complete.");
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: GetNumberOfOutputChannels() cannot be called "
+        "before descriptor processing is complete.");
   }
-  int num_channels;
-  RETURN_IF_NOT_OK(MixPresentationObu::GetNumChannelsFromLayout(state_->layout,
-                                                                num_channels));
-  return num_channels;
+  return AbslToIamfStatus(MixPresentationObu::GetNumChannelsFromLayout(
+      state_->layout, output_num_channels));
 }
 
-absl::Status IamfDecoder::GetMixPresentations(
+IamfStatus IamfDecoder::GetMixPresentations(
     std::vector<MixPresentationMetadata>& output_mix_presentation_metadata)
     const {
-  return absl::UnimplementedError(
-      "GetMixPresentations is not yet implemented.");
+  return IamfStatus::ErrorStatus(
+      "Unimplemented: GetMixPresentations is not yet implemented.");
 }
+
 OutputSampleType IamfDecoder::GetOutputSampleType() const {
   return state_->output_sample_type;
 }
 
-absl::StatusOr<uint32_t> IamfDecoder::GetSampleRate() const {
+IamfStatus IamfDecoder::GetSampleRate(uint32_t& output_sample_rate) const {
   if (!IsDescriptorProcessingComplete()) {
-    return absl::FailedPreconditionError(
-        "GetSampleRate() cannot be called before descriptor processing is "
-        "complete.");
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: GetSampleRate() cannot be called before "
+        "descriptor processing is complete.");
   }
-  return state_->obu_processor->GetOutputSampleRate();
+  absl::StatusOr<uint32_t> sample_rate =
+      state_->obu_processor->GetOutputSampleRate();
+  if (sample_rate.ok()) {
+    output_sample_rate = *sample_rate;
+    return IamfStatus::OkStatus();
+  }
+  return AbslToIamfStatus(sample_rate.status());
 }
 
-absl::StatusOr<uint32_t> IamfDecoder::GetFrameSize() const {
+IamfStatus IamfDecoder::GetFrameSize(uint32_t& output_frame_size) const {
   if (!IsDescriptorProcessingComplete()) {
-    return absl::FailedPreconditionError(
-        "GetFrameSize() cannot be called before descriptor processing is "
-        "complete.");
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: GetFrameSize() cannot be called before "
+        "descriptor processing is complete.");
   }
 
-  return state_->obu_processor->GetOutputFrameSize();
+  absl::StatusOr<uint32_t> frame_size =
+      state_->obu_processor->GetOutputFrameSize();
+  if (frame_size.ok()) {
+    output_frame_size = *frame_size;
+    return IamfStatus::OkStatus();
+  }
+  return AbslToIamfStatus(frame_size.status());
 }
 
-absl::Status IamfDecoder::Reset() {
+IamfStatus IamfDecoder::Reset() {
   if (!IsDescriptorProcessingComplete()) {
-    return absl::FailedPreconditionError(
-        "Reset() cannot be called before descriptor processing is complete.");
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: Reset() cannot be called before descriptor "
+        "processing is complete.");
   }
 
   // Clear the rendered PCM samples.
@@ -381,35 +439,40 @@ absl::Status IamfDecoder::Reset() {
   std::swap(state_->rendered_pcm_samples, empty);
 
   // Set state.
-  state_->status = Status::kAcceptingData;
+  state_->status = DecoderStatus::kAcceptingData;
   // Create a new read bit buffer.
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer =
       StreamBasedReadBitBuffer::Create(kInitialBufferSize);
   if (read_bit_buffer == nullptr) {
-    return absl::InternalError("Failed to create read bit buffer.");
+    return IamfStatus::ErrorStatus(
+        "Internal Error: Failed to create read bit buffer.");
   }
   state_->read_bit_buffer = std::move(read_bit_buffer);
 
   // Create a new ObuProcessor with the original descriptor OBUs.
-  RETURN_IF_NOT_OK(state_->read_bit_buffer->PushBytes(state_->descriptor_obus));
+  absl::Status absl_status =
+      state_->read_bit_buffer->PushBytes(state_->descriptor_obus);
+  if (!absl_status.ok()) {
+    return AbslToIamfStatus(absl_status);
+  }
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
       CreateObuProcessor(kSimpleAndBaseProfiles,
                          /*contains_all_descriptor_obus=*/true,
                          state_->read_bit_buffer.get(), state_->layout,
                          state_->descriptor_obus);
   if (!obu_processor.ok()) {
-    return obu_processor.status();
+    return AbslToIamfStatus(obu_processor.status());
   }
   state_->obu_processor = *std::move(obu_processor);
 
-  return absl::OkStatus();
+  return IamfStatus::OkStatus();
 }
 
 void IamfDecoder::SignalEndOfDecoding() {
-  state_->status = Status::kEndOfStream;
+  state_->status = DecoderStatus::kEndOfStream;
 }
 
-absl::Status IamfDecoder::Close() { return absl::OkStatus(); }
+IamfStatus IamfDecoder::Close() { return IamfStatus::OkStatus(); }
 
 }  // namespace api
 }  // namespace iamf_tools

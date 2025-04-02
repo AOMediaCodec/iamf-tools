@@ -14,10 +14,9 @@
 #include <string>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "fuzztest/fuzztest.h"
-#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
 #include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/api/iamf_tools_api_types.h"
@@ -33,24 +32,28 @@ constexpr OutputLayout kStereoLayout =
     OutputLayout::kItu2051_SoundSystemA_0_2_0;
 
 void DoesNotDieWithBasicDecode(const std::string& data) {
-  absl::StatusOr<api::IamfDecoder> iamf_decoder =
-      api::IamfDecoder::Create(kStereoLayout);
-  std::vector<uint8_t> bitstream(data.begin(), data.end());
-  ASSERT_THAT(iamf_decoder, ::absl_testing::IsOk());
+  std::unique_ptr<api::IamfDecoder> iamf_decoder;
+  ASSERT_TRUE(api::IamfDecoder::Create(kStereoLayout, iamf_decoder).ok());
 
+  std::vector<uint8_t> bitstream(data.begin(), data.end());
   auto decode_status = iamf_decoder->Decode(bitstream);
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytes, DoesNotDieWithBasicDecode);
 
-void DoesNotDieCreateFromDescriptors(const std::string& data) {
-  std::vector<uint8_t> bitstream(data.begin(), data.end());
+void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
+                                     const std::string& temporal_unit_data) {
+  std::vector<uint8_t> descriptors(descriptor_data.begin(),
+                                   descriptor_data.end());
 
-  absl::StatusOr<api::IamfDecoder> iamf_decoder =
-      api::IamfDecoder::CreateFromDescriptors(kStereoLayout, bitstream);
+  std::unique_ptr<api::IamfDecoder> iamf_decoder;
+  api::IamfStatus status = api::IamfDecoder::CreateFromDescriptors(
+      kStereoLayout, descriptors, iamf_decoder);
 
-  if (iamf_decoder.ok()) {
-    auto decoder_status = iamf_decoder->Decode(bitstream);
+  if (status.ok()) {
+    std::vector<uint8_t> temporal_unit(temporal_unit_data.begin(),
+                                       temporal_unit_data.end());
+    auto decoder_status = iamf_decoder->Decode(temporal_unit);
   }
 }
 
@@ -61,12 +64,13 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
                          api::OutputSampleType output_sample_type,
                          uint32_t mix_presentation_id, std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
-  absl::StatusOr<api::IamfDecoder> iamf_decoder =
-      api::IamfDecoder::Create(kStereoLayout);
-  ASSERT_THAT(iamf_decoder, ::absl_testing::IsOk());
+  std::unique_ptr<api::IamfDecoder> iamf_decoder;
+  ASSERT_TRUE(api::IamfDecoder::Create(output_layout, iamf_decoder).ok());
 
-  auto decode_status = iamf_decoder->Decode(bitstream);
   iamf_decoder->ConfigureOutputSampleType(output_sample_type);
+  auto unused_configure_status =
+      iamf_decoder->ConfigureMixPresentationId(mix_presentation_id);
+  auto unused_decode_status = iamf_decoder->Decode(bitstream);
 }
 
 // // TODO(b/378912426): Update this to support all output layouts.
