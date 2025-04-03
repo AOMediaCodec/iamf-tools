@@ -114,8 +114,8 @@ class IamfEncoder {
    */
   static absl::StatusOr<IamfEncoder> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      absl::Nullable<const RendererFactoryBase*> renderer_factory,
-      absl::Nullable<const LoudnessCalculatorFactoryBase*>
+      const RendererFactoryBase* /* absl_nullable */ renderer_factory,
+      const LoudnessCalculatorFactoryBase* /* absl_nullable */
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
@@ -241,8 +241,8 @@ class IamfEncoder {
   // Mapping from parameter IDs to parameter definitions.
   // Parameter block generator owns a reference to this map. Wrapped in
   // `std::unique_ptr` for reference stability after move.
-  absl::Nonnull<std::unique_ptr<
-      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>>
+  /* absl_nonnull */ std::unique_ptr<
+      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
       param_definition_variants_;
 
   // Saved parameter blocks generated in one iteration.
@@ -260,11 +260,12 @@ class IamfEncoder {
   // Various generators and modules used when generating data OBUs iteratively.
   // Some are held in `unique_ptr` for reference stability after move.
   ParameterBlockGenerator parameter_block_generator_;
-  absl::Nonnull<std::unique_ptr<ParametersManager>> parameters_manager_;
+  /* absl_nonnull */ std::unique_ptr<ParametersManager> parameters_manager_;
   const DemixingModule demixing_module_;
-  absl::Nonnull<std::unique_ptr<AudioFrameGenerator>> audio_frame_generator_;
+  /* absl_nonnull */ std::unique_ptr<AudioFrameGenerator>
+      audio_frame_generator_;
   AudioFrameDecoder audio_frame_decoder_;
-  absl::Nonnull<std::unique_ptr<GlobalTimingModule>> global_timing_module_;
+  /* absl_nonnull */ std::unique_ptr<GlobalTimingModule> global_timing_module_;
 
   // Modules to render the output layouts and measure their loudness.
   RenderingMixPresentationFinalizer mix_presentation_finalizer_;

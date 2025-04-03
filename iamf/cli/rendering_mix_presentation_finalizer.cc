@@ -590,7 +590,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
 // loudness calculator.
 absl::Status GenerateRenderingMetadataForSubmixes(
     const RendererFactoryBase& renderer_factory,
-    absl::Nullable<const LoudnessCalculatorFactoryBase*>
+    const LoudnessCalculatorFactoryBase* /* absl_nullable */
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
@@ -776,8 +776,8 @@ GetRenderedSamplesAndPostProcessor(
 
 absl::StatusOr<RenderingMixPresentationFinalizer>
 RenderingMixPresentationFinalizer::Create(
-    absl::Nullable<const RendererFactoryBase*> renderer_factory,
-    absl::Nullable<const LoudnessCalculatorFactoryBase*>
+    const RendererFactoryBase* /* absl_nullable */ renderer_factory,
+    const LoudnessCalculatorFactoryBase* /* absl_nullable */
         loudness_calculator_factory,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const SampleProcessorFactory& sample_processor_factory,

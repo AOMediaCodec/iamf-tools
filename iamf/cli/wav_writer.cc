@@ -49,7 +49,7 @@ constexpr int kAudioToTactileResultSuccess = 1;
 constexpr size_t kMaxOutputSamplesPerFrame = 0;
 
 // Write samples for all channels.
-absl::Status WriteSamplesInternal(absl::Nullable<FILE*> file,
+absl::Status WriteSamplesInternal(FILE* /* absl_nullable */ file,
                                   size_t num_channels, int bit_depth,
                                   size_t max_num_samples_per_frame,
                                   absl::Span<const uint8_t> buffer,

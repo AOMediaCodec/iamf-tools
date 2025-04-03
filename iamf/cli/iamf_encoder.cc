@@ -81,8 +81,8 @@ absl::Status InitAudioFrameDecoderForAllAudioElements(
 
 absl::StatusOr<IamfEncoder> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    absl::Nullable<const RendererFactoryBase*> renderer_factory,
-    absl::Nullable<const LoudnessCalculatorFactoryBase*>
+    const RendererFactoryBase* /* absl_nullable */ renderer_factory,
+    const LoudnessCalculatorFactoryBase* /* absl_nullable */
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
