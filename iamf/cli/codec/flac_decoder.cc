@@ -37,6 +37,8 @@ FLAC__StreamDecoderReadStatus FlacDecoder::LibFlacReadCallback(
     *bytes = 0;
     return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
   }
+  // TODO(b/407732471): Support reading larger frames, by pushing in chunks of
+  //                    the raw data.
   if (encoded_frame.size() > *bytes) {
     LOG(ERROR) << "Encoded frame size " << encoded_frame.size()
                << " is larger than the libflac buffer size " << *bytes;
@@ -47,6 +49,7 @@ FLAC__StreamDecoderReadStatus FlacDecoder::LibFlacReadCallback(
     buffer[i] = encoded_frame[i];
   }
   *bytes = encoded_frame.size();
+  flac_decoder->SetEncodedFrame({});
   return FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
 }
 

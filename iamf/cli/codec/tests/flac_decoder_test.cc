@@ -29,6 +29,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
+using ::testing::Not;
 using ::testing::Test;
 
 // Derived from iamf/cli/testdata/stereo_8_samples_48khz_s16le.wav @ 16 samples
@@ -63,6 +64,20 @@ TEST(LibFlacReadCallback, SignalsAbortForTooLargeFrame) {
 
   EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_ABORT);
   EXPECT_EQ(bytes, 0);
+}
+
+TEST(LibFlacReadCallback, ClearsEncodedFrame) {
+  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
+  FLAC__byte buffer[1024];
+  size_t bytes = 1028;
+  const std::vector<uint8_t> encoded_frame(1024, 1);
+  flac_decoder.SetEncodedFrame(encoded_frame);
+
+  auto status = FlacDecoder::LibFlacReadCallback(
+      /*stream_decoder=*/nullptr, buffer, &bytes, &flac_decoder);
+
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_CONTINUE);
+  EXPECT_TRUE(flac_decoder.GetEncodedFrame().empty());
 }
 
 TEST(LibFlacReadCallback, Success) {
@@ -175,6 +190,18 @@ TEST(DecodeAudioFrame, Succeeds) {
       std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
   EXPECT_THAT(status, IsOk());
   EXPECT_EQ(flac_decoder.ValidDecodedSamples(), kExpectedDecodedSamples);
+}
+
+TEST(DecodeAudioFrame, DoesNotHangOnInvalidFrame) {
+  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
+  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+
+  const std::vector<uint8_t> kInvalidFrame = {0x00};
+  const auto status = flac_decoder.DecodeAudioFrame(
+      std::vector(kInvalidFrame.begin(), kInvalidFrame.end()));
+
+  // The frame is not valid, but we expect to not hang and get an error status.
+  EXPECT_THAT(status, Not(IsOk()));
 }
 
 TEST(DecodeAudioFrame, FailsOnMismatchedBlocksize) {
