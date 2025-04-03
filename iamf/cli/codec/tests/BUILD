@@ -61,7 +61,6 @@ cc_test(
     name = "flac_decoder_stream_callbacks_test",
     srcs = ["flac_decoder_stream_callbacks_test.cc"],
     deps = [
-        "//iamf/cli/codec:flac_decoder",
         "//iamf/cli/codec:flac_decoder_stream_callbacks",
         "@com_google_googletest//:gtest_main",
         "@flac//:src",
@@ -75,7 +74,6 @@ cc_test(
         "//iamf/cli/codec:flac_decoder",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
-        "@flac//:src",
     ],
 )
 

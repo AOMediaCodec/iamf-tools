@@ -12,7 +12,6 @@
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 
 #include <cstdint>
-#include <functional>
 #include <utility>
 #include <vector>
 
