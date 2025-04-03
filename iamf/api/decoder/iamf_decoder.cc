@@ -201,7 +201,7 @@ size_t BytesPerSample(OutputSampleType sample_type) {
 
 IamfStatus WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
                             OutputSampleType sample_type,
-                            absl::Span<uint8_t>& output_bytes,
+                            absl::Span<uint8_t> output_bytes,
                             size_t& bytes_written) {
   const size_t bytes_per_sample = BytesPerSample(sample_type);
   const size_t bits_per_sample = bytes_per_sample * 8;
@@ -258,10 +258,10 @@ IamfStatus IamfDecoder::Create(const OutputLayout& requested_layout,
 }
 
 IamfStatus IamfDecoder::CreateFromDescriptors(
-    const OutputLayout& requested_layout,
-    absl::Span<const uint8_t> descriptor_obus,
-    std::unique_ptr<IamfDecoder>& output_decoder) {
+    const OutputLayout& requested_layout, const uint8_t* input_buffer,
+    size_t input_buffer_size, std::unique_ptr<IamfDecoder>& output_decoder) {
   output_decoder = nullptr;
+  absl::Span<const uint8_t> descriptor_obus(input_buffer, input_buffer_size);
 
   IamfStatus status = Create(requested_layout, output_decoder);
   if (!status.ok()) {
@@ -290,12 +290,14 @@ IamfStatus IamfDecoder::CreateFromDescriptors(
   return IamfStatus::OkStatus();
 }
 
-IamfStatus IamfDecoder::Decode(absl::Span<const uint8_t> bitstream) {
+IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
+                               size_t input_buffer_size) {
   if (state_->status == DecoderStatus::kEndOfStream) {
     return IamfStatus::ErrorStatus(
         "Failed Precondition: Decode() cannot be called after "
         "SignalEndOfStream() has been called.");
   }
+  auto bitstream = absl::MakeConstSpan(input_buffer, input_buffer_size);
   absl::Status push_bytes_status =
       state_->read_bit_buffer->PushBytes(bitstream);
   if (!push_bytes_status.ok()) {
@@ -336,16 +338,17 @@ void IamfDecoder::ConfigureOutputSampleType(
   state_->output_sample_type = output_sample_type;
 }
 
-IamfStatus IamfDecoder::GetOutputTemporalUnit(absl::Span<uint8_t> output_bytes,
+IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
+                                              size_t output_buffer_size,
                                               size_t& bytes_written) {
   bytes_written = 0;
   if (state_->rendered_pcm_samples.empty()) {
     return IamfStatus::OkStatus();
   }
   OutputSampleType output_sample_type = GetOutputSampleType();
-  IamfStatus status =
-      WriteFrameToSpan(state_->rendered_pcm_samples.front(), output_sample_type,
-                       output_bytes, bytes_written);
+  IamfStatus status = WriteFrameToSpan(
+      state_->rendered_pcm_samples.front(), output_sample_type,
+      absl::MakeSpan(output_buffer, output_buffer_size), bytes_written);
   if (status.ok()) {
     state_->rendered_pcm_samples.pop();
   }

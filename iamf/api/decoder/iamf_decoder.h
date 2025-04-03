@@ -18,7 +18,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "iamf/api/iamf_tools_api_types.h"
 
 namespace iamf_tools {
@@ -89,15 +88,15 @@ class IamfDecoder {
    * \param requested_layout Specifies the desired output layout. This layout
    *        will be used so long as it is present in the Descriptor OBUs that
    *        are provided. If not, a default layout will be selected.
-   * \param descriptor_obus Bitstream containing all the descriptor OBUs and
+   * \param input_buffer Bitstream containing all the descriptor OBUs and
    *        only descriptor OBUs.
+   * \param input_buffer_size Size in bytes of the input buffer.
    * \param output_decoder An output param for the decoder upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
   static IamfStatus CreateFromDescriptors(
-      const OutputLayout& requested_layout,
-      absl::Span<const uint8_t> descriptor_obus,
-      std::unique_ptr<IamfDecoder>& output_decoder);
+      const OutputLayout& requested_layout, const uint8_t* input_buffer,
+      size_t input_buffer_size, std::unique_ptr<IamfDecoder>& output_decoder);
 
   /*!\brief Configures the decoder with the desired mix presentation.
    *
@@ -125,10 +124,11 @@ class IamfDecoder {
    * temporal units. This provides the user a chance to configure the decoder as
    * they see fit. See sample usages for more details.
    *
-   * \param bitstream Bitstream to decode.
+   * \param input_buffer Bitstream to decode.
+   * \param input_buffer_size Size in bytes of the input buffer.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus Decode(absl::Span<const uint8_t> bitstream);
+  IamfStatus Decode(const uint8_t* input_buffer, size_t input_buffer_size);
 
   /*!\brief Outputs the next temporal unit of decoded audio.
    *
@@ -140,15 +140,17 @@ class IamfDecoder {
    * The output PCM is arranged based on the configured `OutputLayout` and
    * `OutputSampleType`.
    *
-   * \param output_bytes Output buffer to receive bytes.  Must be large enough
+   * \param output_buffer Output buffer to receive bytes.  Must be large enough
    *        to receive bytes.  Maximum necessary size can be determined by
    *        GetFrameSize * GetNumberOfOutputChannels * bit depth (as determined
    *        by GetOutputSampleType).
+   * \param output_buffer_size Available size in bytes of the output buffer.
    * \param bytes_written Output param for the number of bytes written to the
    * output_bytes.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus GetOutputTemporalUnit(absl::Span<uint8_t> output_bytes,
+  IamfStatus GetOutputTemporalUnit(uint8_t* output_buffer,
+                                   size_t output_buffer_size,
                                    size_t& bytes_written);
 
   /*!\brief Returns true iff a decoded temporal unit is available.

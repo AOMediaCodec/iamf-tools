@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
@@ -36,7 +35,7 @@ void DoesNotDieWithBasicDecode(const std::string& data) {
   ASSERT_TRUE(api::IamfDecoder::Create(kStereoLayout, iamf_decoder).ok());
 
   std::vector<uint8_t> bitstream(data.begin(), data.end());
-  auto decode_status = iamf_decoder->Decode(bitstream);
+  auto decode_status = iamf_decoder->Decode(bitstream.data(), bitstream.size());
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytes, DoesNotDieWithBasicDecode);
@@ -48,12 +47,13 @@ void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
 
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   api::IamfStatus status = api::IamfDecoder::CreateFromDescriptors(
-      kStereoLayout, descriptors, iamf_decoder);
+      kStereoLayout, descriptors.data(), descriptors.size(), iamf_decoder);
 
   if (status.ok()) {
     std::vector<uint8_t> temporal_unit(temporal_unit_data.begin(),
                                        temporal_unit_data.end());
-    auto decoder_status = iamf_decoder->Decode(temporal_unit);
+    auto decoder_status =
+        iamf_decoder->Decode(temporal_unit.data(), temporal_unit.size());
   }
 }
 
@@ -67,10 +67,11 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   ASSERT_TRUE(api::IamfDecoder::Create(output_layout, iamf_decoder).ok());
 
+  auto unused_decode_status =
+      iamf_decoder->Decode(bitstream.data(), bitstream.size());
   iamf_decoder->ConfigureOutputSampleType(output_sample_type);
   auto unused_configure_status =
       iamf_decoder->ConfigureMixPresentationId(mix_presentation_id);
-  auto unused_decode_status = iamf_decoder->Decode(bitstream);
 }
 
 // // TODO(b/378912426): Update this to support all output layouts.
