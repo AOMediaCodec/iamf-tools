@@ -98,6 +98,7 @@ cc_library(
     hdrs = ["flac_decoder_stream_callbacks.h"],
     deps = [
         "@com_google_absl//absl/log",
+        "@com_google_absl//absl/types:span",
         "@flac//:src",
     ],
 )

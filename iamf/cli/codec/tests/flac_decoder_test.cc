@@ -89,9 +89,9 @@ TEST(DecodeAudioFrame, DoesNotHangOnInvalidFrame) {
   EXPECT_THAT(status, Not(IsOk()));
 }
 
-TEST(DecodeAudioFrame, FailsOnMismatchedBlocksize) {
-  constexpr uint32_t kNumSamplesPerFrame = 32;
-  // num_samples_per_channel = 32, but the encoded frame has 16 samples per
+TEST(DecodeAudioFrame, FailsOnMismatchedBlocksizeTooLarge) {
+  constexpr uint32_t kNumSamplesPerFrame = 15;
+  // num_samples_per_channel = 15, but the encoded frame has 16 samples per
   // channel.
   FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
   EXPECT_THAT(flac_decoder.Initialize(), IsOk());
@@ -100,6 +100,24 @@ TEST(DecodeAudioFrame, FailsOnMismatchedBlocksize) {
       std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
 
   EXPECT_FALSE(status.ok());
+}
+
+TEST(DecodeAudioFrame, FillsExtraSamplesWithZeros) {
+  constexpr uint32_t kNumSamplesPerFrame = 17;
+  // num_samples_per_channel = 17, but the actual encoded frame has 16 samples
+  // per channel.
+  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
+  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+
+  EXPECT_THAT(flac_decoder.DecodeAudioFrame(std::vector(
+                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+              IsOk());
+  const auto decoded_samples = flac_decoder.ValidDecodedSamples();
+
+  // Ok, we still expect 17 samples per frame, the last one is filled with
+  // zeros, and typically would be trimmed.
+  EXPECT_EQ(decoded_samples.size(), kNumSamplesPerFrame);
+  EXPECT_EQ(decoded_samples.back(), std::vector<int32_t>(kNumChannels, 0));
 }
 
 }  // namespace

@@ -32,10 +32,55 @@ constexpr int kNumChannels = 2;
 
 using flac_callbacks::LibFlacCallbackData;
 
-TEST(LibFlacReadCallback, ConstructorSetsNumSamplesPerChannel) {
+TEST(LibFlacCallbackData, ConstructorSetsNumSamplesPerChannel) {
   LibFlacCallbackData callback_data(kNumSamplesPerFrame);
 
   EXPECT_EQ(callback_data.num_samples_per_channel_, kNumSamplesPerFrame);
+}
+
+TEST(LibFlacCallbackData, SetEncodedFrameRemovesPreviouslySetFrame) {
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame);
+  // Intentionally get the buffer to a state where it was partially exhausted.
+  callback_data.SetEncodedFrame({99, 100});
+  // Intentionally avoid exhausting the buffer.
+  callback_data.GetNextSlice(1);
+
+  // Resetting it gets rid of any trace of the previous frame.
+  const std::vector<uint8_t> encoded_frame = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  callback_data.SetEncodedFrame(encoded_frame);
+  EXPECT_EQ(callback_data.GetNextSlice(10), encoded_frame);
+}
+
+TEST(LibFlacCallbackData, GetNextSliceCapsOutputToAtMostRemainingSize) {
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame);
+  const std::vector<uint8_t> kEncodedFrame = {99, 100};
+  callback_data.SetEncodedFrame(kEncodedFrame);
+
+  // It's ok to request more bytes than are available, fewer will be returned if
+  // there are not enough left.
+  EXPECT_EQ(callback_data.GetNextSlice(kEncodedFrame.size() + 1),
+            kEncodedFrame);
+}
+
+TEST(LibFlacCallbackData, RepeatedCallsToGetNextSliceReturnNextSlice) {
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame);
+  const std::vector<uint8_t> encoded_frame = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  callback_data.SetEncodedFrame(encoded_frame);
+
+  EXPECT_EQ(callback_data.GetNextSlice(5),
+            std::vector<uint8_t>({1, 2, 3, 4, 5}));
+  EXPECT_EQ(callback_data.GetNextSlice(5),
+            std::vector<uint8_t>({6, 7, 8, 9, 10}));
+}
+
+TEST(LibFlacCallbackData, CallsWhenBufferIsExhaustedReturnEmptySpan) {
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame);
+  constexpr int kNumBytes = 5;
+  const std::vector<uint8_t> encoded_frame(kNumBytes, 0);
+  callback_data.SetEncodedFrame(encoded_frame);
+  callback_data.GetNextSlice(kNumBytes);
+
+  EXPECT_TRUE(callback_data.GetNextSlice(kNumBytes).empty());
 }
 
 TEST(LibFlacReadCallback, ReadCallbackReturnsEndOfStreamForEmptyFrame) {
@@ -51,16 +96,56 @@ TEST(LibFlacReadCallback, ReadCallbackReturnsEndOfStreamForEmptyFrame) {
   EXPECT_EQ(bytes, 0);
 }
 
-TEST(LibFlacReadCallback, ReturnsAbortForOversizedFrame) {
+TEST(LibFlacReadCallback, ReadCallbackReturnsAbortForNullPtrs) {
   LibFlacCallbackData callback_data(kNumSamplesPerFrame);
   FLAC__byte buffer[1024];
   size_t bytes = 1024;
-  callback_data.encoded_frame_ = std::vector<uint8_t>(1025);
 
+  // Various `nullptr` arguments will force the callback to abort.
+  EXPECT_EQ(flac_callbacks::LibFlacReadCallback(
+                /*stream_decoder=*/nullptr, /*buffer=*/nullptr, &bytes,
+                &callback_data),
+            FLAC__STREAM_DECODER_READ_STATUS_ABORT);
+  EXPECT_EQ(flac_callbacks::LibFlacReadCallback(
+                /*stream_decoder=*/nullptr, buffer, /*bytes=*/nullptr,
+                &callback_data),
+            FLAC__STREAM_DECODER_READ_STATUS_ABORT);
+  EXPECT_EQ(flac_callbacks::LibFlacReadCallback(/*stream_decoder=*/nullptr,
+                                                buffer, &bytes,
+                                                /*client_data=*/nullptr),
+            FLAC__STREAM_DECODER_READ_STATUS_ABORT);
+}
+
+TEST(LibFlacReadCallback, EachCallToReadCallbackWritesUpToBufferSize) {
+  LibFlacCallbackData callback_data(kNumSamplesPerFrame);
+  // Simulate `libFLAC` requestes 8 bytes at a time.
+  const size_t kFlacBufferSize = 8;
+  FLAC__byte buffer[kFlacBufferSize];
+  // But raw frame has 9 bytes.
+  callback_data.SetEncodedFrame({1, 2, 3, 4, 5, 6, 7, 8, 9});
+
+  // The first call loads the first 8 bytes.
+  size_t bytes = kFlacBufferSize;
   auto status = LibFlacReadCallback(/*stream_decoder=*/nullptr, buffer, &bytes,
                                     &callback_data);
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_CONTINUE);
+  EXPECT_EQ(bytes, 8);
+  EXPECT_THAT(buffer, ElementsAreArray({1, 2, 3, 4, 5, 6, 7, 8}));
 
-  EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_ABORT);
+  // The second call loads the last byte.
+  bytes = kFlacBufferSize;
+  status = LibFlacReadCallback(/*stream_decoder=*/nullptr, buffer, &bytes,
+                               &callback_data);
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_CONTINUE);
+  EXPECT_EQ(bytes, 1);
+  // Expect the first byte is 9 using a matcher
+  EXPECT_THAT(buffer[0], 9);
+
+  // Finally the frame is exhausted, subsequent calls return end of stream.
+  bytes = kFlacBufferSize;
+  status = LibFlacReadCallback(/*stream_decoder=*/nullptr, buffer, &bytes,
+                               &callback_data);
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM);
   EXPECT_EQ(bytes, 0);
 }
 
@@ -69,13 +154,15 @@ TEST(LibFlacReadCallback, ConsumesEncodedFrame) {
   FLAC__byte buffer[1024];
   size_t bytes = 1028;
   const std::vector<uint8_t> encoded_frame(1024, 1);
-  callback_data.encoded_frame_ = encoded_frame;
+  callback_data.SetEncodedFrame(encoded_frame);
 
   auto status = flac_callbacks::LibFlacReadCallback(
       /*stream_decoder=*/nullptr, buffer, &bytes, &callback_data);
 
   EXPECT_EQ(status, FLAC__STREAM_DECODER_READ_STATUS_CONTINUE);
-  EXPECT_TRUE(callback_data.encoded_frame_.empty());
+  // Any further reads are safe, but will return an empty span.
+  const size_t kChunkSize = 1;
+  EXPECT_TRUE(callback_data.GetNextSlice(kChunkSize).empty());
 }
 
 TEST(LibFlacReadCallback, Success) {
@@ -83,7 +170,7 @@ TEST(LibFlacReadCallback, Success) {
   FLAC__byte buffer[1024];
   size_t bytes = 1028;
   const std::vector<uint8_t> encoded_frame(1024, 1);
-  callback_data.encoded_frame_ = encoded_frame;
+  callback_data.SetEncodedFrame(encoded_frame);
 
   auto status = flac_callbacks::LibFlacReadCallback(
       /*stream_decoder=*/nullptr, buffer, &bytes, &callback_data);
@@ -133,11 +220,12 @@ TEST(LibFlacWriteCallback, SucceedsFor16BitSamples) {
 }
 
 TEST(LibFlacWriteCallback, ReturnsStatusAbortForTooSmallBlockSize) {
-  constexpr int kFiveSamplesPerFrame = 2;
-  // num_samples_per_channel = 5, but the encoded frame has 3 samples per
+  constexpr int kTwoSamplesPerFrame = 2;
+  constexpr int kLargerBlockSize = 3;
+  // num_samples_per_channel = 2, but the encoded frame has 3 samples per
   // channel.
-  LibFlacCallbackData callback_data(kFiveSamplesPerFrame);
-  const FLAC__Frame kFlacFrame = {.header = {.blocksize = 3,
+  LibFlacCallbackData callback_data(kTwoSamplesPerFrame);
+  const FLAC__Frame kFlacFrame = {.header = {.blocksize = kLargerBlockSize,
                                              .channels = kNumChannels,
                                              .bits_per_sample = 32}};
   FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
@@ -148,6 +236,29 @@ TEST(LibFlacWriteCallback, ReturnsStatusAbortForTooSmallBlockSize) {
       /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);
 
   EXPECT_EQ(status, FLAC__STREAM_DECODER_WRITE_STATUS_ABORT);
+}
+
+TEST(LibFlacWriteCallback, FillsExtraSamplesWithZeros) {
+  constexpr int kFourSamplesPerFrame = 4;
+  constexpr int kSmallerBlockSize = 3;
+  // num_samples_per_channel = 4, but the encoded frame has 3 samples per
+  // channel.
+  LibFlacCallbackData callback_data(kFourSamplesPerFrame);
+  const FLAC__Frame kFlacFrame = {.header = {.blocksize = kSmallerBlockSize,
+                                             .channels = kNumChannels,
+                                             .bits_per_sample = 32}};
+  FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
+  FLAC__int32 channel_1[] = {2, 3, 4};
+  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+
+  auto status = flac_callbacks::LibFlacWriteCallback(
+      /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);
+
+  // The last sample is extra, and should be filled with zeros.
+  EXPECT_EQ(status, FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE);
+  EXPECT_EQ(callback_data.decoded_frame_.size(), kFourSamplesPerFrame);
+  EXPECT_EQ(callback_data.decoded_frame_[3],
+            std::vector<int32_t>(kNumChannels, 0));
 }
 
 }  // namespace

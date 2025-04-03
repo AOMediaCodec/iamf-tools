@@ -67,7 +67,7 @@ absl::Status FlacDecoder::DecodeAudioFrame(
 
   // Set the encoded frame to be decoded; the libflac decoder will copy the
   // data using LibFlacReadCallback.
-  callback_data_.encoded_frame_ = encoded_frame;
+  callback_data_.SetEncodedFrame(encoded_frame);
   if (!FLAC__stream_decoder_process_single(decoder_)) {
     // More specific error information is logged in LibFlacErrorCallback.
     return absl::InternalError("Failed to decode FLAC frame.");

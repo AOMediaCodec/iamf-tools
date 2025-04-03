@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
@@ -39,9 +40,31 @@ class LibFlacCallbackData {
   explicit LibFlacCallbackData(uint32_t num_samples_per_channel)
       : num_samples_per_channel_(num_samples_per_channel) {}
 
+  /*!\brief Sets the frame to be decoded.
+   *
+   * \param raw_encoded_frame Frame to decode.
+   */
+  void SetEncodedFrame(absl::Span<const uint8_t> raw_encoded_frame);
+
+  /*!\brief Retrieve the next slice to be decoded.
+   *
+   * Subsequent calls to this function will return the next slice of the encoded
+   * frame. The output span is valid until the next call to `SetEncodedFrame`.
+   *
+   * \param chunk_size Maximum number of bytes to return.
+   * \return Next slice to be decoded, or an empty span if the encoded frame is
+   *         exhausted.
+   */
+  absl::Span<const uint8_t> GetNextSlice(size_t chunk_size);
+
   const uint32_t num_samples_per_channel_;
-  std::vector<uint8_t> encoded_frame_;
   std::vector<std::vector<int32_t>> decoded_frame_;
+
+ private:
+  // Backing data for the next frame to be decoded.
+  std::vector<uint8_t> encoded_frame_;
+  // Index of the next byte to be read from the encoded frame.
+  size_t next_byte_index_ = 0;
 };
 
 /*!\brief Reads an encoded flac frame into the libflac decoder
@@ -52,8 +75,8 @@ class LibFlacCallbackData {
  *        this implementation, but is included to override the libflac
  *        signature.
  * \param buffer Output buffer for the encoded frame.
- * \param bytes Maximum size of the buffer; in the case of a successful read,
- *        this will be set to the actual number of bytes read.
+ * \param bytes At input, the maximum size of the buffer. At output, the actual
+ *        number of bytes read (on successful read).
  * \param client_data Universal pointer, which in this case should point to
  *        a `LibFlacCallbackData`.
  *
