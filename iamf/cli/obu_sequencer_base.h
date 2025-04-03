@@ -66,23 +66,6 @@ namespace iamf_tools {
  */
 class ObuSequencerBase {
  public:
-  /*!\brief Serializes and writes out a temporal unit.
-   *
-   * Write out the OBUs contained within the input arguments to the output write
-   * buffer.
-   *
-   * \param include_temporal_delimiters Whether the serialized data should
-   *        include a temporal delimiter.
-   * \param temporal_unit Temporal unit to write out.
-   * \param wb Write buffer to write to.
-   * \param num_samples Number of samples written out.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  [[deprecated("Use this class as per the class documentation instead.")]]
-  static absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
-                                        const TemporalUnitView& temporal_unit,
-                                        WriteBitBuffer& wb, int& num_samples);
-
   /*!\brief Writes the input descriptor OBUs.
    *
    * Write out the OBUs contained within the input arguments to the output write

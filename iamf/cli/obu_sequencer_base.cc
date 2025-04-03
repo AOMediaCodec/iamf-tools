@@ -257,11 +257,9 @@ absl::Status GenerateTemporalUnitMap(
   return absl::OkStatus();
 }
 
-}  // namespace
-
-absl::Status ObuSequencerBase::WriteTemporalUnit(
-    bool include_temporal_delimiters, const TemporalUnitView& temporal_unit,
-    WriteBitBuffer& wb, int& num_samples) {
+absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
+                               const TemporalUnitView& temporal_unit,
+                               WriteBitBuffer& wb, int& num_samples) {
   num_samples += temporal_unit.num_untrimmed_samples_;
 
   if (include_temporal_delimiters) {
@@ -301,6 +299,8 @@ absl::Status ObuSequencerBase::WriteTemporalUnit(
 
   return absl::OkStatus();
 }
+
+}  // namespace
 
 // Writes the descriptor OBUs. Section 5.1.1
 // (https://aomediacodec.github.io/iamf/#standalone-descriptor-obus) orders the
