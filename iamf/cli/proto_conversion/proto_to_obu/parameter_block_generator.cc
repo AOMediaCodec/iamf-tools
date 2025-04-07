@@ -553,27 +553,16 @@ absl::Status PopulateSubblocks(
   return absl::OkStatus();
 }
 
-absl::Status LogParameterBlockObus(
+void LogParameterBlockObus(
     const std::list<ParameterBlockWithData>& output_parameter_blocks) {
-  // Log only the first and the last parameter blocks.
-  if (output_parameter_blocks.empty()) {
-    return absl::OkStatus();
-  }
-  std::vector<const ParameterBlockWithData*> to_log = {
-      &output_parameter_blocks.front()};
-  if (output_parameter_blocks.size() > 1) {
-    to_log.push_back(&output_parameter_blocks.back());
-  }
-
-  for (const auto* parameter_block_with_data : to_log) {
-    parameter_block_with_data->obu->PrintObu();
+  for (const auto& parameter_block_with_data : output_parameter_blocks) {
+    CHECK_NE(parameter_block_with_data.obu, nullptr);
+    parameter_block_with_data.obu->PrintObu();
     LOG(INFO) << "  // start_timestamp= "
-              << parameter_block_with_data->start_timestamp;
+              << parameter_block_with_data.start_timestamp;
     LOG(INFO) << "  // end_timestamp= "
-              << parameter_block_with_data->end_timestamp;
+              << parameter_block_with_data.end_timestamp;
   }
-
-  return absl::OkStatus();
 }
 
 }  // namespace
@@ -694,7 +683,10 @@ absl::Status ParameterBlockGenerator::GenerateParameterBlocks(
     output_parameter_blocks.push_back(std::move(output_parameter_block));
   }
 
-  RETURN_IF_NOT_OK(LogParameterBlockObus(output_parameter_blocks));
+  if (additional_parameter_block_logging_) {
+    LogParameterBlockObus(output_parameter_blocks);
+    additional_parameter_block_logging_ = false;
+  }
 
   // Clear the metadata of this frame.
   proto_metadata_list.clear();

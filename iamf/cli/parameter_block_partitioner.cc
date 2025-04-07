@@ -396,7 +396,8 @@ absl::Status ParameterBlockPartitioner::PartitionFrameAligned(
       full_parameter_block.start_timestamp() + full_parameter_block.duration();
   for (int32_t t = full_parameter_block.start_timestamp(); t < end_timestamp;
        t += partition_duration) {
-    LOG(INFO) << "Partitioning parameter blocks at timestamp= " << t;
+    LOG_EVERY_N_SEC(INFO, 10)
+        << "Partitioning parameter blocks at timestamp= " << t;
     ParameterBlockObuMetadata partitioned_parameter_block;
     RETURN_IF_NOT_OK(PartitionParameterBlock(full_parameter_block, t,
                                              t + partition_duration,

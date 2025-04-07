@@ -59,6 +59,7 @@ class ParameterBlockGenerator {
           param_definition_variants)
       : override_computed_recon_gains_(override_computed_recon_gains),
         additional_recon_gains_logging_(true),
+        additional_parameter_block_logging_(true),
         param_definition_variants_(param_definition_variants) {}
 
   /*!\brief Initializes the class.
@@ -139,6 +140,7 @@ class ParameterBlockGenerator {
   const bool override_computed_recon_gains_;
 
   bool additional_recon_gains_logging_;
+  bool additional_parameter_block_logging_;
 
   // Mapping from parameter IDs to param definitions.
   const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
