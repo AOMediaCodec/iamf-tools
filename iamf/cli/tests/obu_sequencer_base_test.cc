@@ -2002,6 +2002,34 @@ TEST(UpdateDescriptorObusAndClose, FailsWhenSerializedSizeChanges) {
               Not(IsOk()));
 }
 
+TEST(UpdateDescriptorObusAndClose,
+     OmitsCallToPushFinalizedDescriptorObusWhenDescriptorsAreUnchanged) {
+  const IASequenceHeaderObu kOriginalIaSequenceHeader(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
+  const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
+  const std::list<MixPresentationObu> kNoMixPresentationObus;
+  const std::list<ArbitraryObu> kNoArbitraryObus;
+  MockObuSequencer mock_obu_sequencer(
+      *LebGenerator::Create(), kDoNotIncludeTemporalDelimiters,
+      kDoNotDelayDescriptorsUntilTrimAtStartIsKnown);
+  EXPECT_THAT(mock_obu_sequencer.PushDescriptorObus(
+                  kOriginalIaSequenceHeader, kNoCodecConfigObus,
+                  kNoAudioElements, kNoMixPresentationObus, kNoArbitraryObus),
+              IsOk());
+
+  // It's OK to call with identical descriptor OBUs, but we expect the sequencer
+  // to safely close without needing to update the finalized descriptor OBUs.
+  EXPECT_CALL(mock_obu_sequencer, PushFinalizedDescriptorObus(_)).Times(0);
+  EXPECT_CALL(mock_obu_sequencer, CloseDerived()).Times(1);
+
+  EXPECT_THAT(mock_obu_sequencer.UpdateDescriptorObusAndClose(
+                  kOriginalIaSequenceHeader, kNoCodecConfigObus,
+                  kNoAudioElements, kNoMixPresentationObus, kNoArbitraryObus),
+              IsOk());
+}
+
 TEST(UpdateDescriptorObusAndClose, FailsWhenCodecConfigPropertiesChange) {
   const IASequenceHeaderObu kIaSequenceHeader(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
