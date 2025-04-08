@@ -14,9 +14,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <variant>
 #include <vector>
 
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -27,25 +31,20 @@
 
 namespace iamf_tools {
 
-LpcmDecoder::LpcmDecoder(const CodecConfigObu& codec_config_obu,
-                         int num_channels)
-    : DecoderBase(num_channels,
-                  static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
-      decoder_config_(std::get<LpcmDecoderConfig>(
-          codec_config_obu.GetCodecConfig().decoder_config)),
-      audio_roll_distance_(
-          codec_config_obu.GetCodecConfig().audio_roll_distance) {}
+absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
+    const CodecConfigObu& codec_config_obu, int num_channels) {
+  const LpcmDecoderConfig* decoder_config = std::get_if<LpcmDecoderConfig>(
+      &codec_config_obu.GetCodecConfig().decoder_config);
+  if (decoder_config == nullptr) {
+    return absl::InvalidArgumentError(
+        "CodecConfigObu does not contain an `LpcmDecoderConfig`.");
+  }
 
-absl::Status LpcmDecoder::Initialize() {
-  RETURN_IF_NOT_OK(decoder_config_.Validate(audio_roll_distance_));
-  return absl::OkStatus();
-}
+  RETURN_IF_NOT_OK(decoder_config->Validate(
+      codec_config_obu.GetCodecConfig().audio_roll_distance));
 
-absl::Status LpcmDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame) {
-  num_valid_ticks_ = 0;
   uint8_t bit_depth;
-  auto status = decoder_config_.GetBitDepthToMeasureLoudness(bit_depth);
+  auto status = decoder_config->GetBitDepthToMeasureLoudness(bit_depth);
   if (!status.ok()) {
     return status;
   }
@@ -57,19 +56,29 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
                      bit_depth, ") is not a multiple of 8."));
   }
   const size_t bytes_per_sample = bit_depth / 8;
+
+  return absl::WrapUnique(
+      new LpcmDecoder(num_channels, codec_config_obu.GetNumSamplesPerFrame(),
+                      decoder_config->IsLittleEndian(), bytes_per_sample));
+}
+
+absl::Status LpcmDecoder::DecodeAudioFrame(
+    const std::vector<uint8_t>& encoded_frame) {
+  num_valid_ticks_ = 0;
+
   // Make sure we have a valid number of bytes.  There needs to be an equal
   // number of samples for each channel.
-  if (encoded_frame.size() % bytes_per_sample != 0 ||
-      (encoded_frame.size() / bytes_per_sample) % num_channels_ != 0) {
+  if (encoded_frame.size() % bytes_per_sample_ != 0 ||
+      (encoded_frame.size() / bytes_per_sample_) % num_channels_ != 0) {
     return absl::InvalidArgumentError(absl::StrCat(
         "LpcmDecoder::DecodeAudioFrame() failed: encoded_frame has ",
         encoded_frame.size(),
         " bytes, which is not a multiple of the bytes per sample (",
-        bytes_per_sample, ") * number of channels (", num_channels_, ")."));
+        bytes_per_sample_, ") * number of channels (", num_channels_, ")."));
   }
   // Each time tick has one sample for each channel.
   const size_t num_ticks =
-      encoded_frame.size() / bytes_per_sample / num_channels_;
+      encoded_frame.size() / bytes_per_sample_ / num_channels_;
   if (num_ticks > num_samples_per_channel_) {
     return absl::InvalidArgumentError(
         absl::StrCat("Detected num_ticks= ", num_ticks,
@@ -79,21 +88,18 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
   }
   num_valid_ticks_ = num_ticks;
 
-  const bool little_endian = decoder_config_.IsLittleEndian();
-
   int32_t sample_result;
   for (size_t t = 0; t < num_valid_ticks_; ++t) {
     // One sample for each channel in this time tick.
     for (size_t c = 0; c < num_channels_; ++c) {
-      const size_t offset = (t * num_channels_ + c) * bytes_per_sample;
+      const size_t offset = (t * num_channels_ + c) * bytes_per_sample_;
       absl::Span<const uint8_t> input_bytes(encoded_frame.data() + offset,
-                                            bytes_per_sample);
-      if (little_endian) {
-        status = LittleEndianBytesToInt32(input_bytes, sample_result);
+                                            bytes_per_sample_);
+      if (little_endian_) {
+        RETURN_IF_NOT_OK(LittleEndianBytesToInt32(input_bytes, sample_result));
       } else {
-        status = BigEndianBytesToInt32(input_bytes, sample_result);
+        RETURN_IF_NOT_OK(BigEndianBytesToInt32(input_bytes, sample_result));
       }
-      RETURN_IF_NOT_OK(status);
       decoded_samples_[t][c] = sample_result;
     }
   }

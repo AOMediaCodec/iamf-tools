@@ -13,34 +13,32 @@
 #define CLI_OPUS_ENCODER_DECODER_H_
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "include/opus.h"
 
 namespace iamf_tools {
 
 class OpusDecoder : public DecoderBase {
  public:
-  /*!\brief Constructor
+  /*!brief Factory function.
    *
-   * \param codec_config_obu Codec Config OBU with initialization settings.
+   * \param codec_config_obu Codec config for this stream.
    * \param num_channels Number of channels for this stream.
+   * \return Opus decoder on success. A specific status on failure.
    */
-  OpusDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
+  static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
+      const CodecConfigObu& codec_config_obu, int num_channels);
 
   /*!\brief Destructor
    */
   ~OpusDecoder() override;
-
-  /*!\brief Initializes the underlying decoder.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize() override;
 
   /*!\brief Decodes an Opus audio frame.
    *
@@ -54,10 +52,19 @@ class OpusDecoder : public DecoderBase {
   // The decoder from `libopus` is in the global namespace.
   typedef ::OpusDecoder LibOpusDecoder;
 
-  const OpusDecoderConfig& opus_decoder_config_;
-  const uint32_t output_sample_rate_;
+  /* Private constructor.
+   *
+   * Used only by the factory function.
+   *
+   * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame for this stream.
+   * \param decoder `libopus` decoder to use.
+   */
+  OpusDecoder(int num_channels, uint32_t num_samples_per_frame,
+              LibOpusDecoder* /* absl_nonnull */ decoder)
+      : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {}
 
-  LibOpusDecoder* decoder_ = nullptr;
+  LibOpusDecoder* const /* absl_nonnull */ decoder_;
 };
 
 }  // namespace iamf_tools

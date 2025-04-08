@@ -13,11 +13,16 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
+#include <variant>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -54,31 +59,35 @@ absl::Status ValidateDecoderConfig(
 
 }  // namespace
 
-OpusDecoder::OpusDecoder(const CodecConfigObu& codec_config_obu,
-                         int num_channels)
-    : DecoderBase(num_channels,
-                  static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
-      opus_decoder_config_(std::get<OpusDecoderConfig>(
-          codec_config_obu.GetCodecConfig().decoder_config)),
-      output_sample_rate_(codec_config_obu.GetOutputSampleRate()) {}
-
-OpusDecoder::~OpusDecoder() {
-  if (decoder_ != nullptr) {
-    opus_decoder_destroy(decoder_);
+absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
+    const CodecConfigObu& codec_config_obu, int num_channels) {
+  const OpusDecoderConfig* decoder_config = std::get_if<OpusDecoderConfig>(
+      &codec_config_obu.GetCodecConfig().decoder_config);
+  if (decoder_config == nullptr) {
+    return absl::InvalidArgumentError(
+        "CodecConfigObu does not contain an `OpusDecoderConfig`.");
   }
-}
-
-absl::Status OpusDecoder::Initialize() {
-  MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(opus_decoder_config_));
+  MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(*decoder_config));
 
   // Initialize the decoder.
   int opus_error_code;
-  decoder_ = opus_decoder_create(static_cast<opus_int32>(output_sample_rate_),
-                                 num_channels_, &opus_error_code);
+  LibOpusDecoder* decoder = opus_decoder_create(
+      static_cast<opus_int32>(codec_config_obu.GetOutputSampleRate()),
+      num_channels, &opus_error_code);
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
       opus_error_code, "Failed to initialize Opus decoder."));
+  if (decoder == nullptr) {
+    return absl::UnknownError("Unexpected null decoder after initialization.");
+  }
 
-  return absl::OkStatus();
+  return absl::WrapUnique(new OpusDecoder(
+      num_channels, codec_config_obu.GetNumSamplesPerFrame(), decoder));
+}
+
+OpusDecoder::~OpusDecoder() {
+  // The factory function prevents `decoder_` from ever being null.
+  CHECK_NE(decoder_, nullptr);
+  opus_decoder_destroy(decoder_);
 }
 
 absl::Status OpusDecoder::DecodeAudioFrame(

@@ -14,9 +14,13 @@
 #define CLI_CODEC_FLAC_DECODER_H_
 
 #include <cstdint>
+#include <memory>
+#include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
 #include "include/FLAC/stream_decoder.h"
@@ -26,20 +30,16 @@ namespace iamf_tools {
  */
 class FlacDecoder : public DecoderBase {
  public:
-  /*!brief Constructor.
+  /*!brief Factory function.
    *
    * \param num_channels Number of channels for this stream.
    * \param num_samples_per_frame Number of samples per frame.
+   * \return Flac decoder on success. A specific status on failure.
    */
-  FlacDecoder(int num_channels, uint32_t num_samples_per_frame);
+  static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
+      int num_channels, uint32_t num_samples_per_frame);
 
   ~FlacDecoder() override;
-
-  /*!\brief Initializes the underlying libflac decoder.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize() override;
 
   /*!\brief Finalizes the underlying libflac decoder.
    *
@@ -56,10 +56,30 @@ class FlacDecoder : public DecoderBase {
       const std::vector<uint8_t>& encoded_frame) override;
 
  private:
-  // Backing data for the libflac decoder callbacks.
-  flac_callbacks::LibFlacCallbackData callback_data_;
+  /* Private constructor.
+   *
+   * Used only by the factory function.
+   *
+   * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame for this stream.
+   * \param callback_data Backing data for the `libflac` decoder callbacks.
+   * \param decoder `libflac` decoder to use.
+   */
+  FlacDecoder(
+      int num_channels, uint32_t num_samples_per_frame,
+      /* absl_nonnull */
+      std::unique_ptr<flac_callbacks::LibFlacCallbackData> callback_data,
+      FLAC__StreamDecoder* /* absl_nonnull */ decoder)
+      : DecoderBase(num_channels, num_samples_per_frame),
+        callback_data_(std::move(callback_data)),
+        decoder_(decoder) {}
+
+  // Backing data for the `libflac` decoder callbacks. Held in `unique_ptr` for
+  // pointer stability after move.
+  /* absl_nonnull */ std::unique_ptr<flac_callbacks::LibFlacCallbackData>
+      callback_data_;
   // A pointer to the `libflac` decoder.
-  FLAC__StreamDecoder* decoder_ = nullptr;
+  FLAC__StreamDecoder* const /* absl_nonnull */ decoder_;
 };
 
 }  // namespace iamf_tools

@@ -21,10 +21,6 @@ class MockDecoder : public DecoderBase {
 
   // Unimplemented implementations for base class pure virtual methods
   // that we won't test.
-  absl::Status Initialize() override {
-    return absl::UnimplementedError("Not implemented");
-  }
-
   absl::Status DecodeAudioFrame(
       const std::vector<uint8_t>& encoded_frame) override {
     return absl::UnimplementedError("Not implemented");

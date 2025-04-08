@@ -44,12 +44,6 @@ class DecoderBase {
    */
   virtual ~DecoderBase() = default;
 
-  /*!\brief Initializes the underlying decoder.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  virtual absl::Status Initialize() = 0;
-
   /*!\brief Decodes an audio frame.
    *
    * \param encoded_frame Frame to decode.

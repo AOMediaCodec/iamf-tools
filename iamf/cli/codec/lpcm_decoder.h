@@ -13,13 +13,15 @@
 #ifndef CLI_CODEC_LPCM_DECODER_H_
 #define CLI_CODEC_LPCM_DECODER_H_
 
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 
 namespace iamf_tools {
 
@@ -31,21 +33,17 @@ namespace iamf_tools {
  */
 class LpcmDecoder : public DecoderBase {
  public:
-  /*!brief Constructor.
+  /*!brief Factory function.
    *
-   * \param codec_config_obu Codec Config OBU with initialization settings.
+   * \param codec_config_obu Codec config for this stream.
    * \param num_channels Number of channels for this stream.
+   * \return LPCM decoder on success. A specific status on failure.
    */
-  LpcmDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
+  static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
+      const CodecConfigObu& codec_config_obu, int num_channels);
 
   /*!brief Destructor. */
   ~LpcmDecoder() override = default;
-
-  /*!\brief Initializes the underlying decoder.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize() override;
 
   /*!\brief Decodes an LPCM audio frame.
    *
@@ -56,11 +54,22 @@ class LpcmDecoder : public DecoderBase {
       const std::vector<uint8_t>& encoded_frame) override;
 
  private:
-  const LpcmDecoderConfig decoder_config_;
-
-  // We don't need the audio_roll_distance_ for decoding, but needed to validate
-  // the LpcmDecoderConfig.
-  int16_t audio_roll_distance_;
+  /* Private constructor.
+   *
+   * Used only by the factory function.
+   *
+   * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame for this stream.
+   * \param little_endian Whether the samples are little endian.
+   * \param bytes_per_sample Number of bytes per sample.
+   */
+  LpcmDecoder(int num_channels, uint32_t num_samples_per_frame,
+              bool little_endian, size_t bytes_per_sample)
+      : DecoderBase(num_channels, num_samples_per_frame),
+        little_endian_(little_endian),
+        bytes_per_sample_(bytes_per_sample) {}
+  const bool little_endian_;
+  const size_t bytes_per_sample_;
 };
 
 }  // namespace iamf_tools

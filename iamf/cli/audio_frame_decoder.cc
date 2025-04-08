@@ -14,7 +14,7 @@
 #include <memory>
 #include <utility>
 
-#include "absl/container/node_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -44,52 +44,42 @@ namespace iamf_tools {
 
 namespace {
 
-absl::Status InitializeDecoder(const CodecConfigObu& codec_config,
-                               int num_channels,
-                               std::unique_ptr<DecoderBase>& decoder) {
+absl::StatusOr<std::unique_ptr<DecoderBase>> CreateDecoder(
+    const CodecConfigObu& codec_config, int num_channels) {
   switch (codec_config.GetCodecConfig().codec_id) {
     using enum CodecConfig::CodecId;
     case kCodecIdLpcm:
-      decoder = std::make_unique<LpcmDecoder>(codec_config, num_channels);
-      break;
+      return LpcmDecoder::Create(codec_config, num_channels);
 #ifndef IAMF_TOOLS_DISABLE_OPUS_DECODER
     case kCodecIdOpus:
-      decoder = std::make_unique<OpusDecoder>(codec_config, num_channels);
-      break;
+      return OpusDecoder::Create(codec_config, num_channels);
 #endif
 #ifndef IAMF_TOOLS_DISABLE_AAC_DECODER
     case kCodecIdAacLc:
-      decoder = std::make_unique<AacDecoder>(codec_config, num_channels);
-      break;
+      return AacDecoder::Create(codec_config, num_channels);
 #endif
 #ifndef IAMF_TOOLS_DISABLE_FLAC_DECODER
     case kCodecIdFlac:
-      decoder = std::make_unique<FlacDecoder>(
-          num_channels, codec_config.GetNumSamplesPerFrame());
-      break;
+      return FlacDecoder::Create(num_channels,
+                                 codec_config.GetNumSamplesPerFrame());
 #endif
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("Unrecognized or disabled codec_id= ",
                        codec_config.GetCodecConfig().codec_id));
   }
-
-  if (decoder) {
-    RETURN_IF_NOT_OK(decoder->Initialize());
-  }
-  return absl::OkStatus();
 }
 
 }  // namespace
 
-// Initializes all decoders and wav writers based on the corresponding Audio
-// Element and Codec Config OBUs.
+// Initializes all decoders based on the corresponding Audio Element and Codec
+// Config OBUs.
 absl::Status AudioFrameDecoder::InitDecodersForSubstreams(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const CodecConfigObu& codec_config) {
   for (const auto& [substream_id, labels] : substream_id_to_labels) {
-    auto& decoder = substream_id_to_decoder_[substream_id];
-    if (decoder != nullptr) {
+    auto& decoder_for_substream = substream_id_to_decoder_[substream_id];
+    if (decoder_for_substream != nullptr) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Already initialized decoder for substream ID: ", substream_id,
           ". Maybe multiple Audio Element OBUs have the same substream ID?"));
@@ -97,9 +87,16 @@ absl::Status AudioFrameDecoder::InitDecodersForSubstreams(
 
     const int num_channels = static_cast<int>(labels.size());
 
-    // Initialize the decoder based on the found Codec Config OBU and number
-    // of channels.
-    RETURN_IF_NOT_OK(InitializeDecoder(codec_config, num_channels, decoder));
+    // Create the decoder, unwrap it and move it into the map, if it is valid.
+    absl::StatusOr<std::unique_ptr<DecoderBase>> new_decoder =
+        CreateDecoder(codec_config, num_channels);
+    if (!new_decoder.ok()) {
+      return new_decoder.status();
+    }
+    // The factories are not supposed to return an OK and `nullptr` decoder.
+    // For defensive programming, check for that case.
+    CHECK_NE(*new_decoder, nullptr);
+    decoder_for_substream = std::move(*new_decoder);
   }
 
   return absl::OkStatus();

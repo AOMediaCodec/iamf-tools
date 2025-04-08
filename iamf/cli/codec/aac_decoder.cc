@@ -15,9 +15,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
+#include <variant>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
+#include "absl/log/check.h"
+#include "absl/memory/memory.h"
 #include "absl/types/span.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 
@@ -138,34 +142,42 @@ absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
 
 }  // namespace
 
-AacDecoder::AacDecoder(const CodecConfigObu& codec_config_obu, int num_channels)
-    : DecoderBase(num_channels,
-                  static_cast<int>(codec_config_obu.GetNumSamplesPerFrame())),
-      aac_decoder_config_(std::get<AacDecoderConfig>(
-          codec_config_obu.GetCodecConfig().decoder_config)) {}
-
-AacDecoder::~AacDecoder() {
-  if (decoder_ != nullptr) {
-    aacDecoder_Close(decoder_);
+absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
+    const CodecConfigObu& codec_config_obu, int num_channels) {
+  const AacDecoderConfig* decoder_config = std::get_if<AacDecoderConfig>(
+      &codec_config_obu.GetCodecConfig().decoder_config);
+  if (decoder_config == nullptr) {
+    return absl::InvalidArgumentError(
+        "CodecConfigObu does not contain an `AacDecoderConfig`.");
   }
-}
 
-absl::Status AacDecoder::Initialize() {
   // Initialize the decoder.
-  decoder_ = aacDecoder_Open(GetAacTransportationType(), /*nrOfLayers=*/1);
+  AAC_DECODER_INSTANCE* decoder =
+      aacDecoder_Open(GetAacTransportationType(), /*nrOfLayers=*/1);
 
-  if (decoder_ == nullptr) {
+  if (decoder == nullptr) {
     return absl::UnknownError("Failed to initialize AAC decoder.");
   }
 
-  RETURN_IF_NOT_OK(
-      ConfigureAacDecoder(aac_decoder_config_, num_channels_, decoder_));
+  const auto status =
+      ConfigureAacDecoder(*decoder_config, num_channels, decoder);
+  if (!status.ok()) {
+    aacDecoder_Close(decoder);
+    return status;
+  }
 
-  const auto* stream_info = aacDecoder_GetStreamInfo(decoder_);
+  const auto* stream_info = aacDecoder_GetStreamInfo(decoder);
   LOG_FIRST_N(INFO, 1) << "Created an AAC encoder with "
                        << stream_info->numChannels << " channels.";
 
-  return absl::OkStatus();
+  return absl::WrapUnique(new AacDecoder(
+      num_channels, codec_config_obu.GetNumSamplesPerFrame(), decoder));
+}
+
+AacDecoder::~AacDecoder() {
+  // The factory function prevents `decoder_` from ever being null.
+  CHECK_NE(decoder_, nullptr);
+  aacDecoder_Close(decoder_);
 }
 
 absl::Status AacDecoder::DecodeAudioFrame(

@@ -13,7 +13,11 @@
 #define CLI_AAC_ENCODER_DECODER_H_
 
 #include <cstdint>
+#include <memory>
 #include <vector>
+
+#include "absl/base/nullability.h"
+#include "absl/status/statusor.h"
 
 // This symbol conflicts with a macro in fdk_aac.
 #ifdef IS_LITTLE_ENDIAN
@@ -23,7 +27,6 @@
 #include "absl/status/status.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "libAACdec/include/aacdecoder_lib.h"
 
 namespace iamf_tools {
@@ -31,23 +34,18 @@ namespace iamf_tools {
 // TODO(b/277731089): Test all of `aac_encoder_decoder.h`.
 class AacDecoder : public DecoderBase {
  public:
-  /*!\brief Constructor.
+  /*!brief Factory function.
    *
-   * \param codec_config_obu Codec Config OBU with initialization settings.
+   * \param codec_config_obu Codec config for this stream.
    * \param num_channels Number of channels for this stream.
+   * \return AAC decoder on success. A specific status on failure.
    */
-  AacDecoder(const CodecConfigObu& codec_config_obu, int num_channels);
+  static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
+      const CodecConfigObu& codec_config_obu, int num_channels);
 
   /*!\brief Destructor.
    */
   ~AacDecoder() override;
-
-  /*!\brief Initializes the underlying decoder.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize() override;
-
   /*!\brief Decodes an AAC audio frame.
    *
    * \param encoded_frame Frame to decode.
@@ -57,8 +55,19 @@ class AacDecoder : public DecoderBase {
       const std::vector<uint8_t>& encoded_frame) override;
 
  private:
-  const AacDecoderConfig& aac_decoder_config_;
-  AAC_DECODER_INSTANCE* decoder_ = nullptr;
+  /* Private constructor.
+   *
+   * Used only by the factory function.
+   *
+   * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame for this stream.
+   * \param decoder `fdk_aac` decoder to use.
+   */
+  AacDecoder(int num_channels, uint32_t num_samples_per_frame,
+             AAC_DECODER_INSTANCE* /* absl_nonnull */ decoder)
+      : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {}
+
+  AAC_DECODER_INSTANCE* const /* absl_nonnull */ /* absl_nonnull */ decoder_;
 };
 
 }  // namespace iamf_tools

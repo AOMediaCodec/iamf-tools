@@ -14,17 +14,22 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/codec/decoder_base.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::ElementsAreArray;
+using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::Test;
 
@@ -37,20 +42,25 @@ constexpr std::array<uint8_t, 22> kFlacEncodedFrame = {
 constexpr uint32_t kNumSamplesPerFrame = 16;
 constexpr int kNumChannels = 2;
 
-TEST(Initialize, Succeeds) {
-  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
-
-  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+std::unique_ptr<DecoderBase> CreateFlacDecoderExpectNonNull(
+    int num_channels, uint32_t num_samples_per_frame) {
+  auto flac_decoder = FlacDecoder::Create(num_channels, num_samples_per_frame);
+  EXPECT_THAT(flac_decoder, IsOkAndHolds(Not(IsNull())));
+  return std::move(*flac_decoder);
 }
 
-TEST(DecodeAudioFrame, Succeeds) {
-  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
+TEST(Create, Succeeds) {
+  auto flac_decoder = FlacDecoder::Create(kNumChannels, kNumSamplesPerFrame);
+  EXPECT_THAT(flac_decoder, IsOkAndHolds(Not(IsNull())));
+}
 
-  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
-  auto status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
-  EXPECT_THAT(status, IsOk());
+TEST(DecodeAudioFrame, SubsequentCallsSucceed) {
+  auto flac_decoder =
+      CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
+                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+              IsOk());
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
       {0x00010000, static_cast<int32_t>(0xffff0000)},
       {0x00020000, static_cast<int32_t>(0xfffe0000)},
@@ -68,21 +78,21 @@ TEST(DecodeAudioFrame, Succeeds) {
       {0x00000000, 0x00000000},
       {0x00000000, 0x00000000},
       {0x00000000, 0x00000000}};
-  EXPECT_EQ(flac_decoder.ValidDecodedSamples(), kExpectedDecodedSamples);
+  EXPECT_EQ(flac_decoder->ValidDecodedSamples(), kExpectedDecodedSamples);
 
   // Decode again.
-  status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
-  EXPECT_THAT(status, IsOk());
-  EXPECT_EQ(flac_decoder.ValidDecodedSamples(), kExpectedDecodedSamples);
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
+                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+              IsOk());
+  EXPECT_EQ(flac_decoder->ValidDecodedSamples(), kExpectedDecodedSamples);
 }
 
 TEST(DecodeAudioFrame, DoesNotHangOnInvalidFrame) {
-  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
-  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+  auto flac_decoder =
+      CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
   const std::vector<uint8_t> kInvalidFrame = {0x00};
-  const auto status = flac_decoder.DecodeAudioFrame(
+  const auto status = flac_decoder->DecodeAudioFrame(
       std::vector(kInvalidFrame.begin(), kInvalidFrame.end()));
 
   // The frame is not valid, but we expect to not hang and get an error status.
@@ -93,26 +103,25 @@ TEST(DecodeAudioFrame, FailsOnMismatchedBlocksizeTooLarge) {
   constexpr uint32_t kNumSamplesPerFrame = 15;
   // num_samples_per_channel = 15, but the encoded frame has 16 samples per
   // channel.
-  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
-  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+  auto flac_decoder =
+      CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
-  auto status = flac_decoder.DecodeAudioFrame(
-      std::vector(kFlacEncodedFrame.begin(), kFlacEncodedFrame.end()));
-
-  EXPECT_FALSE(status.ok());
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
+                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+              Not(IsOk()));
 }
 
 TEST(DecodeAudioFrame, FillsExtraSamplesWithZeros) {
   constexpr uint32_t kNumSamplesPerFrame = 17;
   // num_samples_per_channel = 17, but the actual encoded frame has 16 samples
   // per channel.
-  FlacDecoder flac_decoder(kNumChannels, kNumSamplesPerFrame);
-  EXPECT_THAT(flac_decoder.Initialize(), IsOk());
+  auto flac_decoder =
+      CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
-  EXPECT_THAT(flac_decoder.DecodeAudioFrame(std::vector(
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
                   kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
               IsOk());
-  const auto decoded_samples = flac_decoder.ValidDecodedSamples();
+  const auto decoded_samples = flac_decoder->ValidDecodedSamples();
 
   // Ok, we still expect 17 samples per frame, the last one is filled with
   // zeros, and typically would be trimmed.
