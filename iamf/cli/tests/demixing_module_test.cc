@@ -59,12 +59,13 @@ using ::testing::Pointwise;
 constexpr DecodedUleb128 kAudioElementId = 137;
 constexpr std::array<uint8_t, 12> kReconGainValues = {
     255, 0, 125, 200, 150, 255, 255, 255, 255, 255, 255, 255};
-const uint32_t kZeroSamplesToTrimAtEnd = 0;
-const uint32_t kZeroSamplesToTrimAtStart = 0;
-const int kStartTimestamp = 0;
-const int kEndTimestamp = 4;
-const DecodedUleb128 kMonoSubstreamId = 0;
-const DecodedUleb128 kL2SubstreamId = 1;
+constexpr uint32_t kZeroSamplesToTrimAtEnd = 0;
+constexpr uint32_t kZeroSamplesToTrimAtStart = 0;
+constexpr int kStartTimestamp = 0;
+constexpr int kEndTimestamp = 4;
+constexpr DecodedUleb128 kMonoSubstreamId = 0;
+constexpr DecodedUleb128 kL2SubstreamId = 1;
+constexpr DecodedUleb128 kStereoSubstreamId = 2;
 
 // TODO(b/305927287): Test computation of linear output gains. Test some cases
 //                    of erroneous input.
@@ -316,6 +317,34 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kL2));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kMono));
   EXPECT_TRUE(labeled_frame.label_to_samples.contains(kDemixedR2));
+}
+
+TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
+  // Configure a stereo audio element. We'd typically expected audio frames to
+  // have two channels.
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  InitAudioElementWithLabelsAndLayers({{kStereoSubstreamId, {kL2, kR2}}},
+                                      {ChannelAudioLayerConfig::kLayoutStereo},
+                                      audio_elements);
+  auto demixing_module =
+      DemixingModule::CreateForReconstruction(audio_elements);
+  ASSERT_THAT(demixing_module, IsOk());
+  std::list<DecodedAudioFrame> decoded_audio_frames;
+  // The decoded audio frame has one channel, which is inconsistent with a
+  // one-layer stereo audio element.
+  const std::vector<int32_t> kErrorOneChannel = {0};
+  decoded_audio_frames.push_back(
+      DecodedAudioFrame{.substream_id = kStereoSubstreamId,
+                        .start_timestamp = kStartTimestamp,
+                        .end_timestamp = kEndTimestamp,
+                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+                        .decoded_samples = {kErrorOneChannel},
+                        .down_mixing_params = DownMixingParams()});
+
+  // Demixing gracefully fails, as we can't determine the missing channel.
+  EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(decoded_audio_frames),
+              Not(IsOk()));
 }
 
 TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
