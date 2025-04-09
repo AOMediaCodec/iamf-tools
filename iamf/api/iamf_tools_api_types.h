@@ -42,6 +42,20 @@ struct [[nodiscard]] IamfStatus {
 
 std::ostream& operator<<(std::ostream& os, const IamfStatus& status);
 
+/*!\brief Indicates the profile version to decode.
+ *
+ * Profiles are defined in the IAMF spec:
+ * https://aomediacodec.github.io/iamf/#obu-iasequenceheader.
+ */
+enum class ProfileVersion {
+  // Simple profile as defined in IAMF v1.0.0-errata.
+  kIamfSimpleProfile = 0,
+  // Base profile as defined in IAMF v1.0.0-errata.
+  kIamfBaseProfile = 1,
+  // Base-Enhanced profile as defined in IAMF v1.1.0.
+  kIamfBaseEnhancedProfile = 2,
+};
+
 /*!\brief Determines the layout of the output file.
  *
  * Typically these correspond with `sound_system`s in the IAMF spec

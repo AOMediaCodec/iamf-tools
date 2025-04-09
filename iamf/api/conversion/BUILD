@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = [
     "//iamf/api/conversion/tests:__pkg__",
     "//iamf/api/decoder:__pkg__",
@@ -17,4 +19,19 @@ cc_library(
         "@com_google_absl//absl/strings",
     ],
 )
+
+cc_library(
+    name = "profile_conversion",
+    srcs = ["profile_conversion.cc"],
+    hdrs = ["profile_conversion.h"],
+    deps = [
+        "//iamf/api:iamf_tools_api_types",
+        "//iamf/obu:ia_sequence_header",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 # keep-sorted end

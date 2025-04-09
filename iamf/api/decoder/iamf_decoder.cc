@@ -104,14 +104,16 @@ IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
 //                                 support for v1.1 via
 //                                 `kIamfBaseEnhancedProfile`.
 // Only permit profiles defined in v1.0.0-errata, for now.
-const absl::flat_hash_set<ProfileVersion> kSimpleAndBaseProfiles = {
-    ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
+const absl::flat_hash_set<::iamf_tools::ProfileVersion> kSimpleAndBaseProfiles =
+    {::iamf_tools::ProfileVersion::kIamfSimpleProfile,
+     ::iamf_tools::ProfileVersion::kIamfBaseProfile};
 
 // Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
 // OBUs have been processed. Contracted to only return a resource exhausted
 // error if there is not enough data to process the descriptor OBUs.
 absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
-    const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
+    const absl::flat_hash_set<::iamf_tools::ProfileVersion>&
+        desired_profile_versions,
     bool contains_all_descriptor_obus,
     StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout,
     std::vector<uint8_t>& output_descriptor_obus) {
