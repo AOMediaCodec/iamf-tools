@@ -243,7 +243,7 @@ IamfDecoder::~IamfDecoder() = default;
 IamfDecoder::IamfDecoder(IamfDecoder&&) = default;
 IamfDecoder& IamfDecoder::operator=(IamfDecoder&&) = default;
 
-IamfStatus IamfDecoder::Create(const OutputLayout& requested_layout,
+IamfStatus IamfDecoder::Create(const Settings& settings,
                                std::unique_ptr<IamfDecoder>& output_decoder) {
   output_decoder = nullptr;
 
@@ -254,18 +254,18 @@ IamfStatus IamfDecoder::Create(const OutputLayout& requested_layout,
         "Internal Error: Failed to create read bit buffer.");
   }
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
-      std::move(read_bit_buffer), ApiToInternalType(requested_layout));
+      std::move(read_bit_buffer), ApiToInternalType(settings.requested_layout));
   output_decoder = absl::WrapUnique(new IamfDecoder(std::move(state)));
   return IamfStatus::OkStatus();
 }
 
 IamfStatus IamfDecoder::CreateFromDescriptors(
-    const OutputLayout& requested_layout, const uint8_t* input_buffer,
+    const Settings& settings, const uint8_t* input_buffer,
     size_t input_buffer_size, std::unique_ptr<IamfDecoder>& output_decoder) {
   output_decoder = nullptr;
   absl::Span<const uint8_t> descriptor_obus(input_buffer, input_buffer_size);
 
-  IamfStatus status = Create(requested_layout, output_decoder);
+  IamfStatus status = Create(settings, output_decoder);
   if (!status.ok()) {
     return status;
   }
