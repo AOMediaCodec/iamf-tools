@@ -192,13 +192,13 @@ absl::Status GetPartitionedSubblocks(
   InternalTimestamp current_time = full_parameter_block.start_timestamp();
 
   // Track that the split subblocks cover the whole partition.
-  int32_t total_covered_duration = 0;
+  InternalTimestamp total_covered_duration = 0;
 
   // Loop through all subblocks in the original Parameter Block.
   const auto num_subblocks = full_parameter_block.num_subblocks();
   for (int i = 0; i < num_subblocks; ++i) {
     // Get the start and end time of this subblock.
-    const int32_t subblock_start_time = current_time;
+    const InternalTimestamp subblock_start_time = current_time;
 
     // The partitioner works directly on the parameter block OBU metadata and
     // assumes all needed information (e.g. subblock duration) is in the
@@ -220,8 +220,9 @@ absl::Status GetPartitionedSubblocks(
     if (!subblock_duration.ok()) {
       return subblock_duration.status();
     }
-    const int32_t subblock_end_time =
-        subblock_start_time + static_cast<int32_t>(*subblock_duration);
+    const InternalTimestamp subblock_end_time =
+        subblock_start_time +
+        static_cast<InternalTimestamp>(*subblock_duration);
     current_time = subblock_end_time;
 
     if (subblock_end_time <= partitioned_start_time ||
@@ -234,12 +235,12 @@ absl::Status GetPartitionedSubblocks(
     // Found an overlapping subblock. Create a new one for the partition that
     // represents the overlapped time.
     iamf_tools_cli_proto::ParameterSubblock partitioned_subblock;
-    const int partitioned_subblock_start =
+    const InternalTimestamp partitioned_subblock_start =
         std::max(partitioned_start_time, subblock_start_time);
-    const int partitioned_subblock_end =
+    const InternalTimestamp partitioned_subblock_end =
         std::min(partitioned_end_time, subblock_end_time);
-    uint32_t partitioned_subblock_duration =
-        partitioned_subblock_end - partitioned_subblock_start;
+    const auto partitioned_subblock_duration = static_cast<uint32_t>(
+        partitioned_subblock_end - partitioned_subblock_start);
     total_covered_duration += partitioned_subblock_duration;
     partitioned_subblock.set_subblock_duration(partitioned_subblock_duration);
 
@@ -353,7 +354,8 @@ absl::Status ParameterBlockPartitioner::FindPartitionDuration(
 
 absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
     const ParameterBlockObuMetadata& full_parameter_block,
-    int32_t partitioned_start_time, int32_t partitioned_end_time,
+    InternalTimestamp partitioned_start_time,
+    InternalTimestamp partitioned_end_time,
     ParameterBlockObuMetadata& partitioned) {
   if (partitioned_start_time >= partitioned_end_time) {
     return absl::InvalidArgumentError(
@@ -392,10 +394,10 @@ absl::Status ParameterBlockPartitioner::PartitionFrameAligned(
     const ParameterBlockObuMetadata& full_parameter_block,
     std::list<ParameterBlockObuMetadata>& partitioned_parameter_blocks) {
   // Partition this parameter block into several blocks with the same duration.
-  const int32_t end_timestamp =
+  const InternalTimestamp end_timestamp =
       full_parameter_block.start_timestamp() + full_parameter_block.duration();
-  for (int32_t t = full_parameter_block.start_timestamp(); t < end_timestamp;
-       t += partition_duration) {
+  for (InternalTimestamp t = full_parameter_block.start_timestamp();
+       t < end_timestamp; t += partition_duration) {
     LOG_EVERY_N_SEC(INFO, 10)
         << "Partitioning parameter blocks at timestamp= " << t;
     ParameterBlockObuMetadata partitioned_parameter_block;

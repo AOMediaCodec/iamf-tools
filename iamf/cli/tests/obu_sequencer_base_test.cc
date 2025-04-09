@@ -846,7 +846,7 @@ TEST(PushDescriptorObus, ForwardsPropertiesToPushSerializedDescriptorObus) {
       codec_config_obu.GetOutputSampleRate();
   const uint8_t kExpectedCommonBitDepth =
       codec_config_obu.GetBitDepthToMeasureLoudness();
-  const std::optional<int64_t> kOmitFirstPts = std::nullopt;
+  const std::optional<InternalTimestamp> kOmitFirstPts = std::nullopt;
   const int kExpectedNumChannels = 2;
   const std::vector<uint8_t> descriptor_obus = {1, 2, 3};
   EXPECT_CALL(
@@ -885,7 +885,7 @@ TEST(PickAndPlace, ForwardsPropertiesToPushSerializedDescriptorObus) {
       codec_config_obu.GetOutputSampleRate();
   const uint8_t kExpectedCommonBitDepth =
       codec_config_obu.GetBitDepthToMeasureLoudness();
-  const std::optional<int64_t> kOmitFirstPts = std::nullopt;
+  const std::optional<InternalTimestamp> kOmitFirstPts = std::nullopt;
   const int kExpectedNumChannels = 2;
   const std::vector<uint8_t> descriptor_obus = {1, 2, 3};
   EXPECT_CALL(
@@ -922,7 +922,8 @@ TEST(PushDescriptorObus,
   const uint32_t kExpectedCommonSamplesPerFrame = 1024;
   const uint32_t kExpectedCommonSampleRate = 48000;
   const uint8_t kExpectedCommonBitDepth = 16;
-  const std::optional<int64_t> kFirstUntrimmedTimestamp = std::nullopt;
+  const std::optional<InternalTimestamp> kFirstUntrimmedTimestamp =
+      std::nullopt;
   const int kExpectedNumChannels = 2;
   EXPECT_CALL(mock_obu_sequencer,
               PushSerializedDescriptorObus(
@@ -963,7 +964,7 @@ TEST(
   const uint32_t kExpectedCommonSamplesPerFrame = 1024;
   const uint32_t kExpectedCommonSampleRate = 48000;
   const uint8_t kExpectedCommonBitDepth = 16;
-  const std::optional<int64_t> kFirstUntrimmedTimestamp = 0;
+  const std::optional<InternalTimestamp> kFirstUntrimmedTimestamp = 0;
   const int kExpectedNumChannels = 2;
   EXPECT_CALL(mock_obu_sequencer,
               PushSerializedDescriptorObus(
@@ -995,7 +996,7 @@ TEST(PickAndPlace, ForwardsDefaultPropertiesForTrivialIaSequences) {
   const uint32_t kExpectedCommonSamplesPerFrame = 1024;
   const uint32_t kExpectedCommonSampleRate = 48000;
   const uint8_t kExpectedCommonBitDepth = 16;
-  const std::optional<int64_t> kFirstUntrimmedTimestamp = 0;
+  const std::optional<InternalTimestamp> kFirstUntrimmedTimestamp = 0;
   const int kExpectedNumChannels = 2;
   EXPECT_CALL(mock_obu_sequencer,
               PushSerializedDescriptorObus(
@@ -1257,7 +1258,8 @@ TEST(PushTemporalUnit,
       kNoParameterBlocks, second_audio_frame, kNoArbitraryObus);
   ASSERT_THAT(second_temporal_unit, IsOk());
   // The first frame is fully trimmed. The second frame is partially trimmed.
-  constexpr std::optional<int64_t> kExpectedFirstUntrimmedTimestamp = 11;
+  constexpr std::optional<InternalTimestamp> kExpectedFirstUntrimmedTimestamp =
+      11;
   MockObuSequencer mock_obu_sequencer(*LebGenerator::Create(),
                                       kDoNotIncludeTemporalDelimiters,
                                       kDelayDescriptorsUntilTrimAtStartIsKnown);
@@ -1298,7 +1300,8 @@ TEST(PickAndPlace,
       kThirdTimestamp, audio_elements, audio_frames);
   audio_frames.back().obu.header_.num_samples_to_trim_at_start = 3;
   // The first frame is fully trimmed. The second frame is partially trimmed.
-  constexpr std::optional<int64_t> kExpectedFirstUntrimmedTimestamp = 11;
+  constexpr std::optional<InternalTimestamp> kExpectedFirstUntrimmedTimestamp =
+      11;
   MockObuSequencer mock_obu_sequencer(*LebGenerator::Create(),
                                       kDoNotIncludeTemporalDelimiters,
                                       kDelayDescriptorsUntilTrimAtStartIsKnown);

@@ -424,6 +424,7 @@ cc_test(
         "//iamf/cli:parameter_block_partitioner",
         "//iamf/cli/proto:parameter_block_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

@@ -81,9 +81,9 @@ const ScalableChannelLayoutConfig kOneLayerStereoConfig{
          .substream_count = 1,
          .coupled_substream_count = 1}}};
 
-constexpr int32_t kStartTimestamp = 0;
-constexpr int32_t kEndTimestamp = 8;
-constexpr int32_t kDuration = 8;
+constexpr InternalTimestamp kStartTimestamp = 0;
+constexpr InternalTimestamp kEndTimestamp = 8;
+constexpr InternalTimestamp kDuration = 8;
 
 TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
   absl::flat_hash_map<DecodedUleb128, AudioElementObu> audio_element_obus;
@@ -322,7 +322,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
 
     // Call `GenerateParameterBlockWithData()` iteratively with one OBU at a
     // time.
-    absl::flat_hash_map<DecodedUleb128, int32_t>
+    absl::flat_hash_map<DecodedUleb128, InternalTimestamp>
         parameter_id_to_last_end_timestamp;
     absl::flat_hash_map<DecodedUleb128, int> parameter_blocks_count;
     for (auto& parameter_block_obu : parameter_block_obus) {
@@ -359,7 +359,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   // the parameters manager.
   void AddCurrentParameterBlocksToParametersManager(
       std::list<ParameterBlockWithData>::iterator& parameter_block_iter) {
-    std::optional<int32_t> global_timestamp = std::nullopt;
+    std::optional<InternalTimestamp> global_timestamp = std::nullopt;
     ASSERT_THAT(
         global_timing_module_->GetGlobalAudioFrameTimestamp(global_timestamp),
         IsOk());
@@ -386,7 +386,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   }
 
   void UpdateParameterStatesIfNeeded() {
-    std::optional<int32_t> global_timestamp = std::nullopt;
+    std::optional<InternalTimestamp> global_timestamp = std::nullopt;
     EXPECT_THAT(
         global_timing_module_->GetGlobalAudioFrameTimestamp(global_timestamp),
         IsOk());
@@ -404,7 +404,8 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
   void ValidateAudioFrameWithData(
       const AudioFrameWithData& audio_frame_with_data,
       const AudioFrameObu& expected_audio_frame_obu,
-      int32_t expected_start_timestamp, int32_t expected_end_timestamp,
+      InternalTimestamp expected_start_timestamp,
+      InternalTimestamp expected_end_timestamp,
       DecodedUleb128 audio_element_id) {
     EXPECT_EQ(audio_frame_with_data.obu, expected_audio_frame_obu);
     EXPECT_EQ(audio_frame_with_data.start_timestamp, expected_start_timestamp);
@@ -572,8 +573,8 @@ TEST_F(GenerateAudioFrameWithDataTest,
 
   // Expectations.
   EXPECT_EQ(audio_frames_with_data.size(), 2);
-  int32_t expected_start_timestamp = kStartTimestamp;
-  int32_t expected_end_timestamp = kEndTimestamp;
+  InternalTimestamp expected_start_timestamp = kStartTimestamp;
+  InternalTimestamp expected_end_timestamp = kEndTimestamp;
   const std::vector<AlphaBetaGammaDelta> expected_alpha_beta_gamma_delta{
       AlphaBetaGammaDelta{0.707, 0.707, 0.707, 0.707},  // `kDMixPMode2`.
       AlphaBetaGammaDelta{1.0, 0.866, 0.866, 0.866}     // `kDMixPMode3`.
@@ -643,10 +644,10 @@ TEST_F(GenerateAudioFrameWithDataTest,
 
   // Expected timestamps for successive temporal units. Same for both
   // substreams.
-  const std::vector<int32_t> expected_start_timestamps = {kStartTimestamp,
-                                                          kStartTimestamp + 8};
-  const std::vector<int32_t> expected_end_timestamps = {kEndTimestamp,
-                                                        kEndTimestamp + 8};
+  const std::vector<InternalTimestamp> expected_start_timestamps = {
+      kStartTimestamp, kStartTimestamp + 8};
+  const std::vector<InternalTimestamp> expected_end_timestamps = {
+      kEndTimestamp, kEndTimestamp + 8};
 
   // Expected {alpha, beta, gamma, delta} for successive temporal units. Same
   // for both substreams.
@@ -704,8 +705,8 @@ TEST_F(GenerateAudioFrameWithDataTest,
 
   // Expectations.
   EXPECT_EQ(audio_frames_with_data.size(), 2);
-  int32_t expected_start_timestamp = kStartTimestamp;
-  int32_t expected_end_timestamp = kEndTimestamp;
+  InternalTimestamp expected_start_timestamp = kStartTimestamp;
+  InternalTimestamp expected_end_timestamp = kEndTimestamp;
   const std::vector<std::array<uint8_t, 12>> expected_recon_gain_values = {
       kFirstReconGainValues, kSecondReconGainValues};
   int frame_index = 0;
@@ -761,8 +762,8 @@ TEST_F(GenerateAudioFrameWithDataTest,
 
   // Expectations.
   EXPECT_EQ(audio_frames_with_data.size(), 2);
-  int32_t expected_start_timestamp = kStartTimestamp;
-  int32_t expected_end_timestamp = kEndTimestamp;
+  InternalTimestamp expected_start_timestamp = kStartTimestamp;
+  InternalTimestamp expected_end_timestamp = kEndTimestamp;
   const std::vector<std::array<uint8_t, 12>> expected_recon_gain_values = {
       kFirstReconGainValues, kSecondReconGainValues};
   const std::vector<AlphaBetaGammaDelta> expected_alpha_beta_gamma_delta = {

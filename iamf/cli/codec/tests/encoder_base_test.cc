@@ -107,8 +107,8 @@ TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
   // `Finalize()` and `Pop()`, because we know an empty list
   // (`finalized_audio_frames_`) is appended at the end.
   const DecodedUleb128 kSubstreamId = 137;
-  const int32_t kStartTimestamp = 77;
-  const int32_t kEndTimestamp = 101;
+  const InternalTimestamp kStartTimestamp = 77;
+  const InternalTimestamp kEndTimestamp = 101;
   const std::vector<uint8_t> kAudioFrame = {1, 7, 5, 3};
   AudioFrameObu obu(ObuHeader(), kSubstreamId, kAudioFrame);
   std::list<AudioFrameWithData> audio_frames;

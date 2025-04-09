@@ -62,7 +62,7 @@ constexpr int64_t kBufferStartSize = 65536;
  * Using absl::btree_map for convenience as this allows iterating by
  * timestamp (which is the key).
  */
-typedef absl::btree_map<int32_t, TemporalUnitView> TemporalUnitMap;
+typedef absl::btree_map<InternalTimestamp, TemporalUnitView> TemporalUnitMap;
 
 /*!\brief Helper class to abort an `ObuSequencerBase` on destruction.
  *
@@ -483,8 +483,7 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
   wb_.Reset();
 
   // Cache the frame for later
-  const int64_t start_timestamp =
-      static_cast<int64_t>(temporal_unit.start_timestamp_);
+  const InternalTimestamp start_timestamp = temporal_unit.start_timestamp_;
   int num_samples = 0;
   RETURN_IF_NOT_OK(WriteTemporalUnit(include_temporal_delimiters_,
                                      temporal_unit, wb_, num_samples));

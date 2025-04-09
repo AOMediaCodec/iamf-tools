@@ -36,8 +36,6 @@ message ParameterBlockObuMetadata {
   optional uint32 num_subblocks = 3;
   optional uint32 constant_subblock_duration = 4;
   repeated ParameterSubblock subblocks = 5;
-  // TODO(b/395159650): Bump up to hold an `int64_t` in order to support very
-  //                    long durations.
-  optional int32 start_timestamp = 6;
+  optional int64 start_timestamp = 6;
   optional ObuHeaderMetadata obu_header = 7;
 }

@@ -23,6 +23,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -58,14 +59,14 @@ ObuSequencerStreamingIamf::GetPreviousSerializedTemporalUnit() const {
 absl::Status ObuSequencerStreamingIamf::PushSerializedDescriptorObus(
     uint32_t /*common_samples_per_frame*/, uint32_t /*common_sample_rate*/,
     uint8_t /*common_bit_depth*/,
-    std::optional<int64_t> /*first_untrimmed_timestamp*/, int /*num_channels*/,
-    absl::Span<const uint8_t> descriptor_obus) {
+    std::optional<InternalTimestamp> /*first_untrimmed_timestamp*/,
+    int /*num_channels*/, absl::Span<const uint8_t> descriptor_obus) {
   CopySpanToVector(descriptor_obus, serialized_descriptor_obus_);
   return absl::OkStatus();
 }
 
 absl::Status ObuSequencerStreamingIamf::PushSerializedTemporalUnit(
-    int64_t /*timestamp*/, int /*num_samples*/,
+    InternalTimestamp /*timestamp*/, int /*num_samples*/,
     absl::Span<const uint8_t> temporal_unit) {
   CopySpanToVector(temporal_unit, previous_serialized_temporal_unit_);
   return absl::OkStatus();

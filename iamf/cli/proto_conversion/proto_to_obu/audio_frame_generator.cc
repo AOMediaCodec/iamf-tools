@@ -428,7 +428,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
     label_to_empty_samples[label] = {};
   }
 
-  std::optional<int32_t> encoded_timestamp;
+  std::optional<InternalTimestamp> encoded_timestamp;
   bool more_samples_to_encode = false;
   do {
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(

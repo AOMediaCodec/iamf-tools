@@ -10,6 +10,7 @@ cc_library(
     deps = [
         ":obu_base",
         ":obu_header",
+        ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",

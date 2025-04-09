@@ -22,6 +22,7 @@
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -58,7 +59,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
   absl::Status PushSerializedDescriptorObus(
       uint32_t /*common_samples_per_frame*/, uint32_t /*common_sample_rate*/,
       uint8_t /*common_bit_depth*/,
-      std::optional<int64_t> /*first_untrimmed_timestamp*/,
+      std::optional<InternalTimestamp> /*first_untrimmed_timestamp*/,
       int /*num_channels*/, absl::Span<const uint8_t> descriptor_obus) override;
 
   /*!\brief Pushes a single temporal unit to some output.
@@ -69,7 +70,7 @@ class ObuSequencerIamf : public ObuSequencerBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PushSerializedTemporalUnit(
-      int64_t /*timestamp*/, int /*num_samples*/,
+      InternalTimestamp /*timestamp*/, int /*num_samples*/,
       absl::Span<const uint8_t> temporal_unit) override;
 
   /*!\brief Pushes the finalized descriptor OBUs to the IAMF file.

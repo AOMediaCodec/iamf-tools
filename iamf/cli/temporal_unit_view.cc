@@ -147,8 +147,7 @@ absl::Status ValidateAllArbitraryObusMatchStatistics(
   for (const auto* arbitrary_obu : arbitrary_obus) {
     RETURN_IF_NOT_OK(ValidateNotNull(arbitrary_obu, "`arbitrary_obu`"));
     RETURN_IF_NOT_OK(ValidateEqual(
-        *arbitrary_obu->insertion_tick_,
-        static_cast<int64_t>(statistics.start_timestamp),
+        *arbitrary_obu->insertion_tick_, statistics.start_timestamp,
         "`insertion_tick` must be the same for  all arbitrary OBUs"));
   }
   return absl::OkStatus();

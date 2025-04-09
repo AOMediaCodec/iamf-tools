@@ -310,7 +310,7 @@ absl::Status ParametersManager::UpdateDemixingState(
 }
 
 absl::Status ParametersManager::UpdateReconGainState(
-    DecodedUleb128 audio_element_id, int32_t expected_timestamp) {
+    DecodedUleb128 audio_element_id, InternalTimestamp expected_timestamp) {
   std::optional<ReconGainState*> recon_gain_state = std::nullopt;
 
   // No additional updating needed.

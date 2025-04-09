@@ -211,8 +211,9 @@ void IamfEncoder::BeginTemporalUnit() {
   }
 }
 
-absl::Status IamfEncoder::GetInputTimestamp(int32_t& input_timestamp) {
-  std::optional<int32_t> timestamp;
+absl::Status IamfEncoder::GetInputTimestamp(
+    InternalTimestamp& input_timestamp) {
+  std::optional<InternalTimestamp> timestamp;
   RETURN_IF_NOT_OK(
       global_timing_module_->GetGlobalAudioFrameTimestamp(timestamp));
   if (!timestamp.has_value()) {

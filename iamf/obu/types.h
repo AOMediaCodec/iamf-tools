@@ -42,7 +42,7 @@ typedef double InternalSampleType;
  * for timing purposes in an IA Sequence. I.e. if the sample rate is 48 kHz,
  * then a timestamp of 1000 represents `1000/48000Hz ~= .02083s`.
  */
-typedef int32_t InternalTimestamp;
+typedef int64_t InternalTimestamp;
 
 }  // namespace iamf_tools
 

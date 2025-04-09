@@ -26,6 +26,7 @@
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/encoder_base.h"
 #include "iamf/obu/audio_frame.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -51,8 +52,8 @@ class EncoderTestBase {
     // `EncodeAudioFrame` only passes on most of the data in the input
     // `AudioFrameWithData`. Simulate the timestamp to ensure frames are
     // returned in the correct order, but most other fields do not matter.
-    const int32_t next_timestamp =
-        cur_timestamp_ + static_cast<int32_t>(num_samples_per_frame_);
+    const InternalTimestamp next_timestamp =
+        cur_timestamp_ + static_cast<InternalTimestamp>(num_samples_per_frame_);
     auto partial_audio_frame_with_data =
         absl::WrapUnique(new AudioFrameWithData{
             .obu = AudioFrameObu(
@@ -131,7 +132,7 @@ class EncoderTestBase {
     }
   }
 
-  int32_t cur_timestamp_ = 0;
+  InternalTimestamp cur_timestamp_ = 0;
 };
 
 }  // namespace iamf_tools

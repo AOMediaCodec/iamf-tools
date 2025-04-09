@@ -587,12 +587,12 @@ class MockObuSequencer : public ObuSequencerBase {
   MOCK_METHOD(absl::Status, PushSerializedDescriptorObus,
               (uint32_t common_samples_per_frame, uint32_t common_sample_rate,
                uint8_t common_bit_depth,
-               std::optional<int64_t> first_untrimmed_timestamp,
+               std::optional<InternalTimestamp> first_untrimmed_timestamp,
                int num_channels, absl::Span<const uint8_t> descriptor_obus),
               (override));
 
   MOCK_METHOD(absl::Status, PushSerializedTemporalUnit,
-              (int64_t timestamp, int num_samples,
+              (InternalTimestamp timestamp, int num_samples,
                absl::Span<const uint8_t> temporal_unit),
               (override));
 

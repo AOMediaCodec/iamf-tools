@@ -1273,7 +1273,7 @@ TEST(ProcessTemporalUnitObusTest,
   EXPECT_FALSE(temporal_delimiter.has_value());
   EXPECT_TRUE(continue_processing);
 
-  const int32_t kObuRelativeTime = 0;
+  const InternalTimestamp kObuRelativeTime = 0;
   float unused_mix_gain;
   EXPECT_THAT(parameter_block_with_data->obu->GetLinearMixGain(kObuRelativeTime,
                                                                unused_mix_gain),

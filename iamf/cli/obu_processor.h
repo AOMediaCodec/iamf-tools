@@ -19,6 +19,7 @@
 #include <optional>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -334,7 +335,7 @@ class ObuProcessor {
     std::list<AudioFrameWithData> audio_frames;
 
     std::optional<TemporalDelimiterObu> temporal_delimiter;
-    std::optional<int32_t> timestamp;
+    std::optional<InternalTimestamp> timestamp;
 
     bool Empty() const {
       return parameter_blocks.empty() && audio_frames.empty();
@@ -351,7 +352,7 @@ class ObuProcessor {
     static void AddDataToCorrectTemporalUnit(
         TemporalUnitData& current_temporal_unit,
         TemporalUnitData& next_temporal_unit, T&& obu_with_data) {
-      const auto new_timestamp = obu_with_data.start_timestamp;
+      const InternalTimestamp new_timestamp = obu_with_data.start_timestamp;
       if (!current_temporal_unit.timestamp.has_value()) {
         current_temporal_unit.timestamp = new_timestamp;
       }

@@ -140,7 +140,7 @@ class IamfEncoder {
    * \param input_timestamp Result of input timestamp.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status GetInputTimestamp(int32_t& input_timestamp);
+  absl::Status GetInputTimestamp(InternalTimestamp& input_timestamp);
 
   /*!\brief Adds audio samples belonging to the same temporal unit.
    *

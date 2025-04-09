@@ -82,7 +82,8 @@ absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
 }
 
 // Mapping from the start timestamps to lists of parameter block metadata.
-typedef absl::flat_hash_map<int32_t, std::list<ParameterBlockObuMetadata>>
+typedef absl::flat_hash_map<InternalTimestamp,
+                            std::list<ParameterBlockObuMetadata>>
     TimeParameterBlockMetadataMap;
 absl::Status OrganizeParameterBlockMetadata(
     const google::protobuf::RepeatedPtrField<ParameterBlockObuMetadata>&
@@ -174,7 +175,7 @@ absl::Status GenerateTemporalUnitObus(
 
     iamf_encoder.BeginTemporalUnit();
 
-    int32_t input_timestamp = 0;
+    InternalTimestamp input_timestamp = 0;
     RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));
 
     // Add audio samples.

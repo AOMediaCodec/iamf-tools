@@ -22,6 +22,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -58,11 +59,11 @@ class ArbitraryObu : public ObuBase {
    * \param invalidates_bitstream Whether writing the OBU invalidates the
    *        bitstream.
    */
-  ArbitraryObu(ObuType obu_type, const ObuHeader& header,
-               const std::vector<uint8_t>& payload,
-               InsertionHook insertion_hook,
-               const std::optional<int64_t>& insertion_tick = std::nullopt,
-               bool invalidates_bitstream = false)
+  ArbitraryObu(
+      ObuType obu_type, const ObuHeader& header,
+      const std::vector<uint8_t>& payload, InsertionHook insertion_hook,
+      const std::optional<InternalTimestamp>& insertion_tick = std::nullopt,
+      bool invalidates_bitstream = false)
       : ObuBase(header, obu_type),
         payload_(payload),
         insertion_hook_(insertion_hook),
@@ -94,7 +95,7 @@ class ArbitraryObu : public ObuBase {
 
   // Metadata.
   const InsertionHook insertion_hook_;
-  const std::optional<int64_t> insertion_tick_;
+  const std::optional<InternalTimestamp> insertion_tick_;
   const bool invalidates_bitstream_;
 
  private:

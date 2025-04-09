@@ -134,8 +134,8 @@ void InitializePrerequisiteObus(
 void ValidateParameterBlocksCommon(
     const std::list<ParameterBlockWithData>& output_parameter_blocks,
     const DecodedUleb128 expected_parameter_id,
-    const std::vector<int32_t>& expected_start_timestamps,
-    const std::vector<int32_t>& expected_end_timestamps) {
+    const std::vector<InternalTimestamp>& expected_start_timestamps,
+    const std::vector<InternalTimestamp>& expected_end_timestamps) {
   EXPECT_EQ(expected_start_timestamps.size(), output_parameter_blocks.size());
   EXPECT_EQ(expected_end_timestamps.size(), output_parameter_blocks.size());
   int block_index = 0;

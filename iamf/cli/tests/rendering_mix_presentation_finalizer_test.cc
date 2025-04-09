@@ -68,8 +68,8 @@ using enum ChannelLabel::Label;
 
 using absl::StatusCode::kFailedPrecondition;
 
-constexpr int64_t kStartTime = 0;
-constexpr int32_t kEndTime = 10;
+constexpr InternalTimestamp kStartTime = 0;
+constexpr InternalTimestamp kEndTime = 10;
 constexpr bool kValidateLoudness = true;
 constexpr bool kDontValidateLoudness = false;
 const std::optional<uint8_t> kNoOverrideBitDepth = std::nullopt;
@@ -205,7 +205,7 @@ class FinalizerTest : public ::testing::Test {
 
   void AddLabeledFrame(DecodedUleb128 audio_element_id,
                        const LabelSamplesMap& label_to_samples,
-                       int32_t end_timestamp,
+                       InternalTimestamp end_timestamp,
                        uint32_t samples_to_trim_at_end = 0,
                        uint32_t samples_to_trim_at_start = 0) {
     IdLabeledFrameMap id_to_labeled_frame;
@@ -259,7 +259,7 @@ class FinalizerTest : public ::testing::Test {
   void IterativeRenderingExpectOk(
       RenderingMixPresentationFinalizer& finalizer,
       const std::list<ParameterBlockWithData>& parameter_blocks) {
-    int64_t start_timestamp = 0;
+    InternalTimestamp start_timestamp = 0;
     for (const auto& id_to_labeled_frame : ordered_labeled_frames_) {
       ASSERT_TRUE(id_to_labeled_frame.contains(kAudioElementId));
       EXPECT_THAT(finalizer.PushTemporalUnit(
@@ -848,7 +848,7 @@ void FinalizeOneFrameAndExpectUserLoudnessIsPreserved(
     const LoudnessInfo& kExpectedLoudness,
     RenderingMixPresentationFinalizer& finalizer) {
   std::list<ParameterBlockWithData> parameter_blocks;
-  int64_t start_timestamp = 0;
+  InternalTimestamp start_timestamp = 0;
   for (const auto& id_to_labeled_frame : ordered_labeled_frames_) {
     ASSERT_TRUE(id_to_labeled_frame.contains(kAudioElementId));
     EXPECT_THAT(finalizer.PushTemporalUnit(

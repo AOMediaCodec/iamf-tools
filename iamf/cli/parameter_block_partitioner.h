@@ -20,6 +20,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -69,7 +70,8 @@ class ParameterBlockPartitioner {
   static absl::Status PartitionParameterBlock(
       const iamf_tools_cli_proto::ParameterBlockObuMetadata&
           full_parameter_block,
-      int32_t partitioned_start_time, int32_t partitioned_end_time,
+      InternalTimestamp partitioned_start_time,
+      InternalTimestamp partitioned_end_time,
       iamf_tools_cli_proto::ParameterBlockObuMetadata&
           partitioned_parameter_block);
 

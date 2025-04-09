@@ -61,8 +61,8 @@ constexpr std::array<uint8_t, 12> kReconGainValues = {
     255, 0, 125, 200, 150, 255, 255, 255, 255, 255, 255, 255};
 constexpr uint32_t kZeroSamplesToTrimAtEnd = 0;
 constexpr uint32_t kZeroSamplesToTrimAtStart = 0;
-constexpr int kStartTimestamp = 0;
-constexpr int kEndTimestamp = 4;
+constexpr InternalTimestamp kStartTimestamp = 0;
+constexpr InternalTimestamp kEndTimestamp = 4;
 constexpr DecodedUleb128 kMonoSubstreamId = 0;
 constexpr DecodedUleb128 kL2SubstreamId = 1;
 constexpr DecodedUleb128 kStereoSubstreamId = 2;

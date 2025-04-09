@@ -660,7 +660,7 @@ absl::Status StoreSamplesForAudioElementId(
   if (audio_frames_or_decoded_audio_frames.empty()) {
     return absl::OkStatus();
   }
-  const int32_t common_start_timestamp =
+  const InternalTimestamp common_start_timestamp =
       audio_frames_or_decoded_audio_frames.begin()->start_timestamp;
 
   for (auto& audio_frame : audio_frames_or_decoded_audio_frames) {

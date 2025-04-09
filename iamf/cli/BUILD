@@ -304,6 +304,7 @@ cc_library(
         "//iamf/obu:parameter_block",
         "//iamf/obu:temporal_delimiter",
         "//iamf/obu:types",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",
@@ -360,6 +361,7 @@ cc_library(
         "//iamf/common:leb_generator",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
@@ -374,6 +376,7 @@ cc_library(
     deps = [
         ":obu_sequencer_base",
         "//iamf/common:leb_generator",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",

@@ -21,6 +21,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -123,8 +124,8 @@ absl::Status CreateMinimalParameterBlockObuMetadata(
 struct PartitionParameterBlocksTestCase {
   std::vector<uint32_t> input_subblock_durations;
   std::vector<MixGainParameterData> input_mix_gains;
-  int32_t partition_start;
-  int32_t partition_end;
+  InternalTimestamp partition_start;
+  InternalTimestamp partition_end;
   std::vector<uint32_t> expected_partition_durations;
   std::vector<MixGainParameterData> expected_output_mix_gains;
   uint32_t constant_subblock_duration;
@@ -418,9 +419,9 @@ TEST(PartitionParameterBlock, InvalidWhenSubblockBoundaryIsCrossedForDemixing) {
 
 TEST(PartitionParameterBlock,
      IsEquivalentWhenSubblockBoundaryIsNotCrossedForReconGain) {
-  const int32_t kStartDuration = 0;
-  const int32_t kEndDuration = 4000;
-  const int32_t kExpectedDuration = kEndDuration - kStartDuration;
+  const InternalTimestamp kStartDuration = 0;
+  const InternalTimestamp kEndDuration = 4000;
+  const InternalTimestamp kExpectedDuration = kEndDuration - kStartDuration;
   ParameterBlockObuMetadata full_parameter_block;
   google::protobuf::TextFormat::ParseFromString(
       R"pb(

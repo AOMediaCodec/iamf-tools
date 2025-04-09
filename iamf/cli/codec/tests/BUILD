@@ -8,6 +8,7 @@ cc_library(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli/codec:encoder_base",
         "//iamf/obu:audio_frame",
+        "//iamf/obu:types",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
