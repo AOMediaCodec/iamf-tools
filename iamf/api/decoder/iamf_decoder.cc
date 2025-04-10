@@ -377,12 +377,6 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
       state_->channel_reorderer);
 }
 
-IamfStatus IamfDecoder::ConfigureMixPresentationId(
-    MixPresentationId mix_presentation_id) {
-  return IamfStatus::ErrorStatus(
-      "Unimplemented: ConfigureMixPresentationId is not yet implemented.");
-}
-
 void IamfDecoder::ConfigureOutputSampleType(
     OutputSampleType output_sample_type) {
   state_->output_sample_type = output_sample_type;
@@ -436,13 +430,6 @@ IamfStatus IamfDecoder::GetNumberOfOutputChannels(
   }
   return AbslToIamfStatus(MixPresentationObu::GetNumChannelsFromLayout(
       state_->layout, output_num_channels));
-}
-
-IamfStatus IamfDecoder::GetMixPresentations(
-    std::vector<MixPresentationMetadata>& output_mix_presentation_metadata)
-    const {
-  return IamfStatus::ErrorStatus(
-      "Unimplemented: GetMixPresentations is not yet implemented.");
 }
 
 OutputSampleType IamfDecoder::GetOutputSampleType() const {

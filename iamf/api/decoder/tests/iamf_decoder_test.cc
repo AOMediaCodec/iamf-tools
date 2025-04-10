@@ -133,9 +133,6 @@ TEST(IamfDecoder,
   EXPECT_FALSE(decoder->GetSampleRate(sample_rate).ok());
   uint32_t frame_size;
   EXPECT_FALSE(decoder->GetFrameSize(frame_size).ok());
-  std::vector<api::MixPresentationMetadata> output_mix_presentation_metadatas;
-  EXPECT_FALSE(
-      decoder->GetMixPresentations(output_mix_presentation_metadatas).ok());
 }
 
 TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {

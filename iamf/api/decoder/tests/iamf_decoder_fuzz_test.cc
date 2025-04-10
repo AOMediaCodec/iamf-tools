@@ -77,8 +77,6 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
   auto unused_decode_status =
       iamf_decoder->Decode(bitstream.data(), bitstream.size());
   iamf_decoder->ConfigureOutputSampleType(output_sample_type);
-  auto unused_configure_status =
-      iamf_decoder->ConfigureMixPresentationId(mix_presentation_id);
 }
 
 // // TODO(b/378912426): Update this to support all output layouts.

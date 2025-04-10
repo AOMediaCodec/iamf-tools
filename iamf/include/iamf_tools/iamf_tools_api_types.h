@@ -148,25 +148,6 @@ enum class ChannelOrdering {
   kOrderingForAndroid = 1,
 };
 
-/*!\brief A unique identifier for a `MixPresentation` in the IAMF stream. */
-using MixPresentationId = uint32_t;
-
-/*!\brief A name:value tag describing a `MixPresentation` in the IAMF stream. */
-struct MixPresentationTag {
-  std::string tag_name;
-  std::string tag_value;
-};
-
-/*!\brief Metadata that describes a mix presentation.
- *
- * Used by a user to determine which mix presentation they would like to
- * configure the decoder with.
- */
-struct MixPresentationMetadata {
-  MixPresentationId id;
-  std::vector<MixPresentationTag> tags;
-};
-
 }  // namespace api
 }  // namespace iamf_tools
 

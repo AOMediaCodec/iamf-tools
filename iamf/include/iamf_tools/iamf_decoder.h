@@ -39,8 +39,6 @@ namespace api {
  * for chunk of data in iamf stream:
  *    decoder.Decode()
  *    if (IsDescriptorProcessingComplete()) {
- *      decoder.GetMixPresentations(output_mix_presentation_ids)
- *      decoder.ConfigureMixPresentationId(mix_presentation_id)
  *      decoder.ConfigureOutputSampleType(output_sample_type)
  *    }
  * for chunk of data in iamf stream:
@@ -121,13 +119,6 @@ class IamfDecoder {
   static IamfStatus CreateFromDescriptors(
       const IamfDecoder::Settings& settings, const uint8_t* input_buffer,
       size_t input_buffer_size, std::unique_ptr<IamfDecoder>& output_decoder);
-
-  /*!\brief Configures the decoder with the desired mix presentation.
-   *
-   * \param mix_presentation_id Specifies the desired mix presentation.
-   * \return Ok status upon success. Other specific statuses on failure.
-   */
-  IamfStatus ConfigureMixPresentationId(MixPresentationId mix_presentation_id);
 
   /*!\brief Configures the decoder with the desired bit depth.
    *
@@ -220,21 +211,6 @@ class IamfDecoder {
    * \return Ok status upon success. Other specific statuses on failure.
    */
   IamfStatus GetNumberOfOutputChannels(int& output_num_channels) const;
-
-  /*!\brief Provides mix presentation information from the descriptor OBUs.
-   *
-   * This function can be used to determine which mix presentation the user
-   * would like to configure the decoder with.
-   *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
-   *
-   * \param output_mix_presentation_metadatas Output parameter for the mix
-   *        presentation metadata.
-   * \return Ok status upon success. Other specific statuses on failure.
-   */
-  IamfStatus GetMixPresentations(std::vector<MixPresentationMetadata>&
-                                     output_mix_presentation_metadatas) const;
 
   /*!\brief Returns the current OutputSampleType.
    *
