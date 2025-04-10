@@ -83,7 +83,7 @@ Sound System B (0+5+0)  | ITU-2051-3               | L, R, C, LFE, Ls, Rs
 Sound System C (2+5+0)  | ITU-2051-3               | L, R, C, LFE, Ls, Rs, Ltf, Rtf
 Sound System D (4+5+0)  | ITU-2051-3               | L, R, C, LFE, Ls, Rs, Ltf, Rtf, Ltr, Rtr
 Sound System E (4+5+1)  | ITU-2051-3               | L, R, C, LFE, Ls, Rs, Ltf, Rtf, Ltr, Rtr, Cbf
-Sound System F (3+7+0)  | ITU-2051-3               | C, L, R, LH, RH, LS, LB, RB, CH, LFE1, LFE2
+Sound System F (3+7+0)  | ITU-2051-3               | C, L, R, LH, RH, LS, RS, LB, RB, CH, LFE1, LFE2
 Sound System G (4+9+0)  | ITU-2051-3               | L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf, Ltb, Rtb, Lsc, Rsc
 Sound System H (9+10+3) | ITU-2051-3               | FL, FR, FC, LFE1, BL, BR, FLc, FRc, BC, LFE2, SiL, SiR, TpFL, TpFR, TpFC, TpC, TpBL, TpBR, TpSiL, TpSiR, TpBC, BtFC, BtFL, BtFR
 Sound System I (0+7+0)  | ITU_2051-3               | L, R, C, LFE, Lss, Rss, Lrs, Rrs

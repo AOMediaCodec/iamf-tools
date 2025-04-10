@@ -86,7 +86,7 @@ enum class OutputLayout {
   kItu2051_SoundSystemE_4_5_1 = 4,
 
   // ITU-R B.S. 2051-3 sound system F (3+7+0).
-  // Ordered as [C, L, R, LH, RH, LS, LB, RB, CH, LFE1, LFE2].
+  // Ordered as [C, L, R, LH, RH, LS, RS, LB, RB, CH, LFE1, LFE2].
   kItu2051_SoundSystemF_3_7_0 = 5,
 
   // ITU-R B.S. 2051-3 sound system G (4+9+0).
@@ -112,7 +112,7 @@ enum class OutputLayout {
   kIAMF_SoundSystemExtension_2_7_0 = 10,
 
   // IAMF extension 3.1.2.
-  // Ordered as [L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf].
+  // Ordered as [L, R, C, LFE, Ltf, Rtf].
   kIAMF_SoundSystemExtension_2_3_0 = 11,
 
   // Mono.
