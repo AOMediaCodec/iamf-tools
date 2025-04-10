@@ -117,7 +117,7 @@ void ReorderSoundSystemHForAndroid(std::vector<std::vector<int32_t>>& samples) {
     tick[16] = originals[20];
     // 17-19 are the same.
     tick[20] = originals[22];
-    tick[21] = originals[21];
+    // 21 is the same.
     tick[22] = originals[23];
     tick[23] = originals[9];
   }
