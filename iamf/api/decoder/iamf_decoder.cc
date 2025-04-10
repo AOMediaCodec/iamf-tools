@@ -27,6 +27,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
+#include "iamf/api/conversion/profile_conversion.h"
 #include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
@@ -49,10 +50,17 @@ struct IamfDecoder::DecoderState {
    * \param read_bit_buffer Buffer to decode from.
    * \param requested_layout User-requested layout, the actual layout may be
    *        different depending on the mix presentations.
+   * \param requested_profile_versions User-requested profile versions, the
+   *        actual profile version may be different depending on the mix
+   *        presentations.
    */
   DecoderState(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer,
-               const Layout& requested_layout)
-      : read_bit_buffer(std::move(read_bit_buffer)), layout(requested_layout) {}
+               const Layout& requested_layout,
+               const absl::flat_hash_set<::iamf_tools::ProfileVersion>&
+                   requested_profile_versions)
+      : read_bit_buffer(std::move(read_bit_buffer)),
+        layout(requested_layout),
+        desired_profile_versions(requested_profile_versions) {}
 
   // Current status of the decoder.
   DecoderStatus status = DecoderStatus::kAcceptingData;
@@ -81,6 +89,11 @@ struct IamfDecoder::DecoderState {
   // True iff the decoder was created via CreateFromDescriptors().
   bool created_from_descriptors = false;
 
+  // Cache the profile versions that the user is interested in, we use them to
+  // select an appropriate mix presentation.
+  const absl::flat_hash_set<::iamf_tools::ProfileVersion>
+      desired_profile_versions;
+
   // Once descriptors have been processed, they are stored here. This is useful
   // for Reset() purposes, in which we can recreate the ObuProcessor with the
   // original descriptors in order to ensure that the state of the processor is
@@ -99,14 +112,6 @@ IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
         absl_status.ToString(absl::StatusToStringMode::kDefault));
   }
 }
-
-// TODO(b/377554944, b/392950028): Add API controls for this. Such as adding
-//                                 support for v1.1 via
-//                                 `kIamfBaseEnhancedProfile`.
-// Only permit profiles defined in v1.0.0-errata, for now.
-const absl::flat_hash_set<::iamf_tools::ProfileVersion> kSimpleAndBaseProfiles =
-    {::iamf_tools::ProfileVersion::kIamfSimpleProfile,
-     ::iamf_tools::ProfileVersion::kIamfBaseProfile};
 
 // Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
 // OBUs have been processed. Contracted to only return a resource exhausted
@@ -253,8 +258,17 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
     return IamfStatus::ErrorStatus(
         "Internal Error: Failed to create read bit buffer.");
   }
+
+  // Cache the internal representation of the profile versions. Depending on
+  // creation mode, we may not have all the descriptors yet.
+  absl::flat_hash_set<::iamf_tools::ProfileVersion> desired_profile_versions;
+  for (const auto& profile_version : settings.requested_profile_versions) {
+    desired_profile_versions.insert(ApiToInternalType(profile_version));
+  }
+
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
-      std::move(read_bit_buffer), ApiToInternalType(settings.requested_layout));
+      std::move(read_bit_buffer), ApiToInternalType(settings.requested_layout),
+      desired_profile_versions);
   output_decoder = absl::WrapUnique(new IamfDecoder(std::move(state)));
   return IamfStatus::OkStatus();
 }
@@ -279,7 +293,7 @@ IamfStatus IamfDecoder::CreateFromDescriptors(
   }
 
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(kSimpleAndBaseProfiles,
+      CreateObuProcessor(output_decoder->state_->desired_profile_versions,
                          /*contains_all_descriptor_obus=*/true,
                          output_decoder->state_->read_bit_buffer.get(),
                          output_decoder->state_->layout,
@@ -307,7 +321,7 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
   }
   if (!IsDescriptorProcessingComplete()) {
     auto obu_processor = CreateObuProcessor(
-        kSimpleAndBaseProfiles,
+        state_->desired_profile_versions,
         /*contains_all_descriptor_obus=*/false, state_->read_bit_buffer.get(),
         state_->layout, state_->descriptor_obus);
     if (obu_processor.ok()) {
@@ -461,7 +475,7 @@ IamfStatus IamfDecoder::Reset() {
     return AbslToIamfStatus(absl_status);
   }
   absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(kSimpleAndBaseProfiles,
+      CreateObuProcessor(state_->desired_profile_versions,
                          /*contains_all_descriptor_obus=*/true,
                          state_->read_bit_buffer.get(), state_->layout,
                          state_->descriptor_obus);

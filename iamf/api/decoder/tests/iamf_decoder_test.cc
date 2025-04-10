@@ -71,6 +71,33 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
                                 &mix_presentation_obus.front()});
 }
 
+std::vector<uint8_t> GenerateBaseEnhancedDescriptorObus() {
+  const IASequenceHeaderObu ia_sequence_header(
+      ObuHeader(), IASequenceHeaderObu::kIaCode,
+      ProfileVersion::kIamfBaseEnhancedProfile,
+      ProfileVersion::kIamfBaseEnhancedProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
+                     kSampleRate, codec_configs);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  // Fourth-order ambisonics uses too many channels for simple or base
+  // profile, but it permitted in base-enhanced profile.
+  constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds =
+      {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+       13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      kFourthOrderAmbisonicsSubstreamIds, codec_configs, audio_elements);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  return SerializeObusExpectOk({&ia_sequence_header,
+                                &codec_configs.at(kFirstCodecConfigId),
+                                &audio_elements.at(kFirstAudioElementId).obu,
+                                &mix_presentation_obus.front()});
+}
+
 api::IamfDecoder::Settings GetStereoDecoderSettings() {
   return {
       .requested_layout = api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
@@ -278,6 +305,91 @@ TEST(CreateFromDescriptors, FailsWithDescriptorObuInSubsequentDecode) {
   auto second_chunk = SerializeObusExpectOk({&mix_presentation_obus.front()});
 
   EXPECT_FALSE(decoder->Decode(second_chunk.data(), second_chunk.size()).ok());
+}
+
+TEST(CreateThenDecode, FailsWhenNoMatchingProfileVersionIsFound) {
+  // Configure a "legacy" decoder with only the base profile. E.g. mimic a
+  // client that may not want to spend additional CPU cycles on handling
+  // base-enhanced profile.
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kSettingsWithoutBaseEnhancedProfile = {
+      .requested_profile_versions = {api::ProfileVersion::kIamfBaseProfile}};
+  const auto status =
+      api::IamfDecoder::Create(kSettingsWithoutBaseEnhancedProfile, decoder);
+  EXPECT_TRUE(status.ok());
+
+  // The descriptors are base-enhanced with no backwards compatibility features.
+  auto descriptors = GenerateBaseEnhancedDescriptorObus();
+  EXPECT_TRUE(decoder->Decode(descriptors.data(), descriptors.size()).ok());
+  // Once we see the start of a temporal unit, we know that no remaining mixes
+  // match the requested profile.
+  const TemporalDelimiterObu temporal_delimiter_obu =
+      TemporalDelimiterObu(ObuHeader());
+  const auto serialized_temporal_delimiter =
+      SerializeObusExpectOk({&temporal_delimiter_obu});
+
+  // No mix matches the requested profile. Nothing can be decoded.
+  EXPECT_FALSE(decoder
+                   ->Decode(serialized_temporal_delimiter.data(),
+                            serialized_temporal_delimiter.size())
+                   .ok());
+}
+
+TEST(CreateThenDecode, SucceedsWithBaseEnhancedProfileWhenConfigured) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kSettingsWithBaseEnhancedProfile = {
+      .requested_profile_versions = {
+          api::ProfileVersion::kIamfBaseEnhancedProfile}};
+  const auto status =
+      api::IamfDecoder::Create(kSettingsWithBaseEnhancedProfile, decoder);
+  EXPECT_TRUE(status.ok());
+
+  auto descriptors = GenerateBaseEnhancedDescriptorObus();
+  EXPECT_TRUE(decoder->Decode(descriptors.data(), descriptors.size()).ok());
+
+  // Once we see the start of a temporal unit, we know all descriptors are
+  // processed.
+  const TemporalDelimiterObu temporal_delimiter_obu =
+      TemporalDelimiterObu(ObuHeader());
+  const auto serialized_temporal_delimiter =
+      SerializeObusExpectOk({&temporal_delimiter_obu});
+  EXPECT_TRUE(decoder
+                  ->Decode(serialized_temporal_delimiter.data(),
+                           serialized_temporal_delimiter.size())
+                  .ok());
+  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
+}
+
+TEST(CreateFromDescriptors, FailsWhenNoMatchingProfileVersionIsFound) {
+  // Configure a "legacy" decoder with only the base profile. E.g. mimic a
+  // client that may not want to spend additional CPU cycles on handling
+  // base-enhanced profile.
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kSettingsWithoutBaseEnhancedProfile = {
+      .requested_profile_versions = {api::ProfileVersion::kIamfSimpleProfile}};
+  auto descriptors = GenerateBaseEnhancedDescriptorObus();
+
+  auto status = api::IamfDecoder::CreateFromDescriptors(
+      kSettingsWithoutBaseEnhancedProfile, descriptors.data(),
+      descriptors.size(), decoder);
+
+  // No relevant mix was found. Nothing can be decoded.
+  EXPECT_FALSE(status.ok());
+}
+
+TEST(CreateFromDescriptors, SucceedsWithBaseEnhancedProfileWhenConfigured) {
+  // Configure a decoder which may use base-enhanced profile.
+  std::unique_ptr<api::IamfDecoder> decoder;
+  const api::IamfDecoder::Settings kSettingsWithBaseEnhancedProfile = {
+      .requested_profile_versions = {
+          api::ProfileVersion::kIamfBaseEnhancedProfile}};
+  auto descriptors = GenerateBaseEnhancedDescriptorObus();
+
+  // Ok. The descriptors are suitable for the requested profiles.
+  auto status = api::IamfDecoder::CreateFromDescriptors(
+      kSettingsWithBaseEnhancedProfile, descriptors.data(), descriptors.size(),
+      decoder);
+  EXPECT_TRUE(status.ok());
 }
 
 TEST(Decode, SucceedsAndProcessesDescriptorsWithTemporalDelimiterAtEnd) {

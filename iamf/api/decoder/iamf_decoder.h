@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "iamf/api/iamf_tools_api_types.h"
@@ -66,6 +67,19 @@ class IamfDecoder {
     // `IsDescriptorProcessingComplete` returns true, a default layout will have
     // been selected and retrievable via `GetOutputLayout`.
     OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
+
+    // Specifies the desired profile versions. Clients should explicitly provide
+    // the profiles they are interested in. Otherwise, the default value will
+    // evolve in the future, based on recommendations or additions to the IAMF
+    // spec.
+    //
+    // If the descriptor OBUs do not contain a mix presentation which is
+    // suitable for one of the matching profiles the decoder will return an
+    // error. Typically all profiles the client is capable of handling should
+    // be provided, to ensure compatibility with as many mixes as possible.
+    std::unordered_set<ProfileVersion> requested_profile_versions = {
+        ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile,
+        ProfileVersion::kIamfBaseEnhancedProfile};
   };
 
   // Dtor cannot be inline (so it must be declared and defined in the source
