@@ -7,6 +7,7 @@ cc_library(
     hdrs = ["iamf_decoder.h"],
     deps = [
         "//iamf/api:iamf_tools_api_types",
+        "//iamf/api/conversion:channel_reorderer",
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/api/conversion:profile_conversion",
         "//iamf/cli:obu_processor",

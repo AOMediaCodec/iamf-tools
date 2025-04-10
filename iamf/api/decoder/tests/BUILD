@@ -34,6 +34,7 @@ cc_test(
         "//iamf/obu:temporal_delimiter",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

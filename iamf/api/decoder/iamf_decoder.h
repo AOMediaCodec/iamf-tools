@@ -68,6 +68,10 @@ class IamfDecoder {
     // been selected and retrievable via `GetOutputLayout`.
     OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
 
+    // Specify a different ordering for the output samples.  Only specific
+    // orderings are available, custom or granular control is not possible.
+    ChannelOrdering channel_ordering = ChannelOrdering::kIamfOrdering;
+
     // Specifies the desired profile versions. Clients should explicitly provide
     // the profiles they are interested in. Otherwise, the default value will
     // evolve in the future, based on recommendations or additions to the IAMF

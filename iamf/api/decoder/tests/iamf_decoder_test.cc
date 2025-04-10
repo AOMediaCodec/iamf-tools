@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 #include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -455,6 +456,57 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
                      temporal_unit.end());
 
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+}
+
+TEST(Decode, ReordersSamplesIfRequested) {
+  api::IamfDecoder::Settings settings = {
+      .requested_layout = api::OutputLayout::kItu2051_SoundSystemI_0_7_0,
+      .channel_ordering = api::ChannelOrdering::kIamfOrdering,
+  };
+  auto descriptors = GenerateBasicDescriptorObus();
+  std::unique_ptr<api::IamfDecoder> regular_decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::CreateFromDescriptors(
+          settings, descriptors.data(), descriptors.size(), regular_decoder)
+          .ok());
+  settings.channel_ordering = api::ChannelOrdering::kOrderingForAndroid;
+  std::unique_ptr<api::IamfDecoder> reordering_decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::CreateFromDescriptors(
+          settings, descriptors.data(), descriptors.size(), reordering_decoder)
+          .ok());
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_unit = SerializeObusExpectOk({&audio_frame});
+  ASSERT_TRUE(
+      regular_decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
+  ASSERT_TRUE(
+      reordering_decoder->Decode(temporal_unit.data(), temporal_unit.size())
+          .ok());
+
+  const size_t expected_output_size =
+      8 * 4 * 8;  // 8 samples, 32-bit ints, 7.1.
+  std::vector<uint8_t> regular_output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_TRUE(regular_decoder
+                  ->GetOutputTemporalUnit(regular_output_data.data(),
+                                          regular_output_data.size(),
+                                          bytes_written)
+                  .ok());
+  std::vector<uint8_t> reordered_output_data(expected_output_size);
+  EXPECT_TRUE(reordering_decoder
+                  ->GetOutputTemporalUnit(reordered_output_data.data(),
+                                          reordered_output_data.size(),
+                                          bytes_written)
+                  .ok());
+
+  auto regular = absl::MakeSpan(regular_output_data);
+  auto reordered = absl::MakeSpan(reordered_output_data);
+  // First 4 samples should be same.
+  EXPECT_EQ(regular.first(16), reordered.first(16));
+  // Expect last 4 to be swapped.
+  EXPECT_EQ(regular.subspan(16, 8), reordered.subspan(24, 8));
+  EXPECT_EQ(regular.subspan(24, 8), reordered.subspan(16, 8));
 }
 
 TEST(Decode, SucceedsWithMultipleTemporalUnits) {

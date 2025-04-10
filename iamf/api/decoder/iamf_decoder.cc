@@ -19,6 +19,7 @@
 #include <queue>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
@@ -26,6 +27,7 @@
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/api/conversion/channel_reorderer.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
 #include "iamf/api/conversion/profile_conversion.h"
 #include "iamf/api/iamf_tools_api_types.h"
@@ -99,6 +101,11 @@ struct IamfDecoder::DecoderState {
   // original descriptors in order to ensure that the state of the processor is
   // clean.
   std::vector<uint8_t> descriptor_obus;
+
+  ChannelReorderer::RearrangementScheme channel_rearrangement_scheme =
+      ChannelReorderer::RearrangementScheme::kDefaultNoOp;
+  // Created after DescriptorObus are processed and final Layout is known.
+  std::optional<ChannelReorderer> channel_reorderer = std::nullopt;
 };
 
 namespace {
@@ -110,6 +117,17 @@ IamfStatus AbslToIamfStatus(const absl::Status& absl_status) {
   } else {
     return IamfStatus::ErrorStatus(
         absl_status.ToString(absl::StatusToStringMode::kDefault));
+  }
+}
+
+ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
+    ChannelOrdering channel_ordering) {
+  switch (channel_ordering) {
+    case ChannelOrdering::kOrderingForAndroid:
+      return ChannelReorderer::RearrangementScheme::kReorderForAndroid;
+    case ChannelOrdering::kIamfOrdering:
+    default:
+      return ChannelReorderer::RearrangementScheme::kDefaultNoOp;
   }
 }
 
@@ -155,7 +173,8 @@ absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
 IamfStatus ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
-    std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples) {
+    std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples,
+    std::optional<ChannelReorderer> channel_reorderer) {
   LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
   bool continue_processing = true;
   const auto start_position_bits = read_bit_buffer->Tell();
@@ -179,9 +198,13 @@ IamfStatus ProcessAllTemporalUnits(
       if (!absl_status.ok()) {
         return AbslToIamfStatus(absl_status);
       }
-      rendered_pcm_samples.push(
+      auto temporal_unit =
           std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
-                      rendered_pcm_samples_for_temporal_unit.end()));
+                      rendered_pcm_samples_for_temporal_unit.end());
+      if (channel_reorderer.has_value()) {
+        channel_reorderer->Reorder(temporal_unit);
+      }
+      rendered_pcm_samples.push(std::move(temporal_unit));
     }
   }
   // Empty the buffer of the data that was processed thus far.
@@ -269,6 +292,8 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
       std::move(read_bit_buffer), ApiToInternalType(settings.requested_layout),
       desired_profile_versions);
+  state->channel_rearrangement_scheme =
+      ChannelOrderingApiToInternalType(settings.channel_ordering);
   output_decoder = absl::WrapUnique(new IamfDecoder(std::move(state)));
   return IamfStatus::OkStatus();
 }
@@ -338,9 +363,18 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
   }
 
   // At this stage, we know that we've processed all descriptor OBUs.
+  if (std::holds_alternative<LoudspeakersSsConventionLayout>(
+          state_->layout.specific_layout)) {
+    auto sound_system =
+        std::get<LoudspeakersSsConventionLayout>(state_->layout.specific_layout)
+            .sound_system;
+    state_->channel_reorderer = ChannelReorderer::Create(
+        sound_system, state_->channel_rearrangement_scheme);
+  }
   return ProcessAllTemporalUnits(
       state_->read_bit_buffer.get(), state_->obu_processor.get(),
-      state_->created_from_descriptors, state_->rendered_pcm_samples);
+      state_->created_from_descriptors, state_->rendered_pcm_samples,
+      state_->channel_reorderer);
 }
 
 IamfStatus IamfDecoder::ConfigureMixPresentationId(

@@ -136,6 +136,18 @@ enum class OutputSampleType {
   kInt32LittleEndian = 2,
 };
 
+enum class ChannelOrdering {
+  // Ordering as specified in the above OutputLayout enum, in the ITU/IAMF
+  // order.
+  // This is the default behaviour.
+  kIamfOrdering = 0,
+  // Ordering to match that found in Android's AudioFormat.java.  See
+  // https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/media/java/android/media/AudioFormat.java
+  // Also matches Windows/WAVE for the channels that are defined. See
+  // https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ksmedia/ns-ksmedia-waveformatextensible
+  kOrderingForAndroid = 1,
+};
+
 /*!\brief A unique identifier for a `MixPresentation` in the IAMF stream. */
 using MixPresentationId = uint32_t;
 
