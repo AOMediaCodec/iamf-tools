@@ -14,7 +14,7 @@
 #define API_CONVERSION_PROFILE_CONVERSION_H_
 
 #include "absl/status/statusor.h"
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

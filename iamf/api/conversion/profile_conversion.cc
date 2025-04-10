@@ -16,7 +16,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

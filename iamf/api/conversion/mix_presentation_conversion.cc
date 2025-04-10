@@ -17,7 +17,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {

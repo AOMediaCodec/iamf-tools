@@ -17,8 +17,8 @@
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
-#include "iamf/api/decoder/iamf_decoder.h"
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_decoder.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
 namespace iamf_tools {
 namespace {

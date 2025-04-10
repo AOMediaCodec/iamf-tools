@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/api/decoder/iamf_decoder.h"
+#include "iamf/include/iamf_tools/iamf_decoder.h"
 
 #include <array>
 #include <cstddef>
@@ -22,11 +22,11 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
 #include "gtest/gtest.h"
-#include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"

@@ -19,7 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf_tools_api_types.h"
 
 namespace iamf_tools {
 namespace api {

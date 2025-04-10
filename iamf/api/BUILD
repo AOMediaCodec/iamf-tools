@@ -4,7 +4,9 @@ package(default_visibility = ["//iamf/api:__subpackages__"])
 cc_library(
     name = "iamf_tools_api_types",
     srcs = ["iamf_tools_api_types.cc"],
-    hdrs = ["iamf_tools_api_types.h"],
+    hdrs = [
+        "//iamf/include/iamf_tools:iamf_tools_api_types_header",
+    ],
 )
 
 # keep-sorted end

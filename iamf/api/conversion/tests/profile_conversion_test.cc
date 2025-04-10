@@ -17,7 +17,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/api/iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {

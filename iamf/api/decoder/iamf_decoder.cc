@@ -10,7 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
-#include "iamf/api/decoder/iamf_decoder.h"
+#include "iamf/include/iamf_tools/iamf_decoder.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -30,12 +30,12 @@
 #include "iamf/api/conversion/channel_reorderer.h"
 #include "iamf/api/conversion/mix_presentation_conversion.h"
 #include "iamf/api/conversion/profile_conversion.h"
-#include "iamf/api/iamf_tools_api_types.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 

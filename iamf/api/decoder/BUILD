@@ -4,7 +4,9 @@ package(default_visibility = ["//iamf/api/decoder/tests:__pkg__"])
 cc_library(
     name = "iamf_decoder",
     srcs = ["iamf_decoder.cc"],
-    hdrs = ["iamf_decoder.h"],
+    hdrs = [
+        "//iamf/include/iamf_tools:iamf_decoder_header",
+    ],
     deps = [
         "//iamf/api:iamf_tools_api_types",
         "//iamf/api/conversion:channel_reorderer",
