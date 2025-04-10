@@ -7,6 +7,15 @@ package(default_visibility = [
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
+    name = "channel_reorderer",
+    srcs = ["channel_reorderer.cc"],
+    hdrs = ["channel_reorderer.h"],
+    deps = [
+        "//iamf/obu:mix_presentation",
+    ],
+)
+
+cc_library(
     name = "mix_presentation_conversion",
     srcs = ["mix_presentation_conversion.cc"],
     hdrs = ["mix_presentation_conversion.h"],
