@@ -64,6 +64,9 @@ struct IamfDecoder::DecoderState {
         layout(requested_layout),
         desired_profile_versions(requested_profile_versions) {}
 
+  /*!\brief Creates an ObuProcessor and maintains related bookeeping. */
+  absl::Status CreateObuProcessor();
+
   // Current status of the decoder.
   DecoderStatus status = DecoderStatus::kAcceptingData;
 
@@ -108,6 +111,48 @@ struct IamfDecoder::DecoderState {
   std::optional<ChannelReorderer> channel_reorderer = std::nullopt;
 };
 
+// Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
+// OBUs have been processed. Contracted to only return a resource exhausted
+// error if there is not enough data to process the descriptor OBUs.
+absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
+  // When resetting, the `ObuProcessor` is recreated with the original
+  // descriptors. So we force `is_exhaustive_and_exact` to be true in that case.
+  const bool on_reset = obu_processor != nullptr;
+  const bool is_exhaustive_and_exact = on_reset || created_from_descriptors;
+
+  // Happens only in the pure streaming case.
+  const auto start_position = read_bit_buffer->Tell();
+  bool insufficient_data;
+  auto temp_obu_processor = ObuProcessor::CreateForRendering(
+      desired_profile_versions, layout,
+      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+      is_exhaustive_and_exact, read_bit_buffer.get(), layout,
+      insufficient_data);
+  if (temp_obu_processor == nullptr) {
+    // `insufficient_data` is true iff everything so far is valid but more data
+    // is needed.
+    if (insufficient_data && !created_from_descriptors) {
+      return absl::ResourceExhaustedError(
+          "Have not received enough data yet to process descriptor "
+          "OBUs. Please call Decode() again with more data.");
+    }
+    return absl::InvalidArgumentError("Failed to create OBU processor.");
+  }
+  const auto num_bytes_read = (read_bit_buffer->Tell() - start_position) / 8;
+
+  // Seek back to the beginning of the data that was processed so that we can
+  // read and store the binary IAMF descriptor OBUs.
+  RETURN_IF_NOT_OK(read_bit_buffer->Seek(start_position));
+  descriptor_obus.resize(num_bytes_read);
+  RETURN_IF_NOT_OK(
+      read_bit_buffer->ReadUint8Span(absl::MakeSpan(descriptor_obus)));
+  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
+
+  // Copy over fields at the end, now that everything is successful.
+  obu_processor = std::move(temp_obu_processor);
+  return absl::OkStatus();
+}
+
 namespace {
 constexpr int kInitialBufferSize = 1024;
 
@@ -129,45 +174,6 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
     default:
       return ChannelReorderer::RearrangementScheme::kDefaultNoOp;
   }
-}
-
-// Creates an ObuProcessor; an ObuProcessor is only created once all descriptor
-// OBUs have been processed. Contracted to only return a resource exhausted
-// error if there is not enough data to process the descriptor OBUs.
-absl::StatusOr<std::unique_ptr<ObuProcessor>> CreateObuProcessor(
-    const absl::flat_hash_set<::iamf_tools::ProfileVersion>&
-        desired_profile_versions,
-    bool contains_all_descriptor_obus,
-    StreamBasedReadBitBuffer* read_bit_buffer, Layout& in_out_layout,
-    std::vector<uint8_t>& output_descriptor_obus) {
-  // Happens only in the pure streaming case.
-  const auto start_position = read_bit_buffer->Tell();
-  bool insufficient_data;
-  auto obu_processor = ObuProcessor::CreateForRendering(
-      desired_profile_versions, in_out_layout,
-      RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-      /*is_exhaustive_and_exact=*/contains_all_descriptor_obus, read_bit_buffer,
-      in_out_layout, insufficient_data);
-  if (obu_processor == nullptr) {
-    // `insufficient_data` is true iff everything so far is valid but more data
-    // is needed.
-    if (insufficient_data && !contains_all_descriptor_obus) {
-      return absl::ResourceExhaustedError(
-          "Have not received enough data yet to process descriptor "
-          "OBUs. Please call Decode() again with more data.");
-    }
-    return absl::InvalidArgumentError("Failed to create OBU processor.");
-  }
-  const auto num_bytes_read = (read_bit_buffer->Tell() - start_position) / 8;
-
-  // Seek back to the beginning of the data that was processed so that we can
-  // read and store the binary IAMF descriptor OBUs.
-  RETURN_IF_NOT_OK(read_bit_buffer->Seek(start_position));
-  output_descriptor_obus.resize(num_bytes_read);
-  RETURN_IF_NOT_OK(
-      read_bit_buffer->ReadUint8Span(absl::MakeSpan(output_descriptor_obus)));
-  RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
-  return obu_processor;
 }
 
 IamfStatus ProcessAllTemporalUnits(
@@ -317,18 +323,8 @@ IamfStatus IamfDecoder::CreateFromDescriptors(
     return AbslToIamfStatus(absl_status);
   }
 
-  absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(output_decoder->state_->desired_profile_versions,
-                         /*contains_all_descriptor_obus=*/true,
-                         output_decoder->state_->read_bit_buffer.get(),
-                         output_decoder->state_->layout,
-                         output_decoder->state_->descriptor_obus);
-  if (!obu_processor.ok()) {
-    return AbslToIamfStatus(obu_processor.status());
-  }
-  output_decoder->state_->obu_processor = *std::move(obu_processor);
   output_decoder->state_->created_from_descriptors = true;
-  return IamfStatus::OkStatus();
+  return AbslToIamfStatus(output_decoder->state_->CreateObuProcessor());
 }
 
 IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
@@ -345,20 +341,17 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
     return AbslToIamfStatus(push_bytes_status);
   }
   if (!IsDescriptorProcessingComplete()) {
-    auto obu_processor = CreateObuProcessor(
-        state_->desired_profile_versions,
-        /*contains_all_descriptor_obus=*/false, state_->read_bit_buffer.get(),
-        state_->layout, state_->descriptor_obus);
-    if (obu_processor.ok()) {
-      state_->obu_processor = *std::move(obu_processor);
+    const auto created_obu_processor_status = state_->CreateObuProcessor();
+
+    if (created_obu_processor_status.ok()) {
       return IamfStatus::OkStatus();
-    } else if (absl::IsResourceExhausted(obu_processor.status())) {
+    } else if (absl::IsResourceExhausted(created_obu_processor_status)) {
       // Don't have enough data to process the descriptor OBUs yet, but no
       // errors have occurred.
       return IamfStatus::OkStatus();
     } else {
       // Corrupted data or other errors.
-      return AbslToIamfStatus(obu_processor.status());
+      return AbslToIamfStatus(created_obu_processor_status);
     }
   }
 
@@ -495,17 +488,7 @@ IamfStatus IamfDecoder::Reset() {
   if (!absl_status.ok()) {
     return AbslToIamfStatus(absl_status);
   }
-  absl::StatusOr<std::unique_ptr<ObuProcessor>> obu_processor =
-      CreateObuProcessor(state_->desired_profile_versions,
-                         /*contains_all_descriptor_obus=*/true,
-                         state_->read_bit_buffer.get(), state_->layout,
-                         state_->descriptor_obus);
-  if (!obu_processor.ok()) {
-    return AbslToIamfStatus(obu_processor.status());
-  }
-  state_->obu_processor = *std::move(obu_processor);
-
-  return IamfStatus::OkStatus();
+  return AbslToIamfStatus(state_->CreateObuProcessor());
 }
 
 void IamfDecoder::SignalEndOfDecoding() {
