@@ -83,14 +83,15 @@ absl::Status ConvertInterleavedToTimeChannel(
   }
 
   for (int t = 0; t < num_ticks; ++t) {
-    if (output[t].size() != num_channels) [[unlikely]] {
+    auto& output_for_time = output[t];
+    if (output_for_time.size() != num_channels) [[unlikely]] {
       return absl::InvalidArgumentError(absl::StrCat(
           "Number of channels is not equal to the output vector at tick ", t,
           ": (", num_channels, " != ", output[t].size(), ")"));
     }
     for (int c = 0; c < num_channels; ++c) {
       const auto status =
-          transform_samples(samples[t * num_channels + c], output[t][c]);
+          transform_samples(samples[t * num_channels + c], output_for_time[c]);
       if (!status.ok()) [[unlikely]] {
         return status;
       }

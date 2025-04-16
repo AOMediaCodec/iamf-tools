@@ -64,7 +64,10 @@ cc_library(
 cc_library(
     name = "decoder_base",
     hdrs = ["decoder_base.h"],
-    deps = ["@com_google_absl//absl/status"],
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+    ],
 )
 
 cc_library(

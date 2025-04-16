@@ -29,6 +29,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -601,17 +602,17 @@ uint32_t GetSubstreamId(const DecodedAudioFrame& audio_frame_with_data) {
   return audio_frame_with_data.substream_id;
 }
 
-const std::vector<std::vector<int32_t>>* GetSamples(
+absl::Span<const std::vector<int32_t>> GetSamples(
     const AudioFrameWithData& audio_frame_with_data) {
   if (!audio_frame_with_data.pcm_samples.has_value()) {
-    return nullptr;
+    return {};
   }
-  return &audio_frame_with_data.pcm_samples.value();
+  return absl::MakeConstSpan(audio_frame_with_data.pcm_samples.value());
 }
 
-const std::vector<std::vector<int32_t>>* GetSamples(
+absl::Span<const std::vector<int32_t>> GetSamples(
     const DecodedAudioFrame& audio_frame_with_data) {
-  return &audio_frame_with_data.decoded_samples;
+  return audio_frame_with_data.decoded_samples;
 }
 
 // NOOP function if the frame is not a DecodedAudioFrame.
@@ -680,19 +681,18 @@ absl::Status StoreSamplesForAudioElementId(
     int channel_index = 0;
     const auto num_channels = labels.size();
     for (const auto& label : labels) {
-      const auto* input_samples = GetSamples(audio_frame);
-      if (input_samples == nullptr) {
+      const auto input_samples = GetSamples(audio_frame);
+      if (input_samples.empty()) {
         return absl::InvalidArgumentError(
             "Input samples are not available for down-mixing.");
       }
-
       ConfigureLabeledFrame(audio_frame, labeled_frame);
 
       auto& samples = labeled_frame.label_to_samples[label];
-      const size_t num_ticks = input_samples->size();
-      samples.resize(num_ticks, 0);
+      const size_t num_ticks = input_samples.size();
+      samples.resize(num_ticks);
       for (int t = 0; t < num_ticks; t++) {
-        const auto& input_tick = (*input_samples)[t];
+        const auto& input_tick = input_samples[t];
         RETURN_IF_NOT_OK(ValidateEqual(
             input_tick.size(), num_channels,
             "Decoded number of channels vs. expected number of channels"));

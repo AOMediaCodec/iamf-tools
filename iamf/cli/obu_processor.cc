@@ -923,7 +923,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
                                        audio_frame.end_timestamp,
                                        "Audio frame has a different end "
                                        "timestamp than the temporal unit: "));
-    auto decoded_frame = audio_frame_decoder_->Decode(audio_frame);
+    const auto& decoded_frame = audio_frame_decoder_->Decode(audio_frame);
     if (!decoded_frame.ok()) {
       return decoded_frame.status();
     }
@@ -932,7 +932,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   }
 
   // Reconstruct the temporal unit and store the result in the output map.
-  const auto decoded_labeled_frames_for_temporal_unit =
+  const auto& decoded_labeled_frames_for_temporal_unit =
       demixing_module_->DemixDecodedAudioSamples(
           decoded_frames_for_temporal_unit_);
   if (!decoded_labeled_frames_for_temporal_unit.ok()) {
@@ -943,7 +943,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
       *decoded_labeled_frames_for_temporal_unit, start_timestamp,
       *end_timestamp, parameter_blocks));
 
-  auto rendered_samples =
+  const auto& rendered_samples =
       mix_presentation_finalizer_->GetPostProcessedSamplesAsSpan(
           decoding_layout_info_.mix_presentation_id,
           decoding_layout_info_.sub_mix_index,

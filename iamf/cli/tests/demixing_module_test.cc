@@ -282,6 +282,7 @@ TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
+  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -295,7 +296,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
                         .end_timestamp = kEndTimestamp,
                         .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
                         .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{0}},
+                        .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
                         .down_mixing_params = DownMixingParams()});
   decoded_audio_frames.push_back(
       DecodedAudioFrame{.substream_id = kL2SubstreamId,
@@ -303,7 +304,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
                         .end_timestamp = kEndTimestamp,
                         .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
                         .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{0}},
+                        .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
                         .down_mixing_params = DownMixingParams()});
   auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
@@ -355,6 +356,7 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   const DecodedUleb128 kExpectedNumSamplesToTrimAtEnd = 999;
   const DecodedUleb128 kExpectedNumSamplesToTrimAtStart = 9999;
   const DecodedUleb128 kL2SubstreamId = 1;
+  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -368,7 +370,7 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
       .end_timestamp = kExpectedEndTimestamp,
       .samples_to_trim_at_end = kExpectedNumSamplesToTrimAtEnd,
       .samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
-      .decoded_samples = {{0}},
+      .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
   decoded_audio_frames.push_back(DecodedAudioFrame{
       .substream_id = kL2SubstreamId,
@@ -376,7 +378,7 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
       .end_timestamp = kExpectedEndTimestamp,
       .samples_to_trim_at_end = kExpectedNumSamplesToTrimAtEnd,
       .samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
-      .decoded_samples = {{0}},
+      .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
@@ -396,6 +398,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
+  const std::vector<std::vector<int32_t>> kDecodedMonoSamples = {{1}, {2}, {3}};
+  const std::vector<std::vector<int32_t>> kDecodedL2Samples = {{9}, {10}, {11}};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -403,22 +407,22 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
        ChannelAudioLayerConfig::kLayoutStereo},
       audio_elements);
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  decoded_audio_frames.push_back(
-      DecodedAudioFrame{.substream_id = kMonoSubstreamId,
-                        .start_timestamp = kStartTimestamp,
-                        .end_timestamp = kEndTimestamp,
-                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{1}, {2}, {3}},
-                        .down_mixing_params = DownMixingParams()});
-  decoded_audio_frames.push_back(
-      DecodedAudioFrame{.substream_id = kL2SubstreamId,
-                        .start_timestamp = kStartTimestamp,
-                        .end_timestamp = kEndTimestamp,
-                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{9}, {10}, {11}},
-                        .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kMonoSubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = absl::MakeConstSpan(kDecodedMonoSamples),
+      .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kL2SubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = absl::MakeConstSpan(kDecodedL2Samples),
+      .down_mixing_params = DownMixingParams()});
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
@@ -442,6 +446,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
+  const std::vector<std::vector<int32_t>> kDecodedMonoSamples = {{750}};
+  const std::vector<std::vector<int32_t>> kDecodedL2Samples = {{1000}};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
 
   InitAudioElementWithLabelsAndLayers(
@@ -450,22 +456,22 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
        ChannelAudioLayerConfig::kLayoutStereo},
       audio_elements);
   std::list<DecodedAudioFrame> decoded_audio_frames;
-  decoded_audio_frames.push_back(
-      DecodedAudioFrame{.substream_id = kMonoSubstreamId,
-                        .start_timestamp = kStartTimestamp,
-                        .end_timestamp = kEndTimestamp,
-                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{750}},
-                        .down_mixing_params = DownMixingParams()});
-  decoded_audio_frames.push_back(
-      DecodedAudioFrame{.substream_id = kL2SubstreamId,
-                        .start_timestamp = kStartTimestamp,
-                        .end_timestamp = kEndTimestamp,
-                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {{1000}},
-                        .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kMonoSubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = absl::MakeConstSpan(kDecodedMonoSamples),
+      .down_mixing_params = DownMixingParams()});
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kL2SubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = absl::MakeConstSpan(kDecodedL2Samples),
+      .down_mixing_params = DownMixingParams()});
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
   ASSERT_THAT(demixing_module, IsOk());
@@ -483,6 +489,7 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
+  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -499,7 +506,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
       .end_timestamp = kEndTimestamp,
       .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
       .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-      .decoded_samples = {{0}},
+      .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams(),
       .recon_gain_info_parameter_data = recon_gain_info_parameter_data,
       .audio_element_with_data = &audio_elements.at(kAudioElementId)});
@@ -509,7 +516,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
       .end_timestamp = kEndTimestamp,
       .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
       .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-      .decoded_samples = {{0}},
+      .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams(),
       .recon_gain_info_parameter_data = recon_gain_info_parameter_data,
       .audio_element_with_data = &audio_elements.at(kAudioElementId)});
@@ -972,6 +979,10 @@ class DemixingModuleTest : public DemixingModuleTestBase,
       const std::vector<std::vector<int32_t>>& pcm_samples,
       DownMixingParams down_mixing_params = {
           .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25}) {
+    // Copy the samples to the buffer so the
+    // `DecodedAudioFrame::decoded_samples` can point to them.
+    pcm_samples_buffer_.push_back(pcm_samples);
+
     // The substream ID itself does not matter. Generate a unique one.
     const DecodedUleb128 substream_id = substream_id_to_labels_.size();
     substream_id_to_labels_[substream_id] = labels;
@@ -986,14 +997,14 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .down_mixing_params = down_mixing_params,
     });
 
-    decoded_audio_frames_.push_back(
-        DecodedAudioFrame{.substream_id = substream_id,
-                          .start_timestamp = kStartTimestamp,
-                          .end_timestamp = kEndTimestamp,
-                          .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                          .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                          .decoded_samples = pcm_samples,
-                          .down_mixing_params = down_mixing_params});
+    decoded_audio_frames_.push_back(DecodedAudioFrame{
+        .substream_id = substream_id,
+        .start_timestamp = kStartTimestamp,
+        .end_timestamp = kEndTimestamp,
+        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+        .decoded_samples = absl::MakeConstSpan(pcm_samples_buffer_.back()),
+        .down_mixing_params = down_mixing_params});
 
     auto& expected_label_to_samples =
         expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
@@ -1067,7 +1078,12 @@ class DemixingModuleTest : public DemixingModuleTestBase,
   std::list<AudioFrameWithData> audio_frames_;
   std::list<DecodedAudioFrame> decoded_audio_frames_;
 
+  // Memory for the samples, so that the span in `DecodedAudioFrame` points
+  // to valid memory addresses.
+  std::list<std::vector<std::vector<int32_t>>> pcm_samples_buffer_;
+
   IdLabeledFrameMap expected_id_to_labeled_decoded_frame_;
+
 };  // namespace
 
 TEST(DemixingModule, DemixingOriginalAudioSamplesSucceedsWithEmptyInputs) {

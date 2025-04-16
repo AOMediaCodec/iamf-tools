@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 
 namespace iamf_tools {
 
@@ -52,13 +53,12 @@ class DecoderBase {
   virtual absl::Status DecodeAudioFrame(
       const std::vector<uint8_t>& encoded_frame) = 0;
 
-  /*!\brief Outputs valid decoded samples.
+  /*!\brief Outputs valid decoded samples as a span.
    *
-   * \return Valid decoded samples.
+   * \return Span of valid decoded samples.
    */
-  std::vector<std::vector<int32_t>> ValidDecodedSamples() const {
-    return {decoded_samples_.begin(),
-            decoded_samples_.begin() + num_valid_ticks_};
+  absl::Span<const std::vector<int32_t>> ValidDecodedSamples() const {
+    return absl::MakeConstSpan(decoded_samples_).first(num_valid_ticks_);
   }
 
  protected:
