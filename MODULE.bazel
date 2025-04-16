@@ -12,6 +12,7 @@ module(
 
 # Bazel central registry dependencies.
 bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(
     name = "abseil-cpp",
     version = "20240722.0.bcr.2",
@@ -51,6 +52,12 @@ git_repository(
     name = "com_google_audio_to_tactile",
     commit = "d3f449fdfd8cfe4a845d0ae244fce2a0bca34a15",
     remote = "https://github.com/google/audio-to-tactile.git",
+)
+
+git_repository(
+    name = "com_google_loudness_ebur128",
+    commit = "e9e73147637db60dc742cba8a611a37dd72b14b5",
+    remote = "https://github.com/google/loudness_ebur128.git",
 )
 
 # Expat.
