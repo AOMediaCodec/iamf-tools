@@ -14,6 +14,6 @@ load(
 git_repository(
     name = "flac",
     build_file = "flac.BUILD",
-    commit = "28e4f0528c76b296c561e922ba67d43751990599",
+    commit = "8d648456a2d7444d54a579e365bab4c815ac6873",
     remote = "https://github.com/xiph/flac.git",
 )
