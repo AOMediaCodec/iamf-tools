@@ -333,15 +333,15 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
   std::list<DecodedAudioFrame> decoded_audio_frames;
   // The decoded audio frame has one channel, which is inconsistent with a
   // one-layer stereo audio element.
-  const std::vector<int32_t> kErrorOneChannel = {0};
-  decoded_audio_frames.push_back(
-      DecodedAudioFrame{.substream_id = kStereoSubstreamId,
-                        .start_timestamp = kStartTimestamp,
-                        .end_timestamp = kEndTimestamp,
-                        .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
-                        .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-                        .decoded_samples = {kErrorOneChannel},
-                        .down_mixing_params = DownMixingParams()});
+  const std::vector<std::vector<int32_t>> kErrorOneChannel = {{0}};
+  decoded_audio_frames.push_back(DecodedAudioFrame{
+      .substream_id = kStereoSubstreamId,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
+      .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
+      .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
+      .decoded_samples = absl::MakeConstSpan(kErrorOneChannel),
+      .down_mixing_params = DownMixingParams()});
 
   // Demixing gracefully fails, as we can't determine the missing channel.
   EXPECT_THAT(demixing_module->DemixDecodedAudioSamples(decoded_audio_frames),
