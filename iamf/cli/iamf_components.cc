@@ -36,8 +36,7 @@ constexpr absl::string_view kOmitIamfFile = "";
 }
 
 std::unique_ptr<RendererFactoryBase> CreateRendererFactory() {
-  // Skip rendering.
-  return nullptr;
+  return std::make_unique<RendererFactory>();
 }
 
 std::unique_ptr<LoudnessCalculatorFactoryBase>

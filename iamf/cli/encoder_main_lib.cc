@@ -32,6 +32,7 @@
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/parameter_block_partitioner.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/proto/encoder_control_metadata.pb.h"
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -146,6 +147,23 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   }
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<iamf_tools_cli_proto::OutputAudioFormat> GetOutputAudioFormat(
+    const iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
+    const iamf_tools_cli_proto::TestVectorMetadata& test_vector_metadata) {
+  if (!test_vector_metadata.has_output_wav_file_bit_depth_override()) {
+    return output_audio_format;
+  }
+
+  // OK. To maintain old test vectors, convert the deprecated field to the
+  // new field.
+  // TODO(b/390392510): Remove the conversion once test vectors are updated.
+  LOG(WARNING) << "output_wav_file_bit_depth_override is deprecated. Use "
+                  "encoder_control_metadata.output_rendered_file_format "
+                  "instead.";
+  return GetOutputAudioFormatFromBitDepth(
+      test_vector_metadata.output_wav_file_bit_depth_override());
 }
 
 absl::Status GenerateTemporalUnitObus(
@@ -306,9 +324,9 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   };
 
   // Apply the bit depth override.
-  const auto output_audio_format = GetOutputAudioFormatFromBitDepth(
-      user_metadata.test_vector_metadata()
-          .output_wav_file_bit_depth_override());
+  const auto output_audio_format = GetOutputAudioFormat(
+      user_metadata.encoder_control_metadata().output_rendered_file_format(),
+      user_metadata.test_vector_metadata());
   if (!output_audio_format.ok()) {
     return output_audio_format.status();
   }

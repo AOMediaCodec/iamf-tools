@@ -84,7 +84,7 @@ void AddCodecConfig(UserMetadata& user_metadata) {
           audio_roll_distance: 0
           decoder_config_lpcm {
             sample_format_flags: LPCM_LITTLE_ENDIAN
-            sample_rate: 48000
+            sample_rate: 16000
           }
         }
       )pb",

@@ -64,7 +64,6 @@ message TestVectorMetadata {
   // TODO(b/384960137): Migrate `mp4_fixed_timestamp`, `ms_per_fragment`,
   //                    `override_computed_recon_gains`,
   //                    `validate_user_loudness`,
-  //                    `output_wav_file_bit_depth_override`,
   //                    `partition_mix_gain_parameter_blocks`, `leb_generator`
   //                    to `EncoderControlMetadata`.
 
@@ -83,12 +82,10 @@ message TestVectorMetadata {
   // computed loudness.
   optional bool validate_user_loudness = 13 [default = false];
 
-  // TODO(b/390392510): Migrate to `EncoderControlMetadata` and update to limit
-  //                    the possible values.
-  // An override to control the output bit-depth of the output `rendered` wav
-  // file. Or 0, to use a default bit-depth depending on the bitstream. The
-  // value may be clamped to a supported-bit depth.
-  optional uint32 output_wav_file_bit_depth_override = 12;
+  // Deprecated: This was historically never supported in the CLI. Support may
+  //             be dropped at any time. Please use
+  //             `EncoderControlMetadata.output_rendered_file_format` instead.
+  optional uint32 output_wav_file_bit_depth_override = 12 [deprecated = true];
 
   // `true` partitions the input mix gain parameter blocks to be aligned with
   // single frames. The `param_definition` in the descriptor OBUs must be

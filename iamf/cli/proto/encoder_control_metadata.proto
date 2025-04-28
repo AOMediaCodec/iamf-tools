@@ -12,6 +12,8 @@ syntax = "proto2";
 
 package iamf_tools_cli_proto;
 
+import "iamf/cli/proto/output_audio_format.proto";
+
 // Controls for the encoder behavior.
 message EncoderControlMetadata {
   // If true [default]: Each Mix Presentation OBU will get an extra
@@ -20,5 +22,10 @@ message EncoderControlMetadata {
   //  If false: The encoder omit adding an extra build information tag.
   optional bool add_build_information_tag = 1 [default = true];
 
-  // TODO(b/390392510): Add a field to control the output audio format.
+  // Controls the output audio format for any rendered files. The encoder may
+  // produce rendered files as a side effect of the encoding process. The files
+  // are useful for debugging and as an approximation of what a decoder would
+  // generate when playing back the IAMF file.
+  optional OutputAudioFormat output_rendered_file_format = 2
+      [default = OUTPUT_FORMAT_NONE];
 }

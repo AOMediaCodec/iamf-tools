@@ -40,6 +40,7 @@ proto_library(
 proto_library(
     name = "encoder_control_metadata_proto",
     srcs = ["encoder_control_metadata.proto"],
+    deps = [":output_audio_format_proto"],
 )
 
 proto_library(

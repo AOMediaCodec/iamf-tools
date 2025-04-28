@@ -23,7 +23,9 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto/encoder_control_metadata.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
+#include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -34,6 +36,11 @@ namespace {
 
 using ::absl_testing::IsOk;
 constexpr absl::string_view kIgnoredOutputPath = "";
+constexpr absl::string_view kTest000005ExpectedWavFilename =
+    "test_000005_rendered_id_42_sub_mix_0_layout_0.wav";
+const int kTest000005ExpectedWavBitDepth = 16;
+
+using enum iamf_tools_cli_proto::OutputAudioFormat;
 
 void AddIaSequenceHeader(iamf_tools_cli_proto::UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -62,12 +69,22 @@ void AddCodecConfig(iamf_tools_cli_proto::UserMetadata& user_metadata) {
       user_metadata.add_codec_config_metadata()));
 }
 
+void ParseTestVectorAssertSuccess(
+    absl::string_view textproto_filename, std::string& wav_directory,
+    iamf_tools_cli_proto::UserMetadata& user_metadata) {
+  const std::filesystem::path test_data_path =
+      (std::filesystem::current_path() / std::string("iamf/cli/testdata"));
+
+  wav_directory = test_data_path.string();
+  // Get and parse the textproto to test.
+  const auto user_metadata_filename = test_data_path / textproto_filename;
+  ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
+                                 user_metadata);
+}
+
 TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {
   EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "").ok());
 }
-
-// TODO(b/390392510): Test that rendered wav files are produced, when rendering
-//                    is enabled.
 
 TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // Populate the user metadata with only an IA Sequence Header, leaving
@@ -128,6 +145,103 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideHighSucceeds) {
               IsOk());
 }
 
+TEST(EncoderMainLibTest,
+     DeprecatedOverrideBithDepthTakesPrecedenceOverOutputRenderedFileFormat) {
+  std::string wav_directory;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
+                               user_metadata);
+  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
+  // Update controls to override the bit-depth with the deprecated
+  // `output_wav_file_bit_depth_override`.
+  constexpr uint32_t kDeprecatedOverrideBitDepth = 32;
+  user_metadata.mutable_test_vector_metadata()
+      ->set_output_wav_file_bit_depth_override(kDeprecatedOverrideBitDepth);
+  // The deprecated override should take precedence over
+  // `output_rendered_file_format`.
+  user_metadata.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC);
+
+  EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
+              IsOk());
+
+  const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
+                                 kTest000005ExpectedWavFilename;
+  EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  EXPECT_EQ(wav_reader.bit_depth(), kDeprecatedOverrideBitDepth);
+}
+
+TEST(EncoderMainLibTest, OutputRenderedFileFormatCanUseAutomaticBitDepth) {
+  std::string wav_directory;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
+                               user_metadata);
+  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
+  // Update controls to write out a wav file with automatic bit-depth.
+  user_metadata.mutable_test_vector_metadata()
+      ->clear_output_wav_file_bit_depth_override();
+  user_metadata.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC);
+
+  EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
+              IsOk());
+
+  // The wav file matches the regular bit-depth of `test_000005.textproto`.
+  const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
+                                 kTest000005ExpectedWavFilename;
+  EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  EXPECT_EQ(wav_reader.bit_depth(), kTest000005ExpectedWavBitDepth);
+}
+
+TEST(EncoderMainLibTest, OutputRenderedFileFormatCanOverrideBitDepth) {
+  std::string wav_directory;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
+                               user_metadata);
+  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
+  // Update controls to write out a wav file with a specific bit-depth.
+  user_metadata.mutable_test_vector_metadata()
+      ->clear_output_wav_file_bit_depth_override();
+  constexpr int kExpectedOverriddenBitDepth = 24;
+  user_metadata.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(
+          OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR);
+
+  EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
+              IsOk());
+
+  // The wav file matches the overridden bit-depth.
+  const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
+                                 kTest000005ExpectedWavFilename;
+  EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  EXPECT_EQ(wav_reader.bit_depth(), kExpectedOverriddenBitDepth);
+}
+
+TEST(EncoderMainLibTest, OutputRenderedFileFormatCanDisableWavFileOutput) {
+  std::string wav_directory;
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
+                               user_metadata);
+  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
+  // Update controls to disable writing a wav file.
+  user_metadata.mutable_test_vector_metadata()
+      ->clear_output_wav_file_bit_depth_override();
+  user_metadata.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(
+          iamf_tools_cli_proto::OUTPUT_FORMAT_NONE);
+
+  EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
+              IsOk());
+
+  // The wav file is absent.
+  const auto wav_path = std::filesystem::path(output_iamf_directory) /
+                        kTest000005ExpectedWavFilename;
+  EXPECT_FALSE(std::filesystem::exists(wav_path));
+}
+
 TEST(EncoderMainLibTest, SettingPrefixOutputsFile) {
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
@@ -176,24 +290,17 @@ using TestVector = ::testing::TestWithParam<absl::string_view>;
 TEST_P(TestVector, ValidateTestSuite) {
   // Get the location of test wav files.
   const auto textproto_filename = GetParam();
-  static const auto input_wav_dir =
-      std::filesystem::current_path() / std::string("iamf/cli/testdata");
-
-  // Get the textproto to test.
-  const auto user_metadata_filename = std::filesystem::current_path() /
-                                      std::string("iamf/cli/testdata") /
-                                      textproto_filename;
+  std::string wav_directory;
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
-                                 user_metadata);
+  ParseTestVectorAssertSuccess(textproto_filename, wav_directory,
+                               user_metadata);
 
   // Call encoder. Clear `file_name_prefix`; we only care about the status and
   // not the output files.
   user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
   LOG(INFO) << "Testing with " << textproto_filename;
-  const absl::Status result =
-      iamf_tools::TestMain(user_metadata, input_wav_dir.string().c_str(),
-                           std::string(kIgnoredOutputPath));
+  const absl::Status result = iamf_tools::TestMain(
+      user_metadata, wav_directory, std::string(kIgnoredOutputPath));
 
   // Check if the result matches the expected value in the protos.
   if (user_metadata.test_vector_metadata().is_valid()) {

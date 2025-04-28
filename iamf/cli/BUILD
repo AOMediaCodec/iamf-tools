@@ -154,6 +154,7 @@ cc_library(
         ":sample_processor_base",
         ":wav_sample_provider",
         ":wav_writer",
+        "//iamf/cli/proto:encoder_control_metadata_cc_proto",
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",

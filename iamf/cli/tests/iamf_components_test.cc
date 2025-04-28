@@ -21,8 +21,8 @@
 namespace iamf_tools {
 namespace {
 
-TEST(IamfComponentsTest, CreateRendererFactoryReturnsNull) {
-  EXPECT_EQ(CreateRendererFactory(), nullptr);
+TEST(IamfComponentsTest, CreateRendererFactoryReturnsNonNull) {
+  EXPECT_NE(CreateRendererFactory(), nullptr);
 }
 
 TEST(IamfComponentsTest, CreatreLoudnessCalculatorFactoryReturnsNull) {
