@@ -25,8 +25,8 @@ TEST(IamfComponentsTest, CreateRendererFactoryReturnsNonNull) {
   EXPECT_NE(CreateRendererFactory(), nullptr);
 }
 
-TEST(IamfComponentsTest, CreatreLoudnessCalculatorFactoryReturnsNull) {
-  EXPECT_EQ(CreateLoudnessCalculatorFactory(), nullptr);
+TEST(IamfComponentsTest, CreateLoudnessCalculatorFactoryReturnsNonNull) {
+  EXPECT_NE(CreateLoudnessCalculatorFactory(), nullptr);
 }
 
 TEST(IamfComponentsTest,

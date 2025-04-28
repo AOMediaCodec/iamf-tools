@@ -204,6 +204,7 @@ cc_library(
         ":obu_sequencer_base",
         ":obu_sequencer_iamf",
         ":renderer_factory",
+        "//iamf/cli/itu_1770_4:loudness_calculator_factory_itu_1770_4",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",

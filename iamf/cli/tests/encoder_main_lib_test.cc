@@ -300,6 +300,11 @@ TEST_P(TestVector, ValidateTestSuite) {
   // Call encoder. Clear `file_name_prefix`; we only care about the status and
   // not the output files.
   user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
+  // Skip checking the loudness is consistent with the user-provided data.
+  // Loudness depends on coding and rendering details, and may slightly drift as
+  // these change over time.
+  user_metadata.mutable_test_vector_metadata()->set_validate_user_loudness(
+      false);
   LOG(INFO) << "Testing with " << textproto_filename;
   const absl::Status result = iamf_tools::TestMain(
       user_metadata, wav_directory, std::string(kIgnoredOutputPath));

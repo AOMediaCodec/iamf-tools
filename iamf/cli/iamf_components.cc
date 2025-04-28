@@ -19,6 +19,7 @@
 #include "absl/log/log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "iamf/cli/itu_1770_4/loudness_calculator_factory_itu_1770_4.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
 #include "iamf/cli/obu_sequencer_iamf.h"
@@ -26,7 +27,6 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/cli/renderer_factory.h"
-
 namespace iamf_tools {
 
 namespace {
@@ -41,8 +41,7 @@ std::unique_ptr<RendererFactoryBase> CreateRendererFactory() {
 
 std::unique_ptr<LoudnessCalculatorFactoryBase>
 CreateLoudnessCalculatorFactory() {
-  // Skip loudness calculation.
-  return nullptr;
+  return std::make_unique<LoudnessCalculatorFactoryItu1770_4>();
 }
 
 std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
