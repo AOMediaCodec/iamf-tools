@@ -2,6 +2,8 @@
 # cli/proto_to_obu and cli/obu_to_proto are subdirectories for unidirectional conversion, but utils
 # and bidirectional conversion can stay in this directory.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "channel_label_utils",
@@ -73,6 +75,28 @@ cc_library(
         "//iamf/obu:parameter_data",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:flac_decoder_config",
+    ],
+)
+
+cc_library(
+    name = "output_audio_format_utils",
+    srcs = ["output_audio_format_utils.cc"],
+    hdrs = ["output_audio_format_utils.h"],
+    visibility = [
+        "//iamf/cli:__pkg__",
+        "//iamf/cli/proto_conversion:__subpackages__",
+    ],
+    deps = [
+        "//iamf/cli:rendering_mix_presentation_finalizer",
+        "//iamf/cli:sample_processor_base",
+        "//iamf/cli/proto:obu_header_cc_proto",
+        "//iamf/cli/proto:output_audio_format_cc_proto",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
     ],
 )
 

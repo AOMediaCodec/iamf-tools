@@ -66,6 +66,9 @@ TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {
   EXPECT_FALSE(TestMain(iamf_tools_cli_proto::UserMetadata(), "", "").ok());
 }
 
+// TODO(b/390392510): Test that rendered wav files are produced, when rendering
+//                    is enabled.
+
 TEST(EncoderMainLibTest, IaSequenceHeaderOnly) {
   // Populate the user metadata with only an IA Sequence Header, leaving
   // everything else empty. This will fail if

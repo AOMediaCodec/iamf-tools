@@ -19,4 +19,6 @@ message EncoderControlMetadata {
   //                    information.
   //  If false: The encoder omit adding an extra build information tag.
   optional bool add_build_information_tag = 1 [default = true];
+
+  // TODO(b/390392510): Add a field to control the output audio format.
 }

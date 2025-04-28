@@ -63,6 +63,11 @@ proto_library(
 )
 
 proto_library(
+    name = "output_audio_format_proto",
+    srcs = ["output_audio_format.proto"],
+)
+
+proto_library(
     name = "param_definitions_proto",
     srcs = ["param_definitions.proto"],
     deps = [":parameter_data_proto"],
@@ -147,6 +152,11 @@ cc_proto_library(
 cc_proto_library(
     name = "obu_header_cc_proto",
     deps = [":obu_header_proto"],
+)
+
+cc_proto_library(
+    name = "output_audio_format_cc_proto",
+    deps = [":output_audio_format_proto"],
 )
 
 cc_proto_library(

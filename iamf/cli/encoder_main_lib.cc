@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/encoder_main_lib.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -36,6 +35,9 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/output_audio_format_utils.h"
+#include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
@@ -230,20 +232,6 @@ absl::Status GenerateTemporalUnitObus(
   return absl::OkStatus();
 }
 
-// TODO(b/390392510): Update control of output wav file bit-depth.
-std::optional<uint8_t> GetOverrideBitDepth(uint32_t requested_bit_depth) {
-  if (requested_bit_depth == 0) {
-    return std::nullopt;
-  }
-
-  // Clamp the bit-depth to something supported by wav files.
-  constexpr uint32_t kMinWavFileBitDepth = 16;
-  constexpr uint32_t kMaxWavFileBitDepth = 32;
-  const uint32_t clamped_bit_depth =
-      std::clamp(requested_bit_depth, kMinWavFileBitDepth, kMaxWavFileBitDepth);
-  return static_cast<uint8_t>(clamped_bit_depth);
-}
-
 absl::Status WriteObus(
     const UserMetadata& user_metadata, const std::string& output_iamf_directory,
     const IASequenceHeaderObu& ia_sequence_header_obu,
@@ -294,36 +282,43 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
     RETURN_IF_NOT_OK(PartitionParameterMetadata(user_metadata));
   }
 
-  // We want to hold the `IamfEncoder` until all OBUs have been written.
   // Write the output audio streams which were used to measure loudness to the
   // same directory as the IAMF file.
   const std::string output_wav_file_prefix =
       (std::filesystem::path(output_iamf_directory) /
        user_metadata.test_vector_metadata().file_name_prefix())
           .string();
-  const std::optional<uint8_t> override_bit_depth =
-      GetOverrideBitDepth(user_metadata.test_vector_metadata()
-                              .output_wav_file_bit_depth_override());
   LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
-  const auto ProduceAllWavWriters =
-      [output_wav_file_prefix, override_bit_depth](
-          DecodedUleb128 mix_presentation_id, int sub_mix_index,
-          int layout_index, const Layout&, int num_channels, int sample_rate,
-          int bit_depth,
-          size_t max_input_samples_per_frame) -> std::unique_ptr<WavWriter> {
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory =
+          [output_wav_file_prefix](DecodedUleb128 mix_presentation_id,
+                                   int sub_mix_index, int layout_index,
+                                   const Layout&, int num_channels,
+                                   int sample_rate, int bit_depth,
+                                   size_t max_input_samples_per_frame)
+      -> std::unique_ptr<SampleProcessorBase> {
+    // Generate a unique filename for each layout of each mix presentation.
     const auto wav_path = absl::StrCat(
         output_wav_file_prefix, "_rendered_id_", mix_presentation_id,
         "_sub_mix_", sub_mix_index, "_layout_", layout_index, ".wav");
-    // Obey the override bit depth. But if it is not set, we can infer a good
-    // bit-depth from the input audio.
-    const uint8_t wav_file_bit_depth = override_bit_depth.value_or(bit_depth);
-    return WavWriter::Create(wav_path, num_channels, sample_rate,
-                             wav_file_bit_depth, max_input_samples_per_frame);
+    return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                             max_input_samples_per_frame);
   };
 
+  // Apply the bit depth override.
+  const auto output_audio_format = GetOutputAudioFormatFromBitDepth(
+      user_metadata.test_vector_metadata()
+          .output_wav_file_bit_depth_override());
+  if (!output_audio_format.ok()) {
+    return output_audio_format.status();
+  }
+  ApplyOutputAudioFormatToSampleProcessorFactory(*output_audio_format,
+                                                 sample_processor_factory);
+
+  // We want to hold the `IamfEncoder` until all OBUs have been written.
   auto iamf_encoder = IamfEncoder::Create(
       user_metadata, CreateRendererFactory().get(),
-      CreateLoudnessCalculatorFactory().get(), ProduceAllWavWriters,
+      CreateLoudnessCalculatorFactory().get(), sample_processor_factory,
       ia_sequence_header_obu, codec_config_obus, audio_elements,
       preliminary_mix_presentation_obus, arbitrary_obus);
   if (!iamf_encoder.ok()) {
