@@ -94,9 +94,6 @@ cc_library(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
     ],
 )
 

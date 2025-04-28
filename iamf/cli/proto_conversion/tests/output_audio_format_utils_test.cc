@@ -13,7 +13,6 @@
 
 #include <cstddef>
 
-#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -26,10 +25,7 @@
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
-using ::absl_testing::IsOkAndHolds;
 using ::testing::_;
-using ::testing::Not;
 
 typedef RenderingMixPresentationFinalizer::SampleProcessorFactory
     SampleProcessorFactory;
@@ -154,32 +150,6 @@ INSTANTIATE_TEST_SUITE_P(
         {{kBitDepth16, OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO, kBitDepth32},
          {kBitDepth24, OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO, kBitDepth32},
          {kBitDepth32, OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO, kBitDepth32}}));
-
-TEST(GetOutputAudioFormatFromBitDepth, ReturnsAutomaticBitDepthForZero) {
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(0),
-              IsOkAndHolds(OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC));
-}
-
-TEST(GetOutputAudioFormatFromBitDepth, Supports16BitDepth) {
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(16),
-              IsOkAndHolds(OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN));
-}
-
-TEST(GetOutputAudioFormatFromBitDepth, Supports24BitDepth) {
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(24),
-              IsOkAndHolds(OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR));
-}
-
-TEST(GetOutputAudioFormatFromBitDepth, Supports32BitDepth) {
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(32),
-              IsOkAndHolds(OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO));
-}
-
-TEST(GetOutputAudioFormatFromBitDepth, UnsupportedBitDepthReturnsError) {
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(8), Not(IsOk()));
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(15), Not(IsOk()));
-  EXPECT_THAT(GetOutputAudioFormatFromBitDepth(33), Not(IsOk()));
-}
 
 }  // namespace
 }  // namespace iamf_tools

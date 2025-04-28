@@ -149,21 +149,25 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<iamf_tools_cli_proto::OutputAudioFormat> GetOutputAudioFormat(
+iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
     const iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
     const iamf_tools_cli_proto::TestVectorMetadata& test_vector_metadata) {
-  if (!test_vector_metadata.has_output_wav_file_bit_depth_override()) {
-    return output_audio_format;
+  if (test_vector_metadata.has_output_wav_file_bit_depth_override()) {
+    LOG(WARNING)
+        << "`output_wav_file_bit_depth_override` takes no effect. Please "
+           "upgrade to `encoder_control_metadata.output_rendered_file_format` "
+           "instead."
+           "\nSuggested upgrades:\n"
+           "- `output_wav_file_bit_depth_override: 0 -> "
+           "OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC`\n"
+           "- `output_wav_file_bit_depth_override: 16 -> "
+           "OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN`\n"
+           "- `output_wav_file_bit_depth_override: 24 -> "
+           "OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR`\n"
+           "- `output_wav_file_bit_depth_override: 32 -> "
+           "OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO`\n";
   }
-
-  // OK. To maintain old test vectors, convert the deprecated field to the
-  // new field.
-  // TODO(b/390392510): Remove the conversion once test vectors are updated.
-  LOG(WARNING) << "output_wav_file_bit_depth_override is deprecated. Use "
-                  "encoder_control_metadata.output_rendered_file_format "
-                  "instead.";
-  return GetOutputAudioFormatFromBitDepth(
-      test_vector_metadata.output_wav_file_bit_depth_override());
+  return output_audio_format;
 }
 
 absl::Status GenerateTemporalUnitObus(
@@ -327,10 +331,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   const auto output_audio_format = GetOutputAudioFormat(
       user_metadata.encoder_control_metadata().output_rendered_file_format(),
       user_metadata.test_vector_metadata());
-  if (!output_audio_format.ok()) {
-    return output_audio_format.status();
-  }
-  ApplyOutputAudioFormatToSampleProcessorFactory(*output_audio_format,
+  ApplyOutputAudioFormatToSampleProcessorFactory(output_audio_format,
                                                  sample_processor_factory);
 
   // We want to hold the `IamfEncoder` until all OBUs have been written.

@@ -13,9 +13,6 @@
 #ifndef CLI_PROTO_CONVERSION_OUTPUT_AUDIO_FORMAT_UTILS_H_
 #define CLI_PROTO_CONVERSION_OUTPUT_AUDIO_FORMAT_UTILS_H_
 
-#include <cstdint>
-
-#include "absl/status/statusor.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
@@ -31,15 +28,6 @@ void ApplyOutputAudioFormatToSampleProcessorFactory(
     iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
     RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory);
-
-/*!\brief Converts a bit-depth to an `OutputAudioFormat`.
- *
- * \param bit_depth Override bit-depth.
- * \return `OutputAudioFormat` corresponding to the bit-depth, or an error if
- *         the bit-depth is not supported.
- */
-absl::StatusOr<iamf_tools_cli_proto::OutputAudioFormat>
-GetOutputAudioFormatFromBitDepth(uint8_t bit_depth);
 
 }  // namespace iamf_tools
 

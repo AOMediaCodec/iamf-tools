@@ -17,8 +17,6 @@
 #include <utility>
 
 #include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
@@ -78,24 +76,6 @@ void ApplyOutputAudioFormatToSampleProcessorFactory(
                             layout, num_channels, sample_rate,
                             override_bit_depth, max_input_samples_per_frame);
   };
-}
-
-absl::StatusOr<OutputAudioFormat> GetOutputAudioFormatFromBitDepth(
-    uint8_t requested_bit_depth) {
-  switch (requested_bit_depth) {
-    using enum iamf_tools_cli_proto::OutputAudioFormat;
-    case 0:
-      return OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC;
-    case 16:
-      return OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN;
-    case 24:
-      return OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR;
-    case 32:
-      return OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO;
-    default:
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unsupported bit-depth: ", requested_bit_depth));
-  }
 }
 
 }  // namespace iamf_tools

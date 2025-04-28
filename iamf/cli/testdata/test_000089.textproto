@@ -42,11 +42,11 @@ test_vector_metadata {
     "7.3.2.3/Rendering a Channel-Based Audio Element to Headphones"
   ]
   base_test: "test_000050"
-  output_wav_file_bit_depth_override: 16
 }
 
 encoder_control_metadata {
   add_build_information_tag: false
+  output_rendered_file_format: OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN
 }
 
 ia_sequence_header_metadata {

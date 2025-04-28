@@ -82,9 +82,8 @@ message TestVectorMetadata {
   // computed loudness.
   optional bool validate_user_loudness = 13 [default = false];
 
-  // Deprecated: This was historically never supported in the CLI. Support may
-  //             be dropped at any time. Please use
-  //             `EncoderControlMetadata.output_rendered_file_format` instead.
+  // Deprecated: This field should not be set and has been superseded by
+  // `EncoderControlMetadata.output_audio_format`.
   optional uint32 output_wav_file_bit_depth_override = 12 [deprecated = true];
 
   // `true` partitions the input mix gain parameter blocks to be aligned with

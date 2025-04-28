@@ -146,7 +146,7 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideHighSucceeds) {
 }
 
 TEST(EncoderMainLibTest,
-     DeprecatedOverrideBithDepthTakesPrecedenceOverOutputRenderedFileFormat) {
+     OutputRenderedFileFormatTakesPrecedenceOverDeprecatedOverrideBitDepth) {
   std::string wav_directory;
   iamf_tools_cli_proto::UserMetadata user_metadata;
   ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
@@ -157,10 +157,12 @@ TEST(EncoderMainLibTest,
   constexpr uint32_t kDeprecatedOverrideBitDepth = 32;
   user_metadata.mutable_test_vector_metadata()
       ->set_output_wav_file_bit_depth_override(kDeprecatedOverrideBitDepth);
-  // The deprecated override should take precedence over
-  // `output_rendered_file_format`.
+  // `output_rendered_file_format` should take precedence over the deprecated
+  // field.
+  const auto kExpectedBitDepth = 24;
   user_metadata.mutable_encoder_control_metadata()
-      ->set_output_rendered_file_format(OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC);
+      ->set_output_rendered_file_format(
+          OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR);
 
   EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
               IsOk());
@@ -169,7 +171,7 @@ TEST(EncoderMainLibTest,
                                  kTest000005ExpectedWavFilename;
   EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
   const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
-  EXPECT_EQ(wav_reader.bit_depth(), kDeprecatedOverrideBitDepth);
+  EXPECT_EQ(wav_reader.bit_depth(), kExpectedBitDepth);
 }
 
 TEST(EncoderMainLibTest, OutputRenderedFileFormatCanUseAutomaticBitDepth) {
