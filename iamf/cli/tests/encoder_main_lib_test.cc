@@ -170,7 +170,7 @@ TEST(EncoderMainLibTest,
   const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
                                  kTest000005ExpectedWavFilename;
   EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
-  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path.string());
   EXPECT_EQ(wav_reader.bit_depth(), kExpectedBitDepth);
 }
 
@@ -193,7 +193,7 @@ TEST(EncoderMainLibTest, OutputRenderedFileFormatCanUseAutomaticBitDepth) {
   const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
                                  kTest000005ExpectedWavFilename;
   EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
-  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path.string());
   EXPECT_EQ(wav_reader.bit_depth(), kTest000005ExpectedWavBitDepth);
 }
 
@@ -218,7 +218,7 @@ TEST(EncoderMainLibTest, OutputRenderedFileFormatCanOverrideBitDepth) {
   const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
                                  kTest000005ExpectedWavFilename;
   EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
-  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path);
+  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path.string());
   EXPECT_EQ(wav_reader.bit_depth(), kExpectedOverriddenBitDepth);
 }
 
