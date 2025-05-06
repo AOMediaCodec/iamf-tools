@@ -490,8 +490,10 @@ INSTANTIATE_TEST_SUITE_P(MixGainDifferentParamDefinitionModes, TestVector,
 INSTANTIATE_TEST_SUITE_P(BasicStereoFLAC, TestVector,
                          testing::Values("test_000072.textproto"));
 
-INSTANTIATE_TEST_SUITE_P(FLACLayout5_1, TestVector,
-                         testing::Values("test_000073.textproto"));
+// TODO(b/360376661): Re-enable this test once the msan issue is fixed.
+// INSTANTIATE_TEST_SUITE_P(
+//     FLACLayout5_1, TestVector,
+//     testing::Values("test_000073.textproto"));
 
 INSTANTIATE_TEST_SUITE_P(FoaMonoFLAC, TestVector,
                          testing::Values("test_000074.textproto"));
