@@ -9,6 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
+#include "iamf/cli/renderer/renderer_utils.h"
+
 #include <cstddef>
 #include <optional>
 #include <string>

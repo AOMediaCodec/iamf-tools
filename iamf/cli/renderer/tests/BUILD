@@ -76,6 +76,20 @@ cc_test(
 )
 
 cc_test(
+    name = "renderer_utils_benchmark",
+    srcs = ["renderer_utils_benchmark.cc"],
+    deps = [
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli/renderer:renderer_utils",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/random",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "renderer_utils_test",
     srcs = ["renderer_utils_test.cc"],
     deps = [
