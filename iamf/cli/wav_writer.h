@@ -18,7 +18,6 @@
 #include <cstdio>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
@@ -94,16 +93,16 @@ class WavWriter : public SampleProcessorBase {
   /*!\brief Writes samples to the wav file and consumes them.
    *
    * Since the samples are consumed, the
-   * `SampleProcessorBase::GetOutputSamplesAsSpan` method will always return an
-   * empty span.
+   * `SampleProcessorBase::GetOutputSamplesAsSpan` method will always return a
+   * span of empty channels.
    *
    * There must be the same number of samples for each channel.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PushFrameDerived(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+  absl::Status PushFrameDerived(absl::Span<const absl::Span<const int32_t>>
+                                    channel_time_samples) override;
 
   /*!\brief Signals that no more samples will be pushed.
    *

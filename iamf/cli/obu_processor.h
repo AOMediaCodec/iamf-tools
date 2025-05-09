@@ -17,7 +17,6 @@
 #include <list>
 #include <memory>
 #include <optional>
-#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
@@ -267,7 +266,7 @@ class ObuProcessor {
       InternalTimestamp timestamp,
       const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks,
-      absl::Span<const std::vector<int32_t>>& output_rendered_pcm_samples);
+      absl::Span<const absl::Span<const int32_t>>& output_rendered_pcm_samples);
 
   IASequenceHeaderObu ia_sequence_header_;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_ = {};

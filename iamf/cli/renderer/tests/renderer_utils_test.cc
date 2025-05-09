@@ -33,71 +33,68 @@ using enum ChannelLabel::Label;
 using testing::DoubleEq;
 using testing::Pointwise;
 
-constexpr size_t kNumSamplesPerFrame = 8;
-
 TEST(ArrangeSamplesToRender, SucceedsOnEmptyFrame) {
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame, std::vector<InternalSampleType>(0));
+  constexpr size_t kNumChannels = 2;
+  std::vector<absl::Span<const InternalSampleType>> samples(kNumChannels);
   size_t num_valid_samples = 0;
-  EXPECT_THAT(ArrangeSamplesToRender({}, {}, samples, num_valid_samples),
+  EXPECT_THAT(ArrangeSamplesToRender({}, {}, {}, samples, num_valid_samples),
               IsOk());
 
-  // `samples` remains the same size, but `num_valid_samples` is zero.
-  EXPECT_EQ(samples.size(), kNumSamplesPerFrame);
+  // `samples` remains the same size (number of channels), but
+  // `num_valid_samples` is zero.
+  EXPECT_EQ(samples.size(), kNumChannels);
   EXPECT_EQ(num_valid_samples, 0);
 }
 
-TEST(ArrangeSamplesToRender, ArrangesSamplesInTimeChannelAxes) {
+TEST(ArrangeSamplesToRender, ArrangesSamplesInChannelTimeAxes) {
   const LabeledFrame kStereoLabeledFrame = {
       .label_to_samples = {{kL2, {0, 1, 2}}, {kR2, {10, 11, 12}}}};
   const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(3, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kStereoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement,
-                                     samples, num_valid_samples),
+                                     kEmptyChannel, samples, num_valid_samples),
               IsOk());
-  EXPECT_THAT(absl::MakeConstSpan(samples).first(num_valid_samples),
-              testing::ElementsAreArray({Pointwise(DoubleEq(), {0.0, 10.0}),
-                                         Pointwise(DoubleEq(), {1.0, 11.0}),
-                                         Pointwise(DoubleEq(), {2.0, 12.0})}));
+  EXPECT_THAT(samples,
+              testing::ElementsAre(Pointwise(DoubleEq(), {0.0, 1.0, 2.0}),
+                                   Pointwise(DoubleEq(), {10.0, 11.0, 12.0})));
 }
 
 TEST(ArrangeSamplesToRender, FindsDemixedLabels) {
   const LabeledFrame kDemixedTwoLayerStereoFrame = {
       .label_to_samples = {{kMono, {75}}, {kL2, {50}}, {kDemixedR2, {100}}}};
   const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(1, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kStereoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_THAT(
       ArrangeSamplesToRender(kDemixedTwoLayerStereoFrame, kStereoArrangement,
-                             samples, num_valid_samples),
+                             kEmptyChannel, samples, num_valid_samples),
       IsOk());
-  EXPECT_THAT(
-      absl::MakeConstSpan(samples).first(num_valid_samples),
-      testing::ElementsAreArray({Pointwise(DoubleEq(), {50.0, 100.0})}));
+  EXPECT_THAT(samples, testing::ElementsAre(Pointwise(DoubleEq(), {50.0}),
+                                            Pointwise(DoubleEq(), {100.0})));
 }
 
 TEST(ArrangeSamplesToRender, IgnoresExtraLabels) {
   const LabeledFrame kStereoLabeledFrameWithExtraLabel = {
       .label_to_samples = {{kL2, {0}}, {kR2, {10}}, {kLFE, {999}}}};
   const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(1, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kStereoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_THAT(
-      ArrangeSamplesToRender(kStereoLabeledFrameWithExtraLabel,
-                             kStereoArrangement, samples, num_valid_samples),
-      IsOk());
-  EXPECT_THAT(absl::MakeConstSpan(samples).first(num_valid_samples),
-              testing::ElementsAreArray({Pointwise(DoubleEq(), {0.0, 10.0})}));
+  EXPECT_THAT(ArrangeSamplesToRender(kStereoLabeledFrameWithExtraLabel,
+                                     kStereoArrangement, kEmptyChannel, samples,
+                                     num_valid_samples),
+              IsOk());
+  EXPECT_THAT(samples, testing::ElementsAre(Pointwise(DoubleEq(), {0.0}),
+                                            Pointwise(DoubleEq(), {10.0})));
 }
 
 TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForMixedOrderAmbisonics) {
@@ -106,38 +103,39 @@ TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForMixedOrderAmbisonics) {
           {kA0, {1, 2}}, {kA2, {201, 202}}, {kA3, {301, 302}}}};
   const std::vector<ChannelLabel::Label> kMixedFirstOrderAmbisonicsArrangement =
       {kA0, kOmitted, kA2, kA3};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame, std::vector<InternalSampleType>(
-                               kMixedFirstOrderAmbisonicsArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kMixedFirstOrderAmbisonicsArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_THAT(ArrangeSamplesToRender(kMixedFirstOrderAmbisonicsFrame,
                                      kMixedFirstOrderAmbisonicsArrangement,
-                                     samples, num_valid_samples),
+                                     kEmptyChannel, samples, num_valid_samples),
               IsOk());
-  EXPECT_THAT(absl::MakeConstSpan(samples).first(num_valid_samples),
-              testing::ElementsAreArray(
-                  {Pointwise(DoubleEq(), {1.0, 0.0, 201.0, 301.0}),
-                   Pointwise(DoubleEq(), {2.0, 0.0, 202.0, 302.0})}));
+  EXPECT_THAT(samples,
+              testing::ElementsAre(Pointwise(DoubleEq(), {1.0, 2.0}),
+                                   Pointwise(DoubleEq(), {0.0, 0.0}),
+                                   Pointwise(DoubleEq(), {201.0, 202.0}),
+                                   Pointwise(DoubleEq(), {301.0, 302.0})));
 }
 
 TEST(ArrangeSamplesToRender, LeavesOmittedLabelsZeroForChannelBasedLayout) {
   const LabeledFrame kLFEOnlyFrame = {.label_to_samples = {{kLFE, {1, 2}}}};
   const std::vector<ChannelLabel::Label> kLFEAsSecondChannelArrangement = {
       kOmitted, kOmitted, kLFE, kOmitted};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kLFEAsSecondChannelArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kLFEAsSecondChannelArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_THAT(
       ArrangeSamplesToRender(kLFEOnlyFrame, kLFEAsSecondChannelArrangement,
-                             samples, num_valid_samples),
+                             kEmptyChannel, samples, num_valid_samples),
       IsOk());
-  EXPECT_THAT(
-      absl::MakeConstSpan(samples).first(num_valid_samples),
-      testing::ElementsAreArray({Pointwise(DoubleEq(), {0.0, 0.0, 1.0, 0.0}),
-                                 Pointwise(DoubleEq(), {0.0, 0.0, 2.0, 0.0})}));
+  EXPECT_THAT(samples, testing::ElementsAre(Pointwise(DoubleEq(), {0.0, 0.0}),
+                                            Pointwise(DoubleEq(), {0.0, 0.0}),
+                                            Pointwise(DoubleEq(), {1.0, 2.0}),
+                                            Pointwise(DoubleEq(), {0.0, 0.0})));
 }
 
 TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
@@ -146,50 +144,53 @@ TEST(ArrangeSamplesToRender, ExcludesSamplesToBeTrimmed) {
       .samples_to_trim_at_start = 1,
       .label_to_samples = {{kMono, {999, 100, 999, 999}}}};
   const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
+  const std::vector<InternalSampleType> kEmptyChannel(4, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kMonoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kMonoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_THAT(
-      ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
-                             kMonoArrangement, samples, num_valid_samples),
-      IsOk());
-  EXPECT_THAT(absl::MakeConstSpan(samples).first(num_valid_samples),
-              testing::ElementsAreArray({Pointwise(DoubleEq(), {100.0})}));
+  EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
+                                     kMonoArrangement, kEmptyChannel, samples,
+                                     num_valid_samples),
+              IsOk());
+  EXPECT_THAT(samples, testing::ElementsAre(Pointwise(DoubleEq(), {100.0})));
 }
 
 TEST(ArrangeSamplesToRender, OverwritesInputVector) {
   const LabeledFrame kMonoLabeledFrame = {
       .label_to_samples = {{kMono, {1, 2}}}};
   const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples = {{999}, {999}};
+  const std::vector<InternalSampleType> original_input_samples = {999, 999};
+  std::vector<absl::Span<const InternalSampleType>> samples = {
+      absl::MakeConstSpan(original_input_samples)};
   size_t num_valid_samples = 0;
   EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrame, kMonoArrangement,
-                                     samples, num_valid_samples),
+                                     kEmptyChannel, samples, num_valid_samples),
               IsOk());
-  EXPECT_THAT(absl::MakeConstSpan(samples).first(num_valid_samples),
-              testing::ElementsAreArray({Pointwise(DoubleEq(), {1.0}),
-                                         Pointwise(DoubleEq(), {2.0})}));
+  EXPECT_THAT(samples, testing::ElementsAre(Pointwise(DoubleEq(), {1.0, 2.0})));
 }
 
-TEST(ArrangeSamplesToRender, TrimmingAllFramesFromStartIsResultsInEmptyOutput) {
+TEST(ArrangeSamplesToRender,
+     TrimmingAllFramesFromStartIsResultsInEmptyChannels) {
   const LabeledFrame kMonoLabeledFrameWithSamplesToTrim = {
       .samples_to_trim_at_end = 0,
       .samples_to_trim_at_start = 4,
       .label_to_samples = {{kMono, {999, 999, 999, 999}}}};
   const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
+  const std::vector<InternalSampleType> kEmptyChannel(4, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kMonoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kMonoArrangement.size());
   size_t num_valid_samples = 0;
-  EXPECT_THAT(
-      ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
-                             kMonoArrangement, samples, num_valid_samples),
-      IsOk());
-  EXPECT_TRUE(absl::MakeConstSpan(samples).first(num_valid_samples).empty());
+  EXPECT_THAT(ArrangeSamplesToRender(kMonoLabeledFrameWithSamplesToTrim,
+                                     kMonoArrangement, kEmptyChannel, samples,
+                                     num_valid_samples),
+              IsOk());
+  for (const auto& channel : samples) {
+    EXPECT_TRUE(channel.empty());
+  }
 }
 
 TEST(ArrangeSamplesToRender,
@@ -197,13 +198,30 @@ TEST(ArrangeSamplesToRender,
   const LabeledFrame kStereoLabeledFrameWithMissingSample = {
       .label_to_samples = {{kL2, {0, 1}}, {kR2, {10}}}};
   const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kStereoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrameWithMissingSample,
-                                      kStereoArrangement, samples,
+                                      kStereoArrangement, kEmptyChannel,
+                                      samples, num_valid_samples)
+                   .ok());
+}
+
+TEST(ArrangeSamplesToRender, InvalidWhenEmptyChannelHasTooFewSamples) {
+  const LabeledFrame kStereoLabeledFrame = {
+      .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
+  const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+
+  // Other labels have two samples, but the empty channel has only one.
+  const std::vector<InternalSampleType> kEmptyChannelWithTooManySamples(1, 0.0);
+
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
+  size_t num_valid_samples = 0;
+  EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kStereoArrangement,
+                                      kEmptyChannelWithTooManySamples, samples,
                                       num_valid_samples)
                    .ok());
 }
@@ -214,14 +232,14 @@ TEST(ArrangeSamplesToRender, InvalidWhenTrimIsImplausible) {
       .samples_to_trim_at_start = 2,
       .label_to_samples = {{kL2, {0, 1}}, {kR2, {10, 11}}}};
   const std::vector<ChannelLabel::Label> kStereoArrangement = {kL2, kR2};
+  const std::vector<InternalSampleType> kEmptyChannel(2, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kStereoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> samples(
+      kStereoArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_FALSE(ArrangeSamplesToRender(kFrameWithExcessSamplesTrimmed,
-                                      kStereoArrangement, samples,
-                                      num_valid_samples)
+                                      kStereoArrangement, kEmptyChannel,
+                                      samples, num_valid_samples)
                    .ok());
 }
 
@@ -229,13 +247,14 @@ TEST(ArrangeSamplesToRender, InvalidMissingLabel) {
   const LabeledFrame kStereoLabeledFrame = {
       .label_to_samples = {{kL2, {0}}, {kR2, {10}}}};
   const std::vector<ChannelLabel::Label> kMonoArrangement = {kMono};
+  const std::vector<InternalSampleType> kEmptyChannel(1, 0.0);
 
-  std::vector<std::vector<InternalSampleType>> unused_samples(
-      kNumSamplesPerFrame,
-      std::vector<InternalSampleType>(kMonoArrangement.size()));
+  std::vector<absl::Span<const InternalSampleType>> unused_samples(
+      kMonoArrangement.size());
   size_t num_valid_samples = 0;
   EXPECT_FALSE(ArrangeSamplesToRender(kStereoLabeledFrame, kMonoArrangement,
-                                      unused_samples, num_valid_samples)
+                                      kEmptyChannel, unused_samples,
+                                      num_valid_samples)
                    .ok());
 }
 

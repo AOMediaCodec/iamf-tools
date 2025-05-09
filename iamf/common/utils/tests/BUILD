@@ -47,6 +47,7 @@ cc_test(
     name = "sample_processing_utils_test",
     srcs = ["sample_processing_utils_test.cc"],
     deps = [
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/common/utils:sample_processing_utils",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/status",

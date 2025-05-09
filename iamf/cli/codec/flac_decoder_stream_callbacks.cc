@@ -66,26 +66,22 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
                << libflac_callback_data->num_samples_per_channel_;
     return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
   }
-  // Zero initialize a vector of the maximum number of samples per channel. But
-  // only fill in based on the actual number of samples in the frame.
-  std::vector<std::vector<int32_t>> decoded_samples(
-      libflac_callback_data->num_samples_per_channel_,
-      std::vector<int32_t>(frame->header.channels, 0.0));
 
-  // Note: libFLAC represents data in a planar fashion, so each channel is
-  // stored in a separate array, and the elements within those arrays represent
-  // time ticks. However, we store samples in an interleaved fashion, which
-  // means that each outer entry in decoded_samples represents a time tick, and
-  // each element within represents a channel. So we need to transpose the data
-  // from libFLAC's planar format into our interleaved format.
+  auto& decoded_samples = libflac_callback_data->decoded_frame_;
+  decoded_samples.resize(frame->header.channels);
   for (int c = 0; c < frame->header.channels; ++c) {
     const FLAC__int32* const channel_buffer = buffer[c];
+    auto& decoded_samples_for_channel = decoded_samples[c];
+
+    // Zero-initialize a vector of the maximum number of samples per channel.
+    // But only fill in based on the actual number of samples in the frame.
+    decoded_samples_for_channel.resize(
+        libflac_callback_data->num_samples_per_channel_, 0);
     for (int t = 0; t < frame->header.blocksize; ++t) {
-      decoded_samples[t][c] = channel_buffer[t]
-                              << (32 - frame->header.bits_per_sample);
+      decoded_samples_for_channel[t] = channel_buffer[t]
+                                       << (32 - frame->header.bits_per_sample);
     }
   }
-  libflac_callback_data->decoded_frame_ = decoded_samples;
   return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 

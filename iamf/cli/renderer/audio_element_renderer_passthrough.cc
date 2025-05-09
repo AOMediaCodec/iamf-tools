@@ -178,9 +178,9 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
 }
 
 absl::Status AudioElementRendererPassThrough::RenderSamples(
-    absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+    absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
     std::vector<InternalSampleType>& rendered_samples) {
-  // Flatten the (time, channel) axes into interleaved samples.
+  // Flatten the (channel, time) axes into interleaved samples.
   const absl::AnyInvocable<absl::Status(InternalSampleType, InternalSampleType&)
                                const>
       kIdentityTransform =
@@ -188,8 +188,7 @@ absl::Status AudioElementRendererPassThrough::RenderSamples(
             output = input;
             return absl::OkStatus();
           };
-
-  return ConvertTimeChannelToInterleaved(samples_to_render, kIdentityTransform,
+  return ConvertChannelTimeToInterleaved(samples_to_render, kIdentityTransform,
                                          rendered_samples);
 }
 

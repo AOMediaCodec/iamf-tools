@@ -53,11 +53,12 @@ class LoudnessCalculatorItu1770_4 : public LoudnessCalculatorBase {
 
   /*!\brief Accumulates samples to be measured.
    *
-   * \param time_channel_samples Samples to measure arranged in (time, channel).
+   * \param channel_time_samples Samples to measure arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status AccumulateLoudnessForSamples(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+      absl::Span<const absl::Span<const int32_t>> channel_time_samples)
+      override;
 
   /*!\brief Outputs the measured loudness.
    *

@@ -183,8 +183,16 @@ void MoveSamples(const size_t num_samples,
                  std::deque<std::vector<int32_t>>& source_samples,
                  std::vector<std::vector<int32_t>>& destination_samples) {
   CHECK_GE(source_samples.size(), num_samples);
-  std::copy(source_samples.begin(), source_samples.begin() + num_samples,
-            destination_samples.begin());
+  const size_t num_channels = source_samples.front().size();
+  CHECK_EQ(destination_samples.size(), num_channels);
+
+  for (int c = 0; c < num_channels; c++) {
+    auto& destination_samples_for_channel = destination_samples[c];
+    destination_samples_for_channel.resize(num_samples);
+    for (int t = 0; t < num_samples; t++) {
+      destination_samples_for_channel[t] = source_samples[t][c];
+    }
+  }
   source_samples.erase(source_samples.begin(),
                        source_samples.begin() + num_samples);
 }
@@ -430,6 +438,8 @@ absl::Status MaybeEncodeFramesForAudioElement(
 
   std::optional<InternalTimestamp> encoded_timestamp;
   bool more_samples_to_encode = false;
+  std::vector<std::vector<int32_t>> samples_encode;
+  std::vector<std::vector<int32_t>> samples_obu;
   do {
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
         audio_element_id, demixing_module, num_samples_per_frame,
@@ -459,6 +469,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
       }
 
       more_samples_to_encode = true;
+      const auto num_channels = substream_data.samples_obu.front().size();
 
       // Encode.
       if (substream_data.samples_encode.size() < num_samples_per_frame) {
@@ -473,11 +484,14 @@ absl::Status MaybeEncodeFramesForAudioElement(
         continue;
       }
 
-      // Pop samples from the queues and arrange in (time, channel) axes.
+      // Pop samples from the queues and arrange in (channel, time) axes.
       const size_t num_samples_to_encode =
           static_cast<size_t>(num_samples_per_frame);
-      std::vector<std::vector<int32_t>> samples_encode(num_samples_to_encode);
-      std::vector<std::vector<int32_t>> samples_obu(num_samples_to_encode);
+      // std::vector<std::vector<int32_t>>
+      // samples_encode(num_samples_to_encode);
+      // std::vector<std::vector<int32_t>> samples_obu(num_samples_to_encode);
+      samples_obu.resize(num_channels);
+      samples_encode.resize(num_channels);
 
       MoveSamples(num_samples_to_encode, substream_data.samples_obu,
                   samples_obu);
@@ -494,7 +508,8 @@ absl::Status MaybeEncodeFramesForAudioElement(
       InternalTimestamp start_timestamp;
       InternalTimestamp end_timestamp;
       RETURN_IF_NOT_OK(global_timing_module.GetNextAudioFrameTimestamps(
-          substream_id, samples_obu.size(), start_timestamp, end_timestamp));
+          substream_id, samples_obu.front().size(), start_timestamp,
+          end_timestamp));
 
       if (encoded_timestamp.has_value()) {
         // All frames corresponding to the same Audio Element should have

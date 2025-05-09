@@ -12,10 +12,8 @@
 
 #include "iamf/cli/codec/flac_decoder.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include "absl/log/check.h"
@@ -35,23 +33,18 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> FlacDecoder::Create(
   if (decoder == nullptr) {
     return absl::InternalError("Failed to create FLAC stream decoder.");
   }
-  auto callback_data = std::make_unique<flac_callbacks::LibFlacCallbackData>(
-      num_samples_per_frame);
-  FLAC__StreamDecoderInitStatus flac_status = FLAC__stream_decoder_init_stream(
+
+  auto flac_decoder = absl::WrapUnique(
+      new FlacDecoder(num_channels, num_samples_per_frame, decoder));
+
+  FLAC__stream_decoder_init_stream(
       decoder, flac_callbacks::LibFlacReadCallback, /*seek_callback=*/nullptr,
       /*tell_callback=*/nullptr, /*length_callback=*/nullptr,
       /*eof_callback=*/nullptr, flac_callbacks::LibFlacWriteCallback,
       /*metadata_callback=*/nullptr, flac_callbacks::LibFlacErrorCallback,
-      static_cast<void*>(callback_data.get()));
+      static_cast<void*>(flac_decoder->callback_data_.get()));
 
-  if (flac_status != FLAC__STREAM_DECODER_INIT_STATUS_OK) {
-    // Initialization failed, delete to avoid memory leaks.
-    FLAC__stream_decoder_delete(decoder);
-    return absl::InternalError(absl::StrCat(
-        "Failed to initialize FLAC stream decoder: ", flac_status));
-  }
-  return absl::WrapUnique(new FlacDecoder(num_channels, num_samples_per_frame,
-                                          std::move(callback_data), decoder));
+  return flac_decoder;
 }
 
 FlacDecoder::~FlacDecoder() {
@@ -70,8 +63,6 @@ absl::Status FlacDecoder::Finalize() {
 
 absl::Status FlacDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame) {
-  num_valid_ticks_ = 0;
-
   // Set the encoded frame to be decoded; the libflac decoder will copy the
   // data using LibFlacReadCallback.
   callback_data_->SetEncodedFrame(encoded_frame);
@@ -79,12 +70,7 @@ absl::Status FlacDecoder::DecodeAudioFrame(
     // More specific error information is logged in LibFlacErrorCallback.
     return absl::InternalError("Failed to decode FLAC frame.");
   }
-  // Get the decoded frame, which will have been set by LibFlacWriteCallback.
-  // Copy the first `num_valid_ticks_` time samples to `decoded_samples_`.
-  const auto& decoded_frame = callback_data_->decoded_frame_;
-  num_valid_ticks_ = decoded_frame.size();
-  std::copy(decoded_frame.begin(), decoded_frame.begin() + num_valid_ticks_,
-            decoded_samples_.begin());
+
   return absl::OkStatus();
 }
 

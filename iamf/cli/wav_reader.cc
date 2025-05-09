@@ -74,8 +74,7 @@ absl::StatusOr<WavReader> WavReader::CreateFromFile(
 
 WavReader::WavReader(const size_t num_samples_per_frame, FILE* file,
                      const ReadWavInfo& info)
-    : buffers_(num_samples_per_frame,
-               std::vector<int32_t>(info.num_channels, 0)),
+    : buffers_(info.num_channels, std::vector<int32_t>(num_samples_per_frame)),
       num_samples_per_frame_(num_samples_per_frame),
       file_(file),
       info_(info) {}
@@ -97,11 +96,22 @@ WavReader::~WavReader() {
 }
 
 size_t WavReader::ReadFrame() {
+  // Read samples in an interleaved mannar but store the outputs in
+  // (channel, time) axes.
   size_t samples_read = 0;
-  for (int i = 0; i < buffers_.size(); i++) {
+  const auto num_channels = info_.num_channels;
+  std::vector<int32_t> buffer_of_one_tick(num_channels, 0);
+  for (int t = 0; t < num_samples_per_frame_; t++) {
     samples_read +=
-        ReadWavSamples(file_, &info_, buffers_[i].data(), buffers_[i].size());
+        ReadWavSamples(file_, &info_, buffer_of_one_tick.data(), num_channels);
+    if (samples_read < num_channels) {
+      break;
+    }
+    for (int c = 0; c < num_channels; c++) {
+      buffers_[c][t] = buffer_of_one_tick[c];
+    }
   }
+
   return samples_read;
 }
 

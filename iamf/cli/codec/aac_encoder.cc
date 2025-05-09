@@ -220,15 +220,17 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // `fdk_aac` requires the native system endianness as input.
   const bool big_endian = IsNativeBigEndian();
+
+  // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm`.
   std::vector<INT_PCM> encoder_input_pcm(
       num_samples_per_channel * num_channels_, 0);
   size_t write_position = 0;
-  for (int t = 0; t < samples.size(); t++) {
-    for (int c = 0; c < samples[0].size(); ++c) {
+  for (int c = 0; c < samples.size(); c++) {
+    for (int t = 0; t < samples[0].size(); ++t) {
       // Convert all frames to INT_PCM samples for input for `fdk_aac` (usually
       // 16-bit).
       RETURN_IF_NOT_OK(WritePcmSample(
-          static_cast<uint32_t>(samples[t][c]), input_bit_depth, big_endian,
+          static_cast<uint32_t>(samples[c][t]), input_bit_depth, big_endian,
           reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
           write_position));
     }
@@ -241,11 +243,11 @@ absl::Status AacEncoder::EncodeAudioFrame(
   INT in_buffer_sizes[1] = {
       static_cast<INT>(encoder_input_pcm.size() * GetFdkAacBytesPerSample())};
   INT in_buffer_element_sizes[1] = {GetFdkAacBytesPerSample()};
-  AACENC_BufDesc inBufDesc = {.numBufs = 1,
-                              .bufs = in_buffers,
-                              .bufferIdentifiers = in_buffer_identifiers,
-                              .bufSizes = in_buffer_sizes,
-                              .bufElSizes = in_buffer_element_sizes};
+  AACENC_BufDesc in_buffer_desc = {.numBufs = 1,
+                                   .bufs = in_buffers,
+                                   .bufferIdentifiers = in_buffer_identifiers,
+                                   .bufSizes = in_buffer_sizes,
+                                   .bufElSizes = in_buffer_element_sizes};
   AACENC_InArgs in_args = {
       .numInSamples = num_samples_per_channel * num_channels_,
       .numAncBytes = 0};
@@ -261,18 +263,19 @@ absl::Status AacEncoder::EncodeAudioFrame(
   INT out_buffer_sizes[1] = {
       static_cast<INT>(audio_frame.size() * sizeof(uint8_t))};
   INT out_buffer_element_sizes[1] = {sizeof(uint8_t)};
-  AACENC_BufDesc outBufDesc = {.numBufs = 1,
-                               .bufs = out_bufs,
-                               .bufferIdentifiers = out_buffer_identifiers,
-                               .bufSizes = out_buffer_sizes,
-                               .bufElSizes = out_buffer_element_sizes};
+  AACENC_BufDesc out_buffer_desc = {.numBufs = 1,
+                                    .bufs = out_bufs,
+                                    .bufferIdentifiers = out_buffer_identifiers,
+                                    .bufSizes = out_buffer_sizes,
+                                    .bufElSizes = out_buffer_element_sizes};
 
   // Encode the frame.
   AACENC_OutArgs out_args;
   // This implementation expects `fdk_aac` to return an entire frame and no
   // error code.
   RETURN_IF_NOT_OK(AacEncErrorToAbslStatus(
-      aacEncEncode(encoder_, &inBufDesc, &outBufDesc, &in_args, &out_args),
+      aacEncEncode(encoder_, &in_buffer_desc, &out_buffer_desc, &in_args,
+                   &out_args),
       "Failed on call to `aacEncEncode`."));
 
   if (num_samples_per_channel * num_channels_ != out_args.numInSamples) {

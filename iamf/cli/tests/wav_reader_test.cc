@@ -264,15 +264,12 @@ TEST(WavReader, OneFrame16BitLittleEndian) {
   // bits.
   EXPECT_EQ(wav_reader.ReadFrame(), 16);
   std::vector<std::vector<int32_t>> expected_frame = {
-      {0x00010000, static_cast<int32_t>(0xffff0000)},
-      {0x00020000, static_cast<int32_t>(0xfffe0000)},
-      {0x00030000, static_cast<int32_t>(0xfffd0000)},
-      {0x00040000, static_cast<int32_t>(0xfffc0000)},
-      {0x00050000, static_cast<int32_t>(0xfffb0000)},
-      {0x00060000, static_cast<int32_t>(0xfffa0000)},
-      {0x00070000, static_cast<int32_t>(0xfff90000)},
-      {0x00080000, static_cast<int32_t>(0xfff80000)},
-  };
+      {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
+       0x00070000, 0x00080000},
+      {static_cast<int32_t>(0xffff0000), static_cast<int32_t>(0xfffe0000),
+       static_cast<int32_t>(0xfffd0000), static_cast<int32_t>(0xfffc0000),
+       static_cast<int32_t>(0xfffb0000), static_cast<int32_t>(0xfffa0000),
+       static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000)}};
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
 }
 
@@ -283,17 +280,15 @@ TEST(WavReader, TwoFrames16BitLittleEndian) {
 
   EXPECT_EQ(wav_reader.ReadFrame(), 8);
   std::vector<std::vector<int32_t>> expected_frame = {
-      {0x00010000, static_cast<int32_t>(0xffff0000)},
-      {0x00020000, static_cast<int32_t>(0xfffe0000)},
-      {0x00030000, static_cast<int32_t>(0xfffd0000)},
-      {0x00040000, static_cast<int32_t>(0xfffc0000)},
-  };
+      {0x00010000, 0x00020000, 0x00030000, 0x00040000},
+      {static_cast<int32_t>(0xffff0000), static_cast<int32_t>(0xfffe0000),
+       static_cast<int32_t>(0xfffd0000), static_cast<int32_t>(0xfffc0000)}};
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
 
-  expected_frame = {{0x00050000, static_cast<int32_t>(0xfffb0000)},
-                    {0x00060000, static_cast<int32_t>(0xfffa0000)},
-                    {0x00070000, static_cast<int32_t>(0xfff90000)},
-                    {0x00080000, static_cast<int32_t>(0xfff80000)}};
+  expected_frame = {
+      {0x00050000, 0x00060000, 0x00070000, 0x00080000},
+      {static_cast<int32_t>(0xfffb0000), static_cast<int32_t>(0xfffa0000),
+       static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000)}};
   wav_reader.ReadFrame();
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
 }
@@ -305,9 +300,8 @@ TEST(WavReader, OneFrame24BitLittleEndian) {
 
   EXPECT_EQ(wav_reader.ReadFrame(), 4);
   std::vector<std::vector<int32_t>> expected_frame = {
-      {0x00000100, static_cast<int32_t>(0xffffff00)},
-      {0x00000200, static_cast<int32_t>(0xfffffe00)},
-  };
+      {0x00000100, 0x00000200},
+      {static_cast<int32_t>(0xffffff00), static_cast<int32_t>(0xfffffe00)}};
 
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
 }
@@ -320,9 +314,8 @@ TEST(WavReader, OneFrame32BitLittleEndian) {
 
   EXPECT_EQ(wav_reader.ReadFrame(), 8);
   std::vector<std::vector<int32_t>> expected_frame = {
-      {0},         {82180641},  {151850024}, {198401618},
-      {214748364}, {198401618}, {151850024}, {82180641},
-  };
+      {0, 82180641, 151850024, 198401618, 214748364, 198401618, 151850024,
+       82180641}};
   EXPECT_EQ(wav_reader.buffers_, expected_frame);
 }
 
@@ -339,7 +332,7 @@ TEST(WavReader, OneFrameAdm) {
   // bits.
   EXPECT_EQ(wav_reader.ReadFrame(), 3);
   const std::vector<std::vector<int32_t>> kExpectedFrame = {
-      {0x23010000, 0x67450000, static_cast<int32_t>(0xbbaa0000)}};
+      {0x23010000}, {0x67450000}, {static_cast<int32_t>(0xbbaa0000)}};
   EXPECT_EQ(wav_reader.buffers_, kExpectedFrame);
 }
 
@@ -351,7 +344,7 @@ TEST(WavReader, IsSafeToCallReadFrameAfterMove) {
 
   EXPECT_EQ(wav_reader_moved.ReadFrame(), 2);
   const std::vector<std::vector<int32_t>> kExpectedFrame = {
-      {0x00010000, static_cast<int32_t>(0xffff0000)}};
+      {0x00010000}, {static_cast<int32_t>(0xffff0000)}};
   EXPECT_EQ(wav_reader_moved.buffers_, kExpectedFrame);
 }
 

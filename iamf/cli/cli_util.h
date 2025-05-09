@@ -89,7 +89,7 @@ absl::Status CompareTimestamps(InternalTimestamp expected_timestamp,
 
 /*!\brief Writes interlaced PCM samples into the output buffer.
  *
- * \param frame Input frames arranged in (time, channel) axes.
+ * \param frame Input frames arranged in (channel, time) axes.
  * \param bit_depth Sample size in bits.
  * \param big_endian Whether the sample should be written as big or little
  *        endian.

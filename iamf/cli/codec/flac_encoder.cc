@@ -179,10 +179,16 @@ absl::Status FlacEncoder::EncodeAudioFrame(
             return absl::OkStatus();
           };
 
+  // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm` and
+  //                    `samples_spans`.
   // Convert input to the array that will be passed to `flac_encode`.
   std::vector<FLAC__int32> encoder_input_pcm;
-  RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(
-      absl::MakeConstSpan(samples), kLeftJustifiedToRightJustified,
+  std::vector<absl::Span<const int32_t>> samples_spans(samples.size());
+  for (int c = 0; c < samples.size(); c++) {
+    samples_spans[c] = absl::MakeConstSpan(samples[c]);
+  }
+  RETURN_IF_NOT_OK(ConvertChannelTimeToInterleaved(
+      absl::MakeConstSpan(samples_spans), kLeftJustifiedToRightJustified,
       encoder_input_pcm));
 
   LOG_FIRST_N(INFO, 1) << "Encoding " << encoder_input_pcm.size() * 4

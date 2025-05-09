@@ -34,19 +34,19 @@ absl::Status EncoderBase::Initialize(bool validate_codec_delay) {
 
 absl::Status EncoderBase::ValidateInputSamples(
     const std::vector<std::vector<int32_t>>& samples) const {
-  if (samples.size() != num_samples_per_frame_) {
-    auto error_message = absl::StrCat("Found ", samples.size(),
-                                      " samples per channels. Expected ",
-                                      num_samples_per_frame_, ".");
+  if (samples.size() != num_channels_) {
+    auto error_message = absl::StrCat(
+        "Found ", samples.size(), " channels. Expected ", num_channels_, ".");
     return absl::InvalidArgumentError(error_message);
   }
   if (samples.empty()) {
     return absl::InvalidArgumentError("samples cannot be empty.");
   }
-  if (samples[0].size() != num_channels_) {
-    auto error_message =
-        absl::StrCat("Found ", samples[0].size(), " channels. Expected ",
-                     num_channels_, ".");
+
+  if (samples[0].size() != num_samples_per_frame_) {
+    auto error_message = absl::StrCat("Found ", samples[0].size(),
+                                      " samples per channels. Expected ",
+                                      num_samples_per_frame_, ".");
     return absl::InvalidArgumentError(error_message);
   }
 

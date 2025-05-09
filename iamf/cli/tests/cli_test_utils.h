@@ -371,6 +371,24 @@ std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
                                                 double frequency_hz,
                                                 double amplitude);
 
+/*!\brief Converts a vector of vectors to a span of constant spans.
+ *
+ * \param input Input vector of vectors.
+ * \return Output span of constant spans.
+ */
+template <typename ValueType>
+inline absl::Span<const absl::Span<const ValueType>> MakeSpanOfConstSpans(
+    const std::vector<std::vector<ValueType>>& input) {
+  static std::vector<absl::Span<const ValueType>> buffer_of_spans;
+  buffer_of_spans.resize(input.size());
+
+  for (int i = 0; i < input.size(); i++) {
+    buffer_of_spans[i] = absl::MakeConstSpan(input[i]);
+  }
+
+  return absl::MakeConstSpan(buffer_of_spans);
+}
+
 /*!\brief Counts the zero crossings for each channel.
  *
  * The first time a user calls this, the `zero_crossing_states` and
@@ -381,7 +399,7 @@ std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
  * single audio channel, while allowing data to be processed in chunks (i.e.
  * frames).
  *
- * \param tick_channel_samples Samples arranged in (time, channel) axes.
+ * \param channel_time_samples Samples arranged in (channel, time) axes.
  * \param zero_crossing_states Initial state for each channel. Used between
  *        subsequence calls to `CountZeroCrossings` to track the state of each
  *        channel.
@@ -390,9 +408,10 @@ std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
  */
 enum class ZeroCrossingState { kUnknown, kPositive, kNegative };
 void AccumulateZeroCrossings(
-    absl::Span<const std::vector<int32_t>> tick_channel_samples,
+    absl::Span<const absl::Span<const int32_t>> channel_time_samples,
     std::vector<ZeroCrossingState>& zero_crossing_states,
     std::vector<int>& zero_crossing_counts);
+
 /*!\brief Reads the contents of the file and appends it to `buffer`.
  *
  * \param file_path Path of file to read.
@@ -450,9 +469,10 @@ class MockSampleProcessor : public SampleProcessorBase {
       : SampleProcessorBase(max_input_samples_per_frame, num_channels,
                             max_output_samples_per_frame) {}
 
-  MOCK_METHOD(absl::Status, PushFrameDerived,
-              (absl::Span<const std::vector<int32_t>> time_channel_samples),
-              (override));
+  MOCK_METHOD(
+      absl::Status, PushFrameDerived,
+      (absl::Span<const absl::Span<const int32_t>> channel_time_samples),
+      (override));
 
   MOCK_METHOD(absl::Status, FlushDerived, (), (override));
 };
@@ -470,11 +490,11 @@ class EverySecondTickResampler : public SampleProcessorBase {
  private:
   /*!\brief Pushes a frame of samples to be resampled.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PushFrameDerived(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+  absl::Status PushFrameDerived(absl::Span<const absl::Span<const int32_t>>
+                                    channel_time_samples) override;
 
   /*!\brief Signals to close the resampler and flush any remaining samples.
    *
@@ -509,17 +529,16 @@ class OneFrameDelayer : public SampleProcessorBase {
       : SampleProcessorBase(max_input_num_samples_per_frame, num_channels,
                             /*max_output_samples_per_frame=*/
                             max_input_num_samples_per_frame),
-        delayed_samples_(max_input_num_samples_per_frame,
-                         std::vector<int32_t>(num_channels)) {}
+        delayed_samples_(num_channels) {}
 
  private:
   /*!\brief Pushes a frame of samples to be resampled.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PushFrameDerived(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) override;
+  absl::Status PushFrameDerived(absl::Span<const absl::Span<const int32_t>>
+                                    channel_time_samples) override;
 
   /*!\brief Signals to close the resampler and flush any remaining samples.
    *
@@ -549,9 +568,10 @@ class MockLoudnessCalculator : public LoudnessCalculatorBase {
  public:
   MockLoudnessCalculator() : LoudnessCalculatorBase() {}
 
-  MOCK_METHOD(absl::Status, AccumulateLoudnessForSamples,
-              (absl::Span<const std::vector<int32_t>> time_channel_samples),
-              (override));
+  MOCK_METHOD(
+      absl::Status, AccumulateLoudnessForSamples,
+      (absl::Span<const absl::Span<const int32_t>> channel_time_samples),
+      (override));
 
   MOCK_METHOD(absl::StatusOr<LoudnessInfo>, QueryLoudness, (),
               (const, override));

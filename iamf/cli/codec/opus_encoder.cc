@@ -68,10 +68,17 @@ absl::StatusOr<int> EncodeFloat(
     const std::vector<std::vector<int32_t>>& samples,
     int num_samples_per_channel, ::OpusEncoder* encoder,
     std::vector<uint8_t>& audio_frame) {
+  // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm` and
+  //                    `samples_spans`.
   std::vector<float> encoder_input_pcm;
-  RETURN_IF_NOT_OK(ConvertTimeChannelToInterleaved(absl::MakeConstSpan(samples),
-                                                   kInt32ToNormalizedFloat,
-                                                   encoder_input_pcm));
+  std::vector<absl::Span<const int32_t>> samples_spans(samples.size());
+  for (int c = 0; c < samples.size(); c++) {
+    samples_spans[c] = absl::MakeConstSpan(samples[c]);
+  }
+
+  RETURN_IF_NOT_OK(ConvertChannelTimeToInterleaved(
+      absl::MakeConstSpan(samples_spans), kInt32ToNormalizedFloat,
+      encoder_input_pcm));
 
   // TODO(b/311655037): Test that samples are passed to `opus_encode_float` in
   //                    the correct order. Maybe also check they are in the
@@ -88,16 +95,18 @@ absl::StatusOr<int> EncodeInt16(
     std::vector<uint8_t>& audio_frame) {
   // `libopus` requires the native system endianness as input.
   const bool big_endian = IsNativeBigEndian();
+
+  // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm`.
   // Convert input to the array that will be passed to `opus_encode`.
   std::vector<opus_int16> encoder_input_pcm(
       num_samples_per_channel * num_channels, 0);
   size_t write_position = 0;
-  for (int t = 0; t < samples.size(); t++) {
-    for (int c = 0; c < samples[0].size(); ++c) {
+  for (int c = 0; c < samples.size(); c++) {
+    for (int t = 0; t < samples[0].size(); t++) {
       // Convert all frames to 16-bit samples for input to Opus.
       // Write the 16-bit samples directly into the pcm vector.
       RETURN_IF_NOT_OK(
-          WritePcmSample(static_cast<uint32_t>(samples[t][c]), 16, big_endian,
+          WritePcmSample(static_cast<uint32_t>(samples[c][t]), 16, big_endian,
                          reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
                          write_position));
     }

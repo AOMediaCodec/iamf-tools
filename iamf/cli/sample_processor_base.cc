@@ -17,38 +17,36 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 
 namespace iamf_tools {
 
 SampleProcessorBase::~SampleProcessorBase() {};
 
 absl::Status SampleProcessorBase::PushFrame(
-    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
   if (state_ != State::kTakingSamples) {
     return absl::FailedPreconditionError(absl::StrCat(
         "Do not use PushFrame() after Flush() is called. State= ", state_));
   }
 
   // Check the shape of the input data.
-  if (time_channel_samples.size() > max_input_samples_per_frame_) {
-    return absl::InvalidArgumentError(
-        "Too many samples per frame. The maximum number of samples per frame "
-        "is: " +
-        absl::StrCat(max_input_samples_per_frame_) +
-        ". The number of samples per frame received is: " +
-        absl::StrCat(time_channel_samples.size()));
-  }
-  for (const auto& channel_samples : time_channel_samples) {
-    if (channel_samples.size() != num_channels_) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Number of channels does not match the expected number of channels, "
-          "num_channels_",
-          num_channels_, " vs. ", channel_samples.size()));
+  RETURN_IF_NOT_OK(ValidateEqual(channel_time_samples.size(), num_channels_,
+                                 "number of channels"));
+  for (int c = 0; c < num_channels_; c++) {
+    if (channel_time_samples[c].size() > max_input_samples_per_frame_) {
+      return absl::InvalidArgumentError(
+          absl::StrCat("Too many samples per frame. ",
+                       "The maximum number of samples per frame is: ",
+                       max_input_samples_per_frame_,
+                       ". The number of samples per frame received is: ",
+                       channel_time_samples[c].size()));
     }
+    output_channel_time_samples_[c].resize(0);
   }
 
-  num_valid_ticks_ = 0;
-  return PushFrameDerived(time_channel_samples);
+  return PushFrameDerived(channel_time_samples);
 }
 
 absl::Status SampleProcessorBase::Flush() {
@@ -58,14 +56,20 @@ absl::Status SampleProcessorBase::Flush() {
   }
 
   state_ = State::kFlushCalled;
-  num_valid_ticks_ = 0;
+  for (int c = 0; c < num_channels_; c++) {
+    output_channel_time_samples_[c].resize(0);
+  }
   return FlushDerived();
 }
 
-absl::Span<const std::vector<int32_t>>
-SampleProcessorBase::GetOutputSamplesAsSpan() const {
-  return absl::MakeConstSpan(output_time_channel_samples_)
-      .first(num_valid_ticks_);
+absl::Span<const absl::Span<const int32_t>>
+SampleProcessorBase::GetOutputSamplesAsSpan() {
+  for (int c = 0; c < output_channel_time_samples_.size(); c++) {
+    output_span_buffer_[c] =
+        absl::MakeConstSpan(output_channel_time_samples_[c]);
+  }
+
+  return absl::MakeSpan(output_span_buffer_);
 }
 
 }  // namespace iamf_tools

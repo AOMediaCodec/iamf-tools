@@ -38,7 +38,7 @@ class MockAudioElementRenderer : public AudioElementRendererBase {
   MockAudioElementRenderer() : AudioElementRendererBase({}, 0, 0) {};
 
   absl::Status RenderSamples(
-      absl::Span<const std::vector<InternalSampleType>>,
+      absl::Span<const absl::Span<const InternalSampleType>>,
       std::vector<InternalSampleType>& rendered_samples) override {
     rendered_samples.insert(rendered_samples.end(), kSamplesToRender.begin(),
                             kSamplesToRender.end());

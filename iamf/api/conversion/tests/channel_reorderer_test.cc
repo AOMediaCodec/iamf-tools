@@ -44,18 +44,22 @@ int32_t GetNumberOfChannels(
 }
 
 // Helper to make some random samples of the appropriate size.
-std::vector<std::vector<int32_t>> CreateAudioSamples(
+std::vector<absl::Span<const int32_t>> CreateAudioSamples(
     LoudspeakersSsConventionLayout::SoundSystem sound_system,
     size_t num_ticks = 5) {
-  std::vector<std::vector<int32_t>> samples(
-      num_ticks, std::vector<int32_t>(GetNumberOfChannels(sound_system)));
+  static std::vector<std::vector<int32_t>> samples;
+
+  samples.resize(GetNumberOfChannels(sound_system),
+                 std::vector<int32_t>(num_ticks));
+  std::vector<absl::Span<const int32_t>> sample_spans(samples.size());
   int32_t i = 0;
-  for (auto& tick : samples) {
-    for (auto& sample : tick) {
+  for (int c = 0; c < samples.size(); c++) {
+    for (auto& sample : samples[c]) {
       sample = i++;
     }
+    sample_spans[c] = absl::MakeConstSpan(samples[c]);
   }
-  return samples;
+  return sample_spans;
 }
 
 struct ReordererTestCase {
@@ -168,18 +172,17 @@ TEST_P(ChannelReordererTest_SwapBackAndSides, SamplesAreUnaltered) {
   const auto scheme = GetParam().scheme;
   auto reorderer = ChannelReorderer::Create(sound_system, scheme);
   auto samples = CreateAudioSamples(sound_system, /*num_ticks=*/1);
-  auto original = samples;  // Save a copy for comparison.
+  const auto original = samples;  // Save a copy for comparison.
 
   reorderer.Reorder(samples);
 
-  EXPECT_EQ(samples[0][4], original[0][6]);
-  EXPECT_EQ(samples[0][5], original[0][7]);
-  EXPECT_EQ(samples[0][6], original[0][4]);
-  EXPECT_EQ(samples[0][7], original[0][5]);
-  EXPECT_EQ(MakeSpan(samples[0]).first(4), MakeSpan(original[0]).first(4));
+  EXPECT_EQ(samples[4], original[6]);
+  EXPECT_EQ(samples[5], original[7]);
+  EXPECT_EQ(samples[6], original[4]);
+  EXPECT_EQ(samples[7], original[5]);
+  EXPECT_EQ(MakeSpan(samples).first(4), MakeSpan(original).first(4));
   if (original[0].size() > 7) {
-    EXPECT_EQ(MakeSpan(samples[0]).subspan(8),
-              MakeSpan(original[0]).subspan(8));
+    EXPECT_EQ(MakeSpan(samples).subspan(8), MakeSpan(original).subspan(8));
   }
 }
 
@@ -209,26 +212,24 @@ TEST(ChannelReordererTest, TestLayoutFForAndroid) {
   auto samples = CreateAudioSamples(
       LoudspeakersSsConventionLayout::SoundSystem::kSoundSystemF_3_7_0,
       /*num_ticks=*/1);
-  auto original = samples;  // Save a copy for comparison.
+  const auto original = samples;  // Save a copy for comparison.
 
   reorderer.Reorder(samples);
 
-  auto before = original[0];
-  auto after = samples[0];
   // Check we have all the same samples.
-  EXPECT_THAT(after, UnorderedElementsAreArray(before));
+  EXPECT_THAT(samples, UnorderedElementsAreArray(original));
   // Check the reordering.
-  EXPECT_EQ(after[0], before[1]);
-  EXPECT_EQ(after[1], before[2]);
-  EXPECT_EQ(after[2], before[0]);
-  EXPECT_EQ(after[3], before[10]);
-  EXPECT_EQ(after[4], before[7]);
-  EXPECT_EQ(after[5], before[8]);
-  EXPECT_EQ(after[6], before[5]);
-  EXPECT_EQ(after[7], before[6]);
-  EXPECT_EQ(after[8], before[9]);
-  EXPECT_EQ(after[9], before[3]);
-  EXPECT_EQ(after[10], before[4]);
+  EXPECT_EQ(samples[0], original[1]);
+  EXPECT_EQ(samples[1], original[2]);
+  EXPECT_EQ(samples[2], original[0]);
+  EXPECT_EQ(samples[3], original[10]);
+  EXPECT_EQ(samples[4], original[7]);
+  EXPECT_EQ(samples[5], original[8]);
+  EXPECT_EQ(samples[6], original[5]);
+  EXPECT_EQ(samples[7], original[6]);
+  EXPECT_EQ(samples[8], original[9]);
+  EXPECT_EQ(samples[9], original[3]);
+  EXPECT_EQ(samples[10], original[4]);
 }
 
 TEST(ChannelReordererTest, TestLayoutGForAndroid) {
@@ -242,22 +243,22 @@ TEST(ChannelReordererTest, TestLayoutGForAndroid) {
 
   reorderer.Reorder(samples);
 
-  auto before = absl::MakeSpan(original[0]);
-  auto after = absl::MakeSpan(samples[0]);
   // Check we have all the same samples.
-  EXPECT_THAT(after, UnorderedElementsAreArray(before));
+  EXPECT_THAT(samples, UnorderedElementsAreArray(original));
   // Check the reordering.
-  EXPECT_EQ(after.first(4), before.first(4));
-  EXPECT_EQ(after[4], before[6]);
-  EXPECT_EQ(after[5], before[7]);
-  EXPECT_EQ(after[6], before[12]);
-  EXPECT_EQ(after[7], before[13]);
-  EXPECT_EQ(after[8], before[4]);
-  EXPECT_EQ(after[9], before[5]);
-  EXPECT_EQ(after[10], before[8]);
-  EXPECT_EQ(after[11], before[9]);
-  EXPECT_EQ(after[12], before[10]);
-  EXPECT_EQ(after[13], before[11]);
+  for (int c = 0; c < 4; c++) {
+    EXPECT_EQ(samples[c], original[c]);
+  }
+  EXPECT_EQ(samples[4], original[6]);
+  EXPECT_EQ(samples[5], original[7]);
+  EXPECT_EQ(samples[6], original[12]);
+  EXPECT_EQ(samples[7], original[13]);
+  EXPECT_EQ(samples[8], original[4]);
+  EXPECT_EQ(samples[9], original[5]);
+  EXPECT_EQ(samples[10], original[8]);
+  EXPECT_EQ(samples[11], original[9]);
+  EXPECT_EQ(samples[12], original[10]);
+  EXPECT_EQ(samples[13], original[11]);
 }
 
 TEST(ChannelReordererTest, TestLayoutHForAndroid) {
@@ -271,30 +272,30 @@ TEST(ChannelReordererTest, TestLayoutHForAndroid) {
 
   reorderer.Reorder(samples);
 
-  auto before = absl::MakeSpan(original[0]);
-  auto after = absl::MakeSpan(samples[0]);
   // Check we have all the same samples.
-  EXPECT_THAT(after, UnorderedElementsAreArray(before));
+  EXPECT_THAT(samples, UnorderedElementsAreArray(original));
   // Check the reordering.
   // 0-8 are the same.
-  EXPECT_EQ(after.first(9), before.first(9));
-  EXPECT_EQ(after[9], before[10]);
-  EXPECT_EQ(after[10], before[11]);
-  EXPECT_EQ(after[11], before[15]);
+  for (int c = 0; c < 8; c++) {
+    EXPECT_EQ(samples[c], original[c]);
+  }
+  EXPECT_EQ(samples[9], original[10]);
+  EXPECT_EQ(samples[10], original[11]);
+  EXPECT_EQ(samples[11], original[15]);
   // 12 is the same
-  EXPECT_EQ(after[12], before[12]);
-  EXPECT_EQ(after[13], before[14]);
-  EXPECT_EQ(after[14], before[13]);
-  EXPECT_EQ(after[15], before[16]);
-  EXPECT_EQ(after[16], before[20]);
+  EXPECT_EQ(samples[12], original[12]);
+  EXPECT_EQ(samples[13], original[14]);
+  EXPECT_EQ(samples[14], original[13]);
+  EXPECT_EQ(samples[15], original[16]);
+  EXPECT_EQ(samples[16], original[20]);
   // 17-19 are the same.
-  EXPECT_EQ(after[17], before[17]);
-  EXPECT_EQ(after[18], before[18]);
-  EXPECT_EQ(after[19], before[19]);
-  EXPECT_EQ(after[20], before[22]);
-  EXPECT_EQ(after[21], before[21]);
-  EXPECT_EQ(after[22], before[23]);
-  EXPECT_EQ(after[23], before[9]);
+  EXPECT_EQ(samples[17], original[17]);
+  EXPECT_EQ(samples[18], original[18]);
+  EXPECT_EQ(samples[19], original[19]);
+  EXPECT_EQ(samples[20], original[22]);
+  EXPECT_EQ(samples[21], original[21]);
+  EXPECT_EQ(samples[22], original[23]);
+  EXPECT_EQ(samples[23], original[9]);
 }
 
 }  // namespace

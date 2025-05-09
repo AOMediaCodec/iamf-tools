@@ -127,10 +127,17 @@ absl::StatusOr<std::vector<float>> GetItu1770_4ChannelWeights(
 // Flattens to the output buffer, and returns a span to the relevant slice of
 // data.
 absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
-    absl::Span<const std::vector<int32_t>> time_channel_samples,
+    absl::Span<const absl::Span<const int32_t>> channel_time_samples,
     size_t max_num_samples_per_frame, int32_t expected_num_channels,
     int32_t bit_depth, std::vector<uint8_t>& interleaved_pcm_buffer) {
-  const size_t num_samples_per_channel = time_channel_samples.size();
+  if (channel_time_samples.size() != expected_num_channels) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Input samples are not stored in ", expected_num_channels,
+                     " channels."));
+  }
+
+  const size_t num_samples_per_channel =
+      channel_time_samples.empty() ? 0 : channel_time_samples[0].size();
   if (num_samples_per_channel > max_num_samples_per_frame) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Input number of samples per channel (", num_samples_per_channel,
@@ -138,32 +145,35 @@ absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
         max_num_samples_per_frame, ")"));
   }
 
-  const bool all_ticks_have_expected_num_channels = std::all_of(
-      time_channel_samples.begin(), time_channel_samples.end(),
-      [&](const auto& tick) { return tick.size() == expected_num_channels; });
-  if (!all_ticks_have_expected_num_channels) {
+  const bool all_channels_have_expected_num_samples =
+      std::all_of(channel_time_samples.begin(), channel_time_samples.end(),
+                  [&num_samples_per_channel](const auto& channel) {
+                    return channel.size() == num_samples_per_channel;
+                  });
+  if (!all_channels_have_expected_num_samples) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Detected a tick which does not contain ",
-                     expected_num_channels, " channels."));
+        absl::StrCat("Detected a channel which does not contain ",
+                     num_samples_per_channel, " ticks."));
   }
 
   size_t write_position = 0;
   const size_t interleaved_pcm_buffer_size = interleaved_pcm_buffer.size();
-  for (const auto& tick : time_channel_samples) {
-    for (const auto& sample : tick) {
+  for (int t = 0; t < num_samples_per_channel; t++) {
+    for (int c = 0; c < expected_num_channels; ++c) {
       // The buffer is pre-allocated to fit the largest accepted input. But for
       // safety, check the write position does not exceed the buffer size.
       CHECK(write_position < interleaved_pcm_buffer_size);
       // `WritePcmSample` requires the input sample to be in the upper
       // bits of the first argument.
       RETURN_IF_NOT_OK(WritePcmSample(
-          sample, bit_depth,
+          static_cast<uint32_t>(channel_time_samples[c][t]), bit_depth,
           /*big_endian=*/false, interleaved_pcm_buffer.data(), write_position));
     }
   }
 
   return absl::MakeConstSpan(interleaved_pcm_buffer).first(write_position);
 }
+
 }  // namespace
 
 std::unique_ptr<LoudnessCalculatorItu1770_4>
@@ -219,16 +229,16 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
 }
 
 absl::Status LoudnessCalculatorItu1770_4::AccumulateLoudnessForSamples(
-    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
   auto interleaved_pcm_span = FlattenToInterleavedPcm(
-      time_channel_samples, num_samples_per_frame_, num_channels_,
+      channel_time_samples, num_samples_per_frame_, num_channels_,
       bit_depth_to_measure_loudness_, interleaved_pcm_buffer_);
   if (!interleaved_pcm_span.ok()) {
     return interleaved_pcm_span.status();
   }
 
   const int64_t num_samples_per_channel =
-      static_cast<int64_t>(time_channel_samples.size());
+      channel_time_samples.empty() ? 0 : channel_time_samples[0].size();
   ebu_r128_analyzer_.Process(
       static_cast<const void*>(interleaved_pcm_span->data()),
       num_samples_per_channel, sample_format_, kInterleavesSampleLayout);

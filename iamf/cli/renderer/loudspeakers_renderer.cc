@@ -163,59 +163,66 @@ double Q15ToSignedDouble(const int16_t input) {
   return static_cast<double>(input) / 32768.0;
 }
 
-std::vector<std::vector<InternalSampleType>> ProjectSamplesToRender(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
-    const int16_t* demixing_matrix, const int output_channel_count) {
+void ProjectSamplesToRender(
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
+    const int16_t* demixing_matrix, const int num_output_channels,
+    std::vector<std::vector<InternalSampleType>>& projected_samples) {
   CHECK_NE(demixing_matrix, nullptr);
-  std::vector<std::vector<InternalSampleType>> samples_to_render(
-      input_samples.size(),
-      std::vector<InternalSampleType>(output_channel_count, 0.0));
-
-  for (int t = 0; t < samples_to_render.size(); t++) {
-    for (int out_channel = 0; out_channel < output_channel_count;
-         out_channel++) {
-      // Project with `demixing_matrix`, which is encoded as Q15 and stored
-      // in column major.
-      for (int in_channel = 0; in_channel < input_samples[0].size();
-           in_channel++) {
-        samples_to_render[t][out_channel] +=
+  const auto num_in_channels = input_samples.size();
+  const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
+  projected_samples.resize(num_output_channels);
+  for (int out_channel = 0; out_channel < num_output_channels; out_channel++) {
+    projected_samples[out_channel].resize(num_ticks, 0.0);
+    for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
+      for (int t = 0; t < num_ticks; t++) {
+        // Project with `demixing_matrix`, which is encoded as Q15 and stored
+        // in column major.
+        projected_samples[out_channel][t] +=
             Q15ToSignedDouble(
-                demixing_matrix[in_channel * output_channel_count +
-                                out_channel]) *
-            input_samples[t][in_channel];
+                demixing_matrix[in_channel * num_in_channels + out_channel]) *
+            input_samples[in_channel][t];
       }
     }
   }
-  return samples_to_render;
 }
 
 void RenderSamplesUsingGains(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const std::vector<std::vector<double>>& gains,
     const int16_t* demixing_matrix,
     std::vector<InternalSampleType>& rendered_samples) {
   // Project with `demixing_matrix` when in projection mode.
-  absl::Span<const std::vector<InternalSampleType>> samples_to_render_double;
+  absl::Span<const absl::Span<const InternalSampleType>>
+      samples_to_render_double;
+
+  // TODO(b/382197581): Avoid re-allocating vectors in each function call.
   std::vector<std::vector<InternalSampleType>> projected_samples;
+  std::vector<absl::Span<const InternalSampleType>> projected_spans;
   if (demixing_matrix != nullptr) {
-    projected_samples =
-        ProjectSamplesToRender(input_samples, demixing_matrix, gains.size());
-    samples_to_render_double = absl::MakeConstSpan(projected_samples);
+    ProjectSamplesToRender(input_samples, demixing_matrix, gains.size(),
+                           projected_samples);
+    projected_spans.resize(projected_samples.size());
+    for (int c = 0; c < projected_samples.size(); c++) {
+      projected_spans[c] = absl::MakeConstSpan(projected_samples[c]);
+    }
+    samples_to_render_double = absl::MakeConstSpan(projected_spans);
   } else {
     samples_to_render_double = input_samples;
   }
 
   int rendered_samples_index = 0;
+
   std::fill(rendered_samples.begin(), rendered_samples.end(), 0);
-  for (int t = 0; t < samples_to_render_double.size(); t++) {
-    for (int out_channel = 0; out_channel < gains[0].size(); out_channel++) {
-      for (int in_channel = 0; in_channel < samples_to_render_double[0].size();
-           in_channel++) {
+  const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
+  const auto num_in_channels = input_samples.size();
+  const auto num_out_channels = gains[0].size();
+  for (int t = 0; t < num_ticks; t++) {
+    for (int out_channel = 0; out_channel < num_out_channels; out_channel++) {
+      for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
         rendered_samples[rendered_samples_index] +=
-            samples_to_render_double[t][in_channel] *
+            samples_to_render_double[in_channel][t] *
             gains[in_channel][out_channel];
       }
-
       rendered_samples_index++;
     }
   }
@@ -223,6 +230,8 @@ void RenderSamplesUsingGains(
 
 }  // namespace
 
+// TODO(b/382197581): Avoid returning newly constructed vectors. Store the
+// results in a pre-allocated data structure.
 absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
     absl::string_view input_key, absl::string_view output_key) {
   static const absl::NoDestructor<PrecomputedGains> precomputed_gains(
@@ -242,7 +251,7 @@ absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
 }
 
 absl::Status RenderChannelLayoutToLoudspeakers(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const DownMixingParams& down_mixing_params,
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
@@ -265,7 +274,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
 }
 
 absl::Status RenderAmbisonicsToLoudspeakers(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
     std::vector<InternalSampleType>& rendered_samples) {

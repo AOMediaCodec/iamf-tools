@@ -17,6 +17,7 @@
 
 #include "absl/log/check.h"
 #include "absl/random/random.h"
+#include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
@@ -143,15 +144,19 @@ static void BM_ArrangeSamplesToRender(benchmark::State& state) {
         std::vector<InternalSampleType>(num_ticks);
   }
 
+  // Create an input empty channel.
+  const std::vector<InternalSampleType> kEmptyChannel(num_ticks, 0.0);
+
   // Placeholder for outputs.
-  std::vector<std::vector<InternalSampleType>> samples_to_render(
-      num_ticks, std::vector<InternalSampleType>(num_channels));
+  std::vector<absl::Span<const InternalSampleType>> samples_to_render(
+      num_channels);
   size_t num_valid_samples = 0;
 
   // Measure the calls to `ArrangeSamplesToRender()`.
   for (auto _ : state) {
-    auto status = ArrangeSamplesToRender(labeled_frame, ordered_labels,
-                                         samples_to_render, num_valid_samples);
+    auto status =
+        ArrangeSamplesToRender(labeled_frame, ordered_labels, kEmptyChannel,
+                               samples_to_render, num_valid_samples);
     CHECK_OK(status);
   }
 }

@@ -15,7 +15,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <vector>
 
 #include "absl/base/nullability.h"
@@ -62,17 +61,14 @@ class FlacDecoder : public DecoderBase {
    *
    * \param num_channels Number of channels for this stream.
    * \param num_samples_per_frame Number of samples per frame for this stream.
-   * \param callback_data Backing data for the `libflac` decoder callbacks.
    * \param decoder `libflac` decoder to use.
    */
-  FlacDecoder(
-      int num_channels, uint32_t num_samples_per_frame,
-      /* absl_nonnull */
-      std::unique_ptr<flac_callbacks::LibFlacCallbackData> callback_data,
-      FLAC__StreamDecoder* /* absl_nonnull */ decoder)
-      : DecoderBase(num_channels, num_samples_per_frame),
-        callback_data_(std::move(callback_data)),
-        decoder_(decoder) {}
+  FlacDecoder(int num_channels, uint32_t num_samples_per_frame,
+              FLAC__StreamDecoder* /* absl_nonnull */ decoder)
+      : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {
+    callback_data_ = std::make_unique<flac_callbacks::LibFlacCallbackData>(
+        num_samples_per_frame, decoded_samples_);
+  }
 
   // Backing data for the `libflac` decoder callbacks. Held in `unique_ptr` for
   // pointer stability after move.

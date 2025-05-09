@@ -96,18 +96,17 @@ class AudioElementRendererBase {
       : ordered_labels_(ordered_labels.begin(), ordered_labels.end()),
         num_samples_per_frame_(num_samples_per_frame),
         num_output_channels_(num_output_channels),
-        samples_to_render_(
-            num_samples_per_frame_,
-            std::vector<InternalSampleType>(ordered_labels_.size(), 0)) {}
+        samples_to_render_(ordered_labels_.size()),
+        kEmptyChannel(num_samples_per_frame_, 0.0) {}
 
   /*!\brief Renders samples.
    *
-   * \param samples_to_render Samples to render arranged in (time, channel).
+   * \param samples_to_render Samples to render arranged in (channel, time).
    * \param rendered_samples Output rendered samples.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status RenderSamples(
-      absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
       std::vector<InternalSampleType>& rendered_samples)
       ABSL_SHARED_LOCKS_REQUIRED(mutex_) = 0;
 
@@ -117,9 +116,15 @@ class AudioElementRendererBase {
 
   // Mutex to guard simultaneous access to data members.
   mutable absl::Mutex mutex_;
-  std::vector<std::vector<InternalSampleType>> samples_to_render_
+
+  // Buffer of samples to render arranged in (channel, time).
+  std::vector<absl::Span<const InternalSampleType>> samples_to_render_
       ABSL_GUARDED_BY(mutex_);
   std::vector<InternalSampleType> rendered_samples_ ABSL_GUARDED_BY(mutex_);
+
+  // Buffer storing zeros. All omitted channels' spans point to this.
+  const std::vector<InternalSampleType> kEmptyChannel;
+
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
   const LabeledFrame* current_labeled_frame_ ABSL_GUARDED_BY(mutex_) = nullptr;
 };

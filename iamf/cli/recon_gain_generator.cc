@@ -12,12 +12,12 @@
 #include "iamf/cli/recon_gain_generator.h"
 
 #include <cmath>
-#include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/utils/macros.h"
@@ -29,7 +29,7 @@ namespace iamf_tools {
 namespace {
 
 // Returns the Root Mean Square (RMS) power of input `samples`.
-double ComputeSignalPower(const std::vector<InternalSampleType>& samples) {
+double ComputeSignalPower(absl::Span<const InternalSampleType>& samples) {
   double mean_square = 0.0;
   const double scale = 1.0 / static_cast<double>(samples.size());
   for (const auto s : samples) {
@@ -45,7 +45,7 @@ double ComputeSignalPower(const std::vector<InternalSampleType>& samples) {
 absl::Status FindRelevantMixedSamples(
     const bool additional_logging, ChannelLabel::Label label,
     const LabelSamplesMap& label_to_samples,
-    const std::vector<InternalSampleType>** relevant_mixed_samples) {
+    absl::Span<const InternalSampleType>& relevant_mixed_samples) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<
       absl::flat_hash_map<ChannelLabel::Label, ChannelLabel::Label>>
@@ -84,15 +84,15 @@ absl::Status ReconGainGenerator::ComputeReconGain(
     const LabelSamplesMap& label_to_decoded_samples,
     const bool additional_logging, double& recon_gain) {
   // Gather information about the original samples.
-  const std::vector<InternalSampleType>* original_samples;
+  absl::Span<const InternalSampleType> original_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      label, label_to_samples, &original_samples));
+      label, label_to_samples, original_samples));
   LOG_IF(INFO, additional_logging)
       << "[" << label
-      << "] original_samples.size()= " << original_samples->size();
+      << "] original_samples.size()= " << original_samples.size();
 
   // Level Ok in the Spec.
-  const double original_power = ComputeSignalPower(*original_samples);
+  const double original_power = ComputeSignalPower(original_samples);
 
   // TODO(b/289064747): Investigate if the recon gain mismatches are resolved
   //                    after we switched to representing data in [-1, +1].
@@ -109,16 +109,16 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   }
 
   // Gather information about mixed samples.
-  const std::vector<InternalSampleType>* relevant_mixed_samples;
+  absl::Span<const InternalSampleType> relevant_mixed_samples;
   RETURN_IF_NOT_OK(FindRelevantMixedSamples(
-      additional_logging, label, label_to_samples, &relevant_mixed_samples));
+      additional_logging, label, label_to_samples, relevant_mixed_samples));
   LOG_IF(INFO, additional_logging)
       << "[" << label
-      << "] relevant_mixed_samples.size()= " << relevant_mixed_samples->size();
+      << "] relevant_mixed_samples.size()= " << relevant_mixed_samples.size();
 
   // Level Mk in the Spec.
   const double relevant_mixed_power =
-      ComputeSignalPower(*relevant_mixed_samples);
+      ComputeSignalPower(relevant_mixed_samples);
   const double mixed_power_db = 10 * log10(relevant_mixed_power / kMaxLSquared);
   LOG_IF(INFO, additional_logging) << "Level MK (dB) " << mixed_power_db;
 
@@ -137,15 +137,14 @@ absl::Status ReconGainGenerator::ComputeReconGain(
   }
 
   // Gather information about the demixed samples.
-  const std::vector<InternalSampleType>* demixed_samples;
+  absl::Span<const InternalSampleType> demixed_samples;
   RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-      label, label_to_decoded_samples, &demixed_samples));
+      label, label_to_decoded_samples, demixed_samples));
   LOG_IF(INFO, additional_logging)
-      << "[" << label
-      << "] demixed_samples.size()= " << demixed_samples->size();
+      << "[" << label << "] demixed_samples.size()= " << demixed_samples.size();
 
   // Level Dk in the Spec.
-  const double demixed_power = ComputeSignalPower(*demixed_samples);
+  const double demixed_power = ComputeSignalPower(demixed_samples);
 
   // Set recon gain to the value implied by the spec.
   double demixed_power_ratio_db = 10 * log10(demixed_power / mixed_power_db);

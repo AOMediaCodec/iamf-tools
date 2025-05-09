@@ -46,7 +46,7 @@ absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status RenderChannelLayoutToLoudspeakers(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const DownMixingParams& down_mixing_params,
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
@@ -62,7 +62,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status RenderAmbisonicsToLoudspeakers(
-    absl::Span<const std::vector<InternalSampleType>>& input_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
     std::vector<InternalSampleType>& rendered_samples);

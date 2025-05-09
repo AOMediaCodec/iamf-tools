@@ -182,8 +182,6 @@ AacDecoder::~AacDecoder() {
 
 absl::Status AacDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame) {
-  num_valid_ticks_ = 0;
-
   // Transform the data and feed it to the decoder.
   std::vector<UCHAR> input_data(encoded_frame.size());
   std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),
@@ -201,6 +199,7 @@ absl::Status AacDecoder::DecodeAudioFrame(
         "complete AAC frame.");
   }
 
+  // TODO(b/382197581): Avoid re-allocations of `output_pcm`.
   // Retrieve the decoded frame. `fdk_aac` decodes to INT_PCM (usually 16-bits)
   // samples with channels interlaced.
   std::vector<INT_PCM> output_pcm(num_samples_per_channel_ * num_channels_);
@@ -209,16 +208,16 @@ absl::Status AacDecoder::DecodeAudioFrame(
                              /*flags=*/0),
       "Failed on `aacDecoder_DecodeFrame`: "));
 
-  // Arrange the interleaved data in (time, channel) axes with samples stored in
+  // Arrange the interleaved data in (channel, time) axes with samples stored in
   // the upper bytes of an `int32_t`.
   const absl::AnyInvocable<absl::Status(INT_PCM, int32_t&) const>
       kAacInternalTypeToInt32 = [](INT_PCM input, int32_t& output) {
         output = static_cast<int32_t>(input) << (32 - GetFdkAacBitDepth());
         return absl::OkStatus();
       };
-  return ConvertInterleavedToTimeChannel(absl::MakeConstSpan(output_pcm),
+  return ConvertInterleavedToChannelTime(absl::MakeConstSpan(output_pcm),
                                          num_channels_, kAacInternalTypeToInt32,
-                                         decoded_samples_, num_valid_ticks_);
+                                         decoded_samples_);
 }
 
 }  // namespace iamf_tools

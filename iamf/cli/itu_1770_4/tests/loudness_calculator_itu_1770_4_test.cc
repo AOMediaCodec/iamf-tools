@@ -20,6 +20,7 @@
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -102,12 +103,14 @@ TEST(LoudnessCalculatorItu1770_4, ProvidesMinimumLoudnessForShortSequences) {
       kMaxBitDepthToMeasureLoudness);
   ASSERT_NE(calculator, nullptr);
 
-  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
-                  {{std::numeric_limits<int32_t>::min(),
-                    std::numeric_limits<int32_t>::min()},
-                   {std::numeric_limits<int32_t>::max(),
-                    std::numeric_limits<int32_t>::max()}}),
-              IsOk());
+  const std::vector<std::vector<int32_t>> samples = {
+      {std::numeric_limits<int32_t>::min(),
+       std::numeric_limits<int32_t>::max()},
+      {std::numeric_limits<int32_t>::min(),
+       std::numeric_limits<int32_t>::max()}};
+  EXPECT_THAT(
+      calculator->AccumulateLoudnessForSamples(MakeSpanOfConstSpans(samples)),
+      IsOk());
   const auto& calculated_loudness = calculator->QueryLoudness();
   ASSERT_THAT(calculated_loudness, IsOk());
 
@@ -151,10 +154,9 @@ TEST(LoudnessCalculatorItu1770_4, MeasuresLoudnessWithSharpPeak) {
   constexpr size_t kNumTicks = 10;
   constexpr size_t kNumChannels = 1;
   const std::vector<std::vector<int32_t>> kQuietSignal(
-      kNumTicks, std::vector<int32_t>(kNumChannels, 0));
+      kNumChannels, std::vector<int32_t>(kNumTicks, 0));
   const std::vector<std::vector<int32_t>> kSignalWithHighTruePeak = {
-      {0}, {0}, {0}, {0}, {std::numeric_limits<int32_t>::max()},
-      {0}, {0}, {0}, {0}, {0}};
+      {0, 0, 0, 0, std::numeric_limits<int32_t>::max(), 0, 0, 0, 0, 0}};
   const MixPresentationLayout kMonoLayoutWithMaxUserLoudness = {
       .loudness_layout = kMonoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
 
@@ -165,12 +167,17 @@ TEST(LoudnessCalculatorItu1770_4, MeasuresLoudnessWithSharpPeak) {
 
   // Create a sequence that is generally quiet, but has a single sharp peak.
   for (int i = 0; i < 1000; i++) {
-    EXPECT_THAT(calculator->AccumulateLoudnessForSamples(kQuietSignal), IsOk());
+    EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                    MakeSpanOfConstSpans(kQuietSignal)),
+                IsOk());
   }
-  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(kSignalWithHighTruePeak),
+  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                  MakeSpanOfConstSpans(kSignalWithHighTruePeak)),
               IsOk());
   for (int i = 0; i < 1000; i++) {
-    EXPECT_THAT(calculator->AccumulateLoudnessForSamples(kQuietSignal), IsOk());
+    EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                    MakeSpanOfConstSpans(kQuietSignal)),
+                IsOk());
   }
 
   const auto& calculated_loudness = calculator->QueryLoudness();
@@ -192,8 +199,9 @@ TEST(AccumulateLoudnessForSamples, SucceedsWithExactlyEnoughSamples) {
 
   constexpr size_t kNumChannels = 1;
   const std::vector<std::vector<int32_t>> kExactlyEnoughSamples(
-      kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels, 0));
-  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(kExactlyEnoughSamples),
+      kNumChannels, std::vector<int32_t>(kNumSamplesPerFrame, 0));
+  EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
+                  MakeSpanOfConstSpans(kExactlyEnoughSamples)),
               IsOk());
 }
 
@@ -211,10 +219,11 @@ TEST(AccumulateLoudnessForSamples,
   constexpr size_t kNumTicks = 10;
   constexpr size_t kTooFewChannels = 1;
   const std::vector<std::vector<int32_t>> kSamplesWithMissingChannels(
-      kNumTicks, std::vector<int32_t>(kTooFewChannels, 0));
-  EXPECT_FALSE(
-      calculator->AccumulateLoudnessForSamples(kSamplesWithMissingChannels)
-          .ok());
+      kTooFewChannels, std::vector<int32_t>(kNumTicks, 0));
+  EXPECT_FALSE(calculator
+                   ->AccumulateLoudnessForSamples(
+                       MakeSpanOfConstSpans(kSamplesWithMissingChannels))
+                   .ok());
 }
 
 TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
@@ -230,10 +239,11 @@ TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
   constexpr size_t kTooManySamples = kNumSamplesPerFrame + 1;
   constexpr size_t kNumChannels = 2;
   const std::vector<std::vector<int32_t>> kSamplesWithTooManySamples(
-      kTooManySamples, std::vector<int32_t>(kNumChannels, 0));
-  EXPECT_FALSE(
-      calculator->AccumulateLoudnessForSamples(kSamplesWithTooManySamples)
-          .ok());
+      kNumChannels, std::vector<int32_t>(kTooManySamples, 0));
+  EXPECT_FALSE(calculator
+                   ->AccumulateLoudnessForSamples(
+                       MakeSpanOfConstSpans(kSamplesWithTooManySamples))
+                   .ok());
 }
 
 }  // namespace

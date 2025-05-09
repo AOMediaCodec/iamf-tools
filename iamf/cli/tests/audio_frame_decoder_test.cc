@@ -156,11 +156,10 @@ TEST(Decode, DecodesLpcmFrame) {
   // For LPCM, the input bytes are all zeros, but we expect the decoder to
   // combine kBytesPerSample bytes each into one int32_t sample.
   // There are kNumSamplesPerFrame samples in the frame.
-  EXPECT_EQ(decoded_audio_frame->decoded_samples.size(), kNumSamplesPerFrame);
-  for (const std::vector<int32_t>& samples_for_one_time_tick :
-       decoded_audio_frame->decoded_samples) {
-    EXPECT_EQ(samples_for_one_time_tick.size(), kNumChannels);
-    for (int32_t sample : samples_for_one_time_tick) {
+  EXPECT_EQ(decoded_audio_frame->decoded_samples.size(), kNumChannels);
+  for (const auto& samples_for_channel : decoded_audio_frame->decoded_samples) {
+    EXPECT_EQ(samples_for_channel.size(), kNumSamplesPerFrame);
+    for (int32_t sample : samples_for_channel) {
       EXPECT_EQ(sample, 0);
     }
   }
@@ -191,22 +190,16 @@ TEST(Decode, DecodesFlacFrame) {
   EXPECT_EQ(decoded_audio_frame->audio_element_with_data,
             &audio_elements.at(kAudioElementId));
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
-      {0x00010000, static_cast<int32_t>(0xffff0000)},
-      {0x00020000, static_cast<int32_t>(0xfffe0000)},
-      {0x00030000, static_cast<int32_t>(0xfffd0000)},
-      {0x00040000, static_cast<int32_t>(0xfffc0000)},
-      {0x00050000, static_cast<int32_t>(0xfffb0000)},
-      {0x00060000, static_cast<int32_t>(0xfffa0000)},
-      {0x00070000, static_cast<int32_t>(0xfff90000)},
-      {0x00080000, static_cast<int32_t>(0xfff80000)},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000}};
+      {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
+       0x00070000, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+       0x00000000, 0x00000000, 0x00000000, 0x00000000},
+      {static_cast<int32_t>(0xffff0000), static_cast<int32_t>(0xfffe0000),
+       static_cast<int32_t>(0xfffd0000), static_cast<int32_t>(0xfffc0000),
+       static_cast<int32_t>(0xfffb0000), static_cast<int32_t>(0xfffa0000),
+       static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000),
+       0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+       0x00000000, 0x00000000}};
+
   EXPECT_EQ(decoded_audio_frame->decoded_samples, kExpectedDecodedSamples);
 }
 

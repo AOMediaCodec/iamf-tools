@@ -22,6 +22,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/common/utils/macros.h"
@@ -40,28 +41,33 @@ namespace {
 // number of time ticks in the rendered audio after trimming.
 absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
     const LabeledFrame& labeled_frame,
-    const std::vector<ChannelLabel::Label>& ordered_labels) {
+    const std::vector<ChannelLabel::Label>& ordered_labels,
+    const std::vector<InternalSampleType>& empty_channel) {
   std::optional<size_t> num_raw_time_ticks;
   for (const auto& label : ordered_labels) {
     if (label == ChannelLabel::kOmitted) {
       continue;
     }
 
-    const std::vector<InternalSampleType>* samples_to_render = nullptr;
+    absl::Span<const InternalSampleType> samples_to_render;
     RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-        label, labeled_frame.label_to_samples, &samples_to_render));
+        label, labeled_frame.label_to_samples, samples_to_render));
 
-    if (samples_to_render == nullptr) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Label ", label, " or D_", label, " not found."));
-    } else if (!num_raw_time_ticks.has_value()) {
-      num_raw_time_ticks = samples_to_render->size();
-    } else if (*num_raw_time_ticks != samples_to_render->size()) {
+    if (!num_raw_time_ticks.has_value()) {
+      num_raw_time_ticks = samples_to_render.size();
+    } else if (*num_raw_time_ticks != samples_to_render.size()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "All labels must have the same number of samples ", label, " (",
-          samples_to_render->size(), " vs. ", *num_raw_time_ticks, ")"));
+          samples_to_render.size(), " vs. ", *num_raw_time_ticks, ")"));
     }
   }
+  if (empty_channel.size() < *num_raw_time_ticks) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "`empty_channel` should contain at least as many samples as other "
+        "labels: (",
+        empty_channel.size(), " < ", *num_raw_time_ticks, ")"));
+  }
+
   if (*num_raw_time_ticks < (labeled_frame.samples_to_trim_at_start +
                              labeled_frame.samples_to_trim_at_end)) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -80,47 +86,37 @@ absl::StatusOr<size_t> GetCommonNumTrimmedTimeTicks(
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<InternalSampleType>>& samples_to_render,
-    size_t& num_valid_samples) {
+    const std::vector<InternalSampleType>& empty_channel,
+    std::vector<absl::Span<const InternalSampleType>>& samples_to_render,
+    size_t& num_valid_ticks) {
   if (ordered_labels.empty()) {
     return absl::OkStatus();
   }
 
-  const auto common_num_trimmed_time_ticks =
-      GetCommonNumTrimmedTimeTicks(labeled_frame, ordered_labels);
+  const auto common_num_trimmed_time_ticks = GetCommonNumTrimmedTimeTicks(
+      labeled_frame, ordered_labels, empty_channel);
   if (!common_num_trimmed_time_ticks.ok()) {
     return common_num_trimmed_time_ticks.status();
   }
-  num_valid_samples = *common_num_trimmed_time_ticks;
+  num_valid_ticks = *common_num_trimmed_time_ticks;
 
   const auto num_channels = ordered_labels.size();
-  if (num_valid_samples > samples_to_render.size()) [[unlikely]] {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Number of time samples to render= ", num_valid_samples,
-        "does not fit into the output of size ", samples_to_render.size()));
-  }
+  for (int c = 0; c < num_channels; ++c) {
+    const auto& channel_label = ordered_labels[c];
+    absl::Span<const InternalSampleType> channel_samples;
 
-  for (int channel = 0; channel < num_channels; ++channel) {
-    const auto& channel_label = ordered_labels[channel];
     if (channel_label == ChannelLabel::kOmitted) {
       // Missing channels for mixed-order ambisonics representation will not be
-      // updated and will thus have the initialized zeros.
-      continue;
+      // updated. Point to the passed-in empty channel.
+      channel_samples = absl::MakeConstSpan(empty_channel);
+    } else {
+      RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
+          channel_label, labeled_frame.label_to_samples, channel_samples));
     }
 
-    const std::vector<InternalSampleType>* channel_samples = nullptr;
-    RETURN_IF_NOT_OK(DemixingModule::FindSamplesOrDemixedSamples(
-        channel_label, labeled_frame.label_to_samples, &channel_samples));
-    // The lookup should not fail because its presence was already checked in
-    // `GetCommonNumTrimmedTimeTicks`.
-    CHECK_NE(channel_samples, nullptr);
-
-    // Grab the entire time axes for this label, Skip over any samples that
-    // should be trimmed.
-    for (int time = 0; time < num_valid_samples; ++time) {
-      samples_to_render[time][channel] =
-          (*channel_samples)[time + labeled_frame.samples_to_trim_at_start];
-    }
+    // Return the valid portion after trimming.
+    samples_to_render[c] = channel_samples.subspan(
+        labeled_frame.samples_to_trim_at_start, num_valid_ticks);
   }
 
   return absl::OkStatus();

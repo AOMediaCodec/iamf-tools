@@ -67,7 +67,7 @@ class EncoderBase {
   /*!\brief Encodes an audio frame.
    *
    * \param input_bit_depth Bit-depth of the input data.
-   * \param samples Samples arranged in (time x channel) axes. The samples are
+   * \param samples Samples arranged in (channel, time) axes. The samples are
    *        left-justified and stored in the upper `input_bit_depth` bits.
    * \param partial_audio_frame_with_data Unique pointer to take ownership of.
    *        The underlying `audio_frame_` is modified. All other fields are
@@ -175,7 +175,7 @@ class EncoderBase {
     return absl::OkStatus();
   }
 
-  /*!\brief Validates `samples` has the correct number of ticks and channels.
+  /*!\brief Validates `samples` has the correct number of channels and ticks.
    *
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */

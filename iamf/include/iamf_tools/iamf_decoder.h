@@ -238,7 +238,7 @@ class IamfDecoder {
    * i.e. IsDescriptorProcessingComplete() returns true.
    *
    * Returns the number of samples per frame per channel of the output audio.
-   * The total number of samples in a time tick is the number of channels times
+   * The total number of samples in a frame is the number of channels times
    * this number, the frame size.
    *
    * \param output_frame_size Output param for the frame size upon success.

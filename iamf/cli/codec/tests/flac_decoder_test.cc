@@ -62,22 +62,16 @@ TEST(DecodeAudioFrame, SubsequentCallsSucceed) {
                   kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
               IsOk());
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
-      {0x00010000, static_cast<int32_t>(0xffff0000)},
-      {0x00020000, static_cast<int32_t>(0xfffe0000)},
-      {0x00030000, static_cast<int32_t>(0xfffd0000)},
-      {0x00040000, static_cast<int32_t>(0xfffc0000)},
-      {0x00050000, static_cast<int32_t>(0xfffb0000)},
-      {0x00060000, static_cast<int32_t>(0xfffa0000)},
-      {0x00070000, static_cast<int32_t>(0xfff90000)},
-      {0x00080000, static_cast<int32_t>(0xfff80000)},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000},
-      {0x00000000, 0x00000000}};
+      {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
+       0x00070000, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+       0x00000000, 0x00000000, 0x00000000, 0x00000000},
+      {static_cast<int32_t>(0xffff0000), static_cast<int32_t>(0xfffe0000),
+       static_cast<int32_t>(0xfffd0000), static_cast<int32_t>(0xfffc0000),
+       static_cast<int32_t>(0xfffb0000), static_cast<int32_t>(0xfffa0000),
+       static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000),
+       0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+       0x00000000, 0x00000000}};
+
   EXPECT_EQ(flac_decoder->ValidDecodedSamples(), kExpectedDecodedSamples);
 
   // Decode again.
@@ -123,10 +117,12 @@ TEST(DecodeAudioFrame, FillsExtraSamplesWithZeros) {
               IsOk());
   const auto decoded_samples = flac_decoder->ValidDecodedSamples();
 
-  // Ok, we still expect 17 samples per frame, the last one is filled with
-  // zeros, and typically would be trimmed.
-  EXPECT_EQ(decoded_samples.size(), kNumSamplesPerFrame);
-  EXPECT_EQ(decoded_samples.back(), std::vector<int32_t>(kNumChannels, 0));
+  // Ok, we still expect 2 channels with 17 samples per channel. The last sample
+  // of each channel is filled with a zero, and typically would be trimmed.
+  EXPECT_EQ(decoded_samples.size(), kNumChannels);
+  for (int c = 0; c < kNumChannels; c++) {
+    EXPECT_EQ(decoded_samples[c].back(), 0);
+  }
 }
 
 }  // namespace

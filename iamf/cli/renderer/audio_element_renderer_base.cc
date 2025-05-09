@@ -33,16 +33,16 @@ absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
 
   size_t num_valid_samples = 0;
   RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
-      labeled_frame, ordered_labels_, samples_to_render_, num_valid_samples));
+      labeled_frame, ordered_labels_, kEmptyChannel, samples_to_render_,
+      num_valid_samples));
 
   // Render samples in concrete subclasses.
   current_labeled_frame_ = &labeled_frame;
 
   std::vector<InternalSampleType> rendered_samples(
       num_output_channels_ * num_valid_samples, 0);
-  RETURN_IF_NOT_OK(RenderSamples(
-      absl::MakeConstSpan(samples_to_render_).first(num_valid_samples),
-      rendered_samples));
+  RETURN_IF_NOT_OK(
+      RenderSamples(absl::MakeConstSpan(samples_to_render_), rendered_samples));
 
   // Copy rendered samples to the output.
   rendered_samples_.insert(rendered_samples_.end(), rendered_samples.begin(),

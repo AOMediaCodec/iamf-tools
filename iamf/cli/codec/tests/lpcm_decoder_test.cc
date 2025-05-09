@@ -28,6 +28,7 @@ constexpr bool kOverrideAudioRollDistance = true;
 constexpr uint32_t kNumSamplesPerFrame = 1024;
 constexpr uint8_t kSampleSize16 = 16;
 constexpr bool kLittleEndian = true;
+constexpr int kTwoChannels = 2;  // Keep the amount of test data reasonable.
 
 CodecConfigObu CreateCodecConfigObu(LpcmDecoderConfig lpcm_decoder_config,
                                     uint32_t num_samples_per_frame) {
@@ -89,7 +90,6 @@ std::unique_ptr<DecoderBase> CreateDecoderForDecodingTest(
   if (!codec_config_obu.Initialize(kOverrideAudioRollDistance).ok()) {
     LOG(ERROR) << "Failed to initialize codec config OBU";
   }
-  constexpr int kTwoChannels = 2;  // Keep the amount of test data reasonable.
 
   auto lpcm_decoder = LpcmDecoder::Create(codec_config_obu, kTwoChannels);
   EXPECT_THAT(lpcm_decoder, IsOkAndHolds(Not(IsNull())));
@@ -136,14 +136,14 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
   EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
   const auto& decoded_samples = lpcm_decoder->ValidDecodedSamples();
 
-  // We have two channels and four samples, so we expect two time ticks of two
+  // We have two channels and four samples, so we expect two channels of two
   // samples each.
   EXPECT_EQ(decoded_samples.size(), 2);
   EXPECT_EQ(decoded_samples[0].size(), 2);
   EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 0x00010000);
+  EXPECT_EQ(decoded_samples[0][1], 0x01000000);
   EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0], 0x01000000);
+  EXPECT_EQ(decoded_samples[1][0], 0x00010000);
   EXPECT_EQ(decoded_samples[1][1], 0xff800000);
 }
 
@@ -164,18 +164,17 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
   EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
   const auto& decoded_samples = lpcm_decoder->ValidDecodedSamples();
 
-  // We have two channels and six samples, so we expect three time ticks of two
+  // We have two channels and six samples, so we expect two channels of three
   // samples each.
-  EXPECT_EQ(decoded_samples.size(), 3);
-  EXPECT_EQ(decoded_samples[0].size(), 2);
+  EXPECT_EQ(decoded_samples.size(), 2);
+  EXPECT_EQ(decoded_samples[0].size(), 3);
   EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 0x00000100);
-  EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0], 0x00000300);
+  EXPECT_EQ(decoded_samples[0][1], 0x00000300);
+  EXPECT_EQ(decoded_samples[0][2], 0x7fffff00);
+  EXPECT_EQ(decoded_samples[1].size(), 3);
+  EXPECT_EQ(decoded_samples[1][0], 0x00000100);
   EXPECT_EQ(decoded_samples[1][1], 0x00000400);
-  EXPECT_EQ(decoded_samples[2].size(), 2);
-  EXPECT_EQ(decoded_samples[2][0], 0x7fffff00);
-  EXPECT_EQ(decoded_samples[2][1], 0x80000000);
+  EXPECT_EQ(decoded_samples[1][2], 0x80000000);
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
@@ -200,13 +199,21 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_OverwritesExistingSamples) {
   const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x01, 0x00};
 
   EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
-  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), 1);
+  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
+  const auto* first_decoded_samples_address =
+      lpcm_decoder->ValidDecodedSamples().data();
+
+  // Expect that `ValidDecodedSamples()` still points to the same address,
+  // meaning the existing samples are overwritten.
+  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
+  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().data(),
+            first_decoded_samples_address);
 
   EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
-  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), 1);
-
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
-  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), 1);
+  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
+  EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().data(),
+            first_decoded_samples_address);
 }
 
 }  // namespace

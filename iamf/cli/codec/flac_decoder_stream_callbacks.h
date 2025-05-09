@@ -36,9 +36,14 @@ class LibFlacCallbackData {
    *
    * \param num_samples_per_channel Number of samples per channel to
    *        process.
+   * \param decoded_frame Reference to the decoded frame, where decoded samples
+   *        are written. The vector may be resized to fit the channels and
+   *        time ticks within the function.
    */
-  explicit LibFlacCallbackData(uint32_t num_samples_per_channel)
-      : num_samples_per_channel_(num_samples_per_channel) {}
+  LibFlacCallbackData(uint32_t num_samples_per_channel,
+                      std::vector<std::vector<int32_t>>& decoded_frame)
+      : num_samples_per_channel_(num_samples_per_channel),
+        decoded_frame_(decoded_frame) {}
 
   /*!\brief Sets the frame to be decoded.
    *
@@ -58,11 +63,14 @@ class LibFlacCallbackData {
   absl::Span<const uint8_t> GetNextSlice(size_t chunk_size);
 
   const uint32_t num_samples_per_channel_;
-  std::vector<std::vector<int32_t>> decoded_frame_;
+
+  // Reference to the backing data for the decoded frame.
+  std::vector<std::vector<int32_t>>& decoded_frame_;
 
  private:
   // Backing data for the next frame to be decoded.
   std::vector<uint8_t> encoded_frame_;
+
   // Index of the next byte to be read from the encoded frame.
   size_t next_byte_index_ = 0;
 };

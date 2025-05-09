@@ -24,6 +24,7 @@
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -148,13 +149,13 @@ class DemixingModule {
    *
    * \param label Label of the channel (or its demixed version) to search for.
    * \param label_to_samples Map of label to samples to search.
-   * \param samples Output argument for the samples if found.
-   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the search
-   *         failed.
+   * \param samples Output span to the samples if found.
+   * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
+   *         the search failed.
    */
   static absl::Status FindSamplesOrDemixedSamples(
       ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
-      const std::vector<InternalSampleType>** samples);
+      absl::Span<const InternalSampleType>& samples);
 
   /*!\brief Down-mixes samples of input channels to substreams.
    *

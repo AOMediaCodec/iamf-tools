@@ -17,6 +17,7 @@
 #include <functional>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
@@ -42,16 +43,18 @@ class ChannelReorderer {
 
   /*!\brief Re-orders the audio in-place.
    *
-   * \param audio_frame Samples arranged in (time, channel) axes to reorder in
+   * \param audio_frame Samples arranged in (channel, time) axes to reorder in
    *        place.
    */
-  void Reorder(std::vector<std::vector<int32_t>>& audio_frame);
+  void Reorder(std::vector<absl::Span<const int32_t>>& audio_frame);
 
  private:
   explicit ChannelReorderer(
-      std::function<void(std::vector<std::vector<int32_t>>&)> reorder_function);
+      std::function<void(std::vector<absl::Span<const int32_t>>&)>
+          reorder_function);
 
-  std::function<void(std::vector<std::vector<int32_t>>&)> reorder_function_;
+  std::function<void(std::vector<absl::Span<const int32_t>>&)>
+      reorder_function_;
 };
 
 }  // namespace iamf_tools

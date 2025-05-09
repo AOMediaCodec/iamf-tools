@@ -131,7 +131,7 @@ TEST_F(LpcmEncoderTest, MultipleSamplesPerFrame) {
   num_samples_per_frame_ = 3;
   InitExpectOk();
 
-  EncodeAudioFrame({{0x11111111}, {0x22222222}, {0x33333333}});
+  EncodeAudioFrame({{0x11111111, 0x22222222, 0x33333333}});
   expected_audio_frames_.push_back(
       {0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22, 0x33, 0x33, 0x33, 0x33});
   FinalizeAndValidate();
@@ -157,7 +157,7 @@ TEST_F(LpcmEncoderTest, TwoChannels) {
   num_channels_ = 2;
   InitExpectOk();
 
-  EncodeAudioFrame({{0x11111111, 0x22222222}});
+  EncodeAudioFrame({{0x11111111}, {0x22222222}});
   expected_audio_frames_.push_back(
       {0x11, 0x11, 0x11, 0x11, 0x22, 0x22, 0x22, 0x22});
   FinalizeAndValidate();

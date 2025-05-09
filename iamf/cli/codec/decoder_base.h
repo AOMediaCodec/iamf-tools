@@ -13,10 +13,10 @@
 #ifndef CLI_DECODER_BASE_H_
 #define CLI_DECODER_BASE_H_
 
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 
@@ -36,10 +36,9 @@ class DecoderBase {
    */
   DecoderBase(int num_channels, uint32_t num_samples_per_channel)
       : num_channels_(num_channels),
-        num_samples_per_channel_(num_samples_per_channel),
-        decoded_samples_(num_samples_per_channel_,
-                         std::vector<int32_t>(num_channels)),
-        num_valid_ticks_(0) {}
+        num_samples_per_channel_(num_samples_per_channel) {
+    decoded_samples_.reserve(num_samples_per_channel_);
+  }
 
   /*!\brief Destructor.
    */
@@ -58,22 +57,19 @@ class DecoderBase {
    * \return Span of valid decoded samples.
    */
   absl::Span<const std::vector<int32_t>> ValidDecodedSamples() const {
-    return absl::MakeConstSpan(decoded_samples_).first(num_valid_ticks_);
+    return absl::MakeConstSpan(decoded_samples_);
   }
 
  protected:
   const int num_channels_;
   const uint32_t num_samples_per_channel_;
 
-  // Stores the output decoded frames arranged in (time, sample) axes. That
-  // is to say, each inner vector has one sample for per channel and the outer
-  // vector contains one inner vector for each time tick. When the decoded
-  // samples is shorter than a frame, only the first `num_valid_ticks_` ticks
-  // should be used.
+  // Stores the output decoded frames arranged in (channel, time) axes. That
+  // is to say, each inner vector has one sample for per time tick and the outer
+  // vector contains one inner vector for each channel. When the decoded
+  // samples is shorter than a frame, the inner vectors will be resized to fit
+  // the valid portion.
   std::vector<std::vector<int32_t>> decoded_samples_;
-
-  // Number of ticks (time samples) in `decoded_samples_` that are valid.
-  size_t num_valid_ticks_;
 };
 
 }  // namespace iamf_tools

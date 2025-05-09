@@ -13,7 +13,6 @@
 #define CLI_LOUDNESS_CALCULATOR_BASE_H_
 
 #include <cstdint>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -37,11 +36,11 @@ class LoudnessCalculatorBase {
 
   /*!\brief Accumulates samples to be measured.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status AccumulateLoudnessForSamples(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) = 0;
+      absl::Span<const absl::Span<const int32_t>> channel_time_samples) = 0;
 
   /*!\brief Outputs the measured loudness.
    *

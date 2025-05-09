@@ -46,28 +46,25 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
                             bool big_endian, uint8_t* buffer,
                             size_t& write_position);
 
-/*!\brief Arranges the input samples by time and channel.
+/*!\brief Arranges the input samples by channel and time.
  *
  * \param samples Interleaved samples to arrange.
  * \param num_channels Number of channels.
  * \param transform_samples Function to transform each sample to the output
  *        type.
- * \param output Output vector to write the samples to. The size is not
- *        modified in this function even if the number of input samples do
- *        not fill the entire output vector. In that case, only the first
- *        `num_ticks` are filled.
- * \param num_ticks Number of ticks (time samples) of the output vector that
- *        are filled in this function.
+ * \param output Output vector to write the samples to. If the number of
+ *        input samples do not fill the entire output vector, the time axis will
+ *        be modified to fit the actual length.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
  *         number of samples is not a multiple of the number of channels. An
  *         error propagated from `transform_samples` if it fails.
  */
 template <typename InputType, typename OutputType>
-absl::Status ConvertInterleavedToTimeChannel(
+absl::Status ConvertInterleavedToChannelTime(
     absl::Span<const InputType> samples, size_t num_channels,
     const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
         transform_samples,
-    std::vector<std::vector<OutputType>>& output, size_t& num_ticks) {
+    std::vector<std::vector<OutputType>>& output) {
   if (samples.size() % num_channels != 0) [[unlikely]] {
     return absl::InvalidArgumentError(absl::StrCat(
         "Number of samples must be a multiple of the number of "
@@ -75,23 +72,14 @@ absl::Status ConvertInterleavedToTimeChannel(
         samples.size(), " samples and ", num_channels, " channels."));
   }
 
-  num_ticks = samples.size() / num_channels;
-  if (num_ticks > output.size()) [[unlikely]] {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Number of ticks does not fit into the output vector: (num_ticks= ",
-        num_ticks, " > output.size()= ", output.size(), ")"));
-  }
-
-  for (int t = 0; t < num_ticks; ++t) {
-    auto& output_for_time = output[t];
-    if (output_for_time.size() != num_channels) [[unlikely]] {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Number of channels is not equal to the output vector at tick ", t,
-          ": (", num_channels, " != ", output[t].size(), ")"));
-    }
-    for (int c = 0; c < num_channels; ++c) {
-      const auto status =
-          transform_samples(samples[t * num_channels + c], output_for_time[c]);
+  output.resize(num_channels);
+  const auto num_ticks = samples.size() / num_channels;
+  for (int c = 0; c < num_channels; ++c) {
+    auto& output_for_channel = output[c];
+    output_for_channel.resize(num_ticks);
+    for (int t = 0; t < num_ticks; ++t) {
+      const auto status = transform_samples(samples[t * num_channels + c],
+                                            output_for_channel[t]);
       if (!status.ok()) [[unlikely]] {
         return status;
       }
@@ -102,7 +90,7 @@ absl::Status ConvertInterleavedToTimeChannel(
 
 /*!\brief Interleaves the input samples.
  *
- * \param samples Samples in (time, channel) axes to arrange.
+ * \param samples Samples in (channel, time) axes to arrange.
  * \param transform_samples Function to transform each sample to the output
  *        type.
  * \param output Output vector to write the interleaved samples to.
@@ -111,30 +99,31 @@ absl::Status ConvertInterleavedToTimeChannel(
  *         from `transform_samples` if it fails.
  */
 template <typename InputType, typename OutputType>
-absl::Status ConvertTimeChannelToInterleaved(
-    absl::Span<const std::vector<InputType>> input,
+absl::Status ConvertChannelTimeToInterleaved(
+    absl::Span<const absl::Span<const InputType>> input,
     const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
         transform_samples,
     std::vector<OutputType>& output) {
-  const size_t num_channels = input.empty() ? 0 : input[0].size();
-  if (!std::all_of(input.begin(), input.end(), [&](const auto& tick) {
-        return tick.size() == num_channels;
+  const size_t num_ticks = input.empty() ? 0 : input[0].size();
+  if (!std::all_of(input.begin(), input.end(), [&](const auto& channel) {
+        return channel.size() == num_ticks;
       })) {
     return absl::InvalidArgumentError(
-        "All ticks must have the same number of channels.");
+        "All channels must have the same number of ticks.");
   }
 
-  // TODO(b/382197581): avoid resizing inside this function.
-  output.clear();
-  output.reserve(input.size() * num_channels);
-  for (const auto& tick : input) {
-    for (const auto& sample : tick) {
+  const auto num_channels = input.size();
+  output.resize(num_channels * num_ticks);
+  for (int c = 0; c < num_channels; ++c) {
+    const auto& input_for_channel = input[c];
+    for (int t = 0; t < num_ticks; ++t) {
       OutputType transformed_sample;
-      auto status = transform_samples(sample, transformed_sample);
+      const auto status =
+          transform_samples(input_for_channel[t], transformed_sample);
       if (!status.ok()) {
         return status;
       }
-      output.emplace_back(transformed_sample);
+      output[t * num_channels + c] = transformed_sample;
     }
   }
   return absl::OkStatus();

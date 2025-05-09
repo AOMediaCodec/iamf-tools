@@ -71,8 +71,8 @@ TEST(WritePcmFrameToBuffer, ResizesOutputBuffer) {
 }
 
 TEST(WritePcmFrameToBuffer, WritesBigEndian) {
-  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
-                                                      {0x7f005600, 0x7e007800}};
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7f005600},
+                                                      {0x7e003400, 0x7e007800}};
   const uint8_t kBitDepth = 24;
   const bool kBigEndian = true;
   std::vector<uint8_t> output_buffer;
@@ -86,8 +86,8 @@ TEST(WritePcmFrameToBuffer, WritesBigEndian) {
 }
 
 TEST(WritePcmFrameToBuffer, WritesLittleEndian) {
-  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7e003400},
-                                                      {0x7f005600, 0x7e007800}};
+  std::vector<std::vector<int32_t>> frame_to_write = {{0x7f001200, 0x7f005600},
+                                                      {0x7e003400, 0x7e007800}};
   const uint8_t kBitDepth = 24;
   const bool kBigEndian = false;
   std::vector<uint8_t> output_buffer;

@@ -53,20 +53,25 @@ class SampleProcessorBase {
                       size_t max_output_samples_per_frame)
       : max_input_samples_per_frame_(max_input_samples_per_frame),
         num_channels_(num_channels),
-        output_time_channel_samples_(max_output_samples_per_frame,
-                                     std::vector<int32_t>(num_channels)) {}
+        output_channel_time_samples_(num_channels),
+        output_span_buffer_(num_channels) {
+    for (int c = 0; c < num_channels; c++) {
+      output_channel_time_samples_[c].reserve(max_input_samples_per_frame_);
+      output_span_buffer_[c] = absl::MakeSpan(output_channel_time_samples_[c]);
+    }
+  }
 
   /*!\brief Destructor. */
   virtual ~SampleProcessorBase() = 0;
 
   /*!\brief Pushes a frame of samples to the processor.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. `absl::FailedPreconditionError` if
    *         called after `Flush()`. Other specific statuses on failure.
    */
   absl::Status PushFrame(
-      absl::Span<const std::vector<int32_t>> time_channel_samples);
+      absl::Span<const absl::Span<const int32_t>> channel_time_samples);
 
   /*!\brief Signals to close the processor and flush any remaining samples.
    *
@@ -83,16 +88,16 @@ class SampleProcessorBase {
    * \return Span of the output samples. The span will be invalidated when
    *         `PushFrame()` or `Flush()` is called.
    */
-  absl::Span<const std::vector<int32_t>> GetOutputSamplesAsSpan() const;
+  absl::Span<const absl::Span<const int32_t>> GetOutputSamplesAsSpan();
 
  protected:
   /*!\brief Pushes a frame of samples to the processor.
    *
-   * \param time_channel_samples Samples to push arranged in (time, channel).
+   * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status PushFrameDerived(
-      absl::Span<const std::vector<int32_t>> time_channel_samples) = 0;
+      absl::Span<const absl::Span<const int32_t>> channel_time_samples) = 0;
 
   /*!\brief Signals to close the processor and flush any remaining samples.
    *
@@ -103,16 +108,16 @@ class SampleProcessorBase {
   const size_t max_input_samples_per_frame_;
   const size_t num_channels_;
 
-  // Stores the output decoded frames arranged in (time, sample) axes. That
+  // Stores the output decoded frames arranged in (channel, time) axes. That
   // is to say, each inner vector has one sample for per channel and the outer
   // vector contains one inner vector for each time tick. When the decoded
-  // samples is shorter than a frame, only the first `num_valid_ticks_` ticks
-  // should be used.
-  std::vector<std::vector<int32_t>> output_time_channel_samples_;
+  // samples is shorter than a frame, the inner vector will be resized to fit
+  // the actual length.
+  std::vector<std::vector<int32_t>> output_channel_time_samples_;
 
-  // Number of ticks (time samples) in `output_time_channel_samples_` that are
-  // valid.
-  size_t num_valid_ticks_ = 0;
+  // Buffer backing the spans of output samples returned by
+  // `GetOutputSamplesAsSpan()`.
+  std::vector<absl::Span<const int32_t>> output_span_buffer_;
 
  private:
   enum class State {

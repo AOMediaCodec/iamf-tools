@@ -81,7 +81,7 @@ TEST_F(AacEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_samples_per_frame_, std::vector<int32_t>(num_channels_, i)));
+        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }

@@ -74,7 +74,7 @@ TEST_F(OpusEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_samples_per_frame_, std::vector<int32_t>(num_channels_, i)));
+        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }
@@ -84,7 +84,7 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42 << 16)));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -95,7 +95,7 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceedsWithoutFloatApi) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42 << 16)));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 16)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -105,7 +105,7 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes24BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42 << 8)));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42 << 8)));
 
   FinalizeAndValidateOrderOnly(1);
 }
@@ -115,7 +115,7 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes32BitFrameSucceeds) {
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 42)));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 42)));
 
   FinalizeAndValidateOrderOnly(1);
 }

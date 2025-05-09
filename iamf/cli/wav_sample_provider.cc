@@ -25,6 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
@@ -263,7 +264,7 @@ absl::Status WavSampleProvider::ReadFrames(
     samples.resize(num_time_ticks);
     for (int t = 0; t < num_time_ticks; ++t) {
       samples[t] = Int32ToNormalizedFloatingPoint<InternalSampleType>(
-          wav_reader.buffers_[t][channel_ids[c]]);
+          wav_reader.buffers_[channel_ids[c]][t]);
     }
   }
   finished_reading = (wav_reader.remaining_samples() == 0);

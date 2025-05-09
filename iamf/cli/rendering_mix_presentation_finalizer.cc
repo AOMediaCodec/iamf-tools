@@ -407,7 +407,7 @@ absl::Status RenderAllFramesForLayout(
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const uint32_t common_sample_rate,
     std::vector<std::vector<int32_t>>& rendered_samples,
-    absl::Span<const std::vector<int32_t>>& valid_rendered_samples) {
+    std::vector<absl::Span<const int32_t>>& valid_rendered_samples) {
   // Each audio element rendered individually with `element_mix_gain` applied.
   std::vector<std::vector<InternalSampleType>> rendered_audio_elements(
       sub_mix_audio_elements.size());
@@ -445,14 +445,15 @@ absl::Status RenderAllFramesForLayout(
                          linear_mix_gain_per_tick, rendered_samples_internal));
 
   // Convert the rendered samples to int32, clipping if needed.
-  size_t num_ticks = 0;
-  RETURN_IF_NOT_OK(ConvertInterleavedToTimeChannel(
+  RETURN_IF_NOT_OK(ConvertInterleavedToChannelTime(
       absl::MakeConstSpan(rendered_samples_internal), num_channels,
       absl::AnyInvocable<absl::Status(InternalSampleType, int32_t&) const>(
           NormalizedFloatingPointToInt32<InternalSampleType>),
-      rendered_samples, num_ticks));
-  valid_rendered_samples =
-      absl::MakeConstSpan(rendered_samples).first(num_ticks);
+      rendered_samples));
+  valid_rendered_samples.resize(rendered_samples.size());
+  for (int c = 0; c < rendered_samples.size(); ++c) {
+    valid_rendered_samples[c] = absl::MakeConstSpan(rendered_samples[c]);
+  }
   return absl::OkStatus();
 }
 
@@ -717,20 +718,21 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
           submix_rendering_metadata.common_sample_rate,
           layout_rendering_metadata.rendered_samples,
           layout_rendering_metadata.valid_rendered_samples));
+      auto span_of_valid_rendered_samples =
+          absl::MakeSpan(layout_rendering_metadata.valid_rendered_samples);
 
       // Calculate loudness based on the original rendered samples; we do not
       // know what post-processing the end user will have.
       if (layout_rendering_metadata.loudness_calculator != nullptr) {
         RETURN_IF_NOT_OK(
             layout_rendering_metadata.loudness_calculator
-                ->AccumulateLoudnessForSamples(
-                    layout_rendering_metadata.valid_rendered_samples));
+                ->AccumulateLoudnessForSamples(span_of_valid_rendered_samples));
       }
 
       // Perform any post-processing.
       if (layout_rendering_metadata.sample_processor != nullptr) {
         RETURN_IF_NOT_OK(layout_rendering_metadata.sample_processor->PushFrame(
-            layout_rendering_metadata.valid_rendered_samples));
+            span_of_valid_rendered_samples));
       }
     }
   }
@@ -845,7 +847,7 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Span<const std::vector<int32_t>>>
+absl::StatusOr<absl::Span<const absl::Span<const int32_t>>>
 RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
     DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
     size_t layout_index) const {
@@ -863,7 +865,8 @@ RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
   return (*layout_rendering_metadata)->sample_processor != nullptr
              ? (*layout_rendering_metadata)
                    ->sample_processor->GetOutputSamplesAsSpan()
-             : (*layout_rendering_metadata)->valid_rendered_samples;
+             : absl::MakeSpan(
+                   (*layout_rendering_metadata)->valid_rendered_samples);
 }
 
 absl::Status RenderingMixPresentationFinalizer::FinalizePushingTemporalUnits() {

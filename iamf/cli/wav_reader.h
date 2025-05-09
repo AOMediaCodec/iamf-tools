@@ -76,7 +76,7 @@ class WavReader {
    */
   size_t ReadFrame();
 
-  /*!\brief Buffers stored a vector of interleaved samples.
+  /*!\brief Buffers storing samples in (channel, time) axes.
    *
    * The samples are left-justified; the upper `bit_depth()` bits represent the
    * sample, with the remaining lower bits set to 0.

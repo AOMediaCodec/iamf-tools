@@ -2138,15 +2138,19 @@ void RenderUsingObuProcessorExpectOk(
       unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
-  absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
+  absl::Span<const absl::Span<const int32_t>> output_rendered_pcm_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                   /*timestamp=*/0, audio_frames, parameter_blocks,
                   output_rendered_pcm_samples),
               IsOk());
-  EXPECT_TRUE(output_rendered_pcm_samples.empty());
+  for (const auto output_channel : output_rendered_pcm_samples) {
+    EXPECT_TRUE(output_channel.empty());
+  }
 }
 
-void RenderOneSampleFoaToStereoWavExpectOk(
+// Render a zero-th order ambisonics (i.e. mono) with one sampel to stereo
+// and expect the rendering process is ok.
+void RenderOneSampleZoaToStereoWavExpectOk(
     absl::string_view output_filename, bool write_wav_header,
     std::optional<uint8_t> output_file_bit_depth_override) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -2171,6 +2175,7 @@ void RenderOneSampleFoaToStereoWavExpectOk(
       .end_timestamp = 1,
       .audio_element_with_data = common_audio_element_with_data,
   });
+
   // Create a single parameter block consistent with the mix presentation OBU.
   std::list<ParameterBlockWithData> parameter_blocks_with_data = {};
   auto parameter_block = std::make_unique<ParameterBlockObu>(
@@ -2195,6 +2200,7 @@ void RenderOneSampleFoaToStereoWavExpectOk(
       output_filename, write_wav_header, output_file_bit_depth_override,
       audio_frames_with_data, parameter_blocks_with_data, bitstream);
 }
+
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
@@ -2288,7 +2294,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
      SupportsMixGainParameterBlocks) {
   const auto output_filename = GetAndCleanupOutputFileName(".wav");
 
-  RenderOneSampleFoaToStereoWavExpectOk(output_filename, kWriteWavHeader,
+  RenderOneSampleZoaToStereoWavExpectOk(output_filename, kWriteWavHeader,
                                         kNoOutputFileBitDepthOverride);
 
   const auto wav_reader = CreateWavReaderExpectOk(output_filename);
@@ -2297,14 +2303,14 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, CanWritePcmOrWav) {
   const auto output_wav_filename = GetAndCleanupOutputFileName(".wav");
-  RenderOneSampleFoaToStereoWavExpectOk(output_wav_filename, kWriteWavHeader,
+  RenderOneSampleZoaToStereoWavExpectOk(output_wav_filename, kWriteWavHeader,
                                         kNoOutputFileBitDepthOverride);
 
   const auto wav_reader = CreateWavReaderExpectOk(output_wav_filename);
   EXPECT_EQ(wav_reader.remaining_samples(), 2);
 
   const auto output_pcm_filename = GetAndCleanupOutputFileName(".pcm");
-  RenderOneSampleFoaToStereoWavExpectOk(
+  RenderOneSampleZoaToStereoWavExpectOk(
       output_pcm_filename, kDontWriteWavHeader, kNoOutputFileBitDepthOverride);
 
   EXPECT_TRUE(std::filesystem::exists(output_pcm_filename));
@@ -2378,19 +2384,19 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
       unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
-  absl::Span<const std::vector<int32_t>> output_rendered_pcm_samples;
+  absl::Span<const absl::Span<const int32_t>> output_rendered_pcm_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                   /*timestamp=*/0, audio_frames_with_data, kNoParameterBlocks,
                   output_rendered_pcm_samples),
               IsOk());
 
-  // Outer vector is for each tick, inner vector is for each channel.
+  // Outer vector is for each channel, inner vector is for each tick.
   std::vector<std::vector<int32_t>> expected_pcm_samples = {
-      {0x33110000, 0x44220000},
-      {0x77550000, 0x08660000},
-      {0x0a990000, 0x0dbb0000},
+      {0x33110000, 0x77550000, 0x0a990000},
+      {0x44220000, 0x08660000, 0x0dbb0000},
   };
-  EXPECT_EQ(output_rendered_pcm_samples, expected_pcm_samples);
+  EXPECT_EQ(output_rendered_pcm_samples,
+            MakeSpanOfConstSpans(expected_pcm_samples));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -2446,12 +2452,12 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   EXPECT_EQ(wav_reader.ReadFrame(), 6);
   // Validate left channel.
   EXPECT_EQ(wav_reader.buffers_[0][0], int32_t{0x33110000});
-  EXPECT_EQ(wav_reader.buffers_[1][0], int32_t{0x77550000});
-  EXPECT_EQ(wav_reader.buffers_[2][0], int32_t{0x0a990000});
+  EXPECT_EQ(wav_reader.buffers_[0][1], int32_t{0x77550000});
+  EXPECT_EQ(wav_reader.buffers_[0][2], int32_t{0x0a990000});
   // Validate right channel.
-  EXPECT_EQ(wav_reader.buffers_[0][1], int32_t{0x44220000});
+  EXPECT_EQ(wav_reader.buffers_[1][0], int32_t{0x44220000});
   EXPECT_EQ(wav_reader.buffers_[1][1], int32_t{0x08660000});
-  EXPECT_EQ(wav_reader.buffers_[2][1], int32_t{0x0dbb0000});
+  EXPECT_EQ(wav_reader.buffers_[1][2], int32_t{0x0dbb0000});
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -2503,7 +2509,8 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           .audio_element_with_data =
               &audio_elements_with_data.at(kFirstAudioElementId),
       });
-      absl::Span<const std::vector<int32_t>> unused_output_rendered_pcm_samples;
+      absl::Span<const absl::Span<const int32_t>>
+          unused_output_rendered_pcm_samples;
       EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                       /*timestamp=*/i, audio_frames_with_data,
                       kNoParameterBlocks, unused_output_rendered_pcm_samples),

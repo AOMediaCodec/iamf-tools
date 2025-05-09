@@ -18,24 +18,24 @@
 #include <utility>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
 
 namespace iamf_tools {
 namespace {
 
 // No transformation.
-void NoOp(std::vector<std::vector<int32_t>>& samples) {}
+void NoOp(std::vector<absl::Span<const int32_t>>& samples) {}
 
-void SwapBackAndSides(std::vector<std::vector<int32_t>>& samples) {
+void SwapBackAndSides(std::vector<absl::Span<const int32_t>>& samples) {
   // 7-something layout are ordered as [L, R, C, LFE, Lss, Rss, Lrs, Rrs].
   // Android needs rear before side surrounds.
-  for (auto& tick : samples) {
-    std::swap(tick[4], tick[6]);
-    std::swap(tick[5], tick[7]);
-  }
+  std::swap(samples[4], samples[6]);
+  std::swap(samples[5], samples[7]);
 }
 
-void ReorderSoundSystemFForAndroid(std::vector<std::vector<int32_t>>& samples) {
+void ReorderSoundSystemFForAndroid(
+    std::vector<absl::Span<const int32_t>>& samples) {
   if (samples.empty()) {
     return;
   }
@@ -43,25 +43,24 @@ void ReorderSoundSystemFForAndroid(std::vector<std::vector<int32_t>>& samples) {
   // Ordered as [C, L, R, LH, RH, LS, RS, LB, RB, CH, LFE1, LFE2].
   // Android needs [L, R, C, LFE, BACK_LEFT, BACK_RIGHT, SIDE_LEFT, SIDE_RIGHT,
   // TOP_CENTER, TOP_FRONT_LEFT, TOP_FRONT_RIGHT, LOW_FREQUENCY_2]
-  std::vector<int32_t> originals(samples[0].size());
-  for (auto& tick : samples) {
-    std::copy(tick.begin(), tick.end(), originals.begin());
-    tick[0] = originals[1];
-    tick[1] = originals[2];
-    tick[2] = originals[0];
-    tick[3] = originals[10];
-    tick[4] = originals[7];
-    tick[5] = originals[8];
-    tick[6] = originals[5];
-    tick[7] = originals[6];
-    tick[8] = originals[9];
-    tick[9] = originals[3];
-    tick[10] = originals[4];
-    // 11 is the same.
-  }
+
+  auto originals = samples;
+  samples[0] = originals[1];
+  samples[1] = originals[2];
+  samples[2] = originals[0];
+  samples[3] = originals[10];
+  samples[4] = originals[7];
+  samples[5] = originals[8];
+  samples[6] = originals[5];
+  samples[7] = originals[6];
+  samples[8] = originals[9];
+  samples[9] = originals[3];
+  samples[10] = originals[4];
+  // Channel 11 is the same.
 }
 
-void ReorderSoundSystemGForAndroid(std::vector<std::vector<int32_t>>& samples) {
+void ReorderSoundSystemGForAndroid(
+    std::vector<absl::Span<const int32_t>>& samples) {
   // Ordered as
   //  0  1  2    3    4    5    6    7    8    9   10   11   12   13
   // [L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf, Ltb, Rtb, Lsc, Rsc]
@@ -70,24 +69,23 @@ void ReorderSoundSystemGForAndroid(std::vector<std::vector<int32_t>>& samples) {
   // [L, R, C, LFE, BACK_LEFT, BACK_RIGHT, FRONT_LEFT_OF_CENTER (for Lsc),
   //                     7                    8          9    10   11   12   13
   // FRONT_RIGHT_OF_CENTER (for Rsc), SIDE_LEFT, SIDE_RIGHT, Ltf, Rtf, Ltb, Rtb]
-  std::vector<int32_t> originals(samples[0].size());
-  for (auto& tick : samples) {
-    std::copy(tick.begin(), tick.end(), originals.begin());
-    // 0-3 are the same.
-    tick[4] = originals[6];
-    tick[5] = originals[7];
-    tick[6] = originals[12];
-    tick[7] = originals[13];
-    tick[8] = originals[4];
-    tick[9] = originals[5];
-    tick[10] = originals[8];
-    tick[11] = originals[9];
-    tick[12] = originals[10];
-    tick[13] = originals[11];
-  }
+
+  auto originals = samples;
+  // 0-3 are the same.
+  samples[4] = originals[6];
+  samples[5] = originals[7];
+  samples[6] = originals[12];
+  samples[7] = originals[13];
+  samples[8] = originals[4];
+  samples[9] = originals[5];
+  samples[10] = originals[8];
+  samples[11] = originals[9];
+  samples[12] = originals[10];
+  samples[13] = originals[11];
 }
 
-void ReorderSoundSystemHForAndroid(std::vector<std::vector<int32_t>>& samples) {
+void ReorderSoundSystemHForAndroid(
+    std::vector<absl::Span<const int32_t>>& samples) {
   // Ordered as
   //   0   1   2     3  4    5    6    7   8     9  10    11   12     13    14
   // [FL, FR, FC, LFE1, BL, BR, FLc, FRc, BC, LFE2, SiL, SiR, TpFL, TpFR, TpFC,
@@ -103,27 +101,25 @@ void ReorderSoundSystemHForAndroid(std::vector<std::vector<int32_t>>& samples) {
   // TOP_BACK_CENTER, TOP_BACK_RIGHT, TOP_SIDE_LEFT, TOP_SIDE_RIGHT,
   //                 20                   21                  22    23
   //  BOTTOM_FRONT_LEFT, BOTTOM_FRONT_CENTER, BOTTOM_FRONT_RIGHT, LFE2]
-  std::vector<int32_t> originals(samples[0].size());
-  for (auto& tick : samples) {
-    std::copy(tick.begin(), tick.end(), originals.begin());
-    // 0-8 are the same.
-    tick[9] = originals[10];
-    tick[10] = originals[11];
-    tick[11] = originals[15];
-    // 12 is the same
-    tick[13] = originals[14];
-    tick[14] = originals[13];
-    tick[15] = originals[16];
-    tick[16] = originals[20];
-    // 17-19 are the same.
-    tick[20] = originals[22];
-    // 21 is the same.
-    tick[22] = originals[23];
-    tick[23] = originals[9];
-  }
+
+  auto originals = samples;
+  // 0-8 are the same.
+  samples[9] = originals[10];
+  samples[10] = originals[11];
+  samples[11] = originals[15];
+  // 12 is the same
+  samples[13] = originals[14];
+  samples[14] = originals[13];
+  samples[15] = originals[16];
+  samples[16] = originals[20];
+  // 17-19 are the same.
+  samples[20] = originals[22];
+  // 21 is the same.
+  samples[22] = originals[23];
+  samples[23] = originals[9];
 }
 
-std::function<void(std::vector<std::vector<int32_t>>&)> MakeFunction(
+std::function<void(std::vector<absl::Span<const int32_t>>&)> MakeFunction(
     LoudspeakersSsConventionLayout::SoundSystem original_layout,
     ChannelReorderer::RearrangementScheme scheme) {
   switch (scheme) {
@@ -161,7 +157,8 @@ std::function<void(std::vector<std::vector<int32_t>>&)> MakeFunction(
 }  // namespace
 
 ChannelReorderer::ChannelReorderer(
-    std::function<void(std::vector<std::vector<int32_t>>&)> reorder_function)
+    std::function<void(std::vector<absl::Span<const int32_t>>&)>
+        reorder_function)
     : reorder_function_(reorder_function) {}
 
 ChannelReorderer ChannelReorderer::Create(
@@ -173,7 +170,8 @@ ChannelReorderer ChannelReorderer::Create(
   return ChannelReorderer(MakeFunction(original_layout, scheme));
 }
 
-void ChannelReorderer::Reorder(std::vector<std::vector<int32_t>>& audio_frame) {
+void ChannelReorderer::Reorder(
+    std::vector<absl::Span<const int32_t>>& audio_frame) {
   reorder_function_(audio_frame);
 }
 

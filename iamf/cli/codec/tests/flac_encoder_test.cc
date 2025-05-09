@@ -78,7 +78,7 @@ TEST_F(FlacEncoderTest, FramesAreInOrder) {
   const int kNumFrames = 100;
   for (int i = 0; i < kNumFrames; i++) {
     EncodeAudioFrame(std::vector<std::vector<int32_t>>(
-        num_samples_per_frame_, std::vector<int32_t>(num_channels_, i)));
+        num_channels_, std::vector<int32_t>(num_samples_per_frame_, i)));
   }
   FinalizeAndValidateOrderOnly(kNumFrames);
 }
@@ -96,7 +96,7 @@ TEST_F(FlacEncoderTest, EncodeAudioFrameSucceeds) {
   // Typically the user of the encoder should pad partial frames of input data
   // before passing it into the encoder.
   const std::vector<std::vector<int32_t>> kAudioFrameWithCorrectNumSamples(
-      num_samples_per_frame_, std::vector<int32_t>(num_channels_, 0));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithCorrectNumSamples);
@@ -107,7 +107,7 @@ TEST_F(FlacEncoderTest,
   // Typically the user of the encoder should pad partial frames of input data
   // before passing it into the encoder.
   const std::vector<std::vector<int32_t>> kAudioFrameWithMissingSample(
-      num_samples_per_frame_ - 1, std::vector<int32_t>(num_channels_, 0));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_ - 1, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithMissingSample,
@@ -117,7 +117,7 @@ TEST_F(FlacEncoderTest,
 TEST_F(FlacEncoderTest,
        EncodeAudioFrameFailsWhenAudioFrameIsLargerThanNumSamplesPerFrame) {
   const std::vector<std::vector<int32_t>> kAudioFrameWithExtraSample(
-      num_samples_per_frame_ + 1, std::vector<int32_t>(num_channels_, 0));
+      num_channels_, std::vector<int32_t>(num_samples_per_frame_ + 1, 0));
   InitExpectOk();
 
   EncodeAudioFrame(kAudioFrameWithExtraSample,

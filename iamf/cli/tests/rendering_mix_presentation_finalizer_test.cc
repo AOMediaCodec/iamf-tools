@@ -109,7 +109,7 @@ class MockRenderer : public AudioElementRendererBase {
 
   MOCK_METHOD(
       absl::Status, RenderSamples,
-      (absl::Span<const std::vector<InternalSampleType>> samples_to_render,
+      (absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
        std::vector<InternalSampleType>& rendered_samples),
       (override));
 };
@@ -429,10 +429,10 @@ TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
   auto mock_renderer = std::make_unique<MockRenderer>(kStereoLabels, 2);
   std::vector<InternalSampleType> rendered_samples;
   const std::vector<std::vector<InternalSampleType>>
-      kExpectedTimeChannelOrderedSamples = {{0, 2}, {1, 3}};
+      kExpectedChannelTimeOrderedSamples = {{0, 1}, {2, 3}};
   EXPECT_CALL(*mock_renderer,
               RenderSamples(
-                  absl::MakeConstSpan(kExpectedTimeChannelOrderedSamples), _));
+                  MakeSpanOfConstSpans(kExpectedChannelTimeOrderedSamples), _));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   ASSERT_NE(mock_renderer_factory, nullptr);
   EXPECT_CALL(*mock_renderer_factory,
@@ -691,7 +691,7 @@ TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
   // Post-processing is only possible if rendering is enabled.
   renderer_factory_ = std::make_unique<RendererFactory>();
   const std::vector<std::vector<int32_t>> kExpectedPassthroughSamples = {
-      {0}, {std::numeric_limits<int32_t>::max()}};
+      {0, std::numeric_limits<int32_t>::max()}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
@@ -704,7 +704,7 @@ TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
   // We expect the post-processor to be called with the rendered samples.
   EXPECT_CALL(
       *mock_sample_processor,
-      PushFrameDerived(absl::MakeConstSpan(kExpectedPassthroughSamples)));
+      PushFrameDerived(MakeSpanOfConstSpans(kExpectedPassthroughSamples)));
   MockSampleProcessorFactory mock_sample_processor_factory;
   EXPECT_CALL(mock_sample_processor_factory, Call(_, _, _, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_sample_processor)));
@@ -771,7 +771,7 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
   const std::vector<std::vector<int32_t>> kExpectedPassthroughSamples = {
-      {0}, {std::numeric_limits<int32_t>::max()}};
+      {0, std::numeric_limits<int32_t>::max()}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
@@ -785,7 +785,7 @@ TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   // We expect the loudness calculator to be called with the rendered samples.
   EXPECT_CALL(*mock_loudness_calculator,
               AccumulateLoudnessForSamples(
-                  absl::MakeConstSpan(kExpectedPassthroughSamples)))
+                  MakeSpanOfConstSpans(kExpectedPassthroughSamples)))
       .WillOnce(Return(absl::OkStatus()));
   ON_CALL(*mock_loudness_calculator, QueryLoudness())
       .WillByDefault(Return(kArbitraryLoudnessInfo));
@@ -1213,7 +1213,7 @@ TEST_F(FinalizerTest,
       {kR2, Int32ToInternalSampleType({2, 3})}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{1, 3}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{1}, {3}};
   // We expect the post-processor to be called with the rendered samples.
   sample_processor_factory_ =
       [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
@@ -1234,7 +1234,7 @@ TEST_F(FinalizerTest,
   // We expect the post-processed samples, i.e. every other tick.
   EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
                   kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
-              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
+              IsOkAndHolds(MakeSpanOfConstSpans(kExpectedSamples)));
 }
 
 TEST_F(FinalizerTest,
@@ -1244,7 +1244,7 @@ TEST_F(FinalizerTest,
   const LabelSamplesMap kLabelToSamples = {
       {kL2, Int32ToInternalSampleType({0, 1})},
       {kR2, Int32ToInternalSampleType({2, 3})}};
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{0, 2}, {1, 3}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{0, 1}, {2, 3}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
@@ -1262,7 +1262,7 @@ TEST_F(FinalizerTest,
   // rendered samples.
   EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
                   kMixPresentationId, kFirstLayoutIndex, kFirstSubmixIndex),
-              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
+              IsOkAndHolds(MakeSpanOfConstSpans(kExpectedSamples)));
 }
 
 TEST_F(FinalizerTest,
@@ -1279,7 +1279,8 @@ TEST_F(FinalizerTest,
       };
   const LabelSamplesMap kLabelToSamples = {
       {kMono, Int32ToInternalSampleType({100, 900})}};
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100}, {900}};
+  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100, 900}};
+  const std::vector<std::vector<int32_t>> kEmptySamples = {{}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   auto finalizer = CreateFinalizerExpectOk();
 
@@ -1291,13 +1292,13 @@ TEST_F(FinalizerTest,
       IsOk());
   EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
                   kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex),
-              IsOkAndHolds(IsEmpty()));
+              IsOkAndHolds(MakeSpanOfConstSpans(kEmptySamples)));
 
   // But finally after flushing, samples are available.
   EXPECT_THAT(finalizer.FinalizePushingTemporalUnits(), IsOk());
   EXPECT_THAT(finalizer.GetPostProcessedSamplesAsSpan(
                   kMixPresentationId, kFirstSubmixIndex, kFirstLayoutIndex),
-              IsOkAndHolds(absl::MakeConstSpan(kExpectedSamples)));
+              IsOkAndHolds(MakeSpanOfConstSpans(kExpectedSamples)));
 }
 
 }  // namespace

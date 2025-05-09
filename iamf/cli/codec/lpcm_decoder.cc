@@ -64,8 +64,6 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
 
 absl::Status LpcmDecoder::DecodeAudioFrame(
     const std::vector<uint8_t>& encoded_frame) {
-  num_valid_ticks_ = 0;
-
   // Make sure we have a valid number of bytes.  There needs to be an equal
   // number of samples for each channel.
   if (encoded_frame.size() % bytes_per_sample_ != 0 ||
@@ -76,7 +74,7 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
         " bytes, which is not a multiple of the bytes per sample (",
         bytes_per_sample_, ") * number of channels (", num_channels_, ")."));
   }
-  // Each time tick has one sample for each channel.
+  // Each channel has one sample per tick.
   const size_t num_ticks =
       encoded_frame.size() / bytes_per_sample_ / num_channels_;
   if (num_ticks > num_samples_per_channel_) {
@@ -86,12 +84,13 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
                      "num_samples_per_channel_= ",
                      num_samples_per_channel_, "."));
   }
-  num_valid_ticks_ = num_ticks;
-
+  decoded_samples_.resize(num_channels_);
   int32_t sample_result;
-  for (size_t t = 0; t < num_valid_ticks_; ++t) {
-    // One sample for each channel in this time tick.
-    for (size_t c = 0; c < num_channels_; ++c) {
+  for (size_t c = 0; c < num_channels_; ++c) {
+    // One sample for each time tick in this channel.
+    auto& decoded_samples_for_channel = decoded_samples_[c];
+    decoded_samples_for_channel.resize(num_ticks);
+    for (size_t t = 0; t < num_ticks; ++t) {
       const size_t offset = (t * num_channels_ + c) * bytes_per_sample_;
       absl::Span<const uint8_t> input_bytes(encoded_frame.data() + offset,
                                             bytes_per_sample_);
@@ -100,7 +99,7 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
       } else {
         RETURN_IF_NOT_OK(BigEndianBytesToInt32(input_bytes, sample_result));
       }
-      decoded_samples_[t][c] = sample_result;
+      decoded_samples_for_channel[t] = sample_result;
     }
   }
   return absl::OkStatus();

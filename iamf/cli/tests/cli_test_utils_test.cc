@@ -149,7 +149,8 @@ TEST(OneFrameDelayer, ValidatesInputShapeWithTooManyChannels) {
   const std::vector<std::vector<int32_t>> kInputFrameWithTooManyChannels(
       kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels + 1, 0));
 
-  EXPECT_THAT(one_frame_delayer.PushFrame(kInputFrameWithTooManyChannels),
+  EXPECT_THAT(one_frame_delayer.PushFrame(
+                  MakeSpanOfConstSpans(kInputFrameWithTooManyChannels)),
               Not(IsOk()));
 }
 
@@ -161,7 +162,8 @@ TEST(OneFrameDelayer, ValidatesInputShapeWithTooManySamplesPerFrame) {
   const std::vector<std::vector<int32_t>> kInputFrameWithTooFewSamples(
       kNumSamplesPerFrame + 1, std::vector<int32_t>(kNumChannels, 0));
 
-  EXPECT_THAT(one_frame_delayer.PushFrame(kInputFrameWithTooFewSamples),
+  EXPECT_THAT(one_frame_delayer.PushFrame(
+                  MakeSpanOfConstSpans(kInputFrameWithTooFewSamples)),
               Not(IsOk()));
 }
 
@@ -169,44 +171,59 @@ TEST(OneFrameDelayer, DelaysSamplesByOneFrame) {
   constexpr uint32_t kNumSamplesPerFrame = 5;
   constexpr size_t kNumChannels = 4;
   const std::vector<std::vector<int32_t>> kFirstInputFrame = {
-      {{1, 2, 3, 4},
-       {5, 6, 7, 8},
-       {9, 10, 11, 12},
-       {13, 14, 15, 16},
-       {17, 18, 19, 20}}};
+      {1, 5, 9, 13, 17},
+      {2, 6, 10, 14, 18},
+      {3, 7, 11, 15, 19},
+      {4, 8, 12, 16, 20}};
   const std::vector<std::vector<int32_t>> kSecondInputFrame = {
-      {{21, 22, 23, 24}}};
+      {21}, {22}, {23}, {24}};
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
   // Nothing is available at the start.
-  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
-  EXPECT_THAT(one_frame_delayer.PushFrame(kFirstInputFrame), IsOk());
+  for (const auto& output_channel :
+       one_frame_delayer.GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(output_channel.empty());
+  }
+
+  EXPECT_THAT(
+      one_frame_delayer.PushFrame(MakeSpanOfConstSpans(kFirstInputFrame)),
+      IsOk());
   // Still nothing is available because the samples are delayed by a frame.
-  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
+  for (const auto& output_channel :
+       one_frame_delayer.GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(output_channel.empty());
+  }
 
   // Pushing in a new frame will cause the first frame to be available.
-  EXPECT_THAT(one_frame_delayer.PushFrame(kSecondInputFrame), IsOk());
-
-  EXPECT_THAT(one_frame_delayer.GetOutputSamplesAsSpan(), kFirstInputFrame);
+  EXPECT_THAT(
+      one_frame_delayer.PushFrame(MakeSpanOfConstSpans(kSecondInputFrame)),
+      IsOk());
+  EXPECT_EQ(one_frame_delayer.GetOutputSamplesAsSpan(),
+            MakeSpanOfConstSpans(kFirstInputFrame));
 }
 
 TEST(OneFrameDelayer, GetOutputSamplesAsSpanReturnsFinalFrameAfterFlush) {
   constexpr uint32_t kNumSamplesPerFrame = 5;
   constexpr size_t kNumChannels = 4;
   const std::vector<std::vector<int32_t>> kFirstInputFrame = {
-      {{1, 2, 3, 4},
-       {5, 6, 7, 8},
-       {9, 10, 11, 12},
-       {13, 14, 15, 16},
-       {17, 18, 19, 20}}};
+      {1, 5, 9, 13, 17},
+      {2, 6, 10, 14, 18},
+      {3, 7, 11, 15, 19},
+      {4, 8, 12, 16, 20}};
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
-  EXPECT_THAT(one_frame_delayer.PushFrame(kFirstInputFrame), IsOk());
+  EXPECT_THAT(
+      one_frame_delayer.PushFrame(MakeSpanOfConstSpans(kFirstInputFrame)),
+      IsOk());
   // Nothing is available because the samples are delayed by a frame.
-  EXPECT_TRUE(one_frame_delayer.GetOutputSamplesAsSpan().empty());
+  for (const auto& output_channel :
+       one_frame_delayer.GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(output_channel.empty());
+  }
 
   // Flushing will allow access to the final delayed frame.
   EXPECT_THAT(one_frame_delayer.Flush(), IsOk());
 
-  EXPECT_THAT(one_frame_delayer.GetOutputSamplesAsSpan(), kFirstInputFrame);
+  EXPECT_EQ(one_frame_delayer.GetOutputSamplesAsSpan(),
+            MakeSpanOfConstSpans(kFirstInputFrame));
 }
 
 }  // namespace

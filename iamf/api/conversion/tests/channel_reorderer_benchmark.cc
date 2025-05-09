@@ -15,6 +15,7 @@
 
 #include "absl/log/check.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/api/conversion/channel_reorderer.h"
 #include "iamf/obu/mix_presentation.h"
@@ -38,11 +39,11 @@ static int32_t GetNumberOfChannels(
 
 static std::vector<std::vector<int32_t>> CreateAudioSamples(
     LoudspeakersSsConventionLayout::SoundSystem sound_system, int num_ticks) {
-  std::vector<std::vector<int32_t>> samples(
-      num_ticks, std::vector<int32_t>(GetNumberOfChannels(sound_system)));
+  std::vector<std::vector<int32_t>> samples(GetNumberOfChannels(sound_system),
+                                            std::vector<int32_t>(num_ticks));
   int32_t i = 0;
-  for (auto& tick : samples) {
-    for (auto& sample : tick) {
+  for (auto& channel : samples) {
+    for (auto& sample : channel) {
       sample = i++;
     }
   }
@@ -57,13 +58,17 @@ static void BM_ReorderForAndroid(
   const auto scheme = ChannelReorderer::RearrangementScheme::kReorderForAndroid;
   auto reorderer = ChannelReorderer::Create(sound_system, scheme);
 
-  // Create input samples.
+  // Create input samples and a vector of spans pointing to the channels.
   const int num_ticks = state.range(0);
   auto samples = CreateAudioSamples(sound_system, num_ticks);
+  std::vector<absl::Span<const int32_t>> sample_spans(samples.size());
+  for (int c = 0; c < samples.size(); c++) {
+    sample_spans[c] = absl::MakeConstSpan(samples[c]);
+  }
 
   // Measure the calls to `ChannelReorderer::Reorder()`.
   for (auto _ : state) {
-    reorderer.Reorder(samples);
+    reorderer.Reorder(sample_spans);
     ;
   }
 }

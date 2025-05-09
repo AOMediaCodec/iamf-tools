@@ -81,7 +81,7 @@ struct IamfDecoder::DecoderState {
   // temporal unit. A temporal unit will never be partially filled, so the
   // number of elements in the outer vector is equal to the number of decoded
   // temporal units currently available.
-  std::queue<std::vector<std::vector<int32_t>>> rendered_pcm_samples;
+  std::queue<std::vector<absl::Span<const int32_t>>> rendered_pcm_samples;
 
   // The layout used for the rendered output audio.
   // Initially set to the requested Layout but updated by ObuProcessor.
@@ -179,7 +179,7 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
 IamfStatus ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
-    std::queue<std::vector<std::vector<int32_t>>>& rendered_pcm_samples,
+    std::queue<std::vector<absl::Span<const int32_t>>>& rendered_pcm_samples,
     std::optional<ChannelReorderer> channel_reorderer) {
   LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
   bool continue_processing = true;
@@ -194,7 +194,7 @@ IamfStatus ProcessAllTemporalUnits(
     }
     // We may have processed bytes but not a full temporal unit.
     if (output_temporal_unit.has_value()) {
-      absl::Span<const std::vector<int32_t>>
+      absl::Span<const absl::Span<const int32_t>>
           rendered_pcm_samples_for_temporal_unit;
       absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
           output_temporal_unit->output_timestamp,
@@ -235,7 +235,7 @@ size_t BytesPerSample(OutputSampleType sample_type) {
   }
 }
 
-IamfStatus WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
+IamfStatus WriteFrameToSpan(const std::vector<absl::Span<const int32_t>>& frame,
                             OutputSampleType sample_type,
                             absl::Span<uint8_t> output_bytes,
                             size_t& bytes_written) {
@@ -251,9 +251,9 @@ IamfStatus WriteFrameToSpan(const std::vector<std::vector<int32_t>>& frame,
   const bool big_endian = false;
   size_t write_position = 0;
   uint8_t* data = output_bytes.data();
-  for (int t = 0; t < frame.size(); t++) {
-    for (int c = 0; c < frame[0].size(); ++c) {
-      const uint32_t sample = static_cast<uint32_t>(frame[t][c]);
+  for (int t = 0; t < frame[0].size(); t++) {
+    for (int c = 0; c < frame.size(); ++c) {
+      const uint32_t sample = static_cast<uint32_t>(frame[c][t]);
       absl::Status absl_status = WritePcmSample(
           sample, bits_per_sample, big_endian, data, write_position);
       if (!absl_status.ok()) {
@@ -468,8 +468,7 @@ IamfStatus IamfDecoder::Reset() {
   }
 
   // Clear the rendered PCM samples.
-  std::queue<std::vector<std::vector<int32_t>>> empty;
-  std::swap(state_->rendered_pcm_samples, empty);
+  state_->rendered_pcm_samples = {};
 
   // Set state.
   state_->status = DecoderStatus::kAcceptingData;

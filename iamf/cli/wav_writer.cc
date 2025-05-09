@@ -213,27 +213,27 @@ WavWriter::~WavWriter() {
 }
 
 absl::Status WavWriter::PushFrameDerived(
-    absl::Span<const std::vector<int32_t>> time_channel_samples) {
+    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
   // Flatten down the serialized PCM for compatibility with the internal
   // `WriteSamplesInternal` function.
-  const size_t num_ticks = time_channel_samples.size();
-  const size_t num_channels =
-      time_channel_samples.empty() ? 0 : time_channel_samples[0].size();
+  const size_t num_channels = channel_time_samples.size();
+  const size_t num_ticks =
+      channel_time_samples.empty() ? 0 : channel_time_samples[0].size();
   if (!std::all_of(
-          time_channel_samples.begin(), time_channel_samples.end(),
-          [&](const auto& tick) { return tick.size() == num_channels; })) {
+          channel_time_samples.begin(), channel_time_samples.end(),
+          [&](const auto& channel) { return channel.size() == num_ticks; })) {
     return absl::InvalidArgumentError(
-        "All ticks must have the same number of channels.");
+        "All channels must have the same number of ticks.");
   }
 
   std::vector<uint8_t> samples_as_pcm(num_channels * num_ticks * bit_depth_ / 8,
                                       0);
   size_t write_position = 0;
-  for (const auto& tick : time_channel_samples) {
-    for (const auto& channel_sample : tick) {
-      RETURN_IF_NOT_OK(WritePcmSample(channel_sample, bit_depth_,
-                                      /*big_endian=*/false,
-                                      samples_as_pcm.data(), write_position));
+  for (int t = 0; t < num_ticks; t++) {
+    for (int c = 0; c < num_channels; c++) {
+      RETURN_IF_NOT_OK(WritePcmSample(
+          static_cast<uint32_t>(channel_time_samples[c][t]), bit_depth_,
+          /*big_endian=*/false, samples_as_pcm.data(), write_position));
     }
   }
 

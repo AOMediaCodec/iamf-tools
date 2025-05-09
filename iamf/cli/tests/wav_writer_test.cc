@@ -93,15 +93,17 @@ TEST(DeprecatedWritePcmSamples, WriteEmptySamplesSucceeds) {
   EXPECT_THAT(wav_writer->WritePcmSamples(kEmptySamples), IsOk());
 }
 
-TEST(PushFrame, WriteEmptySamplesSucceeds) {
+TEST(PushFrame, WriteChannelsOfEmptySamplesSucceeds) {
   auto wav_writer =
       WavWriter::Create(GetAndCleanupOutputFileName(".wav"), kNumChannels,
                         kSampleRateHz, kBitDepth24, kMaxInputSamplesPerFrame);
   ASSERT_NE(wav_writer, nullptr);
 
-  const std::vector<std::vector<int32_t>> kEmptySamples;
-  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kEmptySamples)),
-              IsOk());
+  const std::vector<std::vector<int32_t>> kChannelsOfEmptySamples(
+      kNumChannels, std::vector<int32_t>());
+  EXPECT_THAT(
+      wav_writer->PushFrame(MakeSpanOfConstSpans(kChannelsOfEmptySamples)),
+      IsOk());
 }
 
 TEST(DeprecatedWritePcmSamples, WriteIntegerSamplesSucceeds) {
@@ -123,8 +125,8 @@ TEST(PushFrame, WriteIntegerSamplesSucceeds) {
 
   constexpr int kNumSamples = 3;
   const std::vector<std::vector<int32_t>> samples(
-      kNumSamples, std::vector<int32_t>(kNumChannels, kSampleValue));
-  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(samples)), IsOk());
+      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 }
 
 TEST(PushFrame, WriteManyChannelsSucceeds) {
@@ -138,8 +140,8 @@ TEST(PushFrame, WriteManyChannelsSucceeds) {
 
   constexpr int kNumSamples = 3;
   const std::vector<std::vector<int32_t>> samples(
-      kNumSamples, std::vector<int32_t>(kNumChannels, kSampleValue));
-  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(samples)), IsOk());
+      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 }
 
 TEST(DeprecatedWritePcmSamples, WriteMoreSamplesThanConfiguredFails) {
@@ -164,7 +166,7 @@ TEST(PushFrame, WriteMoreSamplesThanConfiguredFails) {
   constexpr int kTooManySamples = 2;
   std::vector<std::vector<int32_t>> samples(
       kNumChannels, std::vector<int32_t>(kTooManySamples, kSampleValue));
-  EXPECT_FALSE(wav_writer->PushFrame(samples).ok());
+  EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
 }
 
 TEST(DeprecatedWritePcmSamples, DeprecatedWriteNonIntegerNumberOfSamplesFails) {
@@ -187,7 +189,7 @@ TEST(PushFrame, WriteChannelWithTooFewSamplesFails) {
   // The second tick is missing a channel.
   const std::vector<std::vector<int32_t>> samples = {
       {kSampleValue, kSampleValue}, {kSampleValue}};
-  EXPECT_FALSE(wav_writer->PushFrame(absl::MakeConstSpan(samples)).ok());
+  EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
 }
 
 TEST(PushFrame, ConsumesInputSamples) {
@@ -197,15 +199,17 @@ TEST(PushFrame, ConsumesInputSamples) {
   ASSERT_NE(wav_writer, nullptr);
   constexpr int kNumSamples = 3;
   const std::vector<std::vector<int32_t>> samples(
-      kNumSamples, std::vector<int32_t>(kNumChannels, kSampleValue));
+      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
 
-  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(samples)), IsOk());
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 
   // The writer consumes all input samples, so
-  // `SampleProcessorBase::GetOutputSamplesAsSpan` will always return an empty
-  // span.
-  EXPECT_TRUE(wav_writer->GetOutputSamplesAsSpan().empty());
-}
+  // `SampleProcessorBase::GetOutputSamplesAsSpan` will always return a span of
+  // empty spans.
+  for (const auto channel_span : wav_writer->GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(channel_span.empty());
+  }
+}  //   std::vector<absl::Span<const InternalSampleType>>
 
 TEST(DeprecatedWritePcmSamples,
      DeprecatedWriteIntegerSamplesSucceedsWithoutHeader) {
@@ -305,8 +309,7 @@ TEST(WavWriterTest,
      Output16BitWavFileHasCorrectDataWithDeprecatedWritePcmSamples) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x01000000}, {0x03020000}, {0x05040000},
-      {0x07060000}, {0x09080000}, {0x0b0a0000}};
+      {0x01000000, 0x03020000, 0x05040000, 0x07060000, 0x09080000, 0x0b0a0000}};
   constexpr int kNumSamplesPerFrame = 6;
   const int kInputBytes = kNumSamplesPerFrame * 2;
   {
@@ -332,8 +335,7 @@ TEST(WavWriterTest,
      Output16BitWavFileHasCorrectDataWithPushFrameAfterDestruction) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x01000000}, {0x03020000}, {0x05040000},
-      {0x07060000}, {0x09080000}, {0x0b0a0000}};
+      {0x01000000, 0x03020000, 0x05040000, 0x07060000, 0x09080000, 0x0b0a0000}};
   constexpr int kNumSamplesPerFrame = 6;
   {
     // Create the writer in a small scope. The user can safely omit the call the
@@ -343,7 +345,7 @@ TEST(WavWriterTest,
         WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                           kBitDepth16, kMaxInputSamplesPerFrame);
     ASSERT_NE(wav_writer, nullptr);
-    EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+    EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(kExpectedSamples)),
                 IsOk());
   }
 
@@ -357,15 +359,14 @@ TEST(WavWriterTest,
 TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrameAfterFlush) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x01000000}, {0x03020000}, {0x05040000},
-      {0x07060000}, {0x09080000}, {0x0b0a0000}};
+      {0x01000000, 0x03020000, 0x05040000, 0x07060000, 0x09080000, 0x0b0a0000}};
   constexpr int kNumSamplesPerFrame = 6;
 
   auto wav_writer =
       WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                         kBitDepth16, kMaxInputSamplesPerFrame);
   ASSERT_NE(wav_writer, nullptr);
-  EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+  EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(kExpectedSamples)),
               IsOk());
   // Instead of waiting for the destructor to call `Flush()`, the user can call
   // `Flush()` explicitly, to signal the wav header (including the total number
@@ -383,7 +384,7 @@ TEST(WavWriterTest,
      Output24BitWavFileHasCorrectDataWithDeprecatedWritePcmSamples) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x02010000}, {0x05040300}, {0x08070600}, {0x0b0a0900}};
+      {0x02010000, 0x05040300, 0x08070600, 0x0b0a0900}};
   constexpr int kNumSamplesPerFrame = 4;
   constexpr int kInputBytes = kNumSamplesPerFrame * 3;
   {
@@ -408,7 +409,7 @@ TEST(WavWriterTest,
 TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x02010000}, {0x05040300}, {0x08070600}, {0x0b0a0900}};
+      {0x02010000, 0x05040300, 0x08070600, 0x0b0a0900}};
   constexpr int kNumSamplesPerFrame = 4;
   {
     // Create the writer in a small scope. It should be destroyed before
@@ -416,7 +417,7 @@ TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
     auto wav_writer =
         WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                           kBitDepth24, kMaxInputSamplesPerFrame);
-    EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+    EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(kExpectedSamples)),
                 IsOk());
   }
 
@@ -431,7 +432,7 @@ TEST(WavWriterTest,
      Output32BitWavFileHasCorrectDataWithDeprecatedWritePcmSamples) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x03020100}, {0x07060504}, {0x0b0a0908}};
+      {0x03020100, 0x07060504, 0x0b0a0908}};
   constexpr int kNumSamplesPerFrame = 3;
   constexpr int kInputBytes = kNumSamplesPerFrame * 4;
   {
@@ -456,7 +457,7 @@ TEST(WavWriterTest,
 TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x03020100}, {0x07060504}, {0x0b0a0908}};
+      {0x03020100, 0x07060504, 0x0b0a0908}};
   constexpr int kNumSamplesPerFrame = 3;
   {
     // Create the writer in a small scope. It should be destroyed before
@@ -465,7 +466,7 @@ TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
         WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                           kBitDepth32, kMaxInputSamplesPerFrame);
     ASSERT_NE(wav_writer, nullptr);
-    EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+    EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(kExpectedSamples)),
                 IsOk());
   }
 
@@ -480,8 +481,10 @@ TEST(WavWriterTest, OutputWithManyChannelsHasCorrectData) {
   constexpr int kNumChannels = 6;
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
   const std::vector<std::vector<int32_t>> kExpectedSamples = {
-      {0x01010101, 0x02010101, 0x03010101, 0x04010101, 0x05010101, 0x06010101},
-      {0x01020202, 0x02020202, 0x03020202, 0x04020202, 0x05020202, 0x06020202}};
+      {0x01010101, 0x01020202}, {0x02010101, 0x02020202},
+      {0x03010101, 0x03020202}, {0x04010101, 0x04020202},
+      {0x05010101, 0x05020202}, {0x06010101, 0x06020202}};
+
   constexpr int kNumSamplesPerFrame = 2;
   {
     // Create the writer in a small scope. It should be destroyed before
@@ -490,7 +493,7 @@ TEST(WavWriterTest, OutputWithManyChannelsHasCorrectData) {
         WavWriter::Create(output_file_path, kNumChannels, kSampleRateHz,
                           kBitDepth32, kMaxInputSamplesPerFrame);
     ASSERT_NE(wav_writer, nullptr);
-    EXPECT_THAT(wav_writer->PushFrame(absl::MakeConstSpan(kExpectedSamples)),
+    EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(kExpectedSamples)),
                 IsOk());
   }
 

@@ -17,6 +17,7 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/obu/mix_presentation.h"
@@ -26,23 +27,26 @@ namespace iamf_tools {
 
 namespace renderer_utils {
 
-/*!\brief Arranges the samples to be rendered in (time, channel) axes.
+/*!\brief Arranges the samples to be rendered in (channel, time) axes.
  *
  * \param labeled_frame Labeled frame determine which original or demixed
  *        samples to trim and render.
- * \param ordered_labels Ordered list of original labels. Samples are arranged
- *        based on the original or demixed label samples in each time tick.
- *        Slots corresponding with `ChannelLabel::Label::kOmitted` will create
- *        zeroed-out samples.
- * \param samples_to_render Output samples to render in (time, channel) axes.
+ * \param ordered_labels Ordered list of original labels.
+ * \param empty_channel Vector of an all-zero channel. All output spans of
+ *        channels corresponding to missing labels
+ *        (`ChannelLabel::Label::kOmitted`) will point to this vector.
+ * \param samples_to_render Output samples to render in (channel, time) axes.
  *        Samples which should be trimmed are omitted from the output.
+ * \param num_valid_ticks Number of valid time ticks in the returned
+ *        `samples_to_render`, which is the length of the time-axis.
  * \return `absl::OkStatus()` on success. A specific status on failure.
  */
 absl::Status ArrangeSamplesToRender(
     const LabeledFrame& labeled_frame,
     const std::vector<ChannelLabel::Label>& ordered_labels,
-    std::vector<std::vector<InternalSampleType>>& samples_to_render,
-    size_t& num_valid_samples);
+    const std::vector<InternalSampleType>& empty_channel,
+    std::vector<absl::Span<const InternalSampleType>>& samples_to_render,
+    size_t& num_valid_ticks);
 
 /*!\brief Gets a key associated with the playback layout.
  *

@@ -12,6 +12,7 @@ cc_library(
     hdrs = ["channel_reorderer.h"],
     deps = [
         "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/types:span",
     ],
 )
 

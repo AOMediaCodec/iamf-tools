@@ -34,34 +34,52 @@ constexpr uint32_t kMaxOutputTicks = 4;
 constexpr size_t kNumChannels = 2;
 
 TEST(GetOutputSamplesAsSpan, ReturnsEmptyAfterConstruction) {
-  const MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
-                                           kMaxOutputTicks);
-  EXPECT_TRUE(mock_resampler.GetOutputSamplesAsSpan().empty());
+  MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
+                                     kMaxOutputTicks);
+  for (const auto& output_channel : mock_resampler.GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(output_channel.empty());
+  }
 }
 
 TEST(GetOutputSamplesAsSpan, SizeMatchesNumValidTicks) {
   EverySecondTickResampler every_second_tick_resampler(kMaxInputTicks,
                                                        kNumChannels);
+  const std::vector<std::vector<int32_t>> first_frame = {{1, 3, 5, 7},
+                                                         {2, 4, 6, 8}};
   EXPECT_THAT(
-      every_second_tick_resampler.PushFrame({{1, 2}, {3, 4}, {5, 6}, {7, 8}}),
+      every_second_tick_resampler.PushFrame(MakeSpanOfConstSpans(first_frame)),
       IsOk());
-  EXPECT_EQ(every_second_tick_resampler.GetOutputSamplesAsSpan().size(), 2);
+  for (const auto& output_channel :
+       every_second_tick_resampler.GetOutputSamplesAsSpan()) {
+    EXPECT_EQ(output_channel.size(), 2);
+  }
 
-  EXPECT_THAT(every_second_tick_resampler.PushFrame({{9, 10}, {11, 12}}),
-              IsOk());
-  EXPECT_EQ(every_second_tick_resampler.GetOutputSamplesAsSpan().size(), 1);
+  const std::vector<std::vector<int32_t>> second_frame = {{9, 10}, {11, 12}};
+  EXPECT_THAT(
+      every_second_tick_resampler.PushFrame(MakeSpanOfConstSpans(second_frame)),
+      IsOk());
+  for (const auto& output_channel :
+       every_second_tick_resampler.GetOutputSamplesAsSpan()) {
+    EXPECT_EQ(output_channel.size(), 1);
+  }
 
   EXPECT_THAT(every_second_tick_resampler.Flush(), IsOk());
-  EXPECT_TRUE(every_second_tick_resampler.GetOutputSamplesAsSpan().empty());
+  for (const auto& output_channel :
+       every_second_tick_resampler.GetOutputSamplesAsSpan()) {
+    EXPECT_TRUE(output_channel.empty());
+  }
 }
 
 TEST(PushFrame, ReturnsFailedPreconditionWhenCalledAfterFlush) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
-  EXPECT_THAT(mock_resampler.PushFrame({}), IsOk());
+  const std::vector<std::vector<int32_t>> empty_frame = {{}, {}};
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(empty_frame)),
+              IsOk());
   EXPECT_THAT(mock_resampler.Flush(), IsOk());
 
-  EXPECT_THAT(mock_resampler.PushFrame({}), StatusIs(kFailedPrecondition));
+  EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(empty_frame)),
+              StatusIs(kFailedPrecondition));
 }
 
 TEST(PushFrame, InvalidIfInputSpanHasTooManyTicks) {
@@ -71,7 +89,7 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyTicks) {
       kMaxInputTicks + 1, std::vector<int32_t>(kNumChannels));
 
   EXPECT_FALSE(
-      mock_resampler.PushFrame(absl::MakeConstSpan(kTooManyTicks)).ok());
+      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyTicks)).ok());
 }
 
 TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
@@ -81,7 +99,7 @@ TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
       kMaxInputTicks, std::vector<int32_t>(kNumChannels - 1));
 
   EXPECT_FALSE(
-      mock_resampler.PushFrame(absl::MakeConstSpan(kTooFewChannels)).ok());
+      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooFewChannels)).ok());
 }
 
 TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
@@ -91,7 +109,7 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
       kMaxInputTicks, std::vector<int32_t>(kNumChannels + 1));
 
   EXPECT_FALSE(
-      mock_resampler.PushFrame(absl::MakeConstSpan(kTooManyChannels)).ok());
+      mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyChannels)).ok());
 }
 
 TEST(Flush, ReturnsFailedPreconditionWhenCalledTwice) {
