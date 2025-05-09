@@ -2,6 +2,18 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
+    name = "channel_reorderer_benchmark",
+    srcs = ["channel_reorderer_benchmark.cc"],
+    deps = [
+        "//iamf/api/conversion:channel_reorderer",
+        "//iamf/obu:mix_presentation",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "channel_reorderer_test",
     srcs = ["channel_reorderer_test.cc"],
     deps = [
