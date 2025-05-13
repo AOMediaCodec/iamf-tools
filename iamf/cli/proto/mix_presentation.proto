@@ -8,29 +8,32 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
 
 import "iamf/cli/proto/obu_header.proto";
 import "iamf/cli/proto/param_definitions.proto";
 
+option features.enum_type = CLOSED;
+option features.utf8_validation = NONE;
+
 message MixPresentationAnnotations {
   option deprecated = true;
 
-  optional string mix_presentation_friendly_label = 1;
+  string mix_presentation_friendly_label = 1;
 }
 
 message MixPresentationElementAnnotations {
   option deprecated = true;
 
-  optional string audio_element_friendly_label = 1;
+  string audio_element_friendly_label = 1;
 }
 
 message ElementMixConfig {
   option deprecated = true;
 
-  optional MixGainParamDefinition mix_gain = 1;
+  MixGainParamDefinition mix_gain = 1;
 }
 
 enum HeadPhonesRenderingMode {
@@ -42,32 +45,35 @@ enum HeadPhonesRenderingMode {
 }
 
 message RenderingConfig {
-  optional HeadPhonesRenderingMode headphones_rendering_mode = 1;
-  optional uint32 reserved = 2;
-  optional uint32 rendering_config_extension_size = 3;
-  optional bytes rendering_config_extension_bytes = 4;
+  HeadPhonesRenderingMode headphones_rendering_mode = 1;
+  uint32 reserved = 2;
+  uint32 rendering_config_extension_size = 3;
+  bytes rendering_config_extension_bytes = 4;
 }
 
 message SubMixAudioElement {
   reserved 2;
 
-  optional uint32 audio_element_id = 1;
+  uint32 audio_element_id = 1;
+
   // Superseded by `localized_element_annotations`.
   repeated MixPresentationElementAnnotations
       mix_presentation_element_annotations_array = 4 [deprecated = true];
+
   // Length should be equal to `count_label` in the OBU.
   repeated string localized_element_annotations = 6;
+  RenderingConfig rendering_config = 5;
 
-  optional RenderingConfig rendering_config = 5;
   // Superseded by `element_mix_gain`.
-  optional ElementMixConfig element_mix_config = 3 [deprecated = true];
-  optional MixGainParamDefinition element_mix_gain = 7;
+  ElementMixConfig element_mix_config = 3 [deprecated = true];
+
+  MixGainParamDefinition element_mix_gain = 7;
 }
 
 message OutputMixConfig {
   option deprecated = true;
 
-  optional MixGainParamDefinition output_mix_gain = 1;
+  MixGainParamDefinition output_mix_gain = 1;
 }
 
 enum SoundSystem {
@@ -89,12 +95,12 @@ enum SoundSystem {
 }
 
 message LoudspeakersSsConventionLayout {
-  optional SoundSystem sound_system = 1;
-  optional uint32 reserved = 2;
+  SoundSystem sound_system = 1;
+  uint32 reserved = 2;
 }
 
 message LoudspeakersReservedOrBinauralLayout {
-  optional uint32 reserved = 1;
+  uint32 reserved = 1;
 }
 
 enum LayoutType {
@@ -108,7 +114,8 @@ enum LayoutType {
 message Layout {
   reserved 2;
 
-  optional LayoutType layout_type = 1;
+  LayoutType layout_type = 1;
+
   oneof specific_layout {
     LoudspeakersSsConventionLayout ss_layout = 3;
     LoudspeakersReservedOrBinauralLayout reserved_or_binaural_layout = 4;
@@ -130,14 +137,15 @@ enum AnchorType {
 //
 // See detailed examples on Q7.8 format below in `LoudnessInfo`.
 message AnchorElement {
-  optional AnchorType anchor_element = 1;
-  optional int32 anchored_loudness = 2;  // Q7.8.
+  AnchorType anchor_element = 1;
+  int32 anchored_loudness = 2;  // Q7.8.
 }
 
 message AnchoredLoudness {
   // `num_anchored_loudness` is ignored. The value in the bitstream is inferred
   // based on the number of `anchor_elements`.
-  optional uint32 num_anchored_loudness = 1 [deprecated = true];
+  uint32 num_anchored_loudness = 1 [deprecated = true];
+
   repeated AnchorElement anchor_elements = 2;
 }
 
@@ -163,73 +171,81 @@ enum LoudnessInfoTypeBitMask {
 //  - For -3 dB, set the proto value to 256 * -3 = -768.
 //  - For +6 dB, set the proto value to 256 * 6 = 1536.
 message LoudnessInfo {
-  optional uint32 deprecated_info_type = 1 [deprecated = true];
-  repeated LoudnessInfoTypeBitMask info_type_bit_masks = 8 [packed = true];
-  optional int32 integrated_loudness = 2;  // Q7.8.
-  optional int32 digital_peak = 3;         // Q7.8.
-  optional int32 true_peak = 4;            // Q7.8.
-  optional AnchoredLoudness anchored_loudness = 5;
-  optional uint32 info_type_size = 6;
-  optional bytes info_type_bytes = 7;
+  uint32 deprecated_info_type = 1 [deprecated = true];
+
+  repeated LoudnessInfoTypeBitMask info_type_bit_masks = 8;
+  int32 integrated_loudness = 2;  // Q7.8.
+  int32 digital_peak = 3;         // Q7.8.
+  int32 true_peak = 4;            // Q7.8.
+  AnchoredLoudness anchored_loudness = 5;
+  uint32 info_type_size = 6;
+  bytes info_type_bytes = 7;
 
   // Next ID: 9
 }
 
 message MixPresentationLayout {
-  optional Layout loudness_layout = 1;
-  optional LoudnessInfo loudness = 2;
+  Layout loudness_layout = 1;
+  LoudnessInfo loudness = 2;
 }
 
 message MixPresentationSubMix {
   // `num_audio_elements` is ignored. The value in the bitstream is inferred
   // based on the number of `audio_elements`.
-  optional uint32 num_audio_elements = 1 [deprecated = true];
+  uint32 num_audio_elements = 1 [deprecated = true];
+
   repeated SubMixAudioElement audio_elements = 2;
 
   // Superseded by `output_mix_gain`.
-  optional OutputMixConfig output_mix_config = 3 [deprecated = true];
-  optional MixGainParamDefinition output_mix_gain = 6;
+  OutputMixConfig output_mix_config = 3 [deprecated = true];
+
+  MixGainParamDefinition output_mix_gain = 6;
 
   // `num_layouts` is ignored. The value in the bitstream is inferred
   // based on the number of `layouts`.
-  optional uint32 num_layouts = 4 [deprecated = true];
+  uint32 num_layouts = 4 [deprecated = true];
+
   repeated MixPresentationLayout layouts = 5;
 
   // Next ID: 7
 }
 
 message MixPresentationTag {
-  optional string tag_name = 1;
-  optional string tag_value = 2;
+  string tag_name = 1;
+  string tag_value = 2;
 }
 
 message MixPresentationTags {
   // `num_tags` is ignored. The value in the bitstream is inferred based on the
   // number of tags.
-  optional uint32 num_tags = 1 [deprecated = true];
+  uint32 num_tags = 1 [deprecated = true];
+
   repeated MixPresentationTag tags = 2;
 }
 
 message MixPresentationObuMetadata {
   reserved 2;
 
-  optional uint32 mix_presentation_id = 1;
-  optional uint32 count_label = 5;
+  uint32 mix_presentation_id = 1;
+  uint32 count_label = 5;
 
   // Superseded by `annotations_language`.
   repeated string language_labels = 6 [deprecated = true];
+
   // Length should be equal to `count_label`.
   repeated string annotations_language = 9;
 
   // Superseded by `localized_presentation_annotations`.
   repeated MixPresentationAnnotations mix_presentation_annotations_array = 7
       [deprecated = true];
+
   // Length should be equal to `count_label`.
   repeated string localized_presentation_annotations = 10;
 
   // `num_sub_mixes` is ignored. The value in the bitstream is inferred
   // based on the number of `sub_mixes`.
-  optional uint32 num_sub_mixes = 3 [deprecated = true];
+  uint32 num_sub_mixes = 3 [deprecated = true];
+
   repeated MixPresentationSubMix sub_mixes = 4;
 
   // When false [default]: The encoder will ignore the below
@@ -240,10 +256,9 @@ message MixPresentationObuMetadata {
   //                      `EncoderControlMetadata.add_build_information_tag`
   //                      fields to false.
   // When true: The encoder will use the `mix_presentation_tags` field.
-  optional bool include_mix_presentation_tags = 11;
-  optional MixPresentationTags mix_presentation_tags = 12;
-
-  optional ObuHeaderMetadata obu_header = 8;
+  bool include_mix_presentation_tags = 11;
+  MixPresentationTags mix_presentation_tags = 12;
+  ObuHeaderMetadata obu_header = 8;
 
   // Next ID: 13
 }

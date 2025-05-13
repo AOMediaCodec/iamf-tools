@@ -8,7 +8,7 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
 
@@ -25,10 +25,12 @@ import "iamf/cli/proto/test_vector_metadata.proto";
 
 message UserMetadata {
   reserved 1, 5;
+
   // Top-level metadata about the file.
-  optional TestVectorMetadata test_vector_metadata = 9;
+  TestVectorMetadata test_vector_metadata = 9;
+
   // Knobs to control the encoder behavior.
-  optional EncoderControlMetadata encoder_control_metadata = 12;
+  EncoderControlMetadata encoder_control_metadata = 12;
 
   // Descriptor OBUs.
   repeated IASequenceHeaderObuMetadata ia_sequence_header_metadata = 10;
@@ -39,7 +41,7 @@ message UserMetadata {
   // Temporal Unit OBUs.
   repeated AudioFrameObuMetadata audio_frame_metadata = 6;
   repeated ParameterBlockObuMetadata parameter_block_metadata = 7;
-  optional TemporalDelimiterObuMetadata temporal_delimiter_metadata = 8;
+  TemporalDelimiterObuMetadata temporal_delimiter_metadata = 8;
 
   // A list of arbitrary OBUs to insert blindly into the stream. There is no
   // attempt to validate or process any side effects of adding the OBUs.

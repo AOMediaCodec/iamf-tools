@@ -8,11 +8,13 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
 
 import "iamf/cli/proto/obu_header.proto";
+
+option features.enum_type = CLOSED;
 
 enum ArbitraryObuType {
   OBU_IA_INVALID = 0;
@@ -64,13 +66,15 @@ enum InsertionHook {
 }
 
 message ArbitraryObuMetadata {
-  optional InsertionHook insertion_hook = 1;
-  optional ArbitraryObuType obu_type = 4;
-  optional ObuHeaderMetadata obu_header = 2;
-  optional bytes payload = 3;
+  InsertionHook insertion_hook = 1;
+  ArbitraryObuType obu_type = 4;
+  ObuHeaderMetadata obu_header = 2;
+  bytes payload = 3;
+
   // Used to force the bitstream to be invalid when this OBU is inserted.
-  optional bool invalidates_bitstream = 5;
+  bool invalidates_bitstream = 5;
+
   // Used to control the temporal unit when using the *_AT_TICK insertion hooks.
   // Ignored otherwise.
-  optional int64 insertion_tick = 6;
+  int64 insertion_tick = 6;
 }

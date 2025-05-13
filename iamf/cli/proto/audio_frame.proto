@@ -8,40 +8,54 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
 
+option features.utf8_validation = NONE;
+
 enum ChannelLabel {
+  option features.enum_type = CLOSED;
+
   CHANNEL_LABEL_INVALID = 0;
+
   reserved 1;  // Reserved for potential "omitted" label.
+
   // Mono channels.
   CHANNEL_LABEL_MONO = 2;
+
   // Stereo or binaural channels.
   CHANNEL_LABEL_L_2 = 3;
   CHANNEL_LABEL_R_2 = 4;
+
   // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
   CHANNEL_LABEL_CENTRE = 6;
+
   // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).
   CHANNEL_LABEL_LFE = 7;
+
   // 3.1.2 surround channels.
   CHANNEL_LABEL_L_3 = 8;
   CHANNEL_LABEL_R_3 = 9;
   CHANNEL_LABEL_LTF_3 = 10;
   CHANNEL_LABEL_RTF_3 = 11;
+
   // 5.x.y surround channels.
   CHANNEL_LABEL_L_5 = 14;
   CHANNEL_LABEL_R_5 = 15;
   CHANNEL_LABEL_LS_5 = 16;
   CHANNEL_LABEL_RS_5 = 17;
+
   // Common channels between 5.1.2 and 7.1.2.
   CHANNEL_LABEL_LTF_2 = 22;
   CHANNEL_LABEL_RTF_2 = 23;
+
   // Common channels between 5.1.4 and 7.1.4.
   CHANNEL_LABEL_LTF_4 = 26;
   CHANNEL_LABEL_RTF_4 = 27;
   CHANNEL_LABEL_LTB_4 = 28;
   CHANNEL_LABEL_RTB_4 = 29;
+
   // 7.x.y surround channels.
   CHANNEL_LABEL_L_7 = 32;
   CHANNEL_LABEL_R_7 = 33;
@@ -49,6 +63,7 @@ enum ChannelLabel {
   CHANNEL_LABEL_RSS_7 = 35;
   CHANNEL_LABEL_LRS_7 = 36;
   CHANNEL_LABEL_RRS_7 = 37;
+
   // 9.1.6 surround channels.
   CHANNEL_LABEL_FLC = 42;
   CHANNEL_LABEL_FC = 43;
@@ -65,8 +80,10 @@ enum ChannelLabel {
   CHANNEL_LABEL_TP_SI_R = 54;
   CHANNEL_LABEL_TP_BL = 55;
   CHANNEL_LABEL_TP_BR = 56;
+
   // Reserved for possible use of demixed labels.
   reserved 5, 12, 13, 18 to 21, 24, 25, 30, 31, 38 to 41;
+
   // Reserved for channel-based labels.
   reserved 57 to 999;
 
@@ -95,6 +112,7 @@ enum ChannelLabel {
   CHANNEL_LABEL_A_22 = 1022;
   CHANNEL_LABEL_A_23 = 1023;
   CHANNEL_LABEL_A_24 = 1024;
+
   reserved 1025 to 1224;  // Reserved for future ambisonics channels.
 
   // Next ID: 57 (channel-based) or 1025 (ambisonics).
@@ -103,16 +121,16 @@ enum ChannelLabel {
 message ChannelMetadata {
   // Used to map the index of the channel in an ADM or WAV file. Ignored when
   // data comes from other sources.
-  optional uint32 channel_id = 1;
+  uint32 channel_id = 1;
 
   // The IAMF-based channel label.
-  optional ChannelLabel channel_label = 2;
+  ChannelLabel channel_label = 2;
 }
 
 message AudioFrameObuMetadata {
   reserved 2, 3;
 
-  optional string wav_filename = 1;
+  string wav_filename = 1;
 
   // Controls whether the number of samples required to pad the final frame are
   // automatically added to the `samples_to_trim_at_end` value.
@@ -132,8 +150,9 @@ message AudioFrameObuMetadata {
   //   - samples_to_trim_at_end: 0
   // These settings will automatically insert the correct padding to create a
   // valid final frame and avoid trimming the original audio content.
-  optional bool samples_to_trim_at_end_includes_padding = 9 [default = true];
-  optional uint32 samples_to_trim_at_end = 4;
+  bool samples_to_trim_at_end_includes_padding = 9 [default = true];
+
+  uint32 samples_to_trim_at_end = 4;
 
   // Controls whether the number of samples required by codec delay for the
   // initial first frames are automatically added to the
@@ -155,19 +174,19 @@ message AudioFrameObuMetadata {
   //   - samples_to_trim_at_start: 0
   // These settings will automatically insert the correct codec delay to create
   // a valid final frame and avoid trimming the original audio content.
-  optional bool samples_to_trim_at_start_includes_codec_delay = 10
-      [default = true];
-  optional uint32 samples_to_trim_at_start = 5;
+  bool samples_to_trim_at_start_includes_codec_delay = 10 [default = true];
+
+  uint32 samples_to_trim_at_start = 5;
 
   // ID of the audio element whose substreams will be provided/mixed
   // from the channels in this WAV file.
-  optional uint32 audio_element_id = 6;
+  uint32 audio_element_id = 6;
 
   // Channels used in this WAV file, in the order as described in [ITU2051-3]
   // for loudspeaker layouts or ACN order for ambisonics. May be fewer than
   // the total number of channels in the WAV file if only a subset is to be
   // used.
-  repeated uint32 channel_ids = 7 [packed = true, deprecated = true];
+  repeated uint32 channel_ids = 7 [deprecated = true];
 
   // Channel Labels, e.g. "L2", "Ls5". For ambisonics, use "A{ACN number}",
   // e.g. "A0", "A13". Must be of the same length as `channel_ids`.

@@ -8,18 +8,24 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
 
 message ObuHeaderMetadata {
   reserved 1, 5;
 
-  optional bool obu_redundant_copy = 2 [default = false];
-  optional bool obu_trimming_status_flag = 3 [default = false];
-  optional bool obu_extension_flag = 4 [default = false];
-  optional uint32 num_samples_to_trim_at_end = 6 [default = 0];
-  optional uint32 num_samples_to_trim_at_start = 7 [default = 0];
-  optional uint32 extension_header_size = 8 [default = 0];
-  optional bytes extension_header_bytes = 9 [default = ""];
+  bool obu_redundant_copy = 2 [default = false];
+
+  bool obu_trimming_status_flag = 3 [default = false];
+
+  bool obu_extension_flag = 4 [default = false];
+
+  uint32 num_samples_to_trim_at_end = 6 [default = 0];
+
+  uint32 num_samples_to_trim_at_start = 7 [default = 0];
+
+  uint32 extension_header_size = 8 [default = 0];
+
+  bytes extension_header_bytes = 9 [default = ""];
 }

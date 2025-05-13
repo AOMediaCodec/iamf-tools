@@ -8,9 +8,11 @@
 // source code in the PATENTS file, you can obtain it at
 // www.aomedia.org/license/patent.
 
-syntax = "proto2";
+edition = "2023";
 
 package iamf_tools_cli_proto;
+
+option features.enum_type = CLOSED;
 
 enum AnimationType {
   ANIMATE_INVALID = 0;
@@ -26,7 +28,7 @@ enum AnimationType {
 //
 // See detailed examples on Q7.8 format below in `AnimationLinearInt16`.
 message AnimationStepInt16 {
-  optional int32 start_point_value = 1;  // Q7.8.
+  int32 start_point_value = 1;  // Q7.8.
 }
 
 // Values are represented to align with the IAMF spec.
@@ -36,8 +38,8 @@ message AnimationStepInt16 {
 //
 // See detailed examples on Q7.8 format below in `AnimationLinearInt16`.
 message AnimationLinearInt16 {
-  optional int32 start_point_value = 1;  // Q7.8.
-  optional int32 end_point_value = 2;    // Q7.8.
+  int32 start_point_value = 1;  // Q7.8.
+  int32 end_point_value = 2;    // Q7.8.
 }
 
 // Values are represented to align with the IAMF spec.
@@ -56,10 +58,10 @@ message AnimationLinearInt16 {
 //  - For a control point relative time of 1.0, set the proto value to
 //    clamp(1.0 * 256, 0, 255) = 255.
 message AnimationBezierInt16 {
-  optional int32 start_point_value = 1;             // Q7.8.
-  optional int32 end_point_value = 2;               // Q7.8.
-  optional int32 control_point_value = 3;           // Q7.8.
-  optional uint32 control_point_relative_time = 4;  // Q0.8.
+  int32 start_point_value = 1;             // Q7.8.
+  int32 end_point_value = 2;               // Q7.8.
+  int32 control_point_value = 3;           // Q7.8.
+  uint32 control_point_relative_time = 4;  // Q0.8.
 }
 
 message AnimatedParameterDataInt16 {
@@ -71,12 +73,13 @@ message AnimatedParameterDataInt16 {
 }
 
 message MixGainParameterData {
-  optional AnimationType animation_type = 1;
-  optional AnimatedParameterDataInt16 param_data = 2;
+  AnimationType animation_type = 1;
+  AnimatedParameterDataInt16 param_data = 2;
 }
 
 enum DMixPMode {
   DMIXP_MODE_INVALID = 0;
+
   //                       (alpha, beta,  gamma, delta, w_idx_offset)
   DMIXP_MODE_1 = 1;  //    (    1,     1, 0.707, 0.707,           -1)
   DMIXP_MODE_2 = 2;  //    (0.707, 0.707, 0.707, 0.707,           -1)
@@ -89,8 +92,8 @@ enum DMixPMode {
 }
 
 message DemixingInfoParameterData {
-  optional DMixPMode dmixp_mode = 1;
-  optional uint32 reserved = 2;
+  DMixPMode dmixp_mode = 1;
+  uint32 reserved = 2;
 }
 
 message ReconGains {
