@@ -101,8 +101,8 @@ absl::StatusOr<int> EncodeInt16(
   std::vector<opus_int16> encoder_input_pcm(
       num_samples_per_channel * num_channels, 0);
   size_t write_position = 0;
-  for (int c = 0; c < samples.size(); c++) {
-    for (int t = 0; t < samples[0].size(); t++) {
+  for (int t = 0; t < samples[0].size(); t++) {
+    for (int c = 0; c < samples.size(); c++) {
       // Convert all frames to 16-bit samples for input to Opus.
       // Write the 16-bit samples directly into the pcm vector.
       RETURN_IF_NOT_OK(

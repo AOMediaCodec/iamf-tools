@@ -225,8 +225,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
   std::vector<INT_PCM> encoder_input_pcm(
       num_samples_per_channel * num_channels_, 0);
   size_t write_position = 0;
-  for (int c = 0; c < samples.size(); c++) {
-    for (int t = 0; t < samples[0].size(); ++t) {
+  for (int t = 0; t < samples[0].size(); ++t) {
+    for (int c = 0; c < samples.size(); c++) {
       // Convert all frames to INT_PCM samples for input for `fdk_aac` (usually
       // 16-bit).
       RETURN_IF_NOT_OK(WritePcmSample(
