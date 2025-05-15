@@ -20,6 +20,7 @@
 
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/types/span.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/include/iamf_tools/iamf_decoder.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
@@ -81,6 +82,31 @@ api::IamfStatus SetupAfterDescriptors(
   const size_t buffer_size_bytes =
       frame_size * num_channels * sample_size_bytes;
   reusable_sample_buffer.resize(buffer_size_bytes);
+  return api::IamfStatus::OkStatus();
+}
+
+api::IamfStatus DumpPendingTemporalUnitsToWav(
+    api::IamfDecoder& decoder, std::vector<uint8_t>& reusable_sample_buffer,
+    WavWriter& wav_writer, int32_t& output_num_temporal_units_processed) {
+  // We could have fed in multiple (or none) temporal units. Flush all
+  output_num_temporal_units_processed = 0;
+  while (decoder.IsTemporalUnitAvailable()) {
+    size_t bytes_written;
+    iamf_tools::api::IamfStatus decode_status = decoder.GetOutputTemporalUnit(
+        reusable_sample_buffer.data(), reusable_sample_buffer.size(),
+        bytes_written);
+    if (!decode_status.ok()) {
+      return decode_status;
+    }
+    // Write the valid portion of the buffer to a wav file.
+    const auto valid_span =
+        absl::MakeConstSpan(reusable_sample_buffer).first(bytes_written);
+    absl::Status absl_status = wav_writer.WritePcmSamples(valid_span);
+    if (!absl_status.ok()) {
+      return api::IamfStatus::ErrorStatus("Failed to write to wav writer");
+    }
+    output_num_temporal_units_processed++;
+  }
   return api::IamfStatus::OkStatus();
 }
 

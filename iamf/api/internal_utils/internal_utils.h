@@ -42,6 +42,19 @@ api::IamfStatus SetupAfterDescriptors(
     std::unique_ptr<WavWriter>& wav_writer,
     std::vector<uint8_t>& reusable_sample_buffer);
 
+/*!\brief Dump all pending temporal units from the decoder to the wav writer.
+ *
+ * \param decoder Decoder which holds the pending temporal units.
+ * \param reusable_sample_buffer Buffer into which the decoder will write
+ *        decoded temporal units.
+ * \param wav_writer Wav writer to write to.
+ * \param output_num_temporal_units_processed Number of temporal units
+ *        processed.
+ */
+api::IamfStatus DumpPendingTemporalUnitsToWav(
+    api::IamfDecoder& decoder, std::vector<uint8_t>& reusable_sample_buffer,
+    WavWriter& wav_writer, int32_t& output_num_temporal_units_processed);
+
 }  // namespace iamf_tools
 
 #endif  // API_INTERNAL_UTILS_INTERNAL_UTILS_H_

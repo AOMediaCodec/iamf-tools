@@ -12,6 +12,7 @@
 
 #include "iamf/api/internal_utils/internal_utils.h"
 
+#include <array>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -26,6 +27,7 @@
 #include "iamf/cli/wav_writer.h"
 #include "iamf/include/iamf_tools/iamf_decoder.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
+#include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
@@ -47,6 +49,8 @@ constexpr DecodedUleb128 kFirstSubstreamId = 18;
 constexpr DecodedUleb128 kFirstMixPresentationId = 3;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
+constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
@@ -111,6 +115,92 @@ TEST(SetUpAfterDescriptors, FailsWithInvalidWavWriter) {
   auto iamf_status = SetupAfterDescriptors(*decoder, kBadFileName, wav_writer,
                                            reusable_sample_buffer);
   EXPECT_FALSE(iamf_status.ok());
+}
+
+TEST(DumpPendingTemporalUnitsToWav, SucceedsWithNoTemporalUnits) {
+  auto bitstream = GenerateBasicDescriptorObus();
+  std::unique_ptr<IamfDecoder> decoder;
+  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
+      IamfDecoder::Settings{.requested_layout =
+                                OutputLayout::kItu2051_SoundSystemA_0_2_0},
+      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<WavWriter> wav_writer;
+  std::vector<uint8_t> reusable_sample_buffer;
+  ASSERT_TRUE(SetupAfterDescriptors(*decoder,
+                                    GetAndCleanupOutputFileName("test.wav"),
+                                    wav_writer, reusable_sample_buffer)
+                  .ok());
+  int32_t num_temporal_units_processed;
+  auto iamf_status =
+      DumpPendingTemporalUnitsToWav(*decoder, reusable_sample_buffer,
+                                    *wav_writer, num_temporal_units_processed);
+  EXPECT_TRUE(iamf_status.ok());
+  EXPECT_EQ(num_temporal_units_processed, 0);
+}
+
+TEST(DumpPendingTemporalUnitsToWav,
+     SucceedsWithVariousTemporalUnitsInSequence) {
+  auto bitstream = GenerateBasicDescriptorObus();
+  std::unique_ptr<IamfDecoder> decoder;
+  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
+      IamfDecoder::Settings{.requested_layout =
+                                OutputLayout::kItu2051_SoundSystemA_0_2_0},
+      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<WavWriter> wav_writer;
+  std::vector<uint8_t> reusable_sample_buffer;
+  ASSERT_TRUE(SetupAfterDescriptors(*decoder,
+                                    GetAndCleanupOutputFileName("test.wav"),
+                                    wav_writer, reusable_sample_buffer)
+                  .ok());
+
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  std::vector<uint8_t> temporal_unit = SerializeObusExpectOk({&audio_frame});
+
+  // Decode the first temporal unit.
+  EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
+  int32_t num_temporal_units_processed;
+  auto iamf_status_first_unit =
+      DumpPendingTemporalUnitsToWav(*decoder, reusable_sample_buffer,
+                                    *wav_writer, num_temporal_units_processed);
+  EXPECT_TRUE(iamf_status_first_unit.ok());
+  EXPECT_EQ(num_temporal_units_processed, 1);
+  // Decode another temporal unit.
+  EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
+  auto iamf_status_second_unit =
+      DumpPendingTemporalUnitsToWav(*decoder, reusable_sample_buffer,
+                                    *wav_writer, num_temporal_units_processed);
+  EXPECT_TRUE(iamf_status_second_unit.ok());
+  EXPECT_EQ(num_temporal_units_processed, 1);
+}
+
+TEST(DumpPendingTemporalUnitsToWav, SucceedsWithVariousTemporalUnitsAtOnce) {
+  auto bitstream = GenerateBasicDescriptorObus();
+  std::unique_ptr<IamfDecoder> decoder;
+  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
+      IamfDecoder::Settings{.requested_layout =
+                                OutputLayout::kItu2051_SoundSystemA_0_2_0},
+      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<WavWriter> wav_writer;
+  std::vector<uint8_t> reusable_sample_buffer;
+  ASSERT_TRUE(SetupAfterDescriptors(*decoder,
+                                    GetAndCleanupOutputFileName("test.wav"),
+                                    wav_writer, reusable_sample_buffer)
+                  .ok());
+
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  std::vector<uint8_t> temporal_unit = SerializeObusExpectOk({&audio_frame});
+
+  // Decode the first temporal unit.
+  EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
+  EXPECT_TRUE(decoder->Decode(temporal_unit.data(), temporal_unit.size()).ok());
+  int32_t num_temporal_units_processed;
+  auto iamf_status =
+      DumpPendingTemporalUnitsToWav(*decoder, reusable_sample_buffer,
+                                    *wav_writer, num_temporal_units_processed);
+  EXPECT_TRUE(iamf_status.ok());
+  EXPECT_EQ(num_temporal_units_processed, 2);
 }
 
 }  // namespace

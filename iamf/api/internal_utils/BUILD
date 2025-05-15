@@ -13,6 +13,7 @@ cc_library(
         "//iamf/cli:wav_writer",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -26,6 +27,7 @@ cc_test(
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:wav_writer",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
