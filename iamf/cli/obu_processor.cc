@@ -61,12 +61,28 @@ namespace iamf_tools {
 
 namespace {
 
+// The size of a Codec Config OBU payload (after header) if all fields are
+// minimal size, and `DecoderConfig` is empty. Real Codec Config OBUs would have
+// a non-empty `DecoderConfig` and always be a few bytes larger.
+constexpr size_t kSmallestAcceptedCodecConfigSize = 8;
+
 // Gets a CodecConfigObu from `read_bit_buffer` and stores it into
 // `codec_config_obu_map`, using the `codec_config_id` as the unique key.
 absl::Status GetAndStoreCodecConfigObu(
     const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obu_map,
     ReadBitBuffer& read_bit_buffer) {
+  if (payload_size < kSmallestAcceptedCodecConfigSize) {
+    // The OBU is implausibly small. It is likely the source file is corrupted.
+    // For maximum compatibility, silently skip over the OBU.
+    LOG(WARNING)
+        << "Possible bitstream corruption. Skipping over an "
+           "implausibly small Codec Config OBU with a payload size of: "
+        << payload_size << " bytes.";
+    std::vector<uint8_t> buffer_to_discard(payload_size);
+    return read_bit_buffer.ReadUint8Span(absl::MakeSpan(buffer_to_discard));
+  }
+
   absl::StatusOr<CodecConfigObu> codec_config_obu =
       CodecConfigObu::CreateFromBuffer(header, payload_size, read_bit_buffer);
   if (!codec_config_obu.ok()) {

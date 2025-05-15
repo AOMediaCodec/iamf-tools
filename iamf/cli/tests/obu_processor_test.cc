@@ -186,6 +186,47 @@ TEST(ProcessDescriptorObus, CollectsCodecConfigsBeforeATemporalUnit) {
   EXPECT_FALSE(insufficient_data);
 }
 
+TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  std::vector<uint8_t> bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&input_codec_configs.at(kFirstCodecConfigId)});
+  // Insert an invalid tiny Codec Config OBU. This is too small to be
+  // syntactically valid.
+  const std::vector<uint8_t> tiny_invalid_codec_config = {
+      // First byte of the OBU header.
+      0x00,
+      // `obu_size`
+      0x02,
+      // `codec_config_id`.
+      0x09,
+      // Implausibly small `codec_id`.
+      0x00};
+  bitstream.insert(bitstream.end(), tiny_invalid_codec_config.begin(),
+                   tiny_invalid_codec_config.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  IASequenceHeaderObu unused_ia_sequence_header;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_codec_config_obus;
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  bool insufficient_data;
+
+  EXPECT_THAT(
+      ObuProcessor::ProcessDescriptorObus(
+          /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+          unused_ia_sequence_header, output_codec_config_obus,
+          audio_elements_with_data, mix_presentation_obus, insufficient_data),
+      IsOk());
+
+  // We only find the valid Codec Config OBU, with no sign of the tiny one.
+  EXPECT_EQ(output_codec_config_obus.size(), 1);
+  EXPECT_TRUE(output_codec_config_obus.contains(kFirstCodecConfigId));
+  // The buffer advanced past the tiny Codec Config OBU.
+  EXPECT_FALSE(read_bit_buffer->CanReadBytes(1));
+}
+
 TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
