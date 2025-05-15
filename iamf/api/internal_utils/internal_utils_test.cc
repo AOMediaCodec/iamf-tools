@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -105,8 +106,10 @@ TEST(SetUpAfterDescriptors, FailsWithInvalidWavWriter) {
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;
 
-  auto iamf_status = SetupAfterDescriptors(*decoder, "non_existent_path",
-                                           wav_writer, reusable_sample_buffer);
+  // A filename which cannot be written to on most platforms.
+  const std::string kBadFileName = "";
+  auto iamf_status = SetupAfterDescriptors(*decoder, kBadFileName, wav_writer,
+                                           reusable_sample_buffer);
   EXPECT_FALSE(iamf_status.ok());
 }
 
