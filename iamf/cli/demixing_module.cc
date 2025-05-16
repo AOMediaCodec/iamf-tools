@@ -53,7 +53,7 @@ using DemixingMetadataForAudioElementId =
 
 absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S7 to S5";
+  VLOG(1) << "S7 to S5";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kL7) == label_to_samples.end() ||
@@ -96,7 +96,7 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
 
 absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S5 to S7";
+  VLOG(1) << "S5 to S7";
 
   absl::Span<const InternalSampleType> l5_samples;
   absl::Span<const InternalSampleType> ls5_samples;
@@ -144,7 +144,7 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
 
 absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S5 to S3";
+  VLOG(1) << "S5 to S3";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kL5) == label_to_samples.end() ||
@@ -173,7 +173,7 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
 
 absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S3 to S5";
+  VLOG(1) << "S3 to S5";
 
   absl::Span<const InternalSampleType> l3_samples;
   absl::Span<const InternalSampleType> l5_samples;
@@ -204,7 +204,7 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
 
 absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
                              LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S3 to S2";
+  VLOG(1) << "S3 to S2";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kL3) == label_to_samples.end() ||
@@ -231,7 +231,7 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
 
 absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
                            LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S2 to S3";
+  VLOG(1) << "S2 to S3";
 
   absl::Span<const InternalSampleType> l2_samples;
   absl::Span<const InternalSampleType> r2_samples;
@@ -259,7 +259,7 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
 
 absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
                              LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S2 to S1";
+  VLOG(1) << "S2 to S1";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kL2) == label_to_samples.end() ||
@@ -281,7 +281,7 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
 
 absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
                            LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "S1 to S2";
+  VLOG(1) << "S1 to S2";
 
   absl::Span<const InternalSampleType> l2_samples;
   absl::Span<const InternalSampleType> mono_samples;
@@ -302,7 +302,7 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
 
 absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
                              LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "T4 to T2";
+  VLOG(1) << "T4 to T2";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kLtf4) == label_to_samples.end() ||
@@ -333,7 +333,7 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
 
 absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
                            LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "T2 to T4";
+  VLOG(1) << "T2 to T4";
 
   absl::Span<const InternalSampleType> ltf2_samples;
   absl::Span<const InternalSampleType> ltf4_samples;
@@ -365,7 +365,7 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
 
 absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
                               LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "T2 to TF2";
+  VLOG(1) << "T2 to TF2";
 
   // Check input to perform this down-mixing exist.
   if (label_to_samples.find(kLtf2) == label_to_samples.end() ||
@@ -398,7 +398,7 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
 
 absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
                             LabelSamplesMap& label_to_samples) {
-  LOG_FIRST_N(INFO, 1) << "TF2 to T2";
+  VLOG(1) << "TF2 to T2";
 
   absl::Span<const InternalSampleType> ltf3_samples;
   absl::Span<const InternalSampleType> l3_samples;
@@ -488,30 +488,30 @@ absl::Status FillRequiredDemixingMetadata(
       break;
     }
   }
-  LOG(INFO) << "Surround down-mixers from S" << input_surround_number << " to S"
-            << output_lowest_surround_number << " needed:";
+  VLOG(1) << "Surround down-mixers from S" << input_surround_number << " to S"
+          << output_lowest_surround_number << " needed:";
   for (int surround_number = input_surround_number;
        surround_number > output_lowest_surround_number; surround_number--) {
     if (surround_number == 7) {
       down_mixers.push_back(S7ToS5DownMixer);
-      LOG(INFO) << "  S7ToS5DownMixer added";
+      VLOG(1) << "  S7ToS5DownMixer added";
       demixers.push_front(S5ToS7Demixer);
-      LOG(INFO) << "  S5ToS7Demixer added";
+      VLOG(1) << "  S5ToS7Demixer added";
     } else if (surround_number == 5) {
       down_mixers.push_back(S5ToS3DownMixer);
-      LOG(INFO) << "  S5ToS3DownMixer added";
+      VLOG(1) << "  S5ToS3DownMixer added";
       demixers.push_front(S3ToS5Demixer);
-      LOG(INFO) << "  S3ToS5Demixer added";
+      VLOG(1) << "  S3ToS5Demixer added";
     } else if (surround_number == 3) {
       down_mixers.push_back(S3ToS2DownMixer);
-      LOG(INFO) << "  S3ToS2DownMixer added";
+      VLOG(1) << "  S3ToS2DownMixer added";
       demixers.push_front(S2ToS3Demixer);
-      LOG(INFO) << "  S2ToS3Demixer added";
+      VLOG(1) << "  S2ToS3Demixer added";
     } else if (surround_number == 2) {
       down_mixers.push_back(S2ToS1DownMixer);
-      LOG(INFO) << "  S2ToS1DownMixer added";
+      VLOG(1) << "  S2ToS1DownMixer added";
       demixers.push_front(S1ToS2Demixer);
-      LOG(INFO) << "  S1ToS2Demixer added";
+      VLOG(1) << "  S1ToS2Demixer added";
     }
   }
 
@@ -547,21 +547,21 @@ absl::Status FillRequiredDemixingMetadata(
   // Collect demixers in a separate list first and append the list to the
   // output later. Height demixers need to be in reverse order as height
   // down-mixers but should go after the surround demixers.
-  LOG(INFO) << "Height down-mixers from T" << input_height_number << " to "
-            << (output_lowest_height_number == 2 ? "T2" : "TF3") << " needed:";
+  VLOG(1) << "Height down-mixers from T" << input_height_number << " to "
+          << (output_lowest_height_number == 2 ? "T2" : "TF3") << " needed:";
   std::list<Demixer> height_demixers;
   for (int height_number = input_height_number;
        height_number > output_lowest_height_number; height_number--) {
     if (height_number == 4) {
       down_mixers.push_back(T4ToT2DownMixer);
-      LOG(INFO) << "  T4ToT2DownMixer added";
+      VLOG(1) << "  T4ToT2DownMixer added";
       height_demixers.push_front(T2ToT4Demixer);
-      LOG(INFO) << "  T2ToT4Demixer added";
+      VLOG(1) << "  T2ToT4Demixer added";
     } else if (height_number == 2) {
       down_mixers.push_back(T2ToTf2DownMixer);
-      LOG(INFO) << "  T2ToTf2DownMixer added";
+      VLOG(1) << "  T2ToTf2DownMixer added";
       height_demixers.push_front(Tf2ToT2Demixer);
-      LOG(INFO) << "  Tf2ToT2Demixer added";
+      VLOG(1) << "  Tf2ToT2Demixer added";
     }
   }
   demixers.splice(demixers.end(), height_demixers);
@@ -622,7 +622,7 @@ absl::Status PassThroughReconGainData(
     const DecodedAudioFrame& decoded_audio_frame,
     LabeledFrame& labeled_decoded_frame) {
   if (decoded_audio_frame.audio_element_with_data == nullptr) {
-    LOG(INFO)
+    LOG_FIRST_N(INFO, 1)
         << "No audio element with data found, thus layer info is inaccessible.";
     return absl::OkStatus();
   }
@@ -772,8 +772,8 @@ void LogForAudioElementId(absl::string_view log_prefix,
   }
   for (const auto& [label, samples] :
        id_to_labeled_frame.at(audio_element_id).label_to_samples) {
-    LOG_FIRST_N(INFO, 1) << "  Channel " << label << ":\t" << log_prefix
-                         << " frame size= " << samples.size() << ".";
+    VLOG(1) << "  Channel " << label << ":\t" << log_prefix
+            << " frame size= " << samples.size() << ".";
   }
 }
 

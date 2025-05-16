@@ -140,6 +140,32 @@ cc_test(
 )
 
 cc_test(
+    name = "demixing_module_benchmark",
+    srcs = ["demixing_module_benchmark.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_decoder",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/proto_conversion:channel_label_utils",
+        "//iamf/cli/proto_conversion:downmixing_reconstruction_util",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "demixing_module_test",
     srcs = ["demixing_module_test.cc"],
     deps = [
