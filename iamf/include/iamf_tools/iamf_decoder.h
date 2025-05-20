@@ -262,6 +262,24 @@ class IamfDecoder {
    */
   IamfStatus Reset();
 
+  /*!\brief Resets the decoder with a new layout and a clean state.
+   *
+   * A clean state refers to a state in which descriptors OBUs have been parsed,
+   * but no other data has been parsed. If possible, the decoder will use the
+   * new layout for decoding. To confirm the actual layout that will be used,
+   * GetOutputLayout() should be called before continuing to decode.
+   *
+   * This function can only be used if the decoder was created with
+   * CreateFromDescriptors().
+   *
+   * This function will result in all decoded temporal units that have not been
+   * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
+   * pending data in the internal buffer being lost.
+   *
+   * return Ok status upon success. Other specific statuses on failure.
+   */
+  IamfStatus ResetWithNewLayout(OutputLayout output_layout);
+
   /*!\brief Signals to the decoder that no more data will be provided.
    *
    * Decode cannot be called after this method has been called, unless Reset()

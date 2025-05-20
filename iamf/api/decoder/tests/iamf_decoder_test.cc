@@ -1090,5 +1090,77 @@ TEST(Reset, ResetFailsWhenDescriptorProcessingIncomplete) {
   EXPECT_FALSE(decoder->Reset().ok());
 }
 
+TEST(ResetWithNewLayout,
+     DecodingAfterResetWithNewLayoutSucceedsInContainerizedCase) {
+  // Create a decoder from descriptors.
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
+                  GetStereoDecoderSettings(), source_data.data(),
+                  source_data.size(), decoder)
+                  .ok());
+  // Decode a temporal unit.
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame});
+  EXPECT_TRUE(
+      decoder->Decode(temporal_units.data(), temporal_units.size()).ok());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  // Signal end of decoding and reset with 5.1 layout, which is different from
+  // the original stereo layout.
+  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(
+      decoder
+          ->ResetWithNewLayout(api::OutputLayout::kItu2051_SoundSystemB_0_5_0)
+          .ok());
+  api::OutputLayout output_layout;
+  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
+  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
+
+  // Confirm that there is no temporal unit available after reset.
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+
+  // Decode another temporal unit.
+  EXPECT_TRUE(
+      decoder->Decode(temporal_units.data(), temporal_units.size()).ok());
+  // Confirm that the temporal unit is available and can be retrieved.
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  // We now have 6 channels instead of 2, so we updated the expected size
+  // accordingly.
+  size_t expected_size = 6 * 8 * 4;
+  std::vector<uint8_t> output_data(expected_size);
+  size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_size);
+}
+
+TEST(ResetWithNewLayout, ResetWithNewLayoutFailsInStandaloneCase) {
+  // Create a decoder from descriptors.
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
+  // Add descriptors.
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  // Add temporal unit.
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+
+  decoder->SignalEndOfDecoding();
+  // The decoder should fail to reset with a new layout because we are in a
+  // standalone case.
+  EXPECT_FALSE(
+      decoder
+          ->ResetWithNewLayout(api::OutputLayout::kItu2051_SoundSystemB_0_5_0)
+          .ok());
+}
+
 }  // namespace
 }  // namespace iamf_tools

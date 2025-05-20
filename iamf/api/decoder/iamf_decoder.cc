@@ -490,6 +490,16 @@ IamfStatus IamfDecoder::Reset() {
   return AbslToIamfStatus(state_->CreateObuProcessor());
 }
 
+IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
+  if (!state_->created_from_descriptors) {
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: ResetWithNewLayout() cannot be called in "
+        "standalone decoding mode.");
+  }
+  state_->layout = ApiToInternalType(output_layout);
+  return Reset();
+}
+
 void IamfDecoder::SignalEndOfDecoding() {
   state_->status = DecoderStatus::kEndOfStream;
 }
