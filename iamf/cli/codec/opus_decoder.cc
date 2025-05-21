@@ -116,7 +116,7 @@ absl::Status OpusDecoder::DecodeAudioFrame(
     return OpusErrorCodeToAbslStatus(num_output_samples,
                                      "Failed to decode Opus frame.");
   }
-  LOG_FIRST_N(INFO, 3) << "Opus decoded " << num_output_samples
+  LOG_FIRST_N(INFO, 1) << "Opus decoded " << num_output_samples
                        << " samples per channel. With " << num_channels_
                        << " channels.";
   // Convert the interleaved data to (channel, time) axes.

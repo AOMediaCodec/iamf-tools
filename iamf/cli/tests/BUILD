@@ -63,6 +63,32 @@ cc_library(
 )
 
 cc_test(
+    name = "audio_frame_decoder_benchmark",
+    srcs = ["audio_frame_decoder_benchmark.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:audio_frame_decoder",
+        "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli/codec:aac_encoder",
+        "//iamf/cli/codec:encoder_base",
+        "//iamf/cli/codec:flac_encoder",
+        "//iamf/cli/codec:lpcm_encoder",
+        "//iamf/cli/codec:opus_encoder",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:parameter_data",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/types:span",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "audio_frame_decoder_test",
     srcs = ["audio_frame_decoder_test.cc"],
     deps = [

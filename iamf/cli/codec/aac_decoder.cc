@@ -167,7 +167,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
   }
 
   const auto* stream_info = aacDecoder_GetStreamInfo(decoder);
-  LOG_FIRST_N(INFO, 1) << "Created an AAC encoder with "
+  LOG_FIRST_N(INFO, 1) << "Created an AAC decoder with "
                        << stream_info->numChannels << " channels.";
 
   return absl::WrapUnique(new AacDecoder(

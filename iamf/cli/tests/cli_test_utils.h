@@ -92,7 +92,7 @@ struct DecodeSpecification {
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param num_samples_per_frame Number of samples per frame.
- * \param sample_size Sample size.
+ * \param sample_size Sample size in bits.
  * \param sample_rate `sample_rate` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
@@ -114,6 +114,18 @@ void AddLpcmCodecConfigWithIdAndSampleRate(
 /*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param num_samples_per_frame Number of samples per frame.
+ * \param sample_rate `sample_rate` of the OBU to create.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddOpusCodecConfig(
+    uint32_t codec_config_id, uint32_t num_samples_per_frame,
+    uint32_t sample_rate,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
+/*!\brief Adds a configurable Opus `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
 void AddOpusCodecConfigWithId(
@@ -123,10 +135,33 @@ void AddOpusCodecConfigWithId(
 /*!\brief Adds a configurable Flac `CodecConfigObu` to the output argument.
  *
  * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param num_samples_per_frame Number of samples per frame.
+ * \param sample_rate `sample_rate` of the OBU to create.
+ * \param sample_size Sample size in bits.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddFlacCodecConfig(
+    uint32_t codec_config_id, uint32_t num_samples_per_frame,
+    uint32_t sample_rate, uint8_t sample_size,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
+/*!\brief Adds a configurable Flac `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
  * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
  */
 void AddFlacCodecConfigWithId(
     uint32_t codec_config_id,
+    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
+
+/*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.
+ *
+ * \param codec_config_id `codec_config_id` of the OBU to create.
+ * \param num_samples_per_frame Number of samples per frame.
+ * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
+ */
+void AddAacCodecConfig(
+    uint32_t codec_config_id, uint32_t num_samples_per_frame,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
 /*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.

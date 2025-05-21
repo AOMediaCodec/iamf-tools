@@ -288,7 +288,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 
-  LOG_FIRST_N(INFO, 3) << "Encoded " << num_samples_per_channel << " samples * "
+  LOG_FIRST_N(INFO, 1) << "Encoded " << num_samples_per_channel << " samples * "
                        << num_channels_ << " channels using "
                        << out_args.numOutBytes << " bytes";
   return absl::OkStatus();
