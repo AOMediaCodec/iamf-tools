@@ -67,27 +67,6 @@ namespace iamf_tools {
  */
 class ObuSequencerBase {
  public:
-  /*!\brief Writes the input descriptor OBUs.
-   *
-   * Write out the OBUs contained within the input arguments to the output write
-   * buffer.
-   *
-   * \param ia_sequence_header_obu IA Sequence Header OBU to write.
-   * \param codec_config_obus Codec Config OBUs to write.
-   * \param audio_elements Audio Element OBUs with data to write.
-   * \param mix_presentation_obus Mix Presentation OBUs to write.
-   * \param arbitrary_obus Arbitrary OBUs to write.
-   * \param wb Write buffer to write to.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  [[deprecated("Use this class as per the class documentation instead.")]]
-  static absl::Status WriteDescriptorObus(
-      const IASequenceHeaderObu& ia_sequence_header_obu,
-      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const std::list<MixPresentationObu>& mix_presentation_obus,
-      const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb);
-
   /*!\brief Constructor.
    *
    * \param leb_generator Leb generator to use when writing OBUs.

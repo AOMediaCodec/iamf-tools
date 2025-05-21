@@ -158,8 +158,10 @@ parameter_block_metadata {
   ]
 }
 
+# Place the extra parameter block in the first temporal unit.
 arbitrary_obu_metadata {
-  insertion_hook: INSERTION_HOOK_AFTER_DESCRIPTORS
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 0
   obu_type: OBU_IA_PARAMETER_BLOCK
   obu_header {
     obu_redundant_copy: false

@@ -489,22 +489,27 @@ class ObuSequencerTest : public ::testing::Test {
         mix_presentation_obus_);
   }
 
-  void ValidateWriteDescriptorObuSequence(
+  void ValidatePushDescriptorObus(
       const std::list<const ObuBase*>& expected_sequence) {
+    MockObuSequencer mock_obu_sequencer(
+        *LebGenerator::Create(), kDoNotIncludeTemporalDelimiters,
+        kDoNotDelayDescriptorsUntilTrimAtStartIsKnown);
+    // Check that the descriptor OBUs are serialized and pushed to the mock in
+    // the expected order.
     WriteBitBuffer expected_wb(128);
     for (const auto* expected_obu : expected_sequence) {
       ASSERT_NE(expected_obu, nullptr);
       EXPECT_THAT(expected_obu->ValidateAndWriteObu(expected_wb), IsOk());
     }
+    EXPECT_CALL(
+        mock_obu_sequencer,
+        PushSerializedDescriptorObus(
+            _, _, _, _, _, absl::MakeConstSpan(expected_wb.bit_buffer())));
 
-    WriteBitBuffer result_wb(128);
-    EXPECT_THAT(ObuSequencerBase::WriteDescriptorObus(
+    EXPECT_THAT(mock_obu_sequencer.PushDescriptorObus(
                     ia_sequence_header_obu_.value(), codec_config_obus_,
-                    audio_elements_, mix_presentation_obus_, arbitrary_obus_,
-                    result_wb),
+                    audio_elements_, mix_presentation_obus_, arbitrary_obus_),
                 IsOk());
-
-    EXPECT_EQ(result_wb.bit_buffer(), expected_wb.bit_buffer());
   }
 
  protected:
@@ -530,7 +535,7 @@ TEST_F(ObuSequencerTest, OrdersByAParticularObuType) {
       &audio_elements_.at(kFirstAudioElementId).obu,
       &mix_presentation_obus_.back()};
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, ArbitraryObuAfterIaSequenceHeader) {
@@ -548,7 +553,7 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterIaSequenceHeader) {
       &mix_presentation_obus_.back(),
   };
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, ArbitraryObuAfterCodecConfigs) {
@@ -566,7 +571,7 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterCodecConfigs) {
       &mix_presentation_obus_.back(),
   };
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, ArbitraryObuAfterAudioElements) {
@@ -584,7 +589,7 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterAudioElements) {
       &mix_presentation_obus_.back(),
   };
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, ArbitraryObuAfterMixPresentations) {
@@ -602,12 +607,11 @@ TEST_F(ObuSequencerTest, ArbitraryObuAfterMixPresentations) {
       &arbitrary_obus_.back(),
   };
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
-// This behavior helps ensure that "after descriptors" are not written in the
-// "IACB" box in MP4.
-TEST_F(ObuSequencerTest, DoesNotWriteArbitraryObuAfterDescriptors) {
+TEST_F(ObuSequencerTest,
+       ArbitraryObuAfterDescriptorsIsSerializedWithDescriptors) {
   InitializeDescriptorObus();
 
   arbitrary_obus_.emplace_back(
@@ -615,13 +619,16 @@ TEST_F(ObuSequencerTest, DoesNotWriteArbitraryObuAfterDescriptors) {
                    ArbitraryObu::kInsertionHookAfterDescriptors));
 
   const std::list<const ObuBase*> expected_sequence = {
-      &ia_sequence_header_obu_.value(), &codec_config_obus_.at(kCodecConfigId),
+      &ia_sequence_header_obu_.value(),
+      &codec_config_obus_.at(kCodecConfigId),
       &audio_elements_.at(kFirstAudioElementId).obu,
       &mix_presentation_obus_.back(),
-      // &arbitrary_obus_.back(),
+      // Placed after the canonical descriptors, and part of the "IACB" box in
+      // an MP4 context.
+      &arbitrary_obus_.back(),
   };
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, CodecConfigAreAscendingOrderByDefault) {
@@ -642,7 +649,7 @@ TEST_F(ObuSequencerTest, CodecConfigAreAscendingOrderByDefault) {
       &audio_elements_.at(kFirstAudioElementId).obu,
       &mix_presentation_obus_.back()};
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, AudioElementAreAscendingOrderByDefault) {
@@ -664,7 +671,7 @@ TEST_F(ObuSequencerTest, AudioElementAreAscendingOrderByDefault) {
       &audio_elements_.at(kSecondAudioElementId).obu,
       &mix_presentation_obus_.back()};
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST_F(ObuSequencerTest, MixPresentationsMaintainOriginalOrder) {
@@ -698,11 +705,11 @@ TEST_F(ObuSequencerTest, MixPresentationsMaintainOriginalOrder) {
       mix_presentation_obus_);
   expected_sequence.push_back(&mix_presentation_obus_.back());
 
-  ValidateWriteDescriptorObuSequence(expected_sequence);
+  ValidatePushDescriptorObus(expected_sequence);
 }
 
 TEST(WriteDescriptorObus,
-     InvalidWhenMixPresentationDoesNotComplyWithIaSequenceHeader) {
+     InvalidWhenMixPresentationDoesNotAgreeWithIaSequenceHeader) {
   IASequenceHeaderObu ia_sequence_header_obu(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
@@ -711,16 +718,17 @@ TEST(WriteDescriptorObus,
   std::list<MixPresentationObu> mix_presentation_obus;
   InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
+  MockObuSequencer mock_obu_sequencer(
+      *LebGenerator::Create(), kDoNotIncludeTemporalDelimiters,
+      kDoNotDelayDescriptorsUntilTrimAtStartIsKnown);
 
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(ObuSequencerBase::WriteDescriptorObus(
-                   ia_sequence_header_obu, codec_config_obus, audio_elements,
-                   mix_presentation_obus, /*arbitrary_obus=*/{}, unused_wb)
-                   .ok());
+  EXPECT_THAT(mock_obu_sequencer.PushDescriptorObus(
+                  ia_sequence_header_obu, codec_config_obus, audio_elements,
+                  mix_presentation_obus, /*arbitrary_obus=*/{}),
+              Not(IsOk()));
 }
 
-TEST(WriteDescriptorObus,
-     ValidWhenMixPresentationCompliesWithIaSequenceHeader) {
+TEST(WriteDescriptorObus, ValidWhenMixPresentationAgreesWithIaSequenceHeader) {
   IASequenceHeaderObu ia_sequence_header_obu(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
@@ -729,11 +737,13 @@ TEST(WriteDescriptorObus,
   std::list<MixPresentationObu> mix_presentation_obus;
   InitializeDescriptorObusForTwoMonoAmbisonicsAudioElement(
       codec_config_obus, audio_elements, mix_presentation_obus);
+  MockObuSequencer mock_obu_sequencer(
+      *LebGenerator::Create(), kDoNotIncludeTemporalDelimiters,
+      kDoNotDelayDescriptorsUntilTrimAtStartIsKnown);
 
-  WriteBitBuffer unused_wb(0);
-  EXPECT_THAT(ObuSequencerBase::WriteDescriptorObus(
+  EXPECT_THAT(mock_obu_sequencer.PushDescriptorObus(
                   ia_sequence_header_obu, codec_config_obus, audio_elements,
-                  mix_presentation_obus, /*arbitrary_obus=*/{}, unused_wb),
+                  mix_presentation_obus, /*arbitrary_obus=*/{}),
               IsOk());
 }
 

@@ -54,7 +54,11 @@ enum ArbitraryObuType {
 
 enum InsertionHook {
   INSERTION_HOOK_INVALID = 0;
+  // Places this before the canonical descriptors. In an MP4 context, this would
+  // be early in the "IACB" box.
   INSERTION_HOOK_BEFORE_DESCRIPTORS = 1;
+  // Places this after the canonical descriptors. In an MP4 context, this would
+  // be late in the "IACB" box.
   INSERTION_HOOK_AFTER_DESCRIPTORS = 2;
   INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER = 3;
   INSERTION_HOOK_AFTER_CODEC_CONFIGS = 4;

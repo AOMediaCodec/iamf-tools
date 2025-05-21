@@ -302,8 +302,6 @@ absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
   return absl::OkStatus();
 }
 
-}  // namespace
-
 // Writes the descriptor OBUs. Section 5.1.1
 // (https://aomediacodec.github.io/iamf/#standalone-descriptor-obus) orders the
 // OBUs by type.
@@ -319,7 +317,7 @@ absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
 // For Arbitrary OBUs, they are inserted in an order implied by the insertion
 // hook. Ties are broken by the original order, when multiple OBUs have the same
 // hook.
-absl::Status ObuSequencerBase::WriteDescriptorObus(
+absl::Status WriteDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
@@ -380,6 +378,8 @@ absl::Status ObuSequencerBase::WriteDescriptorObus(
   return absl::OkStatus();
 }
 
+}  // namespace
+
 ObuSequencerBase::ObuSequencerBase(
     const LebGenerator& leb_generator, bool include_temporal_delimiters,
     bool delay_descriptors_until_first_untrimmed_sample)
@@ -432,7 +432,7 @@ absl::Status ObuSequencerBase::PushDescriptorObus(
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
   // Write out the descriptor OBUs.
-  RETURN_IF_NOT_OK(ObuSequencerBase::WriteDescriptorObus(
+  RETURN_IF_NOT_OK(WriteDescriptorObus(
       ia_sequence_header_obu, codec_config_obus, audio_elements,
       mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
@@ -559,7 +559,7 @@ absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
   // Write out the descriptor OBUs.
-  RETURN_IF_NOT_OK(ObuSequencerBase::WriteDescriptorObus(
+  RETURN_IF_NOT_OK(WriteDescriptorObus(
       ia_sequence_header_obu, codec_config_obus, audio_elements,
       mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
