@@ -1,8 +1,7 @@
 ###############################################################################
-# This project is now using bazelmod to manage some dependencies.
-# Some still remain in WORKSPACE.
+# This project uses bazelmod to manage dependencies.
 #
-# For more details, please check https://github.com/bazelbuild/bazel/issues/18958
+# For more details, please check https://bazel.build/external/module.
 ###############################################################################
 
 module(
@@ -74,6 +73,14 @@ git_repository(
     build_file = "@//external:fdk_aac.BUILD",
     commit = "38c27d428ee223bf32f0a2a07cae9fcb99cf3cae",
     remote = "https://android.googlesource.com/platform/external/aac",
+)
+
+# FLAC.
+git_repository(
+    name = "flac",
+    build_file = "@//external:flac.BUILD",
+    commit = "8d648456a2d7444d54a579e365bab4c815ac6873",
+    remote = "https://github.com/xiph/flac.git",
 )
 
 # Opus.

@@ -45,10 +45,11 @@ flac_hdrs = glob([
     "src/libFLAC/**/*.h",
 ])
 
-flac_copts = [
-    "-w",
-    "-Iexternal/flac/src/libFLAC/include",
-    "-Iexternal/flac/include",
+flac_copts = ["-w"]
+
+flac_includes = [
+    "src/libFLAC/include",
+    "include",
 ]
 
 # Defines which do not need to propagate to all downstream users.
@@ -61,10 +62,9 @@ flac_local_defines = [
     "NDEBUG",
     "_FORTIFY_SOURCE=2",
 ] + select({
-    "@platforms//os:osx" : ["HAVE_FSEEKO"],
+    "@platforms//os:osx": ["HAVE_FSEEKO"],
     "//conditions:default": [],
 })
-
 
 # Defines which need to propagate to all downstream users.
 flac_defines = select({
@@ -82,17 +82,16 @@ cc_library(
     srcs = flac_srcs,
     hdrs = flac_hdrs,
     copts = flac_copts,
-    local_defines = flac_local_defines,
     defines = flac_defines,
+    includes = flac_includes,
     linkopts = flac_linkopts,
+    local_defines = flac_local_defines,
     textual_hdrs = flac_textual_includes,
 )
 
 cc_library(
     name = "src",
-    copts = [
-        "-w",
-    ],
+    copts = flac_copts,
     deps = [
         ":flac",
     ],
