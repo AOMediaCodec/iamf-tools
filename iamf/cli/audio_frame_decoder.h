@@ -43,7 +43,7 @@ struct DecodedAudioFrame {
   // Points to the memory location where samples were first produced.
   // TODO(b/4107595837): Find a more robust data model so that the span is
   //                     guaranteed to point to correct samples.
-  absl::Span<const std::vector<int32_t>> decoded_samples;
+  absl::Span<const std::vector<InternalSampleType>> decoded_samples;
 
   // Down-mixing parameters used to create this audio frame.
   DownMixingParams down_mixing_params;

@@ -410,7 +410,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
     EXPECT_EQ(audio_frame_with_data.obu, expected_audio_frame_obu);
     EXPECT_EQ(audio_frame_with_data.start_timestamp, expected_start_timestamp);
     EXPECT_EQ(audio_frame_with_data.end_timestamp, expected_end_timestamp);
-    EXPECT_FALSE(audio_frame_with_data.pcm_samples.has_value());
+    EXPECT_FALSE(audio_frame_with_data.encoded_samples.has_value());
     EXPECT_EQ(audio_frame_with_data.audio_element_with_data,
               &audio_elements_with_data_.at(audio_element_id));
   }

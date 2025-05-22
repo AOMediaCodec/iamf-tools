@@ -22,6 +22,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -102,12 +103,8 @@ TEST(LoudnessCalculatorItu1770_4, ProvidesMinimumLoudnessForShortSequences) {
       kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
       kMaxBitDepthToMeasureLoudness);
   ASSERT_NE(calculator, nullptr);
-
-  const std::vector<std::vector<int32_t>> samples = {
-      {std::numeric_limits<int32_t>::min(),
-       std::numeric_limits<int32_t>::max()},
-      {std::numeric_limits<int32_t>::min(),
-       std::numeric_limits<int32_t>::max()}};
+  const std::vector<std::vector<InternalSampleType>> samples = {{-1.0, 1.0},
+                                                                {-1.0, 1.0}};
   EXPECT_THAT(
       calculator->AccumulateLoudnessForSamples(MakeSpanOfConstSpans(samples)),
       IsOk());
@@ -153,10 +150,10 @@ TEST(LoudnessCalculatorItu1770_4, AlwaysCopiesAnchoredLoudness) {
 TEST(LoudnessCalculatorItu1770_4, MeasuresLoudnessWithSharpPeak) {
   constexpr size_t kNumTicks = 10;
   constexpr size_t kNumChannels = 1;
-  const std::vector<std::vector<int32_t>> kQuietSignal(
-      kNumChannels, std::vector<int32_t>(kNumTicks, 0));
-  const std::vector<std::vector<int32_t>> kSignalWithHighTruePeak = {
-      {0, 0, 0, 0, std::numeric_limits<int32_t>::max(), 0, 0, 0, 0, 0}};
+  const std::vector<std::vector<InternalSampleType>> kQuietSignal(
+      kNumChannels, std::vector<InternalSampleType>(kNumTicks, 0.0));
+  const std::vector<std::vector<InternalSampleType>> kSignalWithHighTruePeak = {
+      {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0}};
   const MixPresentationLayout kMonoLayoutWithMaxUserLoudness = {
       .loudness_layout = kMonoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
 
@@ -198,8 +195,8 @@ TEST(AccumulateLoudnessForSamples, SucceedsWithExactlyEnoughSamples) {
   ASSERT_NE(calculator, nullptr);
 
   constexpr size_t kNumChannels = 1;
-  const std::vector<std::vector<int32_t>> kExactlyEnoughSamples(
-      kNumChannels, std::vector<int32_t>(kNumSamplesPerFrame, 0));
+  const std::vector<std::vector<InternalSampleType>> kExactlyEnoughSamples(
+      kNumChannels, std::vector<InternalSampleType>(kNumSamplesPerFrame, 0.0));
   EXPECT_THAT(calculator->AccumulateLoudnessForSamples(
                   MakeSpanOfConstSpans(kExactlyEnoughSamples)),
               IsOk());
@@ -218,8 +215,9 @@ TEST(AccumulateLoudnessForSamples,
   // The calculator is configured for stereo, but there is only one channel.
   constexpr size_t kNumTicks = 10;
   constexpr size_t kTooFewChannels = 1;
-  const std::vector<std::vector<int32_t>> kSamplesWithMissingChannels(
-      kTooFewChannels, std::vector<int32_t>(kNumTicks, 0));
+  const std::vector<std::vector<InternalSampleType>>
+      kSamplesWithMissingChannels(
+          kTooFewChannels, std::vector<InternalSampleType>(kNumTicks, 0.0));
   EXPECT_FALSE(calculator
                    ->AccumulateLoudnessForSamples(
                        MakeSpanOfConstSpans(kSamplesWithMissingChannels))
@@ -238,8 +236,8 @@ TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
   // It is invalid to provide more samples per call.
   constexpr size_t kTooManySamples = kNumSamplesPerFrame + 1;
   constexpr size_t kNumChannels = 2;
-  const std::vector<std::vector<int32_t>> kSamplesWithTooManySamples(
-      kNumChannels, std::vector<int32_t>(kTooManySamples, 0));
+  const std::vector<std::vector<InternalSampleType>> kSamplesWithTooManySamples(
+      kNumChannels, std::vector<InternalSampleType>(kTooManySamples, 0.0));
   EXPECT_FALSE(calculator
                    ->AccumulateLoudnessForSamples(
                        MakeSpanOfConstSpans(kSamplesWithTooManySamples))

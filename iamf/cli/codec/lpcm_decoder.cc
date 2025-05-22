@@ -28,6 +28,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -99,7 +100,8 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
       } else {
         RETURN_IF_NOT_OK(BigEndianBytesToInt32(input_bytes, sample_result));
       }
-      decoded_samples_for_channel[t] = sample_result;
+      decoded_samples_for_channel[t] =
+          Int32ToNormalizedFloatingPoint<InternalSampleType>(sample_result);
     }
   }
   return absl::OkStatus();

@@ -119,7 +119,7 @@ TEST(ConvertInterleavedToChannelTime, FailsIfSamplesIsNotAMultipleOfChannels) {
   std::vector<std::vector<int32_t>> undefined_result(kNumChannels);
   EXPECT_THAT(ConvertInterleavedToChannelTime(
                   absl::MakeConstSpan(kFourTestValues), kNumChannels,
-                  kIdentityTransform, undefined_result),
+                  undefined_result, kIdentityTransform),
               StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -132,8 +132,8 @@ TEST(ConvertInterleavedToChannelTime, PropagatesError) {
           [kError](int32_t input, int32_t& output) { return kError; };
   std::vector<std::vector<int32_t>> undefined_result(kNumChannels);
   EXPECT_EQ(ConvertInterleavedToChannelTime(absl::MakeConstSpan(kSamples),
-                                            kNumChannels, kAlwaysErrorTransform,
-                                            undefined_result),
+                                            kNumChannels, undefined_result,
+                                            kAlwaysErrorTransform),
             kError);
 }
 
@@ -143,7 +143,7 @@ TEST(ConvertInterleavedToChannelTime, SucceedsOnEmptySamples) {
   std::vector<std::vector<int32_t>> result(kNumChannels);
   EXPECT_THAT(
       ConvertInterleavedToChannelTime(absl::MakeConstSpan(kEmptySamples),
-                                      kNumChannels, kIdentityTransform, result),
+                                      kNumChannels, result, kIdentityTransform),
       IsOk());
   for (const auto& channel : result) {
     EXPECT_TRUE(channel.empty());
@@ -158,8 +158,23 @@ TEST(ConvertInterleavedToChannelTime, InterleavesResults) {
   std::vector<std::vector<int32_t>> result(kNumChannels);
   EXPECT_THAT(ConvertInterleavedToChannelTime(
                   absl::MakeConstSpan(kTwoTicksOfThreeChannels), kNumChannels,
-                  kIdentityTransform, result),
+                  result, kIdentityTransform),
               IsOk());
+  EXPECT_EQ(result, kExpectedThreeChannelsOfTwoTicks);
+}
+
+TEST(ConvertInterleavedToChannelTime, DefaultToIdentityTransform) {
+  constexpr size_t kNumChannels = 3;
+  constexpr std::array<int32_t, 6> kTwoTicksOfThreeChannels{1, 2, 3, 4, 5, 6};
+  const std::vector<std::vector<int32_t>> kExpectedThreeChannelsOfTwoTicks = {
+      {1, 4}, {2, 5}, {3, 6}};
+  std::vector<std::vector<int32_t>> result(kNumChannels);
+
+  // Skip the transform argument.
+  EXPECT_THAT(
+      ConvertInterleavedToChannelTime(
+          absl::MakeConstSpan(kTwoTicksOfThreeChannels), kNumChannels, result),
+      IsOk());
   EXPECT_EQ(result, kExpectedThreeChannelsOfTwoTicks);
 }
 
@@ -175,7 +190,7 @@ TEST(ConvertInterleavedToChannelTime, AppliesTransform) {
   std::vector<std::vector<int32_t>> result(kNumChannels);
   EXPECT_THAT(
       ConvertInterleavedToChannelTime(absl::MakeConstSpan(kSamples),
-                                      kNumChannels, kDoublingTransform, result),
+                                      kNumChannels, result, kDoublingTransform),
       IsOk());
   EXPECT_EQ(result, kExpectedResult);
 }
@@ -186,7 +201,7 @@ TEST(ConvertChannelTimeToInterleaved, FailsIfSamplesHaveAnUnevenNumberOfTicks) {
 
   EXPECT_THAT(
       ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(input),
-                                      kIdentityTransform, undefined_result),
+                                      undefined_result, kIdentityTransform),
       StatusIs(absl::StatusCode::kInvalidArgument));
 }
 
@@ -200,7 +215,7 @@ TEST(ConvertChannelTimeToInterleaved, PropagatesError) {
 
   EXPECT_EQ(
       ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kInput),
-                                      kAlwaysErrorTransform, undefined_result),
+                                      undefined_result, kAlwaysErrorTransform),
       kError);
 }
 
@@ -209,7 +224,7 @@ TEST(ConvertChannelTimeToInterleaved, SucceedsOnEmptyInput) {
   std::vector<int32_t> result;
 
   EXPECT_THAT(ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kEmptyInput),
-                                              kIdentityTransform, result),
+                                              result, kIdentityTransform),
               IsOk());
   EXPECT_TRUE(result.empty());
 }
@@ -220,7 +235,7 @@ TEST(ConvertChannelTimeToInterleaved, ClearsOutputVector) {
   constexpr std::array<int32_t, 1> kExpectedResult{1};
 
   EXPECT_THAT(ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kInput),
-                                              kIdentityTransform, result),
+                                              result, kIdentityTransform),
               IsOk());
   EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
 }
@@ -231,8 +246,20 @@ TEST(ConvertChannelTimeToInterleaved, InterleavesResult) {
   constexpr std::array<int32_t, 6> kExpectedResult{1, 2, 3, 4, 5, 6};
 
   EXPECT_THAT(ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kInput),
-                                              kIdentityTransform, result),
+                                              result, kIdentityTransform),
               IsOk());
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
+}
+
+TEST(ConvertChannelTimeToInterleaved, DefaultToIdentityTransform) {
+  const std::vector<std::vector<int32_t>> kInput = {{1, 4}, {2, 5}, {3, 6}};
+  std::vector<int32_t> result;
+  constexpr std::array<int32_t, 6> kExpectedResult{1, 2, 3, 4, 5, 6};
+
+  // Skip the transform argument.
+  EXPECT_THAT(
+      ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kInput), result),
+      IsOk());
   EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
 }
 
@@ -247,7 +274,7 @@ TEST(ConvertChannelTimeToInterleaved, AppliesTransform) {
   constexpr std::array<int32_t, 6> kExpectedResult{2, 4, 6, 8, 10, 12};
 
   EXPECT_THAT(ConvertChannelTimeToInterleaved(MakeSpanOfConstSpans(kInput),
-                                              kDoublingTransform, result),
+                                              result, kDoublingTransform),
               IsOk());
   EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
 }

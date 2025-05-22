@@ -690,8 +690,8 @@ TEST_F(FinalizerTest, ForwardsArgumentsToSampleProcessorFactory) {
 TEST_F(FinalizerTest, PushTemporalUnitDelegatesToSampleProcessor) {
   // Post-processing is only possible if rendering is enabled.
   renderer_factory_ = std::make_unique<RendererFactory>();
-  const std::vector<std::vector<int32_t>> kExpectedPassthroughSamples = {
-      {0, std::numeric_limits<int32_t>::max()}};
+  const std::vector<std::vector<InternalSampleType>>
+      kExpectedPassthroughSamples = {{0.0, 1.0}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
@@ -770,18 +770,20 @@ TEST_F(FinalizerTest, ForwardsArgumentsToLoudnessCalculatorFactory) {
 TEST_F(FinalizerTest, DelegatestoLoudnessCalculator) {
   const LoudnessInfo kMockCalculatedLoudness = kArbitraryLoudnessInfo;
   const LoudnessInfo kMismatchingUserLoudness = kExpectedMinimumLoudnessInfo;
-  const std::vector<std::vector<int32_t>> kExpectedPassthroughSamples = {
-      {0, std::numeric_limits<int32_t>::max()}};
+  const std::vector<std::vector<InternalSampleType>>
+      kExpectedPassthroughSamples = {{0.0, 1.0}};
   const std::vector<InternalSampleType> kInputSamples = {0, 1.0};
   InitPrerequisiteObusForMonoInput(kAudioElementId);
   AddMixPresentationObuForMonoOutput(kMixPresentationId);
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
+
   // We expect arguments to be forwarded from the OBUs to the loudness
   // calculator factory.
   auto mock_loudness_calculator_factory =
       std::make_unique<MockLoudnessCalculatorFactory>();
   auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
+
   // We expect the loudness calculator to be called with the rendered samples.
   EXPECT_CALL(*mock_loudness_calculator,
               AccumulateLoudnessForSamples(
@@ -1208,12 +1210,13 @@ TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanPrioritizesPostProcessedSamples) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {
-      {kL2, Int32ToInternalSampleType({0, 1})},
-      {kR2, Int32ToInternalSampleType({2, 3})}};
+  const LabelSamplesMap kLabelToSamples = {{kL2, {0.0, 0.1}},
+                                           {kR2, {0.2, 0.3}}};
+
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{1}, {3}};
+  const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {{0.1},
+                                                                         {0.3}};
   // We expect the post-processor to be called with the rendered samples.
   sample_processor_factory_ =
       [](DecodedUleb128 /*mix_presentation_id*/, int /*sub_mix_index*/,
@@ -1241,10 +1244,10 @@ TEST_F(FinalizerTest,
        GetPostProcessedSamplesAsSpanReturnsFallsBackToRenderedSamples) {
   InitPrerequisiteObusForStereoInput(kAudioElementId);
   AddMixPresentationObuForStereoOutput(kMixPresentationId);
-  const LabelSamplesMap kLabelToSamples = {
-      {kL2, Int32ToInternalSampleType({0, 1})},
-      {kR2, Int32ToInternalSampleType({2, 3})}};
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{0, 1}, {2, 3}};
+  const LabelSamplesMap kLabelToSamples = {{kL2, {0.0, 0.1}},
+                                           {kR2, {0.2, 0.3}}};
+  const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {
+      {0.0, 0.1}, {0.2, 0.3}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   renderer_factory_ = std::make_unique<RendererFactory>();
   sample_processor_factory_ =
@@ -1277,10 +1280,10 @@ TEST_F(FinalizerTest,
         return std::make_unique<OneFrameDelayer>(num_samples_per_frame,
                                                  num_channels);
       };
-  const LabelSamplesMap kLabelToSamples = {
-      {kMono, Int32ToInternalSampleType({100, 900})}};
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {{100, 900}};
-  const std::vector<std::vector<int32_t>> kEmptySamples = {{}};
+  const LabelSamplesMap kLabelToSamples = {{kMono, {0.1, 0.9}}};
+  const std::vector<std::vector<InternalSampleType>> kExpectedSamples = {
+      {0.1, 0.9}};
+  const std::vector<std::vector<InternalSampleType>> kEmptySamples = {{}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   auto finalizer = CreateFinalizerExpectOk();
 

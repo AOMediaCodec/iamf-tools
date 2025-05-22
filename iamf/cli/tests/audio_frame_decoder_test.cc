@@ -189,7 +189,7 @@ TEST(Decode, DecodesFlacFrame) {
   EXPECT_EQ(decoded_audio_frame->down_mixing_params, kDownMixingParams);
   EXPECT_EQ(decoded_audio_frame->audio_element_with_data,
             &audio_elements.at(kAudioElementId));
-  const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedDecodedSamplesInt32 = {
       {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
        0x00070000, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
        0x00000000, 0x00000000, 0x00000000, 0x00000000},
@@ -199,6 +199,8 @@ TEST(Decode, DecodesFlacFrame) {
        static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000),
        0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
        0x00000000, 0x00000000}};
+  const auto kExpectedDecodedSamples =
+      Int32ToInternalSampleType2D(kExpectedDecodedSamplesInt32);
 
   EXPECT_EQ(decoded_audio_frame->decoded_samples, kExpectedDecodedSamples);
 }

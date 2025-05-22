@@ -13,12 +13,12 @@
 #ifndef API_CONVERSION_CHANNEL_REORDERER_H_
 #define API_CONVERSION_CHANNEL_REORDERER_H_
 
-#include <cstdint>
 #include <functional>
 #include <vector>
 
 #include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -46,14 +46,14 @@ class ChannelReorderer {
    * \param audio_frame Samples arranged in (channel, time) axes to reorder in
    *        place.
    */
-  void Reorder(std::vector<absl::Span<const int32_t>>& audio_frame);
+  void Reorder(std::vector<absl::Span<const InternalSampleType>>& audio_frame);
 
  private:
   explicit ChannelReorderer(
-      std::function<void(std::vector<absl::Span<const int32_t>>&)>
+      std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
           reorder_function);
 
-  std::function<void(std::vector<absl::Span<const int32_t>>&)>
+  std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
       reorder_function_;
 };
 

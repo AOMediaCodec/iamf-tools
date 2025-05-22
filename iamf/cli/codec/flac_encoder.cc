@@ -189,8 +189,8 @@ absl::Status FlacEncoder::EncodeAudioFrame(
     samples_spans[c] = absl::MakeConstSpan(samples[c]);
   }
   RETURN_IF_NOT_OK(ConvertChannelTimeToInterleaved(
-      absl::MakeConstSpan(samples_spans), kLeftJustifiedToRightJustified,
-      encoder_input_pcm));
+      absl::MakeConstSpan(samples_spans), encoder_input_pcm,
+      kLeftJustifiedToRightJustified));
 
   LOG_FIRST_N(INFO, 1) << "Encoding " << encoder_input_pcm.size() * 4
                        << " bytes representing " << num_samples_per_channel

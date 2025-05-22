@@ -598,16 +598,15 @@ uint32_t GetSubstreamId(const DecodedAudioFrame& audio_frame_with_data) {
   return audio_frame_with_data.substream_id;
 }
 
-absl::Span<const std::vector<int32_t>> GetSamples(
+absl::Span<const std::vector<InternalSampleType>> GetSamples(
     const AudioFrameWithData& audio_frame_with_data) {
-  if (!audio_frame_with_data.pcm_samples.has_value()) {
+  if (!audio_frame_with_data.encoded_samples.has_value()) {
     return {};
   }
-
-  return absl::MakeConstSpan(audio_frame_with_data.pcm_samples.value());
+  return absl::MakeConstSpan(*audio_frame_with_data.encoded_samples);
 }
 
-absl::Span<const std::vector<int32_t>> GetSamples(
+absl::Span<const std::vector<InternalSampleType>> GetSamples(
     const DecodedAudioFrame& audio_frame_with_data) {
   return audio_frame_with_data.decoded_samples;
 }
@@ -674,32 +673,22 @@ absl::Status StoreSamplesForAudioElementId(
                                        audio_frame.start_timestamp,
                                        "In StoreSamplesForAudioElementId(): "));
 
+    ConfigureLabeledFrame(audio_frame, labeled_frame);
     const auto& labels = substream_id_labels_iter->second;
-    int channel_index = 0;
+    const auto input_samples = GetSamples(audio_frame);
+    if (input_samples.empty()) {
+      return absl::InvalidArgumentError(
+          "Input samples are not available for down-mixing.");
+    }
+
     const auto num_channels = labels.size();
+    RETURN_IF_NOT_OK(ValidateEqual(
+        input_samples.size(), num_channels,
+        "Decoded number of channels vs. expected number of channels"));
+
+    int channel_index = 0;
     for (const auto& label : labels) {
-      const auto input_samples = GetSamples(audio_frame);
-      if (input_samples.empty()) {
-        return absl::InvalidArgumentError(
-            "Input samples are not available for down-mixing.");
-      }
-      RETURN_IF_NOT_OK(ValidateEqual(
-          input_samples.size(), num_channels,
-          "Decoded number of channels vs. expected number of channels"));
-      ConfigureLabeledFrame(audio_frame, labeled_frame);
-
-      auto& samples = labeled_frame.label_to_samples[label];
-      const auto& input_samples_for_channel = input_samples[channel_index];
-      const size_t num_ticks = input_samples_for_channel.size();
-
-      samples.resize(num_ticks);
-      for (int t = 0; t < num_ticks; t++) {
-        // TODO(b/416166882): Convert to floating points directly from
-        // the decoder. Then we can simply copy the samples over or even do
-        // zero-copy referencing.
-        samples[t] = Int32ToNormalizedFloatingPoint<InternalSampleType>(
-            input_samples_for_channel[t]);
-      }
+      labeled_frame.label_to_samples[label] = input_samples[channel_index];
       channel_index++;
     }
     RETURN_IF_NOT_OK(PassThroughReconGainData(audio_frame, labeled_frame));
@@ -864,12 +853,14 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
 
   for (const auto& [substream_id, output_channel_labels] :
        demixing_metadata->substream_id_to_labels) {
-    std::vector<std::vector<int32_t>> substream_samples(
+    const auto num_output_channels = output_channel_labels.size();
+    std::vector<std::vector<InternalSampleType>> substream_samples(
         num_time_ticks,
         // One or two channels.
-        std::vector<int32_t>(output_channel_labels.size(), 0));
+        std::vector<InternalSampleType>(num_output_channels, 0.0));
+
     // Output gains to be applied to the (one or two) channels.
-    std::vector<double> output_gains_linear(output_channel_labels.size());
+    std::vector<double> output_gains_linear(num_output_channels);
     int channel_index = 0;
     for (const auto& output_channel_label : output_channel_labels) {
       auto iter = input_label_to_samples.find(output_channel_label);
@@ -878,8 +869,7 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
             "Samples do not exist for channel: ", output_channel_label));
       }
       for (int t = 0; t < num_time_ticks; t++) {
-        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
-            iter->second[t], substream_samples[t][channel_index]));
+        substream_samples[t][channel_index] = iter->second[t];
       }
 
       // Compute and store the linear output gains.
@@ -904,19 +894,18 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     auto& substream_data = substream_data_iter->second;
 
     // Add all down mixed samples to both queues.
-
     for (const auto& channel_samples : substream_samples) {
       substream_data.samples_obu.push_back(channel_samples);
 
       // Apply output gains to the samples going to the encoder.
       std::vector<int32_t> attenuated_channel_samples(channel_samples.size());
       for (int i = 0; i < channel_samples.size(); ++i) {
-        // Intermediate computation is a `double`. But both `channel_samples`
-        // and `attenuated_channel_samples` are `int32_t`.
-        const double attenuated_sample =
-            static_cast<double>(channel_samples[i]) / output_gains_linear[i];
-        RETURN_IF_NOT_OK(ClipDoubleToInt32(attenuated_sample,
-                                           attenuated_channel_samples[i]));
+        // Intermediate computation is in `InternalSampleType`, but
+        // `attenuated_channel_samples` are in `int32_t`.
+        const InternalSampleType attenuated_sample =
+            channel_samples[i] / output_gains_linear[i];
+        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
+            attenuated_sample, attenuated_channel_samples[i]));
       }
       substream_data.samples_encode.push_back(attenuated_channel_samples);
     }

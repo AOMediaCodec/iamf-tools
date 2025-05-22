@@ -18,7 +18,6 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
-#include <limits>
 #include <list>
 #include <memory>
 #include <numbers>
@@ -566,6 +565,17 @@ std::vector<InternalSampleType> Int32ToInternalSampleType(
   return result;
 }
 
+std::vector<std::vector<InternalSampleType>> Int32ToInternalSampleType2D(
+    const std::vector<std::vector<int32_t>>& samples) {
+  const auto num_channels = samples.size();
+  std::vector<std::vector<InternalSampleType>> internal_samples(num_channels);
+  for (int c = 0; c < num_channels; c++) {
+    internal_samples[c] = Int32ToInternalSampleType(samples[c]);
+  }
+
+  return internal_samples;
+}
+
 std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
                                                 uint32_t num_samples,
                                                 uint32_t sample_rate_hz,
@@ -584,7 +594,7 @@ std::vector<InternalSampleType> GenerateSineWav(uint64_t start_tick,
 }
 
 void AccumulateZeroCrossings(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> channel_time_samples,
     std::vector<ZeroCrossingState>& zero_crossing_states,
     std::vector<int>& zero_crossing_counts) {
   using enum ZeroCrossingState;
@@ -606,7 +616,7 @@ void AccumulateZeroCrossings(
   // skip encoding artifacts (e.g. a small ringing artifact < -40 dB after
   // the sine wave stopped.)  Note that -18 dB would correspond to dividing
   // by 8, while dividing by 100 is -40 dB.
-  constexpr int32_t kThreshold = std::numeric_limits<int32_t>::max() / 100;
+  constexpr InternalSampleType kThreshold = 0.01;
 
   for (int c = 0; c < num_channels; c++) {
     const auto& channel = channel_time_samples[c];
@@ -644,7 +654,8 @@ absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
 }
 
 absl::Status EverySecondTickResampler::PushFrameDerived(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
   for (int c = 0; c < num_channels_; c++) {
     // `SampleProcessorBase` should ensure this.
     EXPECT_TRUE(output_channel_time_samples_[c].empty());
@@ -667,7 +678,8 @@ absl::Status EverySecondTickResampler::FlushDerived() {
 }
 
 absl::Status OneFrameDelayer::PushFrameDerived(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
   // Swap the delayed samples with the output samples from the base class.
   std::swap(delayed_samples_, output_channel_time_samples_);
 
@@ -690,7 +702,8 @@ absl::Status OneFrameDelayer::PushFrameDerived(
 
 absl::Status OneFrameDelayer::FlushDerived() {
   // Pushing in an empty frame will cause the delayed frame to be available.
-  auto empty_frame = std::vector<absl::Span<const int32_t>>(num_channels_);
+  auto empty_frame =
+      std::vector<absl::Span<const InternalSampleType>>(num_channels_);
   return PushFrameDerived(absl::MakeConstSpan(empty_frame));
 }
 

@@ -22,6 +22,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 
 namespace iamf_tools {
 namespace {
@@ -61,7 +62,7 @@ TEST(DecodeAudioFrame, SubsequentCallsSucceed) {
   EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
                   kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
               IsOk());
-  const std::vector<std::vector<int32_t>> kExpectedDecodedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedDecodedSamplesInt32 = {
       {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
        0x00070000, 0x00080000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
        0x00000000, 0x00000000, 0x00000000, 0x00000000},
@@ -71,6 +72,8 @@ TEST(DecodeAudioFrame, SubsequentCallsSucceed) {
        static_cast<int32_t>(0xfff90000), static_cast<int32_t>(0xfff80000),
        0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
        0x00000000, 0x00000000}};
+  const auto kExpectedDecodedSamples =
+      Int32ToInternalSampleType2D(kExpectedDecodedSamplesInt32);
 
   EXPECT_EQ(flac_decoder->ValidDecodedSamples(), kExpectedDecodedSamples);
 

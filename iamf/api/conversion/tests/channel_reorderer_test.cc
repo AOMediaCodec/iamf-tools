@@ -22,6 +22,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -44,18 +45,19 @@ int32_t GetNumberOfChannels(
 }
 
 // Helper to make some random samples of the appropriate size.
-std::vector<absl::Span<const int32_t>> CreateAudioSamples(
+std::vector<absl::Span<const InternalSampleType>> CreateAudioSamples(
     LoudspeakersSsConventionLayout::SoundSystem sound_system,
     size_t num_ticks = 5) {
-  static std::vector<std::vector<int32_t>> samples;
+  static std::vector<std::vector<InternalSampleType>> samples;
 
-  samples.resize(GetNumberOfChannels(sound_system),
-                 std::vector<int32_t>(num_ticks));
-  std::vector<absl::Span<const int32_t>> sample_spans(samples.size());
+  const auto num_channels = GetNumberOfChannels(sound_system);
+  samples.resize(num_channels, std::vector<InternalSampleType>(num_ticks));
+  std::vector<absl::Span<const InternalSampleType>> sample_spans(num_channels);
   int32_t i = 0;
-  for (int c = 0; c < samples.size(); c++) {
+  for (int c = 0; c < num_channels; c++) {
     for (auto& sample : samples[c]) {
-      sample = i++;
+      sample =
+          static_cast<InternalSampleType>(i++) / (num_channels * num_ticks);
     }
     sample_spans[c] = absl::MakeConstSpan(samples[c]);
   }

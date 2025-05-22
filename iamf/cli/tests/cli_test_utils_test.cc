@@ -32,6 +32,7 @@
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/tests/obu_test_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -146,8 +147,10 @@ TEST(OneFrameDelayer, ValidatesInputShapeWithTooManyChannels) {
   constexpr uint32_t kNumSamplesPerFrame = 3;
   constexpr size_t kNumChannels = 1;
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
-  const std::vector<std::vector<int32_t>> kInputFrameWithTooManyChannels(
-      kNumSamplesPerFrame, std::vector<int32_t>(kNumChannels + 1, 0));
+  const std::vector<std::vector<InternalSampleType>>
+      kInputFrameWithTooManyChannels(
+          kNumSamplesPerFrame,
+          std::vector<InternalSampleType>(kNumChannels + 1, 0.0));
 
   EXPECT_THAT(one_frame_delayer.PushFrame(
                   MakeSpanOfConstSpans(kInputFrameWithTooManyChannels)),
@@ -159,8 +162,10 @@ TEST(OneFrameDelayer, ValidatesInputShapeWithTooManySamplesPerFrame) {
   constexpr uint32_t kNumSamplesPerFrame = 3;
   constexpr size_t kNumChannels = 1;
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
-  const std::vector<std::vector<int32_t>> kInputFrameWithTooFewSamples(
-      kNumSamplesPerFrame + 1, std::vector<int32_t>(kNumChannels, 0));
+  const std::vector<std::vector<InternalSampleType>>
+      kInputFrameWithTooFewSamples(
+          kNumSamplesPerFrame + 1,
+          std::vector<InternalSampleType>(kNumChannels, 0.0));
 
   EXPECT_THAT(one_frame_delayer.PushFrame(
                   MakeSpanOfConstSpans(kInputFrameWithTooFewSamples)),
@@ -170,13 +175,13 @@ TEST(OneFrameDelayer, ValidatesInputShapeWithTooManySamplesPerFrame) {
 TEST(OneFrameDelayer, DelaysSamplesByOneFrame) {
   constexpr uint32_t kNumSamplesPerFrame = 5;
   constexpr size_t kNumChannels = 4;
-  const std::vector<std::vector<int32_t>> kFirstInputFrame = {
-      {1, 5, 9, 13, 17},
-      {2, 6, 10, 14, 18},
-      {3, 7, 11, 15, 19},
-      {4, 8, 12, 16, 20}};
-  const std::vector<std::vector<int32_t>> kSecondInputFrame = {
-      {21}, {22}, {23}, {24}};
+  const std::vector<std::vector<InternalSampleType>> kFirstInputFrame = {
+      {0.01, 0.05, 0.09, 0.13, 0.17},
+      {0.02, 0.06, 0.10, 0.14, 0.18},
+      {0.03, 0.07, 0.11, 0.15, 0.19},
+      {0.04, 0.08, 0.12, 0.16, 0.20}};
+  const std::vector<std::vector<InternalSampleType>> kSecondInputFrame = {
+      {0.21}, {0.22}, {0.23}, {0.24}};
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
   // Nothing is available at the start.
   for (const auto& output_channel :
@@ -204,11 +209,11 @@ TEST(OneFrameDelayer, DelaysSamplesByOneFrame) {
 TEST(OneFrameDelayer, GetOutputSamplesAsSpanReturnsFinalFrameAfterFlush) {
   constexpr uint32_t kNumSamplesPerFrame = 5;
   constexpr size_t kNumChannels = 4;
-  const std::vector<std::vector<int32_t>> kFirstInputFrame = {
-      {1, 5, 9, 13, 17},
-      {2, 6, 10, 14, 18},
-      {3, 7, 11, 15, 19},
-      {4, 8, 12, 16, 20}};
+  const std::vector<std::vector<InternalSampleType>> kFirstInputFrame = {
+      {0.01, 0.05, 0.09, 0.13, 0.17},
+      {0.02, 0.06, 0.10, 0.14, 0.18},
+      {0.03, 0.07, 0.11, 0.15, 0.19},
+      {0.04, 0.08, 0.12, 0.16, 0.20}};
   OneFrameDelayer one_frame_delayer(kNumSamplesPerFrame, kNumChannels);
   EXPECT_THAT(
       one_frame_delayer.PushFrame(MakeSpanOfConstSpans(kFirstInputFrame)),

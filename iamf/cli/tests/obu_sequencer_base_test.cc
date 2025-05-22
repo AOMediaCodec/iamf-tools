@@ -107,7 +107,7 @@ void AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
       .obu = AudioFrameObu(ObuHeader(), substream_id, {}),
       .start_timestamp = start_timestamp,
       .end_timestamp = end_timestamp,
-      .pcm_samples = kOriginalSamplesAreIrrelevant,
+      .encoded_samples = kOriginalSamplesAreIrrelevant,
       .down_mixing_params = {.in_bitstream = false},
       .audio_element_with_data = &audio_elements.at(audio_element_id)});
 }

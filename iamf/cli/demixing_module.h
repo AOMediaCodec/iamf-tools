@@ -42,7 +42,8 @@ struct SubstreamData {
   // Samples arranged in a FIFO queue with a vector of channels. There can only
   // be one or two channels. Includes "virtual" samples that are output from the
   // encoder, but are not passed to the encoder.
-  std::deque<std::vector<int32_t>> samples_obu;
+  std::deque<std::vector<InternalSampleType>> samples_obu;
+
   // Samples to pass to encoder.
   std::deque<std::vector<int32_t>> samples_encode;
   // One or two elements; corresponding to the output gain to be applied to

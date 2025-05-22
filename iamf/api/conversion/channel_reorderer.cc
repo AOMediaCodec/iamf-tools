@@ -13,21 +13,22 @@
 #include "iamf/api/conversion/channel_reorderer.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <functional>
 #include <utility>
 #include <vector>
 
 #include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
 
 // No transformation.
-void NoOp(std::vector<absl::Span<const int32_t>>& samples) {}
+void NoOp(std::vector<absl::Span<const InternalSampleType>>& samples) {}
 
-void SwapBackAndSides(std::vector<absl::Span<const int32_t>>& samples) {
+void SwapBackAndSides(
+    std::vector<absl::Span<const InternalSampleType>>& samples) {
   // 7-something layout are ordered as [L, R, C, LFE, Lss, Rss, Lrs, Rrs].
   // Android needs rear before side surrounds.
   std::swap(samples[4], samples[6]);
@@ -35,7 +36,7 @@ void SwapBackAndSides(std::vector<absl::Span<const int32_t>>& samples) {
 }
 
 void ReorderSoundSystemFForAndroid(
-    std::vector<absl::Span<const int32_t>>& samples) {
+    std::vector<absl::Span<const InternalSampleType>>& samples) {
   if (samples.empty()) {
     return;
   }
@@ -60,7 +61,7 @@ void ReorderSoundSystemFForAndroid(
 }
 
 void ReorderSoundSystemGForAndroid(
-    std::vector<absl::Span<const int32_t>>& samples) {
+    std::vector<absl::Span<const InternalSampleType>>& samples) {
   // Ordered as
   //  0  1  2    3    4    5    6    7    8    9   10   11   12   13
   // [L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf, Ltb, Rtb, Lsc, Rsc]
@@ -85,7 +86,7 @@ void ReorderSoundSystemGForAndroid(
 }
 
 void ReorderSoundSystemHForAndroid(
-    std::vector<absl::Span<const int32_t>>& samples) {
+    std::vector<absl::Span<const InternalSampleType>>& samples) {
   // Ordered as
   //   0   1   2     3  4    5    6    7   8     9  10    11   12     13    14
   // [FL, FR, FC, LFE1, BL, BR, FLc, FRc, BC, LFE2, SiL, SiR, TpFL, TpFR, TpFC,
@@ -119,9 +120,9 @@ void ReorderSoundSystemHForAndroid(
   samples[23] = originals[9];
 }
 
-std::function<void(std::vector<absl::Span<const int32_t>>&)> MakeFunction(
-    LoudspeakersSsConventionLayout::SoundSystem original_layout,
-    ChannelReorderer::RearrangementScheme scheme) {
+std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
+MakeFunction(LoudspeakersSsConventionLayout::SoundSystem original_layout,
+             ChannelReorderer::RearrangementScheme scheme) {
   switch (scheme) {
     case ChannelReorderer::RearrangementScheme::kDefaultNoOp:
       return NoOp;
@@ -157,7 +158,7 @@ std::function<void(std::vector<absl::Span<const int32_t>>&)> MakeFunction(
 }  // namespace
 
 ChannelReorderer::ChannelReorderer(
-    std::function<void(std::vector<absl::Span<const int32_t>>&)>
+    std::function<void(std::vector<absl::Span<const InternalSampleType>>&)>
         reorder_function)
     : reorder_function_(reorder_function) {}
 
@@ -171,7 +172,7 @@ ChannelReorderer ChannelReorderer::Create(
 }
 
 void ChannelReorderer::Reorder(
-    std::vector<absl::Span<const int32_t>>& audio_frame) {
+    std::vector<absl::Span<const InternalSampleType>>& audio_frame) {
   reorder_function_(audio_frame);
 }
 

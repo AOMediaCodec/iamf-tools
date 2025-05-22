@@ -646,8 +646,8 @@ ObuWithDataGenerator::GenerateAudioFrameWithData(
       .obu = std::move(audio_frame_obu),
       .start_timestamp = start_timestamp,
       .end_timestamp = end_timestamp,
-      .pcm_samples = std::nullopt,  // The PCM samples cannot be derived from
-                                    // the bitstream.
+      .encoded_samples = std::nullopt,  // The encoded samples cannot be
+                                        // derived from the bitstream.
       .down_mixing_params = down_mixing_params,
       .recon_gain_info_parameter_data = recon_gain_info_parameter_data,
       .audio_element_with_data = &audio_element_with_data};

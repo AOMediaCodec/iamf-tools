@@ -20,6 +20,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -44,8 +45,8 @@ TEST(GetOutputSamplesAsSpan, ReturnsEmptyAfterConstruction) {
 TEST(GetOutputSamplesAsSpan, SizeMatchesNumValidTicks) {
   EverySecondTickResampler every_second_tick_resampler(kMaxInputTicks,
                                                        kNumChannels);
-  const std::vector<std::vector<int32_t>> first_frame = {{1, 3, 5, 7},
-                                                         {2, 4, 6, 8}};
+  const std::vector<std::vector<InternalSampleType>> first_frame = {
+      {0.1, 0.3, 0.5, 0.7}, {0.2, 0.4, 0.6, 0.8}};
   EXPECT_THAT(
       every_second_tick_resampler.PushFrame(MakeSpanOfConstSpans(first_frame)),
       IsOk());
@@ -54,7 +55,8 @@ TEST(GetOutputSamplesAsSpan, SizeMatchesNumValidTicks) {
     EXPECT_EQ(output_channel.size(), 2);
   }
 
-  const std::vector<std::vector<int32_t>> second_frame = {{9, 10}, {11, 12}};
+  const std::vector<std::vector<InternalSampleType>> second_frame = {
+      {0.9, 0.10}, {0.11, 0.12}};
   EXPECT_THAT(
       every_second_tick_resampler.PushFrame(MakeSpanOfConstSpans(second_frame)),
       IsOk());
@@ -73,7 +75,7 @@ TEST(GetOutputSamplesAsSpan, SizeMatchesNumValidTicks) {
 TEST(PushFrame, ReturnsFailedPreconditionWhenCalledAfterFlush) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
-  const std::vector<std::vector<int32_t>> empty_frame = {{}, {}};
+  const std::vector<std::vector<InternalSampleType>> empty_frame = {{}, {}};
   EXPECT_THAT(mock_resampler.PushFrame(MakeSpanOfConstSpans(empty_frame)),
               IsOk());
   EXPECT_THAT(mock_resampler.Flush(), IsOk());
@@ -85,8 +87,8 @@ TEST(PushFrame, ReturnsFailedPreconditionWhenCalledAfterFlush) {
 TEST(PushFrame, InvalidIfInputSpanHasTooManyTicks) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
-  const std::vector<std::vector<int32_t>> kTooManyTicks(
-      kMaxInputTicks + 1, std::vector<int32_t>(kNumChannels));
+  const std::vector<std::vector<InternalSampleType>> kTooManyTicks(
+      kMaxInputTicks + 1, std::vector<InternalSampleType>(kNumChannels));
 
   EXPECT_FALSE(
       mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyTicks)).ok());
@@ -95,8 +97,8 @@ TEST(PushFrame, InvalidIfInputSpanHasTooManyTicks) {
 TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
-  const std::vector<std::vector<int32_t>> kTooFewChannels(
-      kMaxInputTicks, std::vector<int32_t>(kNumChannels - 1));
+  const std::vector<std::vector<InternalSampleType>> kTooFewChannels(
+      kMaxInputTicks, std::vector<InternalSampleType>(kNumChannels - 1));
 
   EXPECT_FALSE(
       mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooFewChannels)).ok());
@@ -105,8 +107,8 @@ TEST(PushFrame, InvalidIfInputSpanHasTooFewChannels) {
 TEST(PushFrame, InvalidIfInputSpanHasTooManyChannels) {
   MockSampleProcessor mock_resampler(kMaxInputTicks, kNumChannels,
                                      kMaxOutputTicks);
-  const std::vector<std::vector<int32_t>> kTooManyChannels(
-      kMaxInputTicks, std::vector<int32_t>(kNumChannels + 1));
+  const std::vector<std::vector<InternalSampleType>> kTooManyChannels(
+      kMaxInputTicks, std::vector<InternalSampleType>(kNumChannels + 1));
 
   EXPECT_FALSE(
       mock_resampler.PushFrame(MakeSpanOfConstSpans(kTooManyChannels)).ok());

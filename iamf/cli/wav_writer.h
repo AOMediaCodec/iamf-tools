@@ -23,6 +23,7 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/sample_processor_base.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -101,8 +102,9 @@ class WavWriter : public SampleProcessorBase {
    * \param channel_time_samples Samples to push arranged in (channel, time).
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status PushFrameDerived(absl::Span<const absl::Span<const int32_t>>
-                                    channel_time_samples) override;
+  absl::Status PushFrameDerived(
+      absl::Span<const absl::Span<const InternalSampleType>>
+          channel_time_samples) override;
 
   /*!\brief Signals that no more samples will be pushed.
    *

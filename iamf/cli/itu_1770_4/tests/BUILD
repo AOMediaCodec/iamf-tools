@@ -20,6 +20,7 @@ cc_test(
         "//iamf/cli/itu_1770_4:loudness_calculator_itu_1770_4",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],

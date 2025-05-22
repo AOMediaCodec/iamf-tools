@@ -10,9 +10,11 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -140,11 +142,16 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
   // samples each.
   EXPECT_EQ(decoded_samples.size(), 2);
   EXPECT_EQ(decoded_samples[0].size(), 2);
-  EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 0x01000000);
+  EXPECT_EQ(decoded_samples[0][0],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0));
+  EXPECT_EQ(decoded_samples[0][1],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x01000000));
   EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0], 0x00010000);
-  EXPECT_EQ(decoded_samples[1][1], 0xff800000);
+  EXPECT_EQ(decoded_samples[1][0],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00010000));
+  EXPECT_EQ(decoded_samples[1][1],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(
+                static_cast<int32_t>(0xff800000)));
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
@@ -168,13 +175,19 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
   // samples each.
   EXPECT_EQ(decoded_samples.size(), 2);
   EXPECT_EQ(decoded_samples[0].size(), 3);
-  EXPECT_EQ(decoded_samples[0][0], 0);
-  EXPECT_EQ(decoded_samples[0][1], 0x00000300);
-  EXPECT_EQ(decoded_samples[0][2], 0x7fffff00);
+  EXPECT_EQ(decoded_samples[0][0],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0));
+  EXPECT_EQ(decoded_samples[0][1],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000300));
+  EXPECT_EQ(decoded_samples[0][2],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x7fffff00));
   EXPECT_EQ(decoded_samples[1].size(), 3);
-  EXPECT_EQ(decoded_samples[1][0], 0x00000100);
-  EXPECT_EQ(decoded_samples[1][1], 0x00000400);
-  EXPECT_EQ(decoded_samples[1][2], 0x80000000);
+  EXPECT_EQ(decoded_samples[1][0],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000100));
+  EXPECT_EQ(decoded_samples[1][1],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000400));
+  EXPECT_EQ(decoded_samples[1][2],
+            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x80000000));
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {

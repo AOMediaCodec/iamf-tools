@@ -50,11 +50,11 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
  *
  * \param samples Interleaved samples to arrange.
  * \param num_channels Number of channels.
- * \param transform_samples Function to transform each sample to the output
- *        type.
  * \param output Output vector to write the samples to. If the number of
  *        input samples do not fill the entire output vector, the time axis will
  *        be modified to fit the actual length.
+ * \param transform_samples Function to transform each sample to the output
+ *        type. Default to an identity transform that always returns OK.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
  *         number of samples is not a multiple of the number of channels. An
  *         error propagated from `transform_samples` if it fails.
@@ -62,9 +62,12 @@ absl::Status WritePcmSample(uint32_t sample, uint8_t sample_size,
 template <typename InputType, typename OutputType>
 absl::Status ConvertInterleavedToChannelTime(
     absl::Span<const InputType> samples, size_t num_channels,
+    std::vector<std::vector<OutputType>>& output,
     const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
-        transform_samples,
-    std::vector<std::vector<OutputType>>& output) {
+        transform_samples = [](InputType in, OutputType& out) -> absl::Status {
+      out = in;
+      return absl::OkStatus();
+    }) {
   if (samples.size() % num_channels != 0) [[unlikely]] {
     return absl::InvalidArgumentError(absl::StrCat(
         "Number of samples must be a multiple of the number of "
@@ -91,9 +94,9 @@ absl::Status ConvertInterleavedToChannelTime(
 /*!\brief Interleaves the input samples.
  *
  * \param samples Samples in (channel, time) axes to arrange.
- * \param transform_samples Function to transform each sample to the output
- *        type.
  * \param output Output vector to write the interleaved samples to.
+ * \param transform_samples Function to transform each sample to the output
+ *        type. Default to an identity transform that always returns OK.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if the
  *         input has an inconsistent number of channels. An error propagated
  *         from `transform_samples` if it fails.
@@ -101,9 +104,12 @@ absl::Status ConvertInterleavedToChannelTime(
 template <typename InputType, typename OutputType>
 absl::Status ConvertChannelTimeToInterleaved(
     absl::Span<const absl::Span<const InputType>> input,
+    std::vector<OutputType>& output,
     const absl::AnyInvocable<absl::Status(InputType, OutputType&) const>&
-        transform_samples,
-    std::vector<OutputType>& output) {
+        transform_samples = [](InputType in, OutputType& out) -> absl::Status {
+      out = in;
+      return absl::OkStatus();
+    }) {
   const size_t num_ticks = input.empty() ? 0 : input[0].size();
   if (!std::all_of(input.begin(), input.end(), [&](const auto& channel) {
         return channel.size() == num_ticks;

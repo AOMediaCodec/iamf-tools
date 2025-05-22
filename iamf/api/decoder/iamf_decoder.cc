@@ -34,10 +34,12 @@
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace api {
@@ -77,11 +79,12 @@ struct IamfDecoder::DecoderState {
   // Buffer that is filled with data from Decode().
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer;
 
-  // Rendered PCM samples. Each element in the queue corresponds to a
+  // Rendered samples. Each element in the queue corresponds to a
   // temporal unit. A temporal unit will never be partially filled, so the
   // number of elements in the outer vector is equal to the number of decoded
   // temporal units currently available.
-  std::queue<std::vector<absl::Span<const int32_t>>> rendered_pcm_samples;
+  std::queue<std::vector<absl::Span<const InternalSampleType>>>
+      rendered_samples;
 
   // The layout used for the rendered output audio.
   // Initially set to the requested Layout but updated by ObuProcessor.
@@ -179,7 +182,8 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
 IamfStatus ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
-    std::queue<std::vector<absl::Span<const int32_t>>>& rendered_pcm_samples,
+    std::queue<std::vector<absl::Span<const InternalSampleType>>>&
+        rendered_samples,
     std::optional<ChannelReorderer> channel_reorderer) {
   LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
   bool continue_processing = true;
@@ -194,23 +198,23 @@ IamfStatus ProcessAllTemporalUnits(
     }
     // We may have processed bytes but not a full temporal unit.
     if (output_temporal_unit.has_value()) {
-      absl::Span<const absl::Span<const int32_t>>
-          rendered_pcm_samples_for_temporal_unit;
+      absl::Span<const absl::Span<const InternalSampleType>>
+          rendered_samples_for_temporal_unit;
       absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
           output_temporal_unit->output_timestamp,
           output_temporal_unit->output_audio_frames,
           output_temporal_unit->output_parameter_blocks,
-          rendered_pcm_samples_for_temporal_unit);
+          rendered_samples_for_temporal_unit);
       if (!absl_status.ok()) {
         return AbslToIamfStatus(absl_status);
       }
       auto temporal_unit =
-          std::vector(rendered_pcm_samples_for_temporal_unit.begin(),
-                      rendered_pcm_samples_for_temporal_unit.end());
+          std::vector(rendered_samples_for_temporal_unit.begin(),
+                      rendered_samples_for_temporal_unit.end());
       if (channel_reorderer.has_value()) {
         channel_reorderer->Reorder(temporal_unit);
       }
-      rendered_pcm_samples.push(std::move(temporal_unit));
+      rendered_samples.push(std::move(temporal_unit));
     }
   }
   // Empty the buffer of the data that was processed thus far.
@@ -219,7 +223,7 @@ IamfStatus ProcessAllTemporalUnits(
   if (!absl_status.ok()) {
     return AbslToIamfStatus(absl_status);
   }
-  LOG_FIRST_N(INFO, 10) << "Rendered " << rendered_pcm_samples.size()
+  LOG_FIRST_N(INFO, 10) << "Rendered " << rendered_samples.size()
                         << " temporal units.";
   return IamfStatus::OkStatus();
 }
@@ -235,10 +239,10 @@ size_t BytesPerSample(OutputSampleType sample_type) {
   }
 }
 
-IamfStatus WriteFrameToSpan(const std::vector<absl::Span<const int32_t>>& frame,
-                            OutputSampleType sample_type,
-                            absl::Span<uint8_t> output_bytes,
-                            size_t& bytes_written) {
+IamfStatus WriteFrameToSpan(
+    const std::vector<absl::Span<const InternalSampleType>>& frame,
+    OutputSampleType sample_type, absl::Span<uint8_t> output_bytes,
+    size_t& bytes_written) {
   const size_t bytes_per_sample = BytesPerSample(sample_type);
   const size_t bits_per_sample = bytes_per_sample * 8;
   const size_t required_size =
@@ -253,9 +257,16 @@ IamfStatus WriteFrameToSpan(const std::vector<absl::Span<const int32_t>>& frame,
   uint8_t* data = output_bytes.data();
   for (int t = 0; t < frame[0].size(); t++) {
     for (int c = 0; c < frame.size(); ++c) {
-      const uint32_t sample = static_cast<uint32_t>(frame[c][t]);
-      absl::Status absl_status = WritePcmSample(
-          sample, bits_per_sample, big_endian, data, write_position);
+      int32_t sample;
+      absl::Status absl_status =
+          NormalizedFloatingPointToInt32(frame[c][t], sample);
+      if (!absl_status.ok()) {
+        return AbslToIamfStatus(absl_status);
+      }
+
+      absl_status.Update(WritePcmSample(static_cast<uint32_t>(sample),
+                                        bits_per_sample, big_endian, data,
+                                        write_position));
       if (!absl_status.ok()) {
         return AbslToIamfStatus(absl_status);
       }
@@ -366,7 +377,7 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
   }
   return ProcessAllTemporalUnits(
       state_->read_bit_buffer.get(), state_->obu_processor.get(),
-      state_->created_from_descriptors, state_->rendered_pcm_samples,
+      state_->created_from_descriptors, state_->rendered_samples,
       state_->channel_reorderer);
 }
 
@@ -379,21 +390,21 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
                                               size_t output_buffer_size,
                                               size_t& bytes_written) {
   bytes_written = 0;
-  if (state_->rendered_pcm_samples.empty()) {
+  if (state_->rendered_samples.empty()) {
     return IamfStatus::OkStatus();
   }
   OutputSampleType output_sample_type = GetOutputSampleType();
   IamfStatus status = WriteFrameToSpan(
-      state_->rendered_pcm_samples.front(), output_sample_type,
+      state_->rendered_samples.front(), output_sample_type,
       absl::MakeSpan(output_buffer, output_buffer_size), bytes_written);
   if (status.ok()) {
-    state_->rendered_pcm_samples.pop();
+    state_->rendered_samples.pop();
   }
   return status;
 }
 
 bool IamfDecoder::IsTemporalUnitAvailable() const {
-  return !state_->rendered_pcm_samples.empty();
+  return !state_->rendered_samples.empty();
 }
 
 bool IamfDecoder::IsDescriptorProcessingComplete() const {
@@ -467,8 +478,8 @@ IamfStatus IamfDecoder::Reset() {
         "processing is complete.");
   }
 
-  // Clear the rendered PCM samples.
-  state_->rendered_pcm_samples = {};
+  // Clear the rendered samples.
+  state_->rendered_samples = {};
 
   // Set state.
   state_->status = DecoderStatus::kAcceptingData;

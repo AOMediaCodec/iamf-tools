@@ -28,10 +28,10 @@
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/opus_utils.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
+#include "iamf/obu/types.h"
 #include "include/opus.h"
 #include "include/opus_types.h"
 
@@ -98,7 +98,7 @@ absl::Status OpusDecoder::DecodeAudioFrame(
   // `opus_decode_float` decodes to `float` samples with channels interlaced.
   // Typically these values are in the range of [-1, +1] (always for
   // `iamf_tools`-encoded data). Values outside of that range will be clipped in
-  // `NormalizedFloatToInt32`.
+  // `NormalizedFloatingPointToInt32`.
   std::vector<float> output_pcm_float(num_samples_per_channel_ * num_channels_);
 
   // Transform the data and feed it to the decoder.
@@ -119,14 +119,17 @@ absl::Status OpusDecoder::DecodeAudioFrame(
   LOG_FIRST_N(INFO, 1) << "Opus decoded " << num_output_samples
                        << " samples per channel. With " << num_channels_
                        << " channels.";
-  // Convert the interleaved data to (channel, time) axes.
+
+  // Convert the interleaved data to (channel, time) axes
+  const absl::AnyInvocable<absl::Status(float, InternalSampleType&) const>
+      kFloatToInternalSampleType = [](float input, InternalSampleType& output) {
+        output = static_cast<InternalSampleType>(input);
+        return absl::OkStatus();
+      };
   return ConvertInterleavedToChannelTime(
       absl::MakeConstSpan(output_pcm_float)
           .first(num_output_samples * num_channels_),
-      num_channels_,
-      absl::AnyInvocable<absl::Status(float, int32_t&) const>(
-          NormalizedFloatingPointToInt32<float>),
-      decoded_samples_);
+      num_channels_, decoded_samples_, kFloatToInternalSampleType);
 }
 
 }  // namespace iamf_tools

@@ -19,6 +19,7 @@
 #include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -56,7 +57,8 @@ class DecoderBase {
    *
    * \return Span of valid decoded samples.
    */
-  absl::Span<const std::vector<int32_t>> ValidDecodedSamples() const {
+  absl::Span<const std::vector<InternalSampleType>> ValidDecodedSamples()
+      const {
     return absl::MakeConstSpan(decoded_samples_);
   }
 
@@ -69,7 +71,7 @@ class DecoderBase {
   // vector contains one inner vector for each channel. When the decoded
   // samples is shorter than a frame, the inner vectors will be resized to fit
   // the valid portion.
-  std::vector<std::vector<int32_t>> decoded_samples_;
+  std::vector<std::vector<InternalSampleType>> decoded_samples_;
 };
 
 }  // namespace iamf_tools

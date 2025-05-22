@@ -77,8 +77,8 @@ absl::StatusOr<int> EncodeFloat(
   }
 
   RETURN_IF_NOT_OK(ConvertChannelTimeToInterleaved(
-      absl::MakeConstSpan(samples_spans), kInt32ToNormalizedFloat,
-      encoder_input_pcm));
+      absl::MakeConstSpan(samples_spans), encoder_input_pcm,
+      kInt32ToNormalizedFloat));
 
   // TODO(b/311655037): Test that samples are passed to `opus_encode_float` in
   //                    the correct order. Maybe also check they are in the

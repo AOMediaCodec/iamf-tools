@@ -34,6 +34,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 #include "include/ebur128_analyzer.h"
 
 namespace iamf_tools {
@@ -127,7 +128,7 @@ absl::StatusOr<std::vector<float>> GetItu1770_4ChannelWeights(
 // Flattens to the output buffer, and returns a span to the relevant slice of
 // data.
 absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples,
+    absl::Span<const absl::Span<const InternalSampleType>> channel_time_samples,
     size_t max_num_samples_per_frame, int32_t expected_num_channels,
     int32_t bit_depth, std::vector<uint8_t>& interleaved_pcm_buffer) {
   if (channel_time_samples.size() != expected_num_channels) {
@@ -165,8 +166,11 @@ absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
       CHECK(write_position < interleaved_pcm_buffer_size);
       // `WritePcmSample` requires the input sample to be in the upper
       // bits of the first argument.
+      int32_t sample_int32t;
+      RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
+          channel_time_samples[c][t], sample_int32t));
       RETURN_IF_NOT_OK(WritePcmSample(
-          static_cast<uint32_t>(channel_time_samples[c][t]), bit_depth,
+          static_cast<uint32_t>(sample_int32t), bit_depth,
           /*big_endian=*/false, interleaved_pcm_buffer.data(), write_position));
     }
   }
@@ -229,7 +233,8 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
 }
 
 absl::Status LoudnessCalculatorItu1770_4::AccumulateLoudnessForSamples(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
   auto interleaved_pcm_span = FlattenToInterleavedPcm(
       channel_time_samples, num_samples_per_frame_, num_channels_,
       bit_depth_to_measure_loudness_, interleaved_pcm_buffer_);

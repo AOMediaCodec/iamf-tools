@@ -128,6 +128,7 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:obu_base",
         "//iamf/obu:obu_header",
+        "//iamf/obu:types",
         "//iamf/obu/tests:obu_test_utils",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
@@ -169,7 +170,6 @@ cc_test(
     name = "demixing_module_benchmark",
     srcs = ["demixing_module_benchmark.cc"],
     deps = [
-        ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
@@ -606,6 +606,7 @@ cc_test(
     srcs = ["sample_processor_base_test.cc"],
     deps = [
         ":cli_test_utils",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",
@@ -704,8 +705,8 @@ cc_test(
     srcs = ["wav_writer_test.cc"],
     deps = [
         ":cli_test_utils",
-        "//iamf/cli:wav_reader",
         "//iamf/cli:wav_writer",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",

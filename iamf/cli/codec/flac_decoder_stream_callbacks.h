@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "iamf/obu/types.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
@@ -40,8 +41,9 @@ class LibFlacCallbackData {
    *        are written. The vector may be resized to fit the channels and
    *        time ticks within the function.
    */
-  LibFlacCallbackData(uint32_t num_samples_per_channel,
-                      std::vector<std::vector<int32_t>>& decoded_frame)
+  LibFlacCallbackData(
+      uint32_t num_samples_per_channel,
+      std::vector<std::vector<InternalSampleType>>& decoded_frame)
       : num_samples_per_channel_(num_samples_per_channel),
         decoded_frame_(decoded_frame) {}
 
@@ -65,7 +67,7 @@ class LibFlacCallbackData {
   const uint32_t num_samples_per_channel_;
 
   // Reference to the backing data for the decoded frame.
-  std::vector<std::vector<int32_t>>& decoded_frame_;
+  std::vector<std::vector<InternalSampleType>>& decoded_frame_;
 
  private:
   // Backing data for the next frame to be decoded.

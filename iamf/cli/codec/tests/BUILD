@@ -63,6 +63,8 @@ cc_test(
     srcs = ["flac_decoder_stream_callbacks_test.cc"],
     deps = [
         "//iamf/cli/codec:flac_decoder_stream_callbacks",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:types",
         "@com_google_googletest//:gtest_main",
         "@flac//:src",
     ],
@@ -74,6 +76,7 @@ cc_test(
     deps = [
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:flac_decoder",
+        "//iamf/cli/tests:cli_test_utils",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
@@ -102,8 +105,10 @@ cc_test(
     deps = [
         "//iamf/cli/codec:decoder_base",
         "//iamf/cli/codec:lpcm_decoder",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
+        "//iamf/obu:types",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status:status_matchers",

@@ -282,7 +282,8 @@ TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
-  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
+  const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
+  const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -333,7 +334,9 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
   std::list<DecodedAudioFrame> decoded_audio_frames;
   // The decoded audio frame has one channel, which is inconsistent with a
   // one-layer stereo audio element.
-  const std::vector<std::vector<int32_t>> kErrorOneChannel = {{0}};
+  const std::vector<std::vector<int32_t>> kErrorOneChannelInt = {{0}};
+  const auto kErrorOneChannel =
+      Int32ToInternalSampleType2D(kErrorOneChannelInt);
   decoded_audio_frames.push_back(DecodedAudioFrame{
       .substream_id = kStereoSubstreamId,
       .start_timestamp = kStartTimestamp,
@@ -356,7 +359,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   const DecodedUleb128 kExpectedNumSamplesToTrimAtEnd = 999;
   const DecodedUleb128 kExpectedNumSamplesToTrimAtStart = 9999;
   const DecodedUleb128 kL2SubstreamId = 1;
-  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
+  const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
+  const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -398,8 +402,12 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
-  const std::vector<std::vector<int32_t>> kDecodedMonoSamples = {{1, 2, 3}};
-  const std::vector<std::vector<int32_t>> kDecodedL2Samples = {{9, 10, 11}};
+  const std::vector<std::vector<int32_t>> kDecodedMonoSamplesInt = {{1, 2, 3}};
+  const std::vector<std::vector<int32_t>> kDecodedL2SamplesInt = {{9, 10, 11}};
+  const auto kDecodedMonoSamples =
+      Int32ToInternalSampleType2D(kDecodedMonoSamplesInt);
+  const auto kDecodedL2Samples =
+      Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -446,8 +454,12 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
-  const std::vector<std::vector<int32_t>> kDecodedMonoSamples = {{750}};
-  const std::vector<std::vector<int32_t>> kDecodedL2Samples = {{1000}};
+  const std::vector<std::vector<int32_t>> kDecodedMonoSamplesInt = {{750}};
+  const std::vector<std::vector<int32_t>> kDecodedL2SamplesInt = {{1000}};
+  const auto kDecodedMonoSamples =
+      Int32ToInternalSampleType2D(kDecodedMonoSamplesInt);
+  const auto kDecodedL2Samples =
+      Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
 
   InitAudioElementWithLabelsAndLayers(
@@ -489,7 +501,8 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
 }
 
 TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
-  const std::vector<std::vector<int32_t>> kDecodedSamples = {{0}};
+  const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
+  const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   InitAudioElementWithLabelsAndLayers(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
@@ -625,12 +638,18 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     for (const auto& [substream_id, substream_data] :
          substream_id_to_substream_data_) {
       // Copy the output queue to a vector for comparison.
-      std::vector<std::vector<int32_t>> output_samples;
+      std::vector<std::vector<InternalSampleType>> output_samples;
       std::copy(substream_data.samples_obu.begin(),
                 substream_data.samples_obu.end(),
                 std::back_inserter(output_samples));
-      EXPECT_EQ(output_samples,
-                substream_id_to_expected_samples_[substream_id]);
+      EXPECT_EQ(output_samples.size(),
+                substream_id_to_expected_samples_[substream_id].size());
+      for (int t = 0; t < output_samples.size(); t++) {
+        EXPECT_THAT(
+            output_samples[t],
+            Pointwise(InternalSampleMatchesIntegralSample(),
+                      substream_id_to_expected_samples_[substream_id][t]));
+      }
     }
   }
 
@@ -647,7 +666,7 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
 
   void ConfigureOutputChannel(
       const std::list<ChannelLabel::Label>& requested_output_labels,
-      const std::vector<std::vector<int32_t>>& expected_output_smples) {
+      const std::vector<std::vector<int32_t>>& expected_output_samples) {
     // The substream ID itself does not matter. Generate a unique one.
     const uint32_t substream_id = substream_id_to_labels_.size();
 
@@ -655,7 +674,7 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     substream_id_to_substream_data_[substream_id] = {.substream_id =
                                                          substream_id};
 
-    substream_id_to_expected_samples_[substream_id] = expected_output_smples;
+    substream_id_to_expected_samples_[substream_id] = expected_output_samples;
   }
 
   LabelSamplesMap input_label_to_samples_;
@@ -973,7 +992,7 @@ TEST_F(DownMixingModuleTest, SixLayer7_1_4) {
 
 class DemixingModuleTest : public DemixingModuleTestBase,
                            public ::testing::Test {
- public:
+ protected:
   void ConfigureLosslessAudioFrameAndDecodedAudioFrame(
       const std::list<ChannelLabel::Label>& labels,
       const std::vector<std::vector<int32_t>>& pcm_samples,
@@ -981,7 +1000,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
           .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25}) {
     // Copy the samples to the buffer so the
     // `DecodedAudioFrame::decoded_samples` can point to them.
-    pcm_samples_buffer_.push_back(pcm_samples);
+    encoded_sampes_buffer_.push_back(Int32ToInternalSampleType2D(pcm_samples));
 
     // The substream ID itself does not matter. Generate a unique one.
     const DecodedUleb128 substream_id = substream_id_to_labels_.size();
@@ -993,7 +1012,7 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .obu = AudioFrameObu(ObuHeader(), substream_id, {}),
         .start_timestamp = kStartTimestamp,
         .end_timestamp = kEndTimestamp,
-        .pcm_samples = pcm_samples,
+        .encoded_samples = encoded_sampes_buffer_.back(),
         .down_mixing_params = down_mixing_params,
     });
 
@@ -1003,24 +1022,19 @@ class DemixingModuleTest : public DemixingModuleTestBase,
         .end_timestamp = kEndTimestamp,
         .samples_to_trim_at_end = kZeroSamplesToTrimAtEnd,
         .samples_to_trim_at_start = kZeroSamplesToTrimAtStart,
-        .decoded_samples = absl::MakeConstSpan(pcm_samples_buffer_.back()),
+        .decoded_samples = absl::MakeConstSpan(encoded_sampes_buffer_.back()),
         .down_mixing_params = down_mixing_params});
     auto& expected_label_to_samples =
         expected_id_to_labeled_decoded_frame_[kAudioElementId].label_to_samples;
 
-    // `pcm_samples` is arranged in (channel, time axes). Convert the samples
-    // to floating points. The demixing process never changes data for the
-    // input labels.
-    auto labels_iter = labels.begin();
-    for (int channel = 0; channel < labels.size(); ++channel) {
-      auto& samples_for_channel = expected_label_to_samples[*labels_iter];
-
-      samples_for_channel.reserve(pcm_samples[channel].size());
-      for (const auto pcm_sample : pcm_samples[channel]) {
-        samples_for_channel.push_back(
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(pcm_sample));
-      }
-      labels_iter++;
+    // Encoded samples are arranged in (channel, time) axes. Copy the original
+    // samples to the map keyed by input labels, which are never changed by the
+    // demixing process.
+    int channel_index = 0;
+    for (const auto label : labels) {
+      expected_label_to_samples[label] =
+          encoded_sampes_buffer_.back()[channel_index];
+      channel_index++;
     }
   }
 
@@ -1074,13 +1088,13 @@ class DemixingModuleTest : public DemixingModuleTestBase,
               actual_label_to_samples);
   }
 
- protected:
   std::list<AudioFrameWithData> audio_frames_;
   std::list<DecodedAudioFrame> decoded_audio_frames_;
 
   // Memory for the samples, so that the span in `DecodedAudioFrame` points
   // to valid memory addresses.
-  std::list<std::vector<std::vector<int32_t>>> pcm_samples_buffer_;
+  std::list<std::vector<std::vector<InternalSampleType>>>
+      encoded_sampes_buffer_;
 
   IdLabeledFrameMap expected_id_to_labeled_decoded_frame_;
 
@@ -1139,7 +1153,7 @@ TEST_F(DemixingModuleTest,
   IdLabeledFrameMap unused_id_to_labeled_frame, id_to_labeled_decoded_frame;
   TestCreateDemixingModule(1);
   // Destroy the raw samples.
-  audio_frames_.back().pcm_samples = std::nullopt;
+  audio_frames_.back().encoded_samples = std::nullopt;
 
   EXPECT_THAT(demixing_module_->DemixOriginalAudioSamples(audio_frames_),
               Not(IsOk()));

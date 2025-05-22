@@ -2179,12 +2179,13 @@ void RenderUsingObuProcessorExpectOk(
       unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
-  absl::Span<const absl::Span<const int32_t>> output_rendered_pcm_samples;
+  absl::Span<const absl::Span<const InternalSampleType>>
+      output_rendered_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                   /*timestamp=*/0, audio_frames, parameter_blocks,
-                  output_rendered_pcm_samples),
+                  output_rendered_samples),
               IsOk());
-  for (const auto output_channel : output_rendered_pcm_samples) {
+  for (const auto output_channel : output_rendered_samples) {
     EXPECT_TRUE(output_channel.empty());
   }
 }
@@ -2425,19 +2426,22 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
       unused_output_layout, insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
-  absl::Span<const absl::Span<const int32_t>> output_rendered_pcm_samples;
+  absl::Span<const absl::Span<const InternalSampleType>>
+      output_rendered_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                   /*timestamp=*/0, audio_frames_with_data, kNoParameterBlocks,
-                  output_rendered_pcm_samples),
+                  output_rendered_samples),
               IsOk());
 
   // Outer vector is for each channel, inner vector is for each tick.
-  std::vector<std::vector<int32_t>> expected_pcm_samples = {
+  const std::vector<std::vector<int32_t>> expected_renderend_samples_int32 = {
       {0x33110000, 0x77550000, 0x0a990000},
       {0x44220000, 0x08660000, 0x0dbb0000},
   };
-  EXPECT_EQ(output_rendered_pcm_samples,
-            MakeSpanOfConstSpans(expected_pcm_samples));
+  const auto expected_rendered_samples =
+      Int32ToInternalSampleType2D(expected_renderend_samples_int32);
+  EXPECT_EQ(output_rendered_samples,
+            MakeSpanOfConstSpans(expected_rendered_samples));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -2550,11 +2554,11 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           .audio_element_with_data =
               &audio_elements_with_data.at(kFirstAudioElementId),
       });
-      absl::Span<const absl::Span<const int32_t>>
-          unused_output_rendered_pcm_samples;
+      absl::Span<const absl::Span<const InternalSampleType>>
+          unused_output_rendered_samples;
       EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
                       /*timestamp=*/i, audio_frames_with_data,
-                      kNoParameterBlocks, unused_output_rendered_pcm_samples),
+                      kNoParameterBlocks, unused_output_rendered_samples),
                   IsOk());
     }
   }

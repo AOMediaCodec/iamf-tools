@@ -7,6 +7,7 @@ cc_test(
     deps = [
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
@@ -20,6 +21,7 @@ cc_test(
     deps = [
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",

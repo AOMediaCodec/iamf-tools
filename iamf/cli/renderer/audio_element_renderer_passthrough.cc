@@ -19,7 +19,6 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
@@ -181,15 +180,7 @@ absl::Status AudioElementRendererPassThrough::RenderSamples(
     absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
     std::vector<InternalSampleType>& rendered_samples) {
   // Flatten the (channel, time) axes into interleaved samples.
-  const absl::AnyInvocable<absl::Status(InternalSampleType, InternalSampleType&)
-                               const>
-      kIdentityTransform =
-          [](InternalSampleType input, InternalSampleType& output) {
-            output = input;
-            return absl::OkStatus();
-          };
-  return ConvertChannelTimeToInterleaved(samples_to_render, kIdentityTransform,
-                                         rendered_samples);
+  return ConvertChannelTimeToInterleaved(samples_to_render, rendered_samples);
 }
 
 }  // namespace iamf_tools

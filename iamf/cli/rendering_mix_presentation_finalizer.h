@@ -99,11 +99,11 @@ class RenderingMixPresentationFinalizer {
     InternalTimestamp start_timestamp;
 
     // Reusable buffer for storing rendered samples.
-    std::vector<std::vector<int32_t>> rendered_samples;
+    std::vector<std::vector<InternalSampleType>> rendered_samples;
 
     // Vector of views into the valid portions of the channels in
     // `rendered_samples`.
-    std::vector<absl::Span<const int32_t>> valid_rendered_samples;
+    std::vector<absl::Span<const InternalSampleType>> valid_rendered_samples;
   };
 
   // We need to store rendering metadata for each submix, layout, and audio
@@ -236,7 +236,7 @@ class RenderingMixPresentationFinalizer {
    * \param Post-processed samples, or rendered samples if no post-processor is
    *        available. A specific status on failure.
    */
-  absl::StatusOr<absl::Span<const absl::Span<const int32_t>>>
+  absl::StatusOr<absl::Span<const absl::Span<const InternalSampleType>>>
   GetPostProcessedSamplesAsSpan(DecodedUleb128 mix_presentation_id,
                                 size_t sub_mix_index,
                                 size_t layout_index) const;

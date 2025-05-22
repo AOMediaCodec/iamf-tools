@@ -13,7 +13,6 @@
 #ifndef CLI_AUDIO_FRAME_WITH_DATA_H_
 #define CLI_AUDIO_FRAME_WITH_DATA_H_
 
-#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -34,9 +33,9 @@ struct AudioFrameWithData {
   InternalTimestamp end_timestamp;  // End time of this frame. Measured in ticks
                                     // from the Global Timing Module.
 
-  // The PCM samples to encode this audio frame, if known. This is useful to
-  // calculate recon gain.
-  std::optional<std::vector<std::vector<int32_t>>> pcm_samples;
+  // The samples (in internal sample type) used to encode this audio frame,
+  // if known. This is useful to calculate recon gain.
+  std::optional<std::vector<std::vector<InternalSampleType>>> encoded_samples;
 
   // Down-mixing parameters used to create this audio frame.
   DownMixingParams down_mixing_params;

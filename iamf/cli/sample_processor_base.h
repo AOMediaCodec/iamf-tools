@@ -13,11 +13,11 @@
 #define CLI_SAMPLE_PROCESSOR_BASE_H_
 
 #include <cstddef>
-#include <cstdint>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -70,8 +70,8 @@ class SampleProcessorBase {
    * \return `absl::OkStatus()` on success. `absl::FailedPreconditionError` if
    *         called after `Flush()`. Other specific statuses on failure.
    */
-  absl::Status PushFrame(
-      absl::Span<const absl::Span<const int32_t>> channel_time_samples);
+  absl::Status PushFrame(absl::Span<const absl::Span<const InternalSampleType>>
+                             channel_time_samples);
 
   /*!\brief Signals to close the processor and flush any remaining samples.
    *
@@ -88,7 +88,8 @@ class SampleProcessorBase {
    * \return Span of the output samples. The span will be invalidated when
    *         `PushFrame()` or `Flush()` is called.
    */
-  absl::Span<const absl::Span<const int32_t>> GetOutputSamplesAsSpan();
+  absl::Span<const absl::Span<const InternalSampleType>>
+  GetOutputSamplesAsSpan();
 
  protected:
   /*!\brief Pushes a frame of samples to the processor.
@@ -97,7 +98,8 @@ class SampleProcessorBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status PushFrameDerived(
-      absl::Span<const absl::Span<const int32_t>> channel_time_samples) = 0;
+      absl::Span<const absl::Span<const InternalSampleType>>
+          channel_time_samples) = 0;
 
   /*!\brief Signals to close the processor and flush any remaining samples.
    *
@@ -113,11 +115,11 @@ class SampleProcessorBase {
   // vector contains one inner vector for each time tick. When the decoded
   // samples is shorter than a frame, the inner vector will be resized to fit
   // the actual length.
-  std::vector<std::vector<int32_t>> output_channel_time_samples_;
+  std::vector<std::vector<InternalSampleType>> output_channel_time_samples_;
 
   // Buffer backing the spans of output samples returned by
   // `GetOutputSamplesAsSpan()`.
-  std::vector<absl::Span<const int32_t>> output_span_buffer_;
+  std::vector<absl::Span<const InternalSampleType>> output_span_buffer_;
 
  private:
   enum class State {

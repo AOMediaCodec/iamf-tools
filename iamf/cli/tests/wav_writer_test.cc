@@ -16,7 +16,6 @@
 #include <filesystem>
 #include <numeric>
 #include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -25,7 +24,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/cli/wav_reader.h"
+#include "iamf/obu/types.h"
 
 using ::absl_testing::IsOk;
 
@@ -40,7 +39,7 @@ constexpr int kBitDepth24 = 24;
 constexpr int kBitDepth32 = 32;
 constexpr size_t kMaxInputSamplesPerFrame = 960;
 
-constexpr int32_t kSampleValue = 0x00000000;
+constexpr InternalSampleType kSampleValue = 0.1;
 
 TEST(WavWriterTest, Construct16BitWavWriter) {
   auto wav_writer =
@@ -99,8 +98,10 @@ TEST(PushFrame, WriteChannelsOfEmptySamplesSucceeds) {
                         kSampleRateHz, kBitDepth24, kMaxInputSamplesPerFrame);
   ASSERT_NE(wav_writer, nullptr);
 
-  const std::vector<std::vector<int32_t>> kChannelsOfEmptySamples(
+  const std::vector<std::vector<int32_t>> kChannelsOfEmptySamplesInt(
       kNumChannels, std::vector<int32_t>());
+  const auto kChannelsOfEmptySamples =
+      Int32ToInternalSampleType2D(kChannelsOfEmptySamplesInt);
   EXPECT_THAT(
       wav_writer->PushFrame(MakeSpanOfConstSpans(kChannelsOfEmptySamples)),
       IsOk());
@@ -124,8 +125,8 @@ TEST(PushFrame, WriteIntegerSamplesSucceeds) {
   ASSERT_NE(wav_writer, nullptr);
 
   constexpr int kNumSamples = 3;
-  const std::vector<std::vector<int32_t>> samples(
-      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
+  const std::vector<std::vector<InternalSampleType>> samples(
+      kNumChannels, std::vector<InternalSampleType>(kNumSamples, kSampleValue));
   EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 }
 
@@ -139,8 +140,8 @@ TEST(PushFrame, WriteManyChannelsSucceeds) {
   ASSERT_NE(wav_writer, nullptr);
 
   constexpr int kNumSamples = 3;
-  const std::vector<std::vector<int32_t>> samples(
-      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
+  const std::vector<std::vector<InternalSampleType>> samples(
+      kNumChannels, std::vector<InternalSampleType>(kNumSamples, kSampleValue));
   EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 }
 
@@ -164,8 +165,9 @@ TEST(PushFrame, WriteMoreSamplesThanConfiguredFails) {
   ASSERT_NE(wav_writer, nullptr);
 
   constexpr int kTooManySamples = 2;
-  std::vector<std::vector<int32_t>> samples(
-      kNumChannels, std::vector<int32_t>(kTooManySamples, kSampleValue));
+  const std::vector<std::vector<InternalSampleType>> samples(
+      kNumChannels,
+      std::vector<InternalSampleType>(kTooManySamples, kSampleValue));
   EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
 }
 
@@ -187,7 +189,7 @@ TEST(PushFrame, WriteChannelWithTooFewSamplesFails) {
   ASSERT_NE(wav_writer, nullptr);
 
   // The second tick is missing a channel.
-  const std::vector<std::vector<int32_t>> samples = {
+  const std::vector<std::vector<InternalSampleType>> samples = {
       {kSampleValue, kSampleValue}, {kSampleValue}};
   EXPECT_FALSE(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)).ok());
 }
@@ -198,8 +200,8 @@ TEST(PushFrame, ConsumesInputSamples) {
                         kSampleRateHz, kBitDepth16, kMaxInputSamplesPerFrame);
   ASSERT_NE(wav_writer, nullptr);
   constexpr int kNumSamples = 3;
-  const std::vector<std::vector<int32_t>> samples(
-      kNumChannels, std::vector<int32_t>(kNumSamples, kSampleValue));
+  const std::vector<std::vector<InternalSampleType>> samples(
+      kNumChannels, std::vector<InternalSampleType>(kNumSamples, kSampleValue));
 
   EXPECT_THAT(wav_writer->PushFrame(MakeSpanOfConstSpans(samples)), IsOk());
 
@@ -209,7 +211,7 @@ TEST(PushFrame, ConsumesInputSamples) {
   for (const auto channel_span : wav_writer->GetOutputSamplesAsSpan()) {
     EXPECT_TRUE(channel_span.empty());
   }
-}  //   std::vector<absl::Span<const InternalSampleType>>
+}
 
 TEST(DeprecatedWritePcmSamples,
      DeprecatedWriteIntegerSamplesSucceedsWithoutHeader) {
@@ -334,8 +336,10 @@ TEST(WavWriterTest,
 TEST(WavWriterTest,
      Output16BitWavFileHasCorrectDataWithPushFrameAfterDestruction) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedSamplesInt32 = {
       {0x01000000, 0x03020000, 0x05040000, 0x07060000, 0x09080000, 0x0b0a0000}};
+  const auto kExpectedSamples =
+      Int32ToInternalSampleType2D(kExpectedSamplesInt32);
   constexpr int kNumSamplesPerFrame = 6;
   {
     // Create the writer in a small scope. The user can safely omit the call the
@@ -353,13 +357,15 @@ TEST(WavWriterTest,
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
   EXPECT_TRUE(wav_reader.ReadFrame());
-  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamplesInt32);
 }
 
 TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrameAfterFlush) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedSamplesInt32 = {
       {0x01000000, 0x03020000, 0x05040000, 0x07060000, 0x09080000, 0x0b0a0000}};
+  const auto kExpectedSamples =
+      Int32ToInternalSampleType2D(kExpectedSamplesInt32);
   constexpr int kNumSamplesPerFrame = 6;
 
   auto wav_writer =
@@ -377,7 +383,7 @@ TEST(WavWriterTest, Output16BitWavFileHasCorrectDataWithPushFrameAfterFlush) {
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
   EXPECT_TRUE(wav_reader.ReadFrame());
-  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamplesInt32);
 }
 
 TEST(WavWriterTest,
@@ -408,8 +414,10 @@ TEST(WavWriterTest,
 
 TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedSamplesInt32 = {
       {0x02010000, 0x05040300, 0x08070600, 0x0b0a0900}};
+  const auto kExpectedSamples =
+      Int32ToInternalSampleType2D(kExpectedSamplesInt32);
   constexpr int kNumSamplesPerFrame = 4;
   {
     // Create the writer in a small scope. It should be destroyed before
@@ -425,7 +433,7 @@ TEST(WavWriterTest, Output24BitWavFileHasCorrectData) {
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), kNumSamplesPerFrame);
   EXPECT_TRUE(wav_reader.ReadFrame());
-  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamplesInt32);
 }
 
 TEST(WavWriterTest,
@@ -456,8 +464,10 @@ TEST(WavWriterTest,
 
 TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedSamplesInt32 = {
       {0x03020100, 0x07060504, 0x0b0a0908}};
+  const auto kExpectedSamples =
+      Int32ToInternalSampleType2D(kExpectedSamplesInt32);
   constexpr int kNumSamplesPerFrame = 3;
   {
     // Create the writer in a small scope. It should be destroyed before
@@ -474,16 +484,18 @@ TEST(WavWriterTest, Output32BitWavFileHasCorrectData) {
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), 3);
   EXPECT_TRUE(wav_reader.ReadFrame());
-  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamplesInt32);
 }
 
 TEST(WavWriterTest, OutputWithManyChannelsHasCorrectData) {
   constexpr int kNumChannels = 6;
   const std::string output_file_path(GetAndCleanupOutputFileName(".wav"));
-  const std::vector<std::vector<int32_t>> kExpectedSamples = {
+  const std::vector<std::vector<int32_t>> kExpectedSamplesInt32 = {
       {0x01010101, 0x01020202}, {0x02010101, 0x02020202},
       {0x03010101, 0x03020202}, {0x04010101, 0x04020202},
       {0x05010101, 0x05020202}, {0x06010101, 0x06020202}};
+  const auto kExpectedSamples =
+      Int32ToInternalSampleType2D(kExpectedSamplesInt32);
 
   constexpr int kNumSamplesPerFrame = 2;
   {
@@ -501,7 +513,7 @@ TEST(WavWriterTest, OutputWithManyChannelsHasCorrectData) {
       CreateWavReaderExpectOk(output_file_path, kNumSamplesPerFrame);
   EXPECT_EQ(wav_reader.remaining_samples(), 12);
   EXPECT_TRUE(wav_reader.ReadFrame());
-  EXPECT_EQ(wav_reader.buffers_, kExpectedSamples);
+  EXPECT_EQ(wav_reader.buffers_, kExpectedSamplesInt32);
 }
 
 TEST(WavWriterTest, OutputWavFileHasCorrectProperties) {

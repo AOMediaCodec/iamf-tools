@@ -19,27 +19,28 @@
 #include <variant>
 #include <vector>
 
-#include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/memory/memory.h"
-#include "absl/types/span.h"
-#include "iamf/common/utils/sample_processing_utils.h"
-
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
 #ifdef IS_LITTLE_ENDIAN
 #undef IS_LITTLE_ENDIAN
 #endif
 
+#include "absl/functional/any_invocable.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/codec/aac_utils.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
+#include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
+#include "iamf/obu/types.h"
 #include "libAACdec/include/aacdecoder_lib.h"
 #include "libSYS/include/machine_type.h"
 
@@ -210,14 +211,17 @@ absl::Status AacDecoder::DecodeAudioFrame(
 
   // Arrange the interleaved data in (channel, time) axes with samples stored in
   // the upper bytes of an `int32_t`.
-  const absl::AnyInvocable<absl::Status(INT_PCM, int32_t&) const>
-      kAacInternalTypeToInt32 = [](INT_PCM input, int32_t& output) {
-        output = static_cast<int32_t>(input) << (32 - GetFdkAacBitDepth());
-        return absl::OkStatus();
-      };
+  const auto fdk_aac_bit_depth = GetFdkAacBitDepth();
+  const absl::AnyInvocable<absl::Status(INT_PCM, InternalSampleType&) const>
+      kAacInternalTypeToSampleType =
+          [](INT_PCM input, InternalSampleType& output) {
+            output = Int32ToNormalizedFloatingPoint<InternalSampleType>(
+                static_cast<int32_t>(input) << (32 - fdk_aac_bit_depth));
+            return absl::OkStatus();
+          };
   return ConvertInterleavedToChannelTime(absl::MakeConstSpan(output_pcm),
-                                         num_channels_, kAacInternalTypeToInt32,
-                                         decoded_samples_);
+                                         num_channels_, decoded_samples_,
+                                         kAacInternalTypeToSampleType);
 }
 
 }  // namespace iamf_tools

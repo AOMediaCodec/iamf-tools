@@ -12,12 +12,11 @@
 #ifndef CLI_LOUDNESS_CALCULATOR_BASE_H_
 #define CLI_LOUDNESS_CALCULATOR_BASE_H_
 
-#include <cstdint>
-
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -40,7 +39,8 @@ class LoudnessCalculatorBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status AccumulateLoudnessForSamples(
-      absl::Span<const absl::Span<const int32_t>> channel_time_samples) = 0;
+      absl::Span<const absl::Span<const InternalSampleType>>
+          channel_time_samples) = 0;
 
   /*!\brief Outputs the measured loudness.
    *

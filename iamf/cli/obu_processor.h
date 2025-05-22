@@ -254,7 +254,7 @@ class ObuProcessor {
    *        the input OBUs actually belong to the same temporal unit.
    * \param audio_frames_with_data Audio Frames with the requisite data.
    * \param parameter_blocks_with_data Parameter Blocks with the requisite data.
-   * \param output_rendered_pcm_samples Output rendered PCM samples. These
+   * \param output_rendered_samples Output rendered samples. These
    *        should be used immediately after this function is called; they will
    *        be invalidated after the next call to
    *        `RenderTemporalUnitAndMeasureLoudness()`, as well as after the
@@ -266,7 +266,8 @@ class ObuProcessor {
       InternalTimestamp timestamp,
       const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks,
-      absl::Span<const absl::Span<const int32_t>>& output_rendered_pcm_samples);
+      absl::Span<const absl::Span<const InternalSampleType>>&
+          output_rendered_samples);
 
   IASequenceHeaderObu ia_sequence_header_;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_ = {};

@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/sample_processor_base.h"
 
-#include <cstdint>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -19,13 +18,15 @@
 #include "absl/types/span.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 SampleProcessorBase::~SampleProcessorBase() {};
 
 absl::Status SampleProcessorBase::PushFrame(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
   if (state_ != State::kTakingSamples) {
     return absl::FailedPreconditionError(absl::StrCat(
         "Do not use PushFrame() after Flush() is called. State= ", state_));
@@ -62,7 +63,7 @@ absl::Status SampleProcessorBase::Flush() {
   return FlushDerived();
 }
 
-absl::Span<const absl::Span<const int32_t>>
+absl::Span<const absl::Span<const InternalSampleType>>
 SampleProcessorBase::GetOutputSamplesAsSpan() {
   for (int c = 0; c < output_channel_time_samples_.size(); c++) {
     output_span_buffer_[c] =

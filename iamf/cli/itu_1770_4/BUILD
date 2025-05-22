@@ -28,6 +28,7 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:sample_processing_utils",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
         "@com_google_absl//absl/base:no_destructor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",

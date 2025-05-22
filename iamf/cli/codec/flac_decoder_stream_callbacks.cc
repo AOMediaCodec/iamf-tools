@@ -18,6 +18,8 @@
 
 #include "absl/log/log.h"
 #include "absl/types/span.h"
+#include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/types.h"
 #include "include/FLAC/format.h"
 #include "include/FLAC/ordinals.h"
 #include "include/FLAC/stream_decoder.h"
@@ -78,8 +80,9 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
     decoded_samples_for_channel.resize(
         libflac_callback_data->num_samples_per_channel_, 0);
     for (int t = 0; t < frame->header.blocksize; ++t) {
-      decoded_samples_for_channel[t] = channel_buffer[t]
-                                       << (32 - frame->header.bits_per_sample);
+      decoded_samples_for_channel[t] =
+          Int32ToNormalizedFloatingPoint<InternalSampleType>(
+              channel_buffer[t] << (32 - frame->header.bits_per_sample));
     }
   }
   return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;

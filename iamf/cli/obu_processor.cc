@@ -898,7 +898,8 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     InternalTimestamp start_timestamp,
     const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    absl::Span<const absl::Span<const int32_t>>& output_rendered_pcm_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>&
+        output_rendered_samples) {
   if (audio_frames.empty()) {
     // Nothing to decode, render, or measure loudness of.
     return absl::OkStatus();
@@ -967,7 +968,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   if (!rendered_samples.ok()) {
     return rendered_samples.status();
   }
-  output_rendered_pcm_samples = *rendered_samples;
+  output_rendered_samples = *rendered_samples;
 
   // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits`, then a
   //                    final call to `GetPostProcessedSamplesAsSpan` when there

@@ -1174,9 +1174,7 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
   // Vector backing the samples passed to `audio_frame_generator`.
   const int kFrameSize = 8;
   std::vector<std::vector<InternalSampleType>> all_samples(kNumFrames);
-  std::vector<std::vector<int32_t>> expected_samples(kNumFrames);
   for (int32_t i = 0; i < kNumFrames; ++i) {
-    expected_samples[i].resize(kFrameSize, i);
     all_samples[i].resize(
         kFrameSize, Int32ToNormalizedFloatingPoint<InternalSampleType>(i));
   }
@@ -1214,13 +1212,13 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
     constexpr int kFirstSample = 0;
     constexpr int kLeftChannel = 0;
     constexpr int kRightChannel = 1;
-    const int32_t expected_sample = expected_samples[index][kFirstSample];
+    const auto expected_sample = all_samples[index][kFirstSample];
     // The timestamp should count up by the number of samples in each frame.
     EXPECT_EQ(audio_frame.start_timestamp, kFrameSize * index);
-    ASSERT_TRUE(audio_frame.pcm_samples.has_value());
-    EXPECT_EQ((*audio_frame.pcm_samples)[kFirstSample][kLeftChannel],
+    ASSERT_TRUE(audio_frame.encoded_samples.has_value());
+    EXPECT_EQ((*audio_frame.encoded_samples)[kFirstSample][kLeftChannel],
               expected_sample);
-    EXPECT_EQ((*audio_frame.pcm_samples)[kFirstSample][kRightChannel],
+    EXPECT_EQ((*audio_frame.encoded_samples)[kFirstSample][kRightChannel],
               expected_sample);
     index++;
   }

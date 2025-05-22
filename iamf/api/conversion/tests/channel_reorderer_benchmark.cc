@@ -19,6 +19,7 @@
 #include "benchmark/benchmark.h"
 #include "iamf/api/conversion/channel_reorderer.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -37,14 +38,16 @@ static int32_t GetNumberOfChannels(
   return num_channels;
 }
 
-static std::vector<std::vector<int32_t>> CreateAudioSamples(
+static std::vector<std::vector<InternalSampleType>> CreateAudioSamples(
     LoudspeakersSsConventionLayout::SoundSystem sound_system, int num_ticks) {
-  std::vector<std::vector<int32_t>> samples(GetNumberOfChannels(sound_system),
-                                            std::vector<int32_t>(num_ticks));
+  std::vector<std::vector<InternalSampleType>> samples(
+      GetNumberOfChannels(sound_system),
+      std::vector<InternalSampleType>(num_ticks));
   int32_t i = 0;
+  const InternalSampleType denominator = num_ticks * samples.size();
   for (auto& channel : samples) {
     for (auto& sample : channel) {
-      sample = i++;
+      sample = static_cast<InternalSampleType>(i++) / denominator;
     }
   }
   return samples;
@@ -61,7 +64,8 @@ static void BM_ReorderForAndroid(
   // Create input samples and a vector of spans pointing to the channels.
   const int num_ticks = state.range(0);
   auto samples = CreateAudioSamples(sound_system, num_ticks);
-  std::vector<absl::Span<const int32_t>> sample_spans(samples.size());
+  std::vector<absl::Span<const InternalSampleType>> sample_spans(
+      samples.size());
   for (int c = 0; c < samples.size(); c++) {
     sample_spans[c] = absl::MakeConstSpan(samples[c]);
   }
@@ -69,7 +73,6 @@ static void BM_ReorderForAndroid(
   // Measure the calls to `ChannelReorderer::Reorder()`.
   for (auto _ : state) {
     reorderer.Reorder(sample_spans);
-    ;
   }
 }
 

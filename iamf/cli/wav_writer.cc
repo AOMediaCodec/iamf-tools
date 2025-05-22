@@ -31,7 +31,9 @@
 #include "absl/types/span.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
+#include "iamf/obu/types.h"
 #include "src/dsp/write_wav_file.h"
 
 namespace iamf_tools {
@@ -213,7 +215,8 @@ WavWriter::~WavWriter() {
 }
 
 absl::Status WavWriter::PushFrameDerived(
-    absl::Span<const absl::Span<const int32_t>> channel_time_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        channel_time_samples) {
   // Flatten down the serialized PCM for compatibility with the internal
   // `WriteSamplesInternal` function.
   const size_t num_channels = channel_time_samples.size();
@@ -231,8 +234,11 @@ absl::Status WavWriter::PushFrameDerived(
   size_t write_position = 0;
   for (int t = 0; t < num_ticks; t++) {
     for (int c = 0; c < num_channels; c++) {
+      int32_t sample_int32;
+      RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
+          channel_time_samples[c][t], sample_int32));
       RETURN_IF_NOT_OK(WritePcmSample(
-          static_cast<uint32_t>(channel_time_samples[c][t]), bit_depth_,
+          static_cast<uint32_t>(sample_int32), bit_depth_,
           /*big_endian=*/false, samples_as_pcm.data(), write_position));
     }
   }

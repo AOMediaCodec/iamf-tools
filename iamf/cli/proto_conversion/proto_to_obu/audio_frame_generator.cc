@@ -173,15 +173,17 @@ absl::Status GetNumSamplesToPadAtEndAndValidate(
   return absl::OkStatus();
 }
 
+template <typename SampleType>
 void PadSamples(const size_t num_samples_to_pad, const size_t num_channels,
-                std::deque<std::vector<int32_t>>& samples) {
+                std::deque<std::vector<SampleType>>& samples) {
   samples.insert(samples.end(), num_samples_to_pad,
-                 std::vector<int32_t>(num_channels, 0));
+                 std::vector<SampleType>(num_channels, 0));
 }
 
+template <typename SampleType>
 void MoveSamples(const size_t num_samples,
-                 std::deque<std::vector<int32_t>>& source_samples,
-                 std::vector<std::vector<int32_t>>& destination_samples) {
+                 std::deque<std::vector<SampleType>>& source_samples,
+                 std::vector<std::vector<SampleType>>& destination_samples) {
   CHECK_GE(source_samples.size(), num_samples);
   const size_t num_channels = source_samples.front().size();
   CHECK_EQ(destination_samples.size(), num_channels);
@@ -235,8 +237,9 @@ absl::Status InitializeSubstreamData(
         /*num_samples_to_trim_at_end=*/0,
         /*num_samples_to_trim_at_start=*/encoder_required_samples_to_delay};
 
-    PadSamples(encoder_required_samples_to_delay, labels.size(),
-               substream_data_for_id.samples_obu);
+    PadSamples<InternalSampleType>(encoder_required_samples_to_delay,
+                                   labels.size(),
+                                   substream_data_for_id.samples_obu);
   }
 
   return absl::OkStatus();
@@ -337,10 +340,10 @@ absl::Status GetNextFrameSubstreamData(
           trimming_state.user_samples_left_to_trim_at_end,
           num_samples_to_pad_at_end));
 
-      PadSamples(num_samples_to_pad_at_end, num_channels,
-                 substream_data.samples_obu);
-      PadSamples(num_samples_to_pad_at_end, num_channels,
-                 substream_data.samples_encode);
+      PadSamples<InternalSampleType>(num_samples_to_pad_at_end, num_channels,
+                                     substream_data.samples_obu);
+      PadSamples<int32_t>(num_samples_to_pad_at_end, num_channels,
+                          substream_data.samples_encode);
 
       // Record the number of padded samples to be trimmed later.
       substream_data.num_samples_to_trim_at_end = num_samples_to_pad_at_end;
@@ -356,8 +359,8 @@ absl::Status GetNextFrameSubstreamData(
       // need to be added. These samples will be "left in" the decoder
       // after all OBUs are processed, but they should not count as being
       // trimmed.
-      PadSamples(num_samples_to_pad, num_channels,
-                 substream_data.samples_encode);
+      PadSamples<int32_t>(num_samples_to_pad, num_channels,
+                          substream_data.samples_encode);
     }
   }
 
@@ -439,7 +442,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
   std::optional<InternalTimestamp> encoded_timestamp;
   bool more_samples_to_encode = false;
   std::vector<std::vector<int32_t>> samples_encode;
-  std::vector<std::vector<int32_t>> samples_obu;
+  std::vector<std::vector<InternalSampleType>> samples_obu;
   do {
     RETURN_IF_NOT_OK(GetNextFrameSubstreamData(
         audio_element_id, demixing_module, num_samples_per_frame,
@@ -532,7 +535,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
                   substream_id, {}),
               .start_timestamp = start_timestamp,
               .end_timestamp = end_timestamp,
-              .pcm_samples = samples_obu,
+              .encoded_samples = samples_obu,
               .down_mixing_params = down_mixing_params,
               .recon_gain_info_parameter_data = ReconGainInfoParameterData(),
               .audio_element_with_data = &audio_element_with_data});

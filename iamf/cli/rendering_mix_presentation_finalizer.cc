@@ -406,9 +406,10 @@ absl::Status RenderAllFramesForLayout(
     InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
     const uint32_t common_sample_rate,
-    std::vector<std::vector<int32_t>>& rendered_samples,
-    std::vector<absl::Span<const int32_t>>& valid_rendered_samples) {
+    std::vector<std::vector<InternalSampleType>>& rendered_samples,
+    std::vector<absl::Span<const InternalSampleType>>& valid_rendered_samples) {
   // Each audio element rendered individually with `element_mix_gain` applied.
+  // TODO(b/382197581): Avoid creating `rendered_audio_elements` for each frame.
   std::vector<std::vector<InternalSampleType>> rendered_audio_elements(
       sub_mix_audio_elements.size());
   std::vector<float> linear_mix_gain_per_tick;
@@ -444,16 +445,14 @@ absl::Status RenderAllFramesForLayout(
                          parameter_blocks, output_mix_gain, num_channels,
                          linear_mix_gain_per_tick, rendered_samples_internal));
 
-  // Convert the rendered samples to int32, clipping if needed.
   RETURN_IF_NOT_OK(ConvertInterleavedToChannelTime(
       absl::MakeConstSpan(rendered_samples_internal), num_channels,
-      absl::AnyInvocable<absl::Status(InternalSampleType, int32_t&) const>(
-          NormalizedFloatingPointToInt32<InternalSampleType>),
       rendered_samples));
   valid_rendered_samples.resize(rendered_samples.size());
   for (int c = 0; c < rendered_samples.size(); ++c) {
     valid_rendered_samples[c] = absl::MakeConstSpan(rendered_samples[c]);
   }
+
   return absl::OkStatus();
 }
 
@@ -577,7 +576,8 @@ absl::Status GenerateRenderingMetadataForLayouts(
 
     // Pre-allocate a buffer to store a frame's worth of rendered samples.
     layout_rendering_metadata.rendered_samples.resize(
-        common_num_samples_per_frame, std::vector<int32_t>(num_channels, 0));
+        common_num_samples_per_frame,
+        std::vector<InternalSampleType>(num_channels, 0.0));
   }
 
   return absl::OkStatus();
@@ -847,7 +847,7 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
   return absl::OkStatus();
 }
 
-absl::StatusOr<absl::Span<const absl::Span<const int32_t>>>
+absl::StatusOr<absl::Span<const absl::Span<const InternalSampleType>>>
 RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
     DecodedUleb128 mix_presentation_id, size_t sub_mix_index,
     size_t layout_index) const {
