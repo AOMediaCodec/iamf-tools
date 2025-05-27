@@ -6,7 +6,9 @@ cc_library(
     name = "internal_utils",
     srcs = ["internal_utils.cc"],
     hdrs = ["internal_utils.h"],
-    visibility = ["//iamf/cli/internal/decoder:__pkg__"],
+    visibility = [
+        "//iamf/cli/internal/decoder:__pkg__",
+    ],
     deps = [
         "//iamf/api:iamf_tools_api_types",
         "//iamf/api/decoder:iamf_decoder",
