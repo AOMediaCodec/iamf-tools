@@ -117,18 +117,13 @@ struct IamfDecoder::DecoderState {
 // OBUs have been processed. Contracted to only return a resource exhausted
 // error if there is not enough data to process the descriptor OBUs.
 absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
-  // When resetting, the `ObuProcessor` is recreated with the original
-  // descriptors. So we force `is_exhaustive_and_exact` to be true in that case.
-  const bool on_reset = obu_processor != nullptr;
-  const bool is_exhaustive_and_exact = on_reset || created_from_descriptors;
-
   // Happens only in the pure streaming case.
   const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   auto temp_obu_processor = ObuProcessor::CreateForRendering(
       desired_profile_versions, layout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-      is_exhaustive_and_exact, read_bit_buffer.get(), layout,
+      created_from_descriptors, read_bit_buffer.get(), layout,
       insufficient_data);
   if (temp_obu_processor == nullptr) {
     // `insufficient_data` is true iff everything so far is valid but more data
@@ -477,10 +472,10 @@ IamfStatus IamfDecoder::GetFrameSize(uint32_t& output_frame_size) const {
 }
 
 IamfStatus IamfDecoder::Reset() {
-  if (!IsDescriptorProcessingComplete()) {
+  if (!state_->created_from_descriptors) {
     return IamfStatus::ErrorStatus(
-        "Failed Precondition: Reset() cannot be called before descriptor "
-        "processing is complete.");
+        "Failed Precondition: Reset() cannot be called in standalone decoding "
+        "mode.");
   }
 
   // Clear the rendered samples.

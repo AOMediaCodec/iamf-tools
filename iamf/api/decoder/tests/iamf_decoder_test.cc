@@ -1048,7 +1048,7 @@ TEST(Reset, DecodingAfterResetSucceedsAfterCreateFromDescriptors) {
   EXPECT_EQ(bytes_written, expected_size);
 }
 
-TEST(Reset, DecodingAfterResetSucceedsInStandaloneCase) {
+TEST(Reset, DecodingAfterResetFailsInStandaloneCase) {
   // Create a decoder from descriptors.
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
@@ -1062,34 +1062,11 @@ TEST(Reset, DecodingAfterResetSucceedsInStandaloneCase) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
-  // We have an inherent exit when initially decoding the descriptors, so we
-  // call again with an empty vector so that the first temporal unit is
-  // processed.
-  EXPECT_TRUE(decoder->Decode({}, 0).ok());
-  // We expect one temporal unit to be available since we are decoding in a
-  // standalone case and we've passed two in.
-  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
   // Signal end of decoding and reset.
   decoder->SignalEndOfDecoding();
-  EXPECT_TRUE(decoder->Reset().ok());
-
-  // Confirm that there is no temporal unit available after reset.
-  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
-
-  // Now, we put two temporal units into decode again.
-  EXPECT_TRUE(
-      decoder->Decode(temporal_units.data(), temporal_units.size()).ok());
-  // Confirm that one temporal unit is available and can be retrieved.
-  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
-  size_t expected_size = 2 * 8 * 4;
-  std::vector<uint8_t> output_data(expected_size);
-  size_t bytes_written;
-  EXPECT_TRUE(decoder
-                  ->GetOutputTemporalUnit(output_data.data(),
-                                          output_data.size(), bytes_written)
-                  .ok());
-  EXPECT_EQ(bytes_written, expected_size);
+  // The decoder should fail to reset because we are in a standalone case.
+  EXPECT_FALSE(decoder->Reset().ok());
 }
 
 TEST(Reset, ResetFailsWhenDescriptorProcessingIncomplete) {

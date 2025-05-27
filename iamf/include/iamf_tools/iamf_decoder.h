@@ -251,8 +251,8 @@ class IamfDecoder {
    * A clean state refers to a state in which descriptors OBUs have been parsed,
    * but no other data has been parsed.
    *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
+   * This function can only be used if the decoder was created with
+   * CreateFromDescriptors().
    *
    * This function will result in all decoded temporal units that have not been
    * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
