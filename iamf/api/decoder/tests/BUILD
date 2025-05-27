@@ -25,6 +25,7 @@ cc_test(
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli/tests:cli_test_utils",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",

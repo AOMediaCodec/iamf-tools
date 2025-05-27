@@ -21,11 +21,13 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/types/span.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -50,6 +52,8 @@ constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+constexpr std::array<uint8_t, 16> kEightSampleAudioFrame2 = {
+    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
@@ -664,9 +668,9 @@ TEST(
                                         codec_config_obus);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
       audio_elements_with_data;
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
-      codec_config_obus, audio_elements_with_data);
+  AddScalableAudioElementWithSubstreamIds(
+      IamfInputLayout::kMono, kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId}, codec_config_obus, audio_elements_with_data);
   std::list<MixPresentationObu> mix_presentation_obus;
   std::vector<LoudspeakersSsConventionLayout::SoundSystem>
       sound_system_layouts = {
@@ -694,13 +698,16 @@ TEST(
       api::IamfDecoder::CreateFromDescriptors(kMonoSettings, descriptors.data(),
                                               descriptors.size(), decoder)
           .ok());
+  decoder->ConfigureOutputSampleType(api::OutputSampleType::kInt16LittleEndian);
 
   const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
 
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
-  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  AudioFrameObu audio_frame2(ObuHeader(), kFirstSubstreamId,
+                             kEightSampleAudioFrame2);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame2});
 
   // Call decode with both temporal units.
   EXPECT_TRUE(
@@ -708,7 +715,7 @@ TEST(
 
   // We expect to get the first temporal unit with the correct number of
   // samples.
-  const size_t expected_output_size = 8 * 4;  // 8 samples, 32-bit ints, mono.
+  const size_t expected_output_size = 8 * 2;  // 8 samples, 16-bit ints, mono.
   std::vector<uint8_t> output_data(expected_output_size);
   size_t bytes_written;
   EXPECT_TRUE(decoder
@@ -717,17 +724,20 @@ TEST(
                   .ok());
   EXPECT_EQ(bytes_written, expected_output_size);
 
-  output_data.clear();
-  output_data.resize(expected_output_size);
+  std::vector<uint8_t> output_data2(expected_output_size);
   bytes_written = 0;
 
   // We expect to get the second temporal unit with the correct number of
   // samples.
   EXPECT_TRUE(decoder
-                  ->GetOutputTemporalUnit(output_data.data(),
-                                          output_data.size(), bytes_written)
+                  ->GetOutputTemporalUnit(output_data2.data(),
+                                          output_data2.size(), bytes_written)
                   .ok());
   EXPECT_EQ(bytes_written, expected_output_size);
+  // Test case is intentionally transparent, using mono with 16 bits. So the
+  // output should be the same as the input.
+  EXPECT_THAT(output_data, testing::ElementsAreArray(kEightSampleAudioFrame));
+  EXPECT_THAT(output_data2, testing::ElementsAreArray(kEightSampleAudioFrame2));
 }
 
 TEST(Decode, FailsWhenCalledAfterSignalEndOfDecoding) {
