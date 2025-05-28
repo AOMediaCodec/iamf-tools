@@ -183,7 +183,6 @@ IamfStatus ProcessAllTemporalUnits(
   const auto start_position_bits = read_bit_buffer->Tell();
   while (continue_processing) {
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
-    // TODO(b/395889878): Add support for partial temporal units.
     absl::Status absl_status = obu_processor->ProcessTemporalUnit(
         created_from_descriptors, output_temporal_unit, continue_processing);
     if (!absl_status.ok()) {
