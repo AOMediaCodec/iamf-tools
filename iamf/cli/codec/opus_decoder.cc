@@ -92,23 +92,14 @@ OpusDecoder::~OpusDecoder() {
 
 absl::Status OpusDecoder::DecodeAudioFrame(
     absl::Span<const uint8_t> encoded_frame) {
-  // TODO(b/382197581): Pre-allocate working buffers like `output_pcm_float` and
-  //                    `input_data`.
-
   // `opus_decode_float` decodes to `float` samples with channels interlaced.
   // Typically these values are in the range of [-1, +1] (always for
   // `iamf_tools`-encoded data). Values outside of that range will be clipped in
   // `NormalizedFloatingPointToInt32`.
-  std::vector<float> output_pcm_float(num_samples_per_channel_ * num_channels_);
-
-  // Transform the data and feed it to the decoder.
-  std::vector<unsigned char> input_data(encoded_frame.size());
-  std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),
-                 [](uint8_t c) { return static_cast<unsigned char>(c); });
-
   const int num_output_samples = opus_decode_float(
-      decoder_, input_data.data(), static_cast<opus_int32>(input_data.size()),
-      output_pcm_float.data(),
+      decoder_, reinterpret_cast<const unsigned char*>(encoded_frame.data()),
+      static_cast<opus_int32>(encoded_frame.size()),
+      interleaved_float_from_libopus_.data(),
       /*frame_size=*/num_samples_per_channel_,
       /*decode_fec=*/0);
   if (num_output_samples < 0) {
@@ -127,7 +118,7 @@ absl::Status OpusDecoder::DecodeAudioFrame(
         return absl::OkStatus();
       };
   return ConvertInterleavedToChannelTime(
-      absl::MakeConstSpan(output_pcm_float)
+      absl::MakeConstSpan(interleaved_float_from_libopus_)
           .first(num_output_samples * num_channels_),
       num_channels_, decoded_samples_, kFloatToInternalSampleType);
 }
