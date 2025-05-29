@@ -16,10 +16,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
 
@@ -51,7 +51,7 @@ class LpcmDecoder : public DecoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame) override;
+      absl::Span<const uint8_t> encoded_frame) override;
 
  private:
   /* Private constructor.

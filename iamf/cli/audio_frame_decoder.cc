@@ -19,6 +19,7 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -116,7 +117,8 @@ absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
   // Decode the samples with the specific decoder associated with this
   // substream.
   auto& decoder = *decoder_iter->second;
-  RETURN_IF_NOT_OK(decoder.DecodeAudioFrame(audio_frame.obu.audio_frame_));
+  RETURN_IF_NOT_OK(decoder.DecodeAudioFrame(
+      absl::MakeConstSpan(audio_frame.obu.audio_frame_)));
 
   // Return a frame. Most fields are copied from the encoded frame.
   return DecodedAudioFrame{

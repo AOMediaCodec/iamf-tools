@@ -182,7 +182,7 @@ AacDecoder::~AacDecoder() {
 }
 
 absl::Status AacDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame) {
+    absl::Span<const uint8_t> encoded_frame) {
   // Transform the data and feed it to the decoder.
   std::vector<UCHAR> input_data(encoded_frame.size());
   std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),

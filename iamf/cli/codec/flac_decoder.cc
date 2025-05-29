@@ -14,13 +14,12 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "absl/log/check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/cli/codec/flac_decoder_stream_callbacks.h"
 #include "include/FLAC/stream_decoder.h"
@@ -62,7 +61,7 @@ absl::Status FlacDecoder::Finalize() {
 }
 
 absl::Status FlacDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame) {
+    absl::Span<const uint8_t> encoded_frame) {
   // Set the encoded frame to be decoded; the libflac decoder will copy the
   // data using LibFlacReadCallback.
   callback_data_->SetEncodedFrame(encoded_frame);

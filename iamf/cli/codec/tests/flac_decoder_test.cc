@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -27,6 +28,7 @@
 namespace iamf_tools {
 namespace {
 
+using absl::MakeConstSpan;
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::ElementsAreArray;
@@ -59,8 +61,7 @@ TEST(DecodeAudioFrame, SubsequentCallsSucceed) {
   auto flac_decoder =
       CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
-  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
-                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(MakeConstSpan(kFlacEncodedFrame)),
               IsOk());
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamplesInt32 = {
       {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
@@ -89,8 +90,8 @@ TEST(DecodeAudioFrame, DoesNotHangOnInvalidFrame) {
       CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
   const std::vector<uint8_t> kInvalidFrame = {0x00};
-  const auto status = flac_decoder->DecodeAudioFrame(
-      std::vector(kInvalidFrame.begin(), kInvalidFrame.end()));
+  const auto status =
+      flac_decoder->DecodeAudioFrame(MakeConstSpan(kInvalidFrame));
 
   // The frame is not valid, but we expect to not hang and get an error status.
   EXPECT_THAT(status, Not(IsOk()));
@@ -103,8 +104,7 @@ TEST(DecodeAudioFrame, FailsOnMismatchedBlocksizeTooLarge) {
   auto flac_decoder =
       CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
-  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
-                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(MakeConstSpan(kFlacEncodedFrame)),
               Not(IsOk()));
 }
 
@@ -115,8 +115,7 @@ TEST(DecodeAudioFrame, FillsExtraSamplesWithZeros) {
   auto flac_decoder =
       CreateFlacDecoderExpectNonNull(kNumChannels, kNumSamplesPerFrame);
 
-  EXPECT_THAT(flac_decoder->DecodeAudioFrame(std::vector(
-                  kFlacEncodedFrame.begin(), kFlacEncodedFrame.end())),
+  EXPECT_THAT(flac_decoder->DecodeAudioFrame(MakeConstSpan(kFlacEncodedFrame)),
               IsOk());
   const auto decoded_samples = flac_decoder->ValidDecodedSamples();
 

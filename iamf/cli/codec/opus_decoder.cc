@@ -91,7 +91,7 @@ OpusDecoder::~OpusDecoder() {
 }
 
 absl::Status OpusDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame) {
+    absl::Span<const uint8_t> encoded_frame) {
   // TODO(b/382197581): Pre-allocate working buffers like `output_pcm_float` and
   //                    `input_data`.
 

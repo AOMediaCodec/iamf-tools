@@ -51,7 +51,7 @@ class DecoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame) = 0;
+      absl::Span<const uint8_t> encoded_frame) = 0;
 
   /*!\brief Outputs valid decoded samples as a span.
    *

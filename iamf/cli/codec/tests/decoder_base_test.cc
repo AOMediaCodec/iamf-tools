@@ -1,9 +1,9 @@
 #include "iamf/cli/codec/decoder_base.h"
 
 #include <cstdint>
-#include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 
 namespace iamf_tools {
@@ -22,7 +22,7 @@ class MockDecoder : public DecoderBase {
   // Unimplemented implementations for base class pure virtual methods
   // that we won't test.
   absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame) override {
+      absl::Span<const uint8_t> encoded_frame) override {
     return absl::UnimplementedError("Not implemented");
   }
 };

@@ -1,12 +1,13 @@
 #include "iamf/cli/codec/lpcm_decoder.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "absl/log/log.h"
 #include "absl/status/status_matchers.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
@@ -19,9 +20,12 @@
 namespace iamf_tools {
 namespace {
 
+using absl::MakeConstSpan;
+
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 
+using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Not;
@@ -32,6 +36,25 @@ constexpr uint8_t kSampleSize16 = 16;
 constexpr bool kLittleEndian = true;
 constexpr int kTwoChannels = 2;  // Keep the amount of test data reasonable.
 
+constexpr std::array<uint8_t, 4> kTwoSixteenBitSamples = {0x00, 0x00, 0x01,
+                                                          0x00};
+constexpr std::array<uint8_t, 8> kFourSixteenBitSamples = {
+    0x00, 0x00,  // 0
+    0x01, 0x00,  // 1
+    0x00, 0x01,  // 256
+    0x80, 0xff,  // -128
+};
+
+constexpr InternalSampleType kExpectedFirstSample =
+    Int32ToNormalizedFloatingPoint<InternalSampleType>(0);
+constexpr InternalSampleType kExpectedSecondSample =
+    Int32ToNormalizedFloatingPoint<InternalSampleType>(0x01000000);
+constexpr InternalSampleType kExpectedThirdSample =
+    Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00010000);
+constexpr InternalSampleType kExpectedFourthSample =
+    Int32ToNormalizedFloatingPoint<InternalSampleType>(
+        static_cast<int32_t>(0xff800000));
+
 CodecConfigObu CreateCodecConfigObu(LpcmDecoderConfig lpcm_decoder_config,
                                     uint32_t num_samples_per_frame) {
   const CodecConfig codec_config = {
@@ -41,7 +64,7 @@ CodecConfigObu CreateCodecConfigObu(LpcmDecoderConfig lpcm_decoder_config,
 
   CodecConfigObu codec_config_obu(ObuHeader(), 0, codec_config);
   return codec_config_obu;
-};
+}
 
 TEST(Create, Succeed) {
   LpcmDecoderConfig lpcm_decoder_config;
@@ -102,25 +125,17 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_FailsWhenFrameIsLargerThanExpected) {
   constexpr uint32_t kShortNumberOfSamplesPerFrame = 1;
   auto lpcm_decoder = CreateDecoderForDecodingTest(
       kSampleSize16, kLittleEndian, kShortNumberOfSamplesPerFrame);
-  const std::vector<uint8_t>& kEncodedFrameWithOneSamplesPerFrame = {
-      0x00, 0x00,  // 0
-      0x01, 0x00,  // 1
-  };
-  // The decoder is configured correctly. One sample per frame decodes fine.
+  // The decoder is configured correctly. Two sixteen-bit samples are okay,
+  // since there are two channels.
   ASSERT_THAT(
-      lpcm_decoder->DecodeAudioFrame(kEncodedFrameWithOneSamplesPerFrame),
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kTwoSixteenBitSamples)),
       IsOk());
 
   // But decoding two samples per frame fails, since the decoder was configured
   // for at most one sample per frame.
-  const std::vector<uint8_t>& kEncodedFrameWithTwoSamplesPerFrame = {
-      0x00, 0x00,  // 0
-      0x01, 0x00,  // 1
-      0x00, 0x01,  // 256
-      0x80, 0xff,  // -128
-  };
   EXPECT_FALSE(
-      lpcm_decoder->DecodeAudioFrame(kEncodedFrameWithTwoSamplesPerFrame).ok());
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kFourSixteenBitSamples))
+          .ok());
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
@@ -128,30 +143,19 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_LittleEndian16BitSamples) {
   bool little_endian = true;
   auto lpcm_decoder = CreateDecoderForDecodingTest(sample_size, little_endian,
                                                    kNumSamplesPerFrame);
-  const std::vector<uint8_t>& encoded_frame = {
-      0x00, 0x00,  // 0
-      0x01, 0x00,  // 1
-      0x00, 0x01,  // 256
-      0x80, 0xff,  // -128
-  };
 
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(kFourSixteenBitSamples), IsOk());
   const auto& decoded_samples = lpcm_decoder->ValidDecodedSamples();
 
   // We have two channels and four samples, so we expect two channels of two
   // samples each.
   EXPECT_EQ(decoded_samples.size(), 2);
   EXPECT_EQ(decoded_samples[0].size(), 2);
-  EXPECT_EQ(decoded_samples[0][0],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0));
-  EXPECT_EQ(decoded_samples[0][1],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x01000000));
+  EXPECT_EQ(decoded_samples[0][0], kExpectedFirstSample);
+  EXPECT_EQ(decoded_samples[0][1], kExpectedSecondSample);
   EXPECT_EQ(decoded_samples[1].size(), 2);
-  EXPECT_EQ(decoded_samples[1][0],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00010000));
-  EXPECT_EQ(decoded_samples[1][1],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(
-                static_cast<int32_t>(0xff800000)));
+  EXPECT_EQ(decoded_samples[1][0], kExpectedThirdSample);
+  EXPECT_EQ(decoded_samples[1][1], kExpectedFourthSample);
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
@@ -159,7 +163,7 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
   bool little_endian = false;
   auto lpcm_decoder = CreateDecoderForDecodingTest(sample_size, little_endian,
                                                    kNumSamplesPerFrame);
-  const std::vector<uint8_t>& encoded_frame = {
+  constexpr std::array<uint8_t, 18> kEncodedFrame = {
       0x00, 0x00, 0x00,  // 0
       0x00, 0x00, 0x01,  // 1
       0x00, 0x00, 0x03,  // 3
@@ -167,27 +171,28 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_BigEndian24BitSamples) {
       0x7f, 0xff, 0xff,  // 8388607
       0x80, 0x00, 0x00,  // -8388608
   };
+  // The raw LPCM is interleaved, We expect data to be held in planar (channel,
+  // time) axes.
+  constexpr std::array<InternalSampleType, 3> kExpectedFirstChannel = {
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0),
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000300),
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0x7fffff00),
+  };
+  constexpr std::array<InternalSampleType, 3> kExpectedSecondChannel = {
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000100),
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000400),
+      Int32ToNormalizedFloatingPoint<InternalSampleType>(0x80000000),
+  };
 
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kEncodedFrame)),
+              IsOk());
   const auto& decoded_samples = lpcm_decoder->ValidDecodedSamples();
 
   // We have two channels and six samples, so we expect two channels of three
   // samples each.
   EXPECT_EQ(decoded_samples.size(), 2);
-  EXPECT_EQ(decoded_samples[0].size(), 3);
-  EXPECT_EQ(decoded_samples[0][0],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0));
-  EXPECT_EQ(decoded_samples[0][1],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000300));
-  EXPECT_EQ(decoded_samples[0][2],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x7fffff00));
-  EXPECT_EQ(decoded_samples[1].size(), 3);
-  EXPECT_EQ(decoded_samples[1][0],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000100));
-  EXPECT_EQ(decoded_samples[1][1],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x00000400));
-  EXPECT_EQ(decoded_samples[1][2],
-            Int32ToNormalizedFloatingPoint<InternalSampleType>(0x80000000));
+  EXPECT_THAT(decoded_samples[0], ElementsAreArray(kExpectedFirstChannel));
+  EXPECT_THAT(decoded_samples[1], ElementsAreArray(kExpectedSecondChannel));
 }
 
 TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
@@ -197,10 +202,11 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_WillNotDecodeWrongSize) {
                                                    kNumSamplesPerFrame);
   // If we have 6 bytes, 16-bit samples, and two channels, we only have 3
   // samples which doesn't divide evenly into the number of channels.
-  const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x00,
-                                               0x00, 0x00, 0x00};
+  const std::array<uint8_t, 6> kEncodedFrame = {0x00, 0x00, 0x00,
+                                                0x00, 0x00, 0x00};
 
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), Not(IsOk()));
+  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kEncodedFrame)),
+              Not(IsOk()));
   EXPECT_THAT(lpcm_decoder->ValidDecodedSamples(), IsEmpty());
 }
 
@@ -209,21 +215,26 @@ TEST(LpcmDecoderTest, DecodeAudioFrame_OverwritesExistingSamples) {
   bool little_endian = true;
   auto lpcm_decoder = CreateDecoderForDecodingTest(sample_size, little_endian,
                                                    kNumSamplesPerFrame);
-  const std::vector<uint8_t>& encoded_frame = {0x00, 0x00, 0x01, 0x00};
 
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_THAT(
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kTwoSixteenBitSamples)),
+      IsOk());
   EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
   const auto* first_decoded_samples_address =
       lpcm_decoder->ValidDecodedSamples().data();
 
   // Expect that `ValidDecodedSamples()` still points to the same address,
   // meaning the existing samples are overwritten.
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_THAT(
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kTwoSixteenBitSamples)),
+      IsOk());
   EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
   EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().data(),
             first_decoded_samples_address);
 
-  EXPECT_THAT(lpcm_decoder->DecodeAudioFrame(encoded_frame), IsOk());
+  EXPECT_THAT(
+      lpcm_decoder->DecodeAudioFrame(MakeConstSpan(kTwoSixteenBitSamples)),
+      IsOk());
   EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().size(), kTwoChannels);
   EXPECT_EQ(lpcm_decoder->ValidDecodedSamples().data(),
             first_decoded_samples_address);

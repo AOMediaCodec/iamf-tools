@@ -14,11 +14,11 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
 #include "include/opus.h"
@@ -46,7 +46,7 @@ class OpusDecoder : public DecoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status DecodeAudioFrame(
-      const std::vector<uint8_t>& encoded_frame) override;
+      absl::Span<const uint8_t> encoded_frame) override;
 
  private:
   // The decoder from `libopus` is in the global namespace.

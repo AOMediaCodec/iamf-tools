@@ -53,8 +53,8 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
   // the bit depth, but we defensively check that it's a multiple of 8 here.
   if (bit_depth % 8 != 0) {
     return absl::InvalidArgumentError(
-        absl::StrCat("LpcmDecoder::DecodeAudioFrame() failed: bit_depth (",
-                     bit_depth, ") is not a multiple of 8."));
+        absl::StrCat("LpcmDecoder::Create() failed: bit_depth (", bit_depth,
+                     ") is not a multiple of 8."));
   }
   const size_t bytes_per_sample = bit_depth / 8;
 
@@ -64,7 +64,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> LpcmDecoder::Create(
 }
 
 absl::Status LpcmDecoder::DecodeAudioFrame(
-    const std::vector<uint8_t>& encoded_frame) {
+    absl::Span<const uint8_t> encoded_frame) {
   // Make sure we have a valid number of bytes.  There needs to be an equal
   // number of samples for each channel.
   if (encoded_frame.size() % bytes_per_sample_ != 0 ||
