@@ -78,7 +78,6 @@ cc_test(
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
-        "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",

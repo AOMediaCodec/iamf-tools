@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # keep-sorted start block=yes prefix_order=cc_library,cc_test newline_separated=yes
 cc_library(
     name = "encoder_test_base",
@@ -13,6 +15,22 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "aac_decoder_test",
+    srcs = ["aac_decoder_test.cc"],
+    deps = [
+        "//iamf/cli/codec:aac_decoder",
+        "//iamf/cli/codec:decoder_base",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -130,6 +148,22 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "@com_google_absl//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "opus_decoder_test",
+    srcs = ["opus_decoder_test.cc"],
+    deps = [
+        "//iamf/cli/codec:decoder_base",
+        "//iamf/cli/codec:opus_decoder",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -31,7 +31,7 @@
 
 namespace iamf_tools {
 
-// TODO(b/277731089): Test all of `aac_encoder_decoder.h`.
+// TODO(b/277731089): Test sample accuracy of `DecodeAudioFrame`.
 class AacDecoder : public DecoderBase {
  public:
   /*!brief Factory function.
@@ -46,6 +46,7 @@ class AacDecoder : public DecoderBase {
   /*!\brief Destructor.
    */
   ~AacDecoder() override;
+
   /*!\brief Decodes an AAC audio frame.
    *
    * \param encoded_frame Frame to decode.

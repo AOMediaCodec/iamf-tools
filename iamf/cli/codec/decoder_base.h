@@ -29,9 +29,6 @@ class DecoderBase {
  public:
   /*!\brief Constructor.
    *
-   * After constructing `Initialize` MUST be called and return successfully
-   * before using most functionality of the decoder.
-   *
    * \param num_channels Number of channels for this stream.
    * \param num_samples_per_channel Number of samples per channel.
    */

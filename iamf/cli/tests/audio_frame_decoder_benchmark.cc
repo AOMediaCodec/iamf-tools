@@ -86,7 +86,8 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
     CodecConfig::CodecId codec_id_type) {
   std::unique_ptr<EncoderBase> encoder;
   if (codec_id_type == CodecConfig::kCodecIdAacLc) {
-    AddAacCodecConfig(kCodecConfigId, num_samples_per_frame, codec_config_obus);
+    AddAacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,
+                      codec_config_obus);
     encoder = CreateAacEncoder(codec_config_obus.at(kCodecConfigId));
   } else if (codec_id_type == CodecConfig::kCodecIdFlac) {
     AddFlacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,
