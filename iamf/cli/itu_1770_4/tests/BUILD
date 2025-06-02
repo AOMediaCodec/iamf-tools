@@ -26,4 +26,19 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "loudness_calculator_itu_1770_benchmark",
+    srcs = ["loudness_calculator_itu_1770_benchmark.cc"],
+    deps = [
+        "//iamf/cli/itu_1770_4:loudness_calculator_itu_1770_4",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
 # keep-sorted end

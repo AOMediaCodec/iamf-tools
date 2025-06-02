@@ -216,15 +216,14 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
 
   const bool enable_true_peak_measurement =
       IncludeTruePeak(layout.loudness.info_type);
-  LOG(INFO) << "Creating AudioLoudness1770:";
-  LOG(INFO) << "  num_channels= " << num_channels;
-  LOG(INFO) << "  sample_rate= " << rendered_sample_rate;
-  LOG(INFO) << "  bit_depth_to_measure_loudness= "
-            << bit_depth_to_measure_loudness;
-  LOG(INFO) << "  sample_format= " << sample_format;
-  LOG(INFO) << "  enable_true_peak_measurement= "
-            << enable_true_peak_measurement;
-  LOG(INFO) << "  weights= " << absl::StrJoin(*weights, ", ");
+  VLOG(1) << "Creating AudioLoudness1770:";
+  VLOG(1) << "  num_channels= " << num_channels;
+  VLOG(1) << "  sample_rate= " << rendered_sample_rate;
+  VLOG(1) << "  bit_depth_to_measure_loudness= "
+          << bit_depth_to_measure_loudness;
+  VLOG(1) << "  sample_format= " << sample_format;
+  VLOG(1) << "  enable_true_peak_measurement= " << enable_true_peak_measurement;
+  VLOG(1) << "  weights= " << absl::StrJoin(*weights, ", ");
 
   return absl::WrapUnique(new LoudnessCalculatorItu1770_4(
       num_samples_per_frame, num_channels, *weights, rendered_sample_rate,
