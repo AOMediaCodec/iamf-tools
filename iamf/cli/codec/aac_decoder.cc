@@ -48,6 +48,8 @@ namespace iamf_tools {
 
 namespace {
 
+using ::absl::MakeConstSpan;
+
 // Converts an AAC_DECODER_ERROR to an absl::Status.
 absl::Status AacDecoderErrorToAbslStatus(AAC_DECODER_ERROR aac_error_code,
                                          absl::string_view error_message) {
@@ -184,11 +186,12 @@ AacDecoder::~AacDecoder() {
 absl::Status AacDecoder::DecodeAudioFrame(
     absl::Span<const uint8_t> encoded_frame) {
   // Transform the data and feed it to the decoder.
-  std::vector<UCHAR> input_data(encoded_frame.size());
-  std::transform(encoded_frame.begin(), encoded_frame.end(), input_data.begin(),
+  raws_frame_to_libfdk_aac_.resize(encoded_frame.size());
+  std::transform(encoded_frame.begin(), encoded_frame.end(),
+                 raws_frame_to_libfdk_aac_.begin(),
                  [](uint8_t c) { return static_cast<UCHAR>(c); });
 
-  UCHAR* in_buffer[] = {input_data.data()};
+  UCHAR* in_buffer[] = {raws_frame_to_libfdk_aac_.data()};
   const UINT buffer_size[] = {static_cast<UINT>(encoded_frame.size())};
   UINT bytes_valid = static_cast<UINT>(encoded_frame.size());
   RETURN_IF_NOT_OK(AacDecoderErrorToAbslStatus(
@@ -200,12 +203,11 @@ absl::Status AacDecoder::DecodeAudioFrame(
         "complete AAC frame.");
   }
 
-  // TODO(b/382197581): Avoid re-allocations of `output_pcm`.
   // Retrieve the decoded frame. `fdk_aac` decodes to INT_PCM (usually 16-bits)
   // samples with channels interlaced.
-  std::vector<INT_PCM> output_pcm(num_samples_per_channel_ * num_channels_);
   RETURN_IF_NOT_OK(AacDecoderErrorToAbslStatus(
-      aacDecoder_DecodeFrame(decoder_, output_pcm.data(), output_pcm.size(),
+      aacDecoder_DecodeFrame(decoder_, interleaved_pcm_from_libfdk_aac_.data(),
+                             interleaved_pcm_from_libfdk_aac_.size(),
                              /*flags=*/0),
       "Failed on `aacDecoder_DecodeFrame`: "));
 
@@ -219,9 +221,9 @@ absl::Status AacDecoder::DecodeAudioFrame(
                 static_cast<int32_t>(input) << (32 - fdk_aac_bit_depth));
             return absl::OkStatus();
           };
-  return ConvertInterleavedToChannelTime(absl::MakeConstSpan(output_pcm),
-                                         num_channels_, decoded_samples_,
-                                         kAacInternalTypeToSampleType);
+  return ConvertInterleavedToChannelTime(
+      MakeConstSpan(interleaved_pcm_from_libfdk_aac_), num_channels_,
+      decoded_samples_, kAacInternalTypeToSampleType);
 }
 
 }  // namespace iamf_tools

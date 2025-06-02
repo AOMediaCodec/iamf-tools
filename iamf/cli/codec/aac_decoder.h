@@ -66,8 +66,14 @@ class AacDecoder : public DecoderBase {
    */
   AacDecoder(int num_channels, uint32_t num_samples_per_frame,
              AAC_DECODER_INSTANCE* /* absl_nonnull */ decoder)
-      : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {}
+      : DecoderBase(num_channels, num_samples_per_frame),
+        interleaved_pcm_from_libfdk_aac_(num_samples_per_frame * num_channels),
+        decoder_(decoder) {}
 
+  // Resizes to the size of the largest input frame.
+  std::vector<UCHAR> raws_frame_to_libfdk_aac_;
+  // Size fixed at construction time.
+  std::vector<INT_PCM> interleaved_pcm_from_libfdk_aac_;
   AAC_DECODER_INSTANCE* const /* absl_nonnull */ /* absl_nonnull */ decoder_;
 };
 
