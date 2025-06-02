@@ -810,47 +810,25 @@ absl::Status ObuProcessor::InitializeForRendering(
   return absl::OkStatus();
 }
 
-absl::Status ObuProcessor::ProcessTemporalUnitObu(
-    std::optional<AudioFrameWithData>& output_audio_frame_with_data,
-    std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
-    std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
-    bool& continue_processing) {
-  if (!parameters_manager_.has_value()) {
-    return absl::InvalidArgumentError(
-        "Parameters manager is not constructed; "
-        "remember to call `Initialize()` first.");
-  }
-  if (global_timing_module_ == nullptr) {
-    return absl::InvalidArgumentError(
-        "Global timing module is not constructed; "
-        "remember to call `Initialize()` first.");
-  }
-  if (read_bit_buffer_ == nullptr) {
-    return absl::InvalidArgumentError(
-        "Read bit buffer is not constructed; "
-        "remember to call `Initialize()` first.");
-  }
-
-  return ObuProcessor::ProcessTemporalUnitObu(
-      audio_elements_, codec_config_obus_, substream_id_to_audio_element_,
-      param_definition_variants_, *parameters_manager_, *read_bit_buffer_,
-      *global_timing_module_, output_audio_frame_with_data,
-      output_parameter_block_with_data, output_temporal_delimiter,
-      continue_processing);
-}
-
 absl::Status ObuProcessor::ProcessTemporalUnit(
     bool eos_is_end_of_sequence,
     std::optional<OutputTemporalUnit>& output_temporal_unit,
     bool& continue_processing) {
+  // Various checks that should have been handled by the factory functions.
+  CHECK(parameters_manager_.has_value());
+  CHECK(global_timing_module_ != nullptr);
+  CHECK(read_bit_buffer_ != nullptr);
+
   continue_processing = true;
   while (continue_processing) {
     std::optional<AudioFrameWithData> audio_frame_with_data;
     std::optional<ParameterBlockWithData> parameter_block_with_data;
     std::optional<TemporalDelimiterObu> temporal_delimiter;
-    RETURN_IF_NOT_OK(
-        ProcessTemporalUnitObu(audio_frame_with_data, parameter_block_with_data,
-                               temporal_delimiter, continue_processing));
+    RETURN_IF_NOT_OK(ProcessTemporalUnitObu(
+        audio_elements_, codec_config_obus_, substream_id_to_audio_element_,
+        param_definition_variants_, *parameters_manager_, *read_bit_buffer_,
+        *global_timing_module_, audio_frame_with_data,
+        parameter_block_with_data, temporal_delimiter, continue_processing));
 
     // Collect OBUs into a temporal unit.
     if (audio_frame_with_data.has_value()) {

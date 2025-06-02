@@ -112,6 +112,8 @@ class ObuProcessor {
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
+  [[deprecated(
+      "Remove when all tests are ported. Use the non-static version instead.")]]
   static absl::Status ProcessTemporalUnitObu(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements_with_data,
@@ -200,28 +202,6 @@ class ObuProcessor {
    *         specific error code on failure.
    */
   absl::StatusOr<uint32_t> GetOutputFrameSize() const;
-
-  // TODO(b/381072155): Consider removing this one in favor of
-  //                    `ProcessTemporalUnit()`, which outputs all OBUs
-  //                    belonging the whole temporal unit.
-  /*!\brief Processes one Temporal Unit OBU from the stored IA Sequence.
-   *
-   * `Initialize()` must be called first to ready the input bitstream.
-   *
-   * \param output_audio_frame_with_data Output Audio Frame with the requisite
-   *        data.
-   * \param output_parameter_block_with_data Output Parameter Block with the
-   *        requisite data.
-   * \param output_temporal_delimiter Output temporal deilimiter OBU.
-   * \param continue_processing Whether the processing should be continued.
-   * \return `absl::OkStatus()` if the process is successful. A specific status
-   *         on failure.
-   */
-  absl::Status ProcessTemporalUnitObu(
-      std::optional<AudioFrameWithData>& output_audio_frame_with_data,
-      std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
-      std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
-      bool& continue_processing);
 
   struct OutputTemporalUnit {
     std::list<AudioFrameWithData> output_audio_frames;

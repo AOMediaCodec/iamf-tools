@@ -2126,39 +2126,6 @@ TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
   EXPECT_THAT(obu_processor->GetOutputFrameSize(), Not(IsOk()));
 }
 
-TEST(NonStatic, ProcessTemporalUnitObu) {
-  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
-  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
-                                kArbitraryAudioFrame);
-  const auto temporal_unit_obus = SerializeObusExpectOk({&audio_frame_obu});
-  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
-                   temporal_unit_obus.end());
-
-  auto read_bit_buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  bool insufficient_data;
-
-  auto obu_processor =
-      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
-                           read_bit_buffer.get(), insufficient_data);
-  ASSERT_THAT(obu_processor, NotNull());
-  ASSERT_FALSE(insufficient_data);
-
-  std::optional<AudioFrameWithData> audio_frame_with_data;
-  std::optional<ParameterBlockWithData> parameter_block_with_data;
-  std::optional<TemporalDelimiterObu> temporal_delimiter;
-  bool continue_processing = true;
-  EXPECT_THAT(obu_processor->ProcessTemporalUnitObu(
-                  audio_frame_with_data, parameter_block_with_data,
-                  temporal_delimiter, continue_processing),
-              IsOk());
-
-  EXPECT_TRUE(audio_frame_with_data.has_value());
-  EXPECT_FALSE(parameter_block_with_data.has_value());
-  EXPECT_FALSE(temporal_delimiter.has_value());
-  EXPECT_TRUE(continue_processing);
-}
-
 // TODO(b/381068413): Add more tests for the new iterative API.
 void RenderUsingObuProcessorExpectOk(
     absl::string_view output_filename, bool write_wav_header,
