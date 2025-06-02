@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
-#include <variant>
 #include <vector>
 
 // This symbol conflicts with `aacenc_lib.h` and `aacdecoder_lib.h`.
@@ -38,7 +37,6 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/types.h"
 #include "libAACdec/include/aacdecoder_lib.h"
@@ -146,14 +144,8 @@ absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
-    const CodecConfigObu& codec_config_obu, int num_channels) {
-  const AacDecoderConfig* decoder_config = std::get_if<AacDecoderConfig>(
-      &codec_config_obu.GetCodecConfig().decoder_config);
-  if (decoder_config == nullptr) {
-    return absl::InvalidArgumentError(
-        "CodecConfigObu does not contain an `AacDecoderConfig`.");
-  }
-
+    const AacDecoderConfig& decoder_config, int num_channels,
+    uint32_t num_samples_per_frame) {
   // Initialize the decoder.
   AAC_DECODER_INSTANCE* decoder =
       aacDecoder_Open(GetAacTransportationType(), /*nrOfLayers=*/1);
@@ -163,7 +155,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
   }
 
   const auto status =
-      ConfigureAacDecoder(*decoder_config, num_channels, decoder);
+      ConfigureAacDecoder(decoder_config, num_channels, decoder);
   if (!status.ok()) {
     aacDecoder_Close(decoder);
     return status;
@@ -173,8 +165,8 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
   LOG_FIRST_N(INFO, 1) << "Created an AAC decoder with "
                        << stream_info->numChannels << " channels.";
 
-  return absl::WrapUnique(new AacDecoder(
-      num_channels, codec_config_obu.GetNumSamplesPerFrame(), decoder));
+  return absl::WrapUnique(
+      new AacDecoder(num_channels, num_samples_per_frame, decoder));
 }
 
 AacDecoder::~AacDecoder() {

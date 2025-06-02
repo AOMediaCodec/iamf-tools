@@ -14,15 +14,12 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/cli/tests/cli_test_utils.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/types.h"
+#include "iamf/obu/decoder_config/opus_decoder_config.h"
 
 namespace iamf_tools {
 namespace {
@@ -33,52 +30,54 @@ using ::absl_testing::IsOkAndHolds;
 using ::testing::IsNull;
 using ::testing::Not;
 
-constexpr uint32_t kCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 960;
 constexpr uint32_t kSampleRate = 48000;
 constexpr int kOneChannel = 1;
 constexpr int kTwoChannels = 2;
 
-TEST(Create, SucceedsForOneChannel) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddOpusCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kSampleRate,
-                     codec_config_obus);
+OpusDecoderConfig CreateOpusDecoderConfig(uint32_t sample_rate) {
+  return OpusDecoderConfig{
+      .input_sample_rate_ = sample_rate,
+  };
+}
 
-  auto opus_decoder =
-      OpusDecoder::Create(codec_config_obus.at(kCodecConfigId), kOneChannel);
+TEST(Create, SucceedsForOneChannel) {
+  const OpusDecoderConfig opus_decoder_config =
+      CreateOpusDecoderConfig(kSampleRate);
+
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kOneChannel,
+                                          kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
 TEST(Create, SucceedsForTwoChannels) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddOpusCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kSampleRate,
-                     codec_config_obus);
+  const OpusDecoderConfig opus_decoder_config =
+      CreateOpusDecoderConfig(kSampleRate);
 
-  auto opus_decoder =
-      OpusDecoder::Create(codec_config_obus.at(kCodecConfigId), kTwoChannels);
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+                                          kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
 TEST(Create, SucceedsForAlternativeSampleRate) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   constexpr uint32_t kSampleRate16000 = 16000;
-  AddOpusCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kSampleRate16000,
-                     codec_config_obus);
+  const OpusDecoderConfig opus_decoder_config =
+      CreateOpusDecoderConfig(kSampleRate16000);
 
-  auto opus_decoder =
-      OpusDecoder::Create(codec_config_obus.at(kCodecConfigId), kTwoChannels);
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+                                          kNumSamplesPerFrame);
 
   EXPECT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
 TEST(DecodeAudioFrame, SucceedsForEmptyFrame) {
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddOpusCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kSampleRate,
-                     codec_config_obus);
-  auto opus_decoder =
-      OpusDecoder::Create(codec_config_obus.at(kCodecConfigId), kTwoChannels);
+  const OpusDecoderConfig opus_decoder_config =
+      CreateOpusDecoderConfig(kSampleRate);
+
+  auto opus_decoder = OpusDecoder::Create(opus_decoder_config, kTwoChannels,
+                                          kNumSamplesPerFrame);
   ASSERT_THAT(opus_decoder, IsOkAndHolds(Not(IsNull())));
 
   constexpr absl::Span<const uint8_t> kEmptyFrame;

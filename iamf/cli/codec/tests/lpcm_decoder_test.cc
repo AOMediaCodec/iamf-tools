@@ -12,9 +12,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/lpcm_decoder_config.h"
-#include "iamf/obu/obu_header.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -30,7 +28,6 @@ using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Not;
 
-constexpr bool kOverrideAudioRollDistance = true;
 constexpr uint32_t kNumSamplesPerFrame = 1024;
 constexpr uint8_t kSampleSize16 = 16;
 constexpr bool kLittleEndian = true;
@@ -55,68 +52,45 @@ constexpr InternalSampleType kExpectedFourthSample =
     Int32ToNormalizedFloatingPoint<InternalSampleType>(
         static_cast<int32_t>(0xff800000));
 
-CodecConfigObu CreateCodecConfigObu(LpcmDecoderConfig lpcm_decoder_config,
-                                    uint32_t num_samples_per_frame) {
-  const CodecConfig codec_config = {
-      .codec_id = CodecConfig::kCodecIdLpcm,
-      .num_samples_per_frame = num_samples_per_frame,
-      .decoder_config = lpcm_decoder_config};
-
-  CodecConfigObu codec_config_obu(ObuHeader(), 0, codec_config);
-  return codec_config_obu;
-}
-
 TEST(Create, Succeed) {
   LpcmDecoderConfig lpcm_decoder_config;
   lpcm_decoder_config.sample_rate_ = 48000;
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmLittleEndian;
-  CodecConfigObu codec_config_obu =
-      CreateCodecConfigObu(lpcm_decoder_config, kNumSamplesPerFrame);
-  ASSERT_THAT(codec_config_obu.Initialize(kOverrideAudioRollDistance), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
-  auto lpcm_decoder = LpcmDecoder::Create(codec_config_obu, number_of_channels);
+  auto lpcm_decoder = LpcmDecoder::Create(
+      lpcm_decoder_config, number_of_channels, kNumSamplesPerFrame);
   EXPECT_THAT(lpcm_decoder, IsOkAndHolds(Not(IsNull())));
 }
 
 TEST(Create, FailsWithInvalidConfig) {
   LpcmDecoderConfig lpcm_decoder_config;
-  // The sample rate and bit depth are validated with CodecConfigObu::Initialize
-  // so if we want to test the validation in LpcmDecoderConfig::Initialize we
-  // will give an invalid sample_format_flags_bitmask_.
+  // Test the validation in `LpcmDecoderConfig::Create` via an invalid
+  // `sample_format_flags_bitmask_`.
   lpcm_decoder_config.sample_rate_ = 48000;
   lpcm_decoder_config.sample_size_ = 16;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::LpcmFormatFlagsBitmask::kLpcmBeginReserved;
-  CodecConfigObu codec_config_obu =
-      CreateCodecConfigObu(lpcm_decoder_config, kNumSamplesPerFrame);
-  ASSERT_THAT(codec_config_obu.Initialize(kOverrideAudioRollDistance), IsOk());
   int number_of_channels = 11;  // Arbitrary.
 
-  auto lpcm_decoder = LpcmDecoder::Create(codec_config_obu, number_of_channels);
+  auto lpcm_decoder = LpcmDecoder::Create(
+      lpcm_decoder_config, number_of_channels, kNumSamplesPerFrame);
   EXPECT_THAT(lpcm_decoder, Not(IsOk()));
 }
 
 std::unique_ptr<DecoderBase> CreateDecoderForDecodingTest(
     uint8_t sample_size, bool little_endian, uint32_t num_samples_per_frame) {
   LpcmDecoderConfig lpcm_decoder_config;
-  // The sample rate and bit depth are validated with CodecConfigObu::Initialize
-  // so if we want to test the validation in LpcmDecoderConfig::Initialize we
-  // will give an invalid sample_format_flags_bitmask_.
   lpcm_decoder_config.sample_rate_ = 48000;
   lpcm_decoder_config.sample_size_ = sample_size;
   using enum LpcmDecoderConfig::LpcmFormatFlagsBitmask;
   lpcm_decoder_config.sample_format_flags_bitmask_ =
       little_endian ? kLpcmLittleEndian : kLpcmBigEndian;
-  CodecConfigObu codec_config_obu =
-      CreateCodecConfigObu(lpcm_decoder_config, num_samples_per_frame);
-  if (!codec_config_obu.Initialize(kOverrideAudioRollDistance).ok()) {
-    LOG(ERROR) << "Failed to initialize codec config OBU";
-  }
 
-  auto lpcm_decoder = LpcmDecoder::Create(codec_config_obu, kTwoChannels);
+  auto lpcm_decoder = LpcmDecoder::Create(lpcm_decoder_config, kTwoChannels,
+                                          num_samples_per_frame);
   EXPECT_THAT(lpcm_decoder, IsOkAndHolds(Not(IsNull())));
   return std::move(*lpcm_decoder);
 }

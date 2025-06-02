@@ -11,10 +11,8 @@
  */
 #include "iamf/cli/codec/opus_decoder.h"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
-#include <variant>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
@@ -29,7 +27,6 @@
 #include "iamf/cli/codec/opus_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/types.h"
 #include "include/opus.h"
@@ -60,19 +57,14 @@ absl::Status ValidateDecoderConfig(
 }  // namespace
 
 absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
-    const CodecConfigObu& codec_config_obu, int num_channels) {
-  const OpusDecoderConfig* decoder_config = std::get_if<OpusDecoderConfig>(
-      &codec_config_obu.GetCodecConfig().decoder_config);
-  if (decoder_config == nullptr) {
-    return absl::InvalidArgumentError(
-        "CodecConfigObu does not contain an `OpusDecoderConfig`.");
-  }
-  MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(*decoder_config));
+    const OpusDecoderConfig& decoder_config, int num_channels,
+    uint32_t num_samples_per_frame) {
+  MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(decoder_config));
 
   // Initialize the decoder.
   int opus_error_code;
   LibOpusDecoder* decoder = opus_decoder_create(
-      static_cast<opus_int32>(codec_config_obu.GetOutputSampleRate()),
+      static_cast<opus_int32>(decoder_config.GetOutputSampleRate()),
       num_channels, &opus_error_code);
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
       opus_error_code, "Failed to initialize Opus decoder."));
@@ -80,8 +72,8 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
     return absl::UnknownError("Unexpected null decoder after initialization.");
   }
 
-  return absl::WrapUnique(new OpusDecoder(
-      num_channels, codec_config_obu.GetNumSamplesPerFrame(), decoder));
+  return absl::WrapUnique(
+      new OpusDecoder(num_channels, num_samples_per_frame, decoder));
 }
 
 OpusDecoder::~OpusDecoder() {

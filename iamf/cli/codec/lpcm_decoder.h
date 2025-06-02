@@ -21,7 +21,7 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/codec/decoder_base.h"
-#include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/lpcm_decoder_config.h"
 
 namespace iamf_tools {
 
@@ -35,12 +35,14 @@ class LpcmDecoder : public DecoderBase {
  public:
   /*!brief Factory function.
    *
-   * \param codec_config_obu Codec config for this stream.
+   * \param decoder_config Decoder config for this stream.
    * \param num_channels Number of channels for this stream.
+   * \param num_samples_per_frame Number of samples per frame for this stream.
    * \return LPCM decoder on success. A specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<DecoderBase>> Create(
-      const CodecConfigObu& codec_config_obu, int num_channels);
+      const LpcmDecoderConfig& decoder_config, int num_channels,
+      uint32_t num_samples_per_frame);
 
   /*!brief Destructor. */
   ~LpcmDecoder() override = default;
