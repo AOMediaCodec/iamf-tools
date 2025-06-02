@@ -26,7 +26,6 @@
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/obu/audio_element.h"
@@ -197,7 +196,7 @@ class DemixingModule {
    * \return Output data structure for samples, or a specific status on failure.
    */
   absl::StatusOr<IdLabeledFrameMap> DemixDecodedAudioSamples(
-      const std::list<DecodedAudioFrame>& decoded_audio_frame) const;
+      const std::list<AudioFrameWithData>& decoded_audio_frames) const;
 
   /*!\brief Gets the down-mixers associated with an Audio Element ID.
    *

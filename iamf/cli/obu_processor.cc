@@ -874,8 +874,8 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
 
 absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     InternalTimestamp start_timestamp,
-    const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
+    std::list<AudioFrameWithData>& audio_frames,
     absl::Span<const absl::Span<const InternalSampleType>>&
         output_rendered_samples) {
   if (audio_frames.empty()) {
@@ -901,12 +901,7 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
 
   // Decode the temporal unit.
   std::optional<InternalTimestamp> end_timestamp;
-
-  // This resizing should happen only once per IA sequence, since all the
-  // temporal units should contain the same number of audio frames.
-  decoded_frames_for_temporal_unit_.resize(audio_frames.size());
-  auto decoded_frames_iter = decoded_frames_for_temporal_unit_.begin();
-  for (const auto& audio_frame : audio_frames) {
+  for (auto& audio_frame : audio_frames) {
     if (!end_timestamp.has_value()) {
       end_timestamp = audio_frame.end_timestamp;
     }
@@ -918,18 +913,12 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
                                        audio_frame.end_timestamp,
                                        "Audio frame has a different end "
                                        "timestamp than the temporal unit: "));
-    const auto& decoded_frame = audio_frame_decoder_->Decode(audio_frame);
-    if (!decoded_frame.ok()) {
-      return decoded_frame.status();
-    }
-    *decoded_frames_iter = std::move(*decoded_frame);
-    decoded_frames_iter++;
+    RETURN_IF_NOT_OK(audio_frame_decoder_->Decode(audio_frame));
   }
 
   // Reconstruct the temporal unit and store the result in the output map.
   const auto& decoded_labeled_frames_for_temporal_unit =
-      demixing_module_->DemixDecodedAudioSamples(
-          decoded_frames_for_temporal_unit_);
+      demixing_module_->DemixDecodedAudioSamples(audio_frames);
   if (!decoded_labeled_frames_for_temporal_unit.ok()) {
     return decoded_labeled_frames_for_temporal_unit.status();
   }

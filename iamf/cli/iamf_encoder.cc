@@ -294,17 +294,12 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   const InternalTimestamp output_end_timestamp =
       audio_frames.front().end_timestamp;
 
-  // Decode the audio frames. They are required to determine the demixed
-  // frames.
-  std::list<DecodedAudioFrame> decoded_audio_frames;
-  for (const auto& audio_frame : audio_frames) {
-    auto decoded_audio_frame = audio_frame_decoder_.Decode(audio_frame);
-    if (!decoded_audio_frame.ok()) {
-      return decoded_audio_frame.status();
-    }
-    CHECK_EQ(output_start_timestamp, decoded_audio_frame->start_timestamp);
-    CHECK_EQ(output_end_timestamp, decoded_audio_frame->end_timestamp);
-    decoded_audio_frames.emplace_back(*decoded_audio_frame);
+  // Decode the audio frames in place. The decoded samples are required to
+  // determine the demixed frames.
+  for (auto& audio_frame : audio_frames) {
+    RETURN_IF_NOT_OK(audio_frame_decoder_.Decode(audio_frame));
+    CHECK_EQ(output_start_timestamp, audio_frame.start_timestamp);
+    CHECK_EQ(output_end_timestamp, audio_frame.end_timestamp);
   }
 
   // Demix the original and decoded audio frames, differences between them are
@@ -315,7 +310,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     return id_to_labeled_frame.status();
   }
   const auto id_to_labeled_decoded_frame =
-      demixing_module_.DemixDecodedAudioSamples(decoded_audio_frames);
+      demixing_module_.DemixDecodedAudioSamples(audio_frames);
   if (!id_to_labeled_decoded_frame.ok()) {
     return id_to_labeled_decoded_frame.status();
   }

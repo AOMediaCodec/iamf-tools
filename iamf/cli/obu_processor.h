@@ -232,8 +232,8 @@ class ObuProcessor {
    *
    * \param timestamp Timestamp of this temporal unit. Used to verify that
    *        the input OBUs actually belong to the same temporal unit.
-   * \param audio_frames_with_data Audio Frames with the requisite data.
    * \param parameter_blocks_with_data Parameter Blocks with the requisite data.
+   * \param audio_frames_with_data Audio Frames to decode in place.
    * \param output_rendered_samples Output rendered samples. These
    *        should be used immediately after this function is called; they will
    *        be invalidated after the next call to
@@ -244,8 +244,8 @@ class ObuProcessor {
    */
   absl::Status RenderTemporalUnitAndMeasureLoudness(
       InternalTimestamp timestamp,
-      const std::list<AudioFrameWithData>& audio_frames,
       const std::list<ParameterBlockWithData>& parameter_blocks,
+      std::list<AudioFrameWithData>& audio_frames,
       absl::Span<const absl::Span<const InternalSampleType>>&
           output_rendered_samples);
 
@@ -374,7 +374,6 @@ class ObuProcessor {
   // Cached data when processing temporal units.
   TemporalUnitData current_temporal_unit_;
   TemporalUnitData next_temporal_unit_;
-  std::list<DecodedAudioFrame> decoded_frames_for_temporal_unit_;
 
   // Modules used for rendering.
   std::optional<AudioFrameDecoder> audio_frame_decoder_;

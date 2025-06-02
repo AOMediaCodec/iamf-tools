@@ -170,7 +170,6 @@ cc_test(
     srcs = ["demixing_module_benchmark.cc"],
     deps = [
         "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
@@ -196,7 +195,6 @@ cc_test(
     deps = [
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
-        "//iamf/cli:audio_frame_decoder",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",

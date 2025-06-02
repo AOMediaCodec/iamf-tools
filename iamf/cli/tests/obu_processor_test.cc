@@ -2130,9 +2130,9 @@ TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
 void RenderUsingObuProcessorExpectOk(
     absl::string_view output_filename, bool write_wav_header,
     const std::optional<uint8_t> output_file_bit_depth_override,
-    const std::list<AudioFrameWithData>& audio_frames,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::vector<uint8_t>& bitstream_of_descriptors) {
+    const std::vector<uint8_t>& bitstream_of_descriptors,
+    std::list<AudioFrameWithData>& audio_frames) {
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(bitstream_of_descriptors));
   bool insufficient_data;
@@ -2149,7 +2149,7 @@ void RenderUsingObuProcessorExpectOk(
   absl::Span<const absl::Span<const InternalSampleType>>
       output_rendered_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, audio_frames, parameter_blocks,
+                  /*timestamp=*/0, parameter_blocks, audio_frames,
                   output_rendered_samples),
               IsOk());
   for (const auto output_channel : output_rendered_samples) {
@@ -2207,7 +2207,7 @@ void RenderOneSampleZoaToStereoWavExpectOk(
        &mix_presentation_obus.front()});
   RenderUsingObuProcessorExpectOk(
       output_filename, write_wav_header, output_file_bit_depth_override,
-      audio_frames_with_data, parameter_blocks_with_data, bitstream);
+      parameter_blocks_with_data, bitstream, audio_frames_with_data);
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
@@ -2226,16 +2226,16 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
 
-  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
+  std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
        &mix_presentation_obus.front()});
   RenderUsingObuProcessorExpectOk("unused_filename", kDontWriteWavHeader,
                                   kNoOutputFileBitDepthOverride,
-                                  empty_audio_frames_with_data,
-                                  empty_parameter_blocks_with_data, bitstream);
+                                  empty_parameter_blocks_with_data, bitstream,
+                                  empty_audio_frames_with_data);
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
@@ -2293,7 +2293,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
        &mix_presentation_obus.front()});
   RenderUsingObuProcessorExpectOk(
       output_filename, kWriteWavHeader, kNoOutputFileBitDepthOverride,
-      audio_frames_with_data, parameter_blocks_with_data, bitstream);
+      parameter_blocks_with_data, bitstream, audio_frames_with_data);
 
   const auto wav_reader = CreateWavReaderExpectOk(output_filename);
   EXPECT_EQ(wav_reader.num_channels(), 2);
@@ -2396,7 +2396,7 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
   absl::Span<const absl::Span<const InternalSampleType>>
       output_rendered_samples;
   EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, audio_frames_with_data, kNoParameterBlocks,
+                  /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data,
                   output_rendered_samples),
               IsOk());
 
@@ -2457,7 +2457,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
 
   RenderUsingObuProcessorExpectOk(
       output_filename, kWriteWavHeader, kNoOutputFileBitDepthOverride,
-      audio_frames_with_data, kNoParameterBlocks, bitstream);
+      kNoParameterBlocks, bitstream, audio_frames_with_data);
 
   auto wav_reader = CreateWavReaderExpectOk(output_filename, 4);
   EXPECT_EQ(wav_reader.num_channels(), 2);
@@ -2524,8 +2524,8 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
       absl::Span<const absl::Span<const InternalSampleType>>
           unused_output_rendered_samples;
       EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                      /*timestamp=*/i, audio_frames_with_data,
-                      kNoParameterBlocks, unused_output_rendered_samples),
+                      /*timestamp=*/i, kNoParameterBlocks,
+                      audio_frames_with_data, unused_output_rendered_samples),
                   IsOk());
     }
   }
@@ -2592,7 +2592,7 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
        &mix_presentation_obus.front(), &mix_presentation_obus.back()});
   RenderUsingObuProcessorExpectOk(
       output_filename, kWriteWavHeader, kNoOutputFileBitDepthOverride,
-      audio_frames_with_data, kNoParameterBlocks, bitstream);
+      kNoParameterBlocks, bitstream, audio_frames_with_data);
 
   auto wav_reader = CreateWavReaderExpectOk(output_filename);
   EXPECT_EQ(wav_reader.ReadFrame(), 2);

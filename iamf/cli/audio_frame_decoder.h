@@ -14,46 +14,15 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "absl/container/node_hash_map.h"
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/recon_gain_info_parameter_data.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-struct DecodedAudioFrame {
-  uint32_t substream_id;
-  InternalTimestamp start_timestamp;  // Start time of this frame. Measured in
-                                      // ticks from the Global Timing Module.
-  InternalTimestamp end_timestamp;    // End time of this frame. Measured in
-                                      // ticks from the Global Timing Module.
-  uint32_t samples_to_trim_at_end;
-  uint32_t samples_to_trim_at_start;
-
-  // Decoded samples. Includes any samples that will be trimmed in processing.
-  // Points to the memory location where samples were first produced.
-  // TODO(b/4107595837): Find a more robust data model so that the span is
-  //                     guaranteed to point to correct samples.
-  absl::Span<const std::vector<InternalSampleType>> decoded_samples;
-
-  // Down-mixing parameters used to create this audio frame.
-  DownMixingParams down_mixing_params;
-
-  // Recon gain info parameter data used to adjust the gain of this audio frame.
-  ReconGainInfoParameterData recon_gain_info_parameter_data;
-
-  // The audio element with data associated with this frame.
-  const AudioElementWithData* audio_element_with_data;
-};
 
 /*!\brief Decodes Audio Frame OBUs based on the associated codec.
  *
@@ -92,11 +61,10 @@ class AudioFrameDecoder {
 
   /*!\brief Decodes an Audio Frame OBU.
    *
-   * \param encoded_audio_frame Input Audio Frame OBU.
-   * \return Decoded audio frame on success. A specific status on failure.
+   * \param audio_frame Audio Frame OBU to decode in place.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::StatusOr<DecodedAudioFrame> Decode(
-      const AudioFrameWithData& encoded_audio_frame);
+  absl::Status Decode(AudioFrameWithData& audio_frame);
 
  private:
   // A map of substream IDs to the relevant decoder and codec config. This is

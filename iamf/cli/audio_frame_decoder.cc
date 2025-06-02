@@ -132,8 +132,7 @@ absl::Status AudioFrameDecoder::InitDecodersForSubstreams(
   return absl::OkStatus();
 }
 
-absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
-    const AudioFrameWithData& audio_frame) {
+absl::Status AudioFrameDecoder::Decode(AudioFrameWithData& audio_frame) {
   auto decoder_iter =
       substream_id_to_decoder_.find(audio_frame.obu.GetSubstreamId());
   if (decoder_iter == substream_id_to_decoder_.end() ||
@@ -148,21 +147,9 @@ absl::StatusOr<DecodedAudioFrame> AudioFrameDecoder::Decode(
   RETURN_IF_NOT_OK(decoder.DecodeAudioFrame(
       absl::MakeConstSpan(audio_frame.obu.audio_frame_)));
 
-  // Return a frame. Most fields are copied from the encoded frame.
-  return DecodedAudioFrame{
-      .substream_id = audio_frame.obu.GetSubstreamId(),
-      .start_timestamp = audio_frame.start_timestamp,
-      .end_timestamp = audio_frame.end_timestamp,
-      .samples_to_trim_at_end =
-          audio_frame.obu.header_.num_samples_to_trim_at_end,
-      .samples_to_trim_at_start =
-          audio_frame.obu.header_.num_samples_to_trim_at_start,
-      .decoded_samples = decoder.ValidDecodedSamples(),
-      .down_mixing_params = audio_frame.down_mixing_params,
-      .recon_gain_info_parameter_data =
-          audio_frame.recon_gain_info_parameter_data,
-      .audio_element_with_data = audio_frame.audio_element_with_data,
-  };
+  // Fill in the decoded samples.
+  audio_frame.decoded_samples = decoder.ValidDecodedSamples();
+  return absl::OkStatus();
 }
 
 }  // namespace iamf_tools

@@ -44,8 +44,6 @@ cc_library(
         "//iamf/cli/codec:opus_decoder",
         "//iamf/common/utils:macros",
         "//iamf/obu:codec_config",
-        "//iamf/obu:parameter_data",
-        "//iamf/obu:types",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
@@ -67,6 +65,7 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -119,12 +118,12 @@ cc_library(
     hdrs = ["demixing_module.h"],
     deps = [
         ":audio_element_with_data",
-        ":audio_frame_decoder",
         ":audio_frame_with_data",
         ":channel_label",
         ":cli_util",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:parameter_data",

@@ -21,7 +21,6 @@
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
@@ -104,46 +103,24 @@ static DemixingModule CreateDemixingModule(
   return *demixing_module;
 }
 
-template <typename FrameType>
-FrameType GetFrame(DecodedUleb128 substream_id, int num_ticks,
-                   const std::vector<std::vector<InternalSampleType>>& samples);
-
-template <>
-AudioFrameWithData GetFrame(
-    DecodedUleb128 substream_id, int num_ticks,
-    const std::vector<std::vector<InternalSampleType>>& samples) {
-  return AudioFrameWithData{.obu = AudioFrameObu(ObuHeader(), substream_id, {}),
-                            .start_timestamp = kStartTimestamp,
-                            .end_timestamp = kStartTimestamp + num_ticks,
-                            .encoded_samples = samples,
-                            .down_mixing_params = kDownMixingParams};
-}
-
-template <>
-DecodedAudioFrame GetFrame(
-    DecodedUleb128 substream_id, int num_ticks,
-    const std::vector<std::vector<InternalSampleType>>& samples) {
-  return DecodedAudioFrame{.substream_id = substream_id,
-                           .start_timestamp = kStartTimestamp,
-                           .end_timestamp = kStartTimestamp + num_ticks,
-                           .samples_to_trim_at_end = 0,
-                           .samples_to_trim_at_start = 0,
-                           .decoded_samples = absl::MakeConstSpan(samples),
-                           .down_mixing_params = kDownMixingParams};
-}
-
-template <typename FrameType>
-static void ConfigureLosslessAudioFrameOrDecodedAudioFrame(
+static void ConfigureLosslessAudioFrame(
     const std::list<ChannelLabel::Label>& labels, const int num_ticks,
     SubstreamIdLabelsMap& substream_id_to_labels,
-    std::list<FrameType>& frames) {
+    std::list<AudioFrameWithData>& frames) {
   static std::vector<std::vector<InternalSampleType>> samples(1);
   samples[0].resize(num_ticks);
 
   // The substream ID itself does not matter. Generate a unique one.
   const DecodedUleb128 substream_id = substream_id_to_labels.size();
   substream_id_to_labels[substream_id] = labels;
-  frames.push_back(GetFrame<FrameType>(substream_id, num_ticks, samples));
+  // A lossless audio frame would have the same encoded and decoded samples.
+  frames.emplace_back(
+      AudioFrameWithData{.obu = AudioFrameObu(ObuHeader(), substream_id, {}),
+                         .start_timestamp = kStartTimestamp,
+                         .end_timestamp = kStartTimestamp + num_ticks,
+                         .encoded_samples = samples,
+                         .decoded_samples = absl::MakeConstSpan(samples),
+                         .down_mixing_params = kDownMixingParams});
 }
 
 // Currently benchmarking down-mixing from stereo to mono and demixing from
@@ -174,57 +151,48 @@ static void BM_DownMixing(benchmark::State& state) {
   }
 }
 
-template <typename FrameType>
 absl::StatusOr<IdLabeledFrameMap> CallDemixing(
-    const std::list<FrameType>& frames, DemixingModule& demixing_module);
-
-template <>
-absl::StatusOr<IdLabeledFrameMap> CallDemixing(
-    const std::list<AudioFrameWithData>& frames,
+    bool use_original_samples, const std::list<AudioFrameWithData>& frames,
     DemixingModule& demixing_module) {
-  return demixing_module.DemixOriginalAudioSamples(frames);
+  if (use_original_samples) {
+    return demixing_module.DemixOriginalAudioSamples(frames);
+  } else {
+    return demixing_module.DemixDecodedAudioSamples(frames);
+  }
 }
 
-template <>
-absl::StatusOr<IdLabeledFrameMap> CallDemixing(
-    const std::list<DecodedAudioFrame>& frames,
-    DemixingModule& demixing_module) {
-  return demixing_module.DemixDecodedAudioSamples(frames);
-}
-
-template <typename FrameType>
-void BM_Demixing(benchmark::State& state) {
+void BM_Demixing(bool use_original_samples, benchmark::State& state) {
   // Set up the input.
   const int num_ticks = state.range(0);
   SubstreamIdLabelsMap substream_id_to_labels;
-  std::list<FrameType> audio_frames;
+  std::list<AudioFrameWithData> audio_frames;
 
   // Mono is the lowest layer.
-  ConfigureLosslessAudioFrameOrDecodedAudioFrame(
-      {kMono}, num_ticks, substream_id_to_labels, audio_frames);
+  ConfigureLosslessAudioFrame({kMono}, num_ticks, substream_id_to_labels,
+                              audio_frames);
 
   // Stereo is the next layer. One additional channel (L2) is provided.
-  ConfigureLosslessAudioFrameOrDecodedAudioFrame(
-      {kL2}, num_ticks, substream_id_to_labels, audio_frames);
+  ConfigureLosslessAudioFrame({kL2}, num_ticks, substream_id_to_labels,
+                              audio_frames);
 
   // Create a demixing module.
   auto demixing_module = CreateDemixingModule(substream_id_to_labels);
 
-  // Measure the calls to `DemixingModule::DemixOriginalAudioSamples()`.
+  // Measure the calls to either `DemixingModule::DemixOriginalAudioSamples()`
+  // or `DemixingModule::DemixDecodedAudioSamples()`.
   for (auto _ : state) {
     auto id_to_labeled_frame =
-        // demixing_module.DemixOriginalAudioSamples(audio_frames);
-        CallDemixing<FrameType>(audio_frames, demixing_module);
+        CallDemixing(use_original_samples, audio_frames, demixing_module);
     CHECK_OK(id_to_labeled_frame);
   }
 }
 
 static void BM_DemixingOriginal(benchmark::State& state) {
-  BM_Demixing<AudioFrameWithData>(state);
+  BM_Demixing(true, state);
 }
 
 static void BM_DemixingDecoded(benchmark::State& state) {
-  BM_Demixing<DecodedAudioFrame>(state);
+  BM_Demixing(false, state);
 }
 
 // Benchmark with different number of samples per frame.

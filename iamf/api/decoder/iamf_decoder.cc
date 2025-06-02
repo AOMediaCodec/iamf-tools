@@ -194,8 +194,8 @@ IamfStatus ProcessAllTemporalUnits(
           rendered_samples_for_temporal_unit;
       absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
           output_temporal_unit->output_timestamp,
-          output_temporal_unit->output_audio_frames,
           output_temporal_unit->output_parameter_blocks,
+          output_temporal_unit->output_audio_frames,
           rendered_samples_for_temporal_unit);
       if (!absl_status.ok()) {
         return AbslToIamfStatus(absl_status);

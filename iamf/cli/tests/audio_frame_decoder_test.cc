@@ -81,7 +81,7 @@ TEST(Decode, RequiresSubstreamsAreInitialized) {
   // Encoded frames.
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  const AudioFrameWithData encoded_audio_frame =
+  AudioFrameWithData encoded_audio_frame =
       PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
 
   // Decoding fails before substreams are initialized.
@@ -137,27 +137,26 @@ TEST(Decode, DecodesLpcmFrame) {
   // Encoded frames.
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  const AudioFrameWithData encoded_audio_frame =
+  AudioFrameWithData audio_frame =
       PrepareEncodedAudioFrame(codec_config_obus, audio_elements);
   InitAllAudioElements(audio_elements, decoder);
 
   // Decode.
-  const auto decoded_audio_frame = decoder.Decode(encoded_audio_frame);
+  EXPECT_THAT(decoder.Decode(audio_frame), IsOk());
 
   // Validate.
-  ASSERT_THAT(decoded_audio_frame, IsOk());
-  EXPECT_EQ(decoded_audio_frame->substream_id, kSubstreamId);
-  EXPECT_EQ(decoded_audio_frame->start_timestamp, 0);
-  EXPECT_EQ(decoded_audio_frame->end_timestamp, kNumSamplesPerFrame);
-  EXPECT_EQ(decoded_audio_frame->down_mixing_params, kDownMixingParams);
-  EXPECT_EQ(decoded_audio_frame->audio_element_with_data,
+  EXPECT_EQ(audio_frame.obu.GetSubstreamId(), kSubstreamId);
+  EXPECT_EQ(audio_frame.start_timestamp, 0);
+  EXPECT_EQ(audio_frame.end_timestamp, kNumSamplesPerFrame);
+  EXPECT_EQ(audio_frame.down_mixing_params, kDownMixingParams);
+  EXPECT_EQ(audio_frame.audio_element_with_data,
             &audio_elements.at(kAudioElementId));
 
   // For LPCM, the input bytes are all zeros, but we expect the decoder to
   // combine kBytesPerSample bytes each into one int32_t sample.
   // There are kNumSamplesPerFrame samples in the frame.
-  EXPECT_EQ(decoded_audio_frame->decoded_samples.size(), kNumChannels);
-  for (const auto& samples_for_channel : decoded_audio_frame->decoded_samples) {
+  EXPECT_EQ(audio_frame.decoded_samples.size(), kNumChannels);
+  for (const auto& samples_for_channel : audio_frame.decoded_samples) {
     EXPECT_EQ(samples_for_channel.size(), kNumSamplesPerFrame);
     for (int32_t sample : samples_for_channel) {
       EXPECT_EQ(sample, 0);
@@ -173,21 +172,20 @@ TEST(Decode, DecodesFlacFrame) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::vector<uint8_t> encoded_audio_frame_payload = {kFlacEncodedFrame.begin(),
                                                       kFlacEncodedFrame.end()};
-  const AudioFrameWithData encoded_audio_frame = PrepareEncodedAudioFrame(
+  AudioFrameWithData audio_frame = PrepareEncodedAudioFrame(
       codec_config_obus, audio_elements, CodecConfig::kCodecIdFlac,
       encoded_audio_frame_payload);
   InitAllAudioElements(audio_elements, decoder);
 
   // Decode.
-  const auto decoded_audio_frame = decoder.Decode(encoded_audio_frame);
+  EXPECT_THAT(decoder.Decode(audio_frame), IsOk());
 
   // Validate.
-  ASSERT_THAT(decoded_audio_frame, IsOk());
-  EXPECT_EQ(decoded_audio_frame->substream_id, kSubstreamId);
-  EXPECT_EQ(decoded_audio_frame->start_timestamp, 0);
-  EXPECT_EQ(decoded_audio_frame->end_timestamp, kNumSamplesPerFrame);
-  EXPECT_EQ(decoded_audio_frame->down_mixing_params, kDownMixingParams);
-  EXPECT_EQ(decoded_audio_frame->audio_element_with_data,
+  EXPECT_EQ(audio_frame.obu.GetSubstreamId(), kSubstreamId);
+  EXPECT_EQ(audio_frame.start_timestamp, 0);
+  EXPECT_EQ(audio_frame.end_timestamp, kNumSamplesPerFrame);
+  EXPECT_EQ(audio_frame.down_mixing_params, kDownMixingParams);
+  EXPECT_EQ(audio_frame.audio_element_with_data,
             &audio_elements.at(kAudioElementId));
   const std::vector<std::vector<int32_t>> kExpectedDecodedSamplesInt32 = {
       {0x00010000, 0x00020000, 0x00030000, 0x00040000, 0x00050000, 0x00060000,
@@ -202,7 +200,7 @@ TEST(Decode, DecodesFlacFrame) {
   const auto kExpectedDecodedSamples =
       Int32ToInternalSampleType2D(kExpectedDecodedSamplesInt32);
 
-  EXPECT_EQ(decoded_audio_frame->decoded_samples, kExpectedDecodedSamples);
+  EXPECT_EQ(audio_frame.decoded_samples, kExpectedDecodedSamples);
 }
 
 TEST(Decode, DecodesMultipleFlacFrames) {
@@ -213,7 +211,7 @@ TEST(Decode, DecodesMultipleFlacFrames) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::vector<uint8_t> encoded_audio_frame_payload = {kFlacEncodedFrame.begin(),
                                                       kFlacEncodedFrame.end()};
-  const AudioFrameWithData encoded_audio_frame = PrepareEncodedAudioFrame(
+  AudioFrameWithData encoded_audio_frame = PrepareEncodedAudioFrame(
       codec_config_obus, audio_elements, CodecConfig::kCodecIdFlac,
       encoded_audio_frame_payload);
   InitAllAudioElements(audio_elements, decoder);
