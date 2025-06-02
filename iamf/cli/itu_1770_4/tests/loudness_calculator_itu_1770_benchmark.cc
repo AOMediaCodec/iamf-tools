@@ -62,7 +62,6 @@ static void BM_LoudnessCalculatorItu1770_4(
     benchmark::State& state) {
   const bool measure_true_peak = state.range(0);
   const int num_samples_per_frame = state.range(1);
-  const int bit_depth = state.range(2);
   const auto layout = GetSoundSystemLayout(sound_system, measure_true_peak);
   // Derive the number of channels from the layout.
   int32_t num_channels;
@@ -72,7 +71,7 @@ static void BM_LoudnessCalculatorItu1770_4(
 
   // Create a loudness calculator.
   auto loudness_calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      layout, num_samples_per_frame, kSampleRate, bit_depth);
+      layout, num_samples_per_frame, kSampleRate);
 
   // Create input samples and a vector of spans pointing to the channels.
   auto samples = CreateAudioSamples(num_channels, num_samples_per_frame);
@@ -109,44 +108,36 @@ static void BM_LoudnessCalculatorItu1770_4_ForSoundSystem13(
 // expect the main impact from the specific sound system to be on the number of
 // channels.
 BENCHMARK(BM_LoudnessCalculatorItu1770_4_ForSoundSystemA)
-    ->Args({0, 480, 16})
-    ->Args({1, 480, 16})
-    ->Args({1, 480, 24})
-    ->Args({1, 480, 32})
-    ->Args({0, 960, 32})
-    ->Args({1, 960, 32})
-    ->Args({0, 1920, 32})
-    ->Args({1, 1920, 32});
+    ->Args({0, 480})
+    ->Args({1, 480})
+    ->Args({0, 960})
+    ->Args({1, 960})
+    ->Args({0, 1920})
+    ->Args({1, 1920});
 
 BENCHMARK(BM_LoudnessCalculatorItu1770_4_ForSoundSystemB)
-    ->Args({0, 480, 16})
-    ->Args({1, 480, 16})
-    ->Args({1, 480, 24})
-    ->Args({1, 480, 32})
-    ->Args({0, 960, 32})
-    ->Args({1, 960, 32})
-    ->Args({0, 1920, 32})
-    ->Args({1, 1920, 32});
+    ->Args({0, 480})
+    ->Args({1, 480})
+    ->Args({0, 960})
+    ->Args({1, 960})
+    ->Args({0, 1920})
+    ->Args({1, 1920});
 
 BENCHMARK(BM_LoudnessCalculatorItu1770_4_ForSoundSystemJ)
-    ->Args({0, 480, 16})
-    ->Args({1, 480, 16})
-    ->Args({1, 480, 24})
-    ->Args({1, 480, 32})
-    ->Args({0, 960, 32})
-    ->Args({1, 960, 32})
-    ->Args({0, 1920, 32})
-    ->Args({1, 1920, 32});
+    ->Args({0, 480})
+    ->Args({1, 480})
+    ->Args({0, 960})
+    ->Args({1, 960})
+    ->Args({0, 1920})
+    ->Args({1, 1920});
 
 BENCHMARK(BM_LoudnessCalculatorItu1770_4_ForSoundSystem13)
-    ->Args({0, 480, 16})
-    ->Args({1, 480, 16})
-    ->Args({1, 480, 24})
-    ->Args({1, 480, 32})
-    ->Args({0, 960, 32})
-    ->Args({1, 960, 32})
-    ->Args({0, 1920, 32})
-    ->Args({1, 1920, 32});
+    ->Args({0, 480})
+    ->Args({1, 480})
+    ->Args({0, 960})
+    ->Args({1, 960})
+    ->Args({0, 1920})
+    ->Args({1, 1920});
 
 }  // namespace
 }  // namespace iamf_tools

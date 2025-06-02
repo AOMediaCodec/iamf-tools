@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -32,7 +33,6 @@
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 #include "include/ebur128_analyzer.h"
@@ -40,10 +40,15 @@
 namespace iamf_tools {
 
 namespace {
-// This implementation flattens data to interleaved format before passing to the
-// library.
-constexpr auto kInterleavesSampleLayout =
-    loudness::EbuR128Analyzer::INTERLEAVED;
+// This implementation creates planar non-contiguous views into the channel-time
+// domain spans, before passing to the library.
+constexpr auto kPlanarNonContiguous =
+    loudness::EbuR128Analyzer::PLANAR_NON_CONTIGUOUS;
+
+// Static assert, so we remember to change the sample format if the
+// `InternalSampleType` ever changes.
+static_assert(std::is_same<InternalSampleType, double>::value);
+constexpr auto kSampleFormat = loudness::EbuR128Analyzer::DOUBLE;
 
 absl::Status FloatToQ7_8WithDebuggingMessage(float value, int16_t& output,
                                              absl::string_view context) {
@@ -125,57 +130,45 @@ absl::StatusOr<std::vector<float>> GetItu1770_4ChannelWeights(
   }
 }
 
-// Flattens to the output buffer, and returns a span to the relevant slice of
-// data.
-absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
+// Arranges a view of planar non-contiguous views to the input samples, and
+// computes the number of valid samples per channel.
+absl::Status GetDataPointersAndNumberOfValidSamples(
     absl::Span<const absl::Span<const InternalSampleType>> channel_time_samples,
     size_t max_num_samples_per_frame, int32_t expected_num_channels,
-    int32_t bit_depth, std::vector<uint8_t>& interleaved_pcm_buffer) {
+    int64_t& num_valid_samples_per_channel,
+    std::vector<const double*>& planar_non_contiguous_pointers) {
   if (channel_time_samples.size() != expected_num_channels) {
     return absl::InvalidArgumentError(
         absl::StrCat("Input samples are not stored in ", expected_num_channels,
                      " channels."));
   }
 
-  const size_t num_samples_per_channel =
+  num_valid_samples_per_channel =
       channel_time_samples.empty() ? 0 : channel_time_samples[0].size();
-  if (num_samples_per_channel > max_num_samples_per_frame) {
+  if (num_valid_samples_per_channel > max_num_samples_per_frame) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "Input number of samples per channel (", num_samples_per_channel,
+        "Input number of samples per channel (", num_valid_samples_per_channel,
         ") is greater than the pre-configured number of samples per frame (",
         max_num_samples_per_frame, ")"));
   }
 
   const bool all_channels_have_expected_num_samples =
       std::all_of(channel_time_samples.begin(), channel_time_samples.end(),
-                  [&num_samples_per_channel](const auto& channel) {
-                    return channel.size() == num_samples_per_channel;
+                  [&num_valid_samples_per_channel](const auto& channel) {
+                    return channel.size() == num_valid_samples_per_channel;
                   });
   if (!all_channels_have_expected_num_samples) {
     return absl::InvalidArgumentError(
         absl::StrCat("Detected a channel which does not contain ",
-                     num_samples_per_channel, " ticks."));
+                     num_valid_samples_per_channel, " ticks."));
   }
 
-  size_t write_position = 0;
-  const size_t interleaved_pcm_buffer_size = interleaved_pcm_buffer.size();
-  for (int t = 0; t < num_samples_per_channel; t++) {
-    for (int c = 0; c < expected_num_channels; ++c) {
-      // The buffer is pre-allocated to fit the largest accepted input. But for
-      // safety, check the write position does not exceed the buffer size.
-      CHECK(write_position < interleaved_pcm_buffer_size);
-      // `WritePcmSample` requires the input sample to be in the upper
-      // bits of the first argument.
-      int32_t sample_int32t;
-      RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
-          channel_time_samples[c][t], sample_int32t));
-      RETURN_IF_NOT_OK(WritePcmSample(
-          static_cast<uint32_t>(sample_int32t), bit_depth,
-          /*big_endian=*/false, interleaved_pcm_buffer.data(), write_position));
-    }
+  // Set up the pointers for each channel slice.
+  for (int c = 0; c < channel_time_samples.size(); ++c) {
+    planar_non_contiguous_pointers[c] = channel_time_samples[c].data();
   }
 
-  return absl::MakeConstSpan(interleaved_pcm_buffer).first(write_position);
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -183,34 +176,12 @@ absl::StatusOr<absl::Span<const uint8_t>> FlattenToInterleavedPcm(
 std::unique_ptr<LoudnessCalculatorItu1770_4>
 LoudnessCalculatorItu1770_4::CreateForLayout(
     const MixPresentationLayout& layout, uint32_t num_samples_per_frame,
-    int32_t rendered_sample_rate, int32_t rendered_bit_depth) {
+    int32_t rendered_sample_rate) {
   const auto weights = GetItu1770_4ChannelWeights(layout.loudness_layout);
   if (!weights.ok()) {
     LOG(ERROR) << "Failed to get channel weights: " << weights.status();
     return nullptr;
   }
-
-  // Configure a bit-depth to measure loudness on.
-  int32_t bit_depth_to_measure_loudness;
-  loudness::EbuR128Analyzer::SampleFormat sample_format;
-  switch (rendered_bit_depth) {
-    case 16:
-      bit_depth_to_measure_loudness = 16;
-      sample_format = loudness::EbuR128Analyzer::S16;
-      break;
-    case 24:
-    case 32:
-      // The underlying library does not support 24-bit input, so intentionally
-      // handle it the same as 32-bit.
-      bit_depth_to_measure_loudness = 32;
-      sample_format = loudness::EbuR128Analyzer::S32;
-      break;
-    default:
-      LOG(ERROR) << "Unsupported bit depth: " << rendered_bit_depth;
-      return nullptr;
-  }
-  // Later code assumes this is always a multiple of 8.
-  CHECK_EQ(bit_depth_to_measure_loudness % 8, 0);
 
   const size_t num_channels = weights->size();
 
@@ -219,33 +190,26 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
   VLOG(1) << "Creating AudioLoudness1770:";
   VLOG(1) << "  num_channels= " << num_channels;
   VLOG(1) << "  sample_rate= " << rendered_sample_rate;
-  VLOG(1) << "  bit_depth_to_measure_loudness= "
-          << bit_depth_to_measure_loudness;
-  VLOG(1) << "  sample_format= " << sample_format;
+  VLOG(1) << "  sample_format= " << kSampleFormat;
   VLOG(1) << "  enable_true_peak_measurement= " << enable_true_peak_measurement;
   VLOG(1) << "  weights= " << absl::StrJoin(*weights, ", ");
 
   return absl::WrapUnique(new LoudnessCalculatorItu1770_4(
       num_samples_per_frame, num_channels, *weights, rendered_sample_rate,
-      bit_depth_to_measure_loudness, sample_format, layout.loudness,
-      enable_true_peak_measurement));
+      layout.loudness, enable_true_peak_measurement));
 }
 
 absl::Status LoudnessCalculatorItu1770_4::AccumulateLoudnessForSamples(
     absl::Span<const absl::Span<const InternalSampleType>>
         channel_time_samples) {
-  auto interleaved_pcm_span = FlattenToInterleavedPcm(
+  int64_t num_valid_samples_per_channel;
+  RETURN_IF_NOT_OK(GetDataPointersAndNumberOfValidSamples(
       channel_time_samples, num_samples_per_frame_, num_channels_,
-      bit_depth_to_measure_loudness_, interleaved_pcm_buffer_);
-  if (!interleaved_pcm_span.ok()) {
-    return interleaved_pcm_span.status();
-  }
+      num_valid_samples_per_channel, planar_non_contiguous_pointers_));
 
-  const int64_t num_samples_per_channel =
-      channel_time_samples.empty() ? 0 : channel_time_samples[0].size();
   ebu_r128_analyzer_.Process(
-      static_cast<const void*>(interleaved_pcm_span->data()),
-      num_samples_per_channel, sample_format_, kInterleavesSampleLayout);
+      static_cast<const void*>(planar_non_contiguous_pointers_.data()),
+      num_valid_samples_per_channel, kSampleFormat, kPlanarNonContiguous);
 
   return absl::OkStatus();
 }

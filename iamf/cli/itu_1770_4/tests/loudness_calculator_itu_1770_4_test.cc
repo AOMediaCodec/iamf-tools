@@ -36,7 +36,6 @@ const uint32_t kNumSamplesPerFrame = 1024;
 // Changing this effectively changes the frequencies of the samples; loudness
 // is dependent on frequency.
 const uint32_t kSampleRate = 48000;
-const uint32_t kMaxBitDepthToMeasureLoudness = 32;
 
 const Layout kStereoLayout = {
     .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
@@ -58,10 +57,10 @@ const MixPresentationLayout kStereoLayoutWithMaxUserLoudness = {
     .loudness_layout = kStereoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
 
 TEST(CreateForLayout, ReturnsNonNullForKnownLayouts) {
-  EXPECT_NE(LoudnessCalculatorItu1770_4::CreateForLayout(
-                kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame,
-                kSampleRate, kMaxBitDepthToMeasureLoudness),
-            nullptr);
+  EXPECT_NE(
+      LoudnessCalculatorItu1770_4::CreateForLayout(
+          kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate),
+      nullptr);
 }
 
 TEST(CreateForLayout, ReturnsNullForReservedLayouts) {
@@ -70,24 +69,13 @@ TEST(CreateForLayout, ReturnsNullForReservedLayouts) {
           .layout_type = Layout::kLayoutTypeReserved0,
           .specific_layout = LoudspeakersReservedOrBinauralLayout{}}};
   EXPECT_EQ(LoudnessCalculatorItu1770_4::CreateForLayout(
-                kReservedLayout, kNumSamplesPerFrame, kSampleRate,
-                kMaxBitDepthToMeasureLoudness),
+                kReservedLayout, kNumSamplesPerFrame, kSampleRate),
             nullptr);
-}
-
-TEST(LoudnessCalculatorItu1770_4, ReturnsNullptrForUnsupportedBitDepth) {
-  const auto kUnsupportedBitDepth = 12;
-  auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kUnsupportedBitDepth);
-
-  ASSERT_EQ(calculator, nullptr);
 }
 
 TEST(LoudnessCalculatorItu1770_4, ProvidesMinimumLoudnessForEmptySequence) {
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
 
   const auto& calculated_loudness = calculator->QueryLoudness();
@@ -100,8 +88,7 @@ TEST(LoudnessCalculatorItu1770_4, ProvidesMinimumLoudnessForEmptySequence) {
 
 TEST(LoudnessCalculatorItu1770_4, ProvidesMinimumLoudnessForShortSequences) {
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
   const std::vector<std::vector<InternalSampleType>> samples = {{-1.0, 1.0},
                                                                 {-1.0, 1.0}};
@@ -130,8 +117,7 @@ TEST(LoudnessCalculatorItu1770_4, AlwaysCopiesAnchoredLoudness) {
                             .anchored_loudness = kExpectedDialogueLoudness}}}}};
 
   const auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kLayoutWithAnchoredLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kLayoutWithAnchoredLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
   const auto& calculated_loudness = calculator->QueryLoudness();
   ASSERT_THAT(calculated_loudness, IsOk());
@@ -158,8 +144,7 @@ TEST(LoudnessCalculatorItu1770_4, MeasuresLoudnessWithSharpPeak) {
       .loudness_layout = kMonoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
 
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
 
   // Create a sequence that is generally quiet, but has a single sharp peak.
@@ -190,8 +175,7 @@ TEST(AccumulateLoudnessForSamples, SucceedsWithExactlyEnoughSamples) {
   const MixPresentationLayout kMonoLayoutWithMaxUserLoudness = {
       .loudness_layout = kMonoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
 
   constexpr size_t kNumChannels = 1;
@@ -208,8 +192,7 @@ TEST(AccumulateLoudnessForSamples,
       .loudness_layout = kStereoLayout,
       .loudness = kLoudnessInfoWithMaxLoudness};
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kStereoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
 
   // The calculator is configured for stereo, but there is only one channel.
@@ -228,8 +211,7 @@ TEST(AccumulateLoudnessForSamples, ReturnsErrorWhenThereAreTooManySamples) {
   const MixPresentationLayout kMonoLayoutWithMaxUserLoudness = {
       .loudness_layout = kMonoLayout, .loudness = kLoudnessInfoWithMaxLoudness};
   auto calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
-      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate,
-      kMaxBitDepthToMeasureLoudness);
+      kMonoLayoutWithMaxUserLoudness, kNumSamplesPerFrame, kSampleRate);
   ASSERT_NE(calculator, nullptr);
 
   // The calculator is configured to accept only `kNumSamplesPerFrame` samples.
