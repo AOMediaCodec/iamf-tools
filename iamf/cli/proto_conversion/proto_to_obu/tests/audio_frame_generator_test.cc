@@ -119,7 +119,7 @@ void AddOpusCodecConfigWithIdAndPreSkip(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(
+  auto codec_config = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdOpus,
        .num_samples_per_frame = 960,
@@ -127,8 +127,9 @@ void AddOpusCodecConfigWithIdAndPreSkip(
        .decoder_config = OpusDecoderConfig{.version_ = 1,
                                            .pre_skip_ = pre_skip,
                                            .input_sample_rate_ = kSampleRate}});
-  ASSERT_THAT(obu.Initialize(), IsOk());
-  codec_config_obus.emplace(codec_config_id, std::move(obu));
+  ASSERT_THAT(codec_config, IsOk());
+
+  codec_config_obus.emplace(codec_config_id, *std::move(codec_config));
 }
 
 TEST(GetNumberOfSamplesToDelayAtStart,

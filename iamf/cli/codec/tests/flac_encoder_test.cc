@@ -51,11 +51,12 @@ class FlacEncoderTest : public EncoderTestBase, public testing::Test {
                               .num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = flac_decoder_config_};
 
-    CodecConfigObu codec_config(ObuHeader(), 0, temp);
-    ASSERT_THAT(codec_config.Initialize(kOverrideAudioRollDistance), IsOk());
+    auto codec_config_obu = CodecConfigObu::Create(ObuHeader(), 0, temp,
+                                                   kOverrideAudioRollDistance);
+    ASSERT_THAT(codec_config_obu, IsOk());
 
     encoder_ = std::make_unique<FlacEncoder>(flac_encoder_metadata_,
-                                             codec_config, num_channels_);
+                                             *codec_config_obu, num_channels_);
   }
 
   FlacDecoderConfig flac_decoder_config_ = {

@@ -84,15 +84,15 @@ class CodecConfigObu : public ObuBase {
  public:
   /*!\brief Constructor.
    *
-   * After constructing `Initialize` MUST be called and return successfully
-   * before using most functionality of the OBU.
-   *
    * \param header `ObuHeader` of the OBU.
-   * \param codec_config_id `codec_config_id` in the OBU.
+   * \param input_codec_config `codec_config_id` in the OBU.
    * \param codec_config `codec_config` in the OBU.
+   * \return `CodecConfigObu` on success. A specific status on failure.
    */
-  CodecConfigObu(const ObuHeader& header, DecodedUleb128 codec_config_id,
-                 const CodecConfig& codec_config);
+  static absl::StatusOr<CodecConfigObu> Create(
+      const ObuHeader& header, DecodedUleb128 codec_config_id,
+      const CodecConfig& input_codec_config,
+      bool automatically_override_roll_distance = true);
 
   /*!\brief Creates a `CodecConfigObu` from a `ReadBitBuffer`.
    *
@@ -118,18 +118,6 @@ class CodecConfigObu : public ObuBase {
   /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
-  /*!\brief Initializes the OBU.
-   *
-   * `GetOutputSampleRate`, `GetInputSampleRate`, and
-   * `GetBitDepthToMeasureLoudness` may return inaccurate values if this
-   * function did not return `absl::OkStatus()`.
-   *
-   * \param automatically_override_roll_distance If true, the roll distance will
-   *        be overridden to value required by the IAMF spec.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize(bool automatically_override_roll_distance = true);
-
   /*!\brief Sets the codec delay in the underlying `decoder_config`.
    *
    * In some codecs, like Opus, the codec delay is called "pre-skip".
@@ -141,20 +129,6 @@ class CodecConfigObu : public ObuBase {
    */
   absl::Status SetCodecDelay(uint16_t codec_delay);
 
-  /*!\brief Validates and writes the `DecoderConfig` portion of the OBU.
-   *
-   * \param wb Buffer to write to.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status ValidateAndWriteDecoderConfig(WriteBitBuffer& wb) const;
-
-  /*!\brief Validates and reads the `DecoderConfig` portion of the OBU.
-   *
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb);
-
   /*!\brief Gets the output sample rate associated with the OBU.
    *
    * This sample rate is used for timing and offset calculations as per
@@ -164,7 +138,7 @@ class CodecConfigObu : public ObuBase {
    *   - Opus: Always 48kHz ("The sample rate used for computing offsets SHALL
    *           be 48 kHz.").
    *
-   * \return Output sample rate in Hz if the OBU was initialized successfully.
+   * \return Output sample rate in Hz.
    */
   uint32_t GetOutputSampleRate() const { return output_sample_rate_; }
 
@@ -173,7 +147,7 @@ class CodecConfigObu : public ObuBase {
    * The sample rate of the data before being passed to the underlying codec
    * libraries.
    *
-   * \return Input sample rate in Hz if the OBU was initialized successfully.
+   * \return Input sample rate in Hz.
    */
   uint32_t GetInputSampleRate() const { return input_sample_rate_; }
 
@@ -182,8 +156,7 @@ class CodecConfigObu : public ObuBase {
    * This typically is the highest bit-depth associated substreams should be
    * decoded to.
    *
-   * \return Bit-depth of the PCM which will be used to measure loudness if the
-   *         OBU was initialized successfully.
+   * \return Bit-depth of the PCM which will be used to measure loudness.
    */
   uint32_t GetBitDepthToMeasureLoudness() const {
     return bit_depth_to_measure_loudness_;
@@ -212,11 +185,24 @@ class CodecConfigObu : public ObuBase {
   bool IsLossless() const;
 
  private:
-  // Used only by the factory create function.
+  /*!\brief Used only by the factory `Create()` function.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param codec_config_id `codec_config_id` in the OBU.
+   * \param codec_config `codec_config` in the OBU.
+   * \param output_sample_rate Output sample rate in Hz.
+   * \param input_sample_rate Input sample rate in Hz.
+   * \param bit_depth_to_measure_loudness Bit-depth of the PCM which will be
+   *        used to measure loudness.
+   */
+  CodecConfigObu(const ObuHeader& header, DecodedUleb128 codec_config_id,
+                 const CodecConfig& codec_config, uint32_t output_sample_rate,
+                 uint32_t input_sample_rate,
+                 uint8_t bit_depth_to_measure_loudness);
+
+  // Used only by the factory `CreateFromBuffer` function.
   explicit CodecConfigObu(const ObuHeader& header)
-      : ObuBase(header, kObuIaCodecConfig),
-        codec_config_id_(DecodedUleb128()),
-        codec_config_(CodecConfig()) {}
+      : CodecConfigObu(header, DecodedUleb128(), CodecConfig(), 0, 0, 0) {}
 
   // Fields in the OBU as per the IAMF specification.
   DecodedUleb128 codec_config_id_;
@@ -226,10 +212,6 @@ class CodecConfigObu : public ObuBase {
   uint32_t input_sample_rate_ = 0;
   uint32_t output_sample_rate_ = 0;
   uint8_t bit_depth_to_measure_loudness_ = 0;
-
-  // Tracks whether the OBU was initialized correctly.
-  absl::Status init_status_ =
-      absl::UnknownError("Codec Config OBU was not initialized correctly.");
 
   /*!\brief Writes the OBU payload to the buffer.
    *

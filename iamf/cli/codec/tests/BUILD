@@ -64,10 +64,12 @@ cc_test(
     deps = [
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli/codec:encoder_base",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

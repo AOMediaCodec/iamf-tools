@@ -17,11 +17,13 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/obu_header.h"
@@ -40,9 +42,8 @@ constexpr bool kDontValidateCodecDelay = false;
 
 class MockEncoder : public EncoderBase {
  public:
-  MockEncoder()
-      : EncoderBase(CodecConfigObu(ObuHeader(), kCodecConfigId, CodecConfig()),
-                    0) {}
+  MockEncoder(const CodecConfigObu& codec_config_obu)
+      : EncoderBase(codec_config_obu, 0) {}
 
   MOCK_METHOD(
       absl::Status, EncodeAudioFrame,
@@ -56,7 +57,9 @@ class MockEncoder : public EncoderBase {
 };
 
 TEST(EncoderBaseTest, InitializeSucceeds) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay))
       .WillOnce(Return(absl::OkStatus()));
@@ -65,7 +68,9 @@ TEST(EncoderBaseTest, InitializeSucceeds) {
 }
 
 TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder())
       .WillOnce(Return(absl::UnknownError("")));
 
@@ -75,7 +80,9 @@ TEST(EncoderBaseTest, InitializeFailsWhenInitializeEncoderFails) {
 
 TEST(EncoderBaseTest,
      InitializePropagatesValidatePreSkipToSetNumberOfSamplesToDelayAtStart) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder,
               SetNumberOfSamplesToDelayAtStart(kDontValidateCodecDelay));
 
@@ -83,7 +90,9 @@ TEST(EncoderBaseTest,
 }
 
 TEST(EncoderBaseTest, SetNumberOfSamplesToDelayAtStartDefaultsToSuccess) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay));
 
   EXPECT_THAT(encoder.Initialize(kValidateCodecDelay), IsOk());
@@ -91,7 +100,9 @@ TEST(EncoderBaseTest, SetNumberOfSamplesToDelayAtStartDefaultsToSuccess) {
 
 TEST(EncoderBaseTest,
      InitializeFailsWhenSetNumberOfSamplesToDelayAtStartFails) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
   EXPECT_CALL(encoder, InitializeEncoder()).WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(encoder, SetNumberOfSamplesToDelayAtStart(kValidateCodecDelay))
       .WillOnce(Return(absl::UnknownError("")));
@@ -101,7 +112,9 @@ TEST(EncoderBaseTest,
 }
 
 TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
 
   // Expect the returned `audio_frames` is just the same as before calling
   // `Finalize()` and `Pop()`, because we know an empty list
@@ -138,7 +151,9 @@ TEST(EncoderBaseTest, FinalizeAndPopAppendNothingWhenNoFramesAvailable) {
 }
 
 TEST(EncoderBaseTest, DefaultZeroNumberOfSamplesToDelayAtStart) {
-  MockEncoder encoder;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_configs);
+  MockEncoder encoder(codec_configs.at(kCodecConfigId));
 
   EXPECT_EQ(encoder.GetNumberOfSamplesToDelayAtStart(), 0);
 }

@@ -375,17 +375,19 @@ absl::Status CodecConfigGenerator::Generate(
           absl::StrCat("Unsupported codec with codec_id= ", obu_codec_id));
     }
 
-    CodecConfigObu obu(
+    auto obu = CodecConfigObu::Create(
         GetHeaderFromMetadata(codec_config_metadata.obu_header()),
-        codec_config_metadata.codec_config_id(), obu_codec_config);
-    RETURN_IF_NOT_OK(obu.Initialize(
-        input_codec_config.automatically_override_audio_roll_distance()));
+        codec_config_metadata.codec_config_id(), obu_codec_config,
+        input_codec_config.automatically_override_audio_roll_distance());
+    if (!obu.ok()) {
+      return obu.status();
+    }
     if (input_codec_config.automatically_override_codec_delay()) {
-      RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, obu));
+      RETURN_IF_NOT_OK(OverrideCodecDelay(input_codec_config, *obu));
     }
 
     codec_config_obus.emplace(codec_config_metadata.codec_config_id(),
-                              std::move(obu));
+                              *std::move(obu));
   }
 
   LogCodecConfigObus(codec_config_obus);

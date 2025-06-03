@@ -54,11 +54,12 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
                               .num_samples_per_frame = num_samples_per_frame_,
                               .decoder_config = opus_decoder_config_};
 
-    CodecConfigObu codec_config(ObuHeader(), 0, temp);
-    EXPECT_THAT(codec_config.Initialize(kOverrideAudioRollDistance), IsOk());
+    auto codec_config = CodecConfigObu::Create(ObuHeader(), 0, temp,
+                                               kOverrideAudioRollDistance);
+    ASSERT_THAT(codec_config, IsOk());
 
     encoder_ = std::make_unique<OpusEncoder>(
-        opus_encoder_metadata_, codec_config, num_channels_, substream_id_);
+        opus_encoder_metadata_, *codec_config, num_channels_, substream_id_);
   }
 
   OpusDecoderConfig opus_decoder_config_ = {

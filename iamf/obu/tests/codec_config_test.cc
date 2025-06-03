@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -41,6 +42,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+using testing::Not;
+
 constexpr bool kOverrideAudioRollDistance = true;
 constexpr bool kDontOverrideAudioRollDistance = false;
 constexpr int16_t kInvalidAudioRollDistance = 123;
@@ -59,6 +62,16 @@ constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndex64000 =
      0x01)
     << 7;
 
+CodecConfig GetLpcmCodecConfig(uint32_t sample_rate) {
+  return {.codec_id = CodecConfig::kCodecIdLpcm,
+          .num_samples_per_frame = 64,
+          .audio_roll_distance = 0,
+          .decoder_config = LpcmDecoderConfig{
+              .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmBigEndian,
+              .sample_size_ = 16,
+              .sample_rate_ = sample_rate}};
+}
+
 class CodecConfigTestBase : public ObuTestBase {
  public:
   CodecConfigTestBase(CodecConfig::CodecId codec_id,
@@ -74,41 +87,23 @@ class CodecConfigTestBase : public ObuTestBase {
   ~CodecConfigTestBase() override = default;
 
  protected:
-  void ConstructObu() {
-    obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                            codec_config_);
-  }
-
   void InitExpectOk() override {
-    ConstructObu();
-    EXPECT_THAT(obu_->Initialize(), IsOk());
+    auto obu = CodecConfigObu::Create(header_, codec_config_id_, codec_config_,
+                                      override_audio_roll_distance_);
+    ASSERT_THAT(obu, IsOk());
+    obu_ = std::make_unique<CodecConfigObu>(std::move(*obu));
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
     EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
-  void TestInputSampleRate() {
-    EXPECT_EQ(obu_->GetInputSampleRate(), expected_input_sample_rate_);
-  }
-
-  void TestOutputSampleRate() {
-    EXPECT_EQ(obu_->GetOutputSampleRate(), expected_output_sample_rate_);
-  }
-
-  void TestGetBitDepthToMeasureLoudness() {
-    EXPECT_EQ(obu_->GetBitDepthToMeasureLoudness(),
-              expected_output_pcm_bit_depth_);
-  }
-
-  uint32_t expected_input_sample_rate_;
-  uint32_t expected_output_sample_rate_;
-  uint8_t expected_output_pcm_bit_depth_;
-
   std::unique_ptr<CodecConfigObu> obu_;
 
   DecodedUleb128 codec_config_id_;
   CodecConfig codec_config_;
+
+  bool override_audio_roll_distance_ = kOverrideAudioRollDistance;
 };
 
 struct SampleRateTestCase {
@@ -117,42 +112,27 @@ struct SampleRateTestCase {
 };
 
 class CodecConfigLpcmTestForSampleRate
-    : public CodecConfigTestBase,
-      public testing::TestWithParam<SampleRateTestCase> {
- public:
-  CodecConfigLpcmTestForSampleRate()
-      : CodecConfigTestBase(
-            CodecConfig::kCodecIdLpcm,
-            LpcmDecoderConfig{.sample_format_flags_bitmask_ =
-                                  LpcmDecoderConfig::kLpcmBigEndian,
-                              .sample_size_ = 16,
-                              .sample_rate_ = 48000}) {}
-};
-
+    : public testing::TestWithParam<SampleRateTestCase> {};
 // Instantiate an LPCM `CodecConfigOBU` with the specified parameters. Verify
 // the validation function returns the expected status.
 TEST_P(CodecConfigLpcmTestForSampleRate, TestCodecConfigLpcm) {
-  // Replace the default sample rate and expected status codes.
-  std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
-      GetParam().sample_rate;
-
-  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                          codec_config_);
-
+  auto obu = CodecConfigObu::Create(ObuHeader(), kCodecConfigId,
+                                    GetLpcmCodecConfig(GetParam().sample_rate));
   const bool expect_ok = GetParam().expect_ok;
-  EXPECT_EQ(obu_->Initialize().ok(), expect_ok);
-  WriteBitBuffer unused_wb(0);
-  EXPECT_EQ(obu_->ValidateAndWriteObu(unused_wb).ok(), expect_ok);
-
   if (expect_ok) {
-    // Validate the functions to get the sample rate return the expected value.
-    expected_output_sample_rate_ = GetParam().sample_rate;
-    TestOutputSampleRate();
+    ASSERT_THAT(obu, IsOk());
 
+    WriteBitBuffer unused_wb(0);
+    EXPECT_EQ(obu->ValidateAndWriteObu(unused_wb).ok(), expect_ok);
+
+    // Validate the functions to get the sample rate return the expected
+    // value.
+    EXPECT_EQ(obu->GetOutputSampleRate(), GetParam().sample_rate);
     // The input sample rate function for LPCM should the output sample rate
     // function.
-    expected_input_sample_rate_ = expected_output_sample_rate_;
-    TestInputSampleRate();
+    EXPECT_EQ(obu->GetInputSampleRate(), GetParam().sample_rate);
+  } else {
+    EXPECT_THAT(obu, Not(IsOk()));
   }
 }
 
@@ -161,7 +141,6 @@ INSTANTIATE_TEST_SUITE_P(LegalSampleRates, CodecConfigLpcmTestForSampleRate,
                                                                 {16000, true},
                                                                 {32000, true},
                                                                 {44100, true},
-                                                                {48000, true},
                                                                 {96000,
                                                                  true}}));
 
@@ -211,37 +190,33 @@ TEST_F(CodecConfigLpcmTest, SetCodecDelayIsNoOp) {
   EXPECT_THAT(obu_->SetCodecDelay(kArbitraryCodecDelay), IsOk());
 }
 
-TEST_F(CodecConfigLpcmTest, ConstructorSetsObuTyoe) {
+TEST_F(CodecConfigLpcmTest, CreateSetsObuTyoe) {
   InitExpectOk();
 
   EXPECT_EQ(obu_->header_.obu_type, kObuIaCodecConfig);
 }
 
-TEST_F(CodecConfigLpcmTest, ConstructorSetsAudioRollDistance) {
+TEST_F(CodecConfigLpcmTest, CreateSetsAudioRollDistance) {
   codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  ConstructObu();
+  override_audio_roll_distance_ = kOverrideAudioRollDistance;
+  InitExpectOk();
+
+  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance, kLpcmAudioRollDistance);
+}
+
+TEST_F(CodecConfigLpcmTest, CreateObeysInvalidAudioRollDistance) {
+  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
+  override_audio_roll_distance_ = kDontOverrideAudioRollDistance;
+  InitExpectOk();
 
   EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
             kInvalidAudioRollDistance);
 }
 
-TEST_F(CodecConfigLpcmTest, InitializeObeysInvalidAudioRollDistance) {
+TEST_F(CodecConfigLpcmTest, CreateMayOverrideAudioRollDistance) {
   codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  ConstructObu();
-
-  EXPECT_THAT(obu_->Initialize(kDontOverrideAudioRollDistance), IsOk());
-
-  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
-            kInvalidAudioRollDistance);
-}
-
-TEST_F(CodecConfigLpcmTest, InitializeMayOverrideAudioRollDistance) {
-  codec_config_.audio_roll_distance = kInvalidAudioRollDistance;
-  ConstructObu();
-
-  EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance,
-            kInvalidAudioRollDistance);
-  EXPECT_THAT(obu_->Initialize(kOverrideAudioRollDistance), IsOk());
+  override_audio_roll_distance_ = kOverrideAudioRollDistance;
+  InitExpectOk();
 
   EXPECT_EQ(obu_->GetCodecConfig().audio_roll_distance, kLpcmAudioRollDistance);
 }
@@ -271,28 +246,25 @@ TEST_F(CodecConfigLpcmTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   InitAndTestWrite();
 }
 
-TEST_F(CodecConfigLpcmTest, InitFailsWithIllegalCodecId) {
+TEST_F(CodecConfigLpcmTest, CreateFailsWithIllegalCodecId) {
   codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
 
-  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                          codec_config_);
-  EXPECT_FALSE(obu_->Initialize().ok());
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
+              Not(IsOk()));
 }
 
-TEST_F(CodecConfigLpcmTest, InitializeFailsWithWriteIllegalSampleSize) {
+TEST_F(CodecConfigLpcmTest, CreateFailsWithWriteIllegalSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 33;
 
-  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                          codec_config_);
-  EXPECT_FALSE(obu_->Initialize().ok());
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
+              Not(IsOk()));
 }
 
-TEST_F(CodecConfigLpcmTest, InitializeFailsWithGetIllegalSampleSize) {
+TEST_F(CodecConfigLpcmTest, CreateFailsWithGetIllegalSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 33;
 
-  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                          codec_config_);
-  EXPECT_FALSE(obu_->Initialize().ok());
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
+              Not(IsOk()));
 }
 
 TEST_F(CodecConfigLpcmTest,
@@ -404,9 +376,9 @@ TEST_F(CodecConfigLpcmTest, WriteSampleSize) {
 
 TEST_F(CodecConfigLpcmTest, GetSampleSize) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_size_ = 24;
-  expected_output_pcm_bit_depth_ = 24;
   InitExpectOk();
-  TestGetBitDepthToMeasureLoudness();
+
+  EXPECT_EQ(obu_->GetBitDepthToMeasureLoudness(), 24);
 }
 
 TEST_F(CodecConfigLpcmTest, WriteSampleRate) {
@@ -433,17 +405,17 @@ TEST_F(CodecConfigLpcmTest, WriteSampleRate) {
 TEST_F(CodecConfigLpcmTest, GetOutputSampleRate) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       16000;
-  expected_output_sample_rate_ = 16000;
   InitExpectOk();
-  TestOutputSampleRate();
+
+  EXPECT_EQ(obu_->GetOutputSampleRate(), 16000);
 }
 
 TEST_F(CodecConfigLpcmTest, GetInputSampleRate) {
   std::get<LpcmDecoderConfig>(codec_config_.decoder_config).sample_rate_ =
       16000;
-  expected_input_sample_rate_ = 16000;
   InitExpectOk();
-  TestInputSampleRate();
+
+  EXPECT_EQ(obu_->GetInputSampleRate(), 16000);
 }
 
 TEST_F(CodecConfigLpcmTest, RedundantCopy) {
@@ -518,29 +490,30 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
 TEST_F(CodecConfigOpusTest, InitializeFailsWithIllegalCodecId) {
   codec_config_.codec_id = static_cast<CodecConfig::CodecId>(0);
 
-  obu_ = std::make_unique<CodecConfigObu>(header_, codec_config_id_,
-                                          codec_config_);
-  EXPECT_FALSE(obu_->Initialize().ok());
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_),
+              Not(IsOk()));
 }
 
-TEST_F(CodecConfigOpusTest,
-       InitializeFailsWhenOverridingAudioRollDistanceFails) {
+TEST_F(CodecConfigOpusTest, CreateFailsWhenOverridingAudioRollDistanceFails) {
   constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
   codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
-  ConstructObu();
+  override_audio_roll_distance_ = kOverrideAudioRollDistance;
 
   // Underlying Opus roll distance calculation would fail.
-  EXPECT_FALSE(obu_->Initialize(kOverrideAudioRollDistance).ok());
+  EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_,
+                                     override_audio_roll_distance_),
+              Not(IsOk()));
 }
 
 TEST_F(CodecConfigOpusTest,
        ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
   constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
   codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
-  ConstructObu();
+  override_audio_roll_distance_ = kDontOverrideAudioRollDistance;
+
   // User does not request to calculate the roll distance, so the invalid
   // `num_samples_per_frame` is not detected at initialization time.
-  EXPECT_THAT(obu_->Initialize(kDontOverrideAudioRollDistance), IsOk());
+  InitExpectOk();
 
   // But later the write fails because `num_samples_per_frame` is invalid and/or
   // the roll distance is undefined.

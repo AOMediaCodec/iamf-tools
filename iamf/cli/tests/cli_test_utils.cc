@@ -155,7 +155,7 @@ void AddLpcmCodecConfig(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(
+  auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdLpcm,
        .num_samples_per_frame = num_samples_per_frame,
@@ -163,8 +163,9 @@ void AddLpcmCodecConfig(
            .sample_format_flags_bitmask_ = LpcmDecoderConfig::kLpcmLittleEndian,
            .sample_size_ = sample_size,
            .sample_rate_ = sample_rate}});
-  EXPECT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
-  codec_config_obus.emplace(codec_config_id, std::move(obu));
+  ASSERT_THAT(obu, IsOk());
+
+  codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
 void AddLpcmCodecConfigWithIdAndSampleRate(
@@ -185,15 +186,16 @@ void AddOpusCodecConfig(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(
+  auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdOpus,
        .num_samples_per_frame = num_samples_per_frame,
        .decoder_config = OpusDecoderConfig{.version_ = 1,
                                            .pre_skip_ = 312,
                                            .input_sample_rate_ = sample_rate}});
-  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
-  codec_config_obus.emplace(codec_config_id, std::move(obu));
+  ASSERT_THAT(obu, IsOk());
+
+  codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
 void AddOpusCodecConfigWithId(
@@ -213,7 +215,7 @@ void AddFlacCodecConfig(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(
+  auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdFlac,
        .num_samples_per_frame = num_samples_per_frame,
@@ -229,8 +231,9 @@ void AddFlacCodecConfig(
                   .sample_rate = sample_rate,
                   .bits_per_sample = static_cast<uint8_t>(sample_size - 1),
                   .total_samples_in_stream = 0}}}})});
-  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
-  codec_config_obus.emplace(codec_config_id, std::move(obu));
+  ASSERT_THAT(obu, IsOk());
+
+  codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
 void AddFlacCodecConfigWithId(
@@ -250,7 +253,7 @@ void AddAacCodecConfig(
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
 
-  CodecConfigObu obu(
+  auto obu = CodecConfigObu::Create(
       ObuHeader(), codec_config_id,
       {.codec_id = CodecConfig::kCodecIdAacLc,
        .num_samples_per_frame = num_samples_per_frame,
@@ -260,8 +263,9 @@ void AddAacCodecConfig(
                    .sample_frequency_index_ =
                        AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue,
                    .sampling_frequency_ = sample_rate}}}});
-  ASSERT_THAT(obu.Initialize(kOverrideAudioRollDistance), IsOk());
-  codec_config_obus.emplace(codec_config_id, std::move(obu));
+  ASSERT_THAT(obu, IsOk());
+
+  codec_config_obus.emplace(codec_config_id, *std::move(obu));
 }
 
 void AddAacCodecConfigWithId(

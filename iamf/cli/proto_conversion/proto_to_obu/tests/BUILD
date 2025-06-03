@@ -79,6 +79,7 @@ cc_test(
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto_conversion/proto_to_obu:codec_config_generator",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",

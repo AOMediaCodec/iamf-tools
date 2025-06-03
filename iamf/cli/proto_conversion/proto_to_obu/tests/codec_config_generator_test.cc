@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -26,6 +27,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
@@ -65,18 +67,11 @@ void InitMetadataForLpcm(
 
 void InitExpectedObuForLpcm(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
-  expected_obus.emplace(
-      kCodecConfigId,
-      CodecConfigObu(ObuHeader(), kCodecConfigId,
-                     {.codec_id = CodecConfig::kCodecIdLpcm,
-                      .num_samples_per_frame = 64,
-                      .audio_roll_distance = 0,
-                      .decoder_config = LpcmDecoderConfig{
-                          .sample_format_flags_bitmask_ =
-                              LpcmDecoderConfig::kLpcmLittleEndian,
-                          .sample_size_ = 16,
-                          .sample_rate_ = 16000}}));
-  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
+  constexpr uint32_t kNumSamplesPerFrame = 64;
+  constexpr uint8_t kSampleSize = 16;
+  constexpr uint32_t kSampleRate = 16000;
+  AddLpcmCodecConfig(kCodecConfigId, kNumSamplesPerFrame, kSampleSize,
+                     kSampleRate, expected_obus);
 }
 
 void InitMetadataForOpus(
@@ -109,16 +104,15 @@ void InitMetadataForOpus(
 
 void InitExpectedObuForOpus(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
-  expected_obus.emplace(
-      kCodecConfigId,
-      CodecConfigObu(
-          ObuHeader(), kCodecConfigId,
-          {.codec_id = CodecConfig::CodecConfig::kCodecIdOpus,
-           .num_samples_per_frame = 120,
-           .audio_roll_distance = -32,
-           .decoder_config = OpusDecoderConfig{
-               .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 48000}}));
-  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
+  auto codec_config = CodecConfigObu::Create(
+      ObuHeader(), kCodecConfigId,
+      {.codec_id = CodecConfig::CodecConfig::kCodecIdOpus,
+       .num_samples_per_frame = 120,
+       .audio_roll_distance = -32,
+       .decoder_config = OpusDecoderConfig{
+           .version_ = 1, .pre_skip_ = 0, .input_sample_rate_ = 48000}});
+  ASSERT_THAT(codec_config, IsOk());
+  expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
 }
 
 void InitMetadataForAac(
@@ -165,23 +159,22 @@ void InitMetadataForAac(
 
 void InitExpectedObuForAac(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
-  expected_obus.emplace(
-      kCodecConfigId,
-      CodecConfigObu(
-          ObuHeader(), kCodecConfigId,
-          {.codec_id = CodecConfig::kCodecIdAacLc,
-           .num_samples_per_frame = 1024,
-           .audio_roll_distance = -1,
-           .decoder_config = AacDecoderConfig{
-               .buffer_size_db_ = 0,
-               .max_bitrate_ = 0,
-               .average_bit_rate_ = 0,
-               .decoder_specific_info_{
-                   .audio_specific_config =
-                       {.sample_frequency_index_ =
-                            AudioSpecificConfig::SampleFrequencyIndex::k48000}},
-           }}));
-  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
+  auto codec_config = CodecConfigObu::Create(
+      ObuHeader(), kCodecConfigId,
+      {.codec_id = CodecConfig::kCodecIdAacLc,
+       .num_samples_per_frame = 1024,
+       .audio_roll_distance = -1,
+       .decoder_config = AacDecoderConfig{
+           .buffer_size_db_ = 0,
+           .max_bitrate_ = 0,
+           .average_bit_rate_ = 0,
+           .decoder_specific_info_{
+               .audio_specific_config =
+                   {.sample_frequency_index_ =
+                        AudioSpecificConfig::SampleFrequencyIndex::k48000}},
+       }});
+  ASSERT_THAT(codec_config, IsOk());
+  expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
 }
 
 void InitMetadataForFlac(
@@ -224,24 +217,23 @@ void InitMetadataForFlac(
 
 void InitExpectedObuForFlac(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
-  expected_obus.emplace(
-      kCodecConfigId,
-      CodecConfigObu(
-          ObuHeader(), kCodecConfigId,
-          {.codec_id = CodecConfig::kCodecIdFlac,
-           .num_samples_per_frame = 64,
-           .audio_roll_distance = 0,
-           .decoder_config = FlacDecoderConfig{
-               {{.header = {.last_metadata_block_flag = true,
-                            .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
-                            .metadata_data_block_length = 34},
-                 .payload = FlacMetaBlockStreamInfo{
-                     .minimum_block_size = 64,
-                     .maximum_block_size = 64,
-                     .sample_rate = 48000,
-                     .bits_per_sample = 15,
-                     .total_samples_in_stream = 24000}}}}}));
-  ASSERT_THAT(expected_obus.at(kCodecConfigId).Initialize(), IsOk());
+  auto codec_config = CodecConfigObu::Create(
+      ObuHeader(), kCodecConfigId,
+      {.codec_id = CodecConfig::kCodecIdFlac,
+       .num_samples_per_frame = 64,
+       .audio_roll_distance = 0,
+       .decoder_config = FlacDecoderConfig{
+           {{.header = {.last_metadata_block_flag = true,
+                        .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
+                        .metadata_data_block_length = 34},
+             .payload =
+                 FlacMetaBlockStreamInfo{.minimum_block_size = 64,
+                                         .maximum_block_size = 64,
+                                         .sample_rate = 48000,
+                                         .bits_per_sample = 15,
+                                         .total_samples_in_stream = 24000}}}}});
+  ASSERT_THAT(codec_config, IsOk());
+  expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
 }
 
 class CodecConfigGeneratorTest : public testing::Test {

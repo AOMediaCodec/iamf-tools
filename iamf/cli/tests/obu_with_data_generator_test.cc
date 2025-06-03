@@ -94,9 +94,7 @@ TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
           AudioElementObu::AudioElementType::kAudioElementChannelBased,
           /*reserved=*/0, kFirstCodecConfigId));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  codec_config_obus.emplace(
-      kFirstCodecConfigId,
-      CodecConfigObu(ObuHeader(), kFirstCodecConfigId, CodecConfig()));
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
   absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
       audio_element_with_data_map =
           ObuWithDataGenerator::GenerateAudioElementsWithData(
@@ -138,9 +136,7 @@ TEST(GenerateAudioElementWithData, MultipleAudioElementsWithOneCodecConfig) {
           AudioElementObu::AudioElementType::kAudioElementChannelBased,
           /*reserved=*/0, kFirstCodecConfigId));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  codec_config_obus.emplace(
-      kFirstCodecConfigId,
-      CodecConfigObu(ObuHeader(), kFirstCodecConfigId, CodecConfig()));
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
   absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
       audio_element_with_data_map =
           ObuWithDataGenerator::GenerateAudioElementsWithData(
@@ -187,9 +183,7 @@ TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
           AudioElementObu::AudioElementType::kAudioElementChannelBased,
           /*reserved=*/0, kSecondCodecConfigId));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  codec_config_obus.emplace(
-      kFirstCodecConfigId,
-      CodecConfigObu(ObuHeader(), kFirstCodecConfigId, CodecConfig()));
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
   absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
       audio_element_with_data_map =
           ObuWithDataGenerator::GenerateAudioElementsWithData(
