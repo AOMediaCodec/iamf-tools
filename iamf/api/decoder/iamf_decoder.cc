@@ -173,6 +173,47 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
   }
 }
 
+IamfStatus DecodeOneTemporalUnit(
+    StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
+    bool created_from_descriptors,
+    std::queue<std::vector<std::vector<InternalSampleType>>>& rendered_samples,
+    std::optional<ChannelReorderer> channel_reorderer,
+    bool& continue_processing) {
+  std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
+  absl::Status absl_status = obu_processor->ProcessTemporalUnit(
+      created_from_descriptors, output_temporal_unit, continue_processing);
+  if (!absl_status.ok()) {
+    return AbslToIamfStatus(absl_status);
+  }
+  // We may have processed bytes but not a full temporal unit.
+  if (output_temporal_unit.has_value()) {
+    absl::Span<const absl::Span<const InternalSampleType>>
+        rendered_samples_for_temporal_unit;
+    absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+        output_temporal_unit->output_timestamp,
+        output_temporal_unit->output_parameter_blocks,
+        output_temporal_unit->output_audio_frames,
+        rendered_samples_for_temporal_unit);
+    if (!absl_status.ok()) {
+      return AbslToIamfStatus(absl_status);
+    }
+    auto temporal_unit = std::vector(rendered_samples_for_temporal_unit.begin(),
+                                     rendered_samples_for_temporal_unit.end());
+    if (channel_reorderer.has_value()) {
+      channel_reorderer->Reorder(temporal_unit);
+    }
+    // TODO(b/382197581): Remove extra copying.
+    std::vector<std::vector<InternalSampleType>> temporal_unit_output;
+    temporal_unit_output.reserve(temporal_unit.size());
+    for (const auto& temporal_unit_entry : temporal_unit) {
+      temporal_unit_output.push_back(
+          std::vector(temporal_unit_entry.begin(), temporal_unit_entry.end()));
+    }
+    rendered_samples.push(std::move(temporal_unit_output));
+  }
+  return IamfStatus::OkStatus();
+}
+
 IamfStatus ProcessAllTemporalUnits(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
@@ -182,38 +223,11 @@ IamfStatus ProcessAllTemporalUnits(
   bool continue_processing = true;
   const auto start_position_bits = read_bit_buffer->Tell();
   while (continue_processing) {
-    std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
-    absl::Status absl_status = obu_processor->ProcessTemporalUnit(
-        created_from_descriptors, output_temporal_unit, continue_processing);
-    if (!absl_status.ok()) {
-      return AbslToIamfStatus(absl_status);
-    }
-    // We may have processed bytes but not a full temporal unit.
-    if (output_temporal_unit.has_value()) {
-      absl::Span<const absl::Span<const InternalSampleType>>
-          rendered_samples_for_temporal_unit;
-      absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
-          output_temporal_unit->output_timestamp,
-          output_temporal_unit->output_parameter_blocks,
-          output_temporal_unit->output_audio_frames,
-          rendered_samples_for_temporal_unit);
-      if (!absl_status.ok()) {
-        return AbslToIamfStatus(absl_status);
-      }
-      auto temporal_unit =
-          std::vector(rendered_samples_for_temporal_unit.begin(),
-                      rendered_samples_for_temporal_unit.end());
-      if (channel_reorderer.has_value()) {
-        channel_reorderer->Reorder(temporal_unit);
-      }
-      // TODO(b/382197581): Remove extra copying.
-      std::vector<std::vector<InternalSampleType>> temporal_unit_output;
-      temporal_unit_output.reserve(temporal_unit.size());
-      for (const auto& temporal_unit_entry : temporal_unit) {
-        temporal_unit_output.push_back(std::vector(temporal_unit_entry.begin(),
-                                                   temporal_unit_entry.end()));
-      }
-      rendered_samples.push(std::move(temporal_unit_output));
+    IamfStatus status = DecodeOneTemporalUnit(
+        read_bit_buffer, obu_processor, created_from_descriptors,
+        rendered_samples, channel_reorderer, continue_processing);
+    if (!status.ok()) {
+      return status;
     }
   }
   // Empty the buffer of the data that was processed thus far.
