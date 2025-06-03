@@ -1455,6 +1455,32 @@ TEST(ProcessTemporalUnitObus,
 
 using OutputTemporalUnit = ObuProcessor::OutputTemporalUnit;
 
+TEST(ProcessTemporalUnit, DoesNotCreateTemporalUnitWithNoData) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  // We expect the call to `ProcessTemporalUnit()` to succeed, but since there
+  // is no data left to consume in the input_buffer, we should not create an
+  // output temporal unit.
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // We expect that no output_temporal_unit is created.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_FALSE(output_temporal_unit.has_value());
+}
+
 TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
   // Set up inputs with a single audio frame.
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();

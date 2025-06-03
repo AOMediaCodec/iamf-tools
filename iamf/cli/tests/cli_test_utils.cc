@@ -132,11 +132,13 @@ absl::Status CollectObusFromIaSequence(
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
         /*eos_is_end_of_sequence=*/true, output_temporal_unit,
         continue_processing));
-    audio_frames.splice(audio_frames.end(),
-                        output_temporal_unit->output_audio_frames);
-    parameter_blocks.splice(parameter_blocks.end(),
-                            output_temporal_unit->output_parameter_blocks);
-    temporal_unit_count++;
+    if (output_temporal_unit.has_value()) {
+      audio_frames.splice(audio_frames.end(),
+                          output_temporal_unit->output_audio_frames);
+      parameter_blocks.splice(parameter_blocks.end(),
+                              output_temporal_unit->output_parameter_blocks);
+      temporal_unit_count++;
+    }
   }
   LOG(INFO) << "Processed " << temporal_unit_count << " Temporal Unit OBUs";
 
