@@ -177,11 +177,13 @@ IamfStatus DecodeOneTemporalUnit(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
     std::queue<std::vector<std::vector<InternalSampleType>>>& rendered_samples,
-    std::optional<ChannelReorderer> channel_reorderer,
-    bool& continue_processing) {
+    std::optional<ChannelReorderer> channel_reorderer) {
+  const auto start_position_bits = read_bit_buffer->Tell();
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
+  bool unused_continue_processing = true;
   absl::Status absl_status = obu_processor->ProcessTemporalUnit(
-      created_from_descriptors, output_temporal_unit, continue_processing);
+      created_from_descriptors, output_temporal_unit,
+      unused_continue_processing);
   if (!absl_status.ok()) {
     return AbslToIamfStatus(absl_status);
   }
@@ -211,33 +213,12 @@ IamfStatus DecodeOneTemporalUnit(
     }
     rendered_samples.push(std::move(temporal_unit_output));
   }
-  return IamfStatus::OkStatus();
-}
-
-IamfStatus ProcessAllTemporalUnits(
-    StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
-    bool created_from_descriptors,
-    std::queue<std::vector<std::vector<InternalSampleType>>>& rendered_samples,
-    std::optional<ChannelReorderer> channel_reorderer) {
-  LOG_FIRST_N(INFO, 10) << "Processing Temporal Units";
-  bool continue_processing = true;
-  const auto start_position_bits = read_bit_buffer->Tell();
-  while (continue_processing) {
-    IamfStatus status = DecodeOneTemporalUnit(
-        read_bit_buffer, obu_processor, created_from_descriptors,
-        rendered_samples, channel_reorderer, continue_processing);
-    if (!status.ok()) {
-      return status;
-    }
-  }
   // Empty the buffer of the data that was processed thus far.
   const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
-  absl::Status absl_status = read_bit_buffer->Flush(num_bits_read / 8);
-  if (!absl_status.ok()) {
-    return AbslToIamfStatus(absl_status);
+  absl::Status flush_status = read_bit_buffer->Flush(num_bits_read / 8);
+  if (!flush_status.ok()) {
+    return AbslToIamfStatus(flush_status);
   }
-  LOG_FIRST_N(INFO, 10) << "Rendered " << rendered_samples.size()
-                        << " temporal units.";
   return IamfStatus::OkStatus();
 }
 
@@ -388,10 +369,16 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
     state_->channel_reorderer = ChannelReorderer::Create(
         sound_system, state_->channel_rearrangement_scheme);
   }
-  return ProcessAllTemporalUnits(
-      state_->read_bit_buffer.get(), state_->obu_processor.get(),
-      state_->created_from_descriptors, state_->rendered_samples,
-      state_->channel_reorderer);
+  if (state_->rendered_samples.empty()) {
+    // We only try to actually decode a temporal unit if we have no currently
+    // decoded temporal units. If we do, we'll decode the next temporal unit in
+    // `GetOutputTemporalUnit()`.
+    return DecodeOneTemporalUnit(
+        state_->read_bit_buffer.get(), state_->obu_processor.get(),
+        state_->created_from_descriptors, state_->rendered_samples,
+        state_->channel_reorderer);
+  }
+  return IamfStatus::OkStatus();
 }
 
 void IamfDecoder::ConfigureOutputSampleType(
@@ -406,12 +393,22 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
   if (state_->rendered_samples.empty()) {
     return IamfStatus::OkStatus();
   }
+  // Write decoded temporal unit to output buffer.
   OutputSampleType output_sample_type = GetOutputSampleType();
   IamfStatus status = WriteFrameToSpan(
       state_->rendered_samples.front(), output_sample_type,
       absl::MakeSpan(output_buffer, output_buffer_size), bytes_written);
   if (status.ok()) {
     state_->rendered_samples.pop();
+  }
+
+  // Refill the rendered samples with the next temporal unit.
+  auto decode_status = DecodeOneTemporalUnit(
+      state_->read_bit_buffer.get(), state_->obu_processor.get(),
+      state_->created_from_descriptors, state_->rendered_samples,
+      state_->channel_reorderer);
+  if (!decode_status.ok()) {
+    return decode_status;
   }
   return status;
 }

@@ -738,6 +738,17 @@ TEST(
   // output should be the same as the input.
   EXPECT_THAT(output_data, testing::ElementsAreArray(kEightSampleAudioFrame));
   EXPECT_THAT(output_data2, testing::ElementsAreArray(kEightSampleAudioFrame2));
+
+  std::vector<uint8_t> output_data3(expected_output_size);
+  bytes_written = 0;
+
+  // If we call GetOutputTemporalUnit again, we not have anything left to
+  // output.
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data3.data(),
+                                          output_data3.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, 0);
 }
 
 TEST(Decode, FailsWhenCalledAfterSignalEndOfDecoding) {
