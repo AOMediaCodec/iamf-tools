@@ -556,8 +556,8 @@ void LogAudioElements(
     // Log `substream_id_to_labels` separately.
     for (const auto& [substream_id, labels] :
          audio_element.substream_id_to_labels) {
-      LOG(INFO) << "Substream ID: " << substream_id;
-      LOG(INFO) << "  num_channels= " << labels.size();
+      VLOG(1) << "Substream ID: " << substream_id;
+      VLOG(1) << "  num_channels= " << labels.size();
     }
   }
 }

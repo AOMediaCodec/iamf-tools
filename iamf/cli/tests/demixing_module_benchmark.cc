@@ -124,8 +124,8 @@ static void ConfigureLosslessAudioFrame(
 }
 
 // Currently benchmarking down-mixing from stereo to mono and demixing from
-// mono to stero. Both consist of the basic unit of operation: mixing two
-// channels into one. Down-mixing/demixing betwee other layouts should take
+// mono to stereo. Both consist of the basic unit of operation: mixing two
+// channels into one. Down-mixing/demixing between other layouts should take
 // time proportional to the number of units of operations.
 static void BM_DownMixing(benchmark::State& state) {
   // Set up the input.

@@ -265,8 +265,8 @@ absl::Status GetCommonSamplesPerFrame(
 
 void LogChannelNumbers(const std::string& name,
                        const ChannelNumbers& channel_numbers) {
-  LOG(INFO) << name << ": [" << channel_numbers.surround << "."
-            << channel_numbers.lfe << "." << channel_numbers.height << "]";
+  VLOG(1) << name << ": [" << channel_numbers.surround << "."
+          << channel_numbers.lfe << "." << channel_numbers.height << "]";
 }
 
 }  // namespace iamf_tools

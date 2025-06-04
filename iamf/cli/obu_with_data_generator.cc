@@ -377,8 +377,8 @@ absl::Status AddSubstreamLabels(
 
     labels_for_substream_id.push_back(first_label);
     labels_for_substream_id.push_back(second_label);
-    LOG(INFO) << "  substream_id_to_labels[" << substream_id
-              << "]: " << first_label << "/" << second_label;
+    VLOG(1) << "  substream_id_to_labels[" << substream_id
+            << "]: " << first_label << "/" << second_label;
   }
 
   // Then add non-coupled substream labels.
@@ -386,8 +386,8 @@ absl::Status AddSubstreamLabels(
        iter != non_coupled_substream_labels.end();) {
     const auto substream_id = substream_ids[substream_index++];
     substream_id_to_labels[substream_id].push_back(*iter++);
-    LOG(INFO) << "  substream_id_to_labels[" << substream_id
-              << "]: " << substream_id_to_labels[substream_id].back();
+    VLOG(1) << "  substream_id_to_labels[" << substream_id
+            << "]: " << substream_id_to_labels[substream_id].back();
   }
   return absl::OkStatus();
 }
@@ -400,10 +400,10 @@ absl::Status ValidateSubstreamCounts(
       static_cast<uint32_t>(coupled_substream_labels.size()) / 2;
   const auto num_required_non_coupled_channels =
       static_cast<uint32_t>(non_coupled_substream_labels.size());
-  LOG(INFO) << "num_required_coupled_channels = "
-            << num_required_coupled_channels;
-  LOG(INFO) << "num_required_non_coupled_channels= "
-            << num_required_non_coupled_channels;
+  VLOG(1) << "num_required_coupled_channels = "
+          << num_required_coupled_channels;
+  VLOG(1) << "num_required_non_coupled_channels= "
+          << num_required_non_coupled_channels;
 
   const auto coupled_substream_count_in_obu =
       static_cast<uint32_t>(layer_config.coupled_substream_count);
@@ -540,7 +540,7 @@ absl::Status CollectChannelLayersAndLabelsForLoudspeakerLayout(
                "accumulated_channels to layer_channels"));
   }
 
-  LOG(INFO) << "Layer[" << layer_index << "]:";
+  VLOG(1) << "Layer[" << layer_index << "]:";
   LogChannelNumbers("  layer_channels", layer_channels);
   LogChannelNumbers("  accumulated_channels", accumulated_channels);
 

@@ -789,8 +789,8 @@ RenderingMixPresentationFinalizer::Create(
     LOG(INFO) << "Rendering is safely disabled.";
   }
   if (loudness_calculator_factory == nullptr) {
-    LOG(INFO) << "Loudness calculator factory is null so loudness will not be "
-                 "calculated.";
+    VLOG(1) << "Loudness calculator factory is null so loudness will not be "
+               "calculated.";
   }
   absl::flat_hash_map<DecodedUleb128, std::vector<SubmixRenderingMetadata>>
       mix_presentation_id_to_rendering_metadata;

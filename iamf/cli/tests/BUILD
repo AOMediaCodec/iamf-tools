@@ -564,6 +564,30 @@ cc_test(
 )
 
 cc_test(
+    name = "rendering_mix_presentation_finalizer_benchmark",
+    srcs = ["rendering_mix_presentation_finalizer_benchmark.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli:demixing_module",
+        "//iamf/cli:parameter_block_with_data",
+        "//iamf/cli:renderer_factory",
+        "//iamf/cli:rendering_mix_presentation_finalizer",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/types:span",
+        "@com_google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_test(
     name = "rendering_mix_presentation_finalizer_test",
     srcs = ["rendering_mix_presentation_finalizer_test.cc"],
     deps = [
