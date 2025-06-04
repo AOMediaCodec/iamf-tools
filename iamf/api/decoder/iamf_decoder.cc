@@ -79,11 +79,8 @@ struct IamfDecoder::DecoderState {
   // Buffer that is filled with data from Decode().
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer;
 
-  // Rendered samples. Each element in the queue corresponds to a
-  // temporal unit. A temporal unit will never be partially filled, so the
-  // number of elements in the outer vector is equal to the number of decoded
-  // temporal units currently available.
-  std::queue<std::vector<std::vector<InternalSampleType>>> rendered_samples;
+  // Rendered samples. Corresponds to one temporal unit.
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
 
   // The layout used for the rendered output audio.
   // Initially set to the requested Layout but updated by ObuProcessor.
@@ -176,7 +173,7 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
 IamfStatus DecodeOneTemporalUnit(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
-    std::queue<std::vector<std::vector<InternalSampleType>>>& rendered_samples,
+    std::vector<std::vector<InternalSampleType>>& rendered_samples,
     std::optional<ChannelReorderer> channel_reorderer) {
   const auto start_position_bits = read_bit_buffer->Tell();
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
@@ -211,7 +208,7 @@ IamfStatus DecodeOneTemporalUnit(
       temporal_unit_output.push_back(
           std::vector(temporal_unit_entry.begin(), temporal_unit_entry.end()));
     }
-    rendered_samples.push(std::move(temporal_unit_output));
+    rendered_samples = std::move(temporal_unit_output);
   }
   // Empty the buffer of the data that was processed thus far.
   const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
@@ -396,10 +393,10 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
   // Write decoded temporal unit to output buffer.
   OutputSampleType output_sample_type = GetOutputSampleType();
   IamfStatus status = WriteFrameToSpan(
-      state_->rendered_samples.front(), output_sample_type,
+      state_->rendered_samples, output_sample_type,
       absl::MakeSpan(output_buffer, output_buffer_size), bytes_written);
   if (status.ok()) {
-    state_->rendered_samples.pop();
+    state_->rendered_samples.clear();
   }
 
   // Refill the rendered samples with the next temporal unit.
