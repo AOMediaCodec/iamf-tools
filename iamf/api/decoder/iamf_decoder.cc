@@ -80,7 +80,7 @@ struct IamfDecoder::DecoderState {
   std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer;
 
   // Rendered samples. Corresponds to one temporal unit.
-  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  std::vector<absl::Span<const InternalSampleType>> rendered_samples;
 
   // The layout used for the rendered output audio.
   // Initially set to the requested Layout but updated by ObuProcessor.
@@ -173,7 +173,7 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
 IamfStatus DecodeOneTemporalUnit(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
     bool created_from_descriptors,
-    std::vector<std::vector<InternalSampleType>>& rendered_samples,
+    std::vector<absl::Span<const InternalSampleType>>& rendered_samples,
     std::optional<ChannelReorderer> channel_reorderer) {
   const auto start_position_bits = read_bit_buffer->Tell();
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
@@ -196,19 +196,11 @@ IamfStatus DecodeOneTemporalUnit(
     if (!absl_status.ok()) {
       return AbslToIamfStatus(absl_status);
     }
-    auto temporal_unit = std::vector(rendered_samples_for_temporal_unit.begin(),
-                                     rendered_samples_for_temporal_unit.end());
+    rendered_samples = std::vector(rendered_samples_for_temporal_unit.begin(),
+                                   rendered_samples_for_temporal_unit.end());
     if (channel_reorderer.has_value()) {
-      channel_reorderer->Reorder(temporal_unit);
+      channel_reorderer->Reorder(rendered_samples);
     }
-    // TODO(b/382197581): Remove extra copying.
-    std::vector<std::vector<InternalSampleType>> temporal_unit_output;
-    temporal_unit_output.reserve(temporal_unit.size());
-    for (const auto& temporal_unit_entry : temporal_unit) {
-      temporal_unit_output.push_back(
-          std::vector(temporal_unit_entry.begin(), temporal_unit_entry.end()));
-    }
-    rendered_samples = std::move(temporal_unit_output);
   }
   // Empty the buffer of the data that was processed thus far.
   const auto num_bits_read = read_bit_buffer->Tell() - start_position_bits;
@@ -231,7 +223,7 @@ size_t BytesPerSample(OutputSampleType sample_type) {
 }
 
 IamfStatus WriteFrameToSpan(
-    const std::vector<std::vector<InternalSampleType>>& frame,
+    const std::vector<absl::Span<const InternalSampleType>>& frame,
     OutputSampleType sample_type, absl::Span<uint8_t> output_bytes,
     size_t& bytes_written) {
   const size_t bytes_per_sample = BytesPerSample(sample_type);
