@@ -1481,6 +1481,37 @@ TEST(ProcessTemporalUnit, DoesNotCreateTemporalUnitWithNoData) {
   EXPECT_FALSE(output_temporal_unit.has_value());
 }
 
+TEST(ProcessTemporalUnit, DoesNotCreateTemporalUnitWithOnlyATemporalDelimiter) {
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
+  auto temporal_unit_obus = SerializeObusExpectOk({&temporal_delimiter_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  // We expect the call to `ProcessTemporalUnit()` to succeed, but not consume
+  // any data.
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // We should signal that we ought to continue processing.
+  EXPECT_TRUE(continue_processing);
+  // We expect that no output_temporal_unit is created since we only have a
+  // temporal delimiter.
+  EXPECT_FALSE(output_temporal_unit.has_value());
+}
+
 TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
   // Set up inputs with a single audio frame.
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
