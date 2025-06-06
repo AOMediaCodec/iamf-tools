@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
@@ -39,9 +40,11 @@
 #include "iamf/cli/proto_conversion/output_audio_format_utils.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
+#include "iamf/cli/temporal_unit_view.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -117,20 +120,16 @@ absl::Status CollectLabeledSamplesForAudioElements(
 }
 
 void PrintAudioFrames(const std::list<AudioFrameWithData>& audio_frames) {
-  // Print the first, last, and any audio frames with `trimming_status_flag`
-  // set.
   int i = 0;
   for (const auto& audio_frame_with_data : audio_frames) {
-    if (i == 0 || i == audio_frames.size() - 1 ||
-        audio_frame_with_data.obu.header_.obu_trimming_status_flag) {
-      LOG(INFO) << "Audio Frame OBU[" << i << "]";
+    LOG(INFO) << "Audio Frame OBU[" << i << "]";
 
-      audio_frame_with_data.obu.PrintObu();
-      LOG(INFO) << "    audio frame.start_timestamp= "
-                << audio_frame_with_data.start_timestamp;
-      LOG(INFO) << "    audio frame.end_timestamp= "
-                << audio_frame_with_data.end_timestamp;
-    }
+    audio_frame_with_data.obu.PrintObu();
+    LOG(INFO) << "    audio frame.start_timestamp= "
+              << audio_frame_with_data.start_timestamp;
+    LOG(INFO) << "    audio frame.end_timestamp= "
+              << audio_frame_with_data.end_timestamp;
+
     i++;
   }
 }
@@ -172,13 +171,12 @@ iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
   return output_audio_format;
 }
 
-absl::Status GenerateTemporalUnitObus(
+absl::Status GenerateAndPushAllTemporalUnits(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
     IamfEncoder& iamf_encoder,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks,
-    std::list<ArbitraryObu>& arbitrary_obus) {
+    std::vector<std::unique_ptr<ObuSequencerBase>>& obu_sequencers) {
   auto wav_sample_provider =
       WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
                                 input_wav_directory, audio_elements);
@@ -234,54 +232,41 @@ absl::Status GenerateTemporalUnitObus(
       RETURN_IF_NOT_OK(iamf_encoder.AddParameterBlockMetadata(metadata));
     }
 
-    std::list<AudioFrameWithData> temp_audio_frames;
-    std::list<ParameterBlockWithData> temp_parameter_blocks;
-    std::list<ArbitraryObu> temp_arbitrary_obus;
+    std::list<AudioFrameWithData> audio_frames;
+    std::list<ParameterBlockWithData> parameter_blocks;
+    std::list<ArbitraryObu> arbitrary_obus;
     IdLabeledFrameMap id_to_labeled_frame;
     RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(
-        temp_audio_frames, temp_parameter_blocks, temp_arbitrary_obus));
+        audio_frames, parameter_blocks, arbitrary_obus));
 
-    if (temp_audio_frames.empty()) {
+    if (audio_frames.empty() && parameter_blocks.empty() &&
+        arbitrary_obus.empty()) {
       // Ok. Some audio codec will only output an encoded frame after the next
       // frame "pushes" the old one out. So we wait till the next iteration to
       // retrieve it.
-      LOG(INFO) << "No audio frame generated in this iteration.";
+      LOG(INFO) << "No OBUs generated in this iteration.";
 
-      // Regardless, there may be extra arbitrary OBUs that are not associated
-      // with any audio frames, so continue to splice what we have.
+      continue;
     }
 
-    audio_frames.splice(audio_frames.end(), temp_audio_frames);
-    parameter_blocks.splice(parameter_blocks.end(), temp_parameter_blocks);
-    arbitrary_obus.splice(arbitrary_obus.end(), temp_arbitrary_obus);
+    // Print audio frames in the first, or last iteration.
+    if (data_obus_iteration == 0 || !iamf_encoder.GeneratingDataObus()) {
+      PrintAudioFrames(audio_frames);
+    }
+
+    // Push it to all of the OBU sequencers.
+    const auto temporal_unit_view = TemporalUnitView::Create(
+        parameter_blocks, audio_frames, arbitrary_obus);
+    if (!temporal_unit_view.ok()) {
+      return temporal_unit_view.status();
+    }
+
+    for (auto& obu_sequencer : obu_sequencers) {
+      RETURN_IF_NOT_OK(obu_sequencer->PushTemporalUnit(*temporal_unit_view));
+    }
   }
   LOG(INFO) << "\n============================= END of Generating Data OBUs"
             << " =============================\n\n";
-  PrintAudioFrames(audio_frames);
-
-  return absl::OkStatus();
-}
-
-absl::Status WriteObus(
-    const UserMetadata& user_metadata, const std::string& output_iamf_directory,
-    const IASequenceHeaderObu& ia_sequence_header_obu,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::list<ArbitraryObu>& arbitrary_obus) {
-  const bool include_temporal_delimiters =
-      user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters();
-
-  // TODO(b/349271859): Move the OBU sequencer inside `IamfEncoder`.
-  auto obu_sequencers = CreateObuSequencers(
-      user_metadata, output_iamf_directory, include_temporal_delimiters);
-  for (auto& obu_sequencer : obu_sequencers) {
-    RETURN_IF_NOT_OK(obu_sequencer->PickAndPlace(
-        ia_sequence_header_obu, codec_config_obus, audio_elements,
-        mix_presentation_obus, audio_frames, parameter_blocks, arbitrary_obus));
-  }
 
   return absl::OkStatus();
 }
@@ -298,9 +283,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> preliminary_mix_presentation_obus;
-  std::list<AudioFrameWithData> audio_frames;
-  std::list<ParameterBlockWithData> parameter_blocks;
-  std::list<ArbitraryObu> arbitrary_obus;
+  std::list<ArbitraryObu> descriptor_arbitrary_obus;
 
   // Create output directories.
   RETURN_IF_NOT_OK(CreateOutputDirectory(output_iamf_directory));
@@ -347,18 +330,32 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       user_metadata, CreateRendererFactory().get(),
       CreateLoudnessCalculatorFactory().get(), sample_processor_factory,
       ia_sequence_header_obu, codec_config_obus, audio_elements,
-      preliminary_mix_presentation_obus, arbitrary_obus);
+      preliminary_mix_presentation_obus, descriptor_arbitrary_obus);
   if (!iamf_encoder.ok()) {
     return iamf_encoder.status();
   }
+  RETURN_IF_NOT_OK(
+      ValidateHasValue(ia_sequence_header_obu, "ia_sequence_header_obu"));
+
+  // TODO(b/349271859): Move the OBU sequencer inside `IamfEncoder`.
+  auto obu_sequencers = CreateObuSequencers(
+      user_metadata, output_iamf_directory,
+      user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters());
+  for (auto& obu_sequencer : obu_sequencers) {
+    RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
+        *ia_sequence_header_obu, codec_config_obus, audio_elements,
+        preliminary_mix_presentation_obus, descriptor_arbitrary_obus));
+  }
+
   // Discard the "preliminary" mix presentation OBUs. We only care about the
   // finalized ones, which are not possible to know until audio encoding is
   // complete.
   preliminary_mix_presentation_obus.clear();
-  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(
-      user_metadata, input_wav_directory, *iamf_encoder, audio_elements,
-      audio_frames, parameter_blocks, arbitrary_obus));
-  // Audio encoding is complete. Retrieve the OBUs with have the finalized
+  RETURN_IF_NOT_OK(GenerateAndPushAllTemporalUnits(
+      user_metadata, input_wav_directory, audio_elements, *iamf_encoder,
+      obu_sequencers));
+
+  // Audio encoding is complete. Retrieve the OBUs which have the finalized
   // loudness information.
   const auto finalized_mix_presentation_obus =
       iamf_encoder->GetFinalizedMixPresentationObus();
@@ -366,10 +363,11 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
     return finalized_mix_presentation_obus.status();
   }
 
-  RETURN_IF_NOT_OK(WriteObus(user_metadata, output_iamf_directory,
-                             ia_sequence_header_obu.value(), codec_config_obus,
-                             audio_elements, *finalized_mix_presentation_obus,
-                             audio_frames, parameter_blocks, arbitrary_obus));
+  for (auto& obu_sequencer : obu_sequencers) {
+    RETURN_IF_NOT_OK(obu_sequencer->UpdateDescriptorObusAndClose(
+        *ia_sequence_header_obu, codec_config_obus, audio_elements,
+        *finalized_mix_presentation_obus, descriptor_arbitrary_obus));
+  }
 
   return absl::OkStatus();
 }
