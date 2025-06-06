@@ -1,5 +1,6 @@
 #include "iamf/cli/iamf_encoder.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -47,6 +48,8 @@
 namespace iamf_tools {
 namespace {
 
+using ::absl::MakeConstSpan;
+
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::iamf_tools_cli_proto::UserMetadata;
@@ -63,6 +66,9 @@ constexpr int kExpectedPcmBitDepth = 16;
 
 const auto kOmitOutputWavFiles =
     RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
+
+constexpr std::array<InternalSampleType, 8> kZeroSamples = {0.0, 0.0, 0.0, 0.0,
+                                                            0.0, 0.0, 0.0, 0.0};
 
 void AddIaSequenceHeader(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
@@ -148,12 +154,23 @@ void AddMixPresentation(UserMetadata& user_metadata) {
       user_metadata.add_mix_presentation_metadata()));
 }
 
-void AddArbitraryObu(UserMetadata& user_metadata) {
+void AddDescriptorArbitraryObu(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         insertion_hook: INSERTION_HOOK_AFTER_AUDIO_ELEMENTS
         obu_type: OBU_IA_RESERVED_26
         payload: "Imaginary descriptor OBU between the audio element and mix presentation."
+      )pb",
+      user_metadata.add_arbitrary_obu_metadata()));
+}
+
+void AddArbitraryObuForFirstTick(UserMetadata& user_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        insertion_hook: INSERTION_HOOK_AFTER_AUDIO_FRAMES_AT_TICK
+        insertion_tick: 0
+        obu_type: OBU_IA_RESERVED_26
+        payload: "Imaginary temporal unit OBU in the first temporal unit."
       )pb",
       user_metadata.add_arbitrary_obu_metadata()));
 }
@@ -232,7 +249,7 @@ class IamfEncoderTest : public ::testing::Test {
         user_metadata_, renderer_factory_.get(),
         loudness_calculator_factory_.get(), sample_processor_factory_,
         ia_sequence_header_obu_, codec_config_obus_, audio_elements_,
-        mix_presentation_obus_, arbitrary_obus_);
+        mix_presentation_obus_, descriptor_arbitrary_obus_);
     EXPECT_THAT(iamf_encoder, IsOk());
     return std::move(*iamf_encoder);
   }
@@ -242,7 +259,7 @@ class IamfEncoderTest : public ::testing::Test {
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
   std::list<MixPresentationObu> mix_presentation_obus_;
-  std::list<ArbitraryObu> arbitrary_obus_;
+  std::list<ArbitraryObu> descriptor_arbitrary_obus_;
   // Default some dependencies to be based on the real `IamfComponents`
   // implementations. And generally disable wav writing since it is not needed
   // for most tests.
@@ -262,7 +279,7 @@ TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
                                    sample_processor_factory_,
                                    ia_sequence_header_obu_, codec_config_obus_,
                                    audio_elements_, mix_presentation_obus_,
-                                   arbitrary_obus_)
+                                   descriptor_arbitrary_obus_)
                    .ok());
 }
 
@@ -274,16 +291,16 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   EXPECT_EQ(codec_config_obus_.size(), 1);
   EXPECT_EQ(audio_elements_.size(), 1);
   EXPECT_EQ(mix_presentation_obus_.size(), 1);
-  EXPECT_TRUE(arbitrary_obus_.empty());
+  EXPECT_TRUE(descriptor_arbitrary_obus_.empty());
 }
 
-TEST_F(IamfEncoderTest, CreateGeneratesArbitraryObus) {
+TEST_F(IamfEncoderTest, CreateGeneratesDescriptorArbitraryObus) {
   SetupDescriptorObus();
-  AddArbitraryObu(user_metadata_);
+  AddDescriptorArbitraryObu(user_metadata_);
 
   auto iamf_encoder = CreateExpectOk();
 
-  EXPECT_EQ(arbitrary_obus_.size(), 1);
+  EXPECT_EQ(descriptor_arbitrary_obus_.size(), 1);
 }
 
 TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
@@ -300,6 +317,59 @@ TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
   EXPECT_THAT(first_obu_tags->tags, Contains(TagMatchesBuildInformation()));
 }
 
+TEST_F(IamfEncoderTest,
+       OutputTemporalUnitReturnsArbitraryObusBasedOnInsertionTick) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  AddArbitraryObuForFirstTick(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+  // Push the first temporal unit.
+  iamf_encoder.BeginTemporalUnit();
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
+                          MakeConstSpan(kZeroSamples));
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
+                          MakeConstSpan(kZeroSamples));
+  iamf_encoder.FinalizeAddSamples();
+
+  // Arbitrary OBUs come out based on their insertion hook.
+  std::list<AudioFrameWithData> temp_audio_frames;
+  std::list<ParameterBlockWithData> temp_parameter_blocks;
+  std::list<ArbitraryObu> temp_arbitrary_obus;
+  EXPECT_THAT(
+      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks,
+                                      temp_arbitrary_obus),
+      IsOk());
+
+  EXPECT_EQ(temp_audio_frames.size(), 1);
+  EXPECT_EQ(temp_arbitrary_obus.size(), 1);
+}
+
+TEST_F(IamfEncoderTest,
+       OutputTemporalUnitMayOutputExtranousArbitraryObusAfterFinalizing) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  AddArbitraryObuForFirstTick(user_metadata_);
+  auto iamf_encoder = CreateExpectOk();
+  // Ok, this is is a trivial IA Sequence.
+  iamf_encoder.FinalizeAddSamples();
+  iamf_encoder.BeginTemporalUnit();
+
+  // Normally all temporal units must have an audio frame, but extraneous
+  // arbitrary OBUs are allowed, are signalled as if data OBUs are still
+  // available.
+  EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
+  std::list<AudioFrameWithData> temp_audio_frames;
+  std::list<ParameterBlockWithData> temp_parameter_blocks;
+  std::list<ArbitraryObu> temp_arbitrary_obus;
+  EXPECT_THAT(
+      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks,
+                                      temp_arbitrary_obus),
+      IsOk());
+
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
+  EXPECT_EQ(temp_arbitrary_obus.size(), 1);
+}
+
 TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   SetupDescriptorObus();
   AddAudioFrame(user_metadata_);
@@ -311,12 +381,15 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   const std::vector<InternalSampleType> zero_samples(kNumSamplesPerFrame, 0.0);
   std::list<AudioFrameWithData> temp_audio_frames;
   std::list<ParameterBlockWithData> temp_parameter_blocks;
+  std::list<ArbitraryObu> temp_arbitrary_obus;
   IdLabeledFrameMap id_to_labeled_frame;
   int iteration = 0;
   while (iamf_encoder.GeneratingDataObus()) {
     iamf_encoder.BeginTemporalUnit();
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, zero_samples);
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, zero_samples);
+    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
+                            MakeConstSpan(zero_samples));
+    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
+                            MakeConstSpan(zero_samples));
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {
@@ -328,13 +401,15 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
                 IsOk());
 
     // Output.
-    EXPECT_THAT(iamf_encoder.OutputTemporalUnit(temp_audio_frames,
-                                                temp_parameter_blocks),
-                IsOk());
+    EXPECT_THAT(
+        iamf_encoder.OutputTemporalUnit(
+            temp_audio_frames, temp_parameter_blocks, temp_arbitrary_obus),
+        IsOk());
     EXPECT_EQ(temp_audio_frames.size(), 1);
     EXPECT_EQ(temp_parameter_blocks.size(), 1);
     EXPECT_EQ(temp_audio_frames.front().start_timestamp,
               iteration * kNumSamplesPerFrame);
+    EXPECT_TRUE(temp_arbitrary_obus.empty());
 
     iteration++;
   }
@@ -355,21 +430,25 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   // Use many parts of the API, to make sure the move did not break anything.
   EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
   iamf_encoder.BeginTemporalUnit();
-  const std::vector<InternalSampleType> kZeroSamples(kNumSamplesPerFrame, 0.0);
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, kZeroSamples);
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, kZeroSamples);
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
+                          MakeConstSpan(kZeroSamples));
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
+                          MakeConstSpan(kZeroSamples));
   EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
                   user_metadata_.parameter_block_metadata(0)),
               IsOk());
   iamf_encoder.FinalizeAddSamples();
   std::list<AudioFrameWithData> temp_audio_frames;
   std::list<ParameterBlockWithData> temp_parameter_blocks;
+  std::list<ArbitraryObu> temp_arbitrary_obus;
   IdLabeledFrameMap id_to_labeled_frame;
   EXPECT_THAT(
-      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks),
+      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks,
+                                      temp_arbitrary_obus),
       IsOk());
   EXPECT_EQ(temp_audio_frames.size(), 1);
   EXPECT_EQ(temp_parameter_blocks.size(), 1);
+  EXPECT_TRUE(temp_arbitrary_obus.empty());
 }
 
 TEST_F(IamfEncoderTest, FinalizeMixPresentationObusSucceeds) {
@@ -462,7 +541,7 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
                 .layouts.front()
                 .loudness,
             kArbitraryLoudnessInfo);
-};
+}
 
 TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
   // The override bit-depth should be used at the `SampleProcessorFactory`
@@ -483,7 +562,7 @@ TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
   sample_processor_factory_ = mock_sample_processor_factory.AsStdFunction();
 
   CreateExpectOk();
-};
+}
 
 // TODO(b/349321277): Add more tests.
 

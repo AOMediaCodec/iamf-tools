@@ -57,7 +57,8 @@ absl::Status ArbitraryObu::ReadAndValidatePayloadDerived(
 
 void ArbitraryObu::PrintObu() const {
   LOG(INFO) << "Arbitrary OBU:";
-  LOG(INFO) << "  insertion_hook= " << absl::StrCat(insertion_hook_);
+  LOG(INFO) << "// invalidates_bitstream= " << invalidates_bitstream_;
+  LOG(INFO) << "// insertion_hook= " << absl::StrCat(insertion_hook_);
 
   PrintHeader(static_cast<int64_t>(payload_.size()));
 

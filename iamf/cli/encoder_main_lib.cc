@@ -56,6 +56,8 @@ namespace {
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
 using iamf_tools_cli_proto::UserMetadata;
 
+using ::absl::MakeConstSpan;
+
 absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
   uint32_t partition_duration = 0;
   if (user_metadata.ia_sequence_header_metadata().empty() ||
@@ -175,7 +177,8 @@ absl::Status GenerateTemporalUnitObus(
     IamfEncoder& iamf_encoder,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks) {
+    std::list<ParameterBlockWithData>& parameter_blocks,
+    std::list<ArbitraryObu>& arbitrary_obus) {
   auto wav_sample_provider =
       WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
                                 input_wav_directory, audio_elements);
@@ -212,7 +215,8 @@ absl::Status GenerateTemporalUnitObus(
     for (const auto& [audio_element_id, labeled_samples] :
          id_to_labeled_samples) {
       for (const auto& [channel_label, samples] : labeled_samples) {
-        iamf_encoder.AddSamples(audio_element_id, channel_label, samples);
+        iamf_encoder.AddSamples(audio_element_id, channel_label,
+                                MakeConstSpan(samples));
       }
     }
 
@@ -232,20 +236,24 @@ absl::Status GenerateTemporalUnitObus(
 
     std::list<AudioFrameWithData> temp_audio_frames;
     std::list<ParameterBlockWithData> temp_parameter_blocks;
+    std::list<ArbitraryObu> temp_arbitrary_obus;
     IdLabeledFrameMap id_to_labeled_frame;
-    RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(temp_audio_frames,
-                                                     temp_parameter_blocks));
+    RETURN_IF_NOT_OK(iamf_encoder.OutputTemporalUnit(
+        temp_audio_frames, temp_parameter_blocks, temp_arbitrary_obus));
 
     if (temp_audio_frames.empty()) {
-      // Some audio codec will only output an encoded frame after the next
+      // Ok. Some audio codec will only output an encoded frame after the next
       // frame "pushes" the old one out. So we wait till the next iteration to
       // retrieve it.
-      LOG(INFO) << "No audio frame generated in this iteration; continue.";
-      continue;
+      LOG(INFO) << "No audio frame generated in this iteration.";
+
+      // Regardless, there may be extra arbitrary OBUs that are not associated
+      // with any audio frames, so continue to splice what we have.
     }
 
     audio_frames.splice(audio_frames.end(), temp_audio_frames);
     parameter_blocks.splice(parameter_blocks.end(), temp_parameter_blocks);
+    arbitrary_obus.splice(arbitrary_obus.end(), temp_arbitrary_obus);
   }
   LOG(INFO) << "\n============================= END of Generating Data OBUs"
             << " =============================\n\n";
@@ -347,9 +355,9 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   // finalized ones, which are not possible to know until audio encoding is
   // complete.
   preliminary_mix_presentation_obus.clear();
-  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(user_metadata, input_wav_directory,
-                                            *iamf_encoder, audio_elements,
-                                            audio_frames, parameter_blocks));
+  RETURN_IF_NOT_OK(GenerateTemporalUnitObus(
+      user_metadata, input_wav_directory, *iamf_encoder, audio_elements,
+      audio_frames, parameter_blocks, arbitrary_obus));
   // Audio encoding is complete. Retrieve the OBUs with have the finalized
   // loudness information.
   const auto finalized_mix_presentation_obus =

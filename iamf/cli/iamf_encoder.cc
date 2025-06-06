@@ -20,11 +20,13 @@
 #include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -77,6 +79,39 @@ absl::Status InitAudioFrameDecoderForAllAudioElements(
   return absl::OkStatus();
 }
 
+// Arranges the `ArbitraryObu`s into the non-timestamped (descriptor) and
+// timestamped lists.
+void ArrangeArbitraryObus(
+    std::list<ArbitraryObu>& original_arbitrary_obus,
+    std::list<ArbitraryObu>& descriptor_arbitrary_obus,
+    absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&
+        timestamp_to_arbitrary_obus) {
+  while (!original_arbitrary_obus.empty()) {
+    auto& arbitrary_obu = original_arbitrary_obus.front();
+    // Arrange to the timestamps slot (if present), or the untimestamped slot,
+    // which implies the OBUs are descriptor OBUs.
+    auto& list_to_move_to =
+        arbitrary_obu.insertion_tick_.has_value()
+            ? timestamp_to_arbitrary_obus[*arbitrary_obu.insertion_tick_]
+            : descriptor_arbitrary_obus;
+    list_to_move_to.push_back(std::move(arbitrary_obu));
+    original_arbitrary_obus.pop_front();
+  }
+}
+
+void SpliceArbitraryObus(
+    auto iter_to_splice,
+    absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&
+        timestamp_to_arbitrary_obus,
+    std::list<ArbitraryObu>& temporal_unit_arbitrary_obus) {
+  if (iter_to_splice == timestamp_to_arbitrary_obus.end()) {
+    return;
+  }
+  temporal_unit_arbitrary_obus.splice(temporal_unit_arbitrary_obus.end(),
+                                      iter_to_splice->second);
+  timestamp_to_arbitrary_obus.erase(iter_to_splice);
+}
+
 }  // namespace
 
 absl::StatusOr<IamfEncoder> IamfEncoder::Create(
@@ -90,7 +125,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::list<MixPresentationObu>& mix_presentation_obus,
-    std::list<ArbitraryObu>& arbitrary_obus) {
+    std::list<ArbitraryObu>& descriptor_arbitrary_obus) {
   // IA Sequence Header OBU. Only one is allowed.
   if (user_metadata.ia_sequence_header_metadata_size() != 1) {
     return absl::InvalidArgumentError(
@@ -129,9 +164,16 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
   }
 
   // Generate Arbitrary OBUs.
+  std::list<ArbitraryObu> arbitrary_obus;
   ArbitraryObuGenerator arbitrary_obu_generator(
       user_metadata.arbitrary_obu_metadata());
   RETURN_IF_NOT_OK(arbitrary_obu_generator.Generate(arbitrary_obus));
+  // Arrange the `ArbitraryObu`s into the non-timestamped (descriptor) and
+  // timestamped lists.
+  absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
+      timestamp_to_arbitrary_obus;
+  ArrangeArbitraryObus(arbitrary_obus, descriptor_arbitrary_obus,
+                       timestamp_to_arbitrary_obus);
 
   // Collect and validate consistency of all `ParamDefinition`s in all
   // Audio Element and Mix Presentation OBUs.
@@ -189,6 +231,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
 
   return IamfEncoder(
       user_metadata.test_vector_metadata().validate_user_loudness(),
+      std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
       std::move(parameter_block_generator), std::move(parameters_manager),
       *demixing_module, std::move(audio_frame_generator),
@@ -197,9 +240,12 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
 }
 
 bool IamfEncoder::GeneratingDataObus() const {
+  // Once the `AudioFrameGenerator` is done, and there are no more extraneous
+  // timestamped arbitrary OBUs, we are done.
   return (audio_frame_generator_ != nullptr) &&
          (audio_frame_generator_->TakingSamples() ||
-          audio_frame_generator_->GeneratingFrames());
+          audio_frame_generator_->GeneratingFrames() ||
+          !timestamp_to_arbitrary_obus_.empty());
 }
 
 void IamfEncoder::BeginTemporalUnit() {
@@ -225,7 +271,7 @@ absl::Status IamfEncoder::GetInputTimestamp(
 
 void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
                              ChannelLabel::Label label,
-                             const std::vector<InternalSampleType>& samples) {
+                             absl::Span<const InternalSampleType> samples) {
   if (add_samples_finalized_) {
     LOG_FIRST_N(WARNING, 3)
         << "Calling `AddSamples()` after `FinalizeAddSamples()` has no effect; "
@@ -233,7 +279,8 @@ void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
     return;
   }
 
-  id_to_labeled_samples_[audio_element_id][label] = samples;
+  id_to_labeled_samples_[audio_element_id][label] =
+      std::vector<InternalSampleType>(samples.begin(), samples.end());
 }
 
 void IamfEncoder::FinalizeAddSamples() { add_samples_finalized_ = true; }
@@ -248,9 +295,11 @@ absl::Status IamfEncoder::AddParameterBlockMetadata(
 
 absl::Status IamfEncoder::OutputTemporalUnit(
     std::list<AudioFrameWithData>& audio_frames,
-    std::list<ParameterBlockWithData>& parameter_blocks) {
+    std::list<ParameterBlockWithData>& parameter_blocks,
+    std::list<ArbitraryObu>& temporal_unit_arbitrary_obus) {
   audio_frames.clear();
   parameter_blocks.clear();
+  temporal_unit_arbitrary_obus.clear();
 
   // Generate mix gain and demixing parameter blocks.
   RETURN_IF_NOT_OK(parameter_block_generator_.GenerateDemixing(
@@ -282,9 +331,18 @@ absl::Status IamfEncoder::OutputTemporalUnit(
 
   RETURN_IF_NOT_OK(audio_frame_generator_->OutputFrames(audio_frames));
   if (audio_frames.empty()) {
-    // Some audio codec will only output an encoded frame after the next
-    // frame "pushes" the old one out. So we wait till the next iteration to
-    // retrieve it.
+    if (add_samples_finalized_) {
+      // At the end of the sequence, there could be some extraneous arbitrary
+      // OBUs that are not associated with any audio frames. Pop the next set.
+      SpliceArbitraryObus(timestamp_to_arbitrary_obus_.begin(),
+                          timestamp_to_arbitrary_obus_,
+                          temporal_unit_arbitrary_obus);
+    } else {
+      // Some audio codec will only output an encoded frame after the next
+      // frame "pushes" the old one out. So we wait until the next iteration to
+      // retrieve it.
+      LOG(INFO) << "No audio frames generated";
+    }
     return absl::OkStatus();
   }
   // All generated audio frame should be in the same temporal unit; they all
@@ -335,6 +393,11 @@ absl::Status IamfEncoder::OutputTemporalUnit(
                             temp_parameter_blocks->begin(),
                             last_same_timestamp_iter);
   }
+
+  // Pop out the arbitrary OBUs belonging to this temporal unit.
+  SpliceArbitraryObus(timestamp_to_arbitrary_obus_.find(output_start_timestamp),
+                      timestamp_to_arbitrary_obus_,
+                      temporal_unit_arbitrary_obus);
 
   return mix_presentation_finalizer_.PushTemporalUnit(
       *id_to_labeled_frame, output_start_timestamp, output_end_timestamp,

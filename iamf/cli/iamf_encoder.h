@@ -17,12 +17,13 @@
 #include <memory>
 #include <optional>
 #include <utility>
-#include <vector>
 
 #include "absl/base/nullability.h"
+#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -109,7 +110,8 @@ class IamfEncoder {
    *        incorrect loudness metadata. It is best practice to replace these
    *        with the result of `GetFinalizedMixPresentationObus()` after all
    *        data OBUs are generated.
-   * \param arbitrary_obus List of generated Arbitrary OBUs.
+   * \param descriptor_arbitrary_obus List of generated descriptor Arbitrary
+   *        OBUs.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   static absl::StatusOr<IamfEncoder> Create(
@@ -123,7 +125,7 @@ class IamfEncoder {
       absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
       std::list<MixPresentationObu>& preliminary_mix_presentation_obus,
-      std::list<ArbitraryObu>& arbitrary_obus);
+      std::list<ArbitraryObu>& descriptor_arbitrary_obus);
 
   /*!\brief Returns whether this encoder is generating data OBUs.
    *
@@ -153,7 +155,7 @@ class IamfEncoder {
    * \param samples Audio samples to add.
    */
   void AddSamples(DecodedUleb128 audio_element_id, ChannelLabel::Label label,
-                  const std::vector<InternalSampleType>& samples);
+                  absl::Span<const InternalSampleType> samples);
 
   /*!\brief Finalizes the process of adding samples.
    *
@@ -177,11 +179,14 @@ class IamfEncoder {
    *        temporal unit.
    * \param parameter_blocks List of generated parameter block corresponding
    *        to this temporal unit.
+   * \param temporal_unit_arbitrary_obus List of arbitrary OBUs corresponding
+   *        to this temporal unit.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status OutputTemporalUnit(
       std::list<AudioFrameWithData>& audio_frames,
-      std::list<ParameterBlockWithData>& parameter_blocks);
+      std::list<ParameterBlockWithData>& parameter_blocks,
+      std::list<ArbitraryObu>& temporal_unit_arbitrary_obus);
 
   /*!\brief Gets the finalized mix presentation OBUs.
    *
@@ -204,6 +209,8 @@ class IamfEncoder {
    *
    * \param validate_user_loudness Whether to validate the user-provided
    *        loudness.
+   * \param timestamp_to_arbitrary_obus Arbitrary OBUs arranged by their
+   *        insertion timestamp.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
    *        parameter metadata.
    * \param param_definition_variants Parameter definitions for the IA Sequence.
@@ -216,6 +223,8 @@ class IamfEncoder {
    * \param global_timing_module Manages global timing information.
    */
   IamfEncoder(bool validate_user_loudness,
+              absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&&
+                  timestamp_to_arbitrary_obus,
               std::unique_ptr<
                   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
                   param_definition_variants,
@@ -227,6 +236,7 @@ class IamfEncoder {
               std::unique_ptr<GlobalTimingModule> global_timing_module,
               RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
       : validate_user_loudness_(validate_user_loudness),
+        timestamp_to_arbitrary_obus_(std::move(timestamp_to_arbitrary_obus)),
         param_definition_variants_(std::move(param_definition_variants)),
         parameter_block_generator_(std::move(parameter_block_generator)),
         parameters_manager_(std::move(parameters_manager)),
@@ -237,6 +247,10 @@ class IamfEncoder {
         mix_presentation_finalizer_(std::move(mix_presentation_finalizer)) {}
 
   const bool validate_user_loudness_;
+
+  // Arbitrary OBUs arranged by their insertion tick.
+  absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
+      timestamp_to_arbitrary_obus_;
 
   // Mapping from parameter IDs to parameter definitions.
   // Parameter block generator owns a reference to this map. Wrapped in
