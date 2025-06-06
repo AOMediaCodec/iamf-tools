@@ -357,7 +357,6 @@ cc_library(
         "//iamf/obu:parameter_block",
         "//iamf/obu:temporal_delimiter",
         "//iamf/obu:types",
-        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/log",

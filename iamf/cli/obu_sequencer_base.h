@@ -21,8 +21,6 @@
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -134,27 +132,6 @@ class ObuSequencerBase {
    * leaving a stray file when encoding fails.
    */
   void Abort();
-
-  /*!\brief Pick and places OBUs and write to some output.
-   *
-   * \param ia_sequence_header_obu IA Sequence Header OBU to write.
-   * \param codec_config_obus Codec Config OBUs to write.
-   * \param audio_elements Audio Element OBUs with data to write.
-   * \param mix_presentation_obus Mix Presentation OBUs to write.
-   * \param audio_frames Data about Audio Frame OBUs to write.
-   * \param parameter_blocks Data about Parameter Block OBUs to write.
-   * \param arbitrary_obus Arbitrary OBUs to write.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  [[deprecated("Use this class as per the class documentation instead.")]]
-  absl::Status PickAndPlace(
-      const IASequenceHeaderObu& ia_sequence_header_obu,
-      const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-      const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-      const std::list<MixPresentationObu>& mix_presentation_obus,
-      const std::list<AudioFrameWithData>& audio_frames,
-      const std::list<ParameterBlockWithData>& parameter_blocks,
-      const std::list<ArbitraryObu>& arbitrary_obus);
 
  protected:
   /*!\brief Pushes the descriptor OBUs and to some output.

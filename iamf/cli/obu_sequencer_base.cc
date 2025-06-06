@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/check.h"
@@ -55,14 +54,6 @@ using absl::MakeConstSpan;
 // Write buffer. Let's start with 64 KB. The buffer will resize for larger
 // OBUs if needed.
 constexpr int64_t kBufferStartSize = 65536;
-
-/*!\brief Map of start timestamp -> OBUs in that temporal unit.
- *
- * Map of temporal unit start time -> OBUs that overlap this temporal unit.
- * Using absl::btree_map for convenience as this allows iterating by
- * timestamp (which is the key).
- */
-typedef absl::btree_map<InternalTimestamp, TemporalUnitView> TemporalUnitMap;
 
 /*!\brief Helper class to abort an `ObuSequencerBase` on destruction.
  *
@@ -209,54 +200,6 @@ absl::Status FillDescriptorStatistics(
   // final) have the same duration in the future.
   return GetCommonSamplesPerFrame(
       codec_config_obus, descriptor_statistics.common_samples_per_frame);
-}
-
-[[deprecated("Remove this, and related types when `PickAndPlace` is removed.")]]
-absl::Status GenerateTemporalUnitMap(
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::list<ArbitraryObu>& arbitrary_obus,
-    TemporalUnitMap& temporal_unit_map) {
-  // Initially, guess the temporal units by the start time. Deeper validation
-  // and sanitization occurs when creating the TemporalUnitView.
-  struct UnsanitizedTemporalUnit {
-    std::vector<const ParameterBlockWithData*> parameter_blocks;
-    std::vector<const AudioFrameWithData*> audio_frames;
-    std::vector<const ArbitraryObu*> arbitrary_obus;
-  };
-  typedef absl::flat_hash_map<InternalTimestamp, UnsanitizedTemporalUnit>
-      UnsanitizedTemporalUnitMap;
-  UnsanitizedTemporalUnitMap unsanitized_temporal_unit_map;
-
-  for (const auto& parameter_block : parameter_blocks) {
-    unsanitized_temporal_unit_map[parameter_block.start_timestamp]
-        .parameter_blocks.push_back(&parameter_block);
-  }
-  for (auto& audio_frame : audio_frames) {
-    unsanitized_temporal_unit_map[audio_frame.start_timestamp]
-        .audio_frames.push_back(&audio_frame);
-  }
-  for (const auto& arbitrary_obu : arbitrary_obus) {
-    if (arbitrary_obu.insertion_tick_ == std::nullopt) {
-      continue;
-    }
-    unsanitized_temporal_unit_map[*arbitrary_obu.insertion_tick_]
-        .arbitrary_obus.push_back(&arbitrary_obu);
-  }
-  // Sanitize and build a map on the sanitized temporal units.
-  for (const auto& [timestamp, unsanitized_temporal_unit] :
-       unsanitized_temporal_unit_map) {
-    auto temporal_unit_view = TemporalUnitView::CreateFromPointers(
-        unsanitized_temporal_unit.parameter_blocks,
-        unsanitized_temporal_unit.audio_frames,
-        unsanitized_temporal_unit.arbitrary_obus);
-    if (!temporal_unit_view.ok()) {
-      return temporal_unit_view.status();
-    }
-    temporal_unit_map.emplace(timestamp, *std::move(temporal_unit_view));
-  }
-
-  return absl::OkStatus();
 }
 
 absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
@@ -509,27 +452,6 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
 
   abort_on_destruct.CancelAbort();
   return absl::OkStatus();
-}
-
-absl::Status ObuSequencerBase::PickAndPlace(
-    const IASequenceHeaderObu& ia_sequence_header_obu,
-    const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    const std::list<MixPresentationObu>& mix_presentation_obus,
-    const std::list<AudioFrameWithData>& audio_frames,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const std::list<ArbitraryObu>& arbitrary_obus) {
-  RETURN_IF_NOT_OK(PushDescriptorObus(ia_sequence_header_obu, codec_config_obus,
-                                      audio_elements, mix_presentation_obus,
-                                      arbitrary_obus));
-
-  TemporalUnitMap temporal_unit_map;
-  RETURN_IF_NOT_OK(GenerateTemporalUnitMap(audio_frames, parameter_blocks,
-                                           arbitrary_obus, temporal_unit_map));
-  for (const auto& [timestamp, temporal_unit] : temporal_unit_map) {
-    RETURN_IF_NOT_OK(PushTemporalUnit(temporal_unit));
-  }
-  return Close();
 }
 
 absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
