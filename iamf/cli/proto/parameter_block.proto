@@ -16,7 +16,9 @@ import "iamf/cli/proto/obu_header.proto";
 import "iamf/cli/proto/parameter_data.proto";
 
 message ParameterDataExtension {
-  uint32 parameter_data_size = 1;
+  // `parameter_data_size` is ignored. The value in the bitstream is inferred
+  // based on the size of `parameter_data_bytes`.
+  uint32 parameter_data_size = 1 [deprecated = true];
   bytes parameter_data_bytes = 2;
 }
 

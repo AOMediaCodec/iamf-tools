@@ -307,9 +307,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresExtensionHeader) {
   // Reconfigure the OBU to have an extension header.
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        obu_extension_flag: true
-        extension_header_size: 5
-        extension_header_bytes: "extra"
+        obu_extension_flag: true extension_header_bytes: "extra"
       )pb",
       codec_config_metadata_.at(0).mutable_obu_header()));
 

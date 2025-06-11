@@ -25,7 +25,10 @@ message ObuHeaderMetadata {
 
   uint32 num_samples_to_trim_at_start = 7 [default = 0];
 
-  uint32 extension_header_size = 8 [default = 0];
+  // `extension_header_size` is ignored. The presence in the bitstream is
+  // determined by `obu_extension_flag`. The value in the bitstream is inferred
+  // based on the size of `extension_header_bytes`.
+  uint32 extension_header_size = 8 [default = 0, deprecated = true];
 
   bytes extension_header_bytes = 9 [default = ""];
 }

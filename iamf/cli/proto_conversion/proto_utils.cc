@@ -12,6 +12,7 @@
 #include "iamf/cli/proto_conversion/proto_utils.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -74,8 +75,15 @@ absl::Status CopyParamDefinition(
 
 ObuHeader GetHeaderFromMetadata(
     const iamf_tools_cli_proto::ObuHeaderMetadata& input_obu_header) {
+  if (input_obu_header.has_extension_header_size()) {
+    LOG(WARNING)
+        << "Ignoring deprecated `ObuHeaderMetadata.extension_header_size`. "
+           "Please remove it.";
+  }
+  const uint32_t extension_header_size =
+      input_obu_header.extension_header_bytes().size();
   std::vector<uint8_t> extension_header_bytes(
-      input_obu_header.extension_header_bytes().size());
+      static_cast<size_t>(extension_header_size));
   std::transform(input_obu_header.extension_header_bytes().begin(),
                  input_obu_header.extension_header_bytes().end(),
                  extension_header_bytes.begin(),
@@ -89,7 +97,7 @@ ObuHeader GetHeaderFromMetadata(
           input_obu_header.num_samples_to_trim_at_end(),
       .num_samples_to_trim_at_start =
           input_obu_header.num_samples_to_trim_at_start(),
-      .extension_header_size = input_obu_header.extension_header_size(),
+      .extension_header_size = extension_header_size,
       .extension_header_bytes = extension_header_bytes};
 }
 

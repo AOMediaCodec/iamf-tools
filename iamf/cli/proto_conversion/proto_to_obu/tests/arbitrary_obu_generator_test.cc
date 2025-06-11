@@ -260,7 +260,6 @@ TEST_F(ArbitraryObuGeneratorTest, ObuWithExtensionHeader) {
           obu_redundant_copy: false
           obu_trimming_status_flag: false
           obu_extension_flag: true
-          extension_header_size: 5
           extension_header_bytes: "extra"
         }
         payload: "iamf\x00\x00"

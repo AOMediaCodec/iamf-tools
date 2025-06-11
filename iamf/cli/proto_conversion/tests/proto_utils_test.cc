@@ -79,7 +79,6 @@ TEST(GetHeaderFromMetadata, MostValuesModified) {
         obu_extension_flag: true
         num_samples_to_trim_at_end: 1
         num_samples_to_trim_at_start: 2
-        extension_header_size: 5
         extension_header_bytes: "extra"
       )pb",
       &obu_header_metadata));
@@ -93,6 +92,27 @@ TEST(GetHeaderFromMetadata, MostValuesModified) {
   EXPECT_EQ(header_.extension_header_size, 5);
   EXPECT_EQ(header_.extension_header_bytes,
             (std::vector<uint8_t>{'e', 'x', 't', 'r', 'a'}));
+}
+
+TEST(GetHeaderFromMetadata, IgnoresDeprecatedExtensionHeaderSize) {
+  iamf_tools_cli_proto::ObuHeaderMetadata obu_header_metadata;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        obu_extension_flag: true extension_header_bytes: "extra"
+      )pb",
+      &obu_header_metadata));
+  constexpr auto kInconsistentExtensionHeaderSize = 100;
+  constexpr auto kExpectedExtensionHeaderSize = 5;
+  // Set the deprecated `extension_header_size` to an unexpected value.
+  obu_header_metadata.set_extension_header_size(
+      kInconsistentExtensionHeaderSize);
+  ObuHeader header_ = GetHeaderFromMetadata(obu_header_metadata);
+
+  // Regardless, the true size is inferred from the size of the
+  // `extension_header_bytes`.
+  EXPECT_EQ(header_.extension_header_size, kExpectedExtensionHeaderSize);
+  EXPECT_EQ(header_.extension_header_bytes.size(),
+            kExpectedExtensionHeaderSize);
 }
 
 TEST(CreateLebGenerator, EquivalentGenerateLebMinimumFactories) {
