@@ -24,7 +24,9 @@ enum AudioElementType {
 }
 
 message ParamDefinitionExtension {
-  uint32 param_definition_size = 1;
+  // `param_definition_size` is ignored. The value in the bitstream is inferred
+  // based on the size of `param_definition_bytes`.
+  uint32 param_definition_size = 1 [deprecated = true];
   bytes param_definition_bytes = 2;
 }
 
@@ -96,7 +98,9 @@ message ChannelAudioLayerConfig {
 }
 
 message ScalableChannelLayoutConfig {
-  uint32 num_layers = 1;
+  // `num_layers` is ignored. The value in the bitstream is inferred based on
+  // the number of `channel_audio_layer_configs`.
+  uint32 num_layers = 1 [deprecated = true];
   uint32 reserved = 2;
   repeated ChannelAudioLayerConfig channel_audio_layer_configs = 3;
 }
@@ -130,7 +134,9 @@ message AmbisonicsConfig {
 }
 
 message AudioElementConfigExtension {
-  uint32 audio_element_config_size = 1;
+  // `audio_element_config_size` is ignored. The value in the bitstream is
+  // inferred based on the size of `audio_element_config_bytes`.
+  uint32 audio_element_config_size = 1 [deprecated = true];
   bytes audio_element_config_bytes = 2;
 }
 
@@ -139,9 +145,13 @@ message AudioElementObuMetadata {
   AudioElementType audio_element_type = 2;
   uint32 reserved = 3;
   uint32 codec_config_id = 4;
-  uint32 num_substreams = 5;
+  // `num_substreams` is ignored. The value in the bitstream is inferred based
+  // on the number of `audio_substream_ids`.
+  uint32 num_substreams = 5 [deprecated = true];
   repeated uint32 audio_substream_ids = 6;
-  uint32 num_parameters = 7;
+  // `num_parameters` is ignored. The value in the bitstream is inferred based
+  // on the number of `audio_element_params`.
+  uint32 num_parameters = 7 [deprecated = true];
   repeated AudioElementParam audio_element_params = 8;
 
   oneof config {

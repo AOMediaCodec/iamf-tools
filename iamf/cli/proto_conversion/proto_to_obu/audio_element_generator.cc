@@ -88,42 +88,34 @@ absl::Status CopyAudioElementParamDefinitionType(
   }
 }
 
-absl::Status GenerateAudioSubstreams(
+void GenerateAudioSubstreams(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     AudioElementObu& audio_element_obu) {
-  if (audio_element_metadata.num_substreams() !=
-      audio_element_metadata.audio_substream_ids_size()) {
-    return InvalidArgumentError(
-        StrCat("User data has inconsistent `num_substreams` and "
-               "`audio_substream_ids`. User provided ",
-               audio_element_metadata.audio_substream_ids_size(),
-               " substreams in `audio_substream_ids`, and `num_substreams`= ",
-               audio_element_metadata.num_substreams()));
+  if (audio_element_metadata.has_num_substreams()) {
+    LOG(WARNING) << "Ignoring deprecated `num_substreams` field. "
+                    "Please remove it.";
   }
 
   audio_element_obu.InitializeAudioSubstreams(
-      audio_element_metadata.num_substreams());
-  for (int i = 0; i < audio_element_metadata.num_substreams(); ++i) {
+      audio_element_metadata.audio_substream_ids_size());
+  for (int i = 0; i < audio_element_metadata.audio_substream_ids_size(); ++i) {
     audio_element_obu.audio_substream_ids_[i] =
         audio_element_metadata.audio_substream_ids(i);
   }
-  return absl::OkStatus();
 }
 
 absl::Status GenerateParameterDefinitions(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     const CodecConfigObu& codec_config_obu,
     AudioElementObu& audio_element_obu) {
-  if (audio_element_metadata.num_parameters() !=
-      audio_element_metadata.audio_element_params_size()) {
-    return InvalidArgumentError(StrCat(
-        "User data has inconsistent `num_parameters`. Found: ",
-        audio_element_metadata.audio_element_params_size(),
-        " parameters, expected: ", audio_element_metadata.num_parameters()));
+  if (audio_element_metadata.has_num_parameters()) {
+    LOG(WARNING) << "Ignoring deprecated `num_parameters` field. "
+                    "Please remove it.";
   }
 
-  audio_element_obu.InitializeParams(audio_element_metadata.num_parameters());
-  for (int i = 0; i < audio_element_metadata.num_parameters(); ++i) {
+  audio_element_obu.InitializeParams(
+      audio_element_metadata.audio_element_params_size());
+  for (int i = 0; i < audio_element_metadata.audio_element_params_size(); ++i) {
     const auto& user_data_parameter =
         audio_element_metadata.audio_element_params(i);
 
@@ -193,10 +185,14 @@ absl::Status GenerateParameterDefinitions(
         ExtendedParamDefinition extended_param_definition(
             copied_param_definition_type);
         // Copy the extension bytes.
+        if (user_param_definition.has_param_definition_size()) {
+          LOG(WARNING) << "Ignoring deprecated `param_definition_size` field. "
+                          "Please remove it.";
+        }
         extended_param_definition.param_definition_size_ =
-            user_param_definition.param_definition_size();
+            user_param_definition.param_definition_bytes().size();
         extended_param_definition.param_definition_bytes_.resize(
-            user_param_definition.param_definition_size());
+            extended_param_definition.param_definition_size_);
         RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
             "param_definition_bytes",
             absl::MakeConstSpan(user_param_definition.param_definition_bytes()),
@@ -360,15 +356,15 @@ absl::Status FillScalableChannelLayoutConfig(
 
   const auto& input_config =
       audio_element_metadata.scalable_channel_layout_config();
+  if (input_config.has_num_layers()) {
+    LOG(WARNING) << "Ignoring deprecated `num_layers` field. Please remove it.";
+  }
+
   RETURN_IF_NOT_OK(audio_element.obu.InitializeScalableChannelLayout(
-      input_config.num_layers(), input_config.reserved()));
+      input_config.channel_audio_layer_configs_size(),
+      input_config.reserved()));
   auto& config =
       std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
-  if (config.num_layers != input_config.channel_audio_layer_configs_size()) {
-    return InvalidArgumentError(StrCat(
-        "Expected ", config.num_layers, " layers in the metadata. Found ",
-        input_config.channel_audio_layer_configs_size(), " layers."));
-  }
   for (int i = 0; i < config.num_layers; ++i) {
     ChannelAudioLayerConfig* const layer_config =
         &config.channel_audio_layer_configs[i];
@@ -597,8 +593,7 @@ absl::Status AudioElementGenerator::Generate(
         audio_element_id, audio_element_type, reserved, codec_config_id);
 
     // Audio Substreams.
-    RETURN_IF_NOT_OK(
-        GenerateAudioSubstreams(audio_element_metadata, audio_element_obu));
+    GenerateAudioSubstreams(audio_element_metadata, audio_element_obu);
 
     // Parameter definitions.
     if (!codec_configs.contains(audio_element_metadata.codec_config_id())) {
