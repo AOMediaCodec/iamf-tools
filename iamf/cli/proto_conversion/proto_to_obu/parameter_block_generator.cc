@@ -488,6 +488,11 @@ absl::Status PopulateCommonFields(
     const ParamDefinition& param_definition,
     GlobalTimingModule& global_timing_module,
     ParameterBlockWithData& parameter_block_with_data) {
+  if (parameter_block_metadata.has_num_subblocks()) {
+    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
+                    "Block OBU. Please remove it.";
+  }
+
   // Get the duration from the parameter definition or the OBU itself as
   // applicable.
   const DecodedUleb128 duration = param_definition.param_definition_mode_ == 1
@@ -512,7 +517,7 @@ absl::Status PopulateCommonFields(
     RETURN_IF_NOT_OK(parameter_block_with_data.obu->InitializeSubblocks(
         parameter_block_metadata.duration(),
         parameter_block_metadata.constant_subblock_duration(),
-        parameter_block_metadata.num_subblocks()));
+        parameter_block_metadata.subblocks_size()));
   } else {
     RETURN_IF_NOT_OK(parameter_block_with_data.obu->InitializeSubblocks());
   }

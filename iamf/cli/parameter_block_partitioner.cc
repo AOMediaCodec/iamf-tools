@@ -187,6 +187,11 @@ absl::Status GetPartitionedSubblocks(
     InternalTimestamp partitioned_end_time,
     std::list<iamf_tools_cli_proto::ParameterSubblock>& partitioned_subblocks,
     uint32_t& constant_subblock_duration) {
+  if (full_parameter_block.has_num_subblocks()) {
+    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
+                    "Block OBU. Please remove it.";
+  }
+
   LOG_FIRST_N(INFO, 1) << "   full_parameter_block=\n" << full_parameter_block;
 
   InternalTimestamp current_time = full_parameter_block.start_timestamp();
@@ -195,7 +200,7 @@ absl::Status GetPartitionedSubblocks(
   InternalTimestamp total_covered_duration = 0;
 
   // Loop through all subblocks in the original Parameter Block.
-  const auto num_subblocks = full_parameter_block.num_subblocks();
+  const auto num_subblocks = full_parameter_block.subblocks_size();
   for (int i = 0; i < num_subblocks; ++i) {
     // Get the start and end time of this subblock.
     const InternalTimestamp subblock_start_time = current_time;
@@ -206,8 +211,7 @@ absl::Status GetPartitionedSubblocks(
     // parameter definitions (i.e. parameter definition mode == 0).
     constexpr uint8_t kParamDefinitionModeOne = 1;
     const auto subblock_duration = GetParameterSubblockDuration<uint32_t>(
-        i, full_parameter_block.num_subblocks(),
-        full_parameter_block.constant_subblock_duration(),
+        i, num_subblocks, full_parameter_block.constant_subblock_duration(),
         full_parameter_block.duration(), kParamDefinitionModeOne,
         [&full_parameter_block](int i) {
           return full_parameter_block.subblocks(i).subblock_duration();

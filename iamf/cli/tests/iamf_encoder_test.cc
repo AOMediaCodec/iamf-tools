@@ -194,7 +194,6 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
       R"pb(
         parameter_id: 100
         duration: 8
-        num_subblocks: 1
         constant_subblock_duration: 8
         subblocks:
         [ {

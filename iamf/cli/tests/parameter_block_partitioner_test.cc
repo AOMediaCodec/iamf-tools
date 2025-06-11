@@ -118,6 +118,35 @@ absl::Status CreateMinimalParameterBlockObuMetadata(
   return absl::OkStatus();
 }
 
+TEST(PartitionParameterBlock, IgnoredDeprecatedNumSubblocks) {
+  ParameterBlockObuMetadata full_parameter_block;
+  const std::vector<uint32_t> kSubblockDurations = {50, 100, 1000};
+  // Slicing the hard-coded durations from [0, 150), should result in 2
+  // subblocks.
+  constexpr InternalTimestamp kStartTimestamp = 0;
+  constexpr InternalTimestamp kEndTimestamp = 150;
+  constexpr size_t kExpectedNumPartitionedNumSubblocks = 2;
+  EXPECT_THAT(CreateMinimalParameterBlockObuMetadata(
+                  kSubblockDurations,
+                  std::vector<MixGainParameterData>(
+                      3, CreateStepMixGainParameterData(0)),
+                  full_parameter_block),
+              IsOk());
+  // Corrupt the deprecated `num_subblocks` field.
+  constexpr auto kInconsistentNumSubblocks = 9999;
+  full_parameter_block.set_num_subblocks(kInconsistentNumSubblocks);
+
+  ParameterBlockObuMetadata partitioned_parameter_block;
+  EXPECT_THAT(ParameterBlockPartitioner::PartitionParameterBlock(
+                  full_parameter_block, kStartTimestamp, kEndTimestamp,
+                  partitioned_parameter_block),
+              IsOk());
+
+  // Regardless, the slice has the correct number of subblocks.
+  EXPECT_EQ(partitioned_parameter_block.subblocks_size(),
+            kExpectedNumPartitionedNumSubblocks);
+}
+
 // TODO(b/277731089): Test `PartitionParameterBlock()` and
 //                    `PartitionFrameAligned()` more thoroughly.
 
@@ -158,6 +187,8 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
     // Validate the parameter block has as many subblocks in the partition as
     // expected.
     EXPECT_EQ(partitioned_parameter_block.num_subblocks(),
+              test_case.expected_partition_durations.size());
+    EXPECT_EQ(partitioned_parameter_block.subblocks_size(),
               test_case.expected_partition_durations.size());
 
     EXPECT_EQ(partitioned_parameter_block.constant_subblock_duration(),

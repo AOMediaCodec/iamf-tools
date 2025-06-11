@@ -622,7 +622,6 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
             param_definition_mode: 0
             reserved: 10
             duration: 8
-            num_subblocks: 1
             constant_subblock_duration: 8
           }
           default_demixing_info_parameter_data: {
@@ -719,7 +718,6 @@ TEST_F(AudioElementGeneratorTest, GeneratesReconGainParameterDefinition) {
             param_definition_mode: 0
             reserved: 10
             duration: 8
-            num_subblocks: 1
             constant_subblock_duration: 8
           }
         }

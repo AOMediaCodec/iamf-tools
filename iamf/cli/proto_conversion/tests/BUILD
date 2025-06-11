@@ -58,6 +58,7 @@ cc_test(
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/common:leb_generator",
         "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_data",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",

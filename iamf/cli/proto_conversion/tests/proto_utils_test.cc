@@ -23,6 +23,7 @@
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
@@ -182,6 +183,31 @@ TEST(CreateLebGenerator, ValidatesUserMetadataWhenModeIsInvalid) {
                 &proto_user_config),
             true);
   EXPECT_EQ(CreateLebGenerator(proto_user_config), nullptr);
+}
+
+TEST(CopyParamDefinition, IgnoredDeprecatedNumSubblocks) {
+  iamf_tools_cli_proto::ParamDefinition param_definition_proto;
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        parameter_rate: 1
+        param_definition_mode: false
+        reserved: 0
+        duration: 1000
+        constant_subblock_duration: 0
+        subblock_durations: [ 700, 300 ]
+      )pb",
+      &param_definition_proto));
+  constexpr auto kInconsistentNumSubblocks = 10;
+  param_definition_proto.set_num_subblocks(kInconsistentNumSubblocks);
+
+  MixGainParamDefinition mix_gain_param_definition;
+  EXPECT_THAT(
+      CopyParamDefinition(param_definition_proto, mix_gain_param_definition),
+      IsOk());
+
+  // Despite signalling an inconsistent number of subblocks, the deprecated
+  // field is ignored.
+  EXPECT_EQ(mix_gain_param_definition.GetNumSubblocks(), 2);
 }
 
 }  // namespace

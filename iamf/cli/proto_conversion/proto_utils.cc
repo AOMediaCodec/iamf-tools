@@ -19,7 +19,6 @@
 
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -56,17 +55,16 @@ absl::Status CopyParamDefinition(
     return absl::OkStatus();
   }
 
-  if (input_param_definition.num_subblocks() <
-      input_param_definition.subblock_durations_size()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Expected at least ", input_param_definition.num_subblocks(),
-        "subblock durations for parameter id = ",
-        input_param_definition.parameter_id()));
+  if (input_param_definition.has_num_subblocks()) {
+    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
+                    "Definition. Please remove it.";
   }
 
+  // Infer the number of subblocks.
+  const auto num_subblocks = input_param_definition.subblock_durations_size();
   param_definition.InitializeSubblockDurations(
-      static_cast<DecodedUleb128>(input_param_definition.num_subblocks()));
-  for (int i = 0; i < input_param_definition.num_subblocks(); ++i) {
+      static_cast<DecodedUleb128>(num_subblocks));
+  for (int i = 0; i < num_subblocks; ++i) {
     RETURN_IF_NOT_OK(param_definition.SetSubblockDuration(
         i, input_param_definition.subblock_durations(i)));
   }

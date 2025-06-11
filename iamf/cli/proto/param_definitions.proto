@@ -33,7 +33,9 @@ message ParamDefinition {
   uint32 reserved = 4;
   uint32 duration = 5;
   uint32 constant_subblock_duration = 7;
-  uint32 num_subblocks = 6;
+  // `num_subblocks` is ignored. The value in the bitstream is inferred based on
+  // the number of `subblock_durations`.
+  uint32 num_subblocks = 6 [deprecated = true];
   repeated uint32 subblock_durations = 8;
 }
 
