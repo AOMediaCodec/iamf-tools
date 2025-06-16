@@ -200,8 +200,12 @@ absl::Status RenderLabeledFrameToLayout(
   return FlushUntilNonEmptyOrTimeout(renderer, rendered_samples);
 }
 
+// Fills in the output `mix_gains` with the gain in Q7.8 format to apply at each
+// tick.
 absl::Status GetParameterBlockLinearMixGainsPerTick(
-    uint32_t common_sample_rate, const ParameterBlockWithData& parameter_block,
+    uint32_t common_sample_rate,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
     const MixGainParamDefinition& mix_gain,
     std::vector<float>& linear_mix_gain_per_tick) {
   if (mix_gain.parameter_rate_ != common_sample_rate) {
@@ -214,7 +218,14 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
   // Initialize to the default gain value.
   std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
             std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
-
+  auto parameter_block_iter =
+      id_to_parameter_block.find(mix_gain.parameter_id_);
+  if (parameter_block_iter == id_to_parameter_block.end()) {
+    // Default mix gain will be used for this frame. Logic elsewhere validates
+    // the rest of the audio frames have consistent coverage.
+    return absl::OkStatus();
+  }
+  const auto& parameter_block = *parameter_block_iter->second;
   InternalTimestamp cur_tick = parameter_block.start_timestamp;
   // Process as many ticks as possible until all are found or the parameter
   // block ends.
@@ -229,101 +240,10 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
   return absl::OkStatus();
 }
 
-// Fills in the output `mix_gains` with the gain in Q7.8 format to apply at each
-// tick.
-// TODO(b/288073842): Consider improving computational efficiency instead of
-//                    searching through all parameter blocks for each frame.
-// TODO(b/379961928): Remove this function once the new
-//                    `GetParameterBlockLinearMixGainsPerTick()` is in use.
-absl::Status GetParameterBlockLinearMixGainsPerTick(
-    uint32_t common_sample_rate, InternalTimestamp start_timestamp,
-    InternalTimestamp end_timestamp,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
-    const MixGainParamDefinition& mix_gain,
-    std::vector<float>& linear_mix_gain_per_tick) {
-  if (mix_gain.parameter_rate_ != common_sample_rate) {
-    // TODO(b/283281856): Support resampling parameter blocks.
-    return absl::UnimplementedError(
-        "Parameter blocks that require resampling are not supported yet.");
-  }
-
-  const auto parameter_id = mix_gain.parameter_id_;
-  const int16_t default_mix_gain = mix_gain.default_mix_gain_;
-
-  // Initialize to the default gain value.
-  std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
-            std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
-
-  InternalTimestamp cur_tick = start_timestamp;
-
-  // Find the mix gain at each tick. May terminate early if there are samples to
-  // trim at the end.
-  while (cur_tick < end_timestamp &&
-         (cur_tick - start_timestamp) < linear_mix_gain_per_tick.size()) {
-    // Find the parameter block that this tick occurs during.
-    const auto parameter_block_iter = std::find_if(
-        parameter_blocks.begin(), parameter_blocks.end(),
-        [cur_tick, parameter_id](const auto& parameter_block) {
-          return parameter_block.obu->parameter_id_ == parameter_id &&
-                 parameter_block.start_timestamp <= cur_tick &&
-                 cur_tick < parameter_block.end_timestamp;
-        });
-    if (parameter_block_iter == parameter_blocks.end()) {
-      // Default mix gain will be used for this frame. Logic elsewhere validates
-      // the rest of the audio frames have consistent coverage.
-      break;
-    }
-
-    // Process as many ticks as possible until all are found or the parameter
-    // block ends.
-    while (cur_tick < end_timestamp &&
-           cur_tick < parameter_block_iter->end_timestamp &&
-           (cur_tick - start_timestamp) < linear_mix_gain_per_tick.size()) {
-      RETURN_IF_NOT_OK(parameter_block_iter->obu->GetLinearMixGain(
-          cur_tick - parameter_block_iter->start_timestamp,
-          linear_mix_gain_per_tick[cur_tick - start_timestamp]));
-      cur_tick++;
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status GetAndApplyMixGain(  // NOLINT
-    uint32_t common_sample_rate, const ParameterBlockWithData& parameter_block,
-    const MixGainParamDefinition& mix_gain, int32_t num_channels,
-    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("rendered_samples",
-                                              rendered_samples, num_channels));
-
-  const auto num_ticks =
-      rendered_samples.empty() ? 0 : rendered_samples[0].size();
-
-  // Get the mix gain on a per tick basis from the parameter block.
-  std::vector<float> linear_mix_gain_per_tick(num_ticks);
-  RETURN_IF_NOT_OK(GetParameterBlockLinearMixGainsPerTick(
-      common_sample_rate, parameter_block, mix_gain, linear_mix_gain_per_tick));
-
-  if (!linear_mix_gain_per_tick.empty()) {
-    LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
-                         << linear_mix_gain_per_tick.front();
-  }
-
-  for (auto& rendered_samples_for_channel : rendered_samples) {
-    for (int tick = 0; tick < num_ticks; tick++) {
-      // Apply the mix gain per tick to all channels.
-      rendered_samples_for_channel[tick] *= linear_mix_gain_per_tick[tick];
-    }
-  }
-
-  return absl::OkStatus();
-}
-
-// TODO(b/379961928): Remove once the new GetAndApplyMixGain is in use.
 absl::Status GetAndApplyMixGain(
-    uint32_t common_sample_rate, InternalTimestamp start_timestamp,
-    InternalTimestamp end_timestamp,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
+    uint32_t common_sample_rate,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
     const MixGainParamDefinition& mix_gain, int32_t num_channels,
     std::vector<float>& linear_mix_gain_per_tick,
     std::vector<std::vector<InternalSampleType>>& rendered_samples) {
@@ -336,8 +256,8 @@ absl::Status GetAndApplyMixGain(
   // Get the mix gain on a per tick basis from the parameter block.
   linear_mix_gain_per_tick.resize(num_ticks);
   RETURN_IF_NOT_OK(GetParameterBlockLinearMixGainsPerTick(
-      common_sample_rate, start_timestamp, end_timestamp, parameter_blocks,
-      mix_gain, linear_mix_gain_per_tick));
+      common_sample_rate, id_to_parameter_block, mix_gain,
+      linear_mix_gain_per_tick));
 
   if (!linear_mix_gain_per_tick.empty()) {
     LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
@@ -350,6 +270,7 @@ absl::Status GetAndApplyMixGain(
       rendered_samples_for_channel[tick] *= linear_mix_gain_per_tick[tick];
     }
   }
+
   return absl::OkStatus();
 }
 
@@ -410,8 +331,8 @@ absl::Status RenderAllFramesForLayout(
     const IdLabeledFrameMap& id_to_labeled_frame,
     const std::vector<const CodecConfigObu*>& codec_configs_in_sub_mix,
     const std::vector<std::unique_ptr<AudioElementRendererBase>>& renderers,
-    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
     const uint32_t common_sample_rate,
     std::vector<std::vector<InternalSampleType>>& rendered_samples,
     std::vector<absl::Span<const InternalSampleType>>& valid_rendered_samples) {
@@ -434,8 +355,9 @@ absl::Status RenderAllFramesForLayout(
           labeled_frame, *codec_configs_in_sub_mix[i], *renderers[i],
           rendered_audio_elements[i]));
     }
+
     RETURN_IF_NOT_OK(GetAndApplyMixGain(
-        common_sample_rate, start_timestamp, end_timestamp, parameter_blocks,
+        common_sample_rate, id_to_parameter_block,
         sub_mix_audio_element.element_mix_gain, num_channels,
         linear_mix_gain_per_tick, rendered_audio_elements[i]));
   }
@@ -446,10 +368,9 @@ absl::Status RenderAllFramesForLayout(
   LOG_FIRST_N(INFO, 1) << "    Applying output_mix_gain.default_mix_gain= "
                        << output_mix_gain.default_mix_gain_;
 
-  RETURN_IF_NOT_OK(
-      GetAndApplyMixGain(common_sample_rate, start_timestamp, end_timestamp,
-                         parameter_blocks, output_mix_gain, num_channels,
-                         linear_mix_gain_per_tick, rendered_samples));
+  RETURN_IF_NOT_OK(GetAndApplyMixGain(
+      common_sample_rate, id_to_parameter_block, output_mix_gain, num_channels,
+      linear_mix_gain_per_tick, rendered_samples));
 
   valid_rendered_samples.resize(rendered_samples.size());
   for (int c = 0; c < rendered_samples.size(); ++c) {
@@ -705,8 +626,8 @@ absl::Status FillLoudnessForMixPresentation(
 // the loudness of the rendered samples.
 absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
     const IdLabeledFrameMap& id_to_labeled_frame,
-    InternalTimestamp start_timestamp, InternalTimestamp end_timestamp,
-    const std::list<ParameterBlockWithData>& parameter_blocks,
+    const absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>&
+        id_to_parameter_block,
     std::vector<SubmixRenderingMetadata>& rendering_metadata) {
   for (auto& submix_rendering_metadata : rendering_metadata) {
     for (auto& layout_rendering_metadata :
@@ -723,8 +644,8 @@ absl::Status RenderWriteAndCalculateLoudnessForTemporalUnit(
           submix_rendering_metadata.audio_elements_in_sub_mix,
           *submix_rendering_metadata.mix_gain, id_to_labeled_frame,
           submix_rendering_metadata.codec_configs_in_sub_mix,
-          layout_rendering_metadata.renderers, start_timestamp, end_timestamp,
-          parameter_blocks, submix_rendering_metadata.common_sample_rate,
+          layout_rendering_metadata.renderers, id_to_parameter_block,
+          submix_rendering_metadata.common_sample_rate,
           layout_rendering_metadata.rendered_samples,
           layout_rendering_metadata.valid_rendered_samples));
       auto span_of_valid_rendered_samples =
@@ -847,10 +768,24 @@ absl::Status RenderingMixPresentationFinalizer::PushTemporalUnit(
           "PushTemporalUnit() should not be called after "
           "GetFinalizedMixPresentationOBUs() has been called.");
   }
+
+  // First organize parameter blocks by IDs.
+  absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
+      id_to_parameter_block;
+  for (const auto& parameter_block : parameter_blocks) {
+    RETURN_IF_NOT_OK(CompareTimestamps(
+        start_timestamp, parameter_block.start_timestamp,
+        "In PushTemporalUnit(), parameter blocks start time:"));
+    RETURN_IF_NOT_OK(
+        CompareTimestamps(end_timestamp, parameter_block.end_timestamp,
+                          "In PushTemporalUnit(), parameter blocks end time:"));
+    id_to_parameter_block[parameter_block.obu->parameter_id_] =
+        &parameter_block;
+  }
   for (auto& [mix_presentation_ids, sub_mix_rendering_metadata] :
        mix_presentation_id_to_sub_mix_rendering_metadata_) {
     RETURN_IF_NOT_OK(RenderWriteAndCalculateLoudnessForTemporalUnit(
-        id_to_labeled_frame, start_timestamp, end_timestamp, parameter_blocks,
+        id_to_labeled_frame, id_to_parameter_block,
         sub_mix_rendering_metadata));
   }
   return absl::OkStatus();
