@@ -262,9 +262,11 @@ absl::Status WavSampleProvider::ReadFrames(
   for (int c = 0; c < channel_labels.size(); ++c) {
     auto& samples = labeled_samples[channel_labels[c]];
     samples.resize(num_time_ticks);
+    const auto& wav_reader_buffer_for_channel =
+        wav_reader.buffers_[channel_ids[c]];
     for (int t = 0; t < num_time_ticks; ++t) {
       samples[t] = Int32ToNormalizedFloatingPoint<InternalSampleType>(
-          wav_reader.buffers_[channel_ids[c]][t]);
+          wav_reader_buffer_for_channel[t]);
     }
   }
   finished_reading = (wav_reader.remaining_samples() == 0);

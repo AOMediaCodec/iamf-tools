@@ -12,14 +12,16 @@
 
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 
-#include <cstdint>
+#include <cstddef>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -29,19 +31,28 @@ using ::absl_testing::IsOk;
 using testing::DoubleEq;
 using testing::Pointwise;
 
-const std::vector<int32_t> kSamplesToRender = {0, 1, 2, 3};
+constexpr size_t kFourSamplesPerFrame = 4;
+constexpr size_t kOneChannel = 1;
+
+std::vector<std::vector<InternalSampleType>> GetSamplesToRender() {
+  static const std::vector<std::vector<InternalSampleType>> kSamplesToRender = {
+      {0.0, 0.1, 0.2, 0.3}};
+  return kSamplesToRender;
+}
 
 // Mock renderer which "renders" `kSamplesToRender` each call to
 // `RenderLabeledFrame`.
 class MockAudioElementRenderer : public AudioElementRendererBase {
  public:
-  MockAudioElementRenderer() : AudioElementRendererBase({}, 0, 0) {};
+  MockAudioElementRenderer()
+      : AudioElementRendererBase(
+            /*ordered_labels=*/{}, kFourSamplesPerFrame, kOneChannel) {};
 
   absl::Status RenderSamples(
-      absl::Span<const absl::Span<const InternalSampleType>>,
-      std::vector<InternalSampleType>& rendered_samples) override {
-    rendered_samples.insert(rendered_samples.end(), kSamplesToRender.begin(),
-                            kSamplesToRender.end());
+      absl::Span<const absl::Span<const InternalSampleType>>)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) override {
+    rendered_samples_ = GetSamplesToRender();
+    // UpdateRenderedSamplesSpans();
     return absl::OkStatus();
   }
 };
@@ -61,45 +72,55 @@ TEST(AudioElementRendererBase, FinalizeAndFlushWithOutRenderingSucceeds) {
   MockAudioElementRenderer renderer;
   EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
-  std::vector<InternalSampleType> rendered_samples;
-  EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
-  EXPECT_TRUE(rendered_samples.empty());
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  renderer.Flush(rendered_samples);
+
+  EXPECT_EQ(rendered_samples.size(), kOneChannel);
+  for (const auto rendered_samples_for_channel : rendered_samples) {
+    EXPECT_TRUE(rendered_samples_for_channel.empty());
+  }
 }
 
 TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
   MockAudioElementRenderer renderer;
-  std::vector<InternalSampleType> vector_to_collect_rendered_samples;
+  std::vector<std::vector<InternalSampleType>>
+      vector_to_collect_rendered_samples;
 
   EXPECT_THAT(renderer.RenderLabeledFrame({}), IsOk());
   EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
 
-  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
+  renderer.Flush(vector_to_collect_rendered_samples);
   EXPECT_FALSE(vector_to_collect_rendered_samples.empty());
-  vector_to_collect_rendered_samples.clear();
 
   // Samples are already flushed. Flushing again is OK, but it does nothing.
-  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
-  EXPECT_TRUE(vector_to_collect_rendered_samples.empty());
+  vector_to_collect_rendered_samples.clear();
+  renderer.Flush(vector_to_collect_rendered_samples);
+  for (const auto& rendered_samples_for_channel :
+       vector_to_collect_rendered_samples) {
+    EXPECT_TRUE(rendered_samples_for_channel.empty());
+  }
 }
 
 TEST(AudioElementRendererBase, AppendsWhenFlushing) {
   MockAudioElementRenderer renderer;
-  std::vector<InternalSampleType> vector_to_collect_rendered_samples(
-      {100, 200, 300, 400});
+  std::vector<std::vector<InternalSampleType>>
+      vector_to_collect_rendered_samples = {{100, 200, 300, 400}};
   // Flush should append `kSamplesToRender` to the initial vector.
-  std::vector<InternalSampleType> expected_samples(
-      vector_to_collect_rendered_samples);
-  expected_samples.insert(expected_samples.end(), kSamplesToRender.begin(),
-                          kSamplesToRender.end());
+  auto expected_samples = vector_to_collect_rendered_samples;
+  const auto kSamplesToRender = GetSamplesToRender();
+  expected_samples[0].insert(expected_samples[0].end(),
+                             kSamplesToRender[0].begin(),
+                             kSamplesToRender[0].end());
 
   EXPECT_THAT(renderer.RenderLabeledFrame({}), IsOk());
   EXPECT_THAT(renderer.Finalize(), IsOk());
   EXPECT_TRUE(renderer.IsFinalized());
 
-  EXPECT_THAT(renderer.Flush(vector_to_collect_rendered_samples), IsOk());
+  renderer.Flush(vector_to_collect_rendered_samples);
   EXPECT_THAT(vector_to_collect_rendered_samples,
-              Pointwise(DoubleEq(), expected_samples));
+              InternalSamples2DMatch(expected_samples));
 }
 
 }  // namespace

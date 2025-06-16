@@ -88,13 +88,12 @@ class AudioElementRendererAmbisonicsToChannel
   /*!\brief Renders samples.
    *
    * \param samples_to_render Samples to render arranged in (channel, time).
-   * \param rendered_samples Output rendered samples.
+   *        Rendered samples will be stored in the field `rendered_samples_`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status RenderSamples(
-      absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples)
-      ABSL_SHARED_LOCKS_REQUIRED(mutex_) override;
+      absl::Span<const absl::Span<const InternalSampleType>> samples_to_render)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) override;
 
   const AmbisonicsConfig ambisonics_config_;
 

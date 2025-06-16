@@ -36,7 +36,7 @@ absl::StatusOr<std::vector<std::vector<double>>> LookupPrecomputedGains(
 
 /*!\brief Renders channel-based samples to loudspeaker channels.
  *
- * \param input_samples Input samples to render.
+ * \param input_samples Input samples to render arranged in (channel, time).
  * \param down_mixing_params Down-mixing parameters.
  * \param channel_labels Labels of input channels.
  * \param input_key Key representing the input loudspeaker layout.
@@ -51,11 +51,11 @@ absl::Status RenderChannelLayoutToLoudspeakers(
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
     const std::vector<std::vector<double>>& gains,
-    std::vector<InternalSampleType>& rendered_samples);
+    std::vector<std::vector<InternalSampleType>>& rendered_samples);
 
 /*!\brief Renders ambisonics samples to loudspeaker channels.
  *
- * \param input_samples Input samples to render.
+ * \param input_samples Input samples to render arranged in (channel, time).
  * \param ambisonics_config Config for the ambisonics layout.
  * \param gains Gains matrix to apply to the output.
  * \param rendered_samples Output rendered samples.
@@ -65,7 +65,7 @@ absl::Status RenderAmbisonicsToLoudspeakers(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
-    std::vector<InternalSampleType>& rendered_samples);
+    std::vector<std::vector<InternalSampleType>>& rendered_samples);
 
 }  // namespace iamf_tools
 

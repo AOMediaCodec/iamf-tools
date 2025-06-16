@@ -165,13 +165,11 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
 }
 
 absl::Status AudioElementRendererChannelToChannel::RenderSamples(
-    absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
-    std::vector<InternalSampleType>& rendered_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>> samples_to_render) {
   // Render the samples.
   RETURN_IF_NOT_OK(RenderChannelLayoutToLoudspeakers(
       samples_to_render, current_labeled_frame_->demixing_params,
-      ordered_labels_, input_key_, output_key_, gains_, rendered_samples));
-
+      ordered_labels_, input_key_, output_key_, gains_, rendered_samples_));
   return absl::OkStatus();
 }
 

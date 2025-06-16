@@ -299,12 +299,13 @@ TEST(RenderFrames, AcnZeroIsSymmetric) {
           kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame);
 
   const LabeledFrame frame = {
-      .label_to_samples = {{kA0, {10000}}, {kA1, {0}}, {kA2, {0}}, {kA3, {0}}}};
-  std::vector<InternalSampleType> output_samples;
+      .label_to_samples = {{kA0, {0.1}}, {kA1, {0}}, {kA2, {0}}, {kA3, {0}}}};
+  std::vector<std::vector<InternalSampleType>> output_samples;
+
   RenderAndFlushExpectOk(frame, renderer.get(), output_samples);
 
   EXPECT_EQ(output_samples.size(), 2);
-  EXPECT_NEAR(output_samples[0], output_samples[1], 0.11);
+  EXPECT_NEAR(output_samples[0][0], output_samples[1][0], 1.1e-6);
 }
 
 TEST(RenderFrames, UsesDemixingMatrix) {
@@ -327,14 +328,14 @@ TEST(RenderFrames, UsesDemixingMatrix) {
       {0, {kA0}}, {1, {kA1}}, {2, {kA2}}, {3, {kA3}}};
   const LabeledFrame frame = {
       .label_to_samples = {
-          {kA0, {10000}}, {kA1, {5000}}, {kA2, {2500}}, {kA3, {1250}}}};
+          {kA0, {0.1}}, {kA1, {0.05}}, {kA2, {0.025}}, {kA3, {0.0125}}}};
   // Create a renderer which uses a near-identity matrix (I*epsilon) and a
   // different one that uses (-1*I*epsilon).
   auto renderer_epsilon_identity =
       AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           kAmbisonicsProjectionConfigIdentity, kFirstOrderAudioSubstreamIds,
           kFirstOrderSubstreamIdToLabels, kStereoLayout, kOneSamplePerFrame);
-  std::vector<InternalSampleType> output_samples_epsilon_identity;
+  std::vector<std::vector<InternalSampleType>> output_samples_epsilon_identity;
   RenderAndFlushExpectOk(frame, renderer_epsilon_identity.get(),
                          output_samples_epsilon_identity);
   auto renderer_negative_epsilon_identity =
@@ -342,7 +343,8 @@ TEST(RenderFrames, UsesDemixingMatrix) {
           kAmbisonicsProjectionConfigIdentityInverse,
           kFirstOrderAudioSubstreamIds, kFirstOrderSubstreamIdToLabels,
           kStereoLayout, kOneSamplePerFrame);
-  std::vector<InternalSampleType> output_samples_negative_epsilon_identity;
+  std::vector<std::vector<InternalSampleType>>
+      output_samples_negative_epsilon_identity;
   RenderAndFlushExpectOk(frame, renderer_negative_epsilon_identity.get(),
                          output_samples_negative_epsilon_identity);
 
@@ -350,10 +352,10 @@ TEST(RenderFrames, UsesDemixingMatrix) {
   // difference in demixing matrices.
   EXPECT_EQ(output_samples_epsilon_identity.size(), 2);
   EXPECT_EQ(output_samples_negative_epsilon_identity.size(), 2);
-  EXPECT_DOUBLE_EQ(output_samples_epsilon_identity[0],
-                   -1 * output_samples_negative_epsilon_identity[0]);
-  EXPECT_DOUBLE_EQ(output_samples_epsilon_identity[1],
-                   -1 * output_samples_negative_epsilon_identity[1]);
+  EXPECT_DOUBLE_EQ(output_samples_epsilon_identity[0][0],
+                   -1 * output_samples_negative_epsilon_identity[0][0]);
+  EXPECT_DOUBLE_EQ(output_samples_epsilon_identity[1][0],
+                   -1 * output_samples_negative_epsilon_identity[1][0]);
 }
 
 }  // namespace

@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "absl/log/check.h"
-#include "absl/status/status.h"
+#include "absl/log/log.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_module.h"
@@ -38,26 +38,24 @@ absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
 
   // Render samples in concrete subclasses.
   current_labeled_frame_ = &labeled_frame;
-
-  std::vector<InternalSampleType> rendered_samples(
-      num_output_channels_ * num_valid_samples, 0);
-  RETURN_IF_NOT_OK(
-      RenderSamples(absl::MakeConstSpan(samples_to_render_), rendered_samples));
-
-  // Copy rendered samples to the output.
-  rendered_samples_.insert(rendered_samples_.end(), rendered_samples.begin(),
-                           rendered_samples.end());
+  RETURN_IF_NOT_OK(RenderSamples(absl::MakeConstSpan(samples_to_render_)));
 
   return num_valid_samples;
 }
 
-absl::Status AudioElementRendererBase::Flush(
-    std::vector<InternalSampleType>& rendered_samples) {
+void AudioElementRendererBase::Flush(
+    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   absl::MutexLock lock(&mutex_);
-  rendered_samples.insert(rendered_samples.end(), rendered_samples_.begin(),
-                          rendered_samples_.end());
-  rendered_samples_.clear();
-  return absl::OkStatus();
+
+  // Append samples in each channel of `rendered_samples_` to the corresponding
+  // channel of the output `rendered_samples`.
+  rendered_samples.resize(rendered_samples_.size());
+  for (int c = 0; c < rendered_samples_.size(); c++) {
+    rendered_samples[c].insert(rendered_samples[c].end(),
+                               rendered_samples_[c].begin(),
+                               rendered_samples_[c].end());
+    rendered_samples_[c].clear();
+  }
 }
 
 }  // namespace iamf_tools

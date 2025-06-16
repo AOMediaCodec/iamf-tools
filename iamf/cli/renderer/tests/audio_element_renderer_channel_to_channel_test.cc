@@ -35,13 +35,14 @@ using enum LoudspeakersSsConventionLayout::SoundSystem;
 using testing::DoubleEq;
 using testing::Pointwise;
 
-constexpr InternalSampleType kArbitrarySample1 = 12345.0;
-constexpr InternalSampleType kArbitrarySample2 = 6789.0;
-constexpr InternalSampleType kArbitrarySample3 = 101112.0;
-constexpr InternalSampleType kArbitrarySample4 = 9999999.0;
-constexpr InternalSampleType kArbitrarySample5 = 987654321.0;
-constexpr InternalSampleType kArbitrarySample6 = 1024.0;
+constexpr InternalSampleType kArbitrarySample1 = 0.000012345;
+constexpr InternalSampleType kArbitrarySample2 = 0.000006789;
+constexpr InternalSampleType kArbitrarySample3 = 0.000101112;
+constexpr InternalSampleType kArbitrarySample4 = 0.009999999;
+constexpr InternalSampleType kArbitrarySample5 = 0.987654321;
+constexpr InternalSampleType kArbitrarySample6 = 0.000001024;
 
+constexpr int kMonoChannelIndex = 0;
 constexpr int kStereoL2ChannelIndex = 0;
 constexpr int kStereoR2ChannelIndex = 1;
 constexpr int k3_1_2LFEChannelIndex = 3;
@@ -309,15 +310,15 @@ TEST(RenderLabeledFrame, RendersStereoToMono) {
 
   auto renderer = AudioElementRendererChannelToChannel::
       CreateFromScalableChannelLayoutConfig(kStereoScalableChannelLayoutConfig,
-                                            kMonoLayout,
-                                            kExpectedMonoSamples.size());
+                                            kMonoLayout, kL2Samples.size());
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(
       {.label_to_samples = {{kL2, kL2Samples}, {kR2, kR2Samples}}},
       renderer.get(), rendered_samples);
 
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), kExpectedMonoSamples));
+  EXPECT_THAT(rendered_samples[kMonoChannelIndex],
+              Pointwise(DoubleEq(), kExpectedMonoSamples));
 }
 
 TEST(RenderLabeledFrame,
@@ -330,13 +331,13 @@ TEST(RenderLabeledFrame,
   constexpr InternalSampleType kSymmetricLrs7Rss7Input = kArbitrarySample3;
   constexpr InternalSampleType kSymmetricLtf4Rtf4Input = kArbitrarySample4;
   constexpr InternalSampleType kSymmetricLtb4Rtb4Input = kArbitrarySample5;
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk({.label_to_samples =
                               {
                                   {kL7, {kSymmetricL7R7Input}},
                                   {kR7, {kSymmetricL7R7Input}},
-                                  {kCentre, {123456.0}},
-                                  {kLFE, {1234.0}},
+                                  {kCentre, {0.123456}},
+                                  {kLFE, {0.001234}},
                                   {kLss7, {kSymmetricLss7Rss7Input}},
                                   {kRss7, {kSymmetricLss7Rss7Input}},
                                   {kLrs7, {kSymmetricLrs7Rss7Input}},
@@ -349,8 +350,8 @@ TEST(RenderLabeledFrame,
                          renderer.get(), rendered_samples);
 
   EXPECT_EQ(rendered_samples.size(), 2);
-  EXPECT_DOUBLE_EQ(rendered_samples[kStereoL2ChannelIndex],
-                   rendered_samples[kStereoR2ChannelIndex]);
+  EXPECT_THAT(rendered_samples[kStereoL2ChannelIndex],
+              Pointwise(DoubleEq(), rendered_samples[kStereoR2ChannelIndex]));
 }
 
 TEST(RenderLabeledFrame, PassThroughLFE) {
@@ -360,11 +361,12 @@ TEST(RenderLabeledFrame, PassThroughLFE) {
               ChannelAudioLayerConfig::kExpandedLayoutLFE),
           k3_1_2Layout, kOneSamplePerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk({.label_to_samples = {{kLFE, {kArbitrarySample1}}}},
                          renderer.get(), rendered_samples);
 
-  EXPECT_DOUBLE_EQ(rendered_samples[k3_1_2LFEChannelIndex], kArbitrarySample1);
+  EXPECT_THAT(rendered_samples[k3_1_2LFEChannelIndex],
+              Pointwise(DoubleEq(), {kArbitrarySample1}));
 }
 
 TEST(RenderLabeledFrame, LFEPassesThroughFrom9_1_6) {
@@ -376,7 +378,7 @@ TEST(RenderLabeledFrame, LFEPassesThroughFrom9_1_6) {
           k5_1_0Layout, kOneSamplePerFrame);
   ASSERT_NE(renderer, nullptr);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk({.label_to_samples = {{kFL, {kArbitrarySample1}},
                                                {kFR, {kArbitrarySample1}},
                                                {kFC, {kArbitrarySample1}},
@@ -396,7 +398,8 @@ TEST(RenderLabeledFrame, LFEPassesThroughFrom9_1_6) {
                          renderer.get(), rendered_samples);
 
   ASSERT_GE(rendered_samples.size(), k5_1LFEChannelIndex);
-  EXPECT_DOUBLE_EQ(rendered_samples[k5_1LFEChannelIndex], kLFESample);
+  EXPECT_THAT(rendered_samples[k5_1LFEChannelIndex],
+              Pointwise(DoubleEq(), {kLFESample}));
 }
 
 TEST(RenderLabeledFrame, LFEPassesThroughTo9_1_6) {
@@ -406,7 +409,7 @@ TEST(RenderLabeledFrame, LFEPassesThroughTo9_1_6) {
                                             k9_1_6Layout, kOneSamplePerFrame);
   ASSERT_NE(renderer, nullptr);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk({.label_to_samples =
                               {
                                   {kL5, {kArbitrarySample1}},
@@ -419,7 +422,8 @@ TEST(RenderLabeledFrame, LFEPassesThroughTo9_1_6) {
                          renderer.get(), rendered_samples);
 
   ASSERT_GE(rendered_samples.size(), k9_1_6LFEChannelIndex);
-  EXPECT_DOUBLE_EQ(rendered_samples[k9_1_6LFEChannelIndex], kLFESample);
+  EXPECT_THAT(rendered_samples[k9_1_6LFEChannelIndex],
+              Pointwise(DoubleEq(), {kLFESample}));
 }
 
 TEST(RenderLabeledFrame, PassThroughStereoS) {
@@ -432,14 +436,16 @@ TEST(RenderLabeledFrame, PassThroughStereoS) {
           k5_1_0Layout, kOneSamplePerFrame);
   ASSERT_NE(renderer, nullptr);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk({.label_to_samples = {{kLs5, {kArbitrarySample1}},
                                                {kRs5, {kArbitrarySample2}}}},
                          renderer.get(), rendered_samples);
 
   EXPECT_DOUBLE_EQ(rendered_samples.size(), 6);
-  EXPECT_DOUBLE_EQ(rendered_samples[k5_1_0Ls5ChannelIndex], kArbitrarySample1);
-  EXPECT_DOUBLE_EQ(rendered_samples[k5_1_0Rs5ChannelIndex], kArbitrarySample2);
+  EXPECT_THAT(rendered_samples[k5_1_0Ls5ChannelIndex],
+              Pointwise(DoubleEq(), {kArbitrarySample1}));
+  EXPECT_THAT(rendered_samples[k5_1_0Rs5ChannelIndex],
+              Pointwise(DoubleEq(), {kArbitrarySample2}));
 }
 
 struct ExpandedLayoutAndRelatedLoudspeakerLayout {
@@ -464,12 +470,12 @@ TEST_P(ExpandedLayoutAndRelatedLoudspeakerLayoutTest, Equivalent) {
               GetParam().related_scalable_layout_config,
               GetParam().output_layout, kOneSamplePerFrame);
 
-  std::vector<InternalSampleType> expanded_layout_rendered_samples;
+  std::vector<std::vector<InternalSampleType>> expanded_layout_rendered_samples;
   RenderAndFlushExpectOk(
       LabeledFrame{.label_to_samples =
                        GetParam().expanded_layout_labeled_frame},
       renderer_expanded_layout.get(), expanded_layout_rendered_samples);
-  std::vector<InternalSampleType> related_layout_rendered_samples;
+  std::vector<std::vector<InternalSampleType>> related_layout_rendered_samples;
   RenderAndFlushExpectOk(
       {LabeledFrame{.label_to_samples =
                         GetParam().related_loudspeaker_layout_labeled_frame}},
@@ -477,7 +483,7 @@ TEST_P(ExpandedLayoutAndRelatedLoudspeakerLayoutTest, Equivalent) {
       related_layout_rendered_samples);
 
   EXPECT_THAT(expanded_layout_rendered_samples,
-              Pointwise(DoubleEq(), related_layout_rendered_samples));
+              InternalSamples2DMatch(related_layout_rendered_samples));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -569,7 +575,7 @@ TEST(RenderLabeledFrame,
   constexpr InternalSampleType kSymmetricTpFLTpFRInput = kArbitrarySample5;
   constexpr InternalSampleType kSymmetricTpBLTpBRInput = kArbitrarySample6;
   constexpr InternalSampleType kSymmetricTpSiLTpSiRInput = 999999999.0;
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(
       {.label_to_samples = {{kFL, {kSymmetricFLFRInput}},
                             {kFR, {kSymmetricFLFRInput}},
@@ -590,8 +596,8 @@ TEST(RenderLabeledFrame,
       renderer.get(), rendered_samples);
 
   EXPECT_EQ(rendered_samples.size(), 2);
-  EXPECT_DOUBLE_EQ(rendered_samples[kStereoL2ChannelIndex],
-                   rendered_samples[kStereoR2ChannelIndex]);
+  EXPECT_THAT(rendered_samples[kStereoL2ChannelIndex],
+              Pointwise(DoubleEq(), rendered_samples[kStereoR2ChannelIndex]));
 }
 
 }  // namespace

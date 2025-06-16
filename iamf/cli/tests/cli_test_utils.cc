@@ -465,14 +465,14 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
   return std::move(*wav_reader);
 }
 
-void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
-                            AudioElementRendererBase* renderer,
-                            std::vector<InternalSampleType>& output_samples) {
+void RenderAndFlushExpectOk(
+    const LabeledFrame& labeled_frame, AudioElementRendererBase* renderer,
+    std::vector<std::vector<InternalSampleType>>& output_samples) {
   ASSERT_NE(renderer, nullptr);
   EXPECT_THAT(renderer->RenderLabeledFrame(labeled_frame), IsOk());
   EXPECT_THAT(renderer->Finalize(), IsOk());
   EXPECT_TRUE(renderer->IsFinalized());
-  EXPECT_THAT(renderer->Flush(output_samples), IsOk());
+  renderer->Flush(output_samples);
 }
 
 std::string GetAndCleanupOutputFileName(absl::string_view suffix) {

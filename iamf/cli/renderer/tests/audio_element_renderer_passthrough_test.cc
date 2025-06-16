@@ -212,73 +212,77 @@ TEST(CreateFromScalableChannelLayoutConfig,
       nullptr);
 }
 
-const LabeledFrame kLabeledFrameWithL2AndR2 = {
-    .label_to_samples = {{kL2, {1, 3, 5, 7}}, {kR2, {2, 4, 6, 8}}}};
-
 TEST(RenderLabeledFrame, RendersPassThroughStereo) {
+  const LabeledFrame kLabeledFrameWithL2AndR2 = {
+      .label_to_samples = {{kL2, {0.1, 0.3, 0.5, 0.7}},
+                           {kR2, {0.2, 0.4, 0.6, 0.8}}}};
   auto stereo_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kStereoScalableChannelLayoutConfig, kStereoLayout,
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
                          stereo_pass_through_renderer.get(), rendered_samples);
-
-  const std::vector<InternalSampleType> expected_samples(
-      {1, 2, 3, 4, 5, 6, 7, 8});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.1, 0.3, 0.5, 0.7}, {0.2, 0.4, 0.6, 0.8}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughBinaural) {
+  const LabeledFrame kLabeledFrameWithL2AndR2 = {
+      .label_to_samples = {{kL2, {0.1, 0.3, 0.5, 0.7}},
+                           {kR2, {0.2, 0.4, 0.6, 0.8}}}};
   auto binaural_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           kBinauralScalableChannelLayoutConfig, kBinauralLayout,
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kLabeledFrameWithL2AndR2,
                          binaural_pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {1, 2, 3, 4, 5, 6, 7, 8});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.1, 0.3, 0.5, 0.7}, {0.2, 0.4, 0.6, 0.8}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough7_1_4) {
   const LabeledFrame k7_1_4LabeledFrame = {.label_to_samples = {
-                                               {kL7, {0, 100}},
-                                               {kR7, {1, 101}},
-                                               {kCentre, {2, 102}},
-                                               {kLFE, {3, 103}},
-                                               {kLss7, {4, 104}},
-                                               {kRss7, {5, 105}},
-                                               {kLrs7, {6, 106}},
-                                               {kRrs7, {7, 107}},
-                                               {kLtf4, {8, 108}},
-                                               {kRtf4, {9, 109}},
-                                               {kLtb4, {10, 110}},
-                                               {kRtb4, {11, 111}},
+                                               {kL7, {0.000, 0.100}},
+                                               {kR7, {0.001, 0.101}},
+                                               {kCentre, {0.002, 0.102}},
+                                               {kLFE, {0.003, 0.103}},
+                                               {kLss7, {0.004, 0.104}},
+                                               {kRss7, {0.005, 0.105}},
+                                               {kLrs7, {0.006, 0.106}},
+                                               {kRrs7, {0.007, 0.107}},
+                                               {kLtf4, {0.008, 0.108}},
+                                               {kRtf4, {0.009, 0.109}},
+                                               {kLtb4, {0.010, 0.110}},
+                                               {kRtb4, {0.011, 0.111}},
                                            }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           k7_1_4ScalableChannelLayoutConfig, k7_1_4Layout,
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,  11,
-       100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.000, 0.100}, {0.001, 0.101}, {0.002, 0.102}, {0.003, 0.103},
+      {0.004, 0.104}, {0.005, 0.105}, {0.006, 0.106}, {0.007, 0.107},
+      {0.008, 0.108}, {0.009, 0.109}, {0.010, 0.110}, {0.011, 0.111}};
+
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughLFE) {
   const LabeledFrame kLFELabeledFrame = {
-      .label_to_samples = {{kLFE, {3, 103}}}};
+      .label_to_samples = {{kLFE, {0.003, 0.103}}}};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
@@ -286,20 +290,20 @@ TEST(RenderLabeledFrame, RendersPassThroughLFE) {
           GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kLFELabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0, 0, 0, 3,   0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 103, 0, 0, 0, 0, 0, 0, 0, 0});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0, 0}, {0, 0}, {0, 0}, {0.003, 0.103}, {0, 0}, {0, 0},
+      {0, 0}, {0, 0}, {0, 0}, {0, 0},         {0, 0}, {0, 0}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughStereoS) {
   const LabeledFrame kStereoSLabeledFrame = {.label_to_samples = {
-                                                 {kLs5, {4, 104}},
-                                                 {kRs5, {5, 105}},
+                                                 {kLs5, {0.04, 0.104}},
+                                                 {kRs5, {0.05, 0.105}},
                                              }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -308,20 +312,21 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoS) {
           GetScalableLayoutForSoundSystem(kSoundSystemD_4_5_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kStereoSLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0, 0, 0, 0, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 104, 105, 0, 0, 0, 0});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0, 0},        {0, 0}, {0, 0}, {0, 0}, {0.04, 0.104},
+      {0.05, 0.105}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough3_0_Ch) {
   const LabeledFrame k7_1_4LabeledFrame = {.label_to_samples = {
-                                               {kL7, {0, 100}},
-                                               {kR7, {1, 101}},
-                                               {kCentre, {2, 102}},
+                                               {kL7, {0.000, 0.100}},
+                                               {kR7, {0.001, 0.101}},
+                                               {kCentre, {0.002, 0.102}},
                                            }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -330,34 +335,34 @@ TEST(RenderLabeledFrame, RendersPassThrough3_0_Ch) {
           GetScalableLayoutForSoundSystem(kSoundSystemJ_4_7_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(k7_1_4LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0,   1,   2,   0, 0, 0, 0, 0, 0, 0, 0, 0,
-       100, 101, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.000, 0.100}, {0.001, 0.101}, {0.002, 0.102}, {0, 0}, {0, 0}, {0, 0},
+      {0, 0},         {0, 0},         {0, 0},         {0, 0}, {0, 0}, {0, 0}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThrough9_1_6) {
   const LabeledFrame k9_1_6LabeledFrame = {.label_to_samples = {
-                                               {kFL, {0, 100}},
-                                               {kFR, {1, 101}},
-                                               {kFC, {2, 102}},
-                                               {kLFE, {3, 103}},
-                                               {kBL, {4, 104}},
-                                               {kBR, {5, 105}},
-                                               {kFLc, {6, 106}},
-                                               {kFRc, {7, 107}},
-                                               {kSiL, {8, 108}},
-                                               {kSiR, {9, 109}},
-                                               {kTpFL, {10, 110}},
-                                               {kTpFR, {11, 111}},
-                                               {kTpBL, {12, 112}},
-                                               {kTpBR, {13, 113}},
-                                               {kTpSiL, {14, 114}},
-                                               {kTpSiR, {15, 115}},
+                                               {kFL, {0.000, 0.100}},
+                                               {kFR, {0.001, 0.101}},
+                                               {kFC, {0.002, 0.102}},
+                                               {kLFE, {0.003, 0.103}},
+                                               {kBL, {0.004, 0.104}},
+                                               {kBR, {0.005, 0.105}},
+                                               {kFLc, {0.006, 0.106}},
+                                               {kFRc, {0.007, 0.107}},
+                                               {kSiL, {0.008, 0.108}},
+                                               {kSiR, {0.009, 0.109}},
+                                               {kTpFL, {0.010, 0.110}},
+                                               {kTpFR, {0.011, 0.111}},
+                                               {kTpBL, {0.012, 0.112}},
+                                               {kTpBR, {0.013, 0.113}},
+                                               {kTpSiL, {0.014, 0.114}},
+                                               {kTpSiR, {0.015, 0.115}},
                                            }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -366,21 +371,23 @@ TEST(RenderLabeledFrame, RendersPassThrough9_1_6) {
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(k9_1_6LabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   10,
-       11,  12,  13,  14,  15,  100, 101, 102, 103, 104, 105,
-       106, 107, 108, 109, 110, 111, 112, 113, 114, 115});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.000, 0.100}, {0.001, 0.101}, {0.002, 0.102}, {0.003, 0.103},
+      {0.004, 0.104}, {0.005, 0.105}, {0.006, 0.106}, {0.007, 0.107},
+      {0.008, 0.108}, {0.009, 0.109}, {0.010, 0.110}, {0.011, 0.111},
+      {0.012, 0.112}, {0.013, 0.113}, {0.014, 0.114}, {0.015, 0.115}};
+
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughStereoF) {
   const LabeledFrame kStreoFLabeledFrame = {.label_to_samples = {
-                                                {kFL, {0, 100}},
-                                                {kFR, {1, 101}},
+                                                {kFL, {0.000, 0.100}},
+                                                {kFR, {0.001, 0.101}},
                                             }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -389,24 +396,23 @@ TEST(RenderLabeledFrame, RendersPassThroughStereoF) {
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kStreoFLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0,   1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       100, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0.000, 0.100}, {0.001, 0.101}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersPassThroughTop6Ch) {
   const LabeledFrame kTop6ChLabeledFrame = {.label_to_samples = {
-                                                {kTpFL, {10, 110}},
-                                                {kTpFR, {11, 111}},
-                                                {kTpBL, {12, 112}},
-                                                {kTpBR, {13, 113}},
-                                                {kTpSiL, {14, 114}},
-                                                {kTpSiR, {15, 115}},
+                                                {kTpFL, {0.010, 0.110}},
+                                                {kTpFR, {0.011, 0.111}},
+                                                {kTpBL, {0.012, 0.112}},
+                                                {kTpBR, {0.013, 0.113}},
+                                                {kTpSiL, {0.014, 0.114}},
+                                                {kTpSiR, {0.015, 0.115}},
                                             }};
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -415,19 +421,21 @@ TEST(RenderLabeledFrame, RendersPassThroughTop6Ch) {
           GetScalableLayoutForSoundSystem(kSoundSystem13_6_9_0),
           kFourSamplesPerFrame);
 
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   RenderAndFlushExpectOk(kTop6ChLabeledFrame, pass_through_renderer.get(),
                          rendered_samples);
 
-  const std::vector<InternalSampleType> expected_samples(
-      {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10,  11,  12,  13,  14,  15,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 110, 111, 112, 113, 114, 115});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {
+      {0, 0},         {0, 0},         {0, 0},         {0, 0},
+      {0, 0},         {0, 0},         {0, 0},         {0, 0},
+      {0, 0},         {0, 0},         {0.010, 0.110}, {0.011, 0.111},
+      {0.012, 0.112}, {0.013, 0.113}, {0.014, 0.114}, {0.015, 0.115}};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, RendersDemixedSamples) {
   const LabeledFrame kTwoLayerStereo = {
-      .label_to_samples = {{kMono, {999}}, {kL2, {1}}, {kDemixedR2, {2}}}};
+      .label_to_samples = {{kMono, {999}}, {kL2, {0.1}}, {kDemixedR2, {0.2}}}};
 
   auto demixed_stereo_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -439,17 +447,21 @@ TEST(RenderLabeledFrame, RendersDemixedSamples) {
               IsOk());
   EXPECT_THAT(demixed_stereo_renderer->Finalize(), IsOk());
   EXPECT_TRUE(demixed_stereo_renderer->IsFinalized());
-  std::vector<InternalSampleType> rendered_samples;
-  EXPECT_THAT(demixed_stereo_renderer->Flush(rendered_samples), IsOk());
-  const std::vector<InternalSampleType> expected_samples({1, 2});
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  demixed_stereo_renderer->Flush(rendered_samples);
+  const std::vector<std::vector<InternalSampleType>> expected_samples = {{0.1},
+                                                                         {0.2}};
+
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 TEST(RenderLabeledFrame, ReturnsNumberOfTicksToRender) {
   const LabeledFrame kStereoFrameWithTwoRenderedTicks = {
       .samples_to_trim_at_end = 1,
       .samples_to_trim_at_start = 1,
-      .label_to_samples = {{kL2, {999, 1, 2, 999}}, {kR2, {999, 1, 2, 999}}}};
+      .label_to_samples = {{kL2, {0.999, 0.001, 0.002, 999}},
+                           {kR2, {0.999, 0.001, 0.002, 0.999}}}};
 
   auto stereo_pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
@@ -493,14 +505,15 @@ void RenderMonoSequence(int num_frames, int samples_per_frame,
 
 // Collects all of the rendered samples from `renderer` into `rendered_samples`.
 // This function blocks until the renderer is finalized.
-void CollectRenderedSamples(AudioElementRendererPassThrough& renderer,
-                            std::vector<InternalSampleType>& rendered_samples) {
+void CollectRenderedSamples(
+    AudioElementRendererPassThrough& renderer,
+    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   while (!renderer.IsFinalized()) {
     // In practice threads would be better off sleeping between calls. But
     // calling it very often is more likely to detect a problem.
-    EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
+    renderer.Flush(rendered_samples);
   }
-  EXPECT_THAT(renderer.Flush(rendered_samples), IsOk());
+  renderer.Flush(rendered_samples);
 }
 
 TEST(RenderLabeledFrame, IsThreadSafe) {
@@ -515,7 +528,7 @@ TEST(RenderLabeledFrame, IsThreadSafe) {
   std::thread render_thread(&RenderMonoSequence, kNumFrames, kSamplesPerFrame,
                             std::ref(*mono_pass_through_renderer));
   // Spawn a thread to collect all of the rendered samples.
-  std::vector<InternalSampleType> rendered_samples;
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
   std::thread collector_thread(&CollectRenderedSamples,
                                std::ref(*mono_pass_through_renderer),
                                std::ref(rendered_samples));
@@ -524,10 +537,10 @@ TEST(RenderLabeledFrame, IsThreadSafe) {
 
   // If the render was not thread safe, then we would expect trouble, such as
   // missing samples or samples coming back in the wrong order.
-  std::vector<InternalSampleType> expected_samples(kNumFrames *
-                                                   kSamplesPerFrame);
-  std::iota(expected_samples.begin(), expected_samples.end(), 0);
-  EXPECT_THAT(rendered_samples, Pointwise(DoubleEq(), expected_samples));
+  std::vector<std::vector<InternalSampleType>> expected_samples = {
+      std::vector<InternalSampleType>(kNumFrames * kSamplesPerFrame)};
+  std::iota(expected_samples[0].begin(), expected_samples[0].end(), 0);
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 
 }  // namespace

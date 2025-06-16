@@ -197,12 +197,10 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
 }
 
 absl::Status AudioElementRendererAmbisonicsToChannel::RenderSamples(
-    absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
-    std::vector<InternalSampleType>& rendered_samples) {
+    absl::Span<const absl::Span<const InternalSampleType>> samples_to_render) {
   // Render the samples.
   RETURN_IF_NOT_OK(RenderAmbisonicsToLoudspeakers(
-      samples_to_render, ambisonics_config_, gains_, rendered_samples));
-
+      samples_to_render, ambisonics_config_, gains_, rendered_samples_));
   return absl::OkStatus();
 }
 

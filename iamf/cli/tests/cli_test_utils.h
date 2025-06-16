@@ -295,11 +295,12 @@ WavReader CreateWavReaderExpectOk(const std::string& filename,
  *
  * \param labeled_frame Labeled frame to render.
  * \param renderer Renderer to use.
- * \param output_samples Vector to flush to.
+ * \param output_samples Vector to flush samples to, arranged in (channel, time)
+ *        axes.
  */
-void RenderAndFlushExpectOk(const LabeledFrame& labeled_frame,
-                            AudioElementRendererBase* renderer,
-                            std::vector<InternalSampleType>& output_samples);
+void RenderAndFlushExpectOk(
+    const LabeledFrame& labeled_frame, AudioElementRendererBase* renderer,
+    std::vector<std::vector<InternalSampleType>>& output_samples);
 
 /*!\brief Gets and cleans up unique file name based on the specified suffix.
  *
@@ -469,7 +470,7 @@ void AccumulateZeroCrossings(
 absl::Status ReadFileToBytes(const std::filesystem::path& file_path,
                              std::vector<uint8_t>& buffer);
 
-/*!\brief Matches an `InternalSampleType` to an `int32_t`..
+/*!\brief Matches an `InternalSampleType` to an `int32_t`.
  *
  * Used with a tuple of `InternalSampleType` and `int32_t`.
  *
@@ -486,6 +487,25 @@ MATCHER(InternalSampleMatchesIntegralSample, "") {
                                         equivalent_integral_sample)
              .ok() &&
          equivalent_integral_sample == testing::get<1>(arg);
+}
+
+/*!\brief Matches two 2D `InternalSampleType` arrays.
+ *
+ * Used with a tuple of `InternalSampleType` and `int32_t`.
+ *
+ * For example:
+ *    std::vector<std::vector<InternalSampleType>> samples;
+ *    std::vector<std::vector<InternalSampleType>> expected_samples;
+ *    EXPECT_THAT(samples, InternalSamples2DMatch(expected_samples));
+ */
+MATCHER_P(InternalSamples2DMatch, expected, "") {
+  testing::ExplainMatchResult(testing::Eq(expected.size()), arg.size(),
+                              result_listener);
+  for (int c = 0; c < arg.size(); c++) {
+    return testing::ExplainMatchResult(
+        testing::Pointwise(testing::DoubleEq(), expected[c]), arg[c],
+        result_listener);
+  }
 }
 
 /*!\brief Matches a tag that is the build information of the IAMF encoder.

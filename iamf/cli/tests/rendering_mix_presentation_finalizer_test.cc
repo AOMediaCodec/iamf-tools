@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/status/status.h"
@@ -63,7 +64,7 @@ using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::Not;
-using testing::Return;
+using ::testing::Return;
 using enum ChannelLabel::Label;
 
 using absl::StatusCode::kFailedPrecondition;
@@ -76,9 +77,9 @@ const std::optional<uint8_t> kNoOverrideBitDepth = std::nullopt;
 constexpr absl::string_view kSuffixAfterMixPresentationId =
     "_first_submix_first_layout.wav";
 
-constexpr uint32_t kMixPresentationId = 42;
+constexpr uint32_t kMixPresentationId = 13;
 constexpr uint32_t kCodecConfigId = 42;
-constexpr uint32_t kAudioElementId = 42;
+constexpr uint32_t kAudioElementId = 67;
 constexpr int kNumchannelsForMono = 1;
 constexpr uint32_t kBitDepth = 16;
 constexpr uint32_t kSampleRate = 48000;
@@ -104,14 +105,30 @@ class MockRenderer : public AudioElementRendererBase {
                size_t num_output_channels)
       : AudioElementRendererBase(ordered_labels,
                                  static_cast<size_t>(kNumSamplesPerFrame),
-                                 num_output_channels) {}
+                                 num_output_channels),
+        kAllZeroRenderedSamples(
+            num_output_channels,
+            std::vector<InternalSampleType>(kNumSamplesPerFrame)) {
+    // Reset the `rendered_samples_` so that subsequent `Flush()` can output
+    // non-empty results.
+    ON_CALL(*this, RenderSamples(_))
+        .WillByDefault(testing::InvokeWithoutArgs(
+            this, &MockRenderer::ResetRenderedSamples));
+  }
   MockRenderer() : MockRenderer({}, 0) {}
 
-  MOCK_METHOD(
-      absl::Status, RenderSamples,
-      (absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
-       std::vector<InternalSampleType>& rendered_samples),
-      (override));
+  MOCK_METHOD(absl::Status, RenderSamples,
+              (absl::Span<const absl::Span<const InternalSampleType>>
+                   samples_to_render),
+              (override));
+
+ private:
+  absl::Status ResetRenderedSamples() ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
+    rendered_samples_ = kAllZeroRenderedSamples;
+    return absl::OkStatus();
+  }
+
+  const std::vector<std::vector<InternalSampleType>> kAllZeroRenderedSamples;
 };
 
 class MockRendererFactory : public RendererFactoryBase {
@@ -427,12 +444,11 @@ TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
 
   // We expect arguments to be forwarded from the OBUs to the renderer.
   auto mock_renderer = std::make_unique<MockRenderer>(kStereoLabels, 2);
-  std::vector<InternalSampleType> rendered_samples;
   const std::vector<std::vector<InternalSampleType>>
       kExpectedChannelTimeOrderedSamples = {{0, 1}, {2, 3}};
-  EXPECT_CALL(*mock_renderer,
-              RenderSamples(
-                  MakeSpanOfConstSpans(kExpectedChannelTimeOrderedSamples), _));
+  EXPECT_CALL(
+      *mock_renderer,
+      RenderSamples(MakeSpanOfConstSpans(kExpectedChannelTimeOrderedSamples)));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   ASSERT_NE(mock_renderer_factory, nullptr);
   EXPECT_CALL(*mock_renderer_factory,
@@ -451,8 +467,8 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   const LabelSamplesMap kLabelToSamples = {{kL2, {0}}, {kR2, {2}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples, kEndTime);
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
-  auto mock_renderer = std::make_unique<MockRenderer>();
-  EXPECT_CALL(*mock_renderer, RenderSamples(_, _));
+  auto mock_renderer = std::make_unique<MockRenderer>(kStereoLabels, 2);
+  EXPECT_CALL(*mock_renderer, RenderSamples(_));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   EXPECT_CALL(*mock_renderer_factory,
               CreateRendererForLayout(_, _, _, _, _, _, _))

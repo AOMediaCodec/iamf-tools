@@ -550,7 +550,6 @@ cc_library(
         "//iamf/cli/renderer:audio_element_renderer_base",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
-        "//iamf/common/utils:sample_processing_utils",
         "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",

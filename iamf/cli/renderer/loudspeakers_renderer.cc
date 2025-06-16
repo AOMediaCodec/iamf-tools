@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
@@ -172,15 +171,17 @@ void ProjectSamplesToRender(
   const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
   projected_samples.resize(num_output_channels);
   for (int out_channel = 0; out_channel < num_output_channels; out_channel++) {
-    projected_samples[out_channel].resize(num_ticks, 0.0);
+    auto& projected_samples_for_channel = projected_samples[out_channel];
+    projected_samples_for_channel.assign(num_ticks, 0.0);
     for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
+      const auto& input_sample_for_channel = input_samples[in_channel];
+      const auto demixing_value = Q15ToSignedDouble(
+          demixing_matrix[in_channel * num_in_channels + out_channel]);
       for (int t = 0; t < num_ticks; t++) {
         // Project with `demixing_matrix`, which is encoded as Q15 and stored
         // in column major.
-        projected_samples[out_channel][t] +=
-            Q15ToSignedDouble(
-                demixing_matrix[in_channel * num_in_channels + out_channel]) *
-            input_samples[in_channel][t];
+        projected_samples_for_channel[t] +=
+            demixing_value * input_sample_for_channel[t];
       }
     }
   }
@@ -190,10 +191,9 @@ void RenderSamplesUsingGains(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const std::vector<std::vector<double>>& gains,
     const int16_t* demixing_matrix,
-    std::vector<InternalSampleType>& rendered_samples) {
+    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   // Project with `demixing_matrix` when in projection mode.
-  absl::Span<const absl::Span<const InternalSampleType>>
-      samples_to_render_double;
+  absl::Span<const absl::Span<const InternalSampleType>> samples_to_render;
 
   // TODO(b/382197581): Avoid re-allocating vectors in each function call.
   std::vector<std::vector<InternalSampleType>> projected_samples;
@@ -205,25 +205,25 @@ void RenderSamplesUsingGains(
     for (int c = 0; c < projected_samples.size(); c++) {
       projected_spans[c] = absl::MakeConstSpan(projected_samples[c]);
     }
-    samples_to_render_double = absl::MakeConstSpan(projected_spans);
+    samples_to_render = absl::MakeConstSpan(projected_spans);
   } else {
-    samples_to_render_double = input_samples;
+    samples_to_render = input_samples;
   }
 
-  int rendered_samples_index = 0;
-
-  std::fill(rendered_samples.begin(), rendered_samples.end(), 0);
   const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
   const auto num_in_channels = input_samples.size();
   const auto num_out_channels = gains[0].size();
-  for (int t = 0; t < num_ticks; t++) {
-    for (int out_channel = 0; out_channel < num_out_channels; out_channel++) {
-      for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
-        rendered_samples[rendered_samples_index] +=
-            samples_to_render_double[in_channel][t] *
-            gains[in_channel][out_channel];
+  rendered_samples.resize(num_out_channels);
+  for (int out_channel = 0; out_channel < num_out_channels; out_channel++) {
+    auto& rendered_samples_for_channel = rendered_samples[out_channel];
+    rendered_samples_for_channel.assign(num_ticks, 0.0);
+    for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
+      const auto& samples_to_render_for_channel = samples_to_render[in_channel];
+      const auto gain_value = gains[in_channel][out_channel];
+      for (int t = 0; t < num_ticks; t++) {
+        rendered_samples_for_channel[t] +=
+            samples_to_render_for_channel[t] * gain_value;
       }
-      rendered_samples_index++;
     }
   }
 }
@@ -256,7 +256,7 @@ absl::Status RenderChannelLayoutToLoudspeakers(
     const std::vector<ChannelLabel::Label>& channel_labels,
     absl::string_view input_key, absl::string_view output_key,
     const std::vector<std::vector<double>>& precomputed_gains,
-    std::vector<InternalSampleType>& rendered_samples) {
+    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   // When the demixing parameters are in the bitstream, recompute for every
   // frame and do not store the result in the map.
   // TODO(b/292174366): Find a better solution and strictly follow the spec for
@@ -277,7 +277,7 @@ absl::Status RenderAmbisonicsToLoudspeakers(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const AmbisonicsConfig& ambisonics_config,
     const std::vector<std::vector<double>>& gains,
-    std::vector<InternalSampleType>& rendered_samples) {
+    std::vector<std::vector<InternalSampleType>>& rendered_samples) {
   // Exclude unsupported mode first, and deal with only mono or projection
   // in the rest of the code.
   const auto mode = ambisonics_config.ambisonics_mode;

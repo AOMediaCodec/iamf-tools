@@ -56,10 +56,10 @@ class AudioElementRendererBase {
 
   /*!\brief Flushes finished audio frames.
    *
-   * \param rendered_samples Vector to append rendered samples to.
-   * \return `absl::OkStatus()` on success. A specific status on failure.
+   * \param rendered_samples Vector to append rendered samples to, arranged in
+   *        (channel, time) axes.
    */
-  absl::Status Flush(std::vector<InternalSampleType>& rendered_samples);
+  void Flush(std::vector<std::vector<InternalSampleType>>& rendered_samples);
 
   /*!\brief Finalizes the renderer. Waits for it to finish any remaining frames.
    *
@@ -97,18 +97,18 @@ class AudioElementRendererBase {
         num_samples_per_frame_(num_samples_per_frame),
         num_output_channels_(num_output_channels),
         samples_to_render_(ordered_labels_.size()),
+        rendered_samples_(num_output_channels),
         kEmptyChannel(num_samples_per_frame_, 0.0) {}
 
   /*!\brief Renders samples.
    *
    * \param samples_to_render Samples to render arranged in (channel, time).
-   * \param rendered_samples Output rendered samples.
+   *        Rendered samples will be stored in the field `rendered_samples_`.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status RenderSamples(
-      absl::Span<const absl::Span<const InternalSampleType>> samples_to_render,
-      std::vector<InternalSampleType>& rendered_samples)
-      ABSL_SHARED_LOCKS_REQUIRED(mutex_) = 0;
+      absl::Span<const absl::Span<const InternalSampleType>> samples_to_render)
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(mutex_) = 0;
 
   const std::vector<ChannelLabel::Label> ordered_labels_;
   const size_t num_samples_per_frame_ = 0;
@@ -120,7 +120,10 @@ class AudioElementRendererBase {
   // Buffer of samples to render arranged in (channel, time).
   std::vector<absl::Span<const InternalSampleType>> samples_to_render_
       ABSL_GUARDED_BY(mutex_);
-  std::vector<InternalSampleType> rendered_samples_ ABSL_GUARDED_BY(mutex_);
+
+  // Buffer of rendered samples arranged in (channel, time).
+  std::vector<std::vector<InternalSampleType>> rendered_samples_
+      ABSL_GUARDED_BY(mutex_);
 
   // Buffer storing zeros. All omitted channels' spans point to this.
   const std::vector<InternalSampleType> kEmptyChannel;
