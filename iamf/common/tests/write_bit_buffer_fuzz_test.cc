@@ -45,18 +45,6 @@ void WriteSignedLiteral64(uint64_t data, int num_bits) {
 
 FUZZ_TEST(WriteBitBufferFuzzTest, WriteSignedLiteral64);
 
-void WriteSigned8(int8_t data) {
-  WriteBitBuffer wb(0);
-  auto status = wb.WriteSigned8(data);
-  if (status.ok()) {
-    EXPECT_EQ(wb.bit_offset(), 8);
-  } else {
-    EXPECT_EQ(wb.bit_offset(), 0);
-  }
-}
-
-FUZZ_TEST(WriteBitBufferFuzzTest, WriteSigned8);
-
 void WriteSigned16(int16_t data) {
   WriteBitBuffer wb(0);
   auto status = wb.WriteSigned16(data);

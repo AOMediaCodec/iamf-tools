@@ -24,7 +24,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/leb_generator.h"
-#include "iamf/common/utils/bit_buffer_util.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/types.h"
 
@@ -162,12 +161,6 @@ absl::Status WriteBitBuffer::WriteUnsignedLiteral64(uint64_t data,
   return InternalWriteUnsigned(64, data, num_bits, bit_offset_, bit_buffer_);
 }
 
-// Writes a standard int8_t in two's complement form to the write buffer. No
-// special conversion needed as the raw value is in the correct format.
-absl::Status WriteBitBuffer::WriteSigned8(int8_t data) {
-  return WriteUnsignedLiteral((static_cast<uint32_t>(data)) & 0xff, 8);
-}
-
 // Writes a standard int16_t in two's complement form to the write buffer. No
 // special conversion needed as the raw value is in the correct format.
 absl::Status WriteBitBuffer::WriteSigned16(int16_t data) {
@@ -244,7 +237,8 @@ absl::Status WriteBitBuffer::WriteUint8Span(absl::Span<const uint8_t> data) {
 
   // Expand the buffer to fit the data for efficiency when processing large
   // input.
-  RETURN_IF_NOT_OK(CanWriteBytes(true, data.size(), bit_offset_, bit_buffer_));
+  const int64_t data_size_bits = data.size() * 8;
+  MaybeResizeBufferToFitNumBits(data_size_bits, bit_offset_, bit_buffer_);
 
   // The buffer is mis-aligned. Copy it over one byte at a time.
   for (const uint8_t& value : data) {
@@ -268,17 +262,6 @@ absl::Status WriteBitBuffer::FlushAndWriteToFile(
     LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
   }
   Reset();
-  return absl::OkStatus();
-}
-
-absl::Status WriteBitBuffer::MaybeFlushIfCloseToCapacity(
-    std::optional<std::fstream>& output_file) {
-  // Query if the buffer is close to capacity without letting it resize.
-  if (CanWriteBytes(/*allow_resizing=*/false, bit_buffer_.capacity() / 2,
-                    bit_offset_, bit_buffer_) != absl::OkStatus()) {
-    RETURN_IF_NOT_OK(FlushAndWriteToFile(output_file));
-  }
-
   return absl::OkStatus();
 }
 

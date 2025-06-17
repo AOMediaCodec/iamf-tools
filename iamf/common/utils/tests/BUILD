@@ -2,17 +2,6 @@
 
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
-    name = "bit_buffer_util_test",
-    srcs = ["bit_buffer_util_test.cc"],
-    deps = [
-        "//iamf/common/utils:bit_buffer_util",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "map_utils_test",
     srcs = ["map_utils_test.cc"],
     deps = [

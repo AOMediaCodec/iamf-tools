@@ -62,14 +62,6 @@ class WriteBitBuffer {
    */
   absl::Status WriteUnsignedLiteral64(uint64_t data, int num_bits);
 
-  /*!\brief Writes specified signed 8 bit integer to the write buffer.
-   *
-   * \param data Data to write in standard two's complement form.
-   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
-   *         `wb->bit_offset` is negative.
-   */
-  absl::Status WriteSigned8(int8_t data);
-
   /*!\brief Writes the signed 16 bit integer to the write buffer.
    *
    * \param data Data to write in standard two's complement form.
@@ -119,20 +111,6 @@ class WriteBitBuffer {
    *         failed.
    */
   absl::Status FlushAndWriteToFile(std::optional<std::fstream>& output_file);
-
-  /*!\brief May flush the buffer to a file if it is getting full.
-   *
-   * Intended to be used to avoid storing the entire buffer in memory if it will
-   * later be flushed to a file anyway.
-   *
-   * \param output_file File to write to. Or `std::nullopt` to omit writing.
-   * \return `absl::OkStatus()` on success. Success does not guarantee the
-   *         buffer was flushed or written to the file.
-   *         `absl::InvalidArgumentError()` if the buffer is not byte-aligned
-   *         when writing to a file. `absl::UnknownError()` if the write failed.
-   */
-  absl::Status MaybeFlushIfCloseToCapacity(
-      std::optional<std::fstream>& output_file);
 
   /*!\brief Gets the offset in bits of the buffer.
    * \return Offset in bits of the write buffer.

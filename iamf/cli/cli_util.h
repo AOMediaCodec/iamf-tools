@@ -31,13 +31,6 @@
 
 namespace iamf_tools {
 
-/*!\brief Determines if the layout is a stereo layout.
- *
- * \param layout Layout to check.
- * \return True if the layout is a stereo layout. False otherwise.
- */
-bool IsStereoLayout(const Layout& layout);
-
 /*!\brief Gets indices for the target Layout in the mix presentation.
  *
  * This function grabs the submix index and layout index of the desired layout

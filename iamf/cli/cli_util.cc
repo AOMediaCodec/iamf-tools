@@ -89,14 +89,6 @@ void FillReconGainAuxiliaryData(
 
 }  // namespace
 
-bool IsStereoLayout(const Layout& layout) {
-  const Layout kStereoLayout = {
-      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-      .specific_layout = LoudspeakersSsConventionLayout{
-          .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
-  return layout == kStereoLayout;
-}
-
 absl::Status GetIndicesForLayout(
     const std::vector<MixPresentationSubMix>& mix_presentation_sub_mixes,
     const Layout& layout, int& output_submix_index, int& output_layout_index) {

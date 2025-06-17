@@ -139,7 +139,6 @@ cc_test(
         "//iamf/common:leb_generator",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:bit_buffer_util",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",

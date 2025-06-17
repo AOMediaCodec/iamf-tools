@@ -385,27 +385,6 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
             kExpectedChannelNumbersStereoLayer);
 }
 
-TEST(IsStereoLayout, ReturnsTrueForStereoLayout) {
-  Layout playback_layout = {
-      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-      .specific_layout = LoudspeakersSsConventionLayout{
-          .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-          .reserved = 0}};
-  EXPECT_TRUE(IsStereoLayout(playback_layout));
-}
-
-TEST(IsStereoLayout, ReturnsFalseForNonStereoLayout) {
-  Layout playback_layout = {.layout_type = Layout::kLayoutTypeBinaural};
-  EXPECT_FALSE(IsStereoLayout(playback_layout));
-}
-
-TEST(IsStereoLayout, ReturnsFalseForInvalidLayout) {
-  Layout playback_layout = {
-      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-      .specific_layout = LoudspeakersReservedOrBinauralLayout{}};
-  EXPECT_FALSE(IsStereoLayout(playback_layout));
-}
-
 TEST(GetIndicesForLayout, SuccessWithStereoLayout) {
   // Initialize prerequisites.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};

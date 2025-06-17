@@ -20,6 +20,13 @@ namespace iamf_tools {
  */
 inline constexpr int kMaxLeb128Size = 8;
 
+/*!\brief The maximum length of an IAMF string in bytes.
+ *
+ * The spec limits the length of a string to 128 bytes including the
+ * null terminator ('\0').
+ */
+inline constexpr int kIamfMaxStringSize = 128;
+
 /*!\brief IAMF spec requires an entire OBU to be <= 2 MB.
  */
 constexpr uint32_t kEntireObuSizeMaxTwoMegabytes = (1 << 21);

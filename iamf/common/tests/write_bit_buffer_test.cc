@@ -30,7 +30,6 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/leb_generator.h"
-#include "iamf/common/utils/bit_buffer_util.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/obu/types.h"
 
@@ -196,31 +195,6 @@ TEST_F(WriteBitBufferTest,
 TEST_F(WriteBitBufferTest, InvalidUnsignedLiteral64NumBitsOver64) {
   EXPECT_THAT(wb_->WriteUnsignedLiteral64(0, /*num_bits=*/65),
               StatusIs(kInvalidArgument));
-}
-
-TEST_F(WriteBitBufferTest, Signed8Zero) {
-  EXPECT_THAT(wb_->WriteSigned8(0x00), IsOk());
-  ValidateWriteResults(*wb_, {0x00});
-}
-
-TEST_F(WriteBitBufferTest, Signed8MaxPositive) {
-  EXPECT_THAT(wb_->WriteSigned8(127), IsOk());
-  ValidateWriteResults(*wb_, {0x7f});
-}
-
-TEST_F(WriteBitBufferTest, Signed8MinPositive) {
-  EXPECT_THAT(wb_->WriteSigned8(1), IsOk());
-  ValidateWriteResults(*wb_, {0x01});
-}
-
-TEST_F(WriteBitBufferTest, Signed8MinNegative) {
-  EXPECT_THAT(wb_->WriteSigned8(-128), IsOk());
-  ValidateWriteResults(*wb_, {0x80});
-}
-
-TEST_F(WriteBitBufferTest, Signed8MaxNegative) {
-  EXPECT_THAT(wb_->WriteSigned8(-1), IsOk());
-  ValidateWriteResults(*wb_, {0xff});
 }
 
 TEST_F(WriteBitBufferTest, Signed16Zero) {

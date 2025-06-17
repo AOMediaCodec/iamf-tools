@@ -4,13 +4,6 @@ package(default_visibility = ["//iamf:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
-    name = "bit_buffer_util",
-    srcs = ["bit_buffer_util.cc"],
-    hdrs = ["bit_buffer_util.h"],
-    deps = ["@com_google_absl//absl/status"],
-)
-
-cc_library(
     name = "macros",
     hdrs = ["macros.h"],
 )
