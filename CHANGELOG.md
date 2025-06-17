@@ -16,7 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Deprecated
 
--   Deprecate several fields and prefer using field names based on [IAMF v1.1.0]:
+-   Deprecate several fields and prefer using field names based on
+    [IAMF v1.1.0]:
     -   Deprecate `language_labels` in favor of `annotations_language`.
     -   Deprecate `MixPresentationAnnotations` and
         `mix_presentation_annotations_array` in favor of
@@ -30,6 +31,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
         `element_mix_gain`.
 -   Deprecate `channel_ids` and `channel_labels` in `AudioElementObuMetadata` in
     favor of `ChannelMetadata`.
+-   Deprecate several fields which redundantly provided the size. In favor of
+    calculating the size from related elements.
+    -   Deprecate `num_substreams`, `num_parameters`, `num_layers` in
+        `AudioElementObuMetadata`.
+    -   Deprecate `num_subblocks` in `ParamDefinition` and
+        `ParameterBlockMetadata`.
+    -   Deprecate `extension_header_size` in `ObuHeaderMetadata`.
+    -   Deprecate `num_sub_mixes`, `num_audio_elements`, `num_layouts`,
+        `num_anchored_loudness`, and `num_tags` in `MixPresentationObuMetadata`.
 
 ### Removed
 

@@ -65,9 +65,7 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_SCENE_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 16
     audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    num_parameters: 0
     ambisonics_config {
       ambisonics_mode: AMBISONICS_MODE_MONO
       ambisonics_mono_config {
@@ -82,11 +80,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [16]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -105,11 +100,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [17]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -128,11 +120,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [18]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -154,9 +143,7 @@ mix_presentation_metadata [
     count_label: 1
     annotations_language: ["en-us"]
     localized_presentation_annotations: ["Simulated English Dialog (-0dB)."]
-    num_sub_mixes: 1
     sub_mixes {
-      num_audio_elements: 2
       audio_elements: [
         {
           audio_element_id: 300
@@ -200,7 +187,6 @@ mix_presentation_metadata [
         }
         default_mix_gain: 0
       }
-      num_layouts: 1
       layouts {
         loudness_layout {
           layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -218,7 +204,6 @@ mix_presentation_metadata [
     }
     include_mix_presentation_tags: true
     mix_presentation_tags: {
-      num_tags: 1
       tags: {
         tag_name: "content_language"
         tag_value: "eng"
@@ -230,9 +215,7 @@ mix_presentation_metadata [
     count_label: 1
     annotations_language: ["en-us"]
     localized_presentation_annotations: ["Simulated Korean Dialog (-5dB)."]
-    num_sub_mixes: 1
     sub_mixes {
-      num_audio_elements: 2
       audio_elements: [
         {
           audio_element_id: 300
@@ -276,7 +259,6 @@ mix_presentation_metadata [
         }
         default_mix_gain: 0
       }
-      num_layouts: 1
       layouts {
         loudness_layout {
           layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -294,7 +276,6 @@ mix_presentation_metadata [
     }
     include_mix_presentation_tags: true
     mix_presentation_tags: {
-      num_tags: 1
       tags: {
         tag_name: "content_language"
         tag_value: "kor"
@@ -306,9 +287,7 @@ mix_presentation_metadata [
     count_label: 1
     annotations_language: ["en-us"]
     localized_presentation_annotations: ["Simulated Esperanto Dialog (-10dB)."]
-    num_sub_mixes: 1
     sub_mixes {
-      num_audio_elements: 2
       audio_elements: [
         {
           audio_element_id: 300
@@ -352,7 +331,6 @@ mix_presentation_metadata [
         }
         default_mix_gain: 0
       }
-      num_layouts: 1
       layouts {
         loudness_layout {
           layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -370,7 +348,6 @@ mix_presentation_metadata [
     }
     include_mix_presentation_tags: true
     mix_presentation_tags: {
-      num_tags: 1
       tags: {
         tag_name: "content_language"
         tag_value: "epo"

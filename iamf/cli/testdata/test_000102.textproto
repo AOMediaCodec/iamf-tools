@@ -61,9 +61,7 @@ audio_element_metadata {
   audio_element_type: AUDIO_ELEMENT_SCENE_BASED
   reserved: 0
   codec_config_id: 200
-  num_substreams: 9
   audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-  num_parameters: 0
   ambisonics_config {
     ambisonics_mode: AMBISONICS_MODE_MONO
     ambisonics_mono_config {
@@ -79,9 +77,7 @@ mix_presentation_metadata {
   count_label: 1
   annotations_language: ["en-us"]
   localized_presentation_annotations: ["test_mix_pres"]
-  num_sub_mixes: 1
   sub_mixes {
-    num_audio_elements: 1
     audio_elements {
       audio_element_id: 300
       localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
@@ -107,7 +103,6 @@ mix_presentation_metadata {
       }
       default_mix_gain: 0
     }
-    num_layouts: 1
     layouts {
       loudness_layout {
         layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION

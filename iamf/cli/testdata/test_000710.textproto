@@ -67,11 +67,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [0]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -90,11 +87,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [1]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -113,11 +107,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [2]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -136,11 +127,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [3]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -159,11 +147,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [4]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -182,11 +167,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [5]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -205,11 +187,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [6]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -228,11 +207,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [7]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -251,11 +227,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [8]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -274,11 +247,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [9]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -297,11 +267,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [10]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -320,11 +287,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [11]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -343,11 +307,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [12]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -366,11 +327,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [13]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -389,11 +347,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [14]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -412,11 +367,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [15]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -435,11 +387,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [16]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -458,11 +407,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [17]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -481,11 +427,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [318]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -504,11 +447,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [319]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -527,11 +467,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [20]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -550,11 +487,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [21]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -573,11 +507,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [22]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -596,11 +527,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [23]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -619,11 +547,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [24]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -642,11 +567,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [25]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -665,11 +587,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [26]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -688,11 +607,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [27]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -711,11 +627,8 @@ audio_element_metadata: [
     audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
     reserved: 0
     codec_config_id: 200
-    num_substreams: 1
     audio_substream_ids: [28]
-    num_parameters: 0
     scalable_channel_layout_config {
-      num_layers: 1
       reserved: 0
       channel_audio_layer_configs: [
         {
@@ -737,9 +650,7 @@ mix_presentation_metadata [
     count_label: 1
     annotations_language: ["en-us"]
     localized_presentation_annotations: ["test_mix_pres"]
-    num_sub_mixes: 1
     sub_mixes {
-      num_audio_elements: 29
       audio_elements: [
         {
           audio_element_id: 300
@@ -1216,7 +1127,6 @@ mix_presentation_metadata [
         }
         default_mix_gain: 0
       }
-      num_layouts: 1
       layouts {
         loudness_layout {
           layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -1234,7 +1144,6 @@ mix_presentation_metadata [
     }
     include_mix_presentation_tags: true
     mix_presentation_tags: {
-      num_tags: 1
       tags: {
         tag_name: "content_language"
         tag_value: "eng"
@@ -1246,9 +1155,7 @@ mix_presentation_metadata [
     count_label: 1
     annotations_language: ["en-us"]
     localized_presentation_annotations: ["test_mix_pres"]
-    num_sub_mixes: 1
     sub_mixes {
-      num_audio_elements: 2
       audio_elements: [
         {
           audio_element_id: 300
@@ -1292,7 +1199,6 @@ mix_presentation_metadata [
         }
         default_mix_gain: 0
       }
-      num_layouts: 1
       layouts {
         loudness_layout {
           layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -1310,7 +1216,6 @@ mix_presentation_metadata [
     }
     include_mix_presentation_tags: true
     mix_presentation_tags: {
-      num_tags: 1
       tags: {
         tag_name: "content_language"
         tag_value: "eng"
