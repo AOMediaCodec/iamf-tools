@@ -17,7 +17,6 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
@@ -39,7 +38,6 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/obu/arbitrary_obu.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
@@ -63,6 +61,8 @@ constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr uint32_t kNumSamplesPerFrame = 8;
 constexpr int kExpectedPcmBitDepth = 16;
+
+constexpr auto kExpectedPrimaryProfile = ProfileVersion::kIamfSimpleProfile;
 
 const auto kOmitOutputWavFiles =
     RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
@@ -246,19 +246,12 @@ class IamfEncoderTest : public ::testing::Test {
   IamfEncoder CreateExpectOk() {
     auto iamf_encoder = IamfEncoder::Create(
         user_metadata_, renderer_factory_.get(),
-        loudness_calculator_factory_.get(), sample_processor_factory_,
-        ia_sequence_header_obu_, codec_config_obus_, audio_elements_,
-        mix_presentation_obus_, descriptor_arbitrary_obus_);
+        loudness_calculator_factory_.get(), sample_processor_factory_);
     EXPECT_THAT(iamf_encoder, IsOk());
     return std::move(*iamf_encoder);
   }
 
   UserMetadata user_metadata_;
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu_;
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus_;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
-  std::list<MixPresentationObu> mix_presentation_obus_;
-  std::list<ArbitraryObu> descriptor_arbitrary_obus_;
   // Default some dependencies to be based on the real `IamfComponents`
   // implementations. And generally disable wav writing since it is not needed
   // for most tests.
@@ -275,10 +268,7 @@ TEST_F(IamfEncoderTest, CreateFailsOnEmptyUserMetadata) {
 
   EXPECT_FALSE(IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
                                    loudness_calculator_factory_.get(),
-                                   sample_processor_factory_,
-                                   ia_sequence_header_obu_, codec_config_obus_,
-                                   audio_elements_, mix_presentation_obus_,
-                                   descriptor_arbitrary_obus_)
+                                   sample_processor_factory_)
                    .ok());
 }
 
@@ -286,11 +276,12 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   SetupDescriptorObus();
   auto iamf_encoder = CreateExpectOk();
 
-  EXPECT_TRUE(ia_sequence_header_obu_.has_value());
-  EXPECT_EQ(codec_config_obus_.size(), 1);
-  EXPECT_EQ(audio_elements_.size(), 1);
-  EXPECT_EQ(mix_presentation_obus_.size(), 1);
-  EXPECT_TRUE(descriptor_arbitrary_obus_.empty());
+  EXPECT_EQ(iamf_encoder.GetIaSequenceHeaderObu().GetPrimaryProfile(),
+            kExpectedPrimaryProfile);
+  EXPECT_EQ(iamf_encoder.GetCodecConfigObus().size(), 1);
+  EXPECT_EQ(iamf_encoder.GetAudioElements().size(), 1);
+  EXPECT_EQ(iamf_encoder.GetPreliminaryMixPresentationObus().size(), 1);
+  EXPECT_TRUE(iamf_encoder.GetDescriptorArbitraryObus().empty());
 }
 
 TEST_F(IamfEncoderTest, CreateGeneratesDescriptorArbitraryObus) {
@@ -299,19 +290,21 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorArbitraryObus) {
 
   auto iamf_encoder = CreateExpectOk();
 
-  EXPECT_EQ(descriptor_arbitrary_obus_.size(), 1);
+  EXPECT_EQ(iamf_encoder.GetDescriptorArbitraryObus().size(), 1);
 }
 
 TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
   SetupDescriptorObus();
 
   auto iamf_encoder = CreateExpectOk();
-  ASSERT_FALSE(mix_presentation_obus_.empty());
+  const auto& mix_presentation_obus =
+      iamf_encoder.GetPreliminaryMixPresentationObus();
+  ASSERT_FALSE(mix_presentation_obus.empty());
 
   // We don't care which slot the build information tag is in. But we want it to
   // be present by default, to help with debugging.
   const auto& first_obu_tags =
-      mix_presentation_obus_.front().mix_presentation_tags_;
+      mix_presentation_obus.front().mix_presentation_tags_;
   ASSERT_TRUE(first_obu_tags.has_value());
   EXPECT_THAT(first_obu_tags->tags, Contains(TagMatchesBuildInformation()));
 }
@@ -478,10 +471,12 @@ TEST_F(IamfEncoderTest,
   renderer_factory_ = nullptr;
   loudness_calculator_factory_ = nullptr;
   auto iamf_encoder = CreateExpectOk();
-  const auto original_loudness = mix_presentation_obus_.front()
-                                     .sub_mixes_.front()
-                                     .layouts.front()
-                                     .loudness;
+  const auto original_loudness =
+      iamf_encoder.GetPreliminaryMixPresentationObus()
+          .front()
+          .sub_mixes_.front()
+          .layouts.front()
+          .loudness;
   iamf_encoder.FinalizeAddSamples();
 
   const auto finalized_mix_presentation_obus =

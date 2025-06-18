@@ -13,6 +13,7 @@ cc_library(
     ],
     deps = [
         "@com_google_googletest//:gtest",
+        "@com_google_absl//absl/base:nullability",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
@@ -281,7 +282,6 @@ cc_test(
     srcs = ["iamf_encoder_test.cc"],
     deps = [
         ":cli_test_utils",
-        "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
@@ -302,7 +302,6 @@ cc_test(
         "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:arbitrary_obu",
-        "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",

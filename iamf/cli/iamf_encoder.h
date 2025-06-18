@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "absl/base/nullability.h"
@@ -101,17 +100,6 @@ class IamfEncoder {
    *        to measure the loudness of the output layouts.
    * \param sample_processor_factory Factory to create processors for use after
    *        rendering.
-   * \param ia_sequence_header_obu Generated IA Sequence Header OBU.
-   * \param codec_config_obus Map of Codec Config ID to generated Codec Config
-   *        OBUs.
-   * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
-   * \param preliminary_mix_presentation_obus List of preliminary Mix
-   *        Presentation OBUs. Using these directly almost certainly results in
-   *        incorrect loudness metadata. It is best practice to replace these
-   *        with the result of `GetFinalizedMixPresentationObus()` after all
-   *        data OBUs are generated.
-   * \param descriptor_arbitrary_obus List of generated descriptor Arbitrary
-   *        OBUs.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   static absl::StatusOr<IamfEncoder> Create(
@@ -120,12 +108,7 @@ class IamfEncoder {
       const LoudnessCalculatorFactoryBase* /* absl_nullable */
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory,
-      std::optional<IASequenceHeaderObu>& ia_sequence_header_obu,
-      absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-      std::list<MixPresentationObu>& preliminary_mix_presentation_obus,
-      std::list<ArbitraryObu>& descriptor_arbitrary_obus);
+          sample_processor_factory);
 
   /*!\brief Returns whether this encoder is generating data OBUs.
    *
@@ -188,6 +171,43 @@ class IamfEncoder {
       std::list<ParameterBlockWithData>& parameter_blocks,
       std::list<ArbitraryObu>& temporal_unit_arbitrary_obus);
 
+  /*!\brief Outputs a const reference to the IA Sequence Header OBU.
+   *
+   * \return Const reference to the IA Sequence Header OBU.
+   */
+  const IASequenceHeaderObu& GetIaSequenceHeaderObu() const;
+
+  /*!\brief Outputs a const reference to the Codec Config OBUs.
+   *
+   * \return Const reference to the Codec Config OBUs.
+   */
+  const absl::flat_hash_map<uint32_t, CodecConfigObu>& GetCodecConfigObus()
+      const;
+
+  /*!\brief Outputs a const reference to the Audio Elements.
+   *
+   * \return Const reference to the Audio Elements.
+   */
+  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+  GetAudioElements() const;
+
+  /*!\brief Outputs a const reference to the prelimary Mix Presentation OBUs.
+   *
+   * \return List of preliminary Mix Presentation OBUs. Using these directly
+   *         almost certainly results in incorrect loudness metadata. It is best
+   *         practice to replace these with the result of
+   *         `GetFinalizedMixPresentationObus()` after all data OBUs are
+   *         generated.
+   */
+  const std::list<MixPresentationObu>& GetPreliminaryMixPresentationObus()
+      const;
+
+  /*!\brief Outputs a const reference to the Descriptor Arbitrary OBUs.
+   *
+   * \return Const reference to the Descriptor Arbitrary OBUs.
+   */
+  const std::list<ArbitraryObu>& GetDescriptorArbitraryObus() const;
+
   /*!\brief Gets the finalized mix presentation OBUs.
    *
    * Mix Presentation OBUs contain loudness information, which is only possible
@@ -209,6 +229,12 @@ class IamfEncoder {
    *
    * \param validate_user_loudness Whether to validate the user-provided
    *        loudness.
+   * \param ia_sequence_header_obu Generated IA Sequence Header OBU.
+   * \param codec_config_obus Map of Codec Config ID to generated Codec Config
+   *        OBUs.
+   * \param audio_elements Map of Audio Element IDs to generated OBUs with data.
+   * \param mix_presentation_obus List of preliminary Mix Presentation OBUs.
+   * \param descriptor_arbitrary_obus List of Descriptor Arbitrary OBUs.
    * \param timestamp_to_arbitrary_obus Arbitrary OBUs arranged by their
    *        insertion timestamp.
    * \param parameter_id_to_metadata Mapping from parameter IDs to per-ID
@@ -222,20 +248,34 @@ class IamfEncoder {
    *        recon gain computation.
    * \param global_timing_module Manages global timing information.
    */
-  IamfEncoder(bool validate_user_loudness,
-              absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&&
-                  timestamp_to_arbitrary_obus,
-              std::unique_ptr<
-                  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
-                  param_definition_variants,
-              ParameterBlockGenerator&& parameter_block_generator,
-              std::unique_ptr<ParametersManager> parameters_manager,
-              const DemixingModule& demixing_module,
-              std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
-              AudioFrameDecoder&& audio_frame_decoder,
-              std::unique_ptr<GlobalTimingModule> global_timing_module,
-              RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
+  IamfEncoder(
+      bool validate_user_loudness, IASequenceHeaderObu&& ia_sequence_header_obu,
+      std::unique_ptr<
+          absl::flat_hash_map<uint32_t, CodecConfigObu>> /* absl_nonnull */
+          codec_config_obus,
+      std::unique_ptr<absl::flat_hash_map<
+          DecodedUleb128, AudioElementWithData>> /* absl_nonnull */
+          audio_elements,
+      std::list<MixPresentationObu>&& mix_presentation_obus,
+      std::list<ArbitraryObu>&& descriptor_arbitrary_obus,
+      absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&&
+          timestamp_to_arbitrary_obus,
+      std::unique_ptr<
+          absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
+          param_definition_variants,
+      ParameterBlockGenerator&& parameter_block_generator,
+      std::unique_ptr<ParametersManager> parameters_manager,
+      const DemixingModule& demixing_module,
+      std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
+      AudioFrameDecoder&& audio_frame_decoder,
+      std::unique_ptr<GlobalTimingModule> global_timing_module,
+      RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
       : validate_user_loudness_(validate_user_loudness),
+        ia_sequence_header_obu_(std::move(ia_sequence_header_obu)),
+        codec_config_obus_(std::move(codec_config_obus)),
+        audio_elements_(std::move(audio_elements)),
+        mix_presentation_obus_(std::move(mix_presentation_obus)),
+        descriptor_arbitrary_obus_(std::move(descriptor_arbitrary_obus)),
         timestamp_to_arbitrary_obus_(std::move(timestamp_to_arbitrary_obus)),
         param_definition_variants_(std::move(param_definition_variants)),
         parameter_block_generator_(std::move(parameter_block_generator)),
@@ -247,6 +287,22 @@ class IamfEncoder {
         mix_presentation_finalizer_(std::move(mix_presentation_finalizer)) {}
 
   const bool validate_user_loudness_;
+
+  // Descriptor OBUs.
+  IASequenceHeaderObu ia_sequence_header_obu_;
+  // Held in a `unique_ptr`, so the underlying map can be moved without
+  // invalidating pointers. At least `audio_elements_` depend on this.
+  std::unique_ptr<
+      absl::flat_hash_map<uint32_t, CodecConfigObu>> /* absl_nonnull */
+      codec_config_obus_;
+  // Held in a `unique_ptr`, so the underlying map can be moved without
+  // invalidating pointers. At least `audio_frame_generator_` and any output
+  // `AudioFrameWithData` depend on this.
+  std::unique_ptr<absl::flat_hash_map<DecodedUleb128,
+                                      AudioElementWithData>> /* absl_nonnull */
+      audio_elements_;
+  std::list<MixPresentationObu> mix_presentation_obus_;
+  std::list<ArbitraryObu> descriptor_arbitrary_obus_;
 
   // Arbitrary OBUs arranged by their insertion tick.
   absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>

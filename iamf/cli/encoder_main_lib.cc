@@ -16,7 +16,6 @@
 #include <filesystem>
 #include <list>
 #include <memory>
-#include <optional>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -44,10 +43,7 @@
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/arbitrary_obu.h"
-#include "iamf/obu/codec_config.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -173,13 +169,11 @@ iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
 
 absl::Status GenerateAndPushAllTemporalUnits(
     const UserMetadata& user_metadata, const std::string& input_wav_directory,
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements,
     IamfEncoder& iamf_encoder,
     std::vector<std::unique_ptr<ObuSequencerBase>>& obu_sequencers) {
-  auto wav_sample_provider =
-      WavSampleProvider::Create(user_metadata.audio_frame_metadata(),
-                                input_wav_directory, audio_elements);
+  auto wav_sample_provider = WavSampleProvider::Create(
+      user_metadata.audio_frame_metadata(), input_wav_directory,
+      iamf_encoder.GetAudioElements());
   if (!wav_sample_provider.ok()) {
     return wav_sample_provider.status();
   }
@@ -207,8 +201,8 @@ absl::Status GenerateAndPushAllTemporalUnits(
     absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples;
     bool no_more_real_samples = false;
     RETURN_IF_NOT_OK(CollectLabeledSamplesForAudioElements(
-        audio_elements, *wav_sample_provider, id_to_labeled_samples,
-        no_more_real_samples));
+        iamf_encoder.GetAudioElements(), *wav_sample_provider,
+        id_to_labeled_samples, no_more_real_samples));
 
     for (const auto& [audio_element_id, labeled_samples] :
          id_to_labeled_samples) {
@@ -279,12 +273,6 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   // Make a copy before modifying.
   UserMetadata user_metadata(input_user_metadata);
 
-  std::optional<IASequenceHeaderObu> ia_sequence_header_obu;
-  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> preliminary_mix_presentation_obus;
-  std::list<ArbitraryObu> descriptor_arbitrary_obus;
-
   // Create output directories.
   RETURN_IF_NOT_OK(CreateOutputDirectory(output_iamf_directory));
 
@@ -325,17 +313,12 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   ApplyOutputAudioFormatToSampleProcessorFactory(output_audio_format,
                                                  sample_processor_factory);
 
-  // We want to hold the `IamfEncoder` until all OBUs have been written.
   auto iamf_encoder = IamfEncoder::Create(
       user_metadata, CreateRendererFactory().get(),
-      CreateLoudnessCalculatorFactory().get(), sample_processor_factory,
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
-      preliminary_mix_presentation_obus, descriptor_arbitrary_obus);
+      CreateLoudnessCalculatorFactory().get(), sample_processor_factory);
   if (!iamf_encoder.ok()) {
     return iamf_encoder.status();
   }
-  RETURN_IF_NOT_OK(
-      ValidateHasValue(ia_sequence_header_obu, "ia_sequence_header_obu"));
 
   // TODO(b/349271859): Move the OBU sequencer inside `IamfEncoder`.
   auto obu_sequencers = CreateObuSequencers(
@@ -343,17 +326,16 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters());
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
-        *ia_sequence_header_obu, codec_config_obus, audio_elements,
-        preliminary_mix_presentation_obus, descriptor_arbitrary_obus));
+        iamf_encoder->GetIaSequenceHeaderObu(),
+        iamf_encoder->GetCodecConfigObus(), iamf_encoder->GetAudioElements(),
+        iamf_encoder->GetPreliminaryMixPresentationObus(),
+        iamf_encoder->GetDescriptorArbitraryObus()));
   }
+  // Start the file with the original mix presentation OBUs, but they will be
+  // overwritten later with the finalized mix presentation OBUs.
 
-  // Discard the "preliminary" mix presentation OBUs. We only care about the
-  // finalized ones, which are not possible to know until audio encoding is
-  // complete.
-  preliminary_mix_presentation_obus.clear();
   RETURN_IF_NOT_OK(GenerateAndPushAllTemporalUnits(
-      user_metadata, input_wav_directory, audio_elements, *iamf_encoder,
-      obu_sequencers));
+      user_metadata, input_wav_directory, *iamf_encoder, obu_sequencers));
 
   // Audio encoding is complete. Retrieve the OBUs which have the finalized
   // loudness information.
@@ -365,8 +347,10 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
 
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->UpdateDescriptorObusAndClose(
-        *ia_sequence_header_obu, codec_config_obus, audio_elements,
-        *finalized_mix_presentation_obus, descriptor_arbitrary_obus));
+        iamf_encoder->GetIaSequenceHeaderObu(),
+        iamf_encoder->GetCodecConfigObus(), iamf_encoder->GetAudioElements(),
+        *finalized_mix_presentation_obus,
+        iamf_encoder->GetDescriptorArbitraryObus()));
   }
 
   return absl::OkStatus();
