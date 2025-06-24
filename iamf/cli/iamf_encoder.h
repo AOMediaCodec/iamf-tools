@@ -144,8 +144,10 @@ class IamfEncoder {
    *
    * This will signal the underlying codecs to flush all remaining samples,
    * as well as trim samples from the end.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  void FinalizeAddSamples();
+  absl::Status FinalizeAddSamples();
 
   /*!\brief Adds parameter block metadata belonging to the same temporal unit.
    *
@@ -193,33 +195,26 @@ class IamfEncoder {
 
   /*!\brief Outputs a const reference to the prelimary Mix Presentation OBUs.
    *
-   * \return List of preliminary Mix Presentation OBUs. Using these directly
-   *         almost certainly results in incorrect loudness metadata. It is best
-   *         practice to replace these with the result of
-   *         `GetFinalizedMixPresentationObus()` after all data OBUs are
-   *         generated.
+   * When `GeneratingDataObus()` is true, this function will return the
+   * preliminary mix presentation OBUs. These are not finalized, and thus almost
+   * certainly do not contain measured loudness metadata.
+   *
+   * After `GeneratingDataObus()` is false, this function will return the
+   * finalized mix presentation OBUs. These contain accurate mix presentation
+   * metadata.
+   *
+   * \param output_is_finalized `true` when the output OBUs have been finalized.
+   *        `false` when the output OBUs are preliminary.
+   * \return Mix Presentation OBUs.
    */
-  const std::list<MixPresentationObu>& GetPreliminaryMixPresentationObus()
-      const;
+  const std::list<MixPresentationObu>& GetMixPresentationObus(
+      bool& output_is_finalized) const;
 
   /*!\brief Outputs a const reference to the Descriptor Arbitrary OBUs.
    *
    * \return Const reference to the Descriptor Arbitrary OBUs.
    */
   const std::list<ArbitraryObu>& GetDescriptorArbitraryObus() const;
-
-  /*!\brief Gets the finalized mix presentation OBUs.
-   *
-   * Mix Presentation OBUs contain loudness information, which is only possible
-   * to know after all data OBUs are generated.
-   *
-   * Must only be called only once and after all data OBUs are generated, i.e.
-   * after `GeneratingDataObus()` returns false.
-   *
-   * \return Finalized Mix Presentation OBUs. A specific status on failure.
-   */
-  absl::StatusOr<std::list<MixPresentationObu>>
-  GetFinalizedMixPresentationObus();
 
  private:
   /*!\brief Private constructor.
@@ -339,6 +334,7 @@ class IamfEncoder {
 
   // Modules to render the output layouts and measure their loudness.
   RenderingMixPresentationFinalizer mix_presentation_finalizer_;
+  bool mix_presentation_obus_finalized_ = false;
 };
 
 }  // namespace iamf_tools

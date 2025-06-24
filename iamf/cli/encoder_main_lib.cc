@@ -217,7 +217,7 @@ absl::Status GenerateAndPushAllTemporalUnits(
     // real samples. In other applications, the user may decide to stop adding
     // audio samples based on other criteria.
     if (no_more_real_samples) {
-      iamf_encoder.FinalizeAddSamples();
+      RETURN_IF_NOT_OK(iamf_encoder.FinalizeAddSamples());
     }
 
     // Add parameter block metadata.
@@ -324,32 +324,35 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   auto obu_sequencers = CreateObuSequencers(
       user_metadata, output_iamf_directory,
       user_metadata.temporal_delimiter_metadata().enable_temporal_delimiters());
+  bool obus_are_finalized = false;
+  // Start the file with the original mix presentation OBUs, but they will be
+  // overwritten later with the finalized mix presentation OBUs.
+  auto& preliminary_mix_presentation_obus =
+      iamf_encoder->GetMixPresentationObus(obus_are_finalized);
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
         iamf_encoder->GetIaSequenceHeaderObu(),
         iamf_encoder->GetCodecConfigObus(), iamf_encoder->GetAudioElements(),
-        iamf_encoder->GetPreliminaryMixPresentationObus(),
+        preliminary_mix_presentation_obus,
         iamf_encoder->GetDescriptorArbitraryObus()));
   }
-  // Start the file with the original mix presentation OBUs, but they will be
-  // overwritten later with the finalized mix presentation OBUs.
 
   RETURN_IF_NOT_OK(GenerateAndPushAllTemporalUnits(
       user_metadata, input_wav_directory, *iamf_encoder, obu_sequencers));
 
-  // Audio encoding is complete. Retrieve the OBUs which have the finalized
+  // Audio encoding is complete. Update based on the finalized OBUs, which have
   // loudness information.
-  const auto finalized_mix_presentation_obus =
-      iamf_encoder->GetFinalizedMixPresentationObus();
-  if (!finalized_mix_presentation_obus.ok()) {
-    return finalized_mix_presentation_obus.status();
+  auto& finalized_mix_presentation_obus =
+      iamf_encoder->GetMixPresentationObus(obus_are_finalized);
+  if (!obus_are_finalized) {
+    LOG(WARNING) << "Mix presentation OBUs failed to be finalized, closing the "
+                    "file anyway.";
   }
-
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->UpdateDescriptorObusAndClose(
         iamf_encoder->GetIaSequenceHeaderObu(),
         iamf_encoder->GetCodecConfigObus(), iamf_encoder->GetAudioElements(),
-        *finalized_mix_presentation_obus,
+        finalized_mix_presentation_obus,
         iamf_encoder->GetDescriptorArbitraryObus()));
   }
 

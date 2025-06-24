@@ -15,6 +15,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
+#include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_frame_with_data.h"
@@ -61,6 +62,7 @@ constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr uint32_t kNumSamplesPerFrame = 8;
 constexpr int kExpectedPcmBitDepth = 16;
+constexpr int16_t kUserProvidedIntegratedLoudness = 0;
 
 constexpr auto kExpectedPrimaryProfile = ProfileVersion::kIamfSimpleProfile;
 
@@ -109,6 +111,7 @@ void AddAudioElement(UserMetadata& user_metadata) {
 }
 
 void AddMixPresentation(UserMetadata& user_metadata) {
+  auto* new_mix_presentation = user_metadata.add_mix_presentation_metadata();
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         mix_presentation_id: 42
@@ -145,13 +148,16 @@ void AddMixPresentation(UserMetadata& user_metadata) {
             }
             loudness {
               info_type_bit_masks: []
-              integrated_loudness: 0
               digital_peak: 0
             }
           }
         }
       )pb",
-      user_metadata.add_mix_presentation_metadata()));
+      new_mix_presentation));
+  new_mix_presentation->mutable_sub_mixes(0)
+      ->mutable_layouts(0)
+      ->mutable_loudness()
+      ->set_integrated_loudness(kUserProvidedIntegratedLoudness);
 }
 
 void AddDescriptorArbitraryObu(UserMetadata& user_metadata) {
@@ -180,6 +186,8 @@ void AddAudioFrame(UserMetadata& user_metadata) {
       R"pb(
         samples_to_trim_at_end: 0
         samples_to_trim_at_start: 0
+        samples_to_trim_at_end_includes_padding: false
+        samples_to_trim_at_start_includes_codec_delay: false
         audio_element_id: 300
         channel_ids: [ 0, 1 ]
         channel_labels: [ "L2", "R2" ]
@@ -280,7 +288,9 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
             kExpectedPrimaryProfile);
   EXPECT_EQ(iamf_encoder.GetCodecConfigObus().size(), 1);
   EXPECT_EQ(iamf_encoder.GetAudioElements().size(), 1);
-  EXPECT_EQ(iamf_encoder.GetPreliminaryMixPresentationObus().size(), 1);
+  bool obus_are_finalized = false;
+  EXPECT_EQ(iamf_encoder.GetMixPresentationObus(obus_are_finalized).size(), 1);
+  EXPECT_FALSE(obus_are_finalized);
   EXPECT_TRUE(iamf_encoder.GetDescriptorArbitraryObus().empty());
 }
 
@@ -297,8 +307,9 @@ TEST_F(IamfEncoderTest, BuildInformationTagIsPresentByDefault) {
   SetupDescriptorObus();
 
   auto iamf_encoder = CreateExpectOk();
+  bool unused_obus_are_finalized = false;
   const auto& mix_presentation_obus =
-      iamf_encoder.GetPreliminaryMixPresentationObus();
+      iamf_encoder.GetMixPresentationObus(unused_obus_are_finalized);
   ASSERT_FALSE(mix_presentation_obus.empty());
 
   // We don't care which slot the build information tag is in. But we want it to
@@ -321,7 +332,7 @@ TEST_F(IamfEncoderTest,
                           MakeConstSpan(kZeroSamples));
   iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
                           MakeConstSpan(kZeroSamples));
-  iamf_encoder.FinalizeAddSamples();
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
 
   // Arbitrary OBUs come out based on their insertion hook.
   std::list<AudioFrameWithData> temp_audio_frames;
@@ -343,7 +354,7 @@ TEST_F(IamfEncoderTest,
   AddArbitraryObuForFirstTick(user_metadata_);
   auto iamf_encoder = CreateExpectOk();
   // Ok, this is is a trivial IA Sequence.
-  iamf_encoder.FinalizeAddSamples();
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
   iamf_encoder.BeginTemporalUnit();
 
   // Normally all temporal units must have an audio frame, but extraneous
@@ -385,7 +396,7 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {
-      iamf_encoder.FinalizeAddSamples();
+      EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
     }
 
     EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
@@ -429,7 +440,7 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
                   user_metadata_.parameter_block_metadata(0)),
               IsOk());
-  iamf_encoder.FinalizeAddSamples();
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
   std::list<AudioFrameWithData> temp_audio_frames;
   std::list<ParameterBlockWithData> temp_parameter_blocks;
   std::list<ArbitraryObu> temp_arbitrary_obus;
@@ -443,67 +454,175 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   EXPECT_TRUE(temp_arbitrary_obus.empty());
 }
 
-TEST_F(IamfEncoderTest, FinalizeMixPresentationObusSucceeds) {
+TEST_F(IamfEncoderTest, CallingFinalizeAddSamplesTwiceSucceeds) {
   SetupDescriptorObus();
   auto iamf_encoder = CreateExpectOk();
-
-  iamf_encoder.FinalizeAddSamples();
-
-  EXPECT_THAT(iamf_encoder.GetFinalizedMixPresentationObus(), IsOk());
-}
-
-TEST_F(IamfEncoderTest, CallingFinalizeMixPresentationObusTwiceFails) {
-  SetupDescriptorObus();
-  auto iamf_encoder = CreateExpectOk();
-  iamf_encoder.FinalizeAddSamples();
-
   // The first call is OK.
-  EXPECT_THAT(iamf_encoder.GetFinalizedMixPresentationObus(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
 
-  EXPECT_FALSE(iamf_encoder.GetFinalizedMixPresentationObus().ok());
+  // There is nothing to finalize a second time, the calls safely do nothing.
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
 }
 
-TEST_F(IamfEncoderTest,
-       FinalizeMixPresentationObusDefaultsToPreservingUserLoudness) {
+TEST_F(
+    IamfEncoderTest,
+    GetMixPresentationMaintainsOriginalLoudnessWhenLoudnessCalculatorIsDisabled) {
   SetupDescriptorObus();
   // Configuring the encoder with null factories is permitted, which disables
   // rendering and loudness measurements.
   renderer_factory_ = nullptr;
   loudness_calculator_factory_ = nullptr;
   auto iamf_encoder = CreateExpectOk();
+  bool obus_are_finalized = false;
   const auto original_loudness =
-      iamf_encoder.GetPreliminaryMixPresentationObus()
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized)
           .front()
           .sub_mixes_.front()
           .layouts.front()
           .loudness;
-  iamf_encoder.FinalizeAddSamples();
+  EXPECT_FALSE(obus_are_finalized);
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
 
-  const auto finalized_mix_presentation_obus =
-      iamf_encoder.GetFinalizedMixPresentationObus();
-  ASSERT_THAT(finalized_mix_presentation_obus, IsOk());
-
-  EXPECT_EQ(finalized_mix_presentation_obus->front()
+  EXPECT_EQ(iamf_encoder.GetMixPresentationObus(obus_are_finalized)
+                .front()
                 .sub_mixes_.front()
                 .layouts.front()
                 .loudness,
             original_loudness);
+  EXPECT_TRUE(obus_are_finalized);
 }
 
-TEST_F(IamfEncoderTest,
-       FinalizeMixPresentationObusFailsBeforeGeneratingDataObusIsFinished) {
+// Returns a mock loudness calculator factory that results in calculating the
+// given integrated loudness when queried.
+std::unique_ptr<LoudnessCalculatorFactoryBase>
+GetLoudnessCalculatorWhichReturnsIntegratedLoudness(
+    int16_t integrated_loudness) {
+  auto mock_loudness_calculator_factory =
+      std::make_unique<MockLoudnessCalculatorFactory>();
+  auto mock_loudness_calculator = std::make_unique<MockLoudnessCalculator>();
+  const LoudnessInfo kArbitraryLoudnessInfo = {
+      .info_type = 0,
+      .integrated_loudness = integrated_loudness,
+      .digital_peak = 0,
+  };
+  ON_CALL(*mock_loudness_calculator, QueryLoudness())
+      .WillByDefault(Return(kArbitraryLoudnessInfo));
+  EXPECT_CALL(*mock_loudness_calculator_factory,
+              CreateLoudnessCalculator(_, _, _, _))
+      .WillOnce(Return(std::move(mock_loudness_calculator)));
+  return mock_loudness_calculator_factory;
+}
+
+void ExpectFirstLayoutIntegratedLoudnessIs(
+    const std::list<MixPresentationObu>& mix_presentation_obus,
+    int16_t expected_integrated_loudness) {
+  ASSERT_FALSE(mix_presentation_obus.empty());
+  EXPECT_EQ(mix_presentation_obus.front()
+                .sub_mixes_.front()
+                .layouts.front()
+                .loudness.integrated_loudness,
+            expected_integrated_loudness);
+}
+
+TEST_F(IamfEncoderTest, LoudessIsFinalizedAfterAlignedOrTrivialIaSequence) {
   SetupDescriptorObus();
-  AddAudioFrame(user_metadata_);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  constexpr int16_t kIntegratedLoudness = 999;
+  loudness_calculator_factory_ =
+      GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
 
-  // The encoder is still generating data OBUs, so it's not possible to know the
-  // final loudness values.
-  ASSERT_TRUE(iamf_encoder.GeneratingDataObus());
+  // `FinalizeAddSamples()` may trigger loudness finalization for trivial or
+  // frame-aligned IA Sequences.
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
 
-  EXPECT_FALSE(iamf_encoder.GetFinalizedMixPresentationObus().ok());
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
+  bool obus_are_finalized = false;
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kIntegratedLoudness);
+  EXPECT_TRUE(obus_are_finalized);
 }
 
-TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
+TEST_F(IamfEncoderTest, LoudessIsFinalizedAfterFinalOutputTemporalUnit) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  constexpr int16_t kIntegratedLoudness = 999;
+  loudness_calculator_factory_ =
+      GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
+  auto iamf_encoder = CreateExpectOk();
+  iamf_encoder.BeginTemporalUnit();
+  // Add in a single sample for each channel, to result in a non-frame aligned
+  // IA sequence.
+  constexpr auto kOneSample = absl::MakeConstSpan(kZeroSamples).first(1);
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, kOneSample);
+  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, kOneSample);
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  // Despite `FinalizeAddSamples()` being called, there are data OBUs to push
+  // out. Loudness is intentionally not yet finalized.
+  EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
+  bool obus_are_finalized = false;
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kUserProvidedIntegratedLoudness);
+  EXPECT_FALSE(obus_are_finalized);
+
+  // Outputting the final temporal unit triggers loudness finalization.
+  std::list<AudioFrameWithData> unused_audio_frames;
+  std::list<ParameterBlockWithData> unused_parameter_blocks;
+  std::list<ArbitraryObu> unused_arbitrary_obus;
+  EXPECT_THAT(
+      iamf_encoder.OutputTemporalUnit(
+          unused_audio_frames, unused_parameter_blocks, unused_arbitrary_obus),
+      IsOk());
+
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kIntegratedLoudness);
+  EXPECT_TRUE(obus_are_finalized);
+}
+
+TEST_F(IamfEncoderTest, LoudessIsFinalizedAfterArbitraryDataObus) {
+  SetupDescriptorObus();
+  AddArbitraryObuForFirstTick(user_metadata_);
+  AddAudioFrame(user_metadata_);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  constexpr int16_t kIntegratedLoudness = 999;
+  loudness_calculator_factory_ =
+      GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
+  auto iamf_encoder = CreateExpectOk();
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+
+  // As a special case, when there are extra "data" arbitrary OBUs. Loudness is
+  // not computed until all are generated.
+  EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
+  bool obus_are_finalized = false;
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kUserProvidedIntegratedLoudness);
+  EXPECT_FALSE(obus_are_finalized);
+
+  // Outputting the final temporal unit triggers loudness finalization.
+  std::list<AudioFrameWithData> temp_audio_frames;
+  std::list<ParameterBlockWithData> temp_parameter_blocks;
+  std::list<ArbitraryObu> temp_arbitrary_obus;
+  EXPECT_THAT(
+      iamf_encoder.OutputTemporalUnit(temp_audio_frames, temp_parameter_blocks,
+                                      temp_arbitrary_obus),
+      IsOk());
+
+  // After the last data OBUs are generated, loudness is finalized.
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kIntegratedLoudness);
+  EXPECT_TRUE(obus_are_finalized);
+}
+
+TEST_F(IamfEncoderTest, GetMixPresentationObusHasFilledInLoudness) {
   SetupDescriptorObus();
   // Loudness measurement is done only when the signal can be rendered, and
   // based on the resultant loudness calculators.
@@ -524,13 +643,16 @@ TEST_F(IamfEncoderTest, FinalizeMixPresentationObuFillsInLoudness) {
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   auto iamf_encoder = CreateExpectOk();
-  iamf_encoder.FinalizeAddSamples();
+  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
 
-  const auto finalized_mix_presentation_obus =
-      iamf_encoder.GetFinalizedMixPresentationObus();
-  ASSERT_THAT(finalized_mix_presentation_obus, IsOkAndHolds(Not(IsEmpty())));
+  bool obus_are_finalized = false;
+  const auto& finalized_mix_presentation_obus =
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized);
+  EXPECT_TRUE(obus_are_finalized);
+  ASSERT_FALSE(finalized_mix_presentation_obus.empty());
 
-  EXPECT_EQ(finalized_mix_presentation_obus->front()
+  EXPECT_EQ(finalized_mix_presentation_obus.front()
                 .sub_mixes_.front()
                 .layouts.front()
                 .loudness,

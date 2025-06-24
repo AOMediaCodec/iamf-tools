@@ -113,6 +113,32 @@ void SpliceArbitraryObus(
   timestamp_to_arbitrary_obus.erase(iter_to_splice);
 }
 
+// Closes the mix presentation finalizer, overwrites the output mix
+// presentation OBUs, and sets the flag to indicate that the OBUs are finalized.
+absl::Status FinalizeDescriptors(
+    bool validate_user_loudness,
+    RenderingMixPresentationFinalizer& mix_presentation_finalizer,
+    std::list<MixPresentationObu>& mix_presentation_obus,
+    bool& mix_presentation_obus_finalized) {
+  if (mix_presentation_obus_finalized) {
+    // Skip finalizing twice, in case this is called multiple times.
+    return absl::OkStatus();
+  }
+  LOG(INFO) << "Finalizing mix presentation OBUs";
+
+  RETURN_IF_NOT_OK(mix_presentation_finalizer.FinalizePushingTemporalUnits());
+  auto finalized_mix_presentation_obus =
+      mix_presentation_finalizer.GetFinalizedMixPresentationObus(
+          validate_user_loudness);
+  if (!finalized_mix_presentation_obus.ok()) {
+    return finalized_mix_presentation_obus.status();
+  }
+
+  mix_presentation_obus = *std::move(finalized_mix_presentation_obus);
+  mix_presentation_obus_finalized = true;
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::StatusOr<IamfEncoder> IamfEncoder::Create(
@@ -300,7 +326,24 @@ void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
       std::vector<InternalSampleType>(samples.begin(), samples.end());
 }
 
-void IamfEncoder::FinalizeAddSamples() { add_samples_finalized_ = true; }
+absl::Status IamfEncoder::FinalizeAddSamples() {
+  if (add_samples_finalized_) {
+    LOG_FIRST_N(WARNING, 3)
+        << "Calling `FinalizeAddSamples()` multiple times has no effect.";
+    return absl::OkStatus();
+  }
+  add_samples_finalized_ = true;
+  if (GeneratingDataObus()) {
+    // There are some data OBUs left to generate.
+    return absl::OkStatus();
+  }
+
+  // This is a fully aligned, or trivial IA sequence. Take this opportunity to
+  // finalize descriptors.
+  return FinalizeDescriptors(
+      validate_user_loudness_, mix_presentation_finalizer_,
+      mix_presentation_obus_, mix_presentation_obus_finalized_);
+}
 
 absl::Status IamfEncoder::AddParameterBlockMetadata(
     const iamf_tools_cli_proto::ParameterBlockObuMetadata&
@@ -348,17 +391,24 @@ absl::Status IamfEncoder::OutputTemporalUnit(
 
   RETURN_IF_NOT_OK(audio_frame_generator_->OutputFrames(audio_frames));
   if (audio_frames.empty()) {
+    // Some audio codec will only output an encoded frame after the next
+    // frame "pushes" the old one out. So we wait until the next iteration to
+    // retrieve it.
+    VLOG(1) << "No audio frames generated for this temporal unit.";
+
     if (add_samples_finalized_) {
       // At the end of the sequence, there could be some extraneous arbitrary
       // OBUs that are not associated with any audio frames. Pop the next set.
       SpliceArbitraryObus(timestamp_to_arbitrary_obus_.begin(),
                           timestamp_to_arbitrary_obus_,
                           temporal_unit_arbitrary_obus);
-    } else {
-      // Some audio codec will only output an encoded frame after the next
-      // frame "pushes" the old one out. So we wait until the next iteration to
-      // retrieve it.
-      LOG(INFO) << "No audio frames generated";
+      if (!GeneratingDataObus()) {
+        // The final extraneous OBUs have been pushed out. Take this opportunity
+        // to finalize descriptors.
+        return FinalizeDescriptors(
+            validate_user_loudness_, mix_presentation_finalizer_,
+            mix_presentation_obus_, mix_presentation_obus_finalized_);
+      }
     }
     return absl::OkStatus();
   }
@@ -416,9 +466,18 @@ absl::Status IamfEncoder::OutputTemporalUnit(
                       timestamp_to_arbitrary_obus_,
                       temporal_unit_arbitrary_obus);
 
-  return mix_presentation_finalizer_.PushTemporalUnit(
+  RETURN_IF_NOT_OK(mix_presentation_finalizer_.PushTemporalUnit(
       *id_to_labeled_frame, output_start_timestamp, output_end_timestamp,
-      parameter_blocks);
+      parameter_blocks));
+
+  if (GeneratingDataObus()) {
+    return absl::OkStatus();
+  }
+  // The final data OBUs have been pushed out. Take this opportunity to
+  // finalize descriptors.
+  return FinalizeDescriptors(
+      validate_user_loudness_, mix_presentation_finalizer_,
+      mix_presentation_obus_, mix_presentation_obus_finalized_);
 }
 
 const IASequenceHeaderObu& IamfEncoder::GetIaSequenceHeaderObu() const {
@@ -435,25 +494,14 @@ IamfEncoder::GetAudioElements() const {
   return *audio_elements_;
 }
 
-const std::list<MixPresentationObu>&
-IamfEncoder::GetPreliminaryMixPresentationObus() const {
+const std::list<MixPresentationObu>& IamfEncoder::GetMixPresentationObus(
+    bool& output_is_finalized) const {
+  output_is_finalized = mix_presentation_obus_finalized_;
   return mix_presentation_obus_;
 }
 
 const std::list<ArbitraryObu>& IamfEncoder::GetDescriptorArbitraryObus() const {
   return descriptor_arbitrary_obus_;
-}
-
-absl::StatusOr<std::list<MixPresentationObu>>
-IamfEncoder::GetFinalizedMixPresentationObus() {
-  if (GeneratingDataObus()) {
-    return absl::FailedPreconditionError(
-        "Cannot finalize mix presentation OBUs while generating data OBUs.");
-  }
-
-  RETURN_IF_NOT_OK(mix_presentation_finalizer_.FinalizePushingTemporalUnits());
-  return mix_presentation_finalizer_.GetFinalizedMixPresentationObus(
-      validate_user_loudness_);
 }
 
 }  // namespace iamf_tools
