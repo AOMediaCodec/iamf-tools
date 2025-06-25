@@ -46,9 +46,11 @@
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
+#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/user_metadata_builder/audio_element_metadata_builder.h"
@@ -537,6 +539,31 @@ double GetLogSpectralDistance(
   return (10 * std::sqrt(log_spectral_distance / num_samples));
 }
 
+uint32_t GetSampleRateForCodecConfigMetadata(
+    const iamf_tools_cli_proto::UserMetadata& user_metadata,
+    DecodedUleb128 codec_config_id) {
+  auto codec_config_generator =
+      CodecConfigGenerator(user_metadata.codec_config_metadata());
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  EXPECT_THAT(codec_config_generator.Generate(codec_config_obus), IsOk());
+  if (codec_config_obus.contains(codec_config_id)) {
+    return codec_config_obus.at(codec_config_id).GetOutputSampleRate();
+  }
+  return 0;
+}
+
+uint32_t GetSampleRateForAudioElementMetadata(
+    const iamf_tools_cli_proto::UserMetadata& user_metadata,
+    DecodedUleb128 audio_element_id) {
+  for (const auto& audio_element : user_metadata.audio_element_metadata()) {
+    if (audio_element.audio_element_id() == audio_element_id) {
+      return GetSampleRateForCodecConfigMetadata(
+          user_metadata, audio_element.codec_config_id());
+    }
+  }
+  return 0;
+}
+
 std::vector<DecodeSpecification> GetDecodeSpecifications(
     const iamf_tools_cli_proto::UserMetadata& user_metadata) {
   std::vector<DecodeSpecification> decode_specifications;
@@ -565,6 +592,9 @@ std::vector<DecodeSpecification> GetDecodeSpecifications(
             continue;
           }
         }
+        decode_specification.sample_rate = GetSampleRateForAudioElementMetadata(
+            user_metadata,
+            mix_presentation.sub_mixes(i).audio_elements(0).audio_element_id());
         decode_specification.layout_index = j;
         decode_specifications.push_back(decode_specification);
       }

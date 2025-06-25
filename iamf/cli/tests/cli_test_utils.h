@@ -86,6 +86,7 @@ struct DecodeSpecification {
   uint32_t sub_mix_index;
   LoudspeakersSsConventionLayout::SoundSystem sound_system;
   uint32_t layout_index;
+  uint32_t sample_rate;
 };
 
 /*!\brief Adds a configurable LPCM `CodecConfigObu` to the output argument.
