@@ -57,6 +57,9 @@ constexpr InternalTimestamp kFirstAudioFrameStartTimestamp = 0;
 constexpr InternalTimestamp kFirstAudioFrameEndTimestamp = 8;
 constexpr DecodedUleb128 kFirstParameterId = 998;
 constexpr std::nullopt_t kOriginalSamplesAreIrrelevant = std::nullopt;
+constexpr std::nullopt_t kNoInsertionTick = std::nullopt;
+constexpr bool kInvalidatesBitstream = true;
+constexpr bool kDoesNotInvalidateBitstream = false;
 
 constexpr absl::Span<ParameterBlockWithData> kNoParameterBlocks = {};
 constexpr absl::Span<AudioFrameWithData> kNoAudioFrames = {};
@@ -376,9 +379,70 @@ TEST(Create, SetsNumUntrimmedSamples) {
             kExpectedNumUntrimmedSamples);
 }
 
-TEST(Create, FailsWithNoAudioFrames) {
+TEST(Create, FailsWithNoAudioFramesAndNoArbitraryObus) {
   EXPECT_THAT(TemporalUnitView::Create(kNoParameterBlocks, kNoAudioFrames,
                                        kNoArbitraryObus),
+              Not(IsOk()));
+}
+
+TEST(Create, SucceedsWithNoAudioFramesIfArbitraryObusArePresent) {
+  // To support files in the test suite, we allow arbitrary OBUs to be present
+  // in the absence of an audio frame. As long as one of the arbitrary OBUs
+  // invalidates the bitstream.
+  constexpr InternalTimestamp kInsertionTick = 123456789;
+  const std::vector<ArbitraryObu> arbitrary_obus = {
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                   kInsertionTick, kInvalidatesBitstream)};
+
+  const auto temporal_unit = TemporalUnitView::Create(
+      kNoParameterBlocks, kNoAudioFrames, arbitrary_obus);
+  ASSERT_THAT(temporal_unit, IsOk());
+
+  EXPECT_TRUE(temporal_unit->audio_frames_.empty());
+  EXPECT_TRUE(temporal_unit->parameter_blocks_.empty());
+  EXPECT_EQ(arbitrary_obus.size(), temporal_unit->arbitrary_obus_.size());
+  EXPECT_EQ(temporal_unit->start_timestamp_, kInsertionTick);
+  EXPECT_EQ(temporal_unit->end_timestamp_, kInsertionTick);
+  EXPECT_EQ(temporal_unit->num_samples_to_trim_at_start_, 0);
+  EXPECT_EQ(temporal_unit->num_untrimmed_samples_, 0);
+}
+
+TEST(Create, FailsWithNoAudioFramesIfNoArbitraryInvalidesTheBitstream) {
+  constexpr InternalTimestamp kInsertionTick = 123456789;
+  const std::vector<ArbitraryObu> arbitrary_obus = {
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                   kInsertionTick, kDoesNotInvalidateBitstream)};
+
+  EXPECT_THAT(TemporalUnitView::Create(kNoParameterBlocks, kNoAudioFrames,
+                                       arbitrary_obus),
+              Not(IsOk()));
+}
+
+TEST(Create, FailsWithNoAudioFramesAndArbitraryObusWithNoInsertionTick) {
+  const std::vector<ArbitraryObu> arbitrary_obus = {
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                   kNoInsertionTick, kInvalidatesBitstream)};
+
+  EXPECT_THAT(TemporalUnitView::Create(kNoParameterBlocks, kNoAudioFrames,
+                                       arbitrary_obus),
+              Not(IsOk()));
+}
+
+TEST(Create,
+     FailsWithNoAudioFramesAndArbitraryObusHaveMismatchingInsertionTicks) {
+  const std::vector<ArbitraryObu> arbitrary_obus = {
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                   kFirstTimestamp, kInvalidatesBitstream),
+      ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterParameterBlocksAtTick,
+                   kNoInsertionTick, kInvalidatesBitstream)};
+
+  EXPECT_THAT(TemporalUnitView::Create(kNoParameterBlocks, kNoAudioFrames,
+                                       arbitrary_obus),
               Not(IsOk()));
 }
 

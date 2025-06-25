@@ -45,9 +45,11 @@ struct TemporalUnitStatistics {
   uint32_t num_untrimmed_samples;
   InternalTimestamp start_timestamp;
   InternalTimestamp end_timestamp;
+  bool should_contain_an_invalid_arbitrary_obu;
 };
 
-absl::StatusOr<TemporalUnitStatistics> ComputeTemporalUnitStatistics(
+absl::StatusOr<TemporalUnitStatistics>
+ComputeTemporalUnitStatisticsFromAudioFrame(
     const AudioFrameWithData* first_audio_frame) {
   RETURN_IF_NOT_OK(ValidateNotNull(first_audio_frame, "`audio_frames`"));
   RETURN_IF_NOT_OK(ValidateNotNull(first_audio_frame->audio_element_with_data,
@@ -64,6 +66,7 @@ absl::StatusOr<TemporalUnitStatistics> ComputeTemporalUnitStatistics(
           first_audio_frame->obu.header_.num_samples_to_trim_at_start,
       .start_timestamp = first_audio_frame->start_timestamp,
       .end_timestamp = first_audio_frame->end_timestamp,
+      .should_contain_an_invalid_arbitrary_obu = false,
   };
 
   // Check the trim in the first frame is plausible. I.e. there are not at least
@@ -77,6 +80,26 @@ absl::StatusOr<TemporalUnitStatistics> ComputeTemporalUnitStatistics(
       statistics.num_samples_per_frame - cumulative_trim;
 
   return statistics;
+}
+
+// Construct an arbitrary temporal unit based on arbitrary OBUs, usually
+// temporal units must have an audio frame, so we expect one of the arbitrary
+// OBUs to be marked as invalidating the bitstream
+absl::StatusOr<TemporalUnitStatistics>
+ComputeTemporalUnitStatisticsFromArbitraryObu(
+    const ArbitraryObu* first_arbitrary_obu) {
+  RETURN_IF_NOT_OK(ValidateNotNull(first_arbitrary_obu, "`arbitrary_obus`"));
+  RETURN_IF_NOT_OK(ValidateHasValue(first_arbitrary_obu->insertion_tick_,
+                                    "`arbitrary_obus`"));
+  return TemporalUnitStatistics{
+      .num_samples_per_frame = 0,
+      .num_samples_to_trim_at_end = 0,
+      .num_samples_to_trim_at_start = 0,
+      .num_untrimmed_samples = 0,
+      .start_timestamp = *first_arbitrary_obu->insertion_tick_,
+      .end_timestamp = *first_arbitrary_obu->insertion_tick_,
+      .should_contain_an_invalid_arbitrary_obu = true,
+  };
 }
 
 absl::Status ValidateAllParameterBlocksMatchStatistics(
@@ -144,12 +167,24 @@ absl::Status ValidateAllAudioFramesMatchStatistics(
 absl::Status ValidateAllArbitraryObusMatchStatistics(
     absl::Span<const ArbitraryObu* const> arbitrary_obus,
     const TemporalUnitStatistics& statistics) {
+  bool has_invalid_obu = false;
   for (const auto* arbitrary_obu : arbitrary_obus) {
     RETURN_IF_NOT_OK(ValidateNotNull(arbitrary_obu, "`arbitrary_obu`"));
+    RETURN_IF_NOT_OK(
+        ValidateHasValue(arbitrary_obu->insertion_tick_, "`arbitrary_obu`"));
     RETURN_IF_NOT_OK(ValidateEqual(
         *arbitrary_obu->insertion_tick_, statistics.start_timestamp,
         "`insertion_tick` must be the same for  all arbitrary OBUs"));
+    if (arbitrary_obu->invalidates_bitstream_) {
+      has_invalid_obu = true;
+    }
   }
+  if (statistics.should_contain_an_invalid_arbitrary_obu && !has_invalid_obu) {
+    return absl::InvalidArgumentError(
+        "Expected this temporal unit to have an invalid arbitrary OBU, but "
+        "none were found.");
+  }
+
   return absl::OkStatus();
 }
 
@@ -183,14 +218,22 @@ absl::StatusOr<TemporalUnitView> TemporalUnitView::CreateFromPointers(
     absl::Span<const ParameterBlockWithData* const> parameter_blocks,
     absl::Span<const AudioFrameWithData* const> audio_frames,
     absl::Span<const ArbitraryObu* const> arbitrary_obus) {
-  if (audio_frames.empty()) {
-    // Exit early even when `IGNORE_ERRORS_USE_ONLY_FOR_IAMF_TEST_SUITE` is set.
+  absl::StatusOr<TemporalUnitStatistics> statistics =
+      absl::InternalError("All branches should set this, or return.");
+  if (!audio_frames.empty()) {
+    // Infer some statistics based on the first audio frame.
+    statistics =
+        ComputeTemporalUnitStatisticsFromAudioFrame(audio_frames.front());
+  } else if (!arbitrary_obus.empty()) {
+    // Ok, typically temporal units require an audio frame, but we allow
+    // one with some arbitrary OBUs. This helps support creation of files in the
+    // test suite.
+    statistics =
+        ComputeTemporalUnitStatisticsFromArbitraryObu(arbitrary_obus.front());
+  } else {
     return absl::InvalidArgumentError(
-        "Every temporal unit must have an audio frame.");
+        "Every temporal unit must have an audio frame or an arbitrary OBU.");
   }
-
-  // Infer some statistics based on the first audio frame
-  const auto statistics = ComputeTemporalUnitStatistics(*audio_frames.begin());
   if (!statistics.ok()) {
     return statistics.status();
   }
