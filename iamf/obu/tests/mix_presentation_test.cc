@@ -1039,7 +1039,7 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
             kAudioElementLocalizedElementAnnotations);
 }
 
-TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
+TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
   const std::vector<uint8_t> kMixPresentationTags = {
       // Start MixPresentationTags.
       1,
@@ -1079,8 +1079,10 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTagsIntoFooter) {
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
   ASSERT_THAT(obu, IsOk());
 
-  EXPECT_FALSE(obu->mix_presentation_tags_.has_value());
-  EXPECT_EQ(obu->footer_, kMixPresentationTags);
+  ASSERT_TRUE(obu->mix_presentation_tags_.has_value());
+  EXPECT_EQ(obu->mix_presentation_tags_->tags.size(), 1);
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_name, "ABC");
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "123");
 }
 
 TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
@@ -1127,10 +1129,16 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
   ObuHeader header;
   auto obu =
       MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
-  ASSERT_THAT(obu, IsOk());
+  EXPECT_THAT(obu, IsOk());
 
-  EXPECT_FALSE(obu->mix_presentation_tags_.has_value());
-  EXPECT_EQ(obu->footer_, kDuplicateContentLanguageTags);
+  ASSERT_TRUE(obu->mix_presentation_tags_.has_value());
+  // Ok, the spec notes that there SHALL not be duplicate `content_language`
+  // tags. But decoders SHOULD be able to handle them.
+  EXPECT_EQ(obu->mix_presentation_tags_->tags.size(), 2);
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_name, "content_language");
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[0].tag_value, "en-us");
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[1].tag_name, "content_language");
+  EXPECT_EQ(obu->mix_presentation_tags_->tags[1].tag_value, "en-gb");
 }
 
 TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {

@@ -13,10 +13,12 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -368,6 +370,25 @@ absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
 
   return absl::OkStatus();
 }
+absl::StatusOr<MixPresentationTags> MixPresentationTags::CreateFromBuffer(
+    ReadBitBuffer& rb) {
+  // `num_tags` in the structure is implicit based on the size of `tags`.
+  uint8_t num_tags;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_tags));
+  std::vector<Tag> tags;
+  tags.reserve(num_tags);
+  for (int i = 0; i < num_tags; ++i) {
+    std::string tag_name;
+    RETURN_IF_NOT_OK(rb.ReadString(tag_name));
+    std::string tag_value;
+    RETURN_IF_NOT_OK(rb.ReadString(tag_value));
+    tags.push_back({.tag_name = tag_name, .tag_value = tag_value});
+  }
+
+  // For permissive decoding, we choose not to validate the `content_language`
+  // tags. The spec has language about how duplicate tags may be decoded.
+  return MixPresentationTags{.tags = tags};
+}
 
 // Validates and writes a `LoudspeakersSsConventionLayout` and sets
 // `found_stereo_layout` to true if it is a stereo layout.
@@ -500,7 +521,8 @@ absl::StatusOr<MixPresentationObu> MixPresentationObu::CreateFromBuffer(
 }
 
 absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
-    int64_t /*payload_size*/, ReadBitBuffer& rb) {
+    int64_t payload_size, ReadBitBuffer& rb) {
+  const int64_t initial_position = rb.Tell();
   // Read the main portion of the OBU.
   RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
@@ -535,6 +557,27 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
 
   RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
+
+  // Carefully order operations, to minimize risk of overflow.
+  const int64_t final_position = rb.Tell();
+  if (final_position < initial_position) {
+    return absl::InvalidArgumentError("Possible overflow in `ReadBitBuffer`.");
+  }
+  const int64_t bits_read = final_position - initial_position;
+  DCHECK_EQ(bits_read % 8, 0) << "Parsed syntax between `Tell` calls should "
+                                 "have always been a multiple of 8.";
+  if (bits_read / 8 == payload_size) {
+    // Ok. In IAMF v1.0.0, this was the end of the OBU. But in IAMF v1.1.0,
+    // there is an optional `MixPresentationTags` field that follows the
+    // `sub_mixes`.
+    return absl::OkStatus();
+  }
+  // There is some remaining data. Try to parse a `MixPresentationTags`.
+  auto mix_presentation_tags = MixPresentationTags::CreateFromBuffer(rb);
+  if (!mix_presentation_tags.ok()) {
+    return mix_presentation_tags.status();
+  }
+  mix_presentation_tags_ = *std::move(mix_presentation_tags);
 
   return absl::OkStatus();
 }

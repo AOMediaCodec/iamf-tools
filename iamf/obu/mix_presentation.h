@@ -315,6 +315,15 @@ struct MixPresentationTags {
   friend bool operator==(const MixPresentationTags& lhs,
                          const MixPresentationTags& rhs) = default;
 
+  /*!\brief Creates `MixPresentationTags` from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the `MixPresentationTags` is valid. A
+   *         specific status if the read fails.
+   */
+  static absl::StatusOr<MixPresentationTags> CreateFromBuffer(
+      ReadBitBuffer& rb);
+
   /*!\brief Writes the MixPresentationTags to the buffer.
    *
    * \param wb Buffer to write to.
