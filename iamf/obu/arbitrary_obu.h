@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -61,11 +62,11 @@ class ArbitraryObu : public ObuBase {
    */
   ArbitraryObu(
       ObuType obu_type, const ObuHeader& header,
-      const std::vector<uint8_t>& payload, InsertionHook insertion_hook,
+      absl::Span<const uint8_t> payload, InsertionHook insertion_hook,
       const std::optional<InternalTimestamp>& insertion_tick = std::nullopt,
       bool invalidates_bitstream = false)
       : ObuBase(header, obu_type),
-        payload_(payload),
+        payload_(payload.begin(), payload.end()),
         insertion_hook_(insertion_hook),
         insertion_tick_(insertion_tick),
         invalidates_bitstream_(invalidates_bitstream) {}

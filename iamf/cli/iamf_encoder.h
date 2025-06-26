@@ -16,20 +16,23 @@
 #include <list>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
-#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
+#include "iamf/cli/obu_sequencer_base.h"
+#include "iamf/cli/obu_sequencer_streaming_iamf.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
@@ -91,6 +94,18 @@ namespace iamf_tools {
  */
 class IamfEncoder {
  public:
+  /*!\brief Factory to create `ObuSequencerBases`. */
+  typedef absl::AnyInvocable<
+      std::vector<std::unique_ptr<ObuSequencerBase> /* absl_nonnull */>() const>
+      ObuSequencerFactory;
+
+  /*!\brief Factory that returns no `ObuSequencerBases`s.
+   *
+   * For convenience to use with `Create`.
+   */
+  static std::vector<std::unique_ptr<ObuSequencerBase> /* absl_nonnull */>
+  CreateNoObuSequencers();
+
   /*!\brief Factory function to create an `IamfEncoder`.
    *
    * \param user_metadata Input user metadata describing the IAMF stream.
@@ -100,6 +115,7 @@ class IamfEncoder {
    *        to measure the loudness of the output layouts.
    * \param sample_processor_factory Factory to create processors for use after
    *        rendering.
+   * \param obu_sequencer_factory Factory to create `ObuSequencerBases`.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   static absl::StatusOr<IamfEncoder> Create(
@@ -108,7 +124,33 @@ class IamfEncoder {
       const LoudnessCalculatorFactoryBase* /* absl_nullable */
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory);
+          sample_processor_factory,
+      const ObuSequencerFactory& obu_sequencer_factory);
+
+  /*!\brief Gets the latest descriptor OBUs.
+   *
+   * When `GeneratingTemporalUnits` returns true, these represent preliminary
+   * descriptor OBUs. After `GeneratingTemporalUnits` returns false, these
+   * represent the finalized OBUs.
+   *
+   * When streaming IAMF, it is important to regularly provide
+   * "redundant copies" which help downstream clients sync. The exact
+   * cadence is not mandated and depends on use case.
+   *
+   * Mix Presentation OBUs contain loudness information, which is only
+   * possible to know after all data OBUs are generated. Other OBUs with
+   * metadata may also be updated (e.g. fields representing the number of
+   * samples). Typically, after encoding is finished, a final call to get
+   * non-redundant OBUs with accurate loudness information is encouraged.
+   * Auxiliary fields in other descriptor OBUs may also change.
+   *
+   * \param descriptor_obus Finalized OBUs.
+   * \param output_obus_are_finalized `true` when the output OBUs are
+   *        finalized. `false` otherwise.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status GetDescriptorObus(std::vector<uint8_t>& descriptor_obus,
+                                 bool& output_obus_are_finalized) const;
 
   /*!\brief Returns whether this encoder is generating data OBUs.
    *
@@ -160,36 +202,17 @@ class IamfEncoder {
 
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
-   * \param audio_frames List of generated audio frames corresponding to this
-   *        temporal unit.
-   * \param parameter_blocks List of generated parameter block corresponding
-   *        to this temporal unit.
-   * \param temporal_unit_arbitrary_obus List of arbitrary OBUs corresponding
-   *        to this temporal unit.
+   * \param temporal_unit_obus Output OBUs corresponding to this temporal unit.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status OutputTemporalUnit(
-      std::list<AudioFrameWithData>& audio_frames,
-      std::list<ParameterBlockWithData>& parameter_blocks,
-      std::list<ArbitraryObu>& temporal_unit_arbitrary_obus);
-
-  /*!\brief Outputs a const reference to the IA Sequence Header OBU.
-   *
-   * \return Const reference to the IA Sequence Header OBU.
-   */
-  const IASequenceHeaderObu& GetIaSequenceHeaderObu() const;
-
-  /*!\brief Outputs a const reference to the Codec Config OBUs.
-   *
-   * \return Const reference to the Codec Config OBUs.
-   */
-  const absl::flat_hash_map<uint32_t, CodecConfigObu>& GetCodecConfigObus()
-      const;
+  absl::Status OutputTemporalUnit(std::vector<uint8_t>& temporal_unit_obus);
 
   /*!\brief Outputs a const reference to the Audio Elements.
    *
    * \return Const reference to the Audio Elements.
    */
+  // TODO(b/273469020): Remove remnants of the OBU-based API.
+  [[deprecated("Use GetDescriptorObus() instead.")]]
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
   GetAudioElements() const;
 
@@ -207,6 +230,8 @@ class IamfEncoder {
    *        `false` when the output OBUs are preliminary.
    * \return Mix Presentation OBUs.
    */
+  // TODO(b/273469020): Remove remnants of the OBU-based API.
+  [[deprecated("Use GetDescriptorObus() instead.")]]
   const std::list<MixPresentationObu>& GetMixPresentationObus(
       bool& output_is_finalized) const;
 
@@ -214,6 +239,8 @@ class IamfEncoder {
    *
    * \return Const reference to the Descriptor Arbitrary OBUs.
    */
+  // TODO(b/273469020): Remove remnants of the OBU-based API.
+  [[deprecated("Use GetDescriptorObus() instead.")]]
   const std::list<ArbitraryObu>& GetDescriptorArbitraryObus() const;
 
  private:
@@ -264,7 +291,9 @@ class IamfEncoder {
       std::unique_ptr<AudioFrameGenerator> audio_frame_generator,
       AudioFrameDecoder&& audio_frame_decoder,
       std::unique_ptr<GlobalTimingModule> global_timing_module,
-      RenderingMixPresentationFinalizer&& mix_presentation_finalizer)
+      RenderingMixPresentationFinalizer&& mix_presentation_finalizer,
+      std::vector<std::unique_ptr<ObuSequencerBase>>&& obu_sequencers,
+      ObuSequencerStreamingIamf&& streaming_obu_sequencer)
       : validate_user_loudness_(validate_user_loudness),
         ia_sequence_header_obu_(std::move(ia_sequence_header_obu)),
         codec_config_obus_(std::move(codec_config_obus)),
@@ -279,7 +308,9 @@ class IamfEncoder {
         audio_frame_generator_(std::move(audio_frame_generator)),
         audio_frame_decoder_(std::move(audio_frame_decoder)),
         global_timing_module_(std::move(global_timing_module)),
-        mix_presentation_finalizer_(std::move(mix_presentation_finalizer)) {}
+        mix_presentation_finalizer_(std::move(mix_presentation_finalizer)),
+        obu_sequencers_(std::move(obu_sequencers)),
+        streaming_obu_sequencer_(std::move(streaming_obu_sequencer)) {}
 
   const bool validate_user_loudness_;
 
@@ -302,6 +333,9 @@ class IamfEncoder {
   // Arbitrary OBUs arranged by their insertion tick.
   absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>
       timestamp_to_arbitrary_obus_;
+
+  // State to add additional logging for the first temporal unit.
+  bool first_temporal_unit_for_debugging_ = false;
 
   // Mapping from parameter IDs to parameter definitions.
   // Parameter block generator owns a reference to this map. Wrapped in
@@ -334,7 +368,16 @@ class IamfEncoder {
 
   // Modules to render the output layouts and measure their loudness.
   RenderingMixPresentationFinalizer mix_presentation_finalizer_;
+  // True after the mix presentation OBUs are finalized.
   bool mix_presentation_obus_finalized_ = false;
+
+  // Optional sequencers to generate OBUs.
+  std::vector<std::unique_ptr<ObuSequencerBase>> obu_sequencers_;
+  // Backing sequencer, to back output of serialized OBUs. Held as a specific
+  // class, because it has extra functions not available in the base class.
+  ObuSequencerStreamingIamf streaming_obu_sequencer_;
+  // True after the sequencers have been finalized.
+  bool sequencers_finalized_ = false;
 };
 
 }  // namespace iamf_tools
