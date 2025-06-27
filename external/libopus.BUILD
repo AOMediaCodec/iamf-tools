@@ -7,6 +7,7 @@ INTERNAL_HDRS = glob([
 
 OPUS_COMMON_SRCS = [
     "src/analysis.c",
+    "src/extensions.c",
     "src/mapping_matrix.c",
     "src/mlp.c",
     "src/mlp_data.c",

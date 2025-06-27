@@ -87,6 +87,6 @@ git_repository(
 git_repository(
     name = "libopus",
     build_file = "@//external:libopus.BUILD",
-    commit = "82ac57d9f1aaf575800cf17373348e45b7ce6c0d",
+    commit = "ddbe48383984d56acd9e1ab6a090c54ca6b735a6",
     remote = "https://gitlab.xiph.org/xiph/opus.git",
 )
