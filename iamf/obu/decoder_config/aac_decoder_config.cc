@@ -327,38 +327,37 @@ uint8_t AacDecoderConfig::GetBitDepthToMeasureLoudness() {
 }
 
 void AudioSpecificConfig::Print() const {
-  LOG(INFO) << "        audio_object_type= "
-            << absl::StrCat(audio_object_type_);
-  LOG(INFO) << "        sample_frequency_index= "
-            << absl::StrCat(sample_frequency_index_);
+  VLOG(1) << "        audio_object_type= " << absl::StrCat(audio_object_type_);
+  VLOG(1) << "        sample_frequency_index= "
+          << absl::StrCat(sample_frequency_index_);
   if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
-    LOG(INFO) << "        sampling_frequency= " << sampling_frequency_;
+    VLOG(1) << "        sampling_frequency= " << sampling_frequency_;
   }
-  LOG(INFO) << "        channel_configuration= "
-            << absl::StrCat(channel_configuration_);
-  LOG(INFO) << "      ga_specific_info(aac):";
-  LOG(INFO) << "        frame_length_flag= "
-            << ga_specific_config_.frame_length_flag;
-  LOG(INFO) << "        depends_on_core_coder= "
-            << ga_specific_config_.depends_on_core_coder;
-  LOG(INFO) << "        extension_flag= " << ga_specific_config_.extension_flag;
+  VLOG(1) << "        channel_configuration= "
+          << absl::StrCat(channel_configuration_);
+  VLOG(1) << "      ga_specific_info(aac):";
+  VLOG(1) << "        frame_length_flag= "
+          << ga_specific_config_.frame_length_flag;
+  VLOG(1) << "        depends_on_core_coder= "
+          << ga_specific_config_.depends_on_core_coder;
+  VLOG(1) << "        extension_flag= " << ga_specific_config_.extension_flag;
 }
 
 void AacDecoderConfig::Print() const {
-  LOG(INFO) << "    decoder_config(aac):";
-  LOG(INFO) << "      object_type_indication= "
-            << absl::StrCat(object_type_indication_);
-  LOG(INFO) << "      stream_type= " << absl::StrCat(stream_type_);
-  LOG(INFO) << "      upstream= " << upstream_;
-  LOG(INFO) << "      reserved= " << reserved_;
-  LOG(INFO) << "      buffer_size_db= " << buffer_size_db_;
-  LOG(INFO) << "      max_bitrate= " << max_bitrate_;
-  LOG(INFO) << "      average_bit_rate= " << average_bit_rate_;
-  LOG(INFO) << "      decoder_specific_info(aac):";
+  VLOG(1) << "    decoder_config(aac):";
+  VLOG(1) << "      object_type_indication= "
+          << absl::StrCat(object_type_indication_);
+  VLOG(1) << "      stream_type= " << absl::StrCat(stream_type_);
+  VLOG(1) << "      upstream= " << upstream_;
+  VLOG(1) << "      reserved= " << reserved_;
+  VLOG(1) << "      buffer_size_db= " << buffer_size_db_;
+  VLOG(1) << "      max_bitrate= " << max_bitrate_;
+  VLOG(1) << "      average_bit_rate= " << average_bit_rate_;
+  VLOG(1) << "      decoder_specific_info(aac):";
 
   decoder_specific_info_.audio_specific_config.Print();
-  LOG(INFO) << "      // decoder_specific_info_extension omitted.";
-  LOG(INFO) << "      // decoder_config_extension omitted.";
+  VLOG(1) << "      // decoder_specific_info_extension omitted.";
+  VLOG(1) << "      // decoder_config_extension omitted.";
 }
 
 }  // namespace iamf_tools

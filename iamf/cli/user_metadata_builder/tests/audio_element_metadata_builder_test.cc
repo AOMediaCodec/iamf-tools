@@ -76,13 +76,14 @@ TEST(PopulateAudioElementMetadata, ConfiguresStereo) {
                   audio_element_metadata),
               IsOk());
 
-  EXPECT_EQ(audio_element_metadata.num_substreams(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids(0), 0);
   ASSERT_TRUE(audio_element_metadata.has_scalable_channel_layout_config());
 
-  EXPECT_EQ(
-      audio_element_metadata.scalable_channel_layout_config().num_layers(), 1);
+  EXPECT_EQ(audio_element_metadata.scalable_channel_layout_config()
+                .channel_audio_layer_configs()
+                .size(),
+            1);
   const auto& channel_audio_layer_configs =
       audio_element_metadata.scalable_channel_layout_config()
           .channel_audio_layer_configs(0);
@@ -121,7 +122,6 @@ TEST(PopulateAudioElementMetadata, ConfiguresLFE) {
                   audio_element_metadata),
               IsOk());
 
-  EXPECT_EQ(audio_element_metadata.num_substreams(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 1);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().at(0), 0);
   ASSERT_TRUE(audio_element_metadata.has_scalable_channel_layout_config());
@@ -149,7 +149,6 @@ TEST(PopulateAudioElementMetadata, ConfiguresFirstOrderAmbisonics) {
                   IamfInputLayout::kAmbisonicsOrder1, audio_element_metadata),
               IsOk());
 
-  EXPECT_EQ(audio_element_metadata.num_substreams(), 4);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().size(), 4);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().at(0), 0);
   EXPECT_EQ(audio_element_metadata.audio_substream_ids().at(1), 1);

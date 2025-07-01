@@ -160,19 +160,19 @@ absl::Status WriteStreamInfo(const FlacMetaBlockStreamInfo& stream_info,
 }
 
 void PrintStreamInfo(const FlacMetaBlockStreamInfo& stream_info) {
-  LOG(INFO) << "      metadata_block(stream_info):";
+  VLOG(1) << "      metadata_block(stream_info):";
 
-  LOG(INFO) << "        minimum_block_size= " << stream_info.minimum_block_size;
-  LOG(INFO) << "        maximum_block_size= " << stream_info.maximum_block_size;
-  LOG(INFO) << "        minimum_frame_size= " << stream_info.minimum_frame_size;
-  LOG(INFO) << "        maximum_frame_size= " << stream_info.maximum_frame_size;
-  LOG(INFO) << "        sample_rate= " << stream_info.sample_rate;
-  LOG(INFO) << "        number_of_channels= "
-            << absl::StrCat(stream_info.number_of_channels);
-  LOG(INFO) << "        bits_per_sample= "
-            << absl::StrCat(stream_info.bits_per_sample);
-  LOG(INFO) << "        total_samples_in_stream= "
-            << stream_info.total_samples_in_stream;
+  VLOG(1) << "        minimum_block_size= " << stream_info.minimum_block_size;
+  VLOG(1) << "        maximum_block_size= " << stream_info.maximum_block_size;
+  VLOG(1) << "        minimum_frame_size= " << stream_info.minimum_frame_size;
+  VLOG(1) << "        maximum_frame_size= " << stream_info.maximum_frame_size;
+  VLOG(1) << "        sample_rate= " << stream_info.sample_rate;
+  VLOG(1) << "        number_of_channels= "
+          << absl::StrCat(stream_info.number_of_channels);
+  VLOG(1) << "        bits_per_sample= "
+          << absl::StrCat(stream_info.bits_per_sample);
+  VLOG(1) << "        total_samples_in_stream= "
+          << stream_info.total_samples_in_stream;
 }
 
 absl::Status ReadStreamInfo(FlacMetaBlockStreamInfo& stream_info,
@@ -301,16 +301,16 @@ absl::Status FlacDecoderConfig::GetTotalSamplesInStream(
 }
 
 void FlacDecoderConfig::Print() const {
-  LOG(INFO) << "    decoder_config(flac):";
+  VLOG(1) << "    decoder_config(flac):";
 
   for (const auto& metadata_block : metadata_blocks_) {
-    LOG(INFO) << "      header:";
-    LOG(INFO) << "        last_metadata_block_flag= "
-              << metadata_block.header.last_metadata_block_flag;
-    LOG(INFO) << "        block_type= "
-              << absl::StrCat(metadata_block.header.block_type);
-    LOG(INFO) << "        metadata_data_block_length= "
-              << metadata_block.header.metadata_data_block_length;
+    VLOG(1) << "      header:";
+    VLOG(1) << "        last_metadata_block_flag= "
+            << metadata_block.header.last_metadata_block_flag;
+    VLOG(1) << "        block_type= "
+            << absl::StrCat(metadata_block.header.block_type);
+    VLOG(1) << "        metadata_data_block_length= "
+            << metadata_block.header.metadata_data_block_length;
     switch (metadata_block.header.block_type) {
       case FlacMetaBlockHeader::kFlacStreamInfo:
         PrintStreamInfo(
@@ -319,9 +319,9 @@ void FlacDecoderConfig::Print() const {
       default: {
         const auto& generic_block =
             std::get<std::vector<uint8_t>>(metadata_block.payload);
-        LOG(INFO) << "      metadata_block(generic_block):";
-        LOG(INFO) << "        size= " << generic_block.size();
-        LOG(INFO) << "        payload omitted.";
+        VLOG(1) << "      metadata_block(generic_block):";
+        VLOG(1) << "        size= " << generic_block.size();
+        VLOG(1) << "        payload omitted.";
       }
     }
   }

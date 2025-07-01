@@ -24,7 +24,6 @@
 #include <numeric>
 #include <optional>
 #include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -33,7 +32,6 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/string_view.h"
@@ -81,8 +79,6 @@
 namespace iamf_tools {
 
 namespace {
-
-constexpr bool kOverrideAudioRollDistance = true;
 
 void SetParamDefinitionCommonFields(DecodedUleb128 parameter_id,
                                     DecodedUleb128 parameter_rate,
@@ -349,7 +345,8 @@ void AddScalableAudioElementWithSubstreamIds(
   // Check that this is a scalable Audio Element, and override the substream
   // IDs.
   ASSERT_TRUE(new_audio_element_metadata.has_scalable_channel_layout_config());
-  ASSERT_EQ(new_audio_element_metadata.num_substreams(), substream_ids.size());
+  ASSERT_EQ(new_audio_element_metadata.audio_substream_ids().size(),
+            substream_ids.size());
   for (int i = 0; i < substream_ids.size(); ++i) {
     new_audio_element_metadata.mutable_audio_substream_ids()->Set(
         i, substream_ids[i]);

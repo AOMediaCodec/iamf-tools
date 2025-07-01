@@ -150,10 +150,8 @@ absl::Status PopulateChannelBasedAudioElementMetadata(
     IamfInputLayout input_layout, int32_t num_substreams,
     iamf_tools_cli_proto::ScalableChannelLayoutConfig&
         scalable_channel_layout_config) {
-  // Simplistically choose one layer. This most closely matches other popular
+  // Simplistically add one layer. This most closely matches other popular
   // formats (e.g. ADM).
-  scalable_channel_layout_config.set_num_layers(1);
-
   auto* channel_audio_layer_config =
       scalable_channel_layout_config.add_channel_audio_layer_configs();
 
@@ -235,7 +233,6 @@ absl::Status AudioElementMetadataBuilder::PopulateAudioElementMetadata(
   if (!num_substreams.ok()) {
     return num_substreams.status();
   }
-  audio_element_obu_metadata.set_num_substreams(*num_substreams);
 
   // Generate sequential substream IDs. Although not REQUIRED by IAMF this helps
   // ensure that the substream IDs are unique between subsequent calls to this
@@ -246,8 +243,7 @@ absl::Status AudioElementMetadataBuilder::PopulateAudioElementMetadata(
     ++audio_stream_id_counter_;
   }
 
-  // Simplistically set 'num_parameters' to zero.
-  audio_element_obu_metadata.set_num_parameters(0);
+  // Simplistically skip adding any parameter.
 
   const auto audio_element_type =
       LookupAudioElementTypeFromInputLayout(input_layout);

@@ -47,16 +47,14 @@ absl::Status LpcmEncoder::InitializeEncoder() {
     return absl::InvalidArgumentError("Unrecognized sample_format_flags");
   }
 
-  LOG_FIRST_N(INFO, 1) << "  Configured LPCM encoder for "
-                       << num_samples_per_frame_ << " samples of "
-                       << num_channels_ << " channels as "
-                       << absl::StrCat(decoder_config_.sample_size_)
-                       << "-bit LPCM in "
-                       << (decoder_config_.sample_format_flags_bitmask_ &
-                                   LpcmDecoderConfig::kLpcmLittleEndian
-                               ? "little"
-                               : "big")
-                       << " endian";
+  VLOG(1) << "  Configured LPCM encoder for " << num_samples_per_frame_
+          << " samples of " << num_channels_ << " channels as "
+          << absl::StrCat(decoder_config_.sample_size_) << "-bit LPCM in "
+          << (decoder_config_.sample_format_flags_bitmask_ &
+                      LpcmDecoderConfig::kLpcmLittleEndian
+                  ? "little"
+                  : "big")
+          << " endian";
 
   return absl::OkStatus();
 }

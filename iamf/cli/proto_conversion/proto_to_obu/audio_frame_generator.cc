@@ -280,13 +280,15 @@ absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
                             DownMixingParams& down_mixing_params) {
   RETURN_IF_NOT_OK(parameters_manager.GetDownMixingParameters(
       audio_element_id, down_mixing_params));
-  LOG_FIRST_N(INFO, 10) << "Using alpha=" << down_mixing_params.alpha
-                        << " beta=" << down_mixing_params.beta
-                        << " gamma=" << down_mixing_params.gamma
-                        << " delta=" << down_mixing_params.delta
-                        << " w_idx_offset=" << down_mixing_params.w_idx_offset
-                        << " w_idx_used=" << down_mixing_params.w_idx_used
-                        << " w=" << down_mixing_params.w;
+  if (VLOG_IS_ON(1)) {
+    LOG_FIRST_N(INFO, 10) << "Using alpha=" << down_mixing_params.alpha
+                          << " beta=" << down_mixing_params.beta
+                          << " gamma=" << down_mixing_params.gamma
+                          << " delta=" << down_mixing_params.delta
+                          << " w_idx_offset=" << down_mixing_params.w_idx_offset
+                          << " w_idx_used=" << down_mixing_params.w_idx_used
+                          << " w=" << down_mixing_params.w;
+  }
 
   // Down-mix OBU-aligned samples from input channels to substreams. May
   // generate intermediate channels (e.g. L3 on the way of down-mixing L7 to L2)

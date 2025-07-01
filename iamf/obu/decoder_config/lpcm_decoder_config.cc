@@ -126,11 +126,11 @@ absl::Status LpcmDecoderConfig::GetBitDepthToMeasureLoudness(
 }
 
 void LpcmDecoderConfig::Print() const {
-  LOG(INFO) << "    decoder_config(ipcm):";
-  LOG(INFO) << "      sample_format_flags= "
-            << absl::StrCat(sample_format_flags_bitmask_);
-  LOG(INFO) << "      sample_size= " << absl::StrCat(sample_size_);
-  LOG(INFO) << "      sample_rate= " << sample_rate_;
+  VLOG(1) << "    decoder_config(ipcm):";
+  VLOG(1) << "      sample_format_flags= "
+          << absl::StrCat(sample_format_flags_bitmask_);
+  VLOG(1) << "      sample_size= " << absl::StrCat(sample_size_);
+  VLOG(1) << "      sample_rate= " << sample_rate_;
 }
 
 }  // namespace iamf_tools

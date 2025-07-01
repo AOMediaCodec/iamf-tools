@@ -290,12 +290,12 @@ absl::Status CodecConfigObu::ReadAndValidatePayloadDerived(
 }
 
 void CodecConfigObu::PrintObu() const {
-  LOG(INFO) << "Codec Config OBU:";
-  LOG(INFO) << "  codec_config_id= " << codec_config_id_;
-  LOG(INFO) << "  codec_config:";
-  LOG(INFO) << "    codec_id= " << codec_config_.codec_id;
-  LOG(INFO) << "    num_samples_per_frame= " << GetNumSamplesPerFrame();
-  LOG(INFO) << "    audio_roll_distance= " << codec_config_.audio_roll_distance;
+  VLOG(1) << "Codec Config OBU:";
+  VLOG(1) << "  codec_config_id= " << codec_config_id_;
+  VLOG(1) << "  codec_config:";
+  VLOG(1) << "    codec_id= " << codec_config_.codec_id;
+  VLOG(1) << "    num_samples_per_frame= " << GetNumSamplesPerFrame();
+  VLOG(1) << "    audio_roll_distance= " << codec_config_.audio_roll_distance;
 
   // Print the `decoder_config_`. This is codec specific.
   switch (codec_config_.codec_id) {
@@ -317,10 +317,10 @@ void CodecConfigObu::PrintObu() const {
       break;
   }
 
-  LOG(INFO) << "  // input_sample_rate_= " << input_sample_rate_;
-  LOG(INFO) << "  // output_sample_rate_= " << output_sample_rate_;
-  LOG(INFO) << "  // bit_depth_to_measure_loudness_= "
-            << absl::StrCat(bit_depth_to_measure_loudness_);
+  VLOG(1) << "  // input_sample_rate_= " << input_sample_rate_;
+  VLOG(1) << "  // output_sample_rate_= " << output_sample_rate_;
+  VLOG(1) << "  // bit_depth_to_measure_loudness_= "
+          << absl::StrCat(bit_depth_to_measure_loudness_);
 }
 
 absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
