@@ -47,7 +47,6 @@ namespace iamf_tools {
 namespace {
 
 using enum ChannelLabel::Label;
-
 using DemixingMetadataForAudioElementId =
     DemixingModule::DemixingMetadataForAudioElementId;
 
@@ -828,65 +827,47 @@ absl::Status DemixingModule::DownMixSamplesToSubstreams(
     RETURN_IF_NOT_OK(down_mixer(down_mixing_params, input_label_to_samples));
   }
 
-  const size_t num_time_ticks = input_label_to_samples.begin()->second.size();
-
   for (const auto& [substream_id, output_channel_labels] :
        demixing_metadata->substream_id_to_labels) {
-    const auto num_output_channels = output_channel_labels.size();
-    std::vector<std::vector<InternalSampleType>> substream_samples(
-        num_time_ticks,
-        // One or two channels.
-        std::vector<InternalSampleType>(num_output_channels, 0.0));
-
-    // Output gains to be applied to the (one or two) channels.
-    std::vector<double> output_gains_linear(num_output_channels);
-    int channel_index = 0;
-    for (const auto& output_channel_label : output_channel_labels) {
-      auto iter = input_label_to_samples.find(output_channel_label);
-      if (iter == input_label_to_samples.end()) {
-        return absl::UnknownError(absl::StrCat(
-            "Samples do not exist for channel: ", output_channel_label));
-      }
-      for (int t = 0; t < num_time_ticks; t++) {
-        substream_samples[t][channel_index] = iter->second[t];
-      }
-
-      // Compute and store the linear output gains.
-      auto gain_iter =
-          demixing_metadata->label_to_output_gain.find(output_channel_label);
-      output_gains_linear[channel_index] = 1.0;
-      if (gain_iter != demixing_metadata->label_to_output_gain.end()) {
-        output_gains_linear[channel_index] =
-            std::pow(10.0, gain_iter->second / 20.0);
-      }
-
-      channel_index++;
-    }
-
     // Find the `SubstreamData` with this `substream_id`.
     auto substream_data_iter =
         substream_id_to_substream_data.find(substream_id);
     if (substream_data_iter == substream_id_to_substream_data.end()) {
-      return absl::UnknownError(absl::StrCat(
+      return absl::InvalidArgumentError(absl::StrCat(
           "Failed to find substream data for substream ID= ", substream_id));
     }
     auto& substream_data = substream_data_iter->second;
 
-    // Add all down mixed samples to both queues.
-    for (const auto& channel_samples : substream_samples) {
-      substream_data.samples_obu.push_back(channel_samples);
-
-      // Apply output gains to the samples going to the encoder.
-      std::vector<int32_t> attenuated_channel_samples(channel_samples.size());
-      for (int i = 0; i < channel_samples.size(); ++i) {
-        // Intermediate computation is in `InternalSampleType`, but
-        // `attenuated_channel_samples` are in `int32_t`.
-        const InternalSampleType attenuated_sample =
-            channel_samples[i] / output_gains_linear[i];
-        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
-            attenuated_sample, attenuated_channel_samples[i]));
+    int channel_index = 0;
+    for (const auto& output_channel_label : output_channel_labels) {
+      // Compute and store the linear output gains for this channel.
+      const auto gain_iter =
+          demixing_metadata->label_to_output_gain.find(output_channel_label);
+      const double output_gain_linear =
+          (gain_iter == demixing_metadata->label_to_output_gain.end())
+              ? 1.0
+              : std::pow(10.0, gain_iter->second / 20.0);
+      auto samples_iter = input_label_to_samples.find(output_channel_label);
+      if (samples_iter == input_label_to_samples.end()) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Samples do not exist for channel: ", output_channel_label));
       }
-      substream_data.samples_encode.push_back(attenuated_channel_samples);
+      const auto& input_samples = samples_iter->second;
+
+      // Add all down mixed samples to both substream frames.
+      for (const auto input_sample : input_samples) {
+        substream_data.frames_in_obu.PushSample(channel_index, input_sample);
+
+        // Apply output gains to the samples going to the encoder and also
+        // convert the samples to 32-bit integers.
+        int32_t attenuated_sample_int32 = 0;
+        RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
+            input_sample / output_gain_linear, attenuated_sample_int32));
+        substream_data.frames_to_encode.PushSample(channel_index,
+                                                   attenuated_sample_int32);
+      }
+
+      channel_index++;
     }
   }
 

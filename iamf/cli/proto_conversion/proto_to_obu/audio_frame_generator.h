@@ -216,6 +216,7 @@ class AudioFrameGenerator {
       ABSL_GUARDED_BY(mutex_);
 
   const DemixingModule demixing_module_;
+
   // TODO(b/390150766): Be more careful about the lifetime of the
   //                    `parameters_manager_` and `global_timing_module_`, as
   //                    they are not owned by this class.

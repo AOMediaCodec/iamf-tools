@@ -14,7 +14,6 @@
 #define CLI_DEMIXING_MODULE_H_
 
 #include <cstdint>
-#include <deque>
 #include <list>
 #include <utility>
 #include <vector>
@@ -22,12 +21,15 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
+#include "absl/log/check.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/channel_label.h"
+#include "iamf/cli/substream_frames.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
@@ -38,13 +40,14 @@ namespace iamf_tools {
 struct SubstreamData {
   uint32_t substream_id;
 
-  // Samples arranged in a FIFO queue with a vector of channels. There can only
-  // be one or two channels. Includes "virtual" samples that are output from the
-  // encoder, but are not passed to the encoder.
-  std::deque<std::vector<InternalSampleType>> samples_obu;
+  // Frames of samples that will be stored alongside the audio frame OBUs,
+  // including the "virtual" samples that are padded and will be trimmed when
+  // decoded. Used for comparison with decoded samples to compute recon gains.
+  SubstreamFrames<InternalSampleType> frames_in_obu;
 
-  // Samples to pass to encoder.
-  std::deque<std::vector<int32_t>> samples_encode;
+  // Frames of samples to pass to encoder.
+  SubstreamFrames<int32_t> frames_to_encode;
+
   // One or two elements; corresponding to the output gain to be applied to
   // each channel.
   std::vector<double> output_gains_linear;

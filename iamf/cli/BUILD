@@ -121,6 +121,7 @@ cc_library(
         ":audio_frame_with_data",
         ":channel_label",
         ":cli_util",
+        ":substream_frames",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
@@ -582,6 +583,14 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "substream_frames",
+    hdrs = ["substream_frames.h"],
+    deps = [
+        "@com_google_absl//absl/log:check",
     ],
 )
 

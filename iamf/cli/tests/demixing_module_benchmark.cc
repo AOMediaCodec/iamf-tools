@@ -10,6 +10,7 @@
  * www.aomedia.org/license/patent.
  */
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <utility>
@@ -27,6 +28,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
+#include "iamf/cli/substream_frames.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -65,13 +67,22 @@ static void ConfigureInputChannel(ChannelLabel::Label label, int num_ticks,
 
 static void ConfigureOutputChannel(
     const std::list<ChannelLabel::Label>& requested_output_labels,
+    const size_t num_samples_per_frame,
     SubstreamIdLabelsMap& substream_id_to_labels,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
   // The substream ID itself does not matter. Generate a unique one.
   const uint32_t substream_id = substream_id_to_labels.size();
   substream_id_to_labels[substream_id] = requested_output_labels;
-  substream_id_to_substream_data[substream_id] = {.substream_id = substream_id};
+  const auto num_channels = requested_output_labels.size();
+  substream_id_to_substream_data.emplace(
+      substream_id, SubstreamData{
+                        .substream_id = substream_id,
+                        .frames_in_obu = SubstreamFrames<InternalSampleType>(
+                            num_channels, num_samples_per_frame),
+                        .frames_to_encode = SubstreamFrames<int32_t>(
+                            num_channels, num_samples_per_frame),
+                    });
 }
 
 static DemixingModule CreateDemixingModule(
@@ -137,7 +148,7 @@ static void BM_DownMixing(benchmark::State& state) {
   // Placeholder for the output.
   SubstreamIdLabelsMap substream_id_to_labels;
   absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
-  ConfigureOutputChannel({kMono}, substream_id_to_labels,
+  ConfigureOutputChannel({kMono}, num_ticks, substream_id_to_labels,
                          substream_id_to_substream_data);
 
   // Create a demixing module.
@@ -148,6 +159,12 @@ static void BM_DownMixing(benchmark::State& state) {
     auto status = demixing_module.DownMixSamplesToSubstreams(
         kAudioElementId, kDownMixingParams, input_label_to_samples,
         substream_id_to_substream_data);
+
+    // Simulate consuming the substream data by popping the samples.
+    for (auto& [unused_id, substream_data] : substream_id_to_substream_data) {
+      substream_data.frames_to_encode.PopFront();
+      substream_data.frames_in_obu.PopFront();
+    }
   }
 }
 

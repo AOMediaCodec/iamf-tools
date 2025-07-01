@@ -387,7 +387,13 @@ void FlushAudioFrameGeneratorExpectOk(
     std::list<AudioFrameWithData>& output_audio_frames) {
   while (audio_frame_generator.GeneratingFrames()) {
     std::list<AudioFrameWithData> temp_audio_frames;
-    EXPECT_THAT(audio_frame_generator.OutputFrames(temp_audio_frames), IsOk());
+    auto status = audio_frame_generator.OutputFrames(temp_audio_frames);
+    EXPECT_THAT(status, IsOk());
+
+    // Avoid infinite loops when outputting frames failed.
+    if (!status.ok()) {
+      break;
+    }
     output_audio_frames.splice(output_audio_frames.end(), temp_audio_frames);
   }
 }

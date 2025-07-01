@@ -11,10 +11,9 @@
  */
 #include "iamf/cli/demixing_module.h"
 
-#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <iterator>
 #include <list>
 #include <optional>
 #include <utility>
@@ -33,6 +32,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
+#include "iamf/cli/substream_frames.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
@@ -62,6 +62,7 @@ constexpr uint32_t kZeroSamplesToTrimAtEnd = 0;
 constexpr uint32_t kZeroSamplesToTrimAtStart = 0;
 constexpr InternalTimestamp kStartTimestamp = 0;
 constexpr InternalTimestamp kEndTimestamp = 4;
+constexpr size_t kNumSamplesPerFrame = 4;
 constexpr DecodedUleb128 kMonoSubstreamId = 0;
 constexpr DecodedUleb128 kL2SubstreamId = 1;
 constexpr DecodedUleb128 kStereoSubstreamId = 2;
@@ -659,20 +660,16 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
                     input_label_to_samples_, substream_id_to_substream_data_),
                 IsOk());
 
-    for (const auto& [substream_id, substream_data] :
+    for (auto& [substream_id, substream_data] :
          substream_id_to_substream_data_) {
-      // Copy the output queue to a vector for comparison.
-      std::vector<std::vector<InternalSampleType>> output_samples;
-      std::copy(substream_data.samples_obu.begin(),
-                substream_data.samples_obu.end(),
-                std::back_inserter(output_samples));
+      const auto& output_samples = substream_data.frames_in_obu.Front();
       EXPECT_EQ(output_samples.size(),
                 substream_id_to_expected_samples_[substream_id].size());
-      for (int t = 0; t < output_samples.size(); t++) {
+      for (int c = 0; c < output_samples.size(); c++) {
         EXPECT_THAT(
-            output_samples[t],
+            output_samples[c],
             Pointwise(InternalSampleMatchesIntegralSample(),
-                      substream_id_to_expected_samples_[substream_id][t]));
+                      substream_id_to_expected_samples_[substream_id][c]));
       }
     }
   }
@@ -695,9 +692,15 @@ class DownMixingModuleTest : public DemixingModuleTestBase,
     const uint32_t substream_id = substream_id_to_labels_.size();
 
     substream_id_to_labels_[substream_id] = requested_output_labels;
-    substream_id_to_substream_data_[substream_id] = {.substream_id =
-                                                         substream_id};
-
+    const auto num_channels = requested_output_labels.size();
+    substream_id_to_substream_data_.emplace(
+        substream_id, SubstreamData{
+                          .substream_id = substream_id,
+                          .frames_in_obu = SubstreamFrames<InternalSampleType>(
+                              num_channels, kNumSamplesPerFrame),
+                          .frames_to_encode = SubstreamFrames<int32_t>(
+                              num_channels, kNumSamplesPerFrame),
+                      });
     substream_id_to_expected_samples_[substream_id] = expected_output_samples;
   }
 
@@ -713,7 +716,7 @@ TEST_F(DownMixingModuleTest, OneLayerStereoHasNoDownMixers) {
   ConfigureInputChannel(kL2, {});
   ConfigureInputChannel(kR2, {});
 
-  ConfigureOutputChannel({kL2, kR2}, {{}});
+  ConfigureOutputChannel({kL2, kR2}, {});
 
   TestCreateDemixingModule(0);
 }
@@ -733,7 +736,7 @@ TEST_F(DownMixingModuleTest, OneLayer7_1_4HasNoDownMixers) {
   ConfigureInputChannel(kLtb4, {});
   ConfigureInputChannel(kRtb4, {});
 
-  ConfigureOutputChannel({kCentre}, {{}});
+  ConfigureOutputChannel({kCentre}, {});
   ConfigureOutputChannel({kL7, kR7}, {});
   ConfigureOutputChannel({kLss7, kRss7}, {});
   ConfigureOutputChannel({kLrs7, kRrs7}, {});
@@ -750,10 +753,10 @@ TEST_F(DownMixingModuleTest, AmbisonicsHasNoDownMixers) {
   ConfigureInputChannel(kA2, {});
   ConfigureInputChannel(kA3, {});
 
-  ConfigureOutputChannel({kA0}, {{}});
-  ConfigureOutputChannel({kA1}, {{}});
-  ConfigureOutputChannel({kA2}, {{}});
-  ConfigureOutputChannel({kA3}, {{}});
+  ConfigureOutputChannel({kA0}, {});
+  ConfigureOutputChannel({kA1}, {});
+  ConfigureOutputChannel({kA2}, {});
+  ConfigureOutputChannel({kA3}, {});
 
   TestCreateDemixingModule(0);
 }
@@ -764,7 +767,7 @@ TEST_F(DownMixingModuleTest, OneLayerStereo) {
 
   // Down-mix to stereo as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kL2, kR2}, {{0, 100}, {1, 101}, {2, 102}, {3, 103}});
+  ConfigureOutputChannel({kL2, kR2}, {{0, 1, 2, 3}, {100, 101, 102, 103}});
 
   TestDownMixing({}, 0);
 }
@@ -775,11 +778,11 @@ TEST_F(DownMixingModuleTest, S2ToS1DownMixer) {
 
   // Down-mix to stereo as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kL2}, {{0}, {100}, {500}, {1000}});
+  ConfigureOutputChannel({kL2}, {{0, 100, 500, 1000}});
 
   // Down-mix to mono as the lowest layer.
   // M = (L2 - 6 dB) + (R2 - 6 dB).
-  ConfigureOutputChannel({kMono}, {{50}, {50}, {500}, {750}});
+  ConfigureOutputChannel({kMono}, {{50, 50, 500, 750}});
 
   TestDownMixing({}, 1);
 }
@@ -793,13 +796,12 @@ TEST_F(DownMixingModuleTest, S3ToS2DownMixer) {
 
   // Down-mix to 3.1.2 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kCentre}, {{100}, {100}});
-  ConfigureOutputChannel({kLtf3, kRtf3}, {{99999, 99998}, {99999, 99998}});
-
+  ConfigureOutputChannel({kCentre}, {{100, 100}});
+  ConfigureOutputChannel({kLtf3, kRtf3}, {{99999, 99999}, {99998, 99998}});
   // Down-mix to stereo as the lowest layer.
   // L2 = L3 + (C - 3 dB).
   // R2 = R3 + (C - 3 dB).
-  ConfigureOutputChannel({kL2, kR2}, {{70, 70}, {170, 170}});
+  ConfigureOutputChannel({kL2, kR2}, {{70, 170}, {70, 170}});
 
   TestDownMixing({}, 1);
 }
@@ -815,13 +817,13 @@ TEST_F(DownMixingModuleTest, S5ToS3ToS2DownMixer) {
   // Down-mix to 5.1 as the highest layer. The highest layer always matches the
   // original input.
   ConfigureOutputChannel({kCentre}, {{1000}});
-  ConfigureOutputChannel({kLs5, kRs5}, {{2000, 3000}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{2000}, {3000}});
   ConfigureOutputChannel({kLFE}, {{6}});
 
-  // Down-mix to stereo as the lowest layer.
+  // Down-mix to stereo as the lowest  layer.
   // L3 = L5 + Ls5 * delta.
   // L2 = L3 + (C - 3 dB).
-  ConfigureOutputChannel({kL2, kR2}, {{2221, 3028}});
+  ConfigureOutputChannel({kL2, kR2}, {{2221}, {3028}});
 
   // Internally there is a down-mixer to L3/R3 then another for L2/R2.
   TestDownMixing({.delta = .707}, 2);
@@ -839,14 +841,14 @@ TEST_F(DownMixingModuleTest, S5ToS3ToDownMixer) {
 
   // Down-mix to 5.1.2 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kLs5, kRs5}, {{4000, 8000}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{4000}, {8000}});
 
   // Down-mix to 3.1.2 as the lowest layer.
   // L3 = L5 + Ls5 * delta.
-  ConfigureOutputChannel({kL3, kR3}, {{3828, 7656}});
+  ConfigureOutputChannel({kL3, kR3}, {{3828}, {7656}});
   ConfigureOutputChannel({kCentre}, {{3}});
   // Ltf3 = Ltf2 + Ls5 * w * delta.
-  ConfigureOutputChannel({kLtf3, kRtf3}, {{1707, 3414}});
+  ConfigureOutputChannel({kLtf3, kRtf3}, {{1707}, {3414}});
   ConfigureOutputChannel({kLFE}, {{8}});
 
   // Internally there is a down-mixer for the height and another for the
@@ -868,14 +870,14 @@ TEST_F(DownMixingModuleTest, T4ToT2DownMixer) {
 
   // Down-mix to 5.1.4 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kLtb4, kRtb4}, {{1000, 2000}});
+  ConfigureOutputChannel({kLtb4, kRtb4}, {{1000}, {2000}});
 
   // Down-mix to 5.1.2 as the lowest layer.
-  ConfigureOutputChannel({kL5, kR5}, {{1, 2}});
+  ConfigureOutputChannel({kL5, kR5}, {{1}, {2}});
   ConfigureOutputChannel({kCentre}, {{3}});
-  ConfigureOutputChannel({kLs5, kRs5}, {{4, 5}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{4}, {5}});
   // Ltf2 = Ltf4 + Ltb4 * gamma.
-  ConfigureOutputChannel({kLtf2, kRtf2}, {{1707, 3414}});
+  ConfigureOutputChannel({kLtf2, kRtf2}, {{1707}, {3414}});
   ConfigureOutputChannel({kLFE}, {{10}});
 
   TestDownMixing({.gamma = .707}, 1);
@@ -893,13 +895,13 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithoutT0) {
 
   // Down-mix to 7.1.0 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000, 4000}});
+  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000}, {4000}});
 
   // Down-mix to 5.1.0 as the lowest layer.
-  ConfigureOutputChannel({kL5, kR5}, {{1, 2}});
+  ConfigureOutputChannel({kL5, kR5}, {{1}, {2}});
   ConfigureOutputChannel({kCentre}, {{3}});
   // Ls5 = Lss7 * alpha + Lrs7 * beta.
-  ConfigureOutputChannel({kLs5, kRs5}, {{3598, 5464}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{3598}, {5464}});
   ConfigureOutputChannel({kLFE}, {{8}});
 
   TestDownMixing({.alpha = 1, .beta = .866}, 1);
@@ -919,14 +921,14 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT2) {
 
   // Down-mix to 7.1.2 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000, 4000}});
+  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000}, {4000}});
 
   // Down-mix to 5.1.2 as the lowest layer.
-  ConfigureOutputChannel({kL5, kR5}, {{1, 2}});
+  ConfigureOutputChannel({kL5, kR5}, {{1}, {2}});
   ConfigureOutputChannel({kCentre}, {{3}});
   // Ls5 = Lss7 * alpha + Lrs7 * beta.
-  ConfigureOutputChannel({kLs5, kRs5}, {{3598, 5464}});
-  ConfigureOutputChannel({kLtf2, kRtf2}, {{8, 9}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{3598}, {5464}});
+  ConfigureOutputChannel({kLtf2, kRtf2}, {{8}, {9}});
   ConfigureOutputChannel({kLFE}, {{10}});
 
   TestDownMixing({.alpha = 1, .beta = .866}, 1);
@@ -948,15 +950,15 @@ TEST_F(DownMixingModuleTest, S7ToS5DownMixerWithT4) {
 
   // Down-mix to 7.1.4 as the highest layer. The highest layer always matches
   // the original input.
-  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000, 4000}});
+  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000}, {4000}});
 
   // Down-mix to 5.1.4 as the lowest layer.
-  ConfigureOutputChannel({kL5, kR5}, {{1, 2}});
+  ConfigureOutputChannel({kL5, kR5}, {{1}, {2}});
   ConfigureOutputChannel({kCentre}, {{3}});
   // Ls5 = Lss7 * alpha + Lrs7 * beta.
-  ConfigureOutputChannel({kLs5, kRs5}, {{3598, 5464}});
-  ConfigureOutputChannel({kLtf4, kRtf4}, {{8, 9}});
-  ConfigureOutputChannel({kLtb4, kRtb4}, {{10, 11}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{3598}, {5464}});
+  ConfigureOutputChannel({kLtf4, kRtf4}, {{8}, {9}});
+  ConfigureOutputChannel({kLtb4, kRtb4}, {{10}, {11}});
   ConfigureOutputChannel({kLFE}, {{12}});
 
   TestDownMixing({.alpha = 1, .beta = .866}, 1);
@@ -981,20 +983,20 @@ TEST_F(DownMixingModuleTest, SixLayer7_1_4) {
   // possible.
 
   // Down-mix to 7.1.4 as the sixth layer.
-  ConfigureOutputChannel({kLtb4, kRtb4}, {{1000, 2000}});
+  ConfigureOutputChannel({kLtb4, kRtb4}, {{1000}, {2000}});
 
   // Down-mix to 7.1.2 as the fifth layer.
-  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000, 4000}});
+  ConfigureOutputChannel({kLrs7, kRrs7}, {{3000}, {4000}});
 
   // Down-mix to 5.1.2 as the fourth layer.
   // Ls5 = Lss7 * alpha + Lrs7 * beta.
-  ConfigureOutputChannel({kLs5, kRs5}, {{3598, 5464}});
+  ConfigureOutputChannel({kLs5, kRs5}, {{3598}, {5464}});
 
   // Down-mix to 3.1.2 as the third layer.
   ConfigureOutputChannel({kCentre}, {{1000}});
   // Ltf2 = Ltf4 + Ltb4 * gamma.
   // Ltf3 = Ltf2 + Ls5 * w * delta.
-  ConfigureOutputChannel({kLtf3, kRtf3}, {{2644, 4914}});
+  ConfigureOutputChannel({kLtf3, kRtf3}, {{2644}, {4914}});
   ConfigureOutputChannel({kLFE}, {{12}});
 
   // Down-mix to stereo as the second layer.

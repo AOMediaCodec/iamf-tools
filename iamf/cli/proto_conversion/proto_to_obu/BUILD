@@ -65,6 +65,7 @@ cc_library(
         "//iamf/cli:demixing_module",
         "//iamf/cli:global_timing_module",
         "//iamf/cli:parameters_manager",
+        "//iamf/cli:substream_frames",
         "//iamf/cli/codec:aac_encoder",
         "//iamf/cli/codec:encoder_base",
         "//iamf/cli/codec:flac_encoder",
