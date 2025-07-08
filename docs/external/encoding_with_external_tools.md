@@ -233,7 +233,7 @@ ffmpeg -i /path/to/3OA_and_stereo_iamf.mp4 \
     -map 0:a:0 -map 0:a:1 -map 0:a:2 -map 0:a:3 -map 0:a:4 -map 0:a:5 -map 0:a:6 -map 0:a:7 -map 0:a:8 -map 0:a:9 -map 0:a:10 -map 0:a:11 -map 0:a:12 -map 0:a:13 -map 0:a:14 -map 0:a:15 -map 0:a:16 -map 1:v:0 \
     -stream_group map=0=0:st=0:st=1:st=2:st=3:st=4:st=5:st=6:st=7:st=8:st=9:st=10:st=11:st=12:st=13:st=14:st=15 \
     -stream_group map=0=1:st=16 \
-    -stream_group map=0=2 \
+    -stream_group map=0=2:stg=0 \
     -streamid 0:0 -streamid 1:1 -streamid 2:2 -streamid 3:3 -streamid 4:4 -streamid 5:5 -streamid 6:6 -streamid 7:7 -streamid 8:8 -streamid 9:9 -streamid 10:10 -streamid 11:11 -streamid 12:12 -streamid 13:13 -streamid 14:14 -streamid 15:15 -streamid 16:16 \
     /path/to/output.mp4
 ```
