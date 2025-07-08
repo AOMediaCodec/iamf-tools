@@ -406,8 +406,13 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
 }
 
 absl::Status IamfEncoder::GetDescriptorObus(
-    std::vector<uint8_t>& descriptor_obus,
+    bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
     bool& output_obus_are_finalized) const {
+  if (redundant_copy) {
+    // TODO(b/424474611): Implement this path, to facilitate streaming.
+    return absl::UnimplementedError(
+        "Redundant copy requested, but not implemented by this encoder.");
+  }
   // Grab the latest from the streaming sequencer.
   const auto& descriptor_obus_span =
       streaming_obu_sequencer_.GetSerializedDescriptorObus();
@@ -416,7 +421,7 @@ absl::Status IamfEncoder::GetDescriptorObus(
   return absl::OkStatus();
 }
 
-bool IamfEncoder::GeneratingDataObus() const {
+bool IamfEncoder::GeneratingTemporalUnits() const {
   // Once the `AudioFrameGenerator` is done, and there are no more extraneous
   // timestamped arbitrary OBUs, we are done.
   return (audio_frame_generator_ != nullptr) &&
@@ -486,29 +491,6 @@ absl::Status IamfEncoder::Encode(
   return absl::OkStatus();
 }
 
-absl::Status IamfEncoder::FinalizeEncode() {
-  if (finalize_encode_called_) {
-    LOG_FIRST_N(WARNING, 3)
-        << "Calling `FinalizeEncode()` multiple times has no effect.";
-    return absl::OkStatus();
-  }
-  finalize_encode_called_ = true;
-  if (GeneratingDataObus()) {
-    // There are some data OBUs left to generate.
-    return absl::OkStatus();
-  }
-
-  // This is a fully aligned, or trivial IA sequence. Take this opportunity to
-  // finalize the IA Sequence.
-  RETURN_IF_NOT_OK(FinalizeDescriptors(
-      validate_user_loudness_, mix_presentation_finalizer_,
-      mix_presentation_obus_, mix_presentation_obus_finalized_));
-  return FinalizeObuSequencers(ia_sequence_header_obu_, *codec_config_obus_,
-                               *audio_elements_, mix_presentation_obus_,
-                               descriptor_arbitrary_obus_, obu_sequencers_,
-                               streaming_obu_sequencer_, sequencers_finalized_);
-}
-
 absl::Status IamfEncoder::OutputTemporalUnit(
     std::vector<uint8_t>& temporal_unit_obus) {
   std::list<AudioFrameWithData> audio_frames;
@@ -568,7 +550,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
           parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
           obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
 
-      if (!GeneratingDataObus()) {
+      if (!GeneratingTemporalUnits()) {
         // The final extraneous OBUs have been pushed out. Take this opportunity
         // to finalize descriptors.
         return FinalizeObuSequencers(
@@ -633,7 +615,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
                       timestamp_to_arbitrary_obus_,
                       temporal_unit_arbitrary_obus);
   // Print the first and last temporal units.
-  if (!first_temporal_unit_for_debugging_ || !GeneratingDataObus()) {
+  if (!first_temporal_unit_for_debugging_ || !GeneratingTemporalUnits()) {
     PrintAudioFrames(audio_frames);
     first_temporal_unit_for_debugging_ = true;
   }
@@ -645,10 +627,33 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
       obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
 
-  if (GeneratingDataObus()) {
+  if (GeneratingTemporalUnits()) {
     return absl::OkStatus();
   }
   // The final data OBUs have been pushed out. Take this opportunity to
+  // finalize the IA Sequence.
+  RETURN_IF_NOT_OK(FinalizeDescriptors(
+      validate_user_loudness_, mix_presentation_finalizer_,
+      mix_presentation_obus_, mix_presentation_obus_finalized_));
+  return FinalizeObuSequencers(ia_sequence_header_obu_, *codec_config_obus_,
+                               *audio_elements_, mix_presentation_obus_,
+                               descriptor_arbitrary_obus_, obu_sequencers_,
+                               streaming_obu_sequencer_, sequencers_finalized_);
+}
+
+absl::Status IamfEncoder::FinalizeEncode() {
+  if (finalize_encode_called_) {
+    LOG_FIRST_N(WARNING, 3)
+        << "Calling `FinalizeEncode()` multiple times has no effect.";
+    return absl::OkStatus();
+  }
+  finalize_encode_called_ = true;
+  if (GeneratingTemporalUnits()) {
+    // There are some data OBUs left to generate.
+    return absl::OkStatus();
+  }
+
+  // This is a fully aligned, or trivial IA sequence. Take this opportunity to
   // finalize the IA Sequence.
   RETURN_IF_NOT_OK(FinalizeDescriptors(
       validate_user_loudness_, mix_presentation_finalizer_,

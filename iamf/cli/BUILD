@@ -250,6 +250,7 @@ cc_library(
         "//iamf/cli/proto_conversion/proto_to_obu:parameter_block_generator",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
+        "//iamf/include/iamf_tools:iamf_encoder_interface",
         "//iamf/include/iamf_tools:iamf_tools_encoder_api_types",
         "//iamf/obu:arbitrary_obu",
         "//iamf/obu:codec_config",

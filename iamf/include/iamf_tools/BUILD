@@ -16,6 +16,22 @@ filegroup(
     ],
 )
 
+# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
+cc_library(
+    name = "iamf_encoder_interface",
+    srcs = ["iamf_encoder_interface.cc"],
+    hdrs = ["iamf_encoder_interface.h"],
+    visibility = [
+        "//iamf/api:__subpackages__",
+        "//iamf/cli:__pkg__",
+        "//iamf/cli/tests:__pkg__",
+    ],
+    deps = [
+        ":iamf_tools_encoder_api_types",
+        "@com_google_absl//absl/status",
+    ],
+)
+
 cc_library(
     name = "iamf_tools_encoder_api_types",
     hdrs = ["iamf_tools_encoder_api_types.h"],
@@ -31,3 +47,5 @@ cc_library(
         "@com_google_absl//absl/types:span",
     ],
 )
+
+# keep-sorted end

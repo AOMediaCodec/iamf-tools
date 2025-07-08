@@ -39,6 +39,7 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/include/iamf_tools/iamf_encoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
@@ -59,65 +60,32 @@ namespace iamf_tools {
  *   if(!encoder.ok()) {
  *     // Handle error.
  *   }
- *   // Reusable buffer, later redundant copies won't change size.
- *   std::vector<uint8_t> descriptor_obus;
- *   // Control flow is adjusted when the output is being "streamed" to a
- *   // consumer, such as via a livestream to many users. When using file-based
- *   // OBU sequencers, the file is automatically packed correctly without
- *   // following the extra streaming control flow.
- *   bool streaming = ...;
- *   if (streaming) {
- *     encoder->GetDescriptorObus(...);
- *     // Broadcast the descriptor OBUs, to allow downstream clients to sync.
- *   }
  *
- *   // Reusable buffer between temporal units.
- *   api::IamfTemporalUnitData temporal_unit_data;
- *   while (encoder->GeneratingDataObus()) {
- *     // Prepare for the next temporal unit; clear state of the previous TU.
+ * Typically, after creation, this class should be used as per the
+ * documentation of `IamfEncoderInterface`.
  *
- *     // For all audio elements and labels corresponding to this temporal unit:
- *     for each audio element: {
- *       for each channel label from the current element {
- *         // Fill the slot in `temporal_unit_data` for this audio element and
- *         // channel label.
- *       }
- *     }
- *     // Fill any parameter blocks.
- *     for (each parameter block metadata) {
- *       // Fill the slot in `temporal_unit_data` for this parameter block.
+ * For historical reasons, this implementation has some additional functions in
+ * this class that are not derived from the interface. These are:
+ *   - `GetAudioElements`
+ *   - `GetMixPresentationObus`
+ *   - `GetDescriptorArbitraryObus`
+ *   - `GetInputTimestamp`
  *
- *     // Encode the temporal unit.
- *     RETURN_IF_NOT_OK(encoder->Encode(temporal_unit_data));
+ * Several of these functions pertain to examining the output OBUs, and are
+ * deprecated.
  *
- *     // When all samples (for all temporal units) are added:
- *     if (done_receiving_all_audio) {
- *       encoder->FinalizeEncode();
- *     }
+ * `GetInputTimestamp` is used help the test suite determine the timestamp of
+ * the parameter blocks to be fed into th encoder. A typical user would not know
+ * all of the parameter blocks beforehand, so they would not need this
+ * additional function to help arrange them.
  *
- *
- *     // Get OBUs for next encoded temporal unit.
- *     encoder->OutputTemporalUnit(...);
- *     if (streaming) {
- *       // Broadcast the temporal unit OBUs.
- *     }
- *   }
- *
- *   if( streaming ) {
- *     encoder->GetDescriptorObus(...);
- *     // Broadcast the descriptor OBUs, if any consumers require accurate
- *     // descriptor OBUs.
- *   }
- *
-
- *
- * Note the timestamps corresponding to parameter blocks and audio frames in
- * `Encode()` might be different from that of the output OBUs obtained in
+ * Note the timestamps corresponding to parameter blocks and audio frames
+ * in `Encode()` might be different from that of the output OBUs obtained in
  * `OutputTemporalUnit()`, because some codecs introduce a frame of delay. We
  * thus distinguish the concepts of input and output timestamps
  * (`input_timestamp` and `output_timestamp`) in the code below.
  */
-class IamfEncoder {
+class IamfEncoder : public api::IamfEncoderInterface {
  public:
   /*!\brief Factory to create `ObuSequencerBases`. */
   typedef absl::AnyInvocable<
@@ -169,19 +137,21 @@ class IamfEncoder {
    * non-redundant OBUs with accurate loudness information is encouraged.
    * Auxiliary fields in other descriptor OBUs may also change.
    *
+   * \param redundant_copy True to request a "redundant" copy.
    * \param descriptor_obus Finalized OBUs.
    * \param output_obus_are_finalized `true` when the output OBUs are
    *        finalized. `false` otherwise.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status GetDescriptorObus(std::vector<uint8_t>& descriptor_obus,
-                                 bool& output_obus_are_finalized) const;
+  absl::Status GetDescriptorObus(
+      bool redundant_copy, std::vector<uint8_t>& descriptor_obus,
+      bool& output_obus_are_finalized) const override;
 
   /*!\brief Returns whether this encoder is generating data OBUs.
    *
    * \return True if still generating data OBUs.
    */
-  bool GeneratingDataObus() const;
+  bool GeneratingTemporalUnits() const override;
 
   /*!\brief Gets the input timestamp of the data OBU generation iteration.
    *
@@ -202,7 +172,16 @@ class IamfEncoder {
    *
    * \param temporal_unit_data Temporal unit to add.
    */
-  absl::Status Encode(const api::IamfTemporalUnitData& temporal_unit_data);
+  absl::Status Encode(
+      const api::IamfTemporalUnitData& temporal_unit_data) override;
+
+  /*!\brief Outputs data OBUs corresponding to one temporal unit.
+   *
+   * \param temporal_unit_obus Output OBUs corresponding to this temporal unit.
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status OutputTemporalUnit(
+      std::vector<uint8_t>& temporal_unit_obus) override;
 
   /*!\brief Finalizes the process of encoding.
    *
@@ -212,13 +191,6 @@ class IamfEncoder {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status FinalizeEncode();
-
-  /*!\brief Outputs data OBUs corresponding to one temporal unit.
-   *
-   * \param temporal_unit_obus Output OBUs corresponding to this temporal unit.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status OutputTemporalUnit(std::vector<uint8_t>& temporal_unit_obus);
 
   /*!\brief Outputs a const reference to the Audio Elements.
    *
@@ -231,11 +203,11 @@ class IamfEncoder {
 
   /*!\brief Outputs a const reference to the prelimary Mix Presentation OBUs.
    *
-   * When `GeneratingDataObus()` is true, this function will return the
+   * When `GeneratingTemporalUnits()` is true, this function will return the
    * preliminary mix presentation OBUs. These are not finalized, and thus almost
    * certainly do not contain measured loudness metadata.
    *
-   * After `GeneratingDataObus()` is false, this function will return the
+   * After `GeneratingTemporalUnits()` is false, this function will return the
    * finalized mix presentation OBUs. These contain accurate mix presentation
    * metadata.
    *

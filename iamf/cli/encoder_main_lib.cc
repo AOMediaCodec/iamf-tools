@@ -186,14 +186,14 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
   // TODO(b/329375123): Make two while loops that run on two threads: one for
   //                    adding samples and parameter block metadata, and one for
   //                    outputing OBUs.
-  int data_obus_iteration = 0;  // Just for logging purposes.
+  int temporal_unit_iteration = 0;  // Just for logging purposes.
   // Hold a single temporal unit data. Every temporal unit will fill the same
   // slots in the inner maps; we can reuse them.
   api::IamfTemporalUnitData temporal_unit_data;
-  while (iamf_encoder.GeneratingDataObus()) {
+  while (iamf_encoder.GeneratingTemporalUnits()) {
     LOG_EVERY_N_SEC(INFO, 5)
-        << "\n\n============================= Generating Data OBUs Iter #"
-        << data_obus_iteration++ << " =============================\n";
+        << "\n\n============================= Generating Temporal Units Iter #"
+        << temporal_unit_iteration++ << " =============================\n";
 
     InternalTimestamp input_timestamp = 0;
     RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));
