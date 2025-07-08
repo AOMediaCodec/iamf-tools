@@ -30,7 +30,6 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
@@ -43,6 +42,7 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/arbitrary_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_element_generator.h"
@@ -57,6 +57,7 @@
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -130,6 +131,16 @@ void PrintAudioFrames(const std::list<AudioFrameWithData>& audio_frames) {
             << audio_frame_with_data.end_timestamp;
 
     i++;
+  }
+}
+
+void ClearSamples(
+    absl::flat_hash_map<DecodedUleb128, LabelSamplesMap>& samples) {
+  // Clear cached samples for this iteration of data OBU generation.
+  for (auto& [unused_audio_element_id, labeled_samples] : samples) {
+    for (auto& [unused_label, samples] : labeled_samples) {
+      samples.clear();
+    }
   }
 }
 
@@ -414,15 +425,6 @@ bool IamfEncoder::GeneratingDataObus() const {
           !timestamp_to_arbitrary_obus_.empty());
 }
 
-void IamfEncoder::BeginTemporalUnit() {
-  // Clear cached samples for this iteration of data OBU generation.
-  for (auto& [audio_element_id, labeled_samples] : id_to_labeled_samples_) {
-    for (auto& [label, samples] : labeled_samples) {
-      samples.clear();
-    }
-  }
-}
-
 absl::Status IamfEncoder::GetInputTimestamp(
     InternalTimestamp& input_timestamp) {
   std::optional<InternalTimestamp> timestamp;
@@ -435,27 +437,62 @@ absl::Status IamfEncoder::GetInputTimestamp(
   return absl::OkStatus();
 }
 
-void IamfEncoder::AddSamples(const DecodedUleb128 audio_element_id,
-                             ChannelLabel::Label label,
-                             absl::Span<const InternalSampleType> samples) {
-  if (add_samples_finalized_) {
-    LOG_FIRST_N(WARNING, 3)
-        << "Calling `AddSamples()` after `FinalizeAddSamples()` has no effect; "
-        << samples.size() << " input samples discarded.";
-    return;
+absl::Status IamfEncoder::Encode(
+    const api::IamfTemporalUnitData& temporal_unit_data) {
+  // Parameter blocks need to cover any delayed or trimmed frames. They may be
+  // needed even if `finalize_encode_called_` is true.
+  for (const auto& [parameter_block_id, parameter_block_metadata] :
+       temporal_unit_data.parameter_block_id_to_metadata) {
+    RETURN_IF_NOT_OK(
+        parameter_block_generator_.AddMetadata(parameter_block_metadata));
   }
 
-  id_to_labeled_samples_[audio_element_id][label] =
-      std::vector<InternalSampleType>(samples.begin(), samples.end());
-}
+  if (finalize_encode_called_) {
+    // Avoid adding any samples after they are finalized.
+    if (!temporal_unit_data.audio_element_id_to_data.empty()) {
+      LOG_FIRST_N(WARNING, 3) << "Calling `Encode()` with samples after "
+                                 "`FinalizeEncode()` drops the audio samples.";
+    }
 
-absl::Status IamfEncoder::FinalizeAddSamples() {
-  if (add_samples_finalized_) {
-    LOG_FIRST_N(WARNING, 3)
-        << "Calling `FinalizeAddSamples()` multiple times has no effect.";
     return absl::OkStatus();
   }
-  add_samples_finalized_ = true;
+
+  // TODO(b/428968283): Validate that the input labels are consistent with the
+  //                    expected labels in the audio elements.
+  for (const auto& [audio_element_id, labeled_samples] :
+       temporal_unit_data.audio_element_id_to_data) {
+    for (const auto& [label, samples] : labeled_samples) {
+      auto internal_label = ChannelLabelUtils::ProtoToLabel(label);
+      if (!internal_label.ok()) {
+        return internal_label.status();
+      }
+
+      if (samples.empty()) {
+        continue;
+      }
+
+      // Cache the samples as the internal type.
+      auto& cached_samples =
+          id_to_labeled_samples_[audio_element_id][*internal_label];
+      cached_samples.resize(samples.size());
+      // Cast double to InternalSampleType.
+      std::transform(samples.begin(), samples.end(), cached_samples.begin(),
+                     [](double sample) {
+                       return static_cast<InternalSampleType>(sample);
+                     });
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+absl::Status IamfEncoder::FinalizeEncode() {
+  if (finalize_encode_called_) {
+    LOG_FIRST_N(WARNING, 3)
+        << "Calling `FinalizeEncode()` multiple times has no effect.";
+    return absl::OkStatus();
+  }
+  finalize_encode_called_ = true;
   if (GeneratingDataObus()) {
     // There are some data OBUs left to generate.
     return absl::OkStatus();
@@ -470,14 +507,6 @@ absl::Status IamfEncoder::FinalizeAddSamples() {
                                *audio_elements_, mix_presentation_obus_,
                                descriptor_arbitrary_obus_, obu_sequencers_,
                                streaming_obu_sequencer_, sequencers_finalized_);
-}
-
-absl::Status IamfEncoder::AddParameterBlockMetadata(
-    const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-        parameter_block_metadata) {
-  RETURN_IF_NOT_OK(
-      parameter_block_generator_.AddMetadata(parameter_block_metadata));
-  return absl::OkStatus();
 }
 
 absl::Status IamfEncoder::OutputTemporalUnit(
@@ -509,8 +538,9 @@ absl::Status IamfEncoder::OutputTemporalUnit(
           audio_frame_generator_->AddSamples(audio_element_id, label, samples));
     }
   }
+  ClearSamples(id_to_labeled_samples_);
 
-  if (add_samples_finalized_) {
+  if (finalize_encode_called_) {
     RETURN_IF_NOT_OK(audio_frame_generator_->Finalize());
   }
 
@@ -521,7 +551,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     // retrieve it.
     VLOG(1) << "No audio frames generated for this temporal unit.";
 
-    if (add_samples_finalized_) {
+    if (finalize_encode_called_) {
       // At the end of the sequence, there could be some extraneous arbitrary
       // OBUs that are not associated with any audio frames. Pop the next set.
       SpliceArbitraryObus(timestamp_to_arbitrary_obus_.begin(),

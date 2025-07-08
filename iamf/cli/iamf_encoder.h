@@ -24,10 +24,8 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
-#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_decoder.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
@@ -41,6 +39,7 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
+#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -60,37 +59,63 @@ namespace iamf_tools {
  *   if(!encoder.ok()) {
  *     // Handle error.
  *   }
+ *   // Reusable buffer, later redundant copies won't change size.
+ *   std::vector<uint8_t> descriptor_obus;
+ *   // Control flow is adjusted when the output is being "streamed" to a
+ *   // consumer, such as via a livestream to many users. When using file-based
+ *   // OBU sequencers, the file is automatically packed correctly without
+ *   // following the extra streaming control flow.
+ *   bool streaming = ...;
+ *   if (streaming) {
+ *     encoder->GetDescriptorObus(...);
+ *     // Broadcast the descriptor OBUs, to allow downstream clients to sync.
+ *   }
  *
+ *   // Reusable buffer between temporal units.
+ *   api::IamfTemporalUnitData temporal_unit_data;
  *   while (encoder->GeneratingDataObus()) {
  *     // Prepare for the next temporal unit; clear state of the previous TU.
- *     encoder->BeginTemporalUnit();
  *
  *     // For all audio elements and labels corresponding to this temporal unit:
  *     for each audio element: {
  *       for each channel label from the current element {
- *         encoder->AddSamples(audio_element_id, label, samples);
+ *         // Fill the slot in `temporal_unit_data` for this audio element and
+ *         // channel label.
  *       }
  *     }
+ *     // Fill any parameter blocks.
+ *     for (each parameter block metadata) {
+ *       // Fill the slot in `temporal_unit_data` for this parameter block.
+ *
+ *     // Encode the temporal unit.
+ *     RETURN_IF_NOT_OK(encoder->Encode(temporal_unit_data));
  *
  *     // When all samples (for all temporal units) are added:
  *     if (done_receiving_all_audio) {
- *       encoder->FinalizeAddSamples();
+ *       encoder->FinalizeEncode();
  *     }
  *
- *     // For all parameter block metadata corresponding to this temporal unit:
- *     encoder->AddParameterBlockMetadata(...);
  *
  *     // Get OBUs for next encoded temporal unit.
  *     encoder->OutputTemporalUnit(...);
+ *     if (streaming) {
+ *       // Broadcast the temporal unit OBUs.
+ *     }
  *   }
- *   // Get the final mix presentation OBUs, with measured loudness information.
- *   auto mix_presentation_obus = encoder->GetFinalizedMixPresentationObus();
  *
- * Note the timestamps corresponding to `AddSamples()` and
- * `AddParameterBlockMetadata()` might be different from that of the output
- * OBUs obtained in `OutputTemporalUnit()`, because some codecs introduce a
- * frame of delay. We thus distinguish the concepts of input and output
- * timestamps (`input_timestamp` and `output_timestamp`) in the code below.
+ *   if( streaming ) {
+ *     encoder->GetDescriptorObus(...);
+ *     // Broadcast the descriptor OBUs, if any consumers require accurate
+ *     // descriptor OBUs.
+ *   }
+ *
+
+ *
+ * Note the timestamps corresponding to parameter blocks and audio frames in
+ * `Encode()` might be different from that of the output OBUs obtained in
+ * `OutputTemporalUnit()`, because some codecs introduce a frame of delay. We
+ * thus distinguish the concepts of input and output timestamps
+ * (`input_timestamp` and `output_timestamp`) in the code below.
  */
 class IamfEncoder {
  public:
@@ -158,10 +183,6 @@ class IamfEncoder {
    */
   bool GeneratingDataObus() const;
 
-  /*!\brief Clears the state, e.g. accumulated samples for next temporal unit.
-   */
-  void BeginTemporalUnit();
-
   /*!\brief Gets the input timestamp of the data OBU generation iteration.
    *
    * \param input_timestamp Result of input timestamp.
@@ -169,36 +190,28 @@ class IamfEncoder {
    */
   absl::Status GetInputTimestamp(InternalTimestamp& input_timestamp);
 
-  /*!\brief Adds audio samples belonging to the same temporal unit.
+  /*!\brief Adds audio data and parameter block metadata for one temporal unit.
    *
-   * The best practice is to not call this function after
-   * `FinalizeAddSamples()`. But it is OK if you do -- just that the added
+   * The best practice is to not call this function with samples after
+   * `FinalizeEncode()`. But it is OK if you do -- just that the added
    * samples will be ignored and not encoded.
    *
-   * \param audio_element_id ID of the audio element to add samples to.
-   * \param label Channel label to add samples to.
-   * \param samples Audio samples to add.
+   * Typically, an entire frame of audio should be added at once, and any
+   * associated parameter block metadata. The number of audio samples, was
+   * configured based on the `CodecConfigObu` metadata at encoder creation.
+   *
+   * \param temporal_unit_data Temporal unit to add.
    */
-  void AddSamples(DecodedUleb128 audio_element_id, ChannelLabel::Label label,
-                  absl::Span<const InternalSampleType> samples);
+  absl::Status Encode(const api::IamfTemporalUnitData& temporal_unit_data);
 
-  /*!\brief Finalizes the process of adding samples.
+  /*!\brief Finalizes the process of encoding.
    *
    * This will signal the underlying codecs to flush all remaining samples,
    * as well as trim samples from the end.
    *
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status FinalizeAddSamples();
-
-  /*!\brief Adds parameter block metadata belonging to the same temporal unit.
-   *
-   * \param parameter_block_metadata Parameter block metadata to add.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status AddParameterBlockMetadata(
-      const iamf_tools_cli_proto::ParameterBlockObuMetadata&
-          parameter_block_metadata);
+  absl::Status FinalizeEncode();
 
   /*!\brief Outputs data OBUs corresponding to one temporal unit.
    *
@@ -353,8 +366,8 @@ class IamfEncoder {
   // iteration.
   absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples_;
 
-  // Whether the `FinalizeAddSamples()` has been called.
-  bool add_samples_finalized_ = false;
+  // Whether the `FinalizeEncode()` has been called.
+  bool finalize_encode_called_ = false;
 
   // Various generators and modules used when generating data OBUs iteratively.
   // Some are held in `unique_ptr` for reference stability after move.

@@ -18,12 +18,14 @@
 #include <memory>
 #include <string>
 #include <system_error>
+#include <type_traits>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/iamf_components.h"
@@ -33,12 +35,14 @@
 #include "iamf/cli/proto/temporal_delimiter.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
+#include "iamf/cli/proto_conversion/channel_label_utils.h"
 #include "iamf/cli/proto_conversion/output_audio_format_utils.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/cli/wav_sample_provider.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -126,6 +130,23 @@ absl::Status CreateOutputDirectory(const std::string& output_directory) {
   return absl::OkStatus();
 }
 
+absl::Status LabeledSamplesToAudioElementData(
+    const LabelSamplesMap& labeled_samples,
+    api::IamfAudioElementData& audio_element_data) {
+  // Here, we lazily assume the samples are stored as doubles. So we can work on
+  // a Span instead of copying the underlying data.
+  static_assert(std::is_same_v<InternalSampleType, double>);
+  for (const auto& [channel_label, samples] : labeled_samples) {
+    auto proto_label = ChannelLabelUtils::LabelToProto(channel_label);
+    if (!proto_label.ok()) {
+      return proto_label.status();
+    }
+
+    audio_element_data[*proto_label] = absl::Span<const double>(samples);
+  }
+  return absl::OkStatus();
+}
+
 iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
     const iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
     const iamf_tools_cli_proto::TestVectorMetadata& test_vector_metadata) {
@@ -166,43 +187,50 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
   //                    adding samples and parameter block metadata, and one for
   //                    outputing OBUs.
   int data_obus_iteration = 0;  // Just for logging purposes.
+  // Hold a single temporal unit data. Every temporal unit will fill the same
+  // slots in the inner maps; we can reuse them.
+  api::IamfTemporalUnitData temporal_unit_data;
   while (iamf_encoder.GeneratingDataObus()) {
     LOG_EVERY_N_SEC(INFO, 5)
         << "\n\n============================= Generating Data OBUs Iter #"
         << data_obus_iteration++ << " =============================\n";
 
-    iamf_encoder.BeginTemporalUnit();
-
     InternalTimestamp input_timestamp = 0;
     RETURN_IF_NOT_OK(iamf_encoder.GetInputTimestamp(input_timestamp));
 
-    // Add audio samples.
+    // Get the audio samples.
     absl::flat_hash_map<DecodedUleb128, LabelSamplesMap> id_to_labeled_samples;
     bool no_more_real_samples = false;
     RETURN_IF_NOT_OK(CollectLabeledSamplesForAudioElements(
         iamf_encoder.GetAudioElements(), *wav_sample_provider,
         id_to_labeled_samples, no_more_real_samples));
 
+    // Adapt the audio samples into the expected format for the encoder.
     for (const auto& [audio_element_id, labeled_samples] :
          id_to_labeled_samples) {
-      for (const auto& [channel_label, samples] : labeled_samples) {
-        iamf_encoder.AddSamples(audio_element_id, channel_label,
-                                MakeConstSpan(samples));
-      }
+      RETURN_IF_NOT_OK(LabeledSamplesToAudioElementData(
+          labeled_samples,
+          temporal_unit_data.audio_element_id_to_data[audio_element_id]));
+    }
+    // Fill in this temporal unit's parameter block metadata.
+    for (const auto& metadata :
+         time_parameter_block_metadata[input_timestamp]) {
+      temporal_unit_data
+          .parameter_block_id_to_metadata[metadata.parameter_id()] = metadata;
     }
 
+    RETURN_IF_NOT_OK(iamf_encoder.Encode(temporal_unit_data));
+
     // In this program we always use up all samples from a WAV file, so we
-    // call `IamfEncoder::FinalizeAddSamples()` only when there is no more
+    // call `IamfEncoder::FinalizeEncode()` only when there is no more
     // real samples. In other applications, the user may decide to stop adding
     // audio samples based on other criteria.
     if (no_more_real_samples) {
-      RETURN_IF_NOT_OK(iamf_encoder.FinalizeAddSamples());
-    }
-
-    // Add parameter block metadata.
-    for (const auto& metadata :
-         time_parameter_block_metadata[input_timestamp]) {
-      RETURN_IF_NOT_OK(iamf_encoder.AddParameterBlockMetadata(metadata));
+      // TODO(b/430027640): Avoid clearing the parameter block metadata, once
+      //                    there is a better way to determine the parameter
+      //                    block start timestamps.
+      temporal_unit_data.parameter_block_id_to_metadata.clear();
+      RETURN_IF_NOT_OK(iamf_encoder.FinalizeEncode());
     }
 
     // In a streaming based application these serialized OBUs would be useful.

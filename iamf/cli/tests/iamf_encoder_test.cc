@@ -31,7 +31,6 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
-#include "iamf/cli/channel_label.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
@@ -50,6 +49,7 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -77,6 +77,7 @@ using ::testing::Return;
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr DecodedUleb128 kStereoSubstreamId = 999;
+constexpr DecodedUleb128 kParameterBlockId = 100;
 constexpr uint32_t kNumSamplesPerFrame = 8;
 constexpr int kExpectedPcmBitDepth = 16;
 constexpr int16_t kUserProvidedIntegratedLoudness = 0;
@@ -234,9 +235,6 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
   auto* metadata = user_metadata.add_parameter_block_metadata();
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        parameter_id: 100
-        duration: 8
-        constant_subblock_duration: 8
         subblocks:
         [ {
           mix_gain_parameter_data {
@@ -246,9 +244,22 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
         }]
       )pb",
       metadata));
+  // Configure to be a single subblock.
+  metadata->set_parameter_id(kParameterBlockId);
+  metadata->set_duration(kNumSamplesPerFrame);
+  metadata->set_constant_subblock_duration(kNumSamplesPerFrame);
 
   // Overwrite `start_timestamp`.
   metadata->set_start_timestamp(start_timestamp);
+}
+
+api::IamfTemporalUnitData MakeStereoTemporalUnitData(
+    absl::Span<const double> samples) {
+  using enum ::iamf_tools_cli_proto::ChannelLabel;
+  return api::IamfTemporalUnitData{
+      .audio_element_id_to_data = {
+          {kAudioElementId,
+           {{CHANNEL_LABEL_L_2, samples}, {CHANNEL_LABEL_R_2, samples}}}}};
 }
 
 std::string GetFirstSubmixFirstLayoutExpectedPath(
@@ -392,15 +403,13 @@ TEST_F(IamfEncoderTest,
       kDoesNotInvalidateBitstream);
   auto iamf_encoder = CreateExpectOk();
   // Push the first temporal unit.
-  iamf_encoder.BeginTemporalUnit();
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
-                          MakeConstSpan(kZeroSamples));
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
-                          MakeConstSpan(kZeroSamples));
+  EXPECT_THAT(iamf_encoder.Encode(
+                  MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples))),
+              IsOk());
   const AudioFrameObu kExpectedAudioFrame(
       ObuHeader(), kStereoSubstreamId,
       MakeConstSpan(kEightCoupled16BitPcmSamples));
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 
   // Arbitrary OBUs come out based on their insertion hook.
   std::vector<uint8_t> output_obus;
@@ -420,8 +429,7 @@ TEST_F(IamfEncoderTest, OutputTemporalUnitFailsForExtranousArbitraryObus) {
   AddArbitraryObuForFirstTick(user_metadata_, kInvalidatesBitstream);
   auto iamf_encoder = CreateExpectOk();
   // Ok, this is is a trivial IA Sequence.
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
-  iamf_encoder.BeginTemporalUnit();
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 
   // Normally all temporal units must have an audio frame, extraneous arbitrary
   // OBUs may be present and are signalled as if data OBUs are still available.
@@ -460,25 +468,20 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   EXPECT_FALSE(output_insufficient_data);
 
   // Temporary variables for one iteration.
-  const std::vector<InternalSampleType> zero_samples(kNumSamplesPerFrame, 0.0);
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
   bool continue_processing = true;
   int iteration = 0;
+  auto temporal_unit_data =
+      MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
   while (iamf_encoder.GeneratingDataObus()) {
-    iamf_encoder.BeginTemporalUnit();
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
-                            MakeConstSpan(zero_samples));
-    iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
-                            MakeConstSpan(zero_samples));
+    temporal_unit_data.parameter_block_id_to_metadata[kParameterBlockId] =
+        user_metadata_.parameter_block_metadata(iteration);
+    EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
 
     // Signal stopping adding samples at the second iteration.
     if (iteration == 1) {
-      EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+      EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
     }
-
-    EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
-                    user_metadata_.parameter_block_metadata(iteration)),
-                IsOk());
 
     // Output.
     EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());
@@ -520,15 +523,12 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
 
   // Use many parts of the API, to make sure the move did not break anything.
   EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
-  iamf_encoder.BeginTemporalUnit();
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2,
-                          MakeConstSpan(kZeroSamples));
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2,
-                          MakeConstSpan(kZeroSamples));
-  EXPECT_THAT(iamf_encoder.AddParameterBlockMetadata(
-                  user_metadata_.parameter_block_metadata(0)),
-              IsOk());
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  auto temporal_unit_data =
+      MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
+  temporal_unit_data.parameter_block_id_to_metadata.emplace(
+      kParameterBlockId, user_metadata_.parameter_block_metadata(0));
+  EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
   EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());
   EXPECT_THAT(rb->PushBytes(MakeConstSpan(output_obus)), IsOk());
 
@@ -552,14 +552,14 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   EXPECT_EQ(parameter_blocks.size(), 1);
 }
 
-TEST_F(IamfEncoderTest, CallingFinalizeAddSamplesTwiceSucceeds) {
+TEST_F(IamfEncoderTest, CallingFinalizeEncodeTwiceSucceeds) {
   SetupDescriptorObus();
   auto iamf_encoder = CreateExpectOk();
   // The first call is OK.
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 
   // There is nothing to finalize a second time, the calls safely do nothing.
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 }
 
 TEST_F(
@@ -579,7 +579,7 @@ TEST_F(
           .layouts.front()
           .loudness;
   EXPECT_FALSE(obus_are_finalized);
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
   EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
 
   EXPECT_EQ(iamf_encoder.GetMixPresentationObus(obus_are_finalized)
@@ -631,9 +631,9 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedOrTrivialIaSequence) {
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
 
-  // `FinalizeAddSamples()` may trigger loudness finalization for trivial or
+  // `FinalizeEncode()` may trigger loudness finalization for trivial or
   // frame-aligned IA Sequences.
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 
   EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
   bool obus_are_finalized = false;
@@ -651,14 +651,13 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
-  iamf_encoder.BeginTemporalUnit();
-  // Add in a single sample for each channel, to result in a non-frame aligned
-  // IA sequence.
-  constexpr auto kOneSample = absl::MakeConstSpan(kZeroSamples).first(1);
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kL2, kOneSample);
-  iamf_encoder.AddSamples(kAudioElementId, ChannelLabel::kR2, kOneSample);
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
-  // Despite `FinalizeAddSamples()` being called, there are data OBUs to push
+  // Make stereo data with a single sample for each channel, to force a
+  // non-frame aligned IA sequence.
+  constexpr auto kOneSample = MakeConstSpan(kZeroSamples).first(1);
+  EXPECT_THAT(iamf_encoder.Encode(MakeStereoTemporalUnitData(kOneSample)),
+              IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  // Despite `FinalizeEncode()` being called, there are data OBUs to push
   // out. Loudness is intentionally not yet finalized.
   EXPECT_TRUE(iamf_encoder.GeneratingDataObus());
   bool obus_are_finalized = false;
@@ -687,7 +686,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterArbitraryDataObus) {
   loudness_calculator_factory_ =
       GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
   auto iamf_encoder = CreateExpectOk();
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
 
   // As a special case, when there are extra "data" arbitrary OBUs. Loudness is
   // not computed until all are generated.
@@ -732,7 +731,7 @@ TEST_F(IamfEncoderTest, GetDescriptorObusHasFilledInLoudness) {
       .WillOnce(Return(std::move(mock_loudness_calculator)));
   loudness_calculator_factory_ = std::move(mock_loudness_calculator_factory);
   auto iamf_encoder = CreateExpectOk();
-  EXPECT_THAT(iamf_encoder.FinalizeAddSamples(), IsOk());
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
   EXPECT_FALSE(iamf_encoder.GeneratingDataObus());
 
   bool obus_are_finalized = false;

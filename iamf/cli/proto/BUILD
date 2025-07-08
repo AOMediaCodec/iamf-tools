@@ -8,6 +8,7 @@ package(default_visibility = [
     # TODO(b/400697000): Break up visibility for the api directory.
     "//iamf/api:__subpackages__",
     "//iamf/cli:__subpackages__",
+    "//iamf/include:__subpackages__",
 ])
 
 # keep-sorted start block=yes prefix_order=proto_library,cc_proto_library newline_separated=yes
