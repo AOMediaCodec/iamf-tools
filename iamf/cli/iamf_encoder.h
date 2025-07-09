@@ -56,7 +56,7 @@ namespace iamf_tools {
  * generated iteratively for each temporal unit (TU). The use pattern of this
  * class is:
  *   // Call factory function.
- *   absl::StatusOr<IamfEncoder> encoder = IamfEncoder::Create(...);
+ *   auto encoder = IamfEncoder::Create(...);
  *   if(!encoder.ok()) {
  *     // Handle error.
  *   }
@@ -109,9 +109,9 @@ class IamfEncoder : public api::IamfEncoderInterface {
    * \param sample_processor_factory Factory to create processors for use after
    *        rendering.
    * \param obu_sequencer_factory Factory to create `ObuSequencerBases`.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return Encoder on success, or a specific status on failure.
    */
-  static absl::StatusOr<IamfEncoder> Create(
+  static absl::StatusOr<std::unique_ptr<IamfEncoder>> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
       const RendererFactoryBase* /* absl_nullable */ renderer_factory,
       const LoudnessCalculatorFactoryBase* /* absl_nullable */

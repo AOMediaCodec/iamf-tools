@@ -104,6 +104,7 @@ cc_library(
     visibility = [
         # TODO(b/400697000): Break up visibility for the api directory.
         "//iamf/api:__subpackages__",
+        "//iamf/include/iamf_tools:__subpackages__",
         "//iamf/cli:__pkg__",
         "//iamf/cli/proto_conversion:__subpackages__",
     ],

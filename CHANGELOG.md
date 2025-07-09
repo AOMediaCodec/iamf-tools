@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Add support for binary proto input in the encoder.
 -   Add support for encoding [Standalone IAMF Representation] for Base-Enhanced
     profile based on [IAMF v1.1.0]("Expanded" layouts, Mix Presentation Tags).
+-   Add an iterative encoding API.
 
 ### Deprecated
 

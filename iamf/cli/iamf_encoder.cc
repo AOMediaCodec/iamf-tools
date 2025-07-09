@@ -24,6 +24,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -237,7 +238,7 @@ IamfEncoder::CreateNoObuSequencers() {
   return {};
 }
 
-absl::StatusOr<IamfEncoder> IamfEncoder::Create(
+absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
     const RendererFactoryBase* /* absl_nullable */ renderer_factory,
     const LoudnessCalculatorFactoryBase* /* absl_nullable */
@@ -391,7 +392,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
       mix_presentation_obus, descriptor_arbitrary_obus));
 
   // Construct the `IamfEncoder`. Move various OBUs, models, etc. into it.
-  return IamfEncoder(
+  return absl::WrapUnique(new IamfEncoder(
       user_metadata.test_vector_metadata().validate_user_loudness(),
       *std::move(ia_sequence_header_obu), std::move(codec_config_obus),
       std::move(audio_elements), std::move(mix_presentation_obus),
@@ -402,7 +403,7 @@ absl::StatusOr<IamfEncoder> IamfEncoder::Create(
       *demixing_module, std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),
       std::move(*mix_presentation_finalizer), std::move(obu_sequencers),
-      std::move(streaming_obu_sequencer));
+      std::move(streaming_obu_sequencer)));
 }
 
 absl::Status IamfEncoder::GetDescriptorObus(

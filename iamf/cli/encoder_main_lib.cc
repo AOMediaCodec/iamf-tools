@@ -317,7 +317,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   // Push all audio data to the encoder, at the end, the file is closed and
   // finalized.
   RETURN_IF_NOT_OK(GenerateTemporalUnitObus(user_metadata, input_wav_directory,
-                                            *iamf_encoder));
+                                            **iamf_encoder));
 
   // In a streaming based application we would query `GetDescriptorObus` for the
   // finalized descriptor OBUs. Then push the data to any clients that rely on

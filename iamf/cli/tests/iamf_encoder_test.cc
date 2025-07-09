@@ -74,6 +74,7 @@ using ::testing::_;
 using ::testing::Contains;
 using ::testing::IsEmpty;
 using ::testing::Not;
+using ::testing::NotNull;
 using ::testing::Return;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
@@ -305,8 +306,10 @@ class IamfEncoderTest : public ::testing::Test {
         IamfEncoder::Create(user_metadata_, renderer_factory_.get(),
                             loudness_calculator_factory_.get(),
                             sample_processor_factory_, obu_sequencer_factory_);
-    EXPECT_THAT(iamf_encoder, IsOk());
-    return std::move(*iamf_encoder);
+    EXPECT_THAT(iamf_encoder, IsOkAndHolds(NotNull()));
+    // Most users can use the `IamfEncoder` on the heap. For convenience, we
+    // check that it is valid and unwrap it.
+    return std::move(**iamf_encoder);
   }
 
   UserMetadata user_metadata_;

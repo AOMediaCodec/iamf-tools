@@ -1,10 +1,19 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+# keep-sorted start block=yes prefix_order=filegroup,cc_library newline_separated=yes
 filegroup(
     name = "iamf_decoder_header",
     srcs = ["iamf_decoder.h"],
     visibility = [
         "//iamf/api/decoder:__pkg__",
+    ],
+)
+
+filegroup(
+    name = "iamf_encoder_factory_header",
+    srcs = ["iamf_encoder_factory.h"],
+    visibility = [
+        "//iamf/api/encoder:__pkg__",
     ],
 )
 
@@ -16,7 +25,6 @@ filegroup(
     ],
 )
 
-# keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "iamf_encoder_interface",
     srcs = ["iamf_encoder_interface.cc"],
