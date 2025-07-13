@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = [
     "//iamf/cli/adm_to_user_metadata:__subpackages__",
 ])

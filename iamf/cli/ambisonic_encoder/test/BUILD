@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 # Benchmark with
 #   `bazel run -c opt :ambisonic_encoder_benchmark -- --benchmark_filter=.`

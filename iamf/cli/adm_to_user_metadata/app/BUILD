@@ -1,3 +1,6 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 # keep-sorted start block=yes prefix_order=cc_library,cc_binary, newline_separated=yes
 cc_library(
     name = "adm_to_user_metadata_main_lib",

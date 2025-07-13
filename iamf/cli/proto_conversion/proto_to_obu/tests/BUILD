@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "arbitrary_obu_generator_test",

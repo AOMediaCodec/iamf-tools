@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes
 cc_test(
     name = "ia_sequence_header_obu_metadata_handler_test",

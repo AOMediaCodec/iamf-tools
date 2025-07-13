@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 # Classes to convert the internal C++ representation of OBUs to the proto representation.
 package(default_visibility = [
     "//iamf/cli:__subpackages__",

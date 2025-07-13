@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = [
     "//iamf/api/decoder/tests:__pkg__",
     "//iamf/api/internal_utils:__pkg__",

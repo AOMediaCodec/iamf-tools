@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+
 # Example commandline interface tools for the IAMF software.
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
