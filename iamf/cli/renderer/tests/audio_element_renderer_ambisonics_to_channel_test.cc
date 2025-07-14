@@ -29,7 +29,6 @@
 namespace iamf_tools {
 namespace {
 
-using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
 
 using enum LoudspeakersSsConventionLayout::SoundSystem;

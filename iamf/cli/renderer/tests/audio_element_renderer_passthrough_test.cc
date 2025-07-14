@@ -37,8 +37,6 @@ using enum ChannelAudioLayerConfig::LoudspeakerLayout;
 using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
 using enum ChannelLabel::Label;
 using enum LoudspeakersSsConventionLayout::SoundSystem;
-using testing::DoubleEq;
-using testing::Pointwise;
 
 Layout GetScalableLayoutForSoundSystem(
     LoudspeakersSsConventionLayout::SoundSystem sound_system) {

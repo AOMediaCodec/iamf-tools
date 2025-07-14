@@ -28,8 +28,6 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using testing::DoubleEq;
-using testing::Pointwise;
 
 constexpr size_t kFourSamplesPerFrame = 4;
 constexpr size_t kOneChannel = 1;
