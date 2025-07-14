@@ -27,7 +27,6 @@ namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
-using absl_testing::IsOkAndHolds;
 using MixGainParameterData::kAnimateBezier;
 using MixGainParameterData::kAnimateLinear;
 using MixGainParameterData::kAnimateStep;
