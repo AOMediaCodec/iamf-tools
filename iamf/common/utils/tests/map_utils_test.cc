@@ -30,7 +30,6 @@ using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
 using ::testing::HasSubstr;
 using ::testing::MockFunction;
-using ::testing::Return;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
