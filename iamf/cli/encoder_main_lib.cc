@@ -54,8 +54,6 @@ namespace {
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
 using iamf_tools_cli_proto::UserMetadata;
 
-using ::absl::MakeConstSpan;
-
 absl::Status PartitionParameterMetadata(UserMetadata& user_metadata) {
   uint32_t partition_duration = 0;
   if (user_metadata.ia_sequence_header_metadata().empty() ||
