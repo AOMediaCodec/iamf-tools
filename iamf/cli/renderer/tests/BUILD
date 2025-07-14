@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
 package(default_visibility = ["//iamf/cli/renderer/tests:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_test newline_separated=yes

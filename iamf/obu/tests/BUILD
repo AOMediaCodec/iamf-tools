@@ -1,6 +1,7 @@
 # Tests for the IAMF software.
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(

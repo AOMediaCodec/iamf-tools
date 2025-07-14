@@ -1,5 +1,7 @@
 # Directory for shared utils.  Utils here should not depend on any IAMF code outside of this dir.
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = ["//iamf:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes

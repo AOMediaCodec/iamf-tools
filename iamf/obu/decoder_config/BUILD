@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 package(default_visibility = ["//iamf:__subpackages__"])
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
