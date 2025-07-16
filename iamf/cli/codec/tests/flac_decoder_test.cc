@@ -31,7 +31,6 @@ namespace {
 using absl::MakeConstSpan;
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using ::testing::ElementsAreArray;
 using ::testing::IsNull;
 using ::testing::Not;
 using ::testing::Test;
