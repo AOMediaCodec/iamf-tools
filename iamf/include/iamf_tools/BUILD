@@ -26,6 +26,14 @@ filegroup(
 )
 
 cc_library(
+    name = "iamf_decoder_interface",
+    hdrs = ["iamf_decoder_interface.h"],
+    deps = [
+        "//iamf/api:iamf_tools_api_types",
+    ],
+)
+
+cc_library(
     name = "iamf_encoder_interface",
     srcs = ["iamf_encoder_interface.cc"],
     hdrs = ["iamf_encoder_interface.h"],
