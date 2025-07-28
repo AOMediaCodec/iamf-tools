@@ -72,7 +72,6 @@ using ::absl_testing::StatusIs;
 using ::iamf_tools_cli_proto::UserMetadata;
 using ::testing::_;
 using ::testing::Contains;
-using ::testing::IsEmpty;
 using ::testing::Not;
 using ::testing::NotNull;
 using ::testing::Return;

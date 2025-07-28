@@ -23,6 +23,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:sample_processing_utils",
+        "//iamf/include/iamf_tools:iamf_decoder_interface",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
@@ -31,6 +32,19 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "iamf_decoder_factory",
+    srcs = ["iamf_decoder_factory.cc"],
+    hdrs = [
+        "//iamf/include/iamf_tools:iamf_decoder_factory_header",
+    ],
+    deps = [
+        ":iamf_decoder",
+        "//iamf/api:iamf_tools_api_types",
+        "//iamf/include/iamf_tools:iamf_decoder_interface",
     ],
 )
 

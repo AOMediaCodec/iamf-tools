@@ -105,7 +105,7 @@ namespace api {
  */
 class IamfEncoderInterface {
  public:
-  virtual ~IamfEncoderInterface() = 0;
+  virtual ~IamfEncoderInterface() = default;
 
   /*!\brief Gets the latest descriptor OBUs.
    *

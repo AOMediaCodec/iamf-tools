@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf_tools_api_types.h"
 
 namespace iamf_tools {
@@ -56,7 +57,7 @@ namespace api {
  *    }
  * decoder.Close();
  */
-class IamfDecoder {
+class IamfDecoder : public api::IamfDecoderInterface {
  public:
   /*!\brief Settings for the `IamfDecoder`. */
   struct Settings {
@@ -82,6 +83,10 @@ class IamfDecoder {
     std::unordered_set<ProfileVersion> requested_profile_versions = {
         ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile,
         ProfileVersion::kIamfBaseEnhancedProfile};
+
+    // Specifies the desired bit depth for the output samples.
+    OutputSampleType requested_output_sample_type =
+        OutputSampleType::kInt32LittleEndian;
   };
 
   // Dtor cannot be inline (so it must be declared and defined in the source
@@ -143,7 +148,8 @@ class IamfDecoder {
    * \param input_buffer_size Size in bytes of the input buffer.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus Decode(const uint8_t* input_buffer, size_t input_buffer_size);
+  IamfStatus Decode(const uint8_t* input_buffer,
+                    size_t input_buffer_size) override;
 
   /*!\brief Outputs the next temporal unit of decoded audio.
    *
@@ -166,7 +172,7 @@ class IamfDecoder {
    */
   IamfStatus GetOutputTemporalUnit(uint8_t* output_buffer,
                                    size_t output_buffer_size,
-                                   size_t& bytes_written);
+                                   size_t& bytes_written) override;
 
   /*!\brief Returns true iff a decoded temporal unit is available.
    *
@@ -175,7 +181,7 @@ class IamfDecoder {
    *
    * \return true iff a decoded temporal unit is available.
    */
-  bool IsTemporalUnitAvailable() const;
+  bool IsTemporalUnitAvailable() const override;
 
   /*!\brief Returns true iff the descriptor OBUs have been parsed.
    *
@@ -184,7 +190,7 @@ class IamfDecoder {
    *
    * \return true iff the Descriptor OBUs have been parsed.
    */
-  bool IsDescriptorProcessingComplete() const;
+  bool IsDescriptorProcessingComplete() const override;
 
   /*!\brief Gets the layout that will be used to render the audio.
    *
@@ -199,7 +205,7 @@ class IamfDecoder {
    * \param output_layout Output param for the layout upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus GetOutputLayout(OutputLayout& output_layout) const;
+  IamfStatus GetOutputLayout(OutputLayout& output_layout) const override;
 
   /*!\brief Gets the number of output channels.
    *
@@ -210,7 +216,7 @@ class IamfDecoder {
    * upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus GetNumberOfOutputChannels(int& output_num_channels) const;
+  IamfStatus GetNumberOfOutputChannels(int& output_num_channels) const override;
 
   /*!\brief Returns the current OutputSampleType.
    *
@@ -220,7 +226,7 @@ class IamfDecoder {
    * This function can only be used after all Descriptor OBUs have been parsed,
    * i.e. IsDescriptorProcessingComplete() returns true.
    */
-  OutputSampleType GetOutputSampleType() const;
+  OutputSampleType GetOutputSampleType() const override;
 
   /*!\brief Gets the sample rate.
    *
@@ -230,7 +236,7 @@ class IamfDecoder {
    * \param output_sample_rate Output param for the sample rate upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus GetSampleRate(uint32_t& output_sample_rate) const;
+  IamfStatus GetSampleRate(uint32_t& output_sample_rate) const override;
 
   /*!\brief Gets the number of samples per frame.
    *
@@ -244,7 +250,7 @@ class IamfDecoder {
    * \param output_frame_size Output param for the frame size upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus GetFrameSize(uint32_t& output_frame_size) const;
+  IamfStatus GetFrameSize(uint32_t& output_frame_size) const override;
 
   /*!\brief Resets the decoder to a clean state ready to decode new data.
    *
@@ -260,7 +266,7 @@ class IamfDecoder {
    *
    * return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus Reset();
+  IamfStatus Reset() override;
 
   /*!\brief Resets the decoder with a new layout and a clean state.
    *
@@ -278,14 +284,14 @@ class IamfDecoder {
    *
    * return Ok status upon success. Other specific statuses on failure.
    */
-  IamfStatus ResetWithNewLayout(OutputLayout output_layout);
+  IamfStatus ResetWithNewLayout(OutputLayout output_layout) override;
 
   /*!\brief Signals to the decoder that no more data will be provided.
    *
    * Decode cannot be called after this method has been called, unless Reset()
    * is called first.
    */
-  void SignalEndOfDecoding();
+  void SignalEndOfDecoding() override;
 
   /*!\brief Closes the decoder.
    *

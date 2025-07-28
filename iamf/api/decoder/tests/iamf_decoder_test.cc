@@ -892,6 +892,34 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithInt16) {
   EXPECT_EQ(bytes_written, expected_size);
 }
 
+TEST(GetOutputTemporalUnit, FillsOutputVectorWithInt16BasedOnInitialSettings) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  auto settings = GetStereoDecoderSettings();
+  settings.requested_output_sample_type =
+      api::OutputSampleType::kInt16LittleEndian;
+  ASSERT_TRUE(api::IamfDecoder::Create(settings, decoder).ok());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+
+  ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_TRUE(decoder->Decode({}, 0).ok());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  size_t expected_size = 2 * 8 * 2;  // Stereo * 8 samples * 2 bytes (int16).
+  std::vector<uint8_t> output_data(expected_size);
+  size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_size);
+}
+
 TEST(GetOutputTemporalUnit, FailsWhenBufferTooSmall) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(

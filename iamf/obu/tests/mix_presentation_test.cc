@@ -71,7 +71,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                 // Start Layout 1 (of Submix 1).
                 (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
                     LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-                LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
+                LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
                 // End Mix OBU.
             }),
         mix_presentation_id_(10),
@@ -345,7 +345,7 @@ TEST_F(MixPresentationObuTest, TwoAnchorElements) {
       LoudnessInfo::kAnchoredLoudness, 0, 18, 0, 19,
       // Start anchored loudness.
       2, AnchoredLoudnessElement::kAnchorElementAlbum, 0, 20,
-      AnchoredLoudnessElement::kAnchorElementDialogue, 0, 21,
+      AnchoredLoudnessElement::kAnchorElementDialogue, 0, 21
       // End anchored loudness.
       // End Layout 1 (of Submix 1).
       // End Submix 1.
@@ -381,7 +381,7 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
       0, 22,
       // End true peak.
       // Start anchored loudness.
-      1, AnchoredLoudnessElement::kAnchorElementAlbum, 0, 20,
+      1, AnchoredLoudnessElement::kAnchorElementAlbum, 0, 20
       // End anchored loudness.
       // End Layout 1 (of Submix 1).
       // End Submix 1.
@@ -423,7 +423,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
       // Start Layout 1 (of Submix 1).
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      0x04, 0, 18, 0, 19, 0,
+      0x04, 0, 18, 0, 19, 0
       // End Mix OBU.
   };
 
@@ -509,7 +509,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
       // Start Layout 1 (of Submix 1).
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      0x04, 0, 18, 0, 19, 5, 'e', 'x', 't', 'r', 'a',
+      0x04, 0, 18, 0, 19, 5, 'e', 'x', 't', 'r', 'a'
       // End Mix OBU.
   };
 
@@ -549,7 +549,7 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
       // Start Layout 1 (of Submix 1).
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
       // End Mix OBU.
   };
 
@@ -608,7 +608,7 @@ TEST_F(MixPresentationObuTest, BinauralRenderingConfig) {
       // Start Layout 1 (of Submix 1).
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
       // End Mix OBU.
   };
 
@@ -662,7 +662,7 @@ TEST_F(MixPresentationObuTest, RenderingConfigExtension) {
       // Start Layout 1 (of Submix 1).
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
       // End Mix OBU.
   };
 
@@ -798,7 +798,7 @@ TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
       // `tag_name[0]`.
       't', 'a', 'g', '\0',
       // `tag_value[0]`.
-      'v', 'a', 'l', 'u', 'e', '\0',
+      'v', 'a', 'l', 'u', 'e', '\0'
       // End Mix OBU.
   };
   InitExpectOk();
@@ -971,7 +971,7 @@ TEST(CreateFromBuffer, InvalidWithNoSubMixes) {
       // localized_presentation_annotations[0]
       'M', 'i', 'x', ' ', '1', '\0',
       // num_sub_mixes
-      0,
+      0
       // End Mix OBU.
   };
   const int64_t payload_size = source.size();
@@ -1017,7 +1017,7 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       // Start Layout2.
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
-      0, 0, 31, 0, 32,
+      0, 0, 31, 0, 32
       // End SubMix.
       // End Mix OBU.
   };
@@ -1044,7 +1044,7 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
       // Start MixPresentationTags.
       1,
       // Start Tag1.
-      'A', 'B', 'C', '\0', '1', '2', '3', '\0',
+      'A', 'B', 'C', '\0', '1', '2', '3', '\0'
       // End Tag1.
   };
   std::vector<uint8_t> source = {
@@ -1066,7 +1066,7 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
       // Start Layout0.
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
-      0, 0, 31, 0, 32,
+      0, 0, 31, 0, 32
       // End SubMix.
   };
   source.insert(source.end(), kMixPresentationTags.begin(),
@@ -1118,7 +1118,7 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
       // Start Layout0.
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
-      0, 0, 31, 0, 32,
+      0, 0, 31, 0, 32
       // End SubMix.
   };
   source.insert(source.end(), kDuplicateContentLanguageTags.begin(),
@@ -1193,7 +1193,7 @@ TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
       LoudnessInfo::kAnchoredLoudness, 0, 18, 0, 19,
       // Start anchored loudness.
       2, AnchoredLoudnessElement::kAnchorElementAlbum, 0, 20,
-      AnchoredLoudnessElement::kAnchorElementDialogue, 0, 21,
+      AnchoredLoudnessElement::kAnchorElementDialogue, 0, 21
       // End anchored loudness.
       // End Layout.
   };
@@ -1338,7 +1338,7 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
       // Start Layout2.
       (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
-      0, 0, 31, 0, 32,
+      0, 0, 31, 0, 32
       // End SubMix.
   };
   auto buffer =

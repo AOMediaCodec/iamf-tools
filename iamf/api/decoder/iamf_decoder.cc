@@ -294,6 +294,7 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
       desired_profile_versions);
   state->channel_rearrangement_scheme =
       ChannelOrderingApiToInternalType(settings.channel_ordering);
+  state->output_sample_type = settings.requested_output_sample_type;
   output_decoder = absl::WrapUnique(new IamfDecoder(std::move(state)));
   return IamfStatus::OkStatus();
 }
