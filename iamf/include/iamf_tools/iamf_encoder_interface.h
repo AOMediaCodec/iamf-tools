@@ -21,7 +21,7 @@
 namespace iamf_tools {
 namespace api {
 
-/*!\brief Gets the latest descriptor OBUs.
+/*!\brief Encodes an IAMF bitstream.
  *
  *  // Get an encoder.
  *  std::unique_ptr<IamfEncoderInterface> encoder = ...;
@@ -49,24 +49,24 @@ namespace api {
  *      .parameter_block_id_to_metadata = {},
  *      .audio_element_id_to_data =
  *          {
- *              {0, {{LFE, kZeroSamples}}},
- *              {1, {{L2, kZeroSamples}, {R2, kZeroSamples}}},
+ *              {0, {{LFE, kEmptyFrame}}},
+ *              {1, {{L2, kEmptyFrame}, {R2, kEmptyFrame}}},
  *          },
  *  };
  *  // Reusable buffer. It will grow towards the maximum size of an output
  *  //  temporal unit.
  *  std::vector<uint8_> temporal_unit_obus;
  *
- *  // Repeat descriptors every so often, to help clients sync. In practice,
+ *  // Repeat descriptors every so often to help clients sync. In practice,
  *  // an API user would determine something based on their use case. For
  *  // example to aim for ~5 seconds of output audio between descriptors.
  *  const int kDescriptorRepeatInterval = 100;
  *  while (encoder->GeneratingTemporalUnits()) {
  *    if (streaming && iteration_count % kDescriptorRepeatInterval == 0) {
  *      bool kRedundantCopy = true;
+ *      // Broadcast the redundant descriptor OBUs.
  *      RETURN_IF_NOT_OK(
  *          encoder->GetDescriptorObus(kRedundantCopy, descriptor_obus));
- *      // Broadcast the "redundant" descriptor OBUs.
  *    }
  *
  *    // Fill `temporal_unit_data` for this frame.
