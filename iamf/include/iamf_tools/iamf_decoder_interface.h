@@ -224,8 +224,13 @@ class IamfDecoderInterface {
    *
    * Decode cannot be called after this method has been called, unless Reset()
    * is called first.
+   *
+   * User should call GetOutputTemporalUnit() until it returns no bytes after
+   * calling this function to get any remaining output.
+   *
+   * \return Ok status upon success. Other specific statuses on failure.
    */
-  virtual void SignalEndOfDecoding() = 0;
+  virtual IamfStatus SignalEndOfDecoding() = 0;
 };
 }  // namespace api
 }  // namespace iamf_tools

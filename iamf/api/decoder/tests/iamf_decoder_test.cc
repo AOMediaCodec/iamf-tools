@@ -762,7 +762,7 @@ TEST(Decode, FailsWhenCalledAfterSignalEndOfDecoding) {
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   EXPECT_FALSE(decoder->Decode(source_data.data(), source_data.size()).ok());
 }
 
@@ -983,7 +983,7 @@ TEST(SignalEndOfDecoding, GetMultipleTemporalUnitsOutAfterCall) {
   EXPECT_TRUE(decoder->Decode({}, 0).ok());
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
 
   // Stereo * 8 samples * 4 bytes per sample
   const size_t expected_size_per_temp_unit = 2 * 8 * 4;
@@ -1012,7 +1012,7 @@ TEST(SignalEndOfDecoding, SucceedsWithNoTemporalUnits) {
 
   std::vector<std::vector<int32_t>> output_decoded_temporal_unit;
   std::vector<uint8_t> output_data;
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
 
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
   size_t bytes_written;
@@ -1066,7 +1066,7 @@ TEST(Reset, DecodingAfterResetSucceedsAfterCreateFromDescriptors) {
   EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
   // Signal end of decoding and reset.
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   EXPECT_TRUE(decoder->Reset().ok());
 
   // Confirm that there is no temporal unit available after reset.
@@ -1103,7 +1103,7 @@ TEST(Reset, DecodingAfterResetFailsInStandaloneCase) {
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
 
   // Signal end of decoding and reset.
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   // The decoder should fail to reset because we are in a standalone case.
   EXPECT_FALSE(decoder->Reset().ok());
 }
@@ -1135,7 +1135,7 @@ TEST(ResetWithNewLayout,
 
   // Signal end of decoding and reset with 5.1 layout, which is different from
   // the original stereo layout.
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   EXPECT_TRUE(
       decoder
           ->ResetWithNewLayout(api::OutputLayout::kItu2051_SoundSystemB_0_5_0)
@@ -1179,7 +1179,7 @@ TEST(ResetWithNewLayout, ResetWithNewLayoutFailsInStandaloneCase) {
                      temporal_units.end());
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
 
-  decoder->SignalEndOfDecoding();
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   // The decoder should fail to reset with a new layout because we are in a
   // standalone case.
   EXPECT_FALSE(

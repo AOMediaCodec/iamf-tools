@@ -290,8 +290,10 @@ class IamfDecoder : public api::IamfDecoderInterface {
    *
    * Decode cannot be called after this method has been called, unless Reset()
    * is called first.
+   *
+   * \return Ok status upon success. Other specific statuses on failure.
    */
-  void SignalEndOfDecoding() override;
+  IamfStatus SignalEndOfDecoding() override;
 
   /*!\brief Closes the decoder.
    *

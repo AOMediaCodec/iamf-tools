@@ -511,8 +511,9 @@ IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
   return Reset();
 }
 
-void IamfDecoder::SignalEndOfDecoding() {
+IamfStatus IamfDecoder::SignalEndOfDecoding() {
   state_->status = DecoderStatus::kEndOfStream;
+  return IamfStatus::OkStatus();
 }
 
 IamfStatus IamfDecoder::Close() { return IamfStatus::OkStatus(); }
