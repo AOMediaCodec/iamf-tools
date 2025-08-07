@@ -457,6 +457,18 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
                      temporal_unit.end());
 
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, stereo.
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
 TEST(Decode, ReordersSamplesIfRequested) {
@@ -522,6 +534,31 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
                      temporal_units.end());
 
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, stereo.
+  std::vector<uint8_t> output_data(expected_output_size);
+  size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  output_data.clear();
+  output_data.resize(expected_output_size);
+  bytes_written = 0;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
 TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
@@ -572,9 +609,21 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   // we can get the output temporal unit.
   EXPECT_TRUE(decoder->Decode(source_data.data(), 0).ok());
 
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+
   const size_t expected_output_size = 8 * 4;  // 8 samples, 32-bit ints, mono.
   std::vector<uint8_t> output_data(expected_output_size);
   size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_output_size);
+
+  // Should be able to get the second temporal unit as well.
+  bytes_written = 0;
+  output_data.clear();
+  output_data.resize(expected_output_size);
   EXPECT_TRUE(decoder
                   ->GetOutputTemporalUnit(output_data.data(),
                                           output_data.size(), bytes_written)
@@ -966,6 +1015,45 @@ TEST(GetOutputTemporalUnit,
 }
 
 TEST(SignalEndOfDecoding, GetMultipleTemporalUnitsOutAfterCall) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
+  auto temporal_units = SerializeObusExpectOk({&audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+  ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+  EXPECT_TRUE(decoder->Decode({}, 0).ok());
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+
+  // Stereo * 8 samples * 4 bytes per sample
+  const size_t expected_size_per_temp_unit = 2 * 8 * 4;
+  std::vector<uint8_t> output_data(expected_size_per_temp_unit);
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  size_t bytes_written;
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_size_per_temp_unit);
+
+  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
+  EXPECT_TRUE(decoder
+                  ->GetOutputTemporalUnit(output_data.data(),
+                                          output_data.size(), bytes_written)
+                  .ok());
+  EXPECT_EQ(bytes_written, expected_size_per_temp_unit);
+  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
+}
+
+TEST(SignalEndOfDecoding,
+     GetMultipleTemporalUnitsOutAfterCallWithTemporalDelimiters) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
       api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());

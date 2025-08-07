@@ -172,15 +172,20 @@ ChannelReorderer::RearrangementScheme ChannelOrderingApiToInternalType(
 
 IamfStatus DecodeOneTemporalUnit(
     StreamBasedReadBitBuffer* read_bit_buffer, ObuProcessor* obu_processor,
-    bool created_from_descriptors,
+    bool eos_is_end_of_sequence,
     std::vector<absl::Span<const InternalSampleType>>& rendered_samples,
     std::optional<ChannelReorderer> channel_reorderer) {
+  if (read_bit_buffer == nullptr) {
+    return IamfStatus::ErrorStatus("Internal Error: Read bit buffer is null.");
+  }
+  if (obu_processor == nullptr) {
+    return IamfStatus::ErrorStatus("Internal Error: Obu processor is null.");
+  }
   const auto start_position_bits = read_bit_buffer->Tell();
   std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
   bool unused_continue_processing = true;
   absl::Status absl_status = obu_processor->ProcessTemporalUnit(
-      created_from_descriptors, output_temporal_unit,
-      unused_continue_processing);
+      eos_is_end_of_sequence, output_temporal_unit, unused_continue_processing);
   if (!absl_status.ok()) {
     return AbslToIamfStatus(absl_status);
   }
@@ -395,8 +400,9 @@ IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
   // Refill the rendered samples with the next temporal unit.
   auto decode_status = DecodeOneTemporalUnit(
       state_->read_bit_buffer.get(), state_->obu_processor.get(),
-      state_->created_from_descriptors, state_->rendered_samples,
-      state_->channel_reorderer);
+      state_->created_from_descriptors ||
+          state_->status == DecoderStatus::kEndOfStream,
+      state_->rendered_samples, state_->channel_reorderer);
   if (!decode_status.ok()) {
     return decode_status;
   }
@@ -513,6 +519,19 @@ IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
 
 IamfStatus IamfDecoder::SignalEndOfDecoding() {
   state_->status = DecoderStatus::kEndOfStream;
+  if (!state_->created_from_descriptors && state_->rendered_samples.empty() &&
+      state_->obu_processor != nullptr) {
+    // If we're in standalone decoding mode, we need to decode any remaining
+    // temporal units with the signal that we've reached the end of the stream
+    // so that we know to end the last temporal unit.
+    auto decode_status = DecodeOneTemporalUnit(
+        state_->read_bit_buffer.get(), state_->obu_processor.get(),
+        /*eos_is_end_of_sequence=*/true, state_->rendered_samples,
+        state_->channel_reorderer);
+    if (!decode_status.ok()) {
+      return decode_status;
+    }
+  }
   return IamfStatus::OkStatus();
 }
 
