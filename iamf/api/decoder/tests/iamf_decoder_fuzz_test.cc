@@ -79,7 +79,6 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
   iamf_decoder->ConfigureOutputSampleType(output_sample_type);
 }
 
-// // TODO(b/378912426): Update this to support all output layouts.
 auto AnyOutputLayout() {
   return ElementOf<api::OutputLayout>({
       api::OutputLayout::kItu2051_SoundSystemA_0_2_0,

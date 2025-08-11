@@ -639,8 +639,6 @@ absl::Status ParameterBlockGenerator::GenerateMixGain(
   return absl::OkStatus();
 }
 
-// TODO(b/306319126): Generate Recon Gain iteratively now that the audio frame
-//                    decoder decodes iteratively.
 absl::Status ParameterBlockGenerator::GenerateReconGain(
     const IdLabeledFrameMap& id_to_labeled_frame,
     const IdLabeledFrameMap& id_to_labeled_decoded_frame,

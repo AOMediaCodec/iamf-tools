@@ -201,7 +201,7 @@ TEST(LibFlacWriteCallback, SucceedsFor32BitSamples) {
                                              .bits_per_sample = 32}};
   FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
   FLAC__int32 channel_1[] = {2, 3, 4};
-  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
 
   auto status = flac_callbacks::LibFlacWriteCallback(
       /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);
@@ -222,7 +222,7 @@ TEST(LibFlacWriteCallback, SucceedsFor16BitSamples) {
                                              .bits_per_sample = 16}};
   FLAC__int32 channel_0[] = {0x00001111, 0x0000ffff};
   FLAC__int32 channel_1[] = {0x00000101, 0x00002222};
-  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
 
   auto status = flac_callbacks::LibFlacWriteCallback(
       /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);
@@ -248,7 +248,7 @@ TEST(LibFlacWriteCallback, ReturnsStatusAbortForTooSmallBlockSize) {
                                              .bits_per_sample = 32}};
   FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
   FLAC__int32 channel_1[] = {2, 3, 4};
-  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
 
   auto status = flac_callbacks::LibFlacWriteCallback(
       /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);
@@ -268,7 +268,7 @@ TEST(LibFlacWriteCallback, FillsExtraSamplesWithZeros) {
                                              .bits_per_sample = 32}};
   FLAC__int32 channel_0[] = {1, 0x7fffffff, 3};
   FLAC__int32 channel_1[] = {2, 3, 4};
-  const FLAC__int32 *const buffer[] = {channel_0, channel_1};
+  const FLAC__int32* const buffer[] = {channel_0, channel_1};
 
   auto status = flac_callbacks::LibFlacWriteCallback(
       /*stream_decoder=*/nullptr, &kFlacFrame, buffer, &callback_data);

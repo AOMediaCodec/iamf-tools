@@ -552,8 +552,6 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
     RETURN_IF_NOT_OK(sub_mix.ReadAndValidate(count_label_, rb));
     sub_mixes_.push_back(sub_mix);
   }
-  // TODO(b/329705373): Examine how many bytes were read so far. Use this to
-  //                    determine if Mix Presentation Tags should be read.
 
   RETURN_IF_NOT_OK(ValidateNumSubMixes(num_sub_mixes));
   RETURN_IF_NOT_OK(ValidateUniqueAudioElementIds(sub_mixes_));
