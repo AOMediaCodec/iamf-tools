@@ -68,7 +68,6 @@ static LabelSamplesMap GetLabelToSamples(bool ambisonics_input, int num_ticks) {
 static IdLabeledFrameMap CreateInput(bool ambisonics_input, int num_ticks) {
   IdLabeledFrameMap id_to_labeled_frame;
   id_to_labeled_frame[kAudioElementId] = {
-      .end_timestamp = num_ticks,
       .samples_to_trim_at_end = 0,
       .samples_to_trim_at_start = 0,
       .label_to_samples = GetLabelToSamples(ambisonics_input, num_ticks)};

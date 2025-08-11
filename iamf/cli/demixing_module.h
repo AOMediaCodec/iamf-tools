@@ -61,7 +61,6 @@ typedef absl::node_hash_map<ChannelLabel::Label,
     LabelSamplesMap;
 
 struct LabeledFrame {
-  InternalTimestamp end_timestamp;
   uint32_t samples_to_trim_at_end;
   uint32_t samples_to_trim_at_start;
   LabelSamplesMap label_to_samples;

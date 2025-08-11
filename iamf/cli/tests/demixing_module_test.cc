@@ -357,8 +357,8 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
 TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   // These values are not very sensible, but as long as they are consistent
   // between related frames it is OK.
-  const DecodedUleb128 kExpectedStartTimestamp = 99;
-  const DecodedUleb128 kExpectedEndTimestamp = 123;
+  const DecodedUleb128 kStartTimestamp = 99;
+  const DecodedUleb128 kEndTimestamp = 123;
   const DecodedUleb128 kExpectedNumSamplesToTrimAtEnd = 999;
   const DecodedUleb128 kExpectedNumSamplesToTrimAtStart = 9999;
   const DecodedUleb128 kL2SubstreamId = 1;
@@ -378,8 +378,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
               .num_samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
           },
           kMonoSubstreamId, {}),
-      .start_timestamp = kExpectedStartTimestamp,
-      .end_timestamp = kExpectedEndTimestamp,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
   decoded_audio_frames.push_back(AudioFrameWithData{
@@ -389,8 +389,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
               .num_samples_to_trim_at_start = kExpectedNumSamplesToTrimAtStart,
           },
           kL2SubstreamId, {}),
-      .start_timestamp = kExpectedStartTimestamp,
-      .end_timestamp = kExpectedEndTimestamp,
+      .start_timestamp = kStartTimestamp,
+      .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
   const auto demixing_module =
@@ -403,7 +403,6 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   ASSERT_TRUE(id_to_labeled_decoded_frame->contains(kAudioElementId));
 
   const auto& labeled_frame = id_to_labeled_decoded_frame->at(kAudioElementId);
-  EXPECT_EQ(labeled_frame.end_timestamp, kExpectedEndTimestamp);
   EXPECT_EQ(labeled_frame.samples_to_trim_at_end,
             kExpectedNumSamplesToTrimAtEnd);
   EXPECT_EQ(labeled_frame.samples_to_trim_at_start,

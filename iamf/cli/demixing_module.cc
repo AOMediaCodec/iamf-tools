@@ -570,7 +570,6 @@ absl::Status FillRequiredDemixingMetadata(
 
 void ConfigureLabeledFrame(const AudioFrameWithData& audio_frame,
                            LabeledFrame& labeled_frame) {
-  labeled_frame.end_timestamp = audio_frame.end_timestamp;
   labeled_frame.samples_to_trim_at_end =
       audio_frame.obu.header_.num_samples_to_trim_at_end;
   labeled_frame.samples_to_trim_at_start =
