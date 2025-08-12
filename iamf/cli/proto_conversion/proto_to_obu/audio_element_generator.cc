@@ -450,7 +450,7 @@ absl::Status FillAmbisonicsMonoConfig(
 
   // Validate the mono config. This ensures no substream indices should be out
   // of bounds.
-  RETURN_IF_NOT_OK(mono_config.Validate(audio_element_obu.num_substreams_));
+  RETURN_IF_NOT_OK(mono_config.Validate(audio_element_obu.GetNumSubstreams()));
   // Populate substream_id_to_labels.
   RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
       audio_element_obu, substream_id_to_labels));

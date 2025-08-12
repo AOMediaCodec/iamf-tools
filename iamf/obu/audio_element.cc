@@ -592,7 +592,6 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
                                  const uint8_t reserved,
                                  DecodedUleb128 codec_config_id)
     : ObuBase(header, kObuIaAudioElement),
-      num_substreams_(0),
       num_parameters_(0),
       audio_element_id_(audio_element_id),
       audio_element_type_(audio_element_type),
@@ -607,7 +606,6 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
 }
 
 void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
-  num_substreams_ = num_substreams;
   audio_substream_ids_.resize(static_cast<size_t>(num_substreams));
 }
 
@@ -710,8 +708,8 @@ void AudioElementObu::PrintObu() const {
   VLOG(1) << "  audio_element_type= " << absl::StrCat(audio_element_type_);
   VLOG(1) << "  reserved= " << absl::StrCat(reserved_);
   VLOG(1) << "  codec_config_id= " << codec_config_id_;
-  VLOG(1) << "  num_substreams= " << num_substreams_;
-  for (int i = 0; i < num_substreams_; ++i) {
+  VLOG(1) << "  num_substreams= " << GetNumSubstreams();
+  for (int i = 0; i < GetNumSubstreams(); ++i) {
     const auto& substream_id = audio_substream_ids_[i];
     VLOG(1) << "  audio_substream_ids[" << i << "]= " << substream_id;
   }
@@ -736,11 +734,9 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(audio_element_type_, 3));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_, 5));
   RETURN_IF_NOT_OK(wb.WriteUleb128(codec_config_id_));
-  RETURN_IF_NOT_OK(wb.WriteUleb128(num_substreams_));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(GetNumSubstreams()));
 
   // Loop to write the audio substream IDs portion of the obu.
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "audio_substream_ids", audio_substream_ids_, num_substreams_));
   for (const auto& audio_substream_id : audio_substream_ids_) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id));
   }
@@ -759,10 +755,11 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
   switch (audio_element_type_) {
     case kAudioElementChannelBased:
       return ValidateAndWriteScalableChannelLayout(
-          std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, wb);
+          std::get<ScalableChannelLayoutConfig>(config_), GetNumSubstreams(),
+          wb);
     case kAudioElementSceneBased:
       return ValidateAndWriteAmbisonicsConfig(
-          std::get<AmbisonicsConfig>(config_), num_substreams_, wb);
+          std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), wb);
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
       RETURN_IF_NOT_OK(
@@ -789,16 +786,15 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
   audio_element_type_ = static_cast<AudioElementType>(audio_element_type);
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(codec_config_id_));
-  RETURN_IF_NOT_OK(rb.ReadULeb128(num_substreams_));
+  DecodedUleb128 num_substreams;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_substreams));
 
   // Loop to read the audio substream IDs portion of the obu.
-  for (int i = 0; i < num_substreams_; ++i) {
+  for (int i = 0; i < num_substreams; ++i) {
     DecodedUleb128 audio_substream_id;
     RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id));
     audio_substream_ids_.push_back(audio_substream_id);
   }
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "audio_substream_ids", audio_substream_ids_, num_substreams_));
 
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters_));
 
@@ -817,11 +813,12 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
     case kAudioElementChannelBased:
       config_ = ScalableChannelLayoutConfig();
       return ReadAndValidateScalableChannelLayout(
-          std::get<ScalableChannelLayoutConfig>(config_), num_substreams_, rb);
+          std::get<ScalableChannelLayoutConfig>(config_), GetNumSubstreams(),
+          rb);
     case kAudioElementSceneBased:
       config_ = AmbisonicsConfig();
       return ReadAndValidateAmbisonicsConfig(
-          std::get<AmbisonicsConfig>(config_), num_substreams_, rb);
+          std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), rb);
     default: {
       ExtensionConfig extension_config;
       RETURN_IF_NOT_OK(

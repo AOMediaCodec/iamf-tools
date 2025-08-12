@@ -82,7 +82,6 @@ void AddFirstOrderAmbisonicsMetadata(
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 4
         audio_substream_ids: [ 0, 1, 2, 3 ]
         num_parameters: 0
         ambisonics_config {
@@ -106,7 +105,6 @@ void AddTwoLayerStereoMetadata(
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 2
         num_parameters: 0
         scalable_channel_layout_config {
           num_layers: 2
@@ -145,7 +143,6 @@ TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
         audio_element_id: 300
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
           num_layers: 1
@@ -183,7 +180,6 @@ TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
         audio_element_id: 300
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
           num_layers: 1
@@ -212,7 +208,6 @@ TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {
         audio_element_id: 300
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
           num_layers: 1
@@ -246,7 +241,6 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
         audio_element_id: 300
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
           num_layers: 1
@@ -314,7 +308,6 @@ TEST_F(AudioElementGeneratorTest, FirstOrderMonoAmbisonicsLargeSubstreamIds) {
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 4
         audio_substream_ids: [ 1000, 2000, 3000, 4000 ]
         num_parameters: 0
         ambisonics_config {
@@ -348,7 +341,6 @@ TEST_F(AudioElementGeneratorTest, FirstOrderMonoAmbisonicsArbitraryOrder) {
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 4
         audio_substream_ids: [ 100, 101, 102, 103 ]
         num_parameters: 0
         ambisonics_config {
@@ -391,7 +383,6 @@ TEST_F(AudioElementGeneratorTest,
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 3
         audio_substream_ids: [ 100, 101, 102 ]
         num_parameters: 0
         ambisonics_config {
@@ -426,7 +417,6 @@ TEST_F(AudioElementGeneratorTest, MixedFirstOrderMonoAmbisonics) {
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 3
         audio_substream_ids: [ 1000, 2000, 3000 ]
         num_parameters: 0
         ambisonics_config {
@@ -454,7 +444,6 @@ TEST_F(AudioElementGeneratorTest, ThirdOrderMonoAmbisonics) {
         audio_element_type: AUDIO_ELEMENT_SCENE_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 16
         audio_substream_ids: [
           0,
           1,
@@ -538,7 +527,6 @@ TEST_F(AudioElementGeneratorTest, DeprecatedLoudspeakerLayoutIsNotSupported) {
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         num_parameters: 0
         scalable_channel_layout_config {
@@ -568,7 +556,6 @@ TEST_F(AudioElementGeneratorTest, DefaultLoudspeakerLayoutIsNotSupported) {
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 1
         audio_substream_ids: [ 99 ]
         num_parameters: 0
         scalable_channel_layout_config {
@@ -600,7 +587,6 @@ void AddTwoLayer7_1_0_And7_1_4(::google::protobuf::RepeatedPtrField<
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         reserved: 0
         codec_config_id: 200
-        num_substreams: 7
         audio_substream_ids: [ 700, 701, 702, 703, 704, 740, 741 ]
         num_parameters: 0
         scalable_channel_layout_config {
@@ -783,7 +769,7 @@ TEST_F(AudioElementGeneratorTest, IgnoresDeprecatedNumSubstreamsField) {
   ASSERT_TRUE(output_obus_.contains(kAudioElementId));
   EXPECT_EQ(output_obus_.at(kAudioElementId).obu.audio_substream_ids_.size(),
             kExpectedNumSubstreams);
-  EXPECT_EQ(output_obus_.at(kAudioElementId).obu.num_substreams_,
+  EXPECT_EQ(output_obus_.at(kAudioElementId).obu.GetNumSubstreams(),
             kExpectedNumSubstreams);
 }
 

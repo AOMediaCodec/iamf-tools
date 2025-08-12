@@ -394,14 +394,33 @@ class AudioElementObu : public ObuBase {
   /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
 
+  /*!\brief Gets the type of the audio element.
+   *
+   * \return Type of the audio element.
+   */
   AudioElementType GetAudioElementType() const { return audio_element_type_; }
 
+  /*!\brief Gets the audio element ID.
+   *
+   * \return Audio element ID.
+   */
   DecodedUleb128 GetAudioElementId() const { return audio_element_id_; }
 
+  /*!\brief Gets the codec config ID associated with the audio element.
+   *
+   * \return Codec config ID associated with the audio element.
+   */
   DecodedUleb128 GetCodecConfigId() const { return codec_config_id_; }
 
-  // Length and vector of substream IDs.
-  DecodedUleb128 num_substreams_;
+  /*!\brief Gets the number of substreams in the audio element.
+   *
+   * \return Number of substreams in the audio element.
+   */
+  DecodedUleb128 GetNumSubstreams() const {
+    return audio_substream_ids_.size();
+  }
+
+  // Vector of substream IDs.
   std::vector<DecodedUleb128> audio_substream_ids_;
 
   // Length and vector of audio element parameters.

@@ -310,7 +310,6 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
                       AudioElementObu::kAudioElementChannelBased, 0,
                       kCodecConfigId);
   obu.audio_substream_ids_ = {kFirstSubstreamId, kSecondSubstreamId};
-  obu.num_substreams_ = 2;
   obu.InitializeParams(1);
   AddReconGainParamDefinition(kParameterId, kParameterRate, /*duration=*/1,
                               obu);
