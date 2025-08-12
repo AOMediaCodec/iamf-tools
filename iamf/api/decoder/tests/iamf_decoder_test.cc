@@ -841,35 +841,6 @@ TEST(IsTemporalUnitAvailable,
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
-TEST(IsTemporalUnitAvailable,
-     ReturnsTrueAfterDecodingOneTemporalUnitWithTemporalDelimiterAtEnd) {
-  std::unique_ptr<api::IamfDecoder> decoder;
-  ASSERT_TRUE(
-      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
-  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
-  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
-                            kEightSampleAudioFrame);
-  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
-  auto temporal_unit =
-      SerializeObusExpectOk({&audio_frame, &temporal_delimiter_obu});
-  source_data.insert(source_data.end(), temporal_unit.begin(),
-                     temporal_unit.end());
-
-  ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
-  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  // Even though a temporal unit was provided, it has not been decoded yet. This
-  // is because Decode() returns after processing the descriptor OBUs, even if
-  // there is more data available. This is done to give the user a chance to do
-  // any configurations based on the descriptors before beginning to decode the
-  // temporal units.
-  EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
-  // The user can call Decode() again to process the temporal unit still
-  // available in the buffer.
-  EXPECT_TRUE(decoder->Decode({}, 0).ok());
-  // Now, the temporal unit has been decoded and is available for output.
-  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
-}
-
 TEST(IsTemporalUnitAvailable, ReturnsTrueAfterDecodingMultipleTemporalUnits) {
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
@@ -1027,8 +998,6 @@ TEST(SignalEndOfDecoding, GetMultipleTemporalUnitsOutAfterCall) {
                      temporal_units.end());
   ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
-  EXPECT_TRUE(decoder->Decode({}, 0).ok());
-  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
   EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
 
@@ -1062,14 +1031,12 @@ TEST(SignalEndOfDecoding,
                             kEightSampleAudioFrame);
   auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
   auto temporal_units =
-      SerializeObusExpectOk({&audio_frame, &temporal_delimiter_obu,
-                             &audio_frame, &temporal_delimiter_obu});
+      SerializeObusExpectOk({&temporal_delimiter_obu, &audio_frame,
+                             &temporal_delimiter_obu, &audio_frame});
   source_data.insert(source_data.end(), temporal_units.begin(),
                      temporal_units.end());
   ASSERT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
-  EXPECT_TRUE(decoder->Decode({}, 0).ok());
-  EXPECT_TRUE(decoder->IsTemporalUnitAvailable());
 
   EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
 

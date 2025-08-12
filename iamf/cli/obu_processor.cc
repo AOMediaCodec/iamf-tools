@@ -831,6 +831,7 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
         parameter_block_with_data, temporal_delimiter, continue_processing));
 
     // Collect OBUs into a temporal unit.
+    bool delimiter_end_condition = false;
     if (audio_frame_with_data.has_value()) {
       TemporalUnitData::AddDataToCorrectTemporalUnit(
           current_temporal_unit_, next_temporal_unit_,
@@ -840,6 +841,9 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
           current_temporal_unit_, next_temporal_unit_,
           *std::move(parameter_block_with_data));
     } else if (temporal_delimiter.has_value()) {
+      if (current_temporal_unit_.temporal_delimiter.has_value()) {
+        delimiter_end_condition = true;
+      }
       current_temporal_unit_.temporal_delimiter = *temporal_delimiter;
     }
 
@@ -848,10 +852,9 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     // - The end of sequence is reached.
     // - The timestamp has advanced (i.e. when the next temporal unit gets its
     //   timestamp).
-    // - A temporal delimiter is encountered.
+    // - A second temporal delimiter is encountered.
     if ((!continue_processing && eos_is_end_of_sequence) ||
-        next_temporal_unit_.timestamp.has_value() ||
-        current_temporal_unit_.temporal_delimiter.has_value()) {
+        next_temporal_unit_.timestamp.has_value() || delimiter_end_condition) {
       if (current_temporal_unit_.audio_frames.empty() &&
           current_temporal_unit_.parameter_blocks.empty()) {
         break;

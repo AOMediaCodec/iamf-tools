@@ -1071,8 +1071,8 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
                     /*audio_frame=*/{2, 3, 4, 5, 6, 7, 8}));
 
   const auto two_temporal_units_with_delimiter_obu =
-      SerializeObusExpectOk({&audio_frame_obus[0], &temporal_delimiter_obu,
-                             &audio_frame_obus[1], &temporal_delimiter_obu});
+      SerializeObusExpectOk({&temporal_delimiter_obu, &audio_frame_obus[0],
+                             &temporal_delimiter_obu, &audio_frame_obus[1]});
   // Set up inputs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
@@ -1101,10 +1101,10 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
 
-  // Call four times, outputing two audio frames and two temporal delimiters.
-  const std::vector<bool> expecting_audio_frame = {true, false, true, false};
-  const std::vector<bool> expecting_temporal_delimiter = {false, true, false,
-                                                          true};
+  // Call four times, outputting two audio frames and two temporal delimiters.
+  const std::vector<bool> expecting_audio_frame = {false, true, false, true};
+  const std::vector<bool> expecting_temporal_delimiter = {true, false, true,
+                                                          false};
   for (int i = 0; i < 4; i++) {
     EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
                     audio_elements_with_data, codec_config_obus,
@@ -1373,8 +1373,9 @@ TEST(ProcessTemporalUnit, DoesNotCreateTemporalUnitWithOnlyATemporalDelimiter) {
                   continue_processing),
               IsOk());
 
-  // We should signal that we ought to continue processing.
-  EXPECT_TRUE(continue_processing);
+  // We should NOT signal that we ought to continue processing, because we have
+  // no data to consume.
+  EXPECT_FALSE(continue_processing);
   // We expect that no output_temporal_unit is created since we only have a
   // temporal delimiter.
   EXPECT_FALSE(output_temporal_unit.has_value());
@@ -1449,8 +1450,8 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
   audio_frame_obus.push_back(
       AudioFrameObu(ObuHeader(), kFirstSubstreamId, kArbitraryAudioFrame));
   const auto two_temporal_units_with_delimiter_obu =
-      SerializeObusExpectOk({&audio_frame_obus[0], &temporal_delimiter_obu,
-                             &audio_frame_obus[1], &temporal_delimiter_obu});
+      SerializeObusExpectOk({&temporal_delimiter_obu, &audio_frame_obus[0],
+                             &temporal_delimiter_obu, &audio_frame_obus[1]});
   bitstream.insert(bitstream.end(),
                    two_temporal_units_with_delimiter_obu.begin(),
                    two_temporal_units_with_delimiter_obu.end());
@@ -1481,9 +1482,45 @@ TEST(ProcessTemporalUnit, ConsumesMultipleTemporalUnitsWithTemporalDelimiters) {
                   /*eos_is_end_of_sequence=*/true, output_temporal_unit,
                   continue_processing),
               IsOk());
-  // Seeing a temporal delimiter at the end of the stream implies that the
-  // stream is incomplete.
+  // No more data to consume.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, ConsumesOneTemporalUnitsWithNextTemporalDelimiter) {
+  // Set up inputs with two audio frames and temporal delimiters.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  auto temporal_delimiter_obu = TemporalDelimiterObu(ObuHeader());
+  std::vector<AudioFrameObu> audio_frame_obus;
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId, kArbitraryAudioFrame));
+  audio_frame_obus.push_back(
+      AudioFrameObu(ObuHeader(), kFirstSubstreamId, kArbitraryAudioFrame));
+  const auto two_temporal_units_with_delimiter_obu = SerializeObusExpectOk(
+      {&temporal_delimiter_obu, &audio_frame_obus[0], &temporal_delimiter_obu});
+  bitstream.insert(bitstream.end(),
+                   two_temporal_units_with_delimiter_obu.begin(),
+                   two_temporal_units_with_delimiter_obu.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/false, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // continue_processing is true because we exited after processing the second
+  // temporal delimiter.
   EXPECT_TRUE(continue_processing);
+  // Expect the first temporal unit to be consumed.
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 
