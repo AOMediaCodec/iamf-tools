@@ -47,7 +47,7 @@ absl::Status OverrideAudioRollDistance(CodecConfig::CodecId codec_id,
                                        int16_t& output_audio_roll_distance) {
   switch (codec_id) {
     using enum CodecConfig::CodecId;
-    case CodecConfig::kCodecIdOpus: {
+    case kCodecIdOpus: {
       auto audio_roll_distance =
           OpusDecoderConfig::GetRequiredAudioRollDistance(
               num_samples_per_frame);

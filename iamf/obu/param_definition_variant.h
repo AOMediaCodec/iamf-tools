@@ -19,11 +19,10 @@
 
 namespace iamf_tools {
 
-/* !\brief Variants of parameter definition currently supported.
- */
-typedef std::variant<MixGainParamDefinition, DemixingParamDefinition,
-                     ReconGainParamDefinition, ExtendedParamDefinition>
-    ParamDefinitionVariant;
+/*!\brief Variants of parameter definition currently supported. */
+using ParamDefinitionVariant =
+    std::variant<MixGainParamDefinition, DemixingParamDefinition,
+                 ReconGainParamDefinition, ExtendedParamDefinition>;
 
 }  // namespace iamf_tools
 

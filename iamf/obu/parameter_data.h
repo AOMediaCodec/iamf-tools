@@ -25,7 +25,7 @@ struct ParameterData {
   ParameterData() = default;
 
   /*!\brief Destructor.*/
-  virtual ~ParameterData() {};
+  virtual ~ParameterData() = default;
 
   /*!\brief Reads and validates the parameter data.
    *

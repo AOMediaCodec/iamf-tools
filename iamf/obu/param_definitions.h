@@ -22,15 +22,14 @@
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
-/* !\brief Forward declarartion of `ParameterData`. */
+/*!\brief Forward declaration of `ParameterData`. */
 struct ParameterData;
 
-/* !\brief Common part of the parameter definitions.
+/*!\brief Common part of the parameter definitions.
  *
  * Extended by `MixGainParamDefinition`, `DemixingParamDefinition`, and
  * `ReconGainParamDefinition`.
