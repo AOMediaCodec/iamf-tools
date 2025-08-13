@@ -384,48 +384,5 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
             kExpectedChannelNumbersStereoLayer);
 }
 
-TEST(GetIndicesForLayout, SuccessWithStereoLayout) {
-  // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
-  // Create a mix presentation OBU; by default, it's created with a stereo
-  // layout in the first submix.
-  std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(
-      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
-      mix_presentation_obus);
-  Layout playback_layout = {
-      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-      .specific_layout = LoudspeakersSsConventionLayout{
-          .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-          .reserved = 0}};
-  // Set to non-default values to ensure they are returned correctly.
-  int submix_index = 2;
-  int layout_index = 2;
-  auto layout_info =
-      GetIndicesForLayout(mix_presentation_obus.back().sub_mixes_,
-                          playback_layout, submix_index, layout_index);
-  EXPECT_THAT(layout_info, IsOk());
-  EXPECT_EQ(submix_index, 0);
-  EXPECT_EQ(layout_index, 0);
-}
-
-TEST(GetIndicesForLayout, FailsWithMismatchedLayout) {
-  // Initialize prerequisites.
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
-  // Create a mix presentation OBU; by default, it's created with a stereo
-  // layout in the first submix.
-  std::list<MixPresentationObu> mix_presentation_obus;
-  AddMixPresentationObuWithAudioElementIds(
-      kMixPresentationId, {kAudioElementId}, kParameterId, kParameterRate,
-      mix_presentation_obus);
-  Layout playback_layout = {.layout_type = Layout::kLayoutTypeBinaural};
-  int submix_index;
-  int layout_index;
-  auto layout_info =
-      GetIndicesForLayout(mix_presentation_obus.back().sub_mixes_,
-                          playback_layout, submix_index, layout_index);
-  EXPECT_THAT(layout_info, testing::Not(IsOk()));
-}
-
 }  // namespace
 }  // namespace iamf_tools
