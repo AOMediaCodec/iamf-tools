@@ -14,9 +14,9 @@
 #define API_DECODER_TYPES_H_
 
 #include <cstdint>
+#include <optional>
 #include <ostream>
 #include <string>
-#include <vector>
 
 namespace iamf_tools {
 namespace api {
@@ -123,6 +123,29 @@ enum class OutputLayout {
   // Ordered as [FL, FR, FC, LFE, BL, BR, FLc, FRc, SiL, SiR, TpFL, TpFR, TpBL,
   // TpBR, TpSiL, TpSiR].
   kIAMF_SoundSystemExtension_6_9_0 = 13,
+};
+
+/*!\brief Request a particular ID and/or layout for the output.
+ *
+ * The result may be different than requested.
+ * If the Mix Presentation ID is not found in the Descriptor OBUs, the decoder
+ * will behave as if it was unspecified.
+ * If either or both are specified, the decoder will try to use them, resorting
+ * to defaults or fallbacks when needed.
+ */
+struct RequestedMix {
+  std::optional<uint32_t> mix_presentation_id;
+  std::optional<OutputLayout> output_layout;
+};
+
+/*!\brief The resulting Mix and layout based on request or defaults.
+ *
+ * The result may be different than requested, see method signatures for
+ * details.
+ */
+struct SelectedMix {
+  uint32_t mix_presentation_id;
+  OutputLayout output_layout;
 };
 
 /*!\brief The requested format of the output samples. */
