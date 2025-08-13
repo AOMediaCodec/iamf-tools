@@ -2902,10 +2902,10 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
   bool insufficient_data;
 
   // We expect to default to the first mix presentation and first submix.
-  // However, we expect the layout in the first position to be virtualized to
-  // match the desired layout, which is 5.1 in this case.
+  // However, because the requested layout is not found, it is 'virtualized' and
+  // appended to the list of layouts.
   constexpr int kSubmixIndex = 0;
-  constexpr int kLayoutIndex = 0;
+  constexpr int kLayoutIndex = 2;
   const auto& forwarded_layout = k5_1_Layout;
 
   MockSampleProcessorFactory mock_sample_processor_factory;

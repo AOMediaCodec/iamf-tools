@@ -308,6 +308,7 @@ cc_library(
         ":cli_util",
         ":demixing_module",
         ":global_timing_module",
+        ":obu_processor_utils",
         ":obu_with_data_generator",
         ":parameter_block_with_data",
         ":parameters_manager",
