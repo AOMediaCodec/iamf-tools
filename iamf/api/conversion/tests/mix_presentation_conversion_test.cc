@@ -12,6 +12,7 @@
 
 #include "iamf/api/conversion/mix_presentation_conversion.h"
 
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -26,6 +27,11 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::TestWithParam;
+
+TEST(ApiToInternalType_OutputLayout, NulloptIsNullopt) {
+  std::optional<Layout> resulting_layout = ApiToInternalType(std::nullopt);
+  EXPECT_EQ(resulting_layout, std::nullopt);
+}
 
 using LayoutPair =
     std::pair<api::OutputLayout, LoudspeakersSsConventionLayout::SoundSystem>;
@@ -64,16 +70,17 @@ auto kApiOutputToInternalSoundSystemPairs = ::testing::Values(
 TEST_P(ApiToInternalType_OutputLayout, ConvertsOutputStereoToInternalLayout) {
   const auto& [api_output_layout, expected_specific_layout] = GetParam();
 
-  Layout resulting_layout = ApiToInternalType(api_output_layout);
+  std::optional<Layout> resulting_layout = ApiToInternalType(api_output_layout);
 
-  EXPECT_EQ(resulting_layout.layout_type,
+  ASSERT_TRUE(resulting_layout.has_value());
+  EXPECT_EQ(resulting_layout->layout_type,
             Layout::kLayoutTypeLoudspeakersSsConvention);
   EXPECT_TRUE(std::holds_alternative<LoudspeakersSsConventionLayout>(
-      resulting_layout.specific_layout));
-  EXPECT_EQ(
-      std::get<LoudspeakersSsConventionLayout>(resulting_layout.specific_layout)
-          .sound_system,
-      expected_specific_layout);
+      resulting_layout->specific_layout));
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                resulting_layout->specific_layout)
+                .sound_system,
+            expected_specific_layout);
 }
 
 INSTANTIATE_TEST_SUITE_P(ApiToInternalType_OutputLayout_Instantiation,

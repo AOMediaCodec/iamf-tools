@@ -299,9 +299,14 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
     desired_profile_versions.insert(ApiToInternalType(profile_version));
   }
 
+  std::optional<Layout> internal_layout =
+      ApiToInternalType(settings.requested_layout);
+  if (!internal_layout.has_value()) {
+    return IamfStatus::ErrorStatus(
+        "Internal Error: Could not parse output layout.");
+  }
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
-      std::move(read_bit_buffer), ApiToInternalType(settings.requested_layout),
-      desired_profile_versions);
+      std::move(read_bit_buffer), *internal_layout, desired_profile_versions);
   state->channel_rearrangement_scheme =
       ChannelOrderingApiToInternalType(settings.channel_ordering);
   state->output_sample_type = settings.requested_output_sample_type;
@@ -518,7 +523,12 @@ IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
         "Failed Precondition: ResetWithNewLayout() cannot be called in "
         "standalone decoding mode.");
   }
-  state_->layout = ApiToInternalType(output_layout);
+  std::optional<Layout> layout = ApiToInternalType(output_layout);
+  if (!layout.has_value()) {
+    return IamfStatus::ErrorStatus(
+        "Internal Error: Could not parse output layout.");
+  }
+  state_->layout = *layout;
   return Reset();
 }
 

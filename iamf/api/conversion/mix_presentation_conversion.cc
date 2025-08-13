@@ -12,6 +12,7 @@
 
 #include "iamf/api/conversion/mix_presentation_conversion.h"
 
+#include <optional>
 #include <variant>
 
 #include "absl/log/log.h"
@@ -73,8 +74,12 @@ Layout MakeLayout(LoudspeakersSsConventionLayout::SoundSystem sound_system) {
               LoudspeakersSsConventionLayout{.sound_system = sound_system}};
 };
 
-Layout ApiToInternalType(api::OutputLayout api_output_layout) {
-  switch (api_output_layout) {
+std::optional<Layout> ApiToInternalType(
+    std::optional<api::OutputLayout> api_output_layout) {
+  if (!api_output_layout.has_value()) {
+    return std::nullopt;
+  }
+  switch (*api_output_layout) {
     case api::OutputLayout::kItu2051_SoundSystemA_0_2_0:
       return MakeLayout(LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0);
     case api::OutputLayout::kItu2051_SoundSystemB_0_5_0:

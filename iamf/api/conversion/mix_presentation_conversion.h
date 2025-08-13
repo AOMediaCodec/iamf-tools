@@ -13,6 +13,8 @@
 #ifndef API_CONVERSION_MIX_PRESENTATION_METADATA_H_
 #define API_CONVERSION_MIX_PRESENTATION_METADATA_H_
 
+#include <optional>
+
 #include "absl/status/statusor.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/mix_presentation.h"
@@ -20,7 +22,8 @@
 namespace iamf_tools {
 
 /*!\brief Converts the API-requested OutputLayout to an internal IAMF Layout. */
-Layout ApiToInternalType(api::OutputLayout api_output_layout);
+std::optional<Layout> ApiToInternalType(
+    std::optional<api::OutputLayout> api_output_layout);
 
 /*!\brief Converts the internal IAMF Layout to the API OutputLayout. */
 absl::StatusOr<api::OutputLayout> InternalToApiType(Layout internal_layout);
