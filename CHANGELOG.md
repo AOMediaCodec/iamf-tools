@@ -2,7 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
@@ -11,9 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 -   Add a library to process ADM files into `UserMetadata`.
 -   Add support for ADM input in the encoder.
 -   Add support for binary proto input in the encoder.
--   Add support for encoding [Standalone IAMF Representation] for Base-Enhanced
+-   Add support for encoding [Standalone IAMF Representation] for Base-Enhanced.
     profile based on [IAMF v1.1.0]("Expanded" layouts, Mix Presentation Tags).
--   Add an iterative encoding API.
+-   Add an iterative [encoding API](iamf/api/encoder/README.md).
+-   Add an iterative [decoding API](iamf/api/decoder/README.md).
 
 ### Deprecated
 
@@ -58,6 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     `OpusDecoderConfig::pre_skip`, instead of throwing an error when user input
     was incorrect.
 -   Update Simple and Base profile to be based on [IAMF v1.0.0-errata].
+-   Update several library dependencies.
 
 ### Fixed
 
@@ -68,8 +72,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     annotations.
 -   Fix compliance with ISO 14496-1:2010 when writing AAC Codec Config OBUs
     (AOMediaCodec/libiamf#119).
+-   Fix issues decoding FLAC
+    [https://github.com/AOMediaCodec/iamf-tools/commit/8c1a71378].
 -   Fix issues when using AAC with a 24 kHz sample rate.
 -   Permit one fully trimmed audio frame at the end of a substream.
+-   Fix several CPU and memory inefficiencies to improve perforamnce.
+-   Avoid use of run-time type information (RTTI).
 
 ## [1.0.0] - 2024-01-26
 
