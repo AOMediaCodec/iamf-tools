@@ -138,8 +138,8 @@ class IamfDecoderInterface {
 
   /*!\brief Gets the number of output channels.
    *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
    *
    * \param output_num_channels Output param for the number of output channels
    * upon success.
@@ -153,15 +153,17 @@ class IamfDecoderInterface {
    * The value is either the values specified in the Settings or a default
    * which may vary based on content.
    *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
    */
   virtual OutputSampleType GetOutputSampleType() const = 0;
 
-  /*!\brief Gets the sample rate.
+  /*!\brief Gets the sample rate of the output audio.
    *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
+   * The value is from the content of the IAMF bitstream.
+   *
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
    *
    * \param output_sample_rate Output param for the sample rate upon success.
    * \return Ok status upon success. Other specific statuses on failure.
@@ -170,12 +172,13 @@ class IamfDecoderInterface {
 
   /*!\brief Gets the number of samples per frame.
    *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
    *
    * Returns the number of samples per frame per channel of the output audio.
    * The total number of samples in a frame is the number of channels times
    * this number, the frame size.
+   *
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
    *
    * \param output_frame_size Output param for the frame size upon success.
    * \return Ok status upon success. Other specific statuses on failure.

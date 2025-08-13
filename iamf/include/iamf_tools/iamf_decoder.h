@@ -25,37 +25,10 @@
 namespace iamf_tools {
 namespace api {
 
-/*!\brief The class and entrypoint for decoding IAMF bitstreams.
- * WARNING: API is currently in flux and will change.
+/*!\brief A wrapper for decoding IAMF.
  *
- * The functions below constitute our IAMF Iterative Decoder API. Below is a
- * sample usage of the API.
- *
- * Reconfigurable Standalone IAMF Usage
- *
- * IamfDecoderSettings settings = {
- *   .requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0,
- * };
- * StatusOr<IamfDecoder> decoder = IamfDecoder::Create(settings);
- * for chunk of data in iamf stream:
- *    decoder.Decode()
- *    if (IsDescriptorProcessingComplete()) {
- *      decoder.ConfigureOutputSampleType(output_sample_type)
- *    }
- * for chunk of data in iamf stream:
- *    decoder.Decode(chunk)
- *    while (decoder.IsTemporalUnitAvailable()) {
- *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
- *      Playback(output_buffer)
- *    }
- * if (end_of_stream):
- *    decoder.SignalEndOfStream()
- *    // Get remaining audio
- *    while (decoder.IsTemporalUnitAvailable()) {
- *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
- *      Playback(output_buffer)
- *    }
- * decoder.Close();
+ * !WARNING! Do not depend on this class directly.  It will be removed soon.
+ * Use the IamfDecoderFactory to produce a pointer to an IamfDecoderInterface.
  */
 class IamfDecoder : public api::IamfDecoderInterface {
  public:
