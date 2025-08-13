@@ -28,6 +28,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
@@ -2100,12 +2101,12 @@ void RenderUsingObuProcessorExpectOk(
   bool insufficient_data;
 
   const std::string output_filename_string(output_filename);
-  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kIamfV1_0_0ErrataProfiles, kStereoLayout,
+      kIamfV1_0_0ErrataProfiles, /*desired_mix_presentation_id=*/std::nullopt,
+      kStereoLayout,
       CreateAllWavWriters(output_filename_string, write_wav_header),
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      unused_output_layout, insufficient_data);
+      insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
   absl::Span<const absl::Span<const InternalSampleType>>
@@ -2346,13 +2347,13 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereoToPcm) {
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
 
-  Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kIamfV1_0_0ErrataProfiles, kStereoLayout,
+      kIamfV1_0_0ErrataProfiles, /*desired_mix_presentation_id=*/std::nullopt,
+      kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      unused_output_layout, insufficient_data);
+      insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   ASSERT_FALSE(insufficient_data);
   absl::Span<const absl::Span<const InternalSampleType>>
@@ -2461,14 +2462,14 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
     auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
         absl::MakeConstSpan(bitstream));
 
-    Layout unused_output_layout;
     bool insufficient_data;
     const std::string output_filename_string(output_filename);
     auto obu_processor = ObuProcessor::CreateForRendering(
-        kIamfV1_0_0ErrataProfiles, kStereoLayout,
+        kIamfV1_0_0ErrataProfiles, /*desired_mix_presentation_id=*/std::nullopt,
+        kStereoLayout,
         CreateAllWavWriters(output_filename_string, kWriteWavHeader),
         /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-        unused_output_layout, insufficient_data);
+        insufficient_data);
     ASSERT_THAT(obu_processor, NotNull());
     ASSERT_FALSE(insufficient_data);
 
@@ -2562,6 +2563,35 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
             kExpectedFirstSampleForFirstMixPresentation);
 }
 
+TEST(GetOutputMixPresentationId, FailsWhenNotCreatedForRendering) {
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk({});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+
+  ASSERT_THAT(obu_processor, NotNull());
+  absl::StatusOr<DecodedUleb128> mix_presentation_id =
+      obu_processor->GetOutputMixPresentationId();
+  EXPECT_THAT(mix_presentation_id, Not(IsOk()));
+}
+
+TEST(GetOutputLayout, FailsWhenNotCreastedForRendering) {
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk({});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/true,
+                           read_bit_buffer.get(), insufficient_data);
+
+  ASSERT_THAT(obu_processor, NotNull());
+  absl::StatusOr<Layout> layout = obu_processor->GetOutputLayout();
+  EXPECT_THAT(layout, Not(IsOk()));
+}
+
 TEST(CreateForRendering,
      ReturnsNullptrWhenDesiredProfileVersionIsNotSupported) {
   const auto output_filename = GetAndCleanupOutputFileName(".wav");
@@ -2626,13 +2656,13 @@ TEST(CreateForRendering,
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile};
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  Layout unused_output_layout;
   bool insufficient_data;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kProfilesTooLow, kStereoLayout,
+      kProfilesTooLow, /*desired_mix_presentation_id=*/std::nullopt,
+      kStereoLayout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-      unused_output_layout, insufficient_data);
+      insufficient_data);
 
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, IsNull());
@@ -2676,11 +2706,10 @@ TEST(CreateForRendering,
               Call(kFirstMixPresentationId, _, _, _, _, _, _, _));
 
   bool insufficient_data;
-  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kIamfV1_1_1Profiles, kStereoLayout,
-      mock_sample_processor_factory.AsStdFunction(), kIsExhaustiveAndExact,
-      read_bit_buffer.get(), unused_output_layout, insufficient_data);
+      kIamfV1_1_1Profiles, /*desired_mix_presentation_id=*/std::nullopt,
+      kStereoLayout, mock_sample_processor_factory.AsStdFunction(),
+      kIsExhaustiveAndExact, read_bit_buffer.get(), insufficient_data);
 
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
@@ -2739,11 +2768,10 @@ TEST(CreateForRendering,
       .Times(1);
 
   bool insufficient_data;
-  Layout unused_output_layout;
   auto obu_processor = ObuProcessor::CreateForRendering(
-      kIamfV1_0_0ErrataProfiles, kStereoLayout,
-      mock_sample_processor_factory.AsStdFunction(), kIsExhaustiveAndExact,
-      read_bit_buffer.get(), unused_output_layout, insufficient_data);
+      kIamfV1_0_0ErrataProfiles, /*desired_mix_presentation_id=*/std::nullopt,
+      kStereoLayout, mock_sample_processor_factory.AsStdFunction(),
+      kIsExhaustiveAndExact, read_bit_buffer.get(), insufficient_data);
   EXPECT_FALSE(insufficient_data);
   EXPECT_THAT(obu_processor, NotNull());
 }
@@ -2797,13 +2825,13 @@ TEST(CreateForRendering, ForwardsArgumentsToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
-  Layout unused_output_layout;
-  EXPECT_THAT(
-      ObuProcessor::CreateForRendering(
-          kIamfV1_0_0ErrataProfiles, kStereoLayout, sample_processor_factory,
-          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-          unused_output_layout, insufficient_data),
-      NotNull());
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kIamfV1_0_0ErrataProfiles,
+                  /*desired_mix_presentation_id=*/std::nullopt, kStereoLayout,
+                  sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
 }
 
 constexpr Layout k5_1_Layout = {
@@ -2857,14 +2885,19 @@ TEST(CreateForRendering, ForwardsChosenLayoutToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
-  Layout output_layout;
-  EXPECT_THAT(
-      ObuProcessor::CreateForRendering(
-          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
-          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-          output_layout, insufficient_data),
-      NotNull());
-  EXPECT_EQ(output_layout, k5_1_Layout);
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_0_0ErrataProfiles,
+      /*desired_mix_presentation_id=*/std::nullopt, k5_1_Layout,
+      sample_processor_factory,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      insufficient_data);
+  EXPECT_THAT(obu_processor, NotNull());
+  absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
+  EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));
+  absl::StatusOr<DecodedUleb128> output_mix_presentation_id =
+      obu_processor->GetOutputMixPresentationId();
+  EXPECT_THAT(output_mix_presentation_id,
+              IsOkAndHolds(kFirstMixPresentationId));
 }
 
 TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
@@ -2890,9 +2923,6 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
       kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
       mix_presentation_obus);
 
-  const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
-  const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
-
   const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
@@ -2915,15 +2945,87 @@ TEST(CreateForRendering, ForwardsVirtualChosenLayoutToSampleProcessorFactory) {
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
-  Layout output_layout;
-  EXPECT_THAT(
-      ObuProcessor::CreateForRendering(
-          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
-          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-          output_layout, insufficient_data),
-      NotNull());
-  // We also expect the output layout to be the same as the desired layout.
-  EXPECT_EQ(output_layout, k5_1_Layout);
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_0_0ErrataProfiles,
+      /*desired_mix_presentation_id=*/std::nullopt, k5_1_Layout,
+      sample_processor_factory,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      insufficient_data);
+  EXPECT_THAT(obu_processor, NotNull());
+  absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
+  EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));
+  absl::StatusOr<DecodedUleb128> output_mix_presentation_id =
+      obu_processor->GetOutputMixPresentationId();
+  EXPECT_THAT(output_mix_presentation_id,
+              IsOkAndHolds(kFirstMixPresentationId));
+}
+
+TEST(CreateForRendering, CanChooseLayoutByMixPresentationIdOnly) {
+  // Set up inputs; key aspect is that the mix presentation does not contain the
+  // desired layout.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId, kThirdSubstreamId,
+       kFourthSubstreamId},
+      codec_config_obus, audio_elements_with_data);
+  std::list<MixPresentationObu> mix_presentation_obus;
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemJ_4_7_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, sound_system_layouts,
+      mix_presentation_obus);
+  // We will use the second Mix Presentation and its ID, using different layouts
+  // so we can see it is different.
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      mix_2_sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0,
+          LoudspeakersSsConventionLayout::kSoundSystemC_2_5_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate,
+      mix_2_sound_system_layouts, mix_presentation_obus);
+
+  const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
+      {&codec_config_obus.at(kFirstCodecConfigId),
+       &audio_elements_with_data.at(kFirstAudioElementId).obu,
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  // Without a Layout, we expect it to pick the first sub-mix, first Layout.
+  constexpr int kSubmixIndex = 0;
+  constexpr int kLayoutIndex = 0;
+  const auto& forwarded_layout = kStereoLayout;
+
+  MockSampleProcessorFactory mock_sample_processor_factory;
+  EXPECT_CALL(mock_sample_processor_factory,
+              Call(kSecondMixPresentationId, kSubmixIndex, kLayoutIndex,
+                   forwarded_layout, /*num_channels=*/2, _, _, _));
+  RenderingMixPresentationFinalizer::SampleProcessorFactory
+      sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
+
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_0_0ErrataProfiles, kSecondMixPresentationId,
+      /*desired_layout=*/std::nullopt, sample_processor_factory,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      insufficient_data);
+  EXPECT_THAT(obu_processor, NotNull());
+  absl::StatusOr<Layout> output_layout = obu_processor->GetOutputLayout();
+  EXPECT_THAT(output_layout, IsOkAndHolds(forwarded_layout));
+  absl::StatusOr<DecodedUleb128> output_mix_presentation_id =
+      obu_processor->GetOutputMixPresentationId();
+  EXPECT_THAT(output_mix_presentation_id,
+              IsOkAndHolds(kSecondMixPresentationId));
 }
 
 TEST(CreateForRendering,
@@ -2984,14 +3086,13 @@ TEST(CreateForRendering,
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory = mock_sample_processor_factory.AsStdFunction();
 
-  Layout output_layout;
-  EXPECT_THAT(
-      ObuProcessor::CreateForRendering(
-          kIamfV1_0_0ErrataProfiles, k5_1_Layout, sample_processor_factory,
-          /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
-          output_layout, insufficient_data),
-      NotNull());
-  EXPECT_EQ(output_layout, k5_1_Layout);
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kIamfV1_0_0ErrataProfiles,
+                  /*desired_mix_presentation_id=*/std::nullopt, k5_1_Layout,
+                  sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+                  insufficient_data),
+              NotNull());
 }
 
 TEST(CreateForRendering, NullReadBitBufferRejected) {
@@ -3000,13 +3101,13 @@ TEST(CreateForRendering, NullReadBitBufferRejected) {
   ReadBitBuffer* read_bit_buffer_nullptr = nullptr;
   bool insufficient_data;
 
-  Layout unused_output_layout;
-  EXPECT_THAT(
-      ObuProcessor::CreateForRendering(
-          kIamfV1_0_0ErrataProfiles, kStereoLayout, sample_processor_factory,
-          /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
-          unused_output_layout, insufficient_data),
-      IsNull());
+  EXPECT_THAT(ObuProcessor::CreateForRendering(
+                  kIamfV1_0_0ErrataProfiles,
+                  /*desired_mix_presentation_id=*/std::nullopt, kStereoLayout,
+                  sample_processor_factory,
+                  /*is_exhaustive_and_exact=*/true, read_bit_buffer_nullptr,
+                  insufficient_data),
+              IsNull());
   EXPECT_FALSE(insufficient_data);
 }
 

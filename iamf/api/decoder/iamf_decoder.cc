@@ -118,10 +118,9 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
   const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   auto temp_obu_processor = ObuProcessor::CreateForRendering(
-      desired_profile_versions, layout,
+      desired_profile_versions, /*mix_presentation_id=*/std::nullopt, layout,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-      created_from_descriptors, read_bit_buffer.get(), layout,
-      insufficient_data);
+      created_from_descriptors, read_bit_buffer.get(), insufficient_data);
   if (temp_obu_processor == nullptr) {
     // `insufficient_data` is true iff everything so far is valid but more data
     // is needed.
@@ -141,6 +140,12 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
   RETURN_IF_NOT_OK(
       read_bit_buffer->ReadUint8Span(absl::MakeSpan(descriptor_obus)));
   RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
+
+  auto new_layout = temp_obu_processor->GetOutputLayout();
+  if (!new_layout.ok()) {
+    return new_layout.status();
+  }
+  layout = *new_layout;
 
   // Copy over fields at the end, now that everything is successful.
   obu_processor = std::move(temp_obu_processor);

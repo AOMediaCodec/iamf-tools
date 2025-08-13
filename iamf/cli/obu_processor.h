@@ -119,10 +119,13 @@ class ObuProcessor {
    *
    * \param desired_profile_versions Profiles that are permitted to be used
    *        selecting the mix presentation.
-   * \param desired_layout Specifies the desired layout that will be used to
-   *        render the audio, if available in the mix presentations. If not
-   *        available, the first layout in the first mix presentation will be
-   *        used.
+   * \param desired_mix_presentation_id Optionally specifies the ID of the Mix
+   *        Presentation to select.  If not specified, the layout can be used
+   *        or defaults will be used.  The ID of the selected Mix can be
+   *        verified with `GetOutputMixPresentationId`.
+   * \param desired_layout Optionally, specifies the desired layout that will be
+   *        used to render the audio, if available in the mix presentations.
+   *        The actually selected Layout can be verified with `GetOutputLayout`.
    * \param sample_processor_factory Factory to create post processors.
    * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
    *        include all descriptor OBUs and no other data. This should only be
@@ -130,9 +133,6 @@ class ObuProcessor {
    *        descriptor OBUs.
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
    *        bitstream.
-   * \param output_layout The layout that will be used to render the audio. This
-   *        is the same as `desired_layout` if it is available in the mix
-   *        presentations, otherwise a default layout is used.
    * \param output_insufficient_data True iff the bitstream provided is
    *        insufficient to process all descriptor OBUs and there is no other
    *        error.
@@ -140,11 +140,12 @@ class ObuProcessor {
    */
   static std::unique_ptr<ObuProcessor> CreateForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
-      const Layout& desired_layout,
+      const std::optional<uint32_t>& desired_mix_presentation_id,
+      const std::optional<Layout>& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
       bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-      Layout& output_layout, bool& output_insufficient_data);
+      bool& output_insufficient_data);
 
   /*!\brief Gets the sample rate of the output audio.
    *
@@ -163,6 +164,24 @@ class ObuProcessor {
    */
   absl::StatusOr<uint32_t> GetOutputFrameSize() const;
 
+  /*!\brief Gets the selected Mix Presentation ID.
+   *
+   * Can only be used when created for rendering.
+   *
+   * \return Mix presentation ID of the output audio, or a specific error code
+   *         on failure.
+   */
+  absl::StatusOr<DecodedUleb128> GetOutputMixPresentationId() const;
+
+  /*!\brief Gets the selected output Layout.
+   *
+   * Can only be used when created for rendering.
+   *
+   * \return Layout of the output audio, or a specific error code on failure.
+   */
+  absl::StatusOr<Layout> GetOutputLayout() const;
+
+  /*!\brief The output of processing a Temporal Unit. */
   struct OutputTemporalUnit {
     std::list<AudioFrameWithData> output_audio_frames;
     std::list<ParameterBlockWithData> output_parameter_blocks;
@@ -286,24 +305,27 @@ class ObuProcessor {
    *
    * \param desired_profile_versions Profiles that are permitted to be used
    *        selecting the mix presentation.
-   * \param desired_layout Specifies the layout that will be used to render the
-   *        audio, if available.
+   * \param desired_mix_presentation_id Optionally specifies the ID of the Mix
+   *        Presentation to select.  If not specified, the layout can be used
+   *        or defaults will be used.  The ID of the selected Mix can be
+   *        verified with `GetOutputMixPresentationId`.
+   * \param desired_layout Optionally, specifies the desired layout that will be
+   *        used to render the audio, if available in the mix presentations.
+   *        The actually selected Layout can be verified with `GetOutputLayout`.
    * \param sample_processor_factory Factory to create post processors.
-   * \param output_layout The layout that will be used to render the audio. This
-   *        is the same as `desired_layout` if it is available, otherwise a
-   *        default layout is used.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status InitializeForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
-      const Layout& desired_layout,
+      const std::optional<uint32_t>& desired_mix_presentation_id,
+      const std::optional<Layout>& desired_layout,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory,
-      Layout& output_layout);
+          sample_processor_factory);
 
   struct DecodingLayoutInfo {
     DecodedUleb128 mix_presentation_id;
+    Layout layout;
     int sub_mix_index;
     int layout_index;
   };
@@ -374,6 +396,7 @@ class ObuProcessor {
   TemporalUnitData next_temporal_unit_;
 
   // Modules used for rendering.
+  bool rendering_ = false;
   std::optional<AudioFrameDecoder> audio_frame_decoder_;
   std::optional<DemixingModule> demixing_module_;
   std::optional<RenderingMixPresentationFinalizer> mix_presentation_finalizer_;

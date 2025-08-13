@@ -639,11 +639,12 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
 
 std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
-    const Layout& desired_layout,
+    const std::optional<uint32_t>& desired_mix_presentation_id,
+    const std::optional<Layout>& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,
     bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-    Layout& output_layout, bool& output_insufficient_data) {
+    bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
@@ -660,8 +661,8 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          desired_profile_versions, desired_layout, sample_processor_factory,
-          output_layout);
+          desired_profile_versions, desired_mix_presentation_id, desired_layout,
+          sample_processor_factory);
       !status.ok()) {
     LOG(ERROR) << status;
     return nullptr;
@@ -683,12 +684,27 @@ absl::StatusOr<uint32_t> ObuProcessor::GetOutputFrameSize() const {
   return *output_frame_size_;
 }
 
+absl::StatusOr<DecodedUleb128> ObuProcessor::GetOutputMixPresentationId()
+    const {
+  if (rendering_) {
+    return decoding_layout_info_.mix_presentation_id;
+  }
+  return absl::FailedPreconditionError("Not initialized for rendering.");
+}
+
+absl::StatusOr<Layout> ObuProcessor::GetOutputLayout() const {
+  if (rendering_) {
+    return decoding_layout_info_.layout;
+  }
+  return absl::FailedPreconditionError("Not initialized for rendering.");
+}
+
 absl::Status ObuProcessor::InitializeForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
-    const Layout& desired_layout,
+    const std::optional<uint32_t>& desired_mix_presentation_id,
+    const std::optional<Layout>& desired_layout,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-        sample_processor_factory,
-    Layout& output_layout) {
+        sample_processor_factory) {
   if (mix_presentations_.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
@@ -720,18 +736,17 @@ absl::Status ObuProcessor::InitializeForRendering(
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }
   absl::StatusOr<SelectedMixPresentation> selected_mix_presentation =
-      FindMixPresentationAndLayout(
-          supported_mix_presentations, desired_layout,
-          /*desired_mix_presentation_id=*/std::nullopt);
+      FindMixPresentationAndLayout(supported_mix_presentations, desired_layout,
+                                   desired_mix_presentation_id);
   if (!selected_mix_presentation.ok()) {
     return selected_mix_presentation.status();
   }
-  // TODO(b/375198883): Support Mix ID and replace output Layout&.
-  output_layout = selected_mix_presentation->output_layout;
   decoding_layout_info_ = {
       .mix_presentation_id = selected_mix_presentation->mix_presentation_id,
+      .layout = selected_mix_presentation->output_layout,
       .sub_mix_index = selected_mix_presentation->sub_mix_index,
-      .layout_index = selected_mix_presentation->layout_index};
+      .layout_index = selected_mix_presentation->layout_index,
+  };
   auto builds_processor_only_for_selected_mix =
       [&sample_processor_factory, &selected_mix_presentation](
           DecodedUleb128 mix_presentation_id, int sub_mix_index,
@@ -762,6 +777,7 @@ absl::Status ObuProcessor::InitializeForRendering(
   }
   mix_presentation_finalizer_.emplace(*std::move(mix_presentation_finalizer));
 
+  rendering_ = true;
   return absl::OkStatus();
 }
 
