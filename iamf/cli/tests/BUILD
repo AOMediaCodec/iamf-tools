@@ -365,6 +365,21 @@ cc_test(
 )
 
 cc_test(
+    name = "obu_processor_utils_test",
+    srcs = ["obu_processor_utils_test.cc"],
+    deps = [
+        "//iamf/cli:obu_processor_utils",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "obu_sequencer_base_test",
     srcs = ["obu_sequencer_base_test.cc"],
     deps = [

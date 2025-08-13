@@ -343,6 +343,18 @@ cc_library(
 )
 
 cc_library(
+    name = "obu_processor_utils",
+    srcs = ["obu_processor_utils.cc"],
+    hdrs = ["obu_processor_utils.h"],
+    deps = [
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "obu_sequencer_base",
     srcs = ["obu_sequencer_base.cc"],
     hdrs = ["obu_sequencer_base.h"],
