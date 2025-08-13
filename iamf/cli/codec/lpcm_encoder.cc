@@ -73,7 +73,7 @@ absl::Status LpcmEncoder::EncodeAudioFrame(
   RETURN_IF_NOT_OK(WritePcmFrameToBuffer(samples, decoder_config_.sample_size_,
                                          big_endian, audio_frame));
 
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 

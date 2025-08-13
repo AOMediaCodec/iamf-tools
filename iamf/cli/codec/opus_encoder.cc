@@ -215,7 +215,7 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   // Shrink output vector to actual size.
   audio_frame.resize(*encoded_length_bytes);
 
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 
