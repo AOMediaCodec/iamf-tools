@@ -615,7 +615,6 @@ void AddTwoLayer7_1_0_And7_1_4(::google::protobuf::RepeatedPtrField<
 
 TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
   AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);
-  audio_element_metadata_.at(0).set_num_parameters(1);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         param_definition_type: PARAM_DEFINITION_TYPE_DEMIXING
@@ -674,7 +673,6 @@ TEST_F(AudioElementGeneratorTest, GeneratesDemixingParameterDefinition) {
 
 TEST_F(AudioElementGeneratorTest, MissingParamDefinitionTypeIsNotSupported) {
   AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);
-  audio_element_metadata_.at(0).set_num_parameters(1);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         # `param_definition_type` is omitted.
@@ -688,7 +686,6 @@ TEST_F(AudioElementGeneratorTest, MissingParamDefinitionTypeIsNotSupported) {
 
 TEST_F(AudioElementGeneratorTest, DeprecatedParamDefinitionTypeIsNotSupported) {
   AddTwoLayer7_1_0_And7_1_4(audio_element_metadata_);
-  audio_element_metadata_.at(0).set_num_parameters(1);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         deprecated_param_definition_type: 1  # PARAMETER_DEFINITION_DEMIXING
@@ -708,7 +705,6 @@ TEST_F(AudioElementGeneratorTest, GeneratesReconGainParameterDefinition) {
 
   // Reconfigure the audio element to add a recon gain parameter.
   auto& audio_element_metadata = audio_element_metadata_.at(0);
-  audio_element_metadata.set_num_parameters(1);
   audio_element_metadata.mutable_scalable_channel_layout_config()
       ->mutable_channel_audio_layer_configs(1)
       ->set_recon_gain_is_present_flag(true);
@@ -764,7 +760,7 @@ TEST_F(AudioElementGeneratorTest, IgnoresDeprecatedNumSubstreamsField) {
 
   EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
-  // The field is deprecatred and ignored, the actual number of substreams are
+  // The field is deprecated and ignored, the actual number of substreams are
   // set based on the `audio_substream_ids` field.
   ASSERT_TRUE(output_obus_.contains(kAudioElementId));
   EXPECT_EQ(output_obus_.at(kAudioElementId).obu.audio_substream_ids_.size(),
@@ -784,10 +780,10 @@ TEST_F(AudioElementGeneratorTest, IgnoresDeprecatedNumParametersField) {
 
   EXPECT_THAT(generator.Generate(codec_config_obus_, output_obus_), IsOk());
 
-  // The field is deprecatred and ignored, the actual number of parameters are
+  // The field is deprecated and ignored, the actual number of parameters are
   // set based on the `audio_element_params` field.
   ASSERT_TRUE(output_obus_.contains(kAudioElementId));
-  EXPECT_EQ(output_obus_.at(kAudioElementId).obu.num_parameters_,
+  EXPECT_EQ(output_obus_.at(kAudioElementId).obu.GetNumParameters(),
             kExpectedNumParameters);
   EXPECT_EQ(output_obus_.at(kAudioElementId).obu.audio_element_params_.size(),
             kExpectedNumParameters);

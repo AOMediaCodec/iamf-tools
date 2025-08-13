@@ -592,7 +592,6 @@ AudioElementObu::AudioElementObu(const ObuHeader& header,
                                  const uint8_t reserved,
                                  DecodedUleb128 codec_config_id)
     : ObuBase(header, kObuIaAudioElement),
-      num_parameters_(0),
       audio_element_id_(audio_element_id),
       audio_element_type_(audio_element_type),
       reserved_(reserved),
@@ -610,7 +609,6 @@ void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
 }
 
 void AudioElementObu::InitializeParams(const DecodedUleb128 num_parameters) {
-  num_parameters_ = num_parameters;
   audio_element_params_.reserve(static_cast<size_t>(num_parameters));
 }
 
@@ -713,8 +711,8 @@ void AudioElementObu::PrintObu() const {
     const auto& substream_id = audio_substream_ids_[i];
     VLOG(1) << "  audio_substream_ids[" << i << "]= " << substream_id;
   }
-  VLOG(1) << "  num_parameters= " << num_parameters_;
-  for (int i = 0; i < num_parameters_; ++i) {
+  VLOG(1) << "  num_parameters= " << GetNumParameters();
+  for (int i = 0; i < GetNumParameters(); ++i) {
     VLOG(1) << "  params[" << i << "]";
     std::visit([](const auto& param_definition) { param_definition.Print(); },
                audio_element_params_[i].param_definition);
@@ -741,11 +739,9 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
     RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id));
   }
 
-  RETURN_IF_NOT_OK(wb.WriteUleb128(num_parameters_));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(GetNumParameters()));
 
   // Loop to write the parameter portion of the obu.
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "audio_element_params_", audio_element_params_, num_parameters_));
   for (const auto& audio_element_param : audio_element_params_) {
     RETURN_IF_NOT_OK(
         ValidateAndWriteAudioElementParam(audio_element_param, wb));
@@ -796,17 +792,17 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
     audio_substream_ids_.push_back(audio_substream_id);
   }
 
-  RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters_));
+  DecodedUleb128 num_parameters;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters));
 
   // Loop to read the parameter portion of the obu.
-  for (int i = 0; i < num_parameters_; ++i) {
+  audio_element_params_.reserve(num_parameters);
+  for (int i = 0; i < num_parameters; ++i) {
     AudioElementParam audio_element_param;
     RETURN_IF_NOT_OK(
         audio_element_param.ReadAndValidate(audio_element_id_, rb));
     audio_element_params_.push_back(std::move(audio_element_param));
   }
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "num_parameters", audio_element_params_, num_parameters_));
 
   // Write the specific `audio_element_type`'s config.
   switch (audio_element_type_) {

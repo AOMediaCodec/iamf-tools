@@ -460,7 +460,6 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
                      AudioElementParam&& param) {
     auto& audio_element_obu =
         audio_elements_with_data_.at(kFirstAudioElementId).obu;
-    audio_element_obu.num_parameters_++;
     audio_element_obu.audio_element_params_.push_back(std::move(param));
     param_definition_variants_.emplace(parameter_id, param_definition_variant);
   }

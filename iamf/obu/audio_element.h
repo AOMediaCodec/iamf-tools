@@ -420,11 +420,18 @@ class AudioElementObu : public ObuBase {
     return audio_substream_ids_.size();
   }
 
+  /*!\brief Gets the number of parameters in the audio element.
+   *
+   * \return Number of parameters in the audio element.
+   */
+  DecodedUleb128 GetNumParameters() const {
+    return audio_element_params_.size();
+  }
+
   // Vector of substream IDs.
   std::vector<DecodedUleb128> audio_substream_ids_;
 
-  // Length and vector of audio element parameters.
-  DecodedUleb128 num_parameters_;
+  // Vector of audio element parameters.
   std::vector<AudioElementParam> audio_element_params_;
 
   // Active field depends on `audio_element_type_`.

@@ -77,8 +77,6 @@ class AudioElementObuTestBase : public ObuTestBase {
     // Length `num_substreams`.
     std::vector<DecodedUleb128> substream_ids;
 
-    DecodedUleb128 num_parameters;
-
     // Length `num_parameters`.
     std::vector<AudioElementParam> audio_element_params;
   };
@@ -94,7 +92,6 @@ class AudioElementObuTestBase : public ObuTestBase {
             .reserved = 0,
             .codec_config_id = 2,
             .substream_ids = {3},
-            .num_parameters = 1,
             .audio_element_params = {},
         }) {
     required_args_.audio_element_params.emplace_back(
@@ -131,7 +128,7 @@ class AudioElementObuTestBase : public ObuTestBase {
     obu_->audio_substream_ids_ = required_args_.substream_ids;
 
     // Create the Audio Parameters array. Loop to populate it.
-    obu_->InitializeParams(required_args_.num_parameters);
+    obu_->InitializeParams(required_args_.audio_element_params.size());
     for (auto& audio_element_param : required_args_.audio_element_params) {
       obu_->audio_element_params_.emplace_back(
           AudioElementParam{audio_element_param.param_definition});
@@ -1019,7 +1016,6 @@ TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {
 
 TEST_F(AudioElementScalableChannelTest,
        ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesExtension) {
-  required_args_.num_parameters = 2;
   required_args_.audio_element_params.clear();
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
@@ -1036,7 +1032,6 @@ TEST_F(AudioElementScalableChannelTest,
 
 TEST_F(AudioElementScalableChannelTest,
        ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesDemixing) {
-  required_args_.num_parameters = 2;
   required_args_.audio_element_params.clear();
 
   const auto demixing_param_definition =
@@ -1892,13 +1887,14 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
 
   // Validate
   EXPECT_THAT(obu, IsOk());
-  EXPECT_EQ(obu.value().GetAudioElementId(), 1);
-  EXPECT_EQ(obu.value().GetAudioElementType(),
+  EXPECT_EQ(obu->GetAudioElementId(), 1);
+  EXPECT_EQ(obu->GetAudioElementType(),
             AudioElementObu::kAudioElementChannelBased);
-  EXPECT_EQ(obu.value().GetNumSubstreams(), 2);
-  EXPECT_EQ(obu.value().audio_substream_ids_[0], 3);
-  EXPECT_EQ(obu.value().audio_substream_ids_[1], 4);
-  EXPECT_EQ(obu.value().num_parameters_, 0);
+  EXPECT_EQ(obu->GetNumSubstreams(), 2);
+  EXPECT_EQ(obu->audio_substream_ids_[0], 3);
+  EXPECT_EQ(obu->audio_substream_ids_[1], 4);
+  EXPECT_EQ(obu->GetNumParameters(), 0);
+  EXPECT_TRUE(obu->audio_element_params_.empty());
 
   ScalableChannelLayoutConfig expected_scalable_channel_layout_config = {
       .num_layers = 2,

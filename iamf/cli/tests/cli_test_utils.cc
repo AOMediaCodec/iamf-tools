@@ -101,7 +101,6 @@ void AddParamDefinition(DecodedUleb128 parameter_id,
                                  param_definition);
 
   // Add to the Audio Element OBU.
-  audio_element_obu.InitializeParams(audio_element_obu.num_parameters_ + 1);
   audio_element_obu.audio_element_params_.emplace_back(
       AudioElementParam{param_definition});
 }
