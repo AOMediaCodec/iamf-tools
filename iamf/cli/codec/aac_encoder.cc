@@ -284,7 +284,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
 
   // Resize the buffer to the actual size and finalize it.
   audio_frame.resize(out_args.numOutBytes);
-  absl::MutexLock lock(mutex_);
+  absl::MutexLock lock(&mutex_);
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 

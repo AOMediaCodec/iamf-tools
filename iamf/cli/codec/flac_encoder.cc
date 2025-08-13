@@ -91,7 +91,7 @@ FLAC__StreamEncoderWriteStatus LibFlacWriteCallback(
 
   auto flac_encoder = static_cast<FlacEncoder*>(client_data);
 
-  absl::MutexLock lock(flac_encoder->mutex_);
+  absl::MutexLock lock(&flac_encoder->mutex_);
 
   auto flac_frame_iter =
       flac_encoder->frame_index_to_frame_.find(current_frame);
@@ -133,7 +133,7 @@ void LibFlacMetadataCallback(const FLAC__StreamEncoder* /*encoder*/,
     // returned by `libflac`.
     auto flac_encoder = static_cast<FlacEncoder*>(client_data);
 
-    absl::MutexLock lock(flac_encoder->mutex_);
+    absl::MutexLock lock(&flac_encoder->mutex_);
     flac_encoder->finished_ = true;
   }
 }
@@ -141,7 +141,7 @@ void LibFlacMetadataCallback(const FLAC__StreamEncoder* /*encoder*/,
 FlacEncoder::~FlacEncoder() {
   FLAC__stream_encoder_delete(encoder_);
 
-  absl::MutexLock lock(mutex_);
+  absl::MutexLock lock(&mutex_);
   if (!frame_index_to_frame_.empty()) {
     LOG(ERROR) << "Some frames were not fully processed. Maybe `Finalize()` "
                   "was not called.";
@@ -201,7 +201,7 @@ absl::Status FlacEncoder::EncodeAudioFrame(
     return absl::UnknownError("Flac failed to encode.");
   }
 
-  absl::MutexLock lock(mutex_);
+  absl::MutexLock lock(&mutex_);
 
   // Transfer ownership of the partial audio frame so it can be finalized later.
   frame_index_to_frame_[next_frame_index_++].audio_frame_with_data =
