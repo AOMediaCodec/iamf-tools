@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -27,18 +28,21 @@ namespace api {
 
 /*!\brief A wrapper for decoding IAMF.
  *
- * !WARNING! Do not depend on this class directly.  It will be removed soon.
+ * !WARNING! Do not depend on this class directly.
  * Use the IamfDecoderFactory to produce a pointer to an IamfDecoderInterface.
  */
 class IamfDecoder : public api::IamfDecoderInterface {
  public:
   /*!\brief Settings for the `IamfDecoder`. */
   struct Settings {
-    // Specifies the desired output layout. This layout will be used so long as
-    // it is present in the Descriptor OBUs that are provided. If not, after
-    // `IsDescriptorProcessingComplete` returns true, a default layout will have
-    // been selected and retrievable via `GetOutputLayout`.
-    OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
+    // Specifies the desired output Mix Presentation ID and/or layout.
+    //
+    // See MixRequest struct for details on how the contents are
+    // used and prioritized.
+    //
+    // The resulting Mix Presentation ID and layout will be retrievable after
+    // Descriptor OBUs have been processed.
+    RequestedMix requested_mix;
 
     // Specify a different ordering for the output samples.  Only specific
     // orderings are available, custom or granular control is not possible.
@@ -178,7 +182,23 @@ class IamfDecoder : public api::IamfDecoderInterface {
    * \param output_layout Output param for the layout upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
+  [[deprecated("Use GetOutputMix instead.")]]
   IamfStatus GetOutputLayout(OutputLayout& output_layout) const override;
+
+  /*!\brief Gets the layout that will be used to render the audio.
+   *
+   * The actual Layout used for rendering may not the same as requested when
+   * creating the IamfDecoder, if the requested ID was invalid or the Layout
+   * could not be used. This function allows verifying the actual Layout used
+   * after Descriptor OBU parsing is complete.
+   *
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
+   *
+   * \param output_selected_mix Output param for the mix upon success.
+   * \return Ok status upon success. Other specific statuses on failure.
+   */
+  IamfStatus GetOutputMix(SelectedMix& output_selected_mix) const override;
 
   /*!\brief Gets the number of output channels.
    *
@@ -257,7 +277,27 @@ class IamfDecoder : public api::IamfDecoderInterface {
    *
    * return Ok status upon success. Other specific statuses on failure.
    */
+  [[deprecated("Use ResetWithNewMix instead.")]]
   IamfStatus ResetWithNewLayout(OutputLayout output_layout) override;
+
+  /*!\brief Resets the decoder with a new RequestedMix and a clean state.
+   *
+   * A clean state refers to a state in which descriptors OBUs have been parsed,
+   * but no other data has been parsed.
+   *
+   * Useful for dynamic playback layout changes or changing Mix Presentation ID.
+   *
+   * This function can only be used if the decoder was created with
+   * IamfDecoderFactory::CreateFromDescriptors().
+   *
+   * This function will result in all decoded temporal units that have not been
+   * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
+   * pending data in the internal buffer being lost.
+   *
+   * return Ok status upon success. Other specific statuses on failure.
+   */
+  virtual IamfStatus ResetWithNewMix(const RequestedMix& requested_mix,
+                                     SelectedMix& selected_mix) override;
 
   /*!\brief Signals to the decoder that no more data will be provided.
    *

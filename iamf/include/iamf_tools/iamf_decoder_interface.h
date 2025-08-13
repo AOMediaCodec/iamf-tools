@@ -134,6 +134,7 @@ class IamfDecoderInterface {
    * \param output_layout Output param for the layout upon success.
    * \return Ok status upon success. Other specific statuses on failure.
    */
+  [[deprecated("Use GetOutputMix instead.")]]
   virtual IamfStatus GetOutputLayout(OutputLayout& output_layout) const = 0;
 
   /*!\brief Gets the number of output channels.
@@ -147,6 +148,21 @@ class IamfDecoderInterface {
    */
   virtual IamfStatus GetNumberOfOutputChannels(
       int& output_num_channels) const = 0;
+
+  /*!\brief Gets the output mix that will be used to render the audio.
+   *
+   * The actual Layout used for rendering may not be the same as requested when
+   * creating the IamfDecoder, if the requested ID was invalid or the Layout
+   * could not be used. This function allows verifying the actual Layout used
+   * after Descriptor OBU parsing is complete.
+   *
+   * N.B.: This function can only be used after all Descriptor OBUs have been
+   * parsed, i.e. IsDescriptorProcessingComplete() returns true.
+   *
+   * \param output_selected_mix Output param for the mix upon success.
+   * \return Ok status upon success. Other specific statuses on failure.
+   */
+  virtual IamfStatus GetOutputMix(SelectedMix& output_selected_mix) const = 0;
 
   /*!\brief Returns the current OutputSampleType.
    *
@@ -221,7 +237,27 @@ class IamfDecoderInterface {
    *
    * return Ok status upon success. Other specific statuses on failure.
    */
+  [[deprecated("Use ResetWithNewMix instead.")]]
   virtual IamfStatus ResetWithNewLayout(OutputLayout output_layout) = 0;
+
+  /*!\brief Resets the decoder with a new layout and a clean state.
+   *
+   * A clean state refers to a state in which descriptors OBUs have been parsed,
+   * but no other data has been parsed.
+   *
+   * Useful for dynamic playback layout changes.
+   *
+   * This function can only be used if the decoder was created with
+   * IamfDecoderFactory::CreateFromDescriptors().
+   *
+   * This function will result in all decoded temporal units that have not been
+   * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
+   * pending data in the internal buffer being lost.
+   *
+   * return Ok status upon success. Other specific statuses on failure.
+   */
+  virtual IamfStatus ResetWithNewMix(const RequestedMix& requested_mix,
+                                     SelectedMix& selected_mix) = 0;
 
   /*!\brief Signals to the decoder that no more data will be provided.
    *

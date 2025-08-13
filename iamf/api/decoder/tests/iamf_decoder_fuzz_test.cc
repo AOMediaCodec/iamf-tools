@@ -32,8 +32,8 @@ constexpr OutputLayout kStereoLayout =
 
 void DoesNotDieWithBasicDecode(const std::string& data) {
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
-  const api::IamfDecoder::Settings kStereoLayoutSettings = {.requested_layout =
-                                                                kStereoLayout};
+  const api::IamfDecoder::Settings kStereoLayoutSettings = {
+      .requested_mix = {.output_layout = kStereoLayout}};
   ASSERT_TRUE(
       api::IamfDecoder::Create(kStereoLayoutSettings, iamf_decoder).ok());
 
@@ -70,8 +70,8 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
                          uint32_t mix_presentation_id, std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
-  const api::IamfDecoder::Settings kSettings = {.requested_layout =
-                                                    output_layout};
+  const api::IamfDecoder::Settings kSettings = {
+      .requested_mix = {.output_layout = output_layout}};
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
 
   auto unused_decode_status =

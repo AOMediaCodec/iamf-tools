@@ -25,12 +25,18 @@ namespace api {
 namespace {
 IamfDecoder::Settings ApiToInternalSettings(
     const IamfDecoderFactory::Settings& settings) {
-  return {
-      .requested_layout = settings.requested_layout,
+  IamfDecoder::Settings internal_settings = {
+      .requested_mix = settings.requested_mix,
       .channel_ordering = settings.channel_ordering,
       .requested_profile_versions = settings.requested_profile_versions,
       .requested_output_sample_type = settings.requested_output_sample_type,
   };
+  // If no `requested_mix.output_layout`, then use `requested_layout`,
+  // temporarily until `requested_layout` is removed.
+  if (!internal_settings.requested_mix.output_layout.has_value()) {
+    internal_settings.requested_mix.output_layout = settings.requested_layout;
+  }
+  return internal_settings;
 }
 }  // namespace
 

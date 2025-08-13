@@ -69,8 +69,9 @@ using ::iamf_tools::api::IamfDecoderFactory;
 
 TEST(Create, SucceedsWithSimpleSettings) {
   IamfDecoderFactory::Settings settings = {
-      .requested_layout =
-          iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
+      .requested_mix =
+          {.output_layout =
+               iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0},
       .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
       .requested_profile_versions =
           {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,
@@ -90,8 +91,9 @@ TEST(Create, SucceedsWithEmptySettings) {
 
 TEST(CreateFromDescriptors, SucceedsWithSimpleSettings) {
   IamfDecoderFactory::Settings settings = {
-      .requested_layout =
-          iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
+      .requested_mix =
+          {.output_layout =
+               iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0},
       .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
       .requested_profile_versions =
           {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,
@@ -108,8 +110,9 @@ TEST(CreateFromDescriptors, SucceedsWithSimpleSettings) {
 
 TEST(CreateFromDescriptors, FailsWithIncompleteDescriptorObus) {
   IamfDecoderFactory::Settings settings = {
-      .requested_layout =
-          iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
+      .requested_mix =
+          {.output_layout =
+               iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0},
       .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
       .requested_profile_versions =
           {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,

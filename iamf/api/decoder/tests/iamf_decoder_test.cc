@@ -48,6 +48,7 @@ constexpr DecodedUleb128 kSampleRate = 48000;
 constexpr DecodedUleb128 kFirstAudioElementId = 2;
 constexpr DecodedUleb128 kFirstSubstreamId = 18;
 constexpr DecodedUleb128 kFirstMixPresentationId = 3;
+constexpr DecodedUleb128 kSecondMixPresentationId = 4;
 constexpr DecodedUleb128 kCommonMixGainParameterId = 999;
 constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 constexpr std::array<uint8_t, 16> kEightSampleAudioFrame = {
@@ -104,14 +105,14 @@ std::vector<uint8_t> GenerateBaseEnhancedDescriptorObus() {
 }
 
 api::IamfDecoder::Settings GetStereoDecoderSettings() {
-  return {
-      .requested_layout = api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
-  };
+  return {.requested_mix = {
+              .output_layout = api::OutputLayout::kItu2051_SoundSystemA_0_2_0}};
 }
 
 api::IamfDecoder::Settings Get5_1DecoderSettings() {
   return {
-      .requested_layout = api::OutputLayout::kItu2051_SoundSystemB_0_5_0,
+      .requested_mix = {.output_layout =
+                            api::OutputLayout::kItu2051_SoundSystemB_0_5_0},
   };
 }
 
@@ -131,6 +132,8 @@ TEST(IamfDecoder,
       api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
   api::OutputLayout output_layout;
   EXPECT_FALSE(decoder->GetOutputLayout(output_layout).ok());
+  api::SelectedMix selected_mix;
+  EXPECT_FALSE(decoder->GetOutputMix(selected_mix).ok());
   int num_channels;
   EXPECT_FALSE(decoder->GetNumberOfOutputChannels(num_channels).ok());
   uint32_t sample_rate;
@@ -156,33 +159,33 @@ TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {
   EXPECT_EQ(num_output_channels, 2);
 }
 
-TEST(GetOutputLayout, ReturnVirtualDesiredLayoutIfNoMatchingLayoutExists) {
+TEST(GetOutputMix, ReturnVirtualDesiredLayoutIfNoMatchingLayoutExists) {
   std::unique_ptr<api::IamfDecoder> decoder;
   auto descriptors = GenerateBasicDescriptorObus();
   constexpr api::OutputLayout kDesiredLayout =
       api::OutputLayout::kItu2051_SoundSystemE_4_5_1;
-  const api::IamfDecoder::Settings kSettings = {.requested_layout =
-                                                    kDesiredLayout};
+  const api::IamfDecoder::Settings kSettings = {
+      .requested_mix = {.output_layout = kDesiredLayout}};
   ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
                   kSettings, descriptors.data(), descriptors.size(), decoder)
                   .ok());
 
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  api::OutputLayout output_layout;
-  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
-  EXPECT_EQ(output_layout, kDesiredLayout);
+  api::SelectedMix selected_mix;
+  EXPECT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.output_layout, kDesiredLayout);
   int num_output_channels;
   EXPECT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
   EXPECT_EQ(num_output_channels, 11);
 }
 
-TEST(GetOutputLayout,
+TEST(GetOutputMix,
      ReturnsVirtualDesiredLayoutIfNoMatchingLayoutExistsUsingDecode) {
   std::unique_ptr<api::IamfDecoder> decoder;
   constexpr api::OutputLayout kDesiredLayout =
       api::OutputLayout::kItu2051_SoundSystemE_4_5_1;
-  const api::IamfDecoder::Settings kSettings = {.requested_layout =
-                                                    kDesiredLayout};
+  const api::IamfDecoder::Settings kSettings = {
+      .requested_mix = {.output_layout = kDesiredLayout}};
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, decoder).ok());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   TemporalDelimiterObu temporal_delimiter_obu =
@@ -195,15 +198,16 @@ TEST(GetOutputLayout,
   EXPECT_TRUE(decoder->Decode(source_data.data(), source_data.size()).ok());
 
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  api::OutputLayout output_layout;
-  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
-  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemE_4_5_1);
+  api::SelectedMix selected_mix;
+  EXPECT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.output_layout,
+            api::OutputLayout::kItu2051_SoundSystemE_4_5_1);
   int num_output_channels;
   EXPECT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
   EXPECT_EQ(num_output_channels, 11);
 }
 
-TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {
+TEST(GetOutputLayout, CanAcceptMixPresentationIdToSpecifyMix) {
   // Add a mix presentation with a non-stereo layout.
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), IASequenceHeaderObu::kIaCode,
@@ -224,21 +228,36 @@ TEST(GetOutputLayout, ReturnsNonStereoLayoutWhenPresentInDescriptorObus) {
       kFirstMixPresentationId, {kFirstAudioElementId},
       kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_layouts,
       mix_presentation_obus);
+
+  std::vector<LoudspeakersSsConventionLayout::SoundSystem>
+      mix_2_sound_system_layouts = {
+          LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0,
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+          LoudspeakersSsConventionLayout::kSoundSystemC_2_5_0};
+  AddMixPresentationObuWithConfigurableLayouts(
+      kSecondMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate,
+      mix_2_sound_system_layouts, mix_presentation_obus);
+
   std::vector<uint8_t> descriptor_obus = SerializeObusExpectOk(
       {&ia_sequence_header, &codec_configs.at(kFirstCodecConfigId),
        &audio_elements.at(kFirstAudioElementId).obu,
-       &mix_presentation_obus.front()});
+       &mix_presentation_obus.front(), &mix_presentation_obus.back()});
 
   std::unique_ptr<api::IamfDecoder> decoder;
-  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
-                  Get5_1DecoderSettings(), descriptor_obus.data(),
-                  descriptor_obus.size(), decoder)
-                  .ok());
+  const api::IamfDecoder::Settings kSettings = {
+      .requested_mix = {.mix_presentation_id = kSecondMixPresentationId}};
+  ASSERT_TRUE(
+      api::IamfDecoder::CreateFromDescriptors(kSettings, descriptor_obus.data(),
+                                              descriptor_obus.size(), decoder)
+          .ok());
 
   EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  api::OutputLayout output_layout;
-  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
-  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
+  api::SelectedMix selected_mix;
+  EXPECT_TRUE(decoder->GetOutputMix(selected_mix).ok());
+  EXPECT_EQ(selected_mix.mix_presentation_id, kSecondMixPresentationId);
+  EXPECT_EQ(selected_mix.output_layout,
+            api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
   int num_output_channels;
   EXPECT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
   EXPECT_EQ(num_output_channels, 6);
@@ -473,7 +492,8 @@ TEST(Decode, SucceedsWithOneTemporalUnit) {
 
 TEST(Decode, ReordersSamplesIfRequested) {
   api::IamfDecoder::Settings settings = {
-      .requested_layout = api::OutputLayout::kItu2051_SoundSystemI_0_7_0,
+      .requested_mix = {.output_layout =
+                            api::OutputLayout::kItu2051_SoundSystemI_0_7_0},
       .channel_ordering = api::ChannelOrdering::kIamfOrdering,
   };
   auto descriptors = GenerateBasicDescriptorObus();
@@ -564,7 +584,9 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
 TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   std::unique_ptr<api::IamfDecoder> decoder;
   const api::IamfDecoder::Settings kMonoSettings = {
-      .requested_layout = api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0};
+      .requested_mix = {
+          .output_layout =
+              api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0}};
   ASSERT_TRUE(api::IamfDecoder::Create(kMonoSettings, decoder).ok());
 
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
@@ -742,7 +764,9 @@ TEST(
 
   std::unique_ptr<api::IamfDecoder> decoder;
   const api::IamfDecoder::Settings kMonoSettings = {
-      .requested_layout = api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0};
+      .requested_mix = {
+          .output_layout =
+              api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0}};
   ASSERT_TRUE(
       api::IamfDecoder::CreateFromDescriptors(kMonoSettings, descriptors.data(),
                                               descriptors.size(), decoder)
@@ -1191,13 +1215,15 @@ TEST(ResetWithNewLayout,
   // Signal end of decoding and reset with 5.1 layout, which is different from
   // the original stereo layout.
   EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+  api::SelectedMix selected_mix;
   EXPECT_TRUE(
       decoder
-          ->ResetWithNewLayout(api::OutputLayout::kItu2051_SoundSystemB_0_5_0)
+          ->ResetWithNewMix(
+              {.output_layout = api::OutputLayout::kItu2051_SoundSystemB_0_5_0},
+              selected_mix)
           .ok());
-  api::OutputLayout output_layout;
-  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
-  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
+  EXPECT_EQ(selected_mix.output_layout,
+            api::OutputLayout::kItu2051_SoundSystemB_0_5_0);
 
   // Confirm that there is no temporal unit available after reset.
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
@@ -1237,9 +1263,12 @@ TEST(ResetWithNewLayout, ResetWithNewLayoutFailsInStandaloneCase) {
   EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
   // The decoder should fail to reset with a new layout because we are in a
   // standalone case.
+  api::SelectedMix selected_mix;
   EXPECT_FALSE(
       decoder
-          ->ResetWithNewLayout(api::OutputLayout::kItu2051_SoundSystemB_0_5_0)
+          ->ResetWithNewMix(
+              {.output_layout = api::OutputLayout::kItu2051_SoundSystemB_0_5_0},
+              selected_mix)
           .ok());
 }
 

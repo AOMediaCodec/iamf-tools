@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <queue>
 #include <string>
 #include <utility>
 #include <variant>
@@ -52,21 +51,21 @@ struct IamfDecoder::DecoderState {
   /*!\brief Constructor.
    *
    * \param read_bit_buffer Buffer to decode from.
-   * \param requested_layout User-requested layout, the actual layout may be
-   *        different depending on the mix presentations.
+   * \param requested_mix User-requested mix, the actual mix used may be
+   *        different depending on what is found in the mix presentations.
    * \param requested_profile_versions User-requested profile versions, the
    *        actual profile version may be different depending on the mix
    *        presentations.
    */
   DecoderState(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer,
-               const Layout& requested_layout,
+               const RequestedMix& requested_mix,
                const absl::flat_hash_set<::iamf_tools::ProfileVersion>&
                    requested_profile_versions)
       : read_bit_buffer(std::move(read_bit_buffer)),
-        layout(requested_layout),
+        requested_mix(requested_mix),
         desired_profile_versions(requested_profile_versions) {}
 
-  /*!\brief Creates an ObuProcessor and maintains related bookeeping. */
+  /*!\brief Creates an ObuProcessor and maintains related bookkeeping. */
   absl::Status CreateObuProcessor();
 
   // Current status of the decoder.
@@ -82,9 +81,14 @@ struct IamfDecoder::DecoderState {
   // Rendered samples. Corresponds to one temporal unit.
   std::vector<absl::Span<const InternalSampleType>> rendered_samples;
 
-  // The layout used for the rendered output audio.
-  // Initially set to the requested Layout but updated by ObuProcessor.
-  Layout layout;
+  // The optionally set parameters to request a particular mix.
+  RequestedMix requested_mix;
+
+  // The actually selected Mix Presentation ID, as reported by ObuProcessor.
+  DecodedUleb128 actual_mix_presentation_id;
+
+  // The actually selected Layout, as reported by ObuProcessor.
+  Layout actual_layout;
 
   // TODO(b/379122580):  Use the bit depth of the underlying content.
   // Defaulting to int32 for now.
@@ -118,7 +122,8 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
   const auto start_position = read_bit_buffer->Tell();
   bool insufficient_data;
   auto temp_obu_processor = ObuProcessor::CreateForRendering(
-      desired_profile_versions, /*mix_presentation_id=*/std::nullopt, layout,
+      desired_profile_versions, requested_mix.mix_presentation_id,
+      ApiToInternalType(requested_mix.output_layout),
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       created_from_descriptors, read_bit_buffer.get(), insufficient_data);
   if (temp_obu_processor == nullptr) {
@@ -141,14 +146,22 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
       read_bit_buffer->ReadUint8Span(absl::MakeSpan(descriptor_obus)));
   RETURN_IF_NOT_OK(read_bit_buffer->Flush(num_bytes_read));
 
+  auto new_mix_presentation_id =
+      temp_obu_processor->GetOutputMixPresentationId();
+  if (!new_mix_presentation_id.ok()) {
+    return new_mix_presentation_id.status();
+  }
+  actual_mix_presentation_id = *new_mix_presentation_id;
+
   auto new_layout = temp_obu_processor->GetOutputLayout();
   if (!new_layout.ok()) {
     return new_layout.status();
   }
-  layout = *new_layout;
+  actual_layout = *new_layout;
 
   // Copy over fields at the end, now that everything is successful.
   obu_processor = std::move(temp_obu_processor);
+
   return absl::OkStatus();
 }
 
@@ -299,14 +312,9 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
     desired_profile_versions.insert(ApiToInternalType(profile_version));
   }
 
-  std::optional<Layout> internal_layout =
-      ApiToInternalType(settings.requested_layout);
-  if (!internal_layout.has_value()) {
-    return IamfStatus::ErrorStatus(
-        "Internal Error: Could not parse output layout.");
-  }
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
-      std::move(read_bit_buffer), *internal_layout, desired_profile_versions);
+      std::move(read_bit_buffer), settings.requested_mix,
+      desired_profile_versions);
   state->channel_rearrangement_scheme =
       ChannelOrderingApiToInternalType(settings.channel_ordering);
   state->output_sample_type = settings.requested_output_sample_type;
@@ -367,10 +375,10 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
 
   // At this stage, we know that we've processed all descriptor OBUs.
   if (std::holds_alternative<LoudspeakersSsConventionLayout>(
-          state_->layout.specific_layout)) {
-    auto sound_system =
-        std::get<LoudspeakersSsConventionLayout>(state_->layout.specific_layout)
-            .sound_system;
+          state_->actual_layout.specific_layout)) {
+    auto sound_system = std::get<LoudspeakersSsConventionLayout>(
+                            state_->actual_layout.specific_layout)
+                            .sound_system;
     state_->channel_reorderer = ChannelReorderer::Create(
         sound_system, state_->channel_rearrangement_scheme);
   }
@@ -433,12 +441,29 @@ IamfStatus IamfDecoder::GetOutputLayout(OutputLayout& output_layout) const {
         "Failed Precondition: GetOutputLayout() cannot be called before "
         "descriptor processing is complete.");
   }
-  absl::StatusOr<OutputLayout> conversion = InternalToApiType(state_->layout);
+  absl::StatusOr<OutputLayout> conversion =
+      InternalToApiType(state_->actual_layout);
   if (conversion.ok()) {
     output_layout = *conversion;
     return IamfStatus::OkStatus();
   }
   return AbslToIamfStatus(conversion.status());
+}
+
+IamfStatus IamfDecoder::GetOutputMix(SelectedMix& output_selected_mix) const {
+  if (!IsDescriptorProcessingComplete()) {
+    return IamfStatus::ErrorStatus(
+        "Failed Precondition: GetOutputMix() cannot be called before "
+        "descriptor processing is complete.");
+  }
+  absl::StatusOr<OutputLayout> conversion =
+      InternalToApiType(state_->actual_layout);
+  if (!conversion.ok()) {
+    return AbslToIamfStatus(conversion.status());
+  }
+  output_selected_mix.output_layout = *conversion;
+  output_selected_mix.mix_presentation_id = state_->actual_mix_presentation_id;
+  return IamfStatus::OkStatus();
 }
 
 IamfStatus IamfDecoder::GetNumberOfOutputChannels(
@@ -449,7 +474,7 @@ IamfStatus IamfDecoder::GetNumberOfOutputChannels(
         "before descriptor processing is complete.");
   }
   return AbslToIamfStatus(MixPresentationObu::GetNumChannelsFromLayout(
-      state_->layout, output_num_channels));
+      state_->actual_layout, output_num_channels));
 }
 
 OutputSampleType IamfDecoder::GetOutputSampleType() const {
@@ -518,18 +543,29 @@ IamfStatus IamfDecoder::Reset() {
 }
 
 IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
+  SelectedMix unused_selected_mix;
+  return ResetWithNewMix({.output_layout = output_layout}, unused_selected_mix);
+}
+
+IamfStatus IamfDecoder::ResetWithNewMix(const RequestedMix& requested_mix,
+                                        SelectedMix& selected_mix) {
   if (!state_->created_from_descriptors) {
     return IamfStatus::ErrorStatus(
         "Failed Precondition: ResetWithNewLayout() cannot be called in "
         "standalone decoding mode.");
   }
-  std::optional<Layout> layout = ApiToInternalType(output_layout);
-  if (!layout.has_value()) {
-    return IamfStatus::ErrorStatus(
-        "Internal Error: Could not parse output layout.");
+  state_->requested_mix = requested_mix;
+  IamfStatus status = Reset();
+  if (!status.ok()) {
+    return status;
   }
-  state_->layout = *layout;
-  return Reset();
+  auto output_layout = InternalToApiType(state_->actual_layout);
+  if (!output_layout.ok()) {
+    return AbslToIamfStatus(output_layout.status());
+  }
+  selected_mix.mix_presentation_id = state_->actual_mix_presentation_id;
+  selected_mix.output_layout = *output_layout;
+  return IamfStatus::OkStatus();
 }
 
 IamfStatus IamfDecoder::SignalEndOfDecoding() {
