@@ -223,6 +223,28 @@ cc_test(
 )
 
 cc_test(
+    name = "descriptor_obu_parser_test",
+    srcs = ["descriptor_obu_parser_test.cc"],
+    deps = [
+        ":cli_test_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:descriptor_obu_parser",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/obu:audio_frame",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_base",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/status:status_matchers",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "encoder_main_lib_test",
     size = "medium",
     srcs = ["encoder_main_lib_test.cc"],
