@@ -103,20 +103,12 @@ absl::Status GetAndStoreMixPresentationObu(
 }
 
 // Resets the buffer to `start_position` and sets the `insufficient_data`
-// flag to `true`. Clears the output maps.
-absl::Status InsufficientDataReset(
-    ReadBitBuffer& read_bit_buffer, const int64_t start_position,
-    bool& insufficient_data,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        output_codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        output_audio_elements_with_data,
-    std::list<MixPresentationObu>& output_mix_presentation_obus) {
+// flag to `true`.
+absl::Status InsufficientDataReset(ReadBitBuffer& read_bit_buffer,
+                                   const int64_t start_position,
+                                   bool& insufficient_data) {
   LOG(INFO) << "Insufficient data to process all descriptor OBUs.";
   insufficient_data = true;
-  output_codec_config_obus.clear();
-  output_audio_elements_with_data.clear();
-  output_mix_presentation_obus.clear();
   RETURN_IF_NOT_OK(read_bit_buffer.Seek(start_position));
   LOG(INFO) << "Reset the buffer to the beginning.";
   return absl::ResourceExhaustedError(
@@ -126,18 +118,15 @@ absl::Status InsufficientDataReset(
 
 }  // namespace
 
-absl::Status DescriptorObuParser::ProcessDescriptorObus(
-    bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
-    IASequenceHeaderObu& output_sequence_header,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        output_codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        output_audio_elements_with_data,
-    std::list<MixPresentationObu>& output_mix_presentation_obus,
-    bool& output_insufficient_data) {
+absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus>
+DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
+                                           ReadBitBuffer& read_bit_buffer,
+                                           bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
+
+  ParsedDescriptorObus parsed_obus;
   auto audio_element_obu_map =
       absl::flat_hash_map<DecodedUleb128, AudioElementObu>();
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
@@ -150,10 +139,9 @@ absl::Status DescriptorObuParser::ProcessDescriptorObus(
       if (header_metadata.status().code() ==
           absl::StatusCode::kResourceExhausted) {
         // Can't read header because there is not enough data.
-        return InsufficientDataReset(
-            read_bit_buffer, global_position_before_all_obus,
-            output_insufficient_data, output_codec_config_obus,
-            output_audio_elements_with_data, output_mix_presentation_obus);
+        return InsufficientDataReset(read_bit_buffer,
+                                     global_position_before_all_obus,
+                                     output_insufficient_data);
       } else {
         // Some other error occurred, propagate it.
         return header_metadata.status();
@@ -190,10 +178,9 @@ absl::Status DescriptorObuParser::ProcessDescriptorObus(
     // Now, we know that this is not a temporal unit OBU.
     if (!read_bit_buffer.CanReadBytes(header_metadata->total_obu_size)) {
       // This is a descriptor OBU for which we don't have enough data.
-      return InsufficientDataReset(
-          read_bit_buffer, global_position_before_all_obus,
-          output_insufficient_data, output_codec_config_obus,
-          output_audio_elements_with_data, output_mix_presentation_obus);
+      return InsufficientDataReset(read_bit_buffer,
+                                   global_position_before_all_obus,
+                                   output_insufficient_data);
     }
     // Now we know we can read the entire obu.
     const int64_t position_before_header = read_bit_buffer.Tell();
@@ -214,14 +201,15 @@ absl::Status DescriptorObuParser::ProcessDescriptorObus(
         if (!ia_sequence_header_obu.ok()) {
           return ia_sequence_header_obu.status();
         }
-        output_sequence_header = *std::move(ia_sequence_header_obu);
-        output_sequence_header.PrintObu();
+        parsed_obus.sequence_header = *std::move(ia_sequence_header_obu);
+        parsed_obus.sequence_header.PrintObu();
         processed_ia_header = true;
         break;
       }
       case kObuIaCodecConfig: {
         RETURN_IF_NOT_OK(GetAndStoreCodecConfigObu(
-            header, payload_size, output_codec_config_obus, read_bit_buffer));
+            header, payload_size, parsed_obus.codec_config_obus,
+            read_bit_buffer));
         break;
       }
       case kObuIaAudioElement: {
@@ -231,7 +219,7 @@ absl::Status DescriptorObuParser::ProcessDescriptorObus(
       }
       case kObuIaMixPresentation: {
         RETURN_IF_NOT_OK(GetAndStoreMixPresentationObu(
-            header, payload_size, output_mix_presentation_obus,
+            header, payload_size, parsed_obus.mix_presentation_obus,
             read_bit_buffer));
         break;
       }
@@ -277,13 +265,13 @@ absl::Status DescriptorObuParser::ProcessDescriptorObus(
   if (!audio_element_obu_map.empty()) {
     auto audio_elements_with_data =
         ObuWithDataGenerator::GenerateAudioElementsWithData(
-            output_codec_config_obus, audio_element_obu_map);
+            parsed_obus.codec_config_obus, audio_element_obu_map);
     if (!audio_elements_with_data.ok()) {
       return audio_elements_with_data.status();
     }
-    output_audio_elements_with_data = std::move(*audio_elements_with_data);
+    parsed_obus.audio_elements_with_data = std::move(*audio_elements_with_data);
   }
-  return absl::OkStatus();
+  return parsed_obus;
 }
 
 }  // namespace iamf_tools
