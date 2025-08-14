@@ -145,6 +145,29 @@ cc_library(
 )
 
 cc_library(
+    name = "descriptor_obu_parser",
+    srcs = ["descriptor_obu_parser.cc"],
+    hdrs = ["descriptor_obu_parser.h"],
+    deps = [
+        ":audio_element_with_data",
+        ":obu_with_data_generator",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:codec_config",
+        "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:mix_presentation",
+        "//iamf/obu:obu_header",
+        "//iamf/obu:types",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "encoder_main_lib",
     srcs = ["encoder_main_lib.cc"],
     hdrs = ["encoder_main_lib.h"],

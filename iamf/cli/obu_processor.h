@@ -272,6 +272,7 @@ class ObuProcessor {
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
+  [[deprecated("Remove when class starts using DescriptorObuParser")]]
   static absl::Status ProcessDescriptorObus(
       bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
       IASequenceHeaderObu& output_sequence_header,

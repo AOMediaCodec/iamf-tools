@@ -69,6 +69,7 @@ constexpr size_t kSmallestAcceptedCodecConfigSize = 8;
 
 // Gets a CodecConfigObu from `read_bit_buffer` and stores it into
 // `codec_config_obu_map`, using the `codec_config_id` as the unique key.
+[[deprecated("Remove when class starts using DescriptorObuParser")]]
 absl::Status GetAndStoreCodecConfigObu(
     const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obu_map,
@@ -95,6 +96,7 @@ absl::Status GetAndStoreCodecConfigObu(
   return absl::OkStatus();
 }
 
+[[deprecated("Remove when class starts using DescriptorObuParser")]]
 absl::Status GetAndStoreAudioElementObu(
     const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, AudioElementObu>& audio_element_obu_map,
@@ -110,6 +112,7 @@ absl::Status GetAndStoreAudioElementObu(
   return absl::OkStatus();
 }
 
+[[deprecated("Remove when class starts using DescriptorObuParser")]]
 absl::Status GetAndStoreMixPresentationObu(
     const ObuHeader& header, int64_t payload_size,
     std::list<MixPresentationObu>& mix_presentation_obus,
