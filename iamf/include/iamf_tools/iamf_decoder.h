@@ -172,22 +172,6 @@ class IamfDecoder : public api::IamfDecoderInterface {
   /*!\brief Gets the layout that will be used to render the audio.
    *
    * The actual Layout used for rendering may not the same as requested when
-   * creating the IamfDecoder, if the requested Layout could not be used.
-   * This function allows verifying the actual Layout used after Descriptor OBU
-   * parsing is complete.
-   *
-   * This function can only be used after all Descriptor OBUs have been parsed,
-   * i.e. IsDescriptorProcessingComplete() returns true.
-   *
-   * \param output_layout Output param for the layout upon success.
-   * \return Ok status upon success. Other specific statuses on failure.
-   */
-  [[deprecated("Use GetOutputMix instead.")]]
-  IamfStatus GetOutputLayout(OutputLayout& output_layout) const override;
-
-  /*!\brief Gets the layout that will be used to render the audio.
-   *
-   * The actual Layout used for rendering may not the same as requested when
    * creating the IamfDecoder, if the requested ID was invalid or the Layout
    * could not be used. This function allows verifying the actual Layout used
    * after Descriptor OBU parsing is complete.
@@ -260,25 +244,6 @@ class IamfDecoder : public api::IamfDecoderInterface {
    * return Ok status upon success. Other specific statuses on failure.
    */
   IamfStatus Reset() override;
-
-  /*!\brief Resets the decoder with a new layout and a clean state.
-   *
-   * A clean state refers to a state in which descriptors OBUs have been parsed,
-   * but no other data has been parsed. If possible, the decoder will use the
-   * new layout for decoding. To confirm the actual layout that will be used,
-   * GetOutputLayout() should be called before continuing to decode.
-   *
-   * This function can only be used if the decoder was created with
-   * CreateFromDescriptors().
-   *
-   * This function will result in all decoded temporal units that have not been
-   * retrieved by GetOutputTemporalUnit() to be lost. It will also result in any
-   * pending data in the internal buffer being lost.
-   *
-   * return Ok status upon success. Other specific statuses on failure.
-   */
-  [[deprecated("Use ResetWithNewMix instead.")]]
-  IamfStatus ResetWithNewLayout(OutputLayout output_layout) override;
 
   /*!\brief Resets the decoder with a new RequestedMix and a clean state.
    *

@@ -31,11 +31,6 @@ IamfDecoder::Settings ApiToInternalSettings(
       .requested_profile_versions = settings.requested_profile_versions,
       .requested_output_sample_type = settings.requested_output_sample_type,
   };
-  // If no `requested_mix.output_layout`, then use `requested_layout`,
-  // temporarily until `requested_layout` is removed.
-  if (!internal_settings.requested_mix.output_layout.has_value()) {
-    internal_settings.requested_mix.output_layout = settings.requested_layout;
-  }
   return internal_settings;
 }
 }  // namespace

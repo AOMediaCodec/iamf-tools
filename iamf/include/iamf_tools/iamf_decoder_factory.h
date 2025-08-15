@@ -29,13 +29,6 @@ class IamfDecoderFactory {
  public:
   /*!\brief Settings for the `IamfDecoderInterface`. */
   struct Settings {
-    // Specifies the desired output layout. This layout will be used so long as
-    // it is present in the Descriptor OBUs that are provided. If not, after
-    // `IsDescriptorProcessingComplete` returns true, a default layout will have
-    // been selected and retrievable via `GetOutputLayout`.
-    [[deprecated("Use requested_mix instead.")]]
-    OutputLayout requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0;
-
     // Specifies the desired output Mix Presentation ID and/or layout.
     // The selected result will be retrievable after Descriptor OBUs have been
     // processed.

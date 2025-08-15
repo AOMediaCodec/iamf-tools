@@ -130,8 +130,6 @@ TEST(IamfDecoder,
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(
       api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
-  api::OutputLayout output_layout;
-  EXPECT_FALSE(decoder->GetOutputLayout(output_layout).ok());
   api::SelectedMix selected_mix;
   EXPECT_FALSE(decoder->GetOutputMix(selected_mix).ok());
   int num_channels;
@@ -140,23 +138,6 @@ TEST(IamfDecoder,
   EXPECT_FALSE(decoder->GetSampleRate(sample_rate).ok());
   uint32_t frame_size;
   EXPECT_FALSE(decoder->GetFrameSize(frame_size).ok());
-}
-
-TEST(GetOutputLayout, ReturnsOutputLayoutAfterDescriptorObusAreProcessed) {
-  std::unique_ptr<api::IamfDecoder> decoder;
-  auto descriptors = GenerateBasicDescriptorObus();
-  ASSERT_TRUE(api::IamfDecoder::CreateFromDescriptors(
-                  GetStereoDecoderSettings(), descriptors.data(),
-                  descriptors.size(), decoder)
-                  .ok());
-
-  EXPECT_TRUE(decoder->IsDescriptorProcessingComplete());
-  api::OutputLayout output_layout;
-  EXPECT_TRUE(decoder->GetOutputLayout(output_layout).ok());
-  EXPECT_EQ(output_layout, api::OutputLayout::kItu2051_SoundSystemA_0_2_0);
-  int num_output_channels;
-  EXPECT_TRUE(decoder->GetNumberOfOutputChannels(num_output_channels).ok());
-  EXPECT_EQ(num_output_channels, 2);
 }
 
 TEST(GetOutputMix, ReturnVirtualDesiredLayoutIfNoMatchingLayoutExists) {
@@ -207,7 +188,7 @@ TEST(GetOutputMix,
   EXPECT_EQ(num_output_channels, 11);
 }
 
-TEST(GetOutputLayout, CanAcceptMixPresentationIdToSpecifyMix) {
+TEST(GetOutputMix, CanAcceptMixPresentationIdToSpecifyMix) {
   // Add a mix presentation with a non-stereo layout.
   const IASequenceHeaderObu ia_sequence_header(
       ObuHeader(), IASequenceHeaderObu::kIaCode,

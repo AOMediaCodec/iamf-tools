@@ -435,21 +435,6 @@ bool IamfDecoder::IsDescriptorProcessingComplete() const {
   return state_->obu_processor != nullptr;
 }
 
-IamfStatus IamfDecoder::GetOutputLayout(OutputLayout& output_layout) const {
-  if (!IsDescriptorProcessingComplete()) {
-    return IamfStatus::ErrorStatus(
-        "Failed Precondition: GetOutputLayout() cannot be called before "
-        "descriptor processing is complete.");
-  }
-  absl::StatusOr<OutputLayout> conversion =
-      InternalToApiType(state_->actual_layout);
-  if (conversion.ok()) {
-    output_layout = *conversion;
-    return IamfStatus::OkStatus();
-  }
-  return AbslToIamfStatus(conversion.status());
-}
-
 IamfStatus IamfDecoder::GetOutputMix(SelectedMix& output_selected_mix) const {
   if (!IsDescriptorProcessingComplete()) {
     return IamfStatus::ErrorStatus(
@@ -540,11 +525,6 @@ IamfStatus IamfDecoder::Reset() {
     return AbslToIamfStatus(absl_status);
   }
   return AbslToIamfStatus(state_->CreateObuProcessor());
-}
-
-IamfStatus IamfDecoder::ResetWithNewLayout(OutputLayout output_layout) {
-  SelectedMix unused_selected_mix;
-  return ResetWithNewMix({.output_layout = output_layout}, unused_selected_mix);
 }
 
 IamfStatus IamfDecoder::ResetWithNewMix(const RequestedMix& requested_mix,
