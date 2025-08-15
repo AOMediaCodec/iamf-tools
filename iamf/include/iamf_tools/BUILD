@@ -25,14 +25,6 @@ filegroup(
     ],
 )
 
-filegroup(
-    name = "iamf_tools_api_types_header",
-    srcs = ["iamf_tools_api_types.h"],
-    visibility = [
-        "//iamf/api:__pkg__",
-    ],
-)
-
 cc_library(
     name = "iamf_decoder_interface",
     hdrs = ["iamf_decoder_interface.h"],
@@ -40,7 +32,7 @@ cc_library(
         "//iamf/api/decoder:__pkg__",
     ],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
     ],
 )
 
@@ -55,6 +47,17 @@ cc_library(
     deps = [
         ":iamf_tools_encoder_api_types",
         "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "iamf_tools_api_types",
+    srcs = ["iamf_tools_api_types.cc"],
+    hdrs = ["iamf_tools_api_types.h"],
+    visibility = [
+        "//iamf/api:__subpackages__",
+        "//iamf/cli/internal/decoder:__subpackages__",
+        "//iamf/include/iamf_tools/tests:__pkg__",
     ],
 )
 

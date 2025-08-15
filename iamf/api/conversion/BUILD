@@ -22,7 +22,7 @@ cc_library(
     srcs = ["mix_presentation_conversion.cc"],
     hdrs = ["mix_presentation_conversion.h"],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",
@@ -36,7 +36,7 @@ cc_library(
     srcs = ["profile_conversion.cc"],
     hdrs = ["profile_conversion.h"],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/status",

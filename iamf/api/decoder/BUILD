@@ -13,7 +13,6 @@ cc_library(
         "//iamf/include/iamf_tools:iamf_decoder_header",
     ],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/api/conversion:profile_conversion",
@@ -24,6 +23,7 @@ cc_library(
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:sample_processing_utils",
         "//iamf/include/iamf_tools:iamf_decoder_interface",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
@@ -43,8 +43,8 @@ cc_library(
     ],
     deps = [
         ":iamf_decoder",
-        "//iamf/api:iamf_tools_api_types",
         "//iamf/include/iamf_tools:iamf_decoder_interface",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
     ],
 )
 

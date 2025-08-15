@@ -32,8 +32,8 @@ cc_test(
     name = "mix_presentation_conversion_test",
     srcs = ["mix_presentation_conversion_test.cc"],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
         "//iamf/api/conversion:mix_presentation_conversion",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
@@ -44,8 +44,8 @@ cc_test(
     name = "profile_conversion_test",
     srcs = ["profile_conversion_test.cc"],
     deps = [
-        "//iamf/api:iamf_tools_api_types",
         "//iamf/api/conversion:profile_conversion",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
