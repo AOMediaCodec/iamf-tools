@@ -16,7 +16,7 @@
 #include <memory>
 #include <utility>
 
-#include "iamf/include/iamf_tools/iamf_decoder.h"
+#include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 

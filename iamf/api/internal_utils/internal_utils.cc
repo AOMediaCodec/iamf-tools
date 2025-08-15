@@ -21,8 +21,8 @@
 #include "absl/log/check.h"
 #include "absl/log/log.h"
 #include "absl/types/span.h"
+#include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/cli/wav_writer.h"
-#include "iamf/include/iamf_tools/iamf_decoder.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
 namespace iamf_tools {

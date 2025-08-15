@@ -1,16 +1,17 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-package(default_visibility = [
-    "//iamf/api/decoder/tests:__pkg__",
-    "//iamf/api/internal_utils:__pkg__",
-])
-
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "iamf_decoder",
     srcs = ["iamf_decoder.cc"],
     hdrs = [
-        "//iamf/include/iamf_tools:iamf_decoder_header",
+        "iamf_decoder.h",
+    ],
+    visibility = [
+        "//iamf/api/decoder/tests:__pkg__",
+        "//iamf/api/internal_utils:__pkg__",
+        "//iamf/cli/internal/decoder:__pkg__",
+        "//iamf/include/iamf_tools:__pkg__",
     ],
     deps = [
         "//iamf/api/conversion:channel_reorderer",
@@ -32,19 +33,6 @@ cc_library(
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
-    ],
-)
-
-cc_library(
-    name = "iamf_decoder_factory",
-    srcs = ["iamf_decoder_factory.cc"],
-    hdrs = [
-        "//iamf/include/iamf_tools:iamf_decoder_factory_header",
-    ],
-    deps = [
-        ":iamf_decoder",
-        "//iamf/include/iamf_tools:iamf_decoder_interface",
-        "//iamf/include/iamf_tools:iamf_tools_api_types",
     ],
 )
 

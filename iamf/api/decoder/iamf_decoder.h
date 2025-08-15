@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
-#include "iamf_tools_api_types.h"
+#include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
 namespace iamf_tools {
 namespace api {
