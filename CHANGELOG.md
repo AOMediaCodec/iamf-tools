@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-08-18
+
 ### Added
 
 -   Add a library to process ADM files into `UserMetadata`.
@@ -99,7 +101,8 @@ and this project adheres to
     `deprecated_param_definition_type`, `deprecated_loudspeaker_layout` from the
     forked `.protos`.
 
-[unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0
 [Standalone IAMF Representation]: https://aomediacodec.github.io/iamf/#standalone
 [IAMF v1.0.0]: https://aomediacodec.github.io/iamf/v1.0.0.html
