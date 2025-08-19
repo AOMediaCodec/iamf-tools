@@ -17,7 +17,7 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/include/iamf_tools/iamf_encoder_interface.h"
+#include "iamf_encoder_interface.h"
 
 namespace iamf_tools {
 namespace api {

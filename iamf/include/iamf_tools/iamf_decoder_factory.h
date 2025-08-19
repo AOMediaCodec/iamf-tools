@@ -18,7 +18,7 @@
 #include <memory>
 #include <unordered_set>
 
-#include "iamf/include/iamf_tools/iamf_decoder_interface.h"
+#include "iamf_decoder_interface.h"
 #include "iamf_tools_api_types.h"
 
 namespace iamf_tools {
