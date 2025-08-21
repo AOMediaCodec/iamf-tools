@@ -89,14 +89,14 @@ class IamfEncoder : public api::IamfEncoderInterface {
  public:
   /*!\brief Factory to create `ObuSequencerBases`. */
   typedef absl::AnyInvocable<
-      std::vector<std::unique_ptr<ObuSequencerBase> /* absl_nonnull */>() const>
+      std::vector<std::unique_ptr<ObuSequencerBase> absl_nonnull>() const>
       ObuSequencerFactory;
 
   /*!\brief Factory that returns no `ObuSequencerBases`s.
    *
    * For convenience to use with `Create`.
    */
-  static std::vector<std::unique_ptr<ObuSequencerBase> /* absl_nonnull */>
+  static std::vector<std::unique_ptr<ObuSequencerBase> absl_nonnull>
   CreateNoObuSequencers();
 
   /*!\brief Factory function to create an `IamfEncoder`.
@@ -113,8 +113,8 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoder>> Create(
       const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      const RendererFactoryBase* /* absl_nullable */ renderer_factory,
-      const LoudnessCalculatorFactoryBase* /* absl_nullable */
+      const RendererFactoryBase* absl_nullable renderer_factory,
+      const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const RenderingMixPresentationFinalizer::SampleProcessorFactory&
           sample_processor_factory,
@@ -258,11 +258,10 @@ class IamfEncoder : public api::IamfEncoderInterface {
   IamfEncoder(
       bool validate_user_loudness, IASequenceHeaderObu&& ia_sequence_header_obu,
       std::unique_ptr<
-          absl::flat_hash_map<uint32_t, CodecConfigObu>> /* absl_nonnull */
-          codec_config_obus,
+          absl::flat_hash_map<uint32_t, CodecConfigObu>> absl_nonnull
+      codec_config_obus,
       std::unique_ptr<absl::flat_hash_map<
-          DecodedUleb128, AudioElementWithData>> /* absl_nonnull */
-          audio_elements,
+          DecodedUleb128, AudioElementWithData>> absl_nonnull audio_elements,
       std::list<MixPresentationObu>&& mix_presentation_obus,
       std::list<ArbitraryObu>&& descriptor_arbitrary_obus,
       absl::btree_map<InternalTimestamp, std::list<ArbitraryObu>>&&
@@ -303,15 +302,14 @@ class IamfEncoder : public api::IamfEncoderInterface {
   IASequenceHeaderObu ia_sequence_header_obu_;
   // Held in a `unique_ptr`, so the underlying map can be moved without
   // invalidating pointers. At least `audio_elements_` depend on this.
-  std::unique_ptr<
-      absl::flat_hash_map<uint32_t, CodecConfigObu>> /* absl_nonnull */
-      codec_config_obus_;
+  std::unique_ptr<absl::flat_hash_map<uint32_t, CodecConfigObu>> absl_nonnull
+  codec_config_obus_;
   // Held in a `unique_ptr`, so the underlying map can be moved without
   // invalidating pointers. At least `audio_frame_generator_` and any output
   // `AudioFrameWithData` depend on this.
-  std::unique_ptr<absl::flat_hash_map<DecodedUleb128,
-                                      AudioElementWithData>> /* absl_nonnull */
-      audio_elements_;
+  std::unique_ptr<
+      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>> absl_nonnull
+  audio_elements_;
   std::list<MixPresentationObu> mix_presentation_obus_;
   std::list<ArbitraryObu> descriptor_arbitrary_obus_;
 
@@ -325,7 +323,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
   // Mapping from parameter IDs to parameter definitions.
   // Parameter block generator owns a reference to this map. Wrapped in
   // `std::unique_ptr` for reference stability after move.
-  /* absl_nonnull */ std::unique_ptr<
+  absl_nonnull std::unique_ptr<
       const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>>
       param_definition_variants_;
 
@@ -344,12 +342,11 @@ class IamfEncoder : public api::IamfEncoderInterface {
   // Various generators and modules used when generating data OBUs iteratively.
   // Some are held in `unique_ptr` for reference stability after move.
   ParameterBlockGenerator parameter_block_generator_;
-  /* absl_nonnull */ std::unique_ptr<ParametersManager> parameters_manager_;
+  absl_nonnull std::unique_ptr<ParametersManager> parameters_manager_;
   const DemixingModule demixing_module_;
-  /* absl_nonnull */ std::unique_ptr<AudioFrameGenerator>
-      audio_frame_generator_;
+  absl_nonnull std::unique_ptr<AudioFrameGenerator> audio_frame_generator_;
   AudioFrameDecoder audio_frame_decoder_;
-  /* absl_nonnull */ std::unique_ptr<GlobalTimingModule> global_timing_module_;
+  absl_nonnull std::unique_ptr<GlobalTimingModule> global_timing_module_;
 
   // Modules to render the output layouts and measure their loudness.
   RenderingMixPresentationFinalizer mix_presentation_finalizer_;

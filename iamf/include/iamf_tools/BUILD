@@ -44,9 +44,9 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/include/iamf_tools:iamf_encoder_interface",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 
@@ -60,7 +60,7 @@ cc_library(
     ],
     deps = [
         ":iamf_tools_encoder_api_types",
-        "@com_google_absl//absl/status",
+        "@abseil-cpp//absl/status",
     ],
 )
 
@@ -86,8 +86,8 @@ cc_library(
     deps = [
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/cli/proto:parameter_block_cc_proto",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 

@@ -11,8 +11,8 @@ cc_test(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:ia_sequence_header",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

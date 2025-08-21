@@ -241,7 +241,7 @@ class ObuProcessor {
    *        bitstream.
    * \return ObuProcessor instance.
    */
-  explicit ObuProcessor(ReadBitBuffer* /* absl_nonnull */ buffer)
+  explicit ObuProcessor(ReadBitBuffer* absl_nonnull buffer)
       : read_bit_buffer_(buffer) {}
 
   /*!\brief Processes the Descriptor OBUs of an IA Sequence.
@@ -387,7 +387,7 @@ class ObuProcessor {
       substream_id_to_audio_element_;
   std::unique_ptr<GlobalTimingModule> global_timing_module_;
   std::optional<ParametersManager> parameters_manager_;
-  ReadBitBuffer* /* absl_nonnull */ read_bit_buffer_;
+  ReadBitBuffer* absl_nonnull read_bit_buffer_;
 
   // Contains target layout information for rendering.
   DecodingLayoutInfo decoding_layout_info_;

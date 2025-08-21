@@ -17,7 +17,7 @@ cc_test(
     srcs = ["ambisonic_encoder_test.cc"],
     deps = [
         "//iamf/cli/ambisonic_encoder",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -15,7 +15,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -27,10 +27,10 @@ cc_test(
         "//iamf/cli/renderer:audio_element_renderer_base",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:types",
-        "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/base:core_headers",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -46,7 +46,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -62,7 +62,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -72,9 +72,9 @@ cc_test(
     srcs = ["loudspeakers_renderer_test.cc"],
     deps = [
         "//iamf/cli/renderer:loudspeakers_renderer",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -87,9 +87,9 @@ cc_test(
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:renderer_utils",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/random",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/random",
+        "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",
     ],
 )
@@ -103,8 +103,8 @@ cc_test(
         "//iamf/cli/renderer:renderer_utils",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

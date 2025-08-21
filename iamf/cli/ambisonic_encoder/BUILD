@@ -11,8 +11,8 @@ cc_library(
     deps = [
         ":ambisonic_utils",
         ":associated_legendre_polynomials_generator",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log:check",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:check",
         "@eigen",
     ],
 )
@@ -22,7 +22,7 @@ cc_library(
     srcs = [],
     hdrs = ["ambisonic_utils.h"],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_absl//absl/log:check"],
+    deps = ["@abseil-cpp//absl/log:check"],
 )
 
 cc_library(
@@ -36,7 +36,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":ambisonic_utils",
-        "@com_google_absl//absl/log:check",
+        "@abseil-cpp//absl/log:check",
     ],
 )
 

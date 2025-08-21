@@ -18,11 +18,11 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/obu:ia_sequence_header",
-        "@com_google_absl//absl/functional:function_ref",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
+        "@abseil-cpp//absl/functional:function_ref",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -35,10 +35,10 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:obu_util",
         "//iamf/obu:obu_header",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -56,9 +56,9 @@ cc_library(
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status:statusor",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 

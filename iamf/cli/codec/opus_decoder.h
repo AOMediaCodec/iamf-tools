@@ -64,14 +64,14 @@ class OpusDecoder : public DecoderBase {
    * \param decoder `libopus` decoder to use.
    */
   OpusDecoder(int num_channels, uint32_t num_samples_per_frame,
-              LibOpusDecoder* /* absl_nonnull */ decoder)
+              LibOpusDecoder* absl_nonnull decoder)
       : DecoderBase(num_channels, num_samples_per_frame),
         interleaved_float_from_libopus_(num_samples_per_frame * num_channels),
         decoder_(decoder) {}
 
   // Size fixed at construction time.
   std::vector<float> interleaved_float_from_libopus_;
-  LibOpusDecoder* const /* absl_nonnull */ decoder_;
+  LibOpusDecoder* const absl_nonnull decoder_;
 };
 
 }  // namespace iamf_tools

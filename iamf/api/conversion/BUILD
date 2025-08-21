@@ -13,7 +13,7 @@ cc_library(
     deps = [
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -24,10 +24,10 @@ cc_library(
     deps = [
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -38,10 +38,10 @@ cc_library(
     deps = [
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 

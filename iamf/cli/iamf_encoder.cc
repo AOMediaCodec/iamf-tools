@@ -233,15 +233,15 @@ absl::Status FinalizeObuSequencers(
 
 }  // namespace
 
-std::vector<std::unique_ptr<ObuSequencerBase> /* absl_nonnull */>
+std::vector<std::unique_ptr<ObuSequencerBase> absl_nonnull>
 IamfEncoder::CreateNoObuSequencers() {
   return {};
 }
 
 absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     const iamf_tools_cli_proto::UserMetadata& user_metadata,
-    const RendererFactoryBase* /* absl_nullable */ renderer_factory,
-    const LoudnessCalculatorFactoryBase* /* absl_nullable */
+    const RendererFactoryBase* absl_nullable renderer_factory,
+    const LoudnessCalculatorFactoryBase* absl_nullable
         loudness_calculator_factory,
     const RenderingMixPresentationFinalizer::SampleProcessorFactory&
         sample_processor_factory,

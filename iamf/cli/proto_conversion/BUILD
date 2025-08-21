@@ -23,9 +23,9 @@ cc_library(
         "//iamf/cli:channel_label",
         "//iamf/cli/proto:audio_frame_cc_proto",
         "//iamf/common/utils:map_utils",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -46,11 +46,11 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -93,7 +93,7 @@ cc_library(
         "//iamf/cli/proto:output_audio_format_cc_proto",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log",
+        "@abseil-cpp//absl/log",
     ],
 )
 
@@ -122,9 +122,9 @@ cc_library(
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 

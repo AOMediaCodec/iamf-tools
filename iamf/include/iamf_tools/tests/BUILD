@@ -13,7 +13,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -33,7 +33,7 @@ cc_test(
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/include/iamf_tools:iamf_encoder_factory",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

@@ -12,11 +12,7 @@ module(
 # Bazel central registry dependencies.
 bazel_dep(name = "rules_cc", version = "0.1.2")
 bazel_dep(name = "rules_license", version = "1.0.0")
-bazel_dep(
-    name = "abseil-cpp",
-    version = "20240722.1",
-    repo_name = "com_google_absl",
-)
+bazel_dep(name = "abseil-cpp", version = "20250512.1")
 bazel_dep(
     name = "googletest",
     version = "1.17.0",
@@ -24,12 +20,12 @@ bazel_dep(
 )
 bazel_dep(
     name = "protobuf",
-    version = "29.5",
+    version = "32.0",
     repo_name = "com_google_protobuf",
 )
 bazel_dep(
     name = "fuzztest",
-    version = "20250214.0",
+    version = "20250805.0",
     repo_name = "com_google_fuzztest",
 )
 bazel_dep(

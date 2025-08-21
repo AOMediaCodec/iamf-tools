@@ -8,9 +8,9 @@ cc_test(
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",
     ],
 )
@@ -22,8 +22,8 @@ cc_test(
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -35,7 +35,7 @@ cc_test(
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -47,7 +47,7 @@ cc_test(
         "//iamf/api/conversion:profile_conversion",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )

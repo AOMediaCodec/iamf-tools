@@ -64,7 +64,7 @@ class FlacDecoder : public DecoderBase {
    * \param decoder `libflac` decoder to use.
    */
   FlacDecoder(int num_channels, uint32_t num_samples_per_frame,
-              FLAC__StreamDecoder* /* absl_nonnull */ decoder)
+              FLAC__StreamDecoder* absl_nonnull decoder)
       : DecoderBase(num_channels, num_samples_per_frame), decoder_(decoder) {
     callback_data_ = std::make_unique<flac_callbacks::LibFlacCallbackData>(
         num_samples_per_frame, decoded_samples_);
@@ -72,10 +72,10 @@ class FlacDecoder : public DecoderBase {
 
   // Backing data for the `libflac` decoder callbacks. Held in `unique_ptr` for
   // pointer stability after move.
-  /* absl_nonnull */ std::unique_ptr<flac_callbacks::LibFlacCallbackData>
+  absl_nonnull std::unique_ptr<flac_callbacks::LibFlacCallbackData>
       callback_data_;
   // A pointer to the `libflac` decoder.
-  FLAC__StreamDecoder* const /* absl_nonnull */ decoder_;
+  FLAC__StreamDecoder* const absl_nonnull decoder_;
 };
 
 }  // namespace iamf_tools

@@ -166,8 +166,8 @@ class RenderingMixPresentationFinalizer {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   static absl::StatusOr<RenderingMixPresentationFinalizer> Create(
-      const RendererFactoryBase* /* absl_nullable */ renderer_factory,
-      const LoudnessCalculatorFactoryBase* /* absl_nullable */
+      const RendererFactoryBase* absl_nullable renderer_factory,
+      const LoudnessCalculatorFactoryBase* absl_nullable
           loudness_calculator_factory,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
       const SampleProcessorFactory& sample_processor_factory,

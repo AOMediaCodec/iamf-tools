@@ -6,8 +6,8 @@ cc_test(
     srcs = ["bw64_reader_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -20,8 +20,8 @@ cc_test(
         "//iamf/cli/adm_to_user_metadata/adm:wav_file_splicer",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:ia_sequence_header",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -31,8 +31,8 @@ cc_test(
     srcs = ["xml_to_adm_test.cc"],
     deps = [
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

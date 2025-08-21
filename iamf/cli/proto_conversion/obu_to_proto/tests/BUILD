@@ -12,7 +12,7 @@ cc_test(
         "//iamf/cli/proto_conversion/proto_to_obu:ia_sequence_header_generator",
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:obu_header",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -26,7 +26,7 @@ cc_test(
         "//iamf/cli/proto_conversion/obu_to_proto:obu_header_metadata_generator",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -43,8 +43,8 @@ cc_test(
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@com_google_absl//absl/status:status_matchers",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/strings:string_view",
         "@com_google_googletest//:gtest_main",
     ],
 )

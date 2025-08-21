@@ -30,11 +30,11 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/user_metadata_builder:audio_element_metadata_builder",
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
-        "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/container:flat_hash_set",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 
@@ -50,12 +50,12 @@ cc_library(
         "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
-        "@com_google_absl//absl/base:no_destructor",
-        "@com_google_absl//absl/container:flat_hash_map",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
+        "@abseil-cpp//absl/base:no_destructor",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
     ],
 )
 
@@ -65,7 +65,7 @@ cc_library(
     hdrs = ["test_vector_metadata_handler.h"],
     deps = [
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
-        "@com_google_absl//absl/strings:string_view",
+        "@abseil-cpp//absl/strings:string_view",
     ],
 )
 
@@ -91,10 +91,10 @@ cc_library(
         "//iamf/cli/user_metadata_builder:audio_frame_metadata_builder",
         "//iamf/cli/user_metadata_builder:codec_config_obu_metadata_builder",
         "//iamf/obu:types",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 

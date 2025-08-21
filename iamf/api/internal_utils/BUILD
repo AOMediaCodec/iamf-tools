@@ -13,9 +13,9 @@ cc_library(
         "//iamf/api/decoder:iamf_decoder",
         "//iamf/cli:wav_writer",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -35,7 +35,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
-        "@com_google_absl//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
 )
