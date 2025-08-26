@@ -23,7 +23,7 @@ namespace iamf_tools {
 std::unique_ptr<LoudnessCalculatorBase>
 LoudnessCalculatorFactoryItu1770_4::CreateLoudnessCalculator(
     const MixPresentationLayout& layout, uint32_t num_samples_per_frame,
-    int32_t rendered_sample_rate, int32_t /*rendered_bit_depth*/) const {
+    int32_t rendered_sample_rate) const {
   return LoudnessCalculatorItu1770_4::CreateForLayout(
       layout, num_samples_per_frame, rendered_sample_rate);
 }

@@ -489,8 +489,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
       // Optionally create a loudness calculator.
       layout_rendering_metadata.loudness_calculator =
           loudness_calculator_factory->CreateLoudnessCalculator(
-              layout, common_num_samples_per_frame, common_sample_rate,
-              rendering_bit_depth);
+              layout, common_num_samples_per_frame, common_sample_rate);
     }
     // Optionally create a post-processor.
     layout_rendering_metadata.sample_processor = sample_processor_factory(

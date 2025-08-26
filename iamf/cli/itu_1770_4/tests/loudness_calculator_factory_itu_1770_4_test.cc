@@ -25,7 +25,6 @@ namespace {
 
 constexpr uint32_t kNumSamplesPerFrame = 1024;
 constexpr int32_t kRenderedSampleRate = 48000;
-constexpr int32_t kRenderedBitDepth = 16;
 
 const MixPresentationLayout kStereoMixPresentationLayout = {
     .loudness_layout =
@@ -45,19 +44,19 @@ const MixPresentationLayout kUnknownExtensionLayout = {
 TEST(CreateLoudnessCalculator, ReturnsNonNullWhenLayoutIsKnown) {
   const LoudnessCalculatorFactoryItu1770_4 factory;
 
-  EXPECT_NE(factory.CreateLoudnessCalculator(
-                kStereoMixPresentationLayout, kNumSamplesPerFrame,
-                kRenderedSampleRate, kRenderedBitDepth),
+  EXPECT_NE(factory.CreateLoudnessCalculator(kStereoMixPresentationLayout,
+                                             kNumSamplesPerFrame,
+                                             kRenderedSampleRate),
             nullptr);
 }
 
 TEST(CreateLoudnessCalculator, ReturnsNullWhenLayoutIsUnknown) {
   const LoudnessCalculatorFactoryItu1770_4 factory;
 
-  EXPECT_EQ(factory.CreateLoudnessCalculator(
-                kUnknownExtensionLayout, kNumSamplesPerFrame,
-                kRenderedSampleRate, kRenderedBitDepth),
-            nullptr);
+  EXPECT_EQ(
+      factory.CreateLoudnessCalculator(
+          kUnknownExtensionLayout, kNumSamplesPerFrame, kRenderedSampleRate),
+      nullptr);
 }
 
 }  // namespace

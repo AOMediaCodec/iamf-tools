@@ -41,13 +41,12 @@ class LoudnessCalculatorFactoryItu1770_4
    * \param num_samples_per_frame Number of samples per frame for the calculator
    *        to process.
    * \param rendered_sample_rate Sample rate of the rendered audio.
-   * \param rendered_bit_depth Bit-depth of the rendered audio.
    * \return Unique pointer to a loudness calculator or `nullptr` if it could
    *         not be created.
    */
   std::unique_ptr<LoudnessCalculatorBase> CreateLoudnessCalculator(
       const MixPresentationLayout& layout, uint32_t num_samples_per_frame,
-      int32_t rendered_sample_rate, int32_t rendered_bit_depth) const override;
+      int32_t rendered_sample_rate) const override;
 
   /*!\brief Destructor. */
   ~LoudnessCalculatorFactoryItu1770_4() override = default;

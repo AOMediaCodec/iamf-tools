@@ -629,8 +629,7 @@ class MockLoudnessCalculatorFactory : public LoudnessCalculatorFactoryBase {
 
   MOCK_METHOD(std::unique_ptr<LoudnessCalculatorBase>, CreateLoudnessCalculator,
               (const MixPresentationLayout& layout,
-               uint32_t num_samples_per_frame, int32_t rendered_sample_rate,
-               int32_t rendered_bit_depth),
+               uint32_t num_samples_per_frame, int32_t rendered_sample_rate),
               (const, override));
 };
 
