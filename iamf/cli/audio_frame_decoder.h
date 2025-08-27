@@ -12,15 +12,15 @@
 #ifndef CLI_AUDIO_FRAME_DECODER_H_
 #define CLI_AUDIO_FRAME_DECODER_H_
 
-#include <cstdint>
 #include <memory>
 
-#include "absl/container/node_hash_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -37,10 +37,10 @@ namespace iamf_tools {
  * Call `InitDecodersForSubstreams` with pairs of `SubstreamIdLabelsMap` and
  * `CodecConfigObu`. This typically will require one call per Audio Element OBU.
  *
- * Then call `Decode` repeatedly with a list of `AudioFrameWithData`. There may
- * be multiple `AudioFrameWithData`s in a single call to this function. Each
- * substream in the list is assumed to be self-consistent in temporal order. It
- * is permitted in any order relative to other substreams.
+ * Then call `Decode` repeatedly with an `AudioFrameWithData`. Because the
+ * codec decoders are stateful, it is important to call `Decode` for a given
+ * substream in chronological order. However, when the substreams differ, the
+ * passed in order may be arbitrary.
  */
 class AudioFrameDecoder {
  public:
@@ -67,9 +67,9 @@ class AudioFrameDecoder {
   absl::Status Decode(AudioFrameWithData& audio_frame);
 
  private:
-  // A map of substream IDs to the relevant decoder and codec config. This is
-  // necessary to process streams with stateful decoders correctly.
-  absl::node_hash_map<uint32_t, std::unique_ptr<DecoderBase>>
+  // Map of substream IDs to the relevant decoder. This is necessary to process
+  // streams with stateful decoders correctly.
+  absl::flat_hash_map<DecodedUleb128, std::unique_ptr<DecoderBase>>
       substream_id_to_decoder_;
 };
 
