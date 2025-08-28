@@ -32,7 +32,7 @@ constexpr bool kOverrideAudioRollDistance = true;
 
 class LpcmEncoderTest : public EncoderTestBase, public testing::Test {
  public:
-  LpcmEncoderTest() { input_sample_size_ = 32; }
+  LpcmEncoderTest() = default;
   ~LpcmEncoderTest() = default;
 
  protected:
@@ -85,7 +85,6 @@ TEST_F(LpcmEncoderTest, MultipleFrames) {
 
 TEST_F(LpcmEncoderTest, LittleEndian16bit) {
   lpcm_decoder_config_.sample_size_ = 16;
-  input_sample_size_ = 16;
   InitExpectOk();
 
   EncodeAudioFrame({{0x12340000}});
@@ -98,7 +97,6 @@ TEST_F(LpcmEncoderTest, BigEndian16bit) {
   lpcm_decoder_config_.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::kLpcmBigEndian;
 
-  input_sample_size_ = 16;
   InitExpectOk();
 
   EncodeAudioFrame({{0x12340000}});
@@ -108,7 +106,6 @@ TEST_F(LpcmEncoderTest, BigEndian16bit) {
 
 TEST_F(LpcmEncoderTest, LittleEndian24bit) {
   lpcm_decoder_config_.sample_size_ = 24;
-  input_sample_size_ = 24;
   InitExpectOk();
 
   EncodeAudioFrame({{0x12345600}});
@@ -120,7 +117,6 @@ TEST_F(LpcmEncoderTest, BigEndian24bit) {
   lpcm_decoder_config_.sample_size_ = 24;
   lpcm_decoder_config_.sample_format_flags_bitmask_ =
       LpcmDecoderConfig::kLpcmBigEndian;
-  input_sample_size_ = 24;
   InitExpectOk();
 
   EncodeAudioFrame({{0x12345600}});

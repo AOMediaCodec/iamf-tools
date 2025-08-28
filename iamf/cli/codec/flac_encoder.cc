@@ -149,7 +149,7 @@ FlacEncoder::~FlacEncoder() {
 }
 
 absl::Status FlacEncoder::EncodeAudioFrame(
-    int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
+    const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
   RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
@@ -162,23 +162,21 @@ absl::Status FlacEncoder::EncodeAudioFrame(
   // FLAC requires a right-justified sign extended value. Calculate what the
   // mask is to sign extend a `input_bit_depth`-bit value.
   uint32_t base_sign_extension_mask = 0;
-  for (int i = 31; i > input_bit_depth - 1; --i) {
+  for (int i = 31; i > input_pcm_bit_depth_ - 1; --i) {
     base_sign_extension_mask |= 1 << i;
   }
 
   const absl::AnyInvocable<absl::Status(int32_t, int32_t&) const>
-      kLeftJustifiedToRightJustified =
-          [base_sign_extension_mask, input_bit_depth](int32_t input,
-                                                      int32_t& output) {
-            // Only apply the sign extension mask when the left-justified value
-            // has '1' in the MSB.
-            const uint32_t sign_extension_mask =
-                (input & 0x80000000) ? base_sign_extension_mask : 0;
-            // Shift the input value to be right-justified.
-            output = static_cast<uint32_t>(input) >> (32 - input_bit_depth) |
-                     sign_extension_mask;
-            return absl::OkStatus();
-          };
+      kLeftJustifiedToRightJustified = [&](int32_t input, int32_t& output) {
+        // Only apply the sign extension mask when the left-justified value
+        // has '1' in the MSB.
+        const uint32_t sign_extension_mask =
+            (input & 0x80000000) ? base_sign_extension_mask : 0;
+        // Shift the input value to be right-justified.
+        output = static_cast<uint32_t>(input) >> (32 - input_pcm_bit_depth_) |
+                 sign_extension_mask;
+        return absl::OkStatus();
+      };
 
   // TODO(b/382197581): Avoid re-allocations of `encoder_input_pcm` and
   //                    `samples_spans`.

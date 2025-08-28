@@ -41,7 +41,6 @@ class OpusEncoderTest : public EncoderTestBase, public testing::Test {
     opus_encoder_metadata_.set_application(
         iamf_tools_cli_proto::APPLICATION_AUDIO);
     num_samples_per_frame_ = 120;
-    input_sample_size_ = 16;
   }
 
   ~OpusEncoderTest() = default;
@@ -81,7 +80,6 @@ TEST_F(OpusEncoderTest, FramesAreInOrder) {
 }
 
 TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceeds) {
-  input_sample_size_ = 16;
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
@@ -91,7 +89,6 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceeds) {
 }
 
 TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceedsWithoutFloatApi) {
-  input_sample_size_ = 16;
   opus_encoder_metadata_.set_use_float_api(false);
   InitExpectOk();
 
@@ -102,7 +99,6 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes16BitFrameSucceedsWithoutFloatApi) {
 }
 
 TEST_F(OpusEncoderTest, EncodeAndFinalizes24BitFrameSucceeds) {
-  input_sample_size_ = 24;
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(
@@ -112,7 +108,6 @@ TEST_F(OpusEncoderTest, EncodeAndFinalizes24BitFrameSucceeds) {
 }
 
 TEST_F(OpusEncoderTest, EncodeAndFinalizes32BitFrameSucceeds) {
-  input_sample_size_ = 32;
   InitExpectOk();
 
   EncodeAudioFrame(std::vector<std::vector<int32_t>>(

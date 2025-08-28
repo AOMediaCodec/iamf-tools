@@ -60,7 +60,7 @@ absl::Status LpcmEncoder::InitializeEncoder() {
 }
 
 absl::Status LpcmEncoder::EncodeAudioFrame(
-    int /*input_bit_depth*/, const std::vector<std::vector<int32_t>>& samples,
+    const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
   RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));

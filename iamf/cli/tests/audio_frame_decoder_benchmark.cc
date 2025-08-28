@@ -122,7 +122,7 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
   // Encode a frame of one channel with `num_samples_per_frame` samples.
   std::vector<std::vector<int32_t>> pcm_samples(kOneChannel);
   pcm_samples[0].resize(num_samples_per_frame, 0);
-  CHECK_OK(encoder->EncodeAudioFrame(kSampleSize, pcm_samples,
+  CHECK_OK(encoder->EncodeAudioFrame(pcm_samples,
                                      std::move(partial_audio_frame_with_data)));
   std::list<AudioFrameWithData> output_audio_frames;
   CHECK_OK(encoder->Finalize());

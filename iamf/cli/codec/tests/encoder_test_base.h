@@ -70,7 +70,7 @@ class EncoderTestBase {
 
     // Encode the frame as requested.
     EXPECT_EQ(encoder_
-                  ->EncodeAudioFrame(input_sample_size_, pcm_samples,
+                  ->EncodeAudioFrame(pcm_samples,
                                      std::move(partial_audio_frame_with_data))
                   .ok(),
               expected_encode_frame_is_ok);
@@ -117,7 +117,6 @@ class EncoderTestBase {
   int num_channels_ = 1;
   int substream_id_ = 0;
   uint32_t num_samples_per_frame_ = 1;
-  int8_t input_sample_size_ = 16;
   std::unique_ptr<EncoderBase> encoder_;
 
   std::list<std::vector<uint8_t>> expected_audio_frames_ = {};

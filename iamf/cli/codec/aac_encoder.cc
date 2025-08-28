@@ -197,7 +197,7 @@ absl::Status AacEncoder::InitializeEncoder() {
 AacEncoder::~AacEncoder() { aacEncClose(&encoder_); }
 
 absl::Status AacEncoder::EncodeAudioFrame(
-    int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
+    const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
   if (!encoder_) {
     LOG(ERROR) << "Expected `encoder_` to be initialized.";
@@ -211,10 +211,10 @@ absl::Status AacEncoder::EncodeAudioFrame(
                                            "Failed to get encoder info."));
 
   // Convert input to the array that will be passed to `aacEncEncode`.
-  if (input_bit_depth != GetFdkAacBitDepth()) {
+  if (input_pcm_bit_depth_ != GetFdkAacBitDepth()) {
     auto error_message =
         absl::StrCat("Expected AAC to be ", GetFdkAacBitDepth(), " bits, got ",
-                     input_bit_depth);
+                     input_pcm_bit_depth_);
     return absl::InvalidArgumentError(error_message);
   }
 
@@ -230,8 +230,8 @@ absl::Status AacEncoder::EncodeAudioFrame(
       // Convert all frames to INT_PCM samples for input for `fdk_aac` (usually
       // 16-bit).
       RETURN_IF_NOT_OK(WritePcmSample(
-          static_cast<uint32_t>(samples[c][t]), input_bit_depth, big_endian,
-          reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
+          static_cast<uint32_t>(samples[c][t]), input_pcm_bit_depth_,
+          big_endian, reinterpret_cast<uint8_t*>(encoder_input_pcm.data()),
           write_position));
     }
   }

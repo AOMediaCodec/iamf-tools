@@ -40,7 +40,6 @@ class AacEncoderTest : public EncoderTestBase, public testing::Test {
     aac_encoder_metadata_.set_enable_afterburner(true);
     aac_encoder_metadata_.set_signaling_mode(2);
     num_samples_per_frame_ = 1024;
-    input_sample_size_ = 16;
   }
 
   ~AacEncoderTest() = default;

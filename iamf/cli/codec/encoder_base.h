@@ -44,7 +44,7 @@ class EncoderBase {
    *   will fail.
    *
    * \param codec_config Codec Config OBU for the encoder.
-   * \num_channels Number of channels for the encoder.
+   * \param num_channels Number of channels for the encoder.
    */
   EncoderBase(const CodecConfigObu& codec_config, int num_channels)
       : num_samples_per_frame_(codec_config.GetNumSamplesPerFrame()),
@@ -66,9 +66,8 @@ class EncoderBase {
 
   /*!\brief Encodes an audio frame.
    *
-   * \param input_bit_depth Bit-depth of the input data.
    * \param samples Samples arranged in (channel, time) axes. The samples are
-   *        left-justified and stored in the upper `input_bit_depth` bits.
+   *        left-justified and stored in the upper `input_pcm_bit_depth_` bits.
    * \param partial_audio_frame_with_data Unique pointer to take ownership of.
    *        The underlying `audio_frame_` is modified. All other fields are
    *        blindly passed along.
@@ -76,7 +75,7 @@ class EncoderBase {
    *         the frame was finished. A specific status on failure.
    */
   virtual absl::Status EncodeAudioFrame(
-      int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
+      const std::vector<std::vector<int32_t>>& samples,
       std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) = 0;
 
   /*!\brief Gets whether there are frames available.

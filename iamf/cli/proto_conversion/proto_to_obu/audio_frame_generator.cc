@@ -391,12 +391,6 @@ absl::Status MaybeEncodeFramesForAudioElement(
   // Get some common information about this stream.
   const size_t num_samples_per_frame =
       static_cast<size_t>(codec_config.GetNumSamplesPerFrame());
-  // TODO(b/310906409): Lossy codecs do not use PCM for internal
-  //                    representation of data. We may need to measure loudness
-  //                    at a different bit-depth than the input when AAC is
-  //                    updated to support higher bit-depths.
-  const int encoder_input_pcm_bit_depth =
-      static_cast<int>(codec_config.GetBitDepthToMeasureLoudness());
 
   const uint32_t encoder_input_sample_rate = codec_config.GetInputSampleRate();
   const uint32_t decoder_output_sample_rate =
@@ -505,7 +499,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
 
       RETURN_IF_NOT_OK(
           substream_id_to_encoder.at(substream_id)
-              ->EncodeAudioFrame(encoder_input_pcm_bit_depth, frame_to_encode,
+              ->EncodeAudioFrame(frame_to_encode,
                                  std::move(partial_audio_frame_with_data)));
       substream_data.frames_in_obu.PopFront();
       substream_data.frames_to_encode.PopFront();

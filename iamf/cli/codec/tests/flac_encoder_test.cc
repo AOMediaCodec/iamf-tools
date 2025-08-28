@@ -38,7 +38,6 @@ class FlacEncoderTest : public EncoderTestBase, public testing::Test {
   FlacEncoderTest() {
     flac_encoder_metadata_.set_compression_level(0);
     num_samples_per_frame_ = 16;
-    input_sample_size_ = 32;
   }
 
   ~FlacEncoderTest() = default;

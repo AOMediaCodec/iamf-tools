@@ -62,7 +62,6 @@ class AacEncoder : public EncoderBase {
 
   /*!\brief Encodes an audio frame.
    *
-   * \param input_bit_depth Bit-depth of the input data.
    * \param samples Samples arranged in (channel, time) axes. The samples are
    *        left-justified and stored in the upper `input_bit_depth` bits.
    * \param partial_audio_frame_with_data Unique pointer to take ownership of.
@@ -71,7 +70,7 @@ class AacEncoder : public EncoderBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status EncodeAudioFrame(
-      int input_bit_depth, const std::vector<std::vector<int32_t>>& samples,
+      const std::vector<std::vector<int32_t>>& samples,
       std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data)
       override;
 
