@@ -136,98 +136,43 @@ class AudioElementObuTestBase : public ObuTestBase {
   }
 };
 
+ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
+  return ScalableChannelLayoutConfig{
+      .num_layers = 1,
+      .reserved = 0,
+      .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(
+          1, ChannelAudioLayerConfig{.loudspeaker_layout =
+                                         ChannelAudioLayerConfig::kLayoutStereo,
+                                     .output_gain_is_present_flag = 1,
+                                     .recon_gain_is_present_flag = 1,
+                                     .reserved_a = 0,
+                                     .substream_count = 1,
+                                     .coupled_substream_count = 1,
+                                     .output_gain_flag = 1,
+                                     .reserved_b = 0,
+                                     .output_gain = 1}),
+  };
+}
+
 class AudioElementScalableChannelTest : public AudioElementObuTestBase,
                                         public testing::Test {
  public:
-  struct ScalableChannelArguments {
-    uint8_t num_layers;
-    uint8_t scalable_channel_config_reserved;
-
-    // All below vectors have a length of `num_layers`.
-    std::vector<ChannelAudioLayerConfig::LoudspeakerLayout>
-        loud_speaker_layouts;
-    std::vector<uint8_t> output_gain_is_present_flag;
-    std::vector<uint8_t> recon_gain_is_present_flag;
-    std::vector<uint8_t> reserved_a;
-    std::vector<uint8_t> substream_count;
-    std::vector<uint8_t> coupled_substream_count;
-    std::vector<uint8_t> output_gain_flag;
-    std::vector<uint8_t> reserved_b;
-    std::vector<int16_t> output_gain;
-  };
-
   AudioElementScalableChannelTest()
       : AudioElementObuTestBase(AudioElementObu::kAudioElementChannelBased),
-        scalable_channel_arguments_(
-            {.num_layers = 1,
-             .scalable_channel_config_reserved = 0,
-             .loud_speaker_layouts = {ChannelAudioLayerConfig::kLayoutStereo},
-             .output_gain_is_present_flag = {1},
-             .recon_gain_is_present_flag = {1},
-             .reserved_a = {0},
-             .substream_count = {1},
-             .coupled_substream_count = {1},
-             .output_gain_flag = {1},
-             .reserved_b = {0},
-             .output_gain = {1}}) {}
+        scalable_channel_layout_config_(
+            GetOneLayerStereoScalableChannelLayout()) {}
 
  protected:
-  void InitLayers() {
-    const uint8_t num_layers = scalable_channel_arguments_.num_layers;
-    scalable_channel_arguments_.num_layers = num_layers;
-    // Overwrite all variable-sized vectors with default data of a length
-    // implied by the default argument.
-    scalable_channel_arguments_.loud_speaker_layouts =
-        std::vector<ChannelAudioLayerConfig::LoudspeakerLayout>(
-            num_layers, ChannelAudioLayerConfig::kLayoutStereo);
-    scalable_channel_arguments_.output_gain_is_present_flag =
-        std::vector<uint8_t>(num_layers, 1);
-    scalable_channel_arguments_.recon_gain_is_present_flag =
-        std::vector<uint8_t>(num_layers, 1);
-    scalable_channel_arguments_.reserved_a =
-        std::vector<uint8_t>(num_layers, 0);
-    scalable_channel_arguments_.substream_count =
-        std::vector<uint8_t>(num_layers, 1);
-    scalable_channel_arguments_.coupled_substream_count =
-        std::vector<uint8_t>(num_layers, 1);
-    scalable_channel_arguments_.output_gain_flag =
-        std::vector<uint8_t>(num_layers, 1);
-    scalable_channel_arguments_.reserved_b =
-        std::vector<uint8_t>(num_layers, 0);
-    scalable_channel_arguments_.output_gain =
-        std::vector<int16_t>(num_layers, 1);
-  }
-
   void InitAudioElementTypeSpecificFields() override {
-    EXPECT_THAT(
-        obu_->InitializeScalableChannelLayout(
-            scalable_channel_arguments_.num_layers,
-            scalable_channel_arguments_.scalable_channel_config_reserved),
-        IsOk());
+    EXPECT_THAT(obu_->InitializeScalableChannelLayout(
+                    scalable_channel_layout_config_.num_layers,
+                    scalable_channel_layout_config_.reserved),
+                IsOk());
 
-    auto& config = std::get<ScalableChannelLayoutConfig>(obu_->config_);
-    for (int i = 0; i < config.num_layers; ++i) {
-      ChannelAudioLayerConfig& layer_config =
-          config.channel_audio_layer_configs[i];
-      layer_config.loudspeaker_layout =
-          scalable_channel_arguments_.loud_speaker_layouts[i];
-      layer_config.output_gain_is_present_flag =
-          scalable_channel_arguments_.output_gain_is_present_flag[i];
-      layer_config.recon_gain_is_present_flag =
-          scalable_channel_arguments_.recon_gain_is_present_flag[i];
-      layer_config.reserved_a = scalable_channel_arguments_.reserved_a[i];
-      layer_config.substream_count =
-          scalable_channel_arguments_.substream_count[i];
-      layer_config.coupled_substream_count =
-          scalable_channel_arguments_.coupled_substream_count[i];
-      layer_config.output_gain_flag =
-          scalable_channel_arguments_.output_gain_flag[i];
-      layer_config.reserved_b = scalable_channel_arguments_.reserved_b[i];
-      layer_config.output_gain = scalable_channel_arguments_.output_gain[i];
-    }
+    obu_->config_ = scalable_channel_layout_config_;
   }
 
-  ScalableChannelArguments scalable_channel_arguments_;
+  ScalableChannelLayoutConfig scalable_channel_layout_config_;
 };
 
 TEST_F(AudioElementScalableChannelTest, ConstructSetsObuType) {
@@ -983,7 +928,8 @@ TEST(ScalableChannelLayoutConfigValidate,
 
 TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {
   required_args_.substream_ids = {1, 2};
-  scalable_channel_arguments_.substream_count = {2};
+  scalable_channel_layout_config_.channel_audio_layer_configs[0]
+      .substream_count = 2;
 
   expected_header_ = {kObuIaAudioElement << 3, 22};
   expected_payload_ = {
