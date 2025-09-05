@@ -54,9 +54,9 @@ size_t GetNumDemixingMatrixElements(const AmbisonicsProjectionConfig& config) {
 
 void LogChannelBased(const ScalableChannelLayoutConfig& channel_config) {
   VLOG(1) << "  scalable_channel_layout_config:";
-  VLOG(1) << "    num_layers= " << absl::StrCat(channel_config.num_layers);
+  VLOG(1) << "    num_layers= " << absl::StrCat(channel_config.GetNumLayers());
   VLOG(1) << "    reserved= " << absl::StrCat(channel_config.reserved);
-  for (int i = 0; i < channel_config.num_layers; ++i) {
+  for (int i = 0; i < channel_config.GetNumLayers(); ++i) {
     VLOG(1) << "    channel_audio_layer_configs[" << i << "]:";
     const auto& channel_audio_layer_config =
         channel_config.channel_audio_layer_configs[i];
@@ -202,7 +202,7 @@ absl::Status ValidateAndWriteScalableChannelLayout(
   RETURN_IF_NOT_OK(layout.Validate(num_substreams));
 
   // Write the main portion of the `ScalableChannelLayoutConfig`.
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.num_layers, 3));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.GetNumLayers(), 3));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(layout.reserved, 5));
 
   // Loop to write the `channel_audio_layer_configs` array.
@@ -218,10 +218,12 @@ absl::Status ReadAndValidateScalableChannelLayout(
     ScalableChannelLayoutConfig& layout, const DecodedUleb128 num_substreams,
     ReadBitBuffer& rb) {
   // Read the main portion of the `ScalableChannelLayoutConfig`.
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, layout.num_layers));
+  uint8_t num_layers;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, num_layers));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, layout.reserved));
 
-  for (int i = 0; i < layout.num_layers; ++i) {
+  layout.channel_audio_layer_configs.reserve(num_layers);
+  for (int i = 0; i < num_layers; ++i) {
     ChannelAudioLayerConfig layer_config;
     RETURN_IF_NOT_OK(layer_config.Read(rb));
     layout.channel_audio_layer_configs.push_back(layer_config);
@@ -447,12 +449,10 @@ absl::Status ChannelAudioLayerConfig::Read(ReadBitBuffer& rb) {
 
 absl::Status ScalableChannelLayoutConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {
-  if (num_layers == 0 || num_layers > 6) {
+  if (GetNumLayers() == 0 || GetNumLayers() > 6) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Expected `num_layers` in [1, 6]; got ", num_layers));
+        absl::StrCat("Expected `num_layers` in [1, 6]; got ", GetNumLayers()));
   }
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "channel_audio_layer_configs", channel_audio_layer_configs, num_layers));
 
   // Determine whether any binaural layouts are found and the total number of
   // substreams.
@@ -474,7 +474,7 @@ absl::Status ScalableChannelLayoutConfig::Validate(
         "the `num_substreams` in the OBU.");
   }
 
-  if (has_binaural_layout && num_layers != 1) {
+  if (has_binaural_layout && GetNumLayers() != 1) {
     return absl::InvalidArgumentError(
         "There must be exactly 1 layer if there is a binaural layout.");
   }
@@ -624,8 +624,6 @@ absl::Status AudioElementObu::InitializeScalableChannelLayout(
   }
 
   ScalableChannelLayoutConfig config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "ScalableChannelLayoutConfig.num_layers", num_layers, config.num_layers));
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "ScalableChannelLayoutConfig.reserved", reserved, config.reserved));
   config.channel_audio_layer_configs.resize(num_layers);

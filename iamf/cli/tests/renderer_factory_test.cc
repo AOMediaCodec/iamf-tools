@@ -38,15 +38,12 @@ const Layout kBinauralLayout = {.layout_type = Layout::kLayoutTypeBinaural};
 constexpr size_t kNumSamplesPerFrame = 8;
 
 const ScalableChannelLayoutConfig kBinauralChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
 
 const ScalableChannelLayoutConfig kMonoScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutMono}}};
 
 const ScalableChannelLayoutConfig kStereoScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutStereo}}};
 
 const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {

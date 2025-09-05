@@ -88,23 +88,18 @@ const Layout k3_1_2Layout = {
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem11_2_3_0}};
 
 const ScalableChannelLayoutConfig kBinauralScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
 const ScalableChannelLayoutConfig kStereoScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutStereo}}};
 const ScalableChannelLayoutConfig k5_1_0ScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayout5_1_ch}}};
 const ScalableChannelLayoutConfig k7_1_4ScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayout7_1_4_ch}}};
 
 ScalableChannelLayoutConfig
 GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
     ChannelAudioLayerConfig::ExpandedLoudspeakerLayout expanded_layout) {
-  return {.num_layers = 1,
-          .channel_audio_layer_configs = {
+  return {.channel_audio_layer_configs = {
               {.loudspeaker_layout = kLayoutExpanded,
                .expanded_loudspeaker_layout = expanded_layout}}};
 }

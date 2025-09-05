@@ -166,10 +166,15 @@ struct ScalableChannelLayoutConfig {
    */
   absl::Status Validate(DecodedUleb128 num_substreams_in_audio_element) const;
 
-  uint8_t num_layers;  // 3 bits.
-  uint8_t reserved;    // 5 bits.
+  /*!\brief Gets the number of layers in the configuration.
+   *
+   * \return Number of layers.
+   */
+  uint8_t GetNumLayers() const { return channel_audio_layer_configs.size(); }
 
-  // Vector of length `num_layers`.
+  uint8_t reserved = 0;  // 5 bits.
+
+  // Vector of layers.
   std::vector<ChannelAudioLayerConfig> channel_audio_layer_configs;
 };
 

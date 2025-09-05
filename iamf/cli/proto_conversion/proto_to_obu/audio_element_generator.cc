@@ -215,7 +215,7 @@ absl::Status ValidateReconGainDefined(
       std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_);
   const auto& channel_audio_layer_configs =
       channel_config.channel_audio_layer_configs;
-  for (int i = 0; i < channel_config.num_layers; i++) {
+  for (int i = 0; i < channel_config.GetNumLayers(); i++) {
     uint8_t expected_recon_gain_is_present_flag;
     if (i == 0) {
       // First layer: there is no demixed channel, so recon gain is not
@@ -241,8 +241,7 @@ absl::Status ValidateReconGainDefined(
   bool recon_gain_defined = false;
   for (const auto& audio_element_param :
        audio_element_obu.audio_element_params_) {
-    const auto param_definition_type = audio_element_param.GetType();
-    if (param_definition_type ==
+    if (audio_element_param.GetType() ==
         ParamDefinition::kParameterDefinitionReconGain) {
       recon_gain_defined = true;
       break;
@@ -365,7 +364,7 @@ absl::Status FillScalableChannelLayoutConfig(
       input_config.reserved()));
   auto& config =
       std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
-  for (int i = 0; i < config.num_layers; ++i) {
+  for (int i = 0; i < config.GetNumLayers(); ++i) {
     ChannelAudioLayerConfig* const layer_config =
         &config.channel_audio_layer_configs[i];
 

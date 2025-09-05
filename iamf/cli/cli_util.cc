@@ -77,8 +77,8 @@ void FillReconGainAuxiliaryData(
     std::vector<ReconGainParamDefinition::ReconGainAuxiliaryData>& aux_data) {
   const auto& channel_config =
       std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
-  aux_data.resize(channel_config.num_layers);
-  for (int l = 0; l < channel_config.num_layers; l++) {
+  aux_data.resize(channel_config.GetNumLayers());
+  for (int l = 0; l < channel_config.GetNumLayers(); l++) {
     aux_data[l].recon_gain_is_present_flag =
         (channel_config.channel_audio_layer_configs[l]
              .recon_gain_is_present_flag == 1);

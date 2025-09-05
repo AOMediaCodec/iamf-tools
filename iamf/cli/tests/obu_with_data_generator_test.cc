@@ -73,7 +73,6 @@ constexpr std::array<uint8_t, 12> kSecondReconGainValues = {
 constexpr uint8_t kApplyOutputGainToLeftChannel = 0x20;
 
 const ScalableChannelLayoutConfig kOneLayerStereoConfig{
-    .num_layers = 1,
     .channel_audio_layer_configs = {
         {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
          .output_gain_is_present_flag = false,
@@ -903,7 +902,6 @@ TEST(FinalizeScalableChannelLayoutConfig, InvalidWhenSubstreamIdsAreNotUnique) {
   const std::vector<DecodedUleb128> kNonUniqueSubstreamIds = {1, 2, 99, 99};
 
   const ScalableChannelLayoutConfig k3_1_2Config{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout3_1_2_ch,
            .output_gain_is_present_flag = false,
@@ -926,7 +924,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig
       kInvalidOneLayerStereoWithoutCoupledSubstreams{
-          .num_layers = 1,
           .channel_audio_layer_configs = {
               {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
                .output_gain_is_present_flag = false,
@@ -950,7 +947,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig
       kInvalidOneLayerStereoWithoutCoupledSubstreams{
-          .num_layers = 1,
           .channel_audio_layer_configs = {
               {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
                .output_gain_is_present_flag = false,
@@ -978,7 +974,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 1, .lfe = 0, .height = 0},
       {.surround = 2, .lfe = 0, .height = 0}};
   const ScalableChannelLayoutConfig kTwoLayerMonoStereoConfig{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
            .output_gain_is_present_flag = false,
@@ -1008,7 +1003,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
      InvalidWhenSubsequenceLayersAreLower) {
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig kInvalidWithMonoLayerAfterStereo{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
            .output_gain_is_present_flag = false,
@@ -1038,7 +1032,6 @@ TEST(FinalizeScalableChannelLayoutConfig, FillsOutputGainMap) {
       {.surround = 1, .lfe = 0, .height = 0},
       {.surround = 2, .lfe = 0, .height = 0}};
   const ScalableChannelLayoutConfig kTwoLayerStereoConfig{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
            .output_gain_is_present_flag = false,
@@ -1081,7 +1074,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 2, .lfe = 0, .height = 0},
       {.surround = 3, .lfe = 1, .height = 2}};
   const ScalableChannelLayoutConfig kTwoLayerStereo3_1_2Config{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
            .output_gain_is_present_flag = false,
@@ -1118,7 +1110,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 3, .lfe = 1, .height = 2},
       {.surround = 5, .lfe = 1, .height = 2}};
   const ScalableChannelLayoutConfig kTwoLayer3_1_2_and_5_1_2Config{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout3_1_2_ch,
            .output_gain_is_present_flag = false,
@@ -1155,7 +1146,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 5, .lfe = 1, .height = 0},
       {.surround = 7, .lfe = 1, .height = 0}};
   const ScalableChannelLayoutConfig kTwoLayer5_1_0_and_7_1_0Config{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch,
            .output_gain_is_present_flag = false,
@@ -1193,7 +1183,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 5, .lfe = 1, .height = 4}};
   const std::vector<DecodedUleb128> kAudioSubstreamIds = kSubstreamIds;
   const ScalableChannelLayoutConfig kOneLayer5_1_4Config{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_4_ch,
            .output_gain_is_present_flag = false,
@@ -1226,7 +1215,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 5, .lfe = 1, .height = 2},
       {.surround = 5, .lfe = 1, .height = 4}};
   const ScalableChannelLayoutConfig kTwoLayer5_1_2_and_5_1_4Config{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_2_ch,
            .output_gain_is_present_flag = false,
@@ -1265,7 +1253,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 7, .lfe = 1, .height = 0},
       {.surround = 7, .lfe = 1, .height = 4}};
   const ScalableChannelLayoutConfig kTwoLayer7_1_0_and_7_1_4Config{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout7_1_ch,
            .output_gain_is_present_flag = false,
@@ -1303,7 +1290,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 7, .lfe = 1, .height = 4}};
   const std::vector<DecodedUleb128> kAudioSubstreamIds = kSubstreamIds;
   const ScalableChannelLayoutConfig kOneLayer7_1_4Config{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout7_1_4_ch,
            .output_gain_is_present_flag = false,
@@ -1327,7 +1313,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
 TEST(FinalizeScalableChannelLayoutConfig, InvalidWithReservedLayout14) {
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kOneLayerReserved14Layout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved14,
            .output_gain_is_present_flag = false,
@@ -1351,7 +1336,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 1, .height = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kLFELayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1381,7 +1365,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 2, .lfe = 0, .height = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoSSLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1412,7 +1395,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 2, .lfe = 0, .height = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoSSLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1443,7 +1425,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 0, .height = 2}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoTfLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1474,7 +1455,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 0, .height = 2}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoTBLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1505,7 +1485,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 0, .height = 4}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig kTop4ChLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1536,7 +1515,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 3, .lfe = 0, .height = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig k3_0_ChLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1569,7 +1547,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 9, .lfe = 1, .height = 6}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   const ScalableChannelLayoutConfig k9_1_6Layout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1600,7 +1577,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 0, .height = 2}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kTpSiLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1631,7 +1607,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {.surround = 0, .lfe = 0, .height = 6}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2};
   const ScalableChannelLayoutConfig kTop6ChLayout{
-      .num_layers = 1,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .output_gain_is_present_flag = false,
@@ -1659,7 +1634,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig
       kInvalidWithFirstLayerExpandedAndAnotherSecondLayer{
-          .num_layers = 2,
           .channel_audio_layer_configs = {
               {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
                .output_gain_is_present_flag = false,
@@ -1687,7 +1661,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
      InvalidWhenSecondLayerIsExpandedLayout) {
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig kInvalidWithSecondLayerExpandedLayout{
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
            .output_gain_is_present_flag = false,
@@ -1715,7 +1688,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   const ScalableChannelLayoutConfig
       kInvaliWithInconsistentExpandedLoudspeakerLayout{
-          .num_layers = 1,
           .channel_audio_layer_configs = {
               {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
                .output_gain_is_present_flag = false,

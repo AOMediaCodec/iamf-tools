@@ -138,7 +138,6 @@ class AudioElementObuTestBase : public ObuTestBase {
 
 ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
   return ScalableChannelLayoutConfig{
-      .num_layers = 1,
       .reserved = 0,
       .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(
           1, ChannelAudioLayerConfig{.loudspeaker_layout =
@@ -165,7 +164,7 @@ class AudioElementScalableChannelTest : public AudioElementObuTestBase,
  protected:
   void InitAudioElementTypeSpecificFields() override {
     EXPECT_THAT(obu_->InitializeScalableChannelLayout(
-                    scalable_channel_layout_config_.num_layers,
+                    scalable_channel_layout_config_.GetNumLayers(),
                     scalable_channel_layout_config_.reserved),
                 IsOk());
 
@@ -861,7 +860,6 @@ TEST(ChannelAudioLayerConfig, ReadsFirstReservedField) {
 }
 
 const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
-    .num_layers = 2,
     .channel_audio_layer_configs = {
         ChannelAudioLayerConfig{
             .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
@@ -889,14 +887,13 @@ TEST(ScalableChannelLayoutConfigValidate,
 }
 
 TEST(ScalableChannelLayoutConfigValidate, TooFewLayers) {
-  const ScalableChannelLayoutConfig kConfigWithZeroLayer = {.num_layers = 0};
+  const ScalableChannelLayoutConfig kConfigWithZeroLayer = {};
 
   EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
 }
 
 TEST(ScalableChannelLayoutConfigValidate, TooManyLayers) {
   const ScalableChannelLayoutConfig kConfigWithZeroLayer = {
-      .num_layers = 7,
       .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(7)};
 
   EXPECT_FALSE(kConfigWithZeroLayer.Validate(0).ok());
@@ -904,7 +901,6 @@ TEST(ScalableChannelLayoutConfigValidate, TooManyLayers) {
 
 TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
   const ScalableChannelLayoutConfig kBinauralConfig = {
-      .num_layers = 1,
       .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural}};
 
   EXPECT_THAT(kBinauralConfig.Validate(1), IsOk());
@@ -913,12 +909,10 @@ TEST(ScalableChannelLayoutConfigValidate, IsOkWithOneLayerBinaural) {
 TEST(ScalableChannelLayoutConfigValidate,
      MustHaveExactlyOneLayerIfBinauralIsPresent) {
   const ScalableChannelLayoutConfig kInvalidBinauralConfigWithFirstLayerStereo =
-      {.num_layers = 2,
-       .channel_audio_layer_configs = {kChannelAudioLayerConfigStereo,
+      {.channel_audio_layer_configs = {kChannelAudioLayerConfigStereo,
                                        kChannelAudioLayerConfigBinaural}};
   const ScalableChannelLayoutConfig
       kInvalidBinauralConfigWithSecondLayerStereo = {
-          .num_layers = 2,
           .channel_audio_layer_configs = {kChannelAudioLayerConfigBinaural,
                                           kChannelAudioLayerConfigStereo}};
 
@@ -1843,7 +1837,6 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
   EXPECT_TRUE(obu->audio_element_params_.empty());
 
   ScalableChannelLayoutConfig expected_scalable_channel_layout_config = {
-      .num_layers = 2,
       .channel_audio_layer_configs = {
           ChannelAudioLayerConfig{
               .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,

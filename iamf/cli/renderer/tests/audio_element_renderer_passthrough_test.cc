@@ -48,8 +48,7 @@ Layout GetScalableLayoutForSoundSystem(
 ScalableChannelLayoutConfig
 GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
     ChannelAudioLayerConfig::ExpandedLoudspeakerLayout expanded_layout) {
-  return {.num_layers = 1,
-          .channel_audio_layer_configs = {
+  return {.channel_audio_layer_configs = {
               {.loudspeaker_layout = kLayoutExpanded,
                .expanded_loudspeaker_layout = expanded_layout}}};
 }
@@ -65,20 +64,15 @@ const Layout k5_1_4Layout =
     GetScalableLayoutForSoundSystem(kSoundSystemD_4_5_0);
 
 const ScalableChannelLayoutConfig kBinauralScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
 const ScalableChannelLayoutConfig kStereoScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutStereo}}};
 const ScalableChannelLayoutConfig kStereoChannelConfigWithTwoLayers = {
-    .num_layers = 2,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutMono},
                                     {.loudspeaker_layout = kLayoutStereo}}};
 const ScalableChannelLayoutConfig k7_1_4ScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayout7_1_4_ch}}};
 const ScalableChannelLayoutConfig kMonoScalableChannelLayoutConfig = {
-    .num_layers = 1,
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutMono}}};
 
 constexpr size_t kFourSamplesPerFrame = 4;

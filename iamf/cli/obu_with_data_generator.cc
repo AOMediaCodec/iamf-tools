@@ -680,8 +680,8 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
   // Starting from no channel at all.
   ChannelNumbers accumulated_channels = {0, 0, 0};
   int substream_index = 0;
-  channel_numbers_for_layers.reserve(config.num_layers);
-  for (int i = 0; i < config.num_layers; ++i) {
+  channel_numbers_for_layers.reserve(config.GetNumLayers());
+  for (int i = 0; i < config.GetNumLayers(); ++i) {
     const int previous_layer_substream_index = substream_index;
 
     ChannelNumbers layer_channels;

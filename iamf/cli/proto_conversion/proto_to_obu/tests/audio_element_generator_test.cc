@@ -19,6 +19,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -54,7 +55,6 @@ constexpr DecodedUleb128 kMonoSubstreamId = 99;
 constexpr DecodedUleb128 kL2SubstreamId = 100;
 
 const ScalableChannelLayoutConfig kOneLayerStereoConfig{
-    .num_layers = 1,
     .channel_audio_layer_configs = {
         {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
          .output_gain_is_present_flag = false,
@@ -845,7 +845,7 @@ TEST_F(AudioElementGeneratorTest, IgnoresDeprecatedNumLayers) {
       std::get_if<ScalableChannelLayoutConfig>(
           &output_obus_.at(kAudioElementId).obu.config_);
   ASSERT_NE(scalable_channel_layout_config, nullptr);
-  EXPECT_EQ(scalable_channel_layout_config->num_layers, kExpectedNumLayers);
+  EXPECT_EQ(scalable_channel_layout_config->GetNumLayers(), kExpectedNumLayers);
   EXPECT_EQ(scalable_channel_layout_config->channel_audio_layer_configs.size(),
             kExpectedNumLayers);
 }
