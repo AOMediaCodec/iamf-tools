@@ -409,7 +409,6 @@ cc_test(
         ":cli_test_utils",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli:obu_sequencer_base",
         "//iamf/cli:parameter_block_with_data",
         "//iamf/cli:temporal_unit_view",
         "//iamf/common:leb_generator",

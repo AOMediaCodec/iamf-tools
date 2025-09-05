@@ -21,6 +21,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
 #include "absl/log/log.h"
+#include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -68,6 +69,48 @@ void ParameterSubblock::Print() const {
   param_data->Print();
 }
 
+std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
+    const ObuHeader& header, DecodedUleb128 parameter_id,
+    const ParamDefinition& param_definition) {
+  if (param_definition.param_definition_mode_ != 0) {
+    LOG(WARNING) << "CreateMode0() should only be called when "
+                    "param_definition_mode == 0.";
+    return nullptr;
+  }
+
+  auto parameter_block_obu = absl::WrapUnique(
+      new ParameterBlockObu(header, parameter_id, param_definition));
+  parameter_block_obu->subblocks_.resize(
+      static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
+
+  return parameter_block_obu;
+}
+
+std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
+    const ObuHeader& header, DecodedUleb128 parameter_id,
+    const ParamDefinition& param_definition, DecodedUleb128 duration,
+    DecodedUleb128 constant_subblock_duration, DecodedUleb128 num_subblocks) {
+  if (param_definition.param_definition_mode_ != 1) {
+    LOG(WARNING) << "CreateMode1() should only be called when "
+                    "param_definition_mode == 1.";
+    return nullptr;
+  }
+  auto parameter_block_obu = absl::WrapUnique(
+      new ParameterBlockObu(header, parameter_id, param_definition));
+
+  // Under param definition mode 1, several fields are explicitly in the OBU.
+  parameter_block_obu->duration_ = duration;
+  parameter_block_obu->constant_subblock_duration_ = constant_subblock_duration;
+  if (constant_subblock_duration == 0) {
+    // This field is explicitly in the OBU.
+    parameter_block_obu->num_subblocks_ = num_subblocks;
+  }
+  parameter_block_obu->subblocks_.resize(
+      static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
+
+  return parameter_block_obu;
+}
+
 absl::StatusOr<std::unique_ptr<ParameterBlockObu>>
 ParameterBlockObu::CreateFromBuffer(
     const ObuHeader& header, int64_t payload_size,
@@ -99,9 +142,9 @@ ParameterBlockObu::CreateFromBuffer(
     return static_cast<const ParamDefinition*>(&param_definition);
   };
   const int64_t remaining_payload_size = payload_size - encoded_uleb128_size;
-  auto parameter_block_obu = std::make_unique<ParameterBlockObu>(
+  auto parameter_block_obu = absl::WrapUnique(new ParameterBlockObu(
       header, parameter_id,
-      *std::visit(cast_to_base_pointer, parameter_definition_it->second));
+      *std::visit(cast_to_base_pointer, parameter_definition_it->second)));
 
   // TODO(b/338474387): Test reading in extension parameters.
   RETURN_IF_NOT_OK(
@@ -285,36 +328,7 @@ absl::Status ParameterBlockObu::GetLinearMixGain(
   return absl::OkStatus();
 }
 
-absl::Status ParameterBlockObu::InitializeSubblocks(
-    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
-    DecodedUleb128 num_subblocks) {
-  CHECK_EQ(param_definition_.param_definition_mode_, 1)
-      << "InitializeSubblocks() with input arguments should only "
-      << "be called when `param_definition_mode_ == 1`";
-
-  SetDuration(duration);
-  SetConstantSubblockDuration(constant_subblock_duration);
-  SetNumSubblocks(num_subblocks);
-  subblocks_.resize(static_cast<size_t>(GetNumSubblocks()));
-  init_status_ = absl::OkStatus();
-  return init_status_;
-}
-
-absl::Status ParameterBlockObu::InitializeSubblocks() {
-  CHECK_EQ(param_definition_.param_definition_mode_, 0)
-      << "InitializeSubblocks() without input arguments should only "
-      << "be called when `param_definition_mode_ == 0`";
-
-  subblocks_.resize(static_cast<size_t>(GetNumSubblocks()));
-  init_status_ = absl::OkStatus();
-  return absl::OkStatus();
-}
-
 void ParameterBlockObu::PrintObu() const {
-  if (!init_status_.ok()) {
-    LOG(ERROR) << "This OBU failed to initialize with error= " << init_status_;
-  }
-
   LOG(INFO) << "Parameter Block OBU:";
   LOG(INFO) << "  // param_definition:";
   param_definition_.Print();
@@ -336,40 +350,8 @@ void ParameterBlockObu::PrintObu() const {
   }
 }
 
-void ParameterBlockObu::SetDuration(DecodedUleb128 duration) {
-  CHECK_NE(param_definition_.param_definition_mode_, 0)
-      << "Calling ParameterBlockObu::SetDuration() is disallowed when "
-      << "`param_definition_mode_ == 0`";
-  duration_ = duration;
-}
-
-void ParameterBlockObu::SetConstantSubblockDuration(
-    DecodedUleb128 constant_subblock_duration) {
-  CHECK_NE(param_definition_.param_definition_mode_, 0)
-      << "Calling ParameterBlockObu::SetConstantSubblockDuration() is "
-      << "disallowed when `param_definition_mode_ == 0`";
-  constant_subblock_duration_ = constant_subblock_duration;
-}
-
-void ParameterBlockObu::SetNumSubblocks(DecodedUleb128 num_subblocks) {
-  CHECK_NE(param_definition_.param_definition_mode_, 0)
-      << "Calling ParameterBlockObu::SetNumSubblocks() is "
-      << "disallowed when `param_definition_mode_ == 0`";
-  if (GetConstantSubblockDuration() != 0) {
-    // Nothing to do. The field is implicit.
-    return;
-  }
-  num_subblocks_ = num_subblocks;
-}
-
 absl::Status ParameterBlockObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
-  if (!init_status_.ok()) {
-    LOG(ERROR) << "Cannot write a Parameter Block OBU whose initialization "
-               << "did not run successfully. init_status_= " << init_status_;
-    return init_status_;
-  }
-
   RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_id_));
 
   // Initialized from OBU or `param_definition_` depending on
@@ -447,7 +429,6 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
         "Subblock durations do not match the total duration.");
   }
 
-  init_status_ = absl::OkStatus();
   return absl::OkStatus();
 }
 

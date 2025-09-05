@@ -9,7 +9,6 @@
  * Open Media Patent License 1.0 was not distributed with this source code
  * in the PATENTS file, you can obtain it at www.aomedia.org/license/patent.
  */
-#include "iamf/cli/obu_sequencer_base.h"
 
 #include <cstdint>
 #include <list>
@@ -50,6 +49,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::_;
 using ::testing::Not;
+using ::testing::NotNull;
 using ::testing::Return;
 
 using absl::MakeConstSpan;
@@ -149,9 +149,9 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   auto data = std::make_unique<DemixingInfoParameterData>();
   data->dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
   data->reserved = 0;
-  auto parameter_block = std::make_unique<ParameterBlockObu>(
+  auto parameter_block = ParameterBlockObu::CreateMode0(
       ObuHeader(), param_definition.parameter_id_, param_definition);
-  ASSERT_THAT(parameter_block->InitializeSubblocks(), IsOk());
+  ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),

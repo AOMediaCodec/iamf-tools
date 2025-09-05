@@ -281,11 +281,11 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
          i < recon_gain_values_vector.size() || i < dmixp_mode_vector.size();
          i++) {
       if (recon_gain_parameter_id.has_value()) {
-        parameter_block_obus.push_back(std::make_unique<ParameterBlockObu>(
+        parameter_block_obus.push_back(ParameterBlockObu::CreateMode0(
             ObuHeader(), *recon_gain_parameter_id,
             std::get<ReconGainParamDefinition>(
                 param_definition_variants_.at(*recon_gain_parameter_id))));
-        EXPECT_THAT(parameter_block_obus.back()->InitializeSubblocks(), IsOk());
+        ASSERT_THAT(parameter_block_obus.back(), NotNull());
 
         // Data specific to recon gain parameter blocks.
         auto recon_gain_info_parameter_data =
@@ -297,11 +297,11 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
             std::move(recon_gain_info_parameter_data);
       }
       if (demixing_parameter_id.has_value()) {
-        parameter_block_obus.push_back(std::make_unique<ParameterBlockObu>(
+        parameter_block_obus.push_back(ParameterBlockObu::CreateMode0(
             ObuHeader(), *demixing_parameter_id,
             std::get<DemixingParamDefinition>(
                 param_definition_variants_.at(*demixing_parameter_id))));
-        EXPECT_THAT(parameter_block_obus.back()->InitializeSubblocks(), IsOk());
+        ASSERT_THAT(parameter_block_obus.back(), NotNull());
 
         // Data specific to demixing parameter blocks.
         auto demixing_parameter_data =
@@ -819,8 +819,9 @@ TEST(GenerateParameterBlockWithData, ValidParameterBlock) {
       audio_elements_with_data, param_definition_variants);
   ASSERT_THAT(global_timing_module, NotNull());
   std::list<std::unique_ptr<ParameterBlockObu>> parameter_block_obus;
-  parameter_block_obus.push_back(std::make_unique<ParameterBlockObu>(
+  parameter_block_obus.emplace_back(ParameterBlockObu::CreateMode0(
       ObuHeader(), kFirstParameterId, param_definition));
+  ASSERT_THAT(parameter_block_obus.back(), NotNull());
 
   // Call `GenerateParameterBlockWithData()` iteratively with one OBU at a time.
   auto start_timestamp = kStartTimestamp;

@@ -1143,17 +1143,17 @@ TEST(ProcessTemporalUnitObusTest,
   param_definition.constant_subblock_duration_ = kParameterBlockDuration;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   param_definitions.emplace(kParameterBlockId, param_definition);
-  ParameterBlockObu parameter_block_obu(ObuHeader(), kParameterBlockId,
-                                        param_definition);
-  EXPECT_THAT(parameter_block_obu.InitializeSubblocks(), IsOk());
-  parameter_block_obu.subblocks_[0].param_data =
+  auto parameter_block = ParameterBlockObu::CreateMode0(
+      ObuHeader(), kParameterBlockId, param_definition);
+  ASSERT_THAT(parameter_block, NotNull());
+  parameter_block->subblocks_[0].param_data =
       std::make_unique<MixGainParameterData>(
           MixGainParameterData::kAnimateStep,
           AnimationStepInt16{.start_point_value = 99});
 
   // Initialize the sequence with a single parameter block.
   const auto one_parameter_block_obu =
-      SerializeObusExpectOk({&parameter_block_obu});
+      SerializeObusExpectOk({parameter_block.get()});
   auto global_timing_module =
       GlobalTimingModule::Create(audio_elements_with_data, param_definitions);
   ASSERT_THAT(global_timing_module, NotNull());
@@ -2150,10 +2150,14 @@ void RenderOneSampleZoaToStereoWavExpectOk(
 
   // Create a single parameter block consistent with the mix presentation OBU.
   std::list<ParameterBlockWithData> parameter_blocks_with_data = {};
-  auto parameter_block = std::make_unique<ParameterBlockObu>(
+  constexpr DecodedUleb128 kDuration = 1;
+  constexpr DecodedUleb128 kConstantSubblockDuration = 1;
+  constexpr uint32_t kNumSubblocks = 1;
+  auto parameter_block = ParameterBlockObu::CreateMode1(
       ObuHeader(), kCommonMixGainParameterId,
-      mix_presentation_obus.front().sub_mixes_[0].output_mix_gain);
-  EXPECT_THAT(parameter_block->InitializeSubblocks(1, 1, 1), IsOk());
+      mix_presentation_obus.front().sub_mixes_[0].output_mix_gain, kDuration,
+      kConstantSubblockDuration, kNumSubblocks);
+  EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data =
       std::make_unique<MixGainParameterData>(
           MixGainParameterData::kAnimateStep,

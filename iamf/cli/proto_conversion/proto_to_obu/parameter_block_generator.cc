@@ -507,20 +507,21 @@ absl::Status PopulateCommonFields(
       parameter_block_with_data.end_timestamp));
 
   // Populate the OBU.
-  const DecodedUleb128 parameter_id = parameter_block_metadata.parameter_id();
-  parameter_block_with_data.obu = std::make_unique<ParameterBlockObu>(
-      GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-      parameter_id, param_definition);
-
-  // Several fields are dependent on `param_definition_mode`.
-  if (param_definition.param_definition_mode_ == 1) {
-    RETURN_IF_NOT_OK(parameter_block_with_data.obu->InitializeSubblocks(
+  if (param_definition.param_definition_mode_ == 0) {
+    parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(
+        GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
+        parameter_block_metadata.parameter_id(), param_definition);
+  } else {
+    // Several fields are dependent on `param_definition_mode`.
+    parameter_block_with_data.obu = ParameterBlockObu::CreateMode1(
+        GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
+        parameter_block_metadata.parameter_id(), param_definition,
         parameter_block_metadata.duration(),
         parameter_block_metadata.constant_subblock_duration(),
-        parameter_block_metadata.subblocks_size()));
-  } else {
-    RETURN_IF_NOT_OK(parameter_block_with_data.obu->InitializeSubblocks());
+        parameter_block_metadata.subblocks_size());
   }
+  RETURN_IF_NOT_OK(
+      ValidateNotNull(parameter_block_with_data.obu, "ParameterBlockObu"));
 
   return absl::OkStatus();
 }

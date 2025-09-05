@@ -43,6 +43,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+using ::testing::NotNull;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr uint32_t kNumSamplesPerFrame = 8;
@@ -113,9 +114,9 @@ void AddMixGainParameterBlock(
   auto data = std::make_unique<MixGainParameterData>();
   data->animation_type = MixGainParameterData::kAnimateStep;
   data->param_data = AnimationStepInt16{.start_point_value = 1};
-  auto parameter_block = std::make_unique<ParameterBlockObu>(
+  auto parameter_block = ParameterBlockObu::CreateMode0(
       ObuHeader(), param_definition.parameter_id_, param_definition);
-  ASSERT_THAT(parameter_block->InitializeSubblocks(), IsOk());
+  ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{
       .obu = std::move(parameter_block),
