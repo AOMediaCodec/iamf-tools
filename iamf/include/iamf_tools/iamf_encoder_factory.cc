@@ -33,8 +33,14 @@ namespace api {
 
 absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
 IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata,
+    absl::string_view serialized_user_metadata,
     absl::string_view output_file_name) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  if (!user_metadata.ParseFromString(serialized_user_metadata)) {
+    return absl::InvalidArgumentError(
+        "Failed to deserialize a `UserMetadata` protocol buffer.");
+  }
+
   // Create an encoder, which is pre-configured with enough functionality to
   // measure loudness and generate the output file.
   const auto leb_generator =
@@ -61,7 +67,13 @@ IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
 
 absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
 IamfEncoderFactory::CreateIamfEncoder(
-    const iamf_tools_cli_proto::UserMetadata& user_metadata) {
+    absl::string_view serialized_user_metadata) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  if (!user_metadata.ParseFromString(serialized_user_metadata)) {
+    return absl::InvalidArgumentError(
+        "Failed to deserialize a `UserMetadata` protocol buffer.");
+  }
+
   // Create an encoder, which is pre-configured with enough functionality to
   // measure loudness.
   return IamfEncoder::Create(

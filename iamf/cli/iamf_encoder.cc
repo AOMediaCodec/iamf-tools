@@ -26,6 +26,7 @@
 #include "absl/log/log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -69,6 +70,9 @@
 namespace iamf_tools {
 
 namespace {
+
+using ::iamf_tools_cli_proto::ChannelLabelMessage;
+using ::iamf_tools_cli_proto::ParameterBlockObuMetadata;
 
 absl::Status InitAudioFrameDecoderForAllAudioElements(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
@@ -447,8 +451,15 @@ absl::Status IamfEncoder::Encode(
     const api::IamfTemporalUnitData& temporal_unit_data) {
   // Parameter blocks need to cover any delayed or trimmed frames. They may be
   // needed even if `finalize_encode_called_` is true.
-  for (const auto& [parameter_block_id, parameter_block_metadata] :
+  for (const auto& [parameter_block_id, raw_parameter_block_metadata] :
        temporal_unit_data.parameter_block_id_to_metadata) {
+    ParameterBlockObuMetadata parameter_block_metadata;
+    if (!parameter_block_metadata.ParseFromString(
+            raw_parameter_block_metadata)) {
+      return absl::InvalidArgumentError(
+          "Failed to deserialize a `ParameterBlockObuMetadata` protocol "
+          "buffer.");
+    }
     RETURN_IF_NOT_OK(
         parameter_block_generator_.AddMetadata(parameter_block_metadata));
   }
@@ -468,7 +479,13 @@ absl::Status IamfEncoder::Encode(
   for (const auto& [audio_element_id, labeled_samples] :
        temporal_unit_data.audio_element_id_to_data) {
     for (const auto& [label, samples] : labeled_samples) {
-      auto internal_label = ChannelLabelUtils::ProtoToLabel(label);
+      ChannelLabelMessage channel_label_message;
+      if (!channel_label_message.ParseFromString(label)) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Failed to deserialize `ChannelLabelMessage` protocol buffer."));
+      }
+      auto internal_label = ChannelLabelUtils::ProtoToLabel(
+          channel_label_message.channel_label());
       if (!internal_label.ok()) {
         return internal_label.status();
       }

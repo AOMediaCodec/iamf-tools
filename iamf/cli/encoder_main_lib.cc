@@ -51,6 +51,7 @@ namespace iamf_tools {
 
 namespace {
 
+using iamf_tools_cli_proto::ChannelLabelMessage;
 using iamf_tools_cli_proto::ParameterBlockObuMetadata;
 using iamf_tools_cli_proto::UserMetadata;
 
@@ -139,8 +140,17 @@ absl::Status LabeledSamplesToAudioElementData(
     if (!proto_label.ok()) {
       return proto_label.status();
     }
+    ChannelLabelMessage channel_label_message;
+    channel_label_message.set_channel_label(*proto_label);
+    std::string serialized_channel_label_message;
+    if (!channel_label_message.SerializeToString(
+            &serialized_channel_label_message)) {
+      return absl::InternalError(
+          "Failed to serialize a `ChannelLabelMessage` protocol buffer.");
+    }
 
-    audio_element_data[*proto_label] = absl::Span<const double>(samples);
+    audio_element_data[serialized_channel_label_message] =
+        absl::Span<const double>(samples);
   }
   return absl::OkStatus();
 }
@@ -213,8 +223,14 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
     // Fill in this temporal unit's parameter block metadata.
     for (const auto& metadata :
          time_parameter_block_metadata[input_timestamp]) {
+      std::string serialized_metadata;
+      if (!metadata.SerializeToString(&serialized_metadata)) {
+        return absl::InternalError(
+            "Failed to serialize parameter block metadata.");
+      }
       temporal_unit_data
-          .parameter_block_id_to_metadata[metadata.parameter_id()] = metadata;
+          .parameter_block_id_to_metadata[metadata.parameter_id()] =
+          serialized_metadata;
     }
 
     RETURN_IF_NOT_OK(iamf_encoder.Encode(temporal_unit_data));

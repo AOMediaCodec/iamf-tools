@@ -69,6 +69,7 @@ using ::absl::MakeConstSpan;
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::absl_testing::StatusIs;
+using ::iamf_tools_cli_proto::ChannelLabelMessage;
 using ::iamf_tools_cli_proto::UserMetadata;
 using ::testing::_;
 using ::testing::Contains;
@@ -260,10 +261,18 @@ void AddParameterBlockAtTimestamp(InternalTimestamp start_timestamp,
 api::IamfTemporalUnitData MakeStereoTemporalUnitData(
     absl::Span<const double> samples) {
   using enum ::iamf_tools_cli_proto::ChannelLabel;
+  ChannelLabelMessage left_label;
+  left_label.set_channel_label(CHANNEL_LABEL_L_2);
+  std::string left_label_serialized;
+  left_label.SerializeToString(&left_label_serialized);
+  ChannelLabelMessage right_label;
+  right_label.set_channel_label(CHANNEL_LABEL_R_2);
+  std::string right_label_serialized;
+  right_label.SerializeToString(&right_label_serialized);
   return api::IamfTemporalUnitData{
-      .audio_element_id_to_data = {
-          {kAudioElementId,
-           {{CHANNEL_LABEL_L_2, samples}, {CHANNEL_LABEL_R_2, samples}}}}};
+      .audio_element_id_to_data = {{kAudioElementId,
+                                    {{left_label_serialized, samples},
+                                     {right_label_serialized, samples}}}}};
 }
 
 std::string GetFirstSubmixFirstLayoutExpectedPath(
@@ -493,8 +502,12 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   auto temporal_unit_data =
       MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
   while (iamf_encoder.GeneratingTemporalUnits()) {
+    std::string serialized_metadata;
+    ASSERT_TRUE(
+        user_metadata_.parameter_block_metadata(iteration).SerializeToString(
+            &serialized_metadata));
     temporal_unit_data.parameter_block_id_to_metadata[kParameterBlockId] =
-        user_metadata_.parameter_block_metadata(iteration);
+        serialized_metadata;
     EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
 
     // Signal stopping adding samples at the second iteration.
@@ -544,8 +557,11 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
   auto temporal_unit_data =
       MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
+  std::string serialized_metadata;
+  ASSERT_TRUE(user_metadata_.parameter_block_metadata(0).SerializeToString(
+      &serialized_metadata));
   temporal_unit_data.parameter_block_id_to_metadata.emplace(
-      kParameterBlockId, user_metadata_.parameter_block_metadata(0));
+      kParameterBlockId, serialized_metadata);
   EXPECT_THAT(iamf_encoder.Encode(temporal_unit_data), IsOk());
   EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
   EXPECT_THAT(iamf_encoder.OutputTemporalUnit(output_obus), IsOk());

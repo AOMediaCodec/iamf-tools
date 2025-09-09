@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Changed
+
+-   Changed encoder API to take in serialized protos. The previous API was buggy
+    due to directly taking in C++ proto classes, which is
+    [strongly discouraged](https://protobuf.dev/support/cross-version-runtime-guarantee/).
+
 ## [2.0.0] - 2025-08-18
 
 ### Added

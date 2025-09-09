@@ -13,6 +13,7 @@
 #include "iamf/include/iamf_tools/iamf_encoder_factory.h"
 
 #include <cstdint>
+#include <string>
 
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
@@ -133,8 +134,10 @@ TEST(CreateFileGeneratingIamfEncoder, SucceedsWithSimpleConfig) {
   AddAudioElement(user_metadata);
   AddMixPresentation(user_metadata);
 
+  std::string user_metadata_string;
+  ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
   auto iamf_encoder = api::IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
-      user_metadata, GetAndCleanupOutputFileName("output.iamf"));
+      user_metadata_string, GetAndCleanupOutputFileName("output.iamf"));
   EXPECT_THAT(iamf_encoder, IsOk());
   EXPECT_NE(*iamf_encoder, nullptr);
 }
@@ -150,8 +153,10 @@ TEST(CreateFileGeneratingIamfEncoder, FailsWithInvalidLebGenerator) {
       ->mutable_leb_generator()
       ->set_mode(iamf_tools_cli_proto::GENERATE_LEB_INVALID);
 
+  std::string user_metadata_string;
+  ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
   auto iamf_encoder = api::IamfEncoderFactory::CreateFileGeneratingIamfEncoder(
-      user_metadata, GetAndCleanupOutputFileName("output.iamf"));
+      user_metadata_string, GetAndCleanupOutputFileName("output.iamf"));
   EXPECT_THAT(iamf_encoder, Not(IsOk()));
 }
 
@@ -162,7 +167,10 @@ TEST(CreateIamfEncoder, SucceedsWithSimpleConfig) {
   AddAudioElement(user_metadata);
   AddMixPresentation(user_metadata);
 
-  auto iamf_encoder = api::IamfEncoderFactory::CreateIamfEncoder(user_metadata);
+  std::string user_metadata_string;
+  ASSERT_TRUE(user_metadata.SerializeToString(&user_metadata_string));
+  auto iamf_encoder =
+      api::IamfEncoderFactory::CreateIamfEncoder(user_metadata_string);
   EXPECT_THAT(iamf_encoder, IsOk());
   EXPECT_NE(*iamf_encoder, nullptr);
 }

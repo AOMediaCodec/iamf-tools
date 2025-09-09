@@ -16,7 +16,6 @@
 
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf_encoder_interface.h"
 
 namespace iamf_tools {
@@ -31,24 +30,25 @@ class IamfEncoderFactory {
    * the spec (https://aomediacodec.github.io/iamf/#standalone) at the requested
    * path.
    *
-   * \param user_metadata Input user metadata describing the IAMF stream.
+   * \param serialized_user_metadata Input user metadata describing the IAMF
+   *        stream, which is serialized as a `UserMetadata` protocol buffer.
    * \param output_file_name File name to write the IAMF file to.
    * \return Encoder on success, or a specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
-  CreateFileGeneratingIamfEncoder(
-      const iamf_tools_cli_proto::UserMetadata& user_metadata,
-      absl::string_view output_file_name);
+  CreateFileGeneratingIamfEncoder(absl::string_view serialized_user_metadata,
+                                  absl::string_view output_file_name);
 
   /*!\brief Factory function to create an encoder for streaming IAMF.
    *
    * This encoder is useful to stream an IA Sequence to a client.
    *
-   * \param user_metadata Input user metadata describing the IAMF stream.
+   * \param serialized_user_metadata Input user metadata describing the IAMF
+   *        stream, which is serialized as a `UserMetadata` protocol buffer.
    * \return Encoder on success, or a specific status on failure.
    */
   static absl::StatusOr<std::unique_ptr<IamfEncoderInterface>>
-  CreateIamfEncoder(const iamf_tools_cli_proto::UserMetadata& user_metadata);
+  CreateIamfEncoder(absl::string_view serialized_user_metadata);
 
   IamfEncoderFactory() = delete;
 };

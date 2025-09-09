@@ -35,6 +35,7 @@ cc_library(
         "//iamf/include/iamf_tools/tests:__pkg__",
     ],
     deps = [
+        ":iamf_encoder_interface",
         "//iamf/cli:iamf_components",
         "//iamf/cli:iamf_encoder",
         "//iamf/cli:obu_sequencer_base",
@@ -43,7 +44,6 @@ cc_library(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/proto_conversion:proto_utils",
-        "//iamf/include/iamf_tools:iamf_encoder_interface",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:string_view",
@@ -84,8 +84,6 @@ cc_library(
         "//iamf/cli/tests:__pkg__",
     ],
     deps = [
-        "//iamf/cli/proto:audio_frame_cc_proto",
-        "//iamf/cli/proto:parameter_block_cc_proto",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/types:span",
     ],
