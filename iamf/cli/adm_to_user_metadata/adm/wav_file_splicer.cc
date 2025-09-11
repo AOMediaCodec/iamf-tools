@@ -203,14 +203,20 @@ absl::Status SpliceWavSegment(std::istream& input_stream,
   return absl::OkStatus();
 }
 
+absl::StatusOr<size_t> CalculateTotalSamplesPerChannel(
+    size_t data_chunk_size, size_t total_channel_size) {
+  if (data_chunk_size % total_channel_size != 0) {
+    return absl::InvalidArgumentError(
+        "Data chunk size is not a multiple of the total channel size.");
+  }
+  return data_chunk_size / total_channel_size;
+}
+
 // Calculates the total duration of the wav file.
-double CalculateTotalDuration(const size_t& data_chunk_size,
-                              const FormatInfoChunk& wav_file_fmt,
-                              const size_t& total_channel_size) {
-  const auto& total_samples_per_channel = data_chunk_size / total_channel_size;
-  double total_duration = static_cast<double>(total_samples_per_channel) /
-                          static_cast<double>(wav_file_fmt.samples_per_sec);
-  return total_duration;
+double CalculateTotalDuration(size_t total_samples_per_channel,
+                              uint32_t samples_per_sec) {
+  return static_cast<double>(total_samples_per_channel) /
+         static_cast<double>(samples_per_sec);
 }
 
 // Computes the duration in seconds.
@@ -319,11 +325,13 @@ absl::Status ConvertFromObjectsTo3OA(
   const int32_t total_channels = wav_file_fmt.num_channels;
   const size_t total_channel_size =
       static_cast<size_t>(bytes_per_sample) * wav_file_fmt.num_channels;
-  const size_t data_chunk_size = data_chunk_info.size;
-  const auto total_duration =
-      CalculateTotalDuration(data_chunk_size, wav_file_fmt, total_channel_size);
-  const size_t total_samples =
-      total_duration * static_cast<size_t>(wav_file_fmt.samples_per_sec);
+  const auto total_samples_per_channel =
+      CalculateTotalSamplesPerChannel(data_chunk_info.size, total_channel_size);
+  if (!total_samples_per_channel.ok()) {
+    return total_samples_per_channel.status();
+  }
+  const double total_duration = CalculateTotalDuration(
+      *total_samples_per_channel, wav_file_fmt.samples_per_sec);
 
   // Initialize vectors required to hold intermediate values.
   std::vector<size_t> audio_block_indices(total_channels, 0);
@@ -334,7 +342,7 @@ absl::Status ConvertFromObjectsTo3OA(
   double total_processed_duration = 0.0;
   // Holds the number of samples left over from the previous segment due to
   // rounding error.
-  float leftover_sample_duration = 0.0f;
+  double leftover_sample_duration = 0.0f;
   int num_samples_count = 0;
 
   // Initialize segment duration for all channels with the corresponding first
@@ -394,7 +402,7 @@ absl::Status ConvertFromObjectsTo3OA(
       // Compute the length of audio samples corresponding to the current
       // segment duration. The samples excluded due the rounding error at each
       // segment is accounted in the next segment.
-      const float this_seg_length =
+      const double this_seg_length =
           (this_seg_duration * wav_file_fmt.samples_per_sec) +
           leftover_sample_duration;
       // Length of the processed audio segment. Samples are rounded off for the
@@ -404,7 +412,7 @@ absl::Status ConvertFromObjectsTo3OA(
 
       num_samples_count += processed_seg_length;
 
-      CHECK_LE(processed_seg_length, total_samples)
+      CHECK_LE(processed_seg_length, *total_samples_per_channel)
           << "Samples in segment should not be greater than actual samples in "
              "the wav file";
 
@@ -423,7 +431,8 @@ absl::Status ConvertFromObjectsTo3OA(
   }
 
   CHECK_LE(fabs(total_processed_duration - total_duration), kErrorTolerance);
-  CHECK_LE(fabs(num_samples_count - total_samples), kErrorTolerance);
+  CHECK_LE(fabs(num_samples_count - *total_samples_per_channel),
+           kErrorTolerance);
 
   // Delete the temporary files.
   if (!std::filesystem::remove(input_file)) {
