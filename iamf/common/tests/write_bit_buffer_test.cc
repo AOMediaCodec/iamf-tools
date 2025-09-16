@@ -17,7 +17,6 @@
 #include <fstream>
 #include <ios>
 #include <limits>
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -40,13 +39,16 @@ using ::absl::StatusCode::kInvalidArgument;
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 
-TEST(FlushAndWriteToStream, WritesToOutputStream) {
+// The buffer is resizable; the initial capacity does not matter.
+constexpr int64_t kInitialCapacity = 0;
+
+TEST(FlushAndWriteToFile, WritesToOutputFile) {
   constexpr std::array<uint8_t, 4> kDataToOutput = {0x00, '\r', '\n', 0x1a};
   const auto file_to_write_to = GetAndCleanupOutputFileName(".bin");
   auto output_stream = std::make_optional<std::fstream>(
       file_to_write_to, std::ios::binary | std::ios::out);
-
   WriteBitBuffer wb(0);
+
   EXPECT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(kDataToOutput)), IsOk());
   EXPECT_THAT(wb.FlushAndWriteToFile(output_stream), IsOk());
   output_stream->close();
@@ -54,16 +56,17 @@ TEST(FlushAndWriteToStream, WritesToOutputStream) {
   EXPECT_EQ(std::filesystem::file_size(file_to_write_to), kDataToOutput.size());
 }
 
-TEST(FlushAndWriteToStream, SucceedsWithoutOutputStream) {
+TEST(FlushAndWriteToFile, SucceedsWithoutOutputFile) {
   std::optional<std::fstream> omit_output_stream = std::nullopt;
   WriteBitBuffer wb(0);
 
   EXPECT_THAT(wb.FlushAndWriteToFile(omit_output_stream), IsOk());
 }
 
-TEST(FlushAndWriteToStream, FlushesBuffer) {
+TEST(FlushAndWriteToFile, FlushesBuffer) {
   std::optional<std::fstream> omit_output_stream = std::nullopt;
   WriteBitBuffer wb(0);
+
   EXPECT_THAT(wb.WriteUnsignedLiteral(0x01, 8), IsOk());
 
   EXPECT_THAT(wb.FlushAndWriteToFile(omit_output_stream), IsOk());
@@ -71,203 +74,269 @@ TEST(FlushAndWriteToStream, FlushesBuffer) {
   EXPECT_TRUE(wb.bit_buffer().empty());
 }
 
-class WriteBitBufferTest : public ::testing::Test {
- protected:
-  // Validates a write buffer that may or may not be byte-aligned.
-  void ValidateMaybeNotAlignedWriteBuffer(
-      int64_t num_bits, const std::vector<uint8_t>& expected_data) {
-    // Verify exact number of expected bits were written.
-    EXPECT_EQ(wb_->bit_offset(), num_bits);
+// Validates a write buffer that may or may not be byte-aligned.
+void ValidateMaybeNotAlignedWriteBuffer(
+    const WriteBitBuffer& wb, int64_t expected_num_bits,
+    absl::Span<const uint8_t> expected_data) {
+  // Verify exact number of expected bits were written.
+  EXPECT_EQ(wb.bit_offset(), expected_num_bits);
 
-    const unsigned int ceil_num_bytes =
-        num_bits / 8 + (num_bits % 8 == 0 ? 0 : 1);
+  const unsigned int ceil_num_bytes =
+      expected_num_bits / 8 + (expected_num_bits % 8 == 0 ? 0 : 1);
 
-    ASSERT_LE(expected_data.size(), ceil_num_bytes);
+  ASSERT_LE(expected_data.size(), ceil_num_bytes);
 
-    // Compare rounded up to the nearest byte with expected result.
-    EXPECT_EQ(wb_->bit_buffer(), expected_data);
-  }
-
-  // The buffer is resizable; the initial capacity does not matter.
-  std::unique_ptr<WriteBitBuffer> wb_ = std::make_unique<WriteBitBuffer>(0);
-};
-
-TEST_F(WriteBitBufferTest, UnsignedLiteralNumBitsEqualsZero) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0x00, 0), IsOk());
-  ValidateWriteResults(*wb_, {});
+  // Compare rounded up to the nearest byte with expected result.
+  EXPECT_EQ(wb.bit_buffer(), expected_data);
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralOneByteZero) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0x00, 8), IsOk());
-  ValidateWriteResults(*wb_, {0x00});
+TEST(WriteUnsignedLiteral, WritesZeroBits) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0x00, 0), IsOk());
+
+  ValidateWriteResults(wb, {});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralOneByteNonZero) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0xab, 8), IsOk());
-  ValidateWriteResults(*wb_, {0xab});
+TEST(WriteUnsignedLiteral, OneByteZero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0x00, 8), IsOk());
+
+  ValidateWriteResults(wb, {0x00});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralTwoBytes) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0xffee, 16), IsOk());
-  ValidateWriteResults(*wb_, {0xff, 0xee});
+TEST(WriteUnsignedLiteral, OneByteNonZero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0xab, 8), IsOk());
+
+  ValidateWriteResults(wb, {0xab});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralFourBytes) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0xffeeddcc, 32), IsOk());
-  ValidateWriteResults(*wb_, {0xff, 0xee, 0xdd, 0xcc});
+TEST(WriteUnsignedLiteral, TwoBytes) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0xffee, 16), IsOk());
+
+  ValidateWriteResults(wb, {0xff, 0xee});
+}
+
+TEST(WriteUnsignedLiteral, FourBytes) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0xffeeddcc, 32), IsOk());
+
+  ValidateWriteResults(wb, {0xff, 0xee, 0xdd, 0xcc});
 }
 
 // This test is not byte aligned. So all expected result bits required to
 // round up to the nearest byte are set to zero.
-TEST_F(WriteBitBufferTest, UnsignedLiteralNotByteAligned) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0b11, 2), IsOk());
-  ValidateMaybeNotAlignedWriteBuffer(2, {0b1100'0000});
+TEST(WriteUnsignedLiteral, NotByteAligned) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0b11, 2), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 2, {0b1100'0000});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralMixedAlignedAndNotAligned) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 1), IsOk());
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0xff, 8), IsOk());
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 7), IsOk());
-  ValidateWriteResults(*wb_, {0x7f, 0x80});
+TEST(WriteUnsignedLiteral, MixedAlignedAndNotAligned) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, 1), IsOk());
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0xff, 8), IsOk());
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, 7), IsOk());
+
+  ValidateWriteResults(wb, {0x7f, 0x80});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralNotByteAlignedLarge) {
-  EXPECT_THAT(
-      wb_->WriteUnsignedLiteral(0b0001'0010'0011'0100'0101'0110'0111, 28),
-      IsOk());
+TEST(WriteUnsignedLiteral, NotByteAlignedLarge) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0b0001'0010'0011'0100'0101'0110'0111, 28),
+              IsOk());
+
   ValidateMaybeNotAlignedWriteBuffer(
-      28, {0b0001'0010, 0b0011'0100, 0b0101'0110, 0b0111'0000});
+      wb, 28, {0b0001'0010, 0b0011'0100, 0b0101'0110, 0b0111'0000});
 }
 
-TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralOverflowOverRequestedNumBits) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(16, 4), StatusIs(kInvalidArgument));
+TEST(WriteUnsignedLiteral, InvalidOverflowOverRequestedNumBits) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(16, 4), StatusIs(kInvalidArgument));
 }
 
-TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralOverNumBitsOver32) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/33),
+TEST(WriteUnsignedLiteral, InvalidOverNumBitsOver32) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, /*num_bits=*/33),
               StatusIs(kInvalidArgument));
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteralZeroNumBits) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/0), IsOk());
-  EXPECT_THAT(wb_->bit_offset(), 0);
+TEST(WriteUnsignedLiteral, ZeroNumBits) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, /*num_bits=*/0), IsOk());
+  EXPECT_THAT(wb.bit_offset(), 0);
 }
 
-TEST_F(WriteBitBufferTest, InvalidUnsignedLiteralNegativeNumBits) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, /*num_bits=*/-1),
+TEST(WriteUnsignedLiteral, InvalidNegativeNumBits) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, /*num_bits=*/-1),
               StatusIs(kInvalidArgument));
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteral64OneByteZero) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0x00, 8), IsOk());
-  ValidateWriteResults(*wb_, {0x00});
+TEST(WriteUnsignedLiteral64, OneByteZero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0x00, 8), IsOk());
+
+  ValidateWriteResults(wb, {0x00});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteral64FiveBytes) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0xffffffffff, 40), IsOk());
-  ValidateWriteResults(*wb_, {0xff, 0xff, 0xff, 0xff, 0xff});
+TEST(WriteUnsignedLiteral64, FiveBytes) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0xffffffffff, 40), IsOk());
+
+  ValidateWriteResults(wb, {0xff, 0xff, 0xff, 0xff, 0xff});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteral64EightBytes) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0xfedcba9876543210l, 64), IsOk());
-  ValidateWriteResults(*wb_, {0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10});
+TEST(WriteUnsignedLiteral64, EightBytes) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0xfedcba9876543210l, 64), IsOk());
+
+  ValidateWriteResults(wb, {0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10});
 }
 
 // These tests are not byte aligned. So all expected result bits required to
 // round up to the nearest byte are set to zero.
-TEST_F(WriteBitBufferTest, UnsignedLiteral64NotByteAlignedSmall) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0b101, 3), IsOk());
-  ValidateMaybeNotAlignedWriteBuffer(3, {0b1010'0000});
+TEST(WriteUnsignedLiteral64, NotByteAlignedSmall) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0b101, 3), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 3, {0b1010'0000});
 }
 
-TEST_F(WriteBitBufferTest, UnsignedLiteral64NotByteAlignedLarge) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0x7fffffffffffffff, 63), IsOk());
+TEST(WriteUnsignedLiteral64, NotByteAlignedLarge) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0x7fffffffffffffff, 63), IsOk());
+
   ValidateMaybeNotAlignedWriteBuffer(
-      63, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe});
+      wb, 63, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe});
 }
 
-TEST_F(WriteBitBufferTest,
-       InvalidUnsignedLiteral64OverflowOverRequestedNumBits) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(uint64_t{1} << 34, 34),
+TEST(WriteUnsignedLiteral64, InvalidOverflowOverRequestedNumBits) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(uint64_t{1} << 34, 34),
               StatusIs(kInvalidArgument));
 }
 
-TEST_F(WriteBitBufferTest, InvalidUnsignedLiteral64NumBitsOver64) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0, /*num_bits=*/65),
+TEST(WriteUnsignedLiteral64, InvalidNumBitsOver64) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0, /*num_bits=*/65),
               StatusIs(kInvalidArgument));
 }
 
-TEST_F(WriteBitBufferTest, Signed16Zero) {
-  EXPECT_THAT(wb_->WriteSigned16(0x00), IsOk());
-  ValidateWriteResults(*wb_, {0x00, 0x00});
+TEST(WriteSigned16, Zero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned16(0x00), IsOk());
+
+  ValidateWriteResults(wb, {0x00, 0x00});
 }
 
-TEST_F(WriteBitBufferTest, Signed16MaxPositive) {
-  EXPECT_THAT(wb_->WriteSigned16(32767), IsOk());
-  ValidateWriteResults(*wb_, {0x7f, 0xff});
+TEST(WriteSigned16, MaxPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned16(32767), IsOk());
+
+  ValidateWriteResults(wb, {0x7f, 0xff});
 }
 
-TEST_F(WriteBitBufferTest, Signed16MinPositive) {
-  EXPECT_THAT(wb_->WriteSigned16(1), IsOk());
-  ValidateWriteResults(*wb_, {0x00, 0x01});
+TEST(WriteSigned16, MinPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned16(1), IsOk());
+
+  ValidateWriteResults(wb, {0x00, 0x01});
 }
 
-TEST_F(WriteBitBufferTest, Signed16MinNegative) {
-  EXPECT_THAT(wb_->WriteSigned16(-32768), IsOk());
-  ValidateWriteResults(*wb_, {0x80, 0x00});
+TEST(WriteSigned16, MinNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned16(-32768), IsOk());
+
+  ValidateWriteResults(wb, {0x80, 0x00});
 }
 
-TEST_F(WriteBitBufferTest, Signed16MaxNegative) {
-  EXPECT_THAT(wb_->WriteSigned16(-1), IsOk());
-  ValidateWriteResults(*wb_, {0xff, 0xff});
+TEST(WriteSigned16, MaxNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned16(-1), IsOk());
+
+  ValidateWriteResults(wb, {0xff, 0xff});
 }
 
-TEST_F(WriteBitBufferTest, InvalidInternalNullTerminator) {
+TEST(WriteString, InvalidInternalNullTerminator) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kInternalNull("a\0b", 3);
 
-  EXPECT_THAT(wb_->WriteString(kInternalNull), StatusIs(kInvalidArgument));
-  EXPECT_EQ(wb_->bit_offset(), 0);
+  EXPECT_THAT(wb.WriteString(kInternalNull), StatusIs(kInvalidArgument));
+  EXPECT_EQ(wb.bit_offset(), 0);
 }
 
-TEST_F(WriteBitBufferTest, EmptyLiteralString) {
+TEST(WriteString, EmptyLiteralString) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kEmptyString = "";
 
-  EXPECT_THAT(wb_->WriteString(kEmptyString), IsOk());
+  EXPECT_THAT(wb.WriteString(kEmptyString), IsOk());
 
-  ValidateWriteResults(*wb_, {'\0'});
+  ValidateWriteResults(wb, {'\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringOnlyNullCharacter) {
+TEST(WriteString, OnlyNullCharacter) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kEmptyString = "\0";
 
-  EXPECT_THAT(wb_->WriteString(kEmptyString), IsOk());
+  EXPECT_THAT(wb.WriteString(kEmptyString), IsOk());
 
-  ValidateWriteResults(*wb_, {'\0'});
+  ValidateWriteResults(wb, {'\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringAscii) {
+TEST(WriteString, Ascii) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kAsciiInput = "ABC\0";
 
-  EXPECT_THAT(wb_->WriteString(kAsciiInput), IsOk());
+  EXPECT_THAT(wb.WriteString(kAsciiInput), IsOk());
 
-  ValidateWriteResults(*wb_, {'A', 'B', 'C', '\0'});
+  ValidateWriteResults(wb, {'A', 'B', 'C', '\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringUtf8) {
+TEST(WriteString, Utf8) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kUtf8Input(
       "\xc3\xb3"          // A 1-byte UTF-8 character.
       "\xf0\x9d\x85\x9f"  // A 4-byte UTF-8 character.
       "\0");
 
-  EXPECT_THAT(wb_->WriteString(kUtf8Input), IsOk());
+  EXPECT_THAT(wb.WriteString(kUtf8Input), IsOk());
 
-  ValidateWriteResults(*wb_,
+  ValidateWriteResults(wb,
                        {0xc3, 0xb3,              // A 1-byte UTF-8 character.
                         0xf0, 0x9d, 0x85, 0x9f,  // A 4-byte UTF-8 character.
                         '\0'});
 }
 
-TEST_F(WriteBitBufferTest, StringMaxLength) {
+TEST(WriteString, MaxLength) {
+  WriteBitBuffer wb(kInitialCapacity);
+
   // Make a string and expected output with 127 non-NULL characters, followed by
   // a NULL character.
   const std::string kMaxLengthString =
@@ -275,41 +344,47 @@ TEST_F(WriteBitBufferTest, StringMaxLength) {
   std::vector<uint8_t> expected_result(kIamfMaxStringSize, 'a');
   expected_result.back() = '\0';
 
-  EXPECT_THAT(wb_->WriteString(kMaxLengthString), IsOk());
-  ValidateWriteResults(*wb_, expected_result);
+  EXPECT_THAT(wb.WriteString(kMaxLengthString), IsOk());
+
+  ValidateWriteResults(wb, expected_result);
 }
 
-TEST_F(WriteBitBufferTest, InvalidStringTooLong) {
+TEST(WriteString, InvalidTooLong) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::string kMaxLengthString(kIamfMaxStringSize, 'a');
 
-  EXPECT_THAT(wb_->WriteString(kMaxLengthString), StatusIs(kInvalidArgument));
-  EXPECT_EQ(wb_->bit_offset(), 0);
+  EXPECT_THAT(wb.WriteString(kMaxLengthString), StatusIs(kInvalidArgument));
+  EXPECT_EQ(wb.bit_offset(), 0);
 }
 
-TEST_F(WriteBitBufferTest, WriteUint8SpanWorksForEmptySpan) {
+TEST(WriteUint8Span, WorksForEmptySpan) {
+  WriteBitBuffer wb(kInitialCapacity);
   constexpr absl::Span<const uint8_t> kEmptySpan = {};
 
-  EXPECT_THAT(wb_->WriteUint8Span(kEmptySpan), IsOk());
+  EXPECT_THAT(wb.WriteUint8Span(kEmptySpan), IsOk());
 
-  ValidateWriteResults(*wb_, {});
+  ValidateWriteResults(wb, {});
 }
 
-TEST_F(WriteBitBufferTest, WriteUint8SpanWorksWhenBufferIsByteAligned) {
+TEST(WriteUint8Span, WorksWhenBufferIsByteAligned) {
+  WriteBitBuffer wb(kInitialCapacity);
   const std::vector<uint8_t> kFivebytes = {0, 10, 20, 30, 255};
 
-  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kFivebytes)), IsOk());
+  EXPECT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(kFivebytes)), IsOk());
 
-  ValidateWriteResults(*wb_, kFivebytes);
+  ValidateWriteResults(wb, kFivebytes);
 }
 
-TEST_F(WriteBitBufferTest, WriteUint8SpanWorksWhenBufferIsNotByteAligned) {
-  // Force the buffer to be mis-aligned.
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 1), IsOk());
-  // It is OK to write a span, even when the underlying buffer is mis-aligned.
-  EXPECT_THAT(wb_->WriteUint8Span({0xff}), IsOk());
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0, 7), IsOk());
+TEST(WriteUint8Span, WorksWhenBufferIsNotByteAligned) {
+  WriteBitBuffer wb(kInitialCapacity);
 
-  ValidateWriteResults(*wb_,
+  // Force the buffer to be mis-aligned.
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, 1), IsOk());
+  // It is OK to write a span, even when the underlying buffer is mis-aligned.
+  EXPECT_THAT(wb.WriteUint8Span({0xff}), IsOk());
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0, 7), IsOk());
+
+  ValidateWriteResults(wb,
                        {
                            0b0111'1111,  // The first mis-aligned bit, then
                                          // the first 7-bits of the span.
@@ -318,42 +393,47 @@ TEST_F(WriteBitBufferTest, WriteUint8SpanWorksWhenBufferIsNotByteAligned) {
                        });
 }
 
-TEST_F(WriteBitBufferTest, WriteUleb128Min) {
-  EXPECT_THAT(wb_->WriteUleb128(0), IsOk());
-  ValidateWriteResults(*wb_, {0x00});
+TEST(WriteUleb128, Min) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUleb128(0), IsOk());
+  ValidateWriteResults(wb, {0x00});
 }
 
-TEST_F(WriteBitBufferTest, WriteUleb128Max) {
-  EXPECT_THAT(wb_->WriteUleb128(std::numeric_limits<DecodedUleb128>::max()),
+TEST(WriteUleb128, Max) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUleb128(std::numeric_limits<DecodedUleb128>::max()),
               IsOk());
-  ValidateWriteResults(*wb_, {0xff, 0xff, 0xff, 0xff, 0x0f});
+  ValidateWriteResults(wb, {0xff, 0xff, 0xff, 0xff, 0x0f});
 }
 
-TEST_F(WriteBitBufferTest,
-       WriteUleb128IsControlledByGeneratorPassedInConstructor) {
+TEST(WriteUleb128, IsControlledByGeneratorPassedInConstructor) {
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 5);
   ASSERT_NE(leb_generator, nullptr);
-  wb_ = std::make_unique<WriteBitBuffer>(1, *leb_generator);
+  WriteBitBuffer wb(1, *leb_generator);
 
-  EXPECT_THAT(wb_->WriteUleb128(0), IsOk());
+  EXPECT_THAT(wb.WriteUleb128(0), IsOk());
 
-  ValidateWriteResults(*wb_, {0x80, 0x80, 0x80, 0x80, 0x00});
+  ValidateWriteResults(wb, {0x80, 0x80, 0x80, 0x80, 0x00});
 }
 
-TEST_F(WriteBitBufferTest, WriteMinUleb128DefaultsToGeneratingMinimalUleb128s) {
-  EXPECT_THAT(wb_->WriteUleb128(129), IsOk());
+TEST(WriteUleb128, DefaultsToGeneratingMinimalUleb128s) {
+  WriteBitBuffer wb(kInitialCapacity);
 
-  ValidateWriteResults(*wb_, {0x81, 0x01});
+  EXPECT_THAT(wb.WriteUleb128(129), IsOk());
+
+  ValidateWriteResults(wb, {0x81, 0x01});
 }
 
-TEST_F(WriteBitBufferTest, WriteMinUleb128CanFailWithFixedSizeGenerator) {
+TEST(WriteUleb128, CanFailWithFixedSizeGenerator) {
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 1);
   ASSERT_NE(leb_generator, nullptr);
-  wb_ = std::make_unique<WriteBitBuffer>(1, *leb_generator);
+  WriteBitBuffer wb(1, *leb_generator);
 
-  EXPECT_FALSE(wb_->WriteUleb128(128).ok());
+  EXPECT_FALSE(wb.WriteUleb128(128).ok());
 }
 
 struct WriteIso14496_1ExpandedTestCase {
@@ -366,6 +446,7 @@ using WriteIso14496_1Expanded =
 
 TEST_P(WriteIso14496_1Expanded, WriteIso14496_1Expanded) {
   WriteBitBuffer wb(0);
+
   EXPECT_THAT(wb.WriteIso14496_1Expanded(GetParam().size_of_instance), IsOk());
 
   EXPECT_EQ(wb.bit_buffer(), GetParam().expected_source_data);
@@ -397,31 +478,36 @@ INSTANTIATE_TEST_SUITE_P(MaxOutput, WriteIso14496_1Expanded,
                               {0x8f, 0xff, 0xff, 0xff, 0x7f}},
                          }));
 
-TEST_F(WriteBitBufferTest, CapacityMayBeSmaller) {
+TEST(WriteBitBuffer, CapacityMayBeSmaller) {
   // The buffer may have a small initial capacity and resize as needed.
   constexpr int64_t kInitialCapacity = 0;
-  wb_ = std::make_unique<WriteBitBuffer>(kInitialCapacity);
+  WriteBitBuffer wb(kInitialCapacity);
+
   const std::vector<uint8_t> kSixBytes = {0, 1, 2, 3, 4, 5};
 
-  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
-  ValidateWriteResults(*wb_, kSixBytes);
+  EXPECT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
+  ValidateWriteResults(wb, kSixBytes);
 }
 
-TEST_F(WriteBitBufferTest, CapacityMayBeLarger) {
+TEST(WriteBitBuffer, CapacityMayBeLarger) {
   // The buffer may have a larger that capacity that necessary.
-  wb_ = std::make_unique<WriteBitBuffer>(/*initial_capacity=*/100);
+  WriteBitBuffer wb(/*initial_capacity=*/100);
+
   const std::vector<uint8_t> kSixBytes = {0, 1, 2, 3, 4, 5};
 
-  EXPECT_THAT(wb_->WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
-  ValidateWriteResults(*wb_, kSixBytes);
+  EXPECT_THAT(wb.WriteUint8Span(absl::MakeConstSpan(kSixBytes)), IsOk());
+  ValidateWriteResults(wb, kSixBytes);
 }
 
-TEST_F(WriteBitBufferTest, ConsecutiveWrites) {
+TEST(WriteBitBuffer, ConsecutiveWrites) {
+  WriteBitBuffer wb(kInitialCapacity);
+
   // The buffer accumulates data from all write calls.
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0x01, 8), IsOk());
-  EXPECT_THAT(wb_->WriteUnsignedLiteral64(0x0203040506070809, 64), IsOk());
-  EXPECT_THAT(wb_->WriteUleb128(128), IsOk());
-  ValidateWriteResults(*wb_,
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0x01, 8), IsOk());
+  EXPECT_THAT(wb.WriteUnsignedLiteral64(0x0203040506070809, 64), IsOk());
+  EXPECT_THAT(wb.WriteUleb128(128), IsOk());
+
+  ValidateWriteResults(wb,
                        {// From `WriteUnsignedLiteral()`.
                         0x01,
                         // From `WriteUnsignedLiteral64()`.
@@ -430,18 +516,21 @@ TEST_F(WriteBitBufferTest, ConsecutiveWrites) {
                         0x80, 0x01});
 }
 
-TEST_F(WriteBitBufferTest, UseAfterReset) {
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(0xabcd, 16), IsOk());
-  ValidateWriteResults(*wb_, {0xab, 0xcd});
+TEST(Reset, UseAfterReset) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteUnsignedLiteral(0xabcd, 16), IsOk());
+
+  ValidateWriteResults(wb, {0xab, 0xcd});
 
   // Resetting the buffer clears it.
-  wb_->Reset();
-  ValidateWriteResults(*wb_, {});
+  wb.Reset();
+  ValidateWriteResults(wb, {});
 
   // The buffer can be used after reset . There is no trace of data before the
   // reset.
-  EXPECT_THAT(wb_->WriteUnsignedLiteral(100, 8), IsOk());
-  ValidateWriteResults(*wb_, {100});
+  EXPECT_THAT(wb.WriteUnsignedLiteral(100, 8), IsOk());
+  ValidateWriteResults(wb, {100});
 }
 
 }  // namespace
