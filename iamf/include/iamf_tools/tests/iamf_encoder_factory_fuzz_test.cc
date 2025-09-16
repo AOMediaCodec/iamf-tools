@@ -10,21 +10,48 @@
  * www.aomedia.org/license/patent.
  */
 
+#include <filesystem>
+#include <fstream>
 #include <string>
+#include <vector>
 
 #include "absl/strings/string_view.h"
 #include "fuzztest/fuzztest.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/include/iamf_tools/iamf_encoder_factory.h"
+#include "src/google/protobuf/io/zero_copy_stream_impl.h"
+#include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {
 namespace {
 
 using ::iamf_tools_cli_proto::UserMetadata;
+
 constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
-constexpr absl::string_view kTextprotoTemplatesPath =
-    "iamf/cli/textproto_templates/";
+
+std::vector<std::tuple<UserMetadata>> LoadTextprotoSeedsFromDirectory(
+    const std::string& directory_path) {
+  std::vector<std::tuple<UserMetadata>> seeds;
+  for (const auto& entry :
+       std::filesystem::recursive_directory_iterator(directory_path)) {
+    if (!entry.is_regular_file() || entry.path().extension() != ".textproto") {
+      continue;
+    }
+    std::ifstream ifs(entry.path());
+    if (!ifs.good()) {
+      continue;
+    }
+
+    google::protobuf::io::IstreamInputStream input_stream(&ifs);
+    UserMetadata msg;
+    if (google::protobuf::TextFormat::Parse(&input_stream, &msg)) {
+      seeds.push_back(std::make_tuple(msg));
+    }
+  }
+
+  return seeds;
+}
 
 void CreateIamfEncoderNeverCrashes(const UserMetadata& user_metadata) {
   std::string user_metadata_string;
@@ -34,14 +61,7 @@ void CreateIamfEncoderNeverCrashes(const UserMetadata& user_metadata) {
 }
 
 FUZZ_TEST(SeededWithTestSuite, CreateIamfEncoderNeverCrashes)
-    .WithSeeds(fuzztest::ReadFilesFromDirectory<UserMetadata>(
-        GetRunfilesPath(kTestdataPath),
-        /*is_text_format=*/true));
-
-FUZZ_TEST(SeededWithTextprotoTemplates, CreateIamfEncoderNeverCrashes)
-    .WithSeeds(fuzztest::ReadFilesFromDirectory<UserMetadata>(
-        GetRunfilesPath(kTextprotoTemplatesPath),
-        /*is_text_format=*/true));
+    .WithSeeds(LoadTextprotoSeedsFromDirectory(GetRunfilesPath(kTestdataPath)));
 
 }  // namespace
 }  // namespace iamf_tools
