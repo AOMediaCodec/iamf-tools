@@ -274,9 +274,9 @@ absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
 
   // Write the OBU Header to the buffer.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_type, 5));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_redundant_copy, 1));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_trimming_status_flag, 1));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_extension_flag, 1));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(obu_redundant_copy));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(obu_trimming_status_flag));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(obu_extension_flag));
   RETURN_IF_NOT_OK(wb.WriteUleb128(obu_size));
 
   RETURN_IF_NOT_OK(WriteFieldsAfterObuSize(*this, wb));

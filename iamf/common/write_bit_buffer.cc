@@ -167,6 +167,10 @@ absl::Status WriteBitBuffer::WriteSigned16(int16_t data) {
   return WriteUnsignedLiteral(static_cast<uint32_t>(data) & 0xffff, 16);
 }
 
+absl::Status WriteBitBuffer::WriteBoolean(bool data) {
+  return WriteUnsignedLiteral(static_cast<uint32_t>(data), 1);
+}
+
 // Writes a null terminated C-style string to the buffer - including the null.
 absl::Status WriteBitBuffer::WriteString(const std::string& data) {
   if (data.size() > kIamfMaxStringSize - 1) {  // -1 for the NULL terminator.

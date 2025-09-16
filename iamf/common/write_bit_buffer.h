@@ -70,6 +70,14 @@ class WriteBitBuffer {
    */
   absl::Status WriteSigned16(int16_t data);
 
+  /*!\brief Writes the boolean to the write buffer.
+   *
+   * \param data Data to write.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
+   */
+  absl::Status WriteBoolean(bool data);
+
   /*!\brief Writes a null terminated string to the write buffer.
    *
    * \param data Data to write.

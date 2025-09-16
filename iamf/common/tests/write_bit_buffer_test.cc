@@ -284,6 +284,35 @@ TEST(WriteSigned16, MaxNegative) {
   ValidateWriteResults(wb, {0xff, 0xff});
 }
 
+TEST(WriteBoolean, WritesTrue) {
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(wb.WriteBoolean(true), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 1, {0b1000'0000});
+}
+
+TEST(WriteBoolean, WritesFalse) {
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(wb.WriteBoolean(false), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 1, {0b0000'0000});
+}
+
+TEST(WriteBoolean, WritesMultipleBooleanValues) {
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(wb.WriteBoolean(false), IsOk());
+  EXPECT_THAT(wb.WriteBoolean(true), IsOk());
+  EXPECT_THAT(wb.WriteBoolean(true), IsOk());
+  EXPECT_THAT(wb.WriteBoolean(false), IsOk());
+  EXPECT_THAT(wb.WriteBoolean(true), IsOk());
+
+  constexpr auto kExpectedBitsWritten = 5;
+  ValidateMaybeNotAlignedWriteBuffer(wb, kExpectedBitsWritten, {0b0110'1000});
+}
+
 TEST(WriteString, InvalidInternalNullTerminator) {
   WriteBitBuffer wb(kInitialCapacity);
   const std::string kInternalNull("a\0b", 3);

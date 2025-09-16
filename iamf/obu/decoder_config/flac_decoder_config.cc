@@ -199,8 +199,8 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
   RETURN_IF_NOT_OK(ValidateEncodingRestrictions(num_samples_per_frame, *this));
 
   for (const auto& metadata_block : metadata_blocks_) {
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-        metadata_block.header.last_metadata_block_flag, 1));
+    RETURN_IF_NOT_OK(
+        wb.WriteBoolean(metadata_block.header.last_metadata_block_flag));
     RETURN_IF_NOT_OK(
         wb.WriteUnsignedLiteral(metadata_block.header.block_type, 7));
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(

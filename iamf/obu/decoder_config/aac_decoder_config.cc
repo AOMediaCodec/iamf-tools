@@ -179,12 +179,9 @@ absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(channel_configuration_, 4));
 
   // Write nested `ga_specific_config`.
-  RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(ga_specific_config_.frame_length_flag, 1));
-  RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(ga_specific_config_.depends_on_core_coder, 1));
-  RETURN_IF_NOT_OK(
-      wb.WriteUnsignedLiteral(ga_specific_config_.extension_flag, 1));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(ga_specific_config_.frame_length_flag));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(ga_specific_config_.depends_on_core_coder));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(ga_specific_config_.extension_flag));
 
   return absl::OkStatus();
 }
@@ -221,8 +218,8 @@ absl::Status AacDecoderConfig::ValidateAndWrite(int16_t audio_roll_distance,
     RETURN_IF_NOT_OK(
         wb_internal.WriteUnsignedLiteral(object_type_indication_, 8));
     RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(stream_type_, 6));
-    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(upstream_, 1));
-    RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(reserved_, 1));
+    RETURN_IF_NOT_OK(wb_internal.WriteBoolean(upstream_));
+    RETURN_IF_NOT_OK(wb_internal.WriteBoolean(reserved_));
     RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(buffer_size_db_, 24));
     RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(max_bitrate_, 32));
     RETURN_IF_NOT_OK(wb_internal.WriteUnsignedLiteral(average_bit_rate_, 32));
