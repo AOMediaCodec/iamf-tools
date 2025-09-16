@@ -38,3 +38,23 @@ cc_test(
         "@com_google_protobuf//:protobuf",
     ],
 )
+
+cc_test(
+    name = "iamf_encoder_factory_fuzz_test",
+    srcs = ["iamf_encoder_factory_fuzz_test.cc"],
+    data = [
+        "//iamf/cli/testdata:test_vectors",
+        "//iamf/cli/textproto_templates:textprotos",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+    ],
+    deps = [
+        "//iamf/cli/proto:user_metadata_cc_proto",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/include/iamf_tools:iamf_encoder_factory",
+        "@abseil-cpp//absl/strings:string_view",
+        "@com_google_fuzztest//fuzztest",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
