@@ -374,11 +374,11 @@ absl::Status FillScalableChannelLayoutConfig(
     RETURN_IF_NOT_OK(CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
         input_layer_config, layer_config->loudspeaker_layout,
         layer_config->expanded_loudspeaker_layout));
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, bool>(
         "ChannelAudioLayerConfig.output_gain_is_present_flag",
         input_layer_config.output_gain_is_present_flag(),
         layer_config->output_gain_is_present_flag));
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, bool>(
         "ChannelAudioLayerConfig.recon_gain_is_present_flag",
         input_layer_config.recon_gain_is_present_flag(),
         layer_config->recon_gain_is_present_flag));

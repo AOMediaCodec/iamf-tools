@@ -397,13 +397,13 @@ absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
 
 absl::Status ChannelAudioLayerConfig::Write(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(loudspeaker_layout, 4));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(output_gain_is_present_flag, 1));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(recon_gain_is_present_flag, 1));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(output_gain_is_present_flag));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(recon_gain_is_present_flag));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_a, 2));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(substream_count, 8));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(coupled_substream_count, 8));
 
-  if (output_gain_is_present_flag == 1) {
+  if (output_gain_is_present_flag) {
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(output_gain_flag, 6));
     RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(reserved_b, 2));
     RETURN_IF_NOT_OK(wb.WriteSigned16(output_gain));
@@ -423,13 +423,13 @@ absl::Status ChannelAudioLayerConfig::Read(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, loudspeaker_layout_uint8));
   loudspeaker_layout = static_cast<ChannelAudioLayerConfig::LoudspeakerLayout>(
       loudspeaker_layout_uint8);
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, output_gain_is_present_flag));
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(1, recon_gain_is_present_flag));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(output_gain_is_present_flag));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(recon_gain_is_present_flag));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved_a));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, substream_count));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, coupled_substream_count));
 
-  if (output_gain_is_present_flag == 1) {
+  if (output_gain_is_present_flag) {
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, output_gain_flag));
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, reserved_b));
     RETURN_IF_NOT_OK(rb.ReadSigned16(output_gain));

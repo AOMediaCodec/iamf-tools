@@ -132,13 +132,13 @@ struct ChannelAudioLayerConfig {
   absl::Status Read(ReadBitBuffer& rb);
 
   LoudspeakerLayout loudspeaker_layout;  // 4 bits.
-  uint8_t output_gain_is_present_flag;   // 1 bit.
-  uint8_t recon_gain_is_present_flag;    // 1 bit.
-  uint8_t reserved_a;                    // 2 bits.
+  bool output_gain_is_present_flag;
+  bool recon_gain_is_present_flag;
+  uint8_t reserved_a;  // 2 bits.
   uint8_t substream_count;
   uint8_t coupled_substream_count;
 
-  // if (output_gain_is_present_flag(i) == 1) {
+  // if (output_gain_is_present_flag(i)) {
   uint8_t output_gain_flag = 0;  // 6 bits.
   uint8_t reserved_b = 0;        // 2 bits.
   int16_t output_gain = 0;

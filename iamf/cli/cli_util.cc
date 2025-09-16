@@ -80,8 +80,8 @@ void FillReconGainAuxiliaryData(
   aux_data.resize(channel_config.GetNumLayers());
   for (int l = 0; l < channel_config.GetNumLayers(); l++) {
     aux_data[l].recon_gain_is_present_flag =
-        (channel_config.channel_audio_layer_configs[l]
-             .recon_gain_is_present_flag == 1);
+        channel_config.channel_audio_layer_configs[l]
+            .recon_gain_is_present_flag;
     aux_data[l].channel_numbers_for_layer =
         audio_element.channel_numbers_for_layers[l];
   }

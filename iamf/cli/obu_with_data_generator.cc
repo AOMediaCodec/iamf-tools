@@ -712,7 +712,7 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
     accumulated_channels = layer_channels;
 
     // Handle output gains.
-    if (layer_config.output_gain_is_present_flag == 1) {
+    if (layer_config.output_gain_is_present_flag) {
       // Loop through all substream IDs added in this layer.
       for (int i = previous_layer_substream_index; i < substream_index; i++) {
         const auto substream_id = audio_substream_ids[i];

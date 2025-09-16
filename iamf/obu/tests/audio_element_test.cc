@@ -142,8 +142,8 @@ ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
       .channel_audio_layer_configs = std::vector<ChannelAudioLayerConfig>(
           1, ChannelAudioLayerConfig{.loudspeaker_layout =
                                          ChannelAudioLayerConfig::kLayoutStereo,
-                                     .output_gain_is_present_flag = 1,
-                                     .recon_gain_is_present_flag = 1,
+                                     .output_gain_is_present_flag = true,
+                                     .recon_gain_is_present_flag = true,
                                      .reserved_a = 0,
                                      .substream_count = 1,
                                      .coupled_substream_count = 1,
