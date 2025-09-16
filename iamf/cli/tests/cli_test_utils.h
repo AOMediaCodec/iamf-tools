@@ -322,6 +322,21 @@ std::string GetAndCleanupOutputFileName(absl::string_view suffix);
  */
 std::string GetAndCreateOutputDirectory(absl::string_view suffix);
 
+/*!\brief Gets the runfiles path for a given path.
+ *
+ * \param path Path to get the runfiles path for.
+ * \return Runfiles path for the given path.
+ */
+std::string GetRunfilesPath(absl::string_view path);
+
+/*!\brief Gets the runfiles path for a given path and filename.
+ *
+ * \param path Path to get the runfiles path for.
+ * \param filename Filename to join with the path.
+ * \return Runfiles path for the given path and filename.
+ */
+std::string GetRunfilesFile(absl::string_view path, std::string_view filename);
+
 /*!\brief Serializes a list of OBUs.
  *
  * \param obus OBUs to serialize.

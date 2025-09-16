@@ -15,7 +15,6 @@
 #include <filesystem>
 #include <string>
 
-// [internal] Placeholder for get runfiles header.
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
@@ -35,6 +34,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+
+constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
 constexpr absl::string_view kIgnoredOutputPath = "";
 constexpr absl::string_view kTest000005ExpectedWavFilename =
     "test_000005_rendered_id_42_sub_mix_0_layout_0.wav";
@@ -72,14 +73,11 @@ void AddCodecConfig(iamf_tools_cli_proto::UserMetadata& user_metadata) {
 void ParseTestVectorAssertSuccess(
     absl::string_view textproto_filename, std::string& wav_directory,
     iamf_tools_cli_proto::UserMetadata& user_metadata) {
-  const std::filesystem::path test_data_path =
-      (std::filesystem::current_path() / std::string("iamf/cli/testdata"));
-
-  wav_directory = test_data_path.string();
+  wav_directory = GetRunfilesPath(kTestdataPath);
   // Get and parse the textproto to test.
-  const auto user_metadata_filename = test_data_path / textproto_filename;
-  ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
-                                 user_metadata);
+  const std::string user_metadata_filename =
+      GetRunfilesFile(kTestdataPath, textproto_filename);
+  ParseUserMetadataAssertSuccess(user_metadata_filename, user_metadata);
 }
 
 TEST(EncoderMainLibTest, EmptyUserMetadataTestMainFails) {

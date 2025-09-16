@@ -9,11 +9,9 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include <filesystem>
 #include <string>
 #include <vector>
 
-// [internal] Placeholder for get runfiles header.
 #include "absl/log/log.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -30,6 +28,9 @@ namespace {
 
 using ::absl_testing::IsOk;
 constexpr absl::string_view kIgnoredOutputPath = "";
+constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
+constexpr absl::string_view kTextprotoTemplatesPath =
+    "iamf/cli/textproto_templates/";
 
 struct TextprotoTemplateTestCase {
   absl::string_view textproto_filename;
@@ -43,17 +44,13 @@ TEST_P(TextprotoTemplate, ValidateTextprotos) {
   const TextprotoTemplateTestCase& test_case = GetParam();
 
   // Get the location of test wav files.
-  static const auto input_wav_dir =
-      std::filesystem::current_path() / std::string("iamf/cli/testdata");
+  static const std::string input_wav_dir = GetRunfilesPath(kTestdataPath);
 
   // Get the textproto to test.
-  const auto user_metadata_filename =
-      std::filesystem::current_path() /
-      std::string("iamf/cli/textproto_templates") /
-      test_case.textproto_filename;
+  const std::string user_metadata_filename =
+      GetRunfilesFile(kTextprotoTemplatesPath, test_case.textproto_filename);
   iamf_tools_cli_proto::UserMetadata user_metadata;
-  ParseUserMetadataAssertSuccess(user_metadata_filename.string(),
-                                 user_metadata);
+  ParseUserMetadataAssertSuccess(user_metadata_filename, user_metadata);
 
   // Clear `file_name_prefix`; we only care about the status and not the output
   // files.
@@ -69,9 +66,8 @@ TEST_P(TextprotoTemplate, ValidateTextprotos) {
   }
 
   // Call encoder and check that the encoding was successful.
-  const absl::Status result =
-      iamf_tools::TestMain(user_metadata, input_wav_dir.string().c_str(),
-                           std::string(kIgnoredOutputPath));
+  const absl::Status result = iamf_tools::TestMain(
+      user_metadata, input_wav_dir, std::string(kIgnoredOutputPath));
 
   EXPECT_THAT(result, IsOk()) << "File= " << test_case.textproto_filename;
 }

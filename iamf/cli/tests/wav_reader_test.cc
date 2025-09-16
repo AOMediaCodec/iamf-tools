@@ -21,7 +21,6 @@
 #include <utility>
 #include <vector>
 
-// [internal] Placeholder for get runfiles header.
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
@@ -33,6 +32,7 @@ namespace {
 
 using ::absl_testing::IsOk;
 
+constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
 constexpr size_t kArbitraryNumSamplesPerFrame = 1;
 constexpr absl::string_view kAdmBwfWithOneStereoAndOneMonoObject(
     "RIFF"
@@ -89,10 +89,8 @@ TEST(CreateFromFile, SucceedsOnValidAdmFile) {
 }
 
 TEST(CreateFromFile, SucceedsOnValidWavFile) {
-  const auto input_wav_file =
-      (std::filesystem::current_path() / std::string("iamf/cli/testdata/") /
-       "stereo_8_samples_48khz_s16le.wav")
-          .string();
+  const std::string input_wav_file =
+      GetRunfilesFile(kTestdataPath, "stereo_8_samples_48khz_s16le.wav");
   ASSERT_TRUE(std::filesystem::exists(input_wav_file));
 
   EXPECT_THAT(
@@ -102,10 +100,8 @@ TEST(CreateFromFile, SucceedsOnValidWavFile) {
 
 TEST(CreateFromFile, FailsWhenNumSamplesPerFrameIsZero) {
   const size_t kInvalidNumSamplesPerFrame = 0;
-  const auto input_wav_file =
-      (std::filesystem::current_path() / std::string("iamf/cli/testdata/") /
-       "stereo_8_samples_48khz_s16le.wav")
-          .string();
+  const std::string input_wav_file =
+      GetRunfilesFile(kTestdataPath, "stereo_8_samples_48khz_s16le.wav");
   ASSERT_TRUE(std::filesystem::exists(input_wav_file));
 
   EXPECT_FALSE(
@@ -133,11 +129,9 @@ TEST(CreateFromFile, FailsOnNonWavFile) {
           .ok());
 }
 
-WavReader InitAndValidate(const std::filesystem::path& filename,
+WavReader InitAndValidate(absl::string_view filename,
                           const size_t num_samples_per_frame) {
-  const auto input_wav_file = (std::filesystem::current_path() /
-                               std::string("iamf/cli/testdata/") / filename)
-                                  .string();
+  const std::string input_wav_file = GetRunfilesFile(kTestdataPath, filename);
   auto wav_reader =
       WavReader::CreateFromFile(input_wav_file, num_samples_per_frame);
   EXPECT_THAT(wav_reader, IsOk());

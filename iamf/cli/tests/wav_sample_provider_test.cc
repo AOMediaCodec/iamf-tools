@@ -13,10 +13,8 @@
 
 #include <array>
 #include <cstdint>
-#include <filesystem>
 #include <string>
 
-// [internal] Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -40,6 +38,8 @@ namespace {
 using ::absl_testing::IsOk;
 using enum ChannelLabel::Label;
 using testing::Pointwise;
+
+constexpr absl::string_view kTestdataPath = "iamf/cli/testdata/";
 
 constexpr DecodedUleb128 kAudioElementId = 300;
 constexpr DecodedUleb128 kSubstreamId = 0;
@@ -108,10 +108,8 @@ void InitializeTestData(
 }
 
 std::string GetInputWavDir() {
-  static const auto input_wav_dir =
-      (std::filesystem::current_path() / std::string("iamf/cli/testdata"))
-          .string();
-  return input_wav_dir;
+  static const std::string kInputWavDir = GetRunfilesPath(kTestdataPath);
+  return kInputWavDir;
 }
 
 TEST(Create, SucceedsForStereoInputWithChannelMetadatas) {
