@@ -102,6 +102,7 @@ cc_library(
         ":audio_element_with_data",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:sample_processing_utils",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:codec_config",
         "//iamf/obu:mix_presentation",

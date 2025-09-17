@@ -45,6 +45,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 constexpr DecodedUleb128 kCodecConfigId = 21;
 constexpr DecodedUleb128 kAudioElementId = 100;
@@ -382,6 +383,28 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
             kExpectedChannelNumbersMonoLayer);
   EXPECT_EQ(recon_gain_param_definition->aux_data_[1].channel_numbers_for_layer,
             kExpectedChannelNumbersStereoLayer);
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     InvalidWhenReconGainParamDefinitionIsPresentButChannelConfigIsMissing) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kCodecConfigId, input_codec_configs);
+  const std::list<MixPresentationObu> kNoMixPresentationObus = {};
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kAudioElementId, kCodecConfigId, {kFirstSubstreamId}, input_codec_configs,
+      audio_elements);
+  auto& obu = audio_elements.at(kAudioElementId).obu;
+  // Normally the spec does not allow ambisonics to have recon gain param
+  // definitions.
+  obu.InitializeParams(1);
+  AddReconGainParamDefinition(kParameterId, kParameterRate, /*duration=*/1,
+                              obu);
+
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
+  EXPECT_THAT(CollectAndValidateParamDefinitions(
+                  audio_elements, kNoMixPresentationObus, result),
+              Not(IsOk()));
 }
 
 }  // namespace

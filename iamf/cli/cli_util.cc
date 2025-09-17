@@ -30,6 +30,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/sample_processing_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_param_definition.h"
@@ -72,19 +73,23 @@ absl::Status InsertParamDefinitionAndCheckEquivalence(
   return absl::OkStatus();
 };
 
-void FillReconGainAuxiliaryData(
+absl::Status FillReconGainAuxiliaryData(
     const AudioElementWithData& audio_element,
     std::vector<ReconGainParamDefinition::ReconGainAuxiliaryData>& aux_data) {
-  const auto& channel_config =
-      std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
-  aux_data.resize(channel_config.GetNumLayers());
-  for (int l = 0; l < channel_config.GetNumLayers(); l++) {
+  const auto* channel_config =
+      std::get_if<ScalableChannelLayoutConfig>(&audio_element.obu.config_);
+  RETURN_IF_NOT_OK(ValidateNotNull(
+      channel_config,
+      "Channel config expected when there is a gain param definition."));
+  aux_data.resize(channel_config->GetNumLayers());
+  for (int l = 0; l < channel_config->GetNumLayers(); l++) {
     aux_data[l].recon_gain_is_present_flag =
-        channel_config.channel_audio_layer_configs[l]
+        channel_config->channel_audio_layer_configs[l]
             .recon_gain_is_present_flag;
     aux_data[l].channel_numbers_for_layer =
         audio_element.channel_numbers_for_layers[l];
   }
+  return absl::OkStatus();
 }
 
 }  // namespace
@@ -116,8 +121,8 @@ absl::Status CollectAndValidateParamDefinitions(
           ReconGainParamDefinition recon_gain_param_definition =
               std::get<ReconGainParamDefinition>(
                   audio_element_param.param_definition);
-          FillReconGainAuxiliaryData(audio_element,
-                                     recon_gain_param_definition.aux_data_);
+          RETURN_IF_NOT_OK(FillReconGainAuxiliaryData(
+              audio_element, recon_gain_param_definition.aux_data_));
           RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
               recon_gain_param_definition, param_definition_variants));
           break;
