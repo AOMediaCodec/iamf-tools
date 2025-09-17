@@ -79,14 +79,14 @@ TEST(SetUpAfterDescriptors, SetsWavWriterAndSampleBuffer) {
   iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
       IamfDecoder::Settings{
           .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0}},
+                                OutputLayout::kItu2051_SoundSystemA_0_2_0},
+          .requested_output_sample_type =
+              api::OutputSampleType::kInt16LittleEndian},
       bitstream.data(), bitstream.size(), decoder);
   api::SelectedMix selected_mix;
   ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
   ASSERT_THAT(selected_mix.output_layout,
               OutputLayout::kItu2051_SoundSystemA_0_2_0);
-  decoder->ConfigureOutputSampleType(
-      iamf_tools::api::OutputSampleType::kInt16LittleEndian);
 
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;

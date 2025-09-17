@@ -394,11 +394,6 @@ IamfStatus IamfDecoder::Decode(const uint8_t* input_buffer,
   return IamfStatus::OkStatus();
 }
 
-void IamfDecoder::ConfigureOutputSampleType(
-    OutputSampleType output_sample_type) {
-  state_->output_sample_type = output_sample_type;
-}
-
 IamfStatus IamfDecoder::GetOutputTemporalUnit(uint8_t* output_buffer,
                                               size_t output_buffer_size,
                                               size_t& bytes_written) {
@@ -565,8 +560,6 @@ IamfStatus IamfDecoder::SignalEndOfDecoding() {
   }
   return IamfStatus::OkStatus();
 }
-
-IamfStatus IamfDecoder::Close() { return IamfStatus::OkStatus(); }
 
 }  // namespace api
 }  // namespace iamf_tools

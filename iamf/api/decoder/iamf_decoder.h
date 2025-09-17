@@ -16,9 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <unordered_set>
-#include <vector>
 
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
@@ -101,14 +99,6 @@ class IamfDecoder : public api::IamfDecoderInterface {
   static IamfStatus CreateFromDescriptors(
       const IamfDecoder::Settings& settings, const uint8_t* input_buffer,
       size_t input_buffer_size, std::unique_ptr<IamfDecoder>& output_decoder);
-
-  /*!\brief Configures the decoder with the desired bit depth.
-   *
-   * Call this method to specify a specific output sample type.  If it is not
-   * called, the output samples will be a default value, retrievable by
-   * `GetOutputSampleType`.
-   */
-  void ConfigureOutputSampleType(OutputSampleType output_sample_type);
 
   /*!\brief Decodes the bitstream provided.
    *
@@ -197,7 +187,7 @@ class IamfDecoder : public api::IamfDecoderInterface {
 
   /*!\brief Returns the current OutputSampleType.
    *
-   * The value is either the value set by ConfigureOutputSampleType or a default
+   * The value is either the value set from `IamfDecoder::Settings` or a default
    * which may vary based on content.
    *
    * This function can only be used after all Descriptor OBUs have been parsed,
@@ -272,16 +262,6 @@ class IamfDecoder : public api::IamfDecoderInterface {
    * \return Ok status upon success. Other specific statuses on failure.
    */
   IamfStatus SignalEndOfDecoding() override;
-
-  /*!\brief Closes the decoder.
-   *
-   * This should be called once the user has finished providing data into
-   * Decode(), has called SignalEndOfStream(), and gotten all output units.
-   * Will close all underlying decoders.
-   *
-   * \return Ok status upon success. Other specific statuses on failure.
-   */
-  IamfStatus Close();
 
  private:
   // Forward declaration of the internal state of the decoder.

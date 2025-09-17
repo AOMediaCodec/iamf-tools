@@ -745,14 +745,15 @@ TEST(
 
   std::unique_ptr<api::IamfDecoder> decoder;
   const api::IamfDecoder::Settings kMonoSettings = {
-      .requested_mix = {
-          .output_layout =
-              api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0}};
+      .requested_mix =
+          {.output_layout =
+               api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0},
+      .requested_output_sample_type = api::OutputSampleType::kInt16LittleEndian,
+  };
   ASSERT_TRUE(
       api::IamfDecoder::CreateFromDescriptors(kMonoSettings, descriptors.data(),
                                               descriptors.size(), decoder)
           .ok());
-  decoder->ConfigureOutputSampleType(api::OutputSampleType::kInt16LittleEndian);
 
   const std::list<AudioFrameWithData> empty_audio_frames_with_data = {};
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
@@ -892,9 +893,10 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithLastTemporalUnit) {
 
 TEST(GetOutputTemporalUnit, FillsOutputVectorWithInt16) {
   std::unique_ptr<api::IamfDecoder> decoder;
-  ASSERT_TRUE(
-      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
-  decoder->ConfigureOutputSampleType(api::OutputSampleType::kInt16LittleEndian);
+  auto decoder_settings = GetStereoDecoderSettings();
+  decoder_settings.requested_output_sample_type =
+      api::OutputSampleType::kInt16LittleEndian;
+  ASSERT_TRUE(api::IamfDecoder::Create(decoder_settings, decoder).ok());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);
@@ -947,9 +949,10 @@ TEST(GetOutputTemporalUnit, FillsOutputVectorWithInt16BasedOnInitialSettings) {
 
 TEST(GetOutputTemporalUnit, FailsWhenBufferTooSmall) {
   std::unique_ptr<api::IamfDecoder> decoder;
-  ASSERT_TRUE(
-      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
-  decoder->ConfigureOutputSampleType(api::OutputSampleType::kInt16LittleEndian);
+  auto decoder_settings = GetStereoDecoderSettings();
+  decoder_settings.requested_output_sample_type =
+      api::OutputSampleType::kInt16LittleEndian;
+  ASSERT_TRUE(api::IamfDecoder::Create(decoder_settings, decoder).ok());
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
                             kEightSampleAudioFrame);

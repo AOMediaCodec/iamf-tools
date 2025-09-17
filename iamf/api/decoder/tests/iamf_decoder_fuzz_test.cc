@@ -71,12 +71,13 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   const api::IamfDecoder::Settings kSettings = {
-      .requested_mix = {.output_layout = output_layout}};
+      .requested_mix = {.output_layout = output_layout},
+      .requested_output_sample_type = output_sample_type,
+  };
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
 
   auto unused_decode_status =
       iamf_decoder->Decode(bitstream.data(), bitstream.size());
-  iamf_decoder->ConfigureOutputSampleType(output_sample_type);
 }
 
 auto AnyOutputLayout() {
