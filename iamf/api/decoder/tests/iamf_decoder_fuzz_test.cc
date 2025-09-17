@@ -10,14 +10,17 @@
  * www.aomedia.org/license/patent.
  */
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "fuzztest/fuzztest.h"
 #include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
 #include "iamf/api/decoder/iamf_decoder.h"
+#include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
 namespace iamf_tools {
@@ -27,8 +30,45 @@ using api::OutputLayout;
 using ::fuzztest::Arbitrary;
 using ::fuzztest::ElementOf;
 
+constexpr absl::string_view kIamfFileTestPath = "iamf/cli/testdata/iamf/";
+
 constexpr OutputLayout kStereoLayout =
     OutputLayout::kItu2051_SoundSystemA_0_2_0;
+
+int GetBytesPerSample(api::OutputSampleType output_sample_type) {
+  switch (output_sample_type) {
+    case api::OutputSampleType::kInt16LittleEndian:
+      return 2;
+    case api::OutputSampleType::kInt32LittleEndian:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+void OutputAllTemporalUnits(api::IamfDecoder& iamf_decoder) {
+  if (!iamf_decoder.IsDescriptorProcessingComplete()) {
+    // Under fuzz testing, some streams are too corrupt to meaningfully decode
+    // further.
+    return;
+  }
+
+  // Compute the maximum size of the output audio buffer.
+  const int bytes_per_sample =
+      GetBytesPerSample(iamf_decoder.GetOutputSampleType());
+  uint32_t frame_size;
+  ASSERT_TRUE(iamf_decoder.GetFrameSize(frame_size).ok());
+  int num_output_channels;
+  ASSERT_TRUE(iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok());
+  // Extract and throw away all temporal units.
+  std::vector<uint8_t> output_buffer(bytes_per_sample * frame_size *
+                                     num_output_channels);
+  size_t unused_bytes_written;
+  while (iamf_decoder.IsTemporalUnitAvailable()) {
+    auto unused_get_status = iamf_decoder.GetOutputTemporalUnit(
+        output_buffer.data(), output_buffer.size(), unused_bytes_written);
+  }
+}
 
 void DoesNotDieWithBasicDecode(const std::string& data) {
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
@@ -39,9 +79,15 @@ void DoesNotDieWithBasicDecode(const std::string& data) {
 
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   auto decode_status = iamf_decoder->Decode(bitstream.data(), bitstream.size());
+
+  OutputAllTemporalUnits(*iamf_decoder);
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytes, DoesNotDieWithBasicDecode);
+
+FUZZ_TEST(IamfDecoderFuzzTest_Seeded, DoesNotDieWithBasicDecode)
+    .WithSeeds(
+        fuzztest::ReadFilesFromDirectory(GetRunfilesPath(kIamfFileTestPath)));
 
 void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
                                      const std::string& temporal_unit_data) {
@@ -53,13 +99,15 @@ void DoesNotDieCreateFromDescriptors(const std::string& descriptor_data,
   const api::IamfDecoder::Settings kDefaultSettings;
   api::IamfStatus status = api::IamfDecoder::CreateFromDescriptors(
       kDefaultSettings, descriptors.data(), descriptors.size(), iamf_decoder);
-
-  if (status.ok()) {
-    std::vector<uint8_t> temporal_unit(temporal_unit_data.begin(),
-                                       temporal_unit_data.end());
-    auto decoder_status =
-        iamf_decoder->Decode(temporal_unit.data(), temporal_unit.size());
+  if (!status.ok()) {
+    return;
   }
+
+  std::vector<uint8_t> temporal_unit(temporal_unit_data.begin(),
+                                     temporal_unit_data.end());
+  auto unused_decode_status =
+      iamf_decoder->Decode(temporal_unit.data(), temporal_unit.size());
+  OutputAllTemporalUnits(*iamf_decoder);
 }
 
 FUZZ_TEST(IamfDecoderFuzzTest_ArbitraryBytesToDescriptors,
@@ -78,6 +126,7 @@ void DoesNotDieAllParams(api::OutputLayout output_layout,
 
   auto unused_decode_status =
       iamf_decoder->Decode(bitstream.data(), bitstream.size());
+  OutputAllTemporalUnits(*iamf_decoder);
 }
 
 auto AnyOutputLayout() {
