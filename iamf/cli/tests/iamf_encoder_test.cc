@@ -95,9 +95,9 @@ constexpr auto kExpectedPrimaryProfile = ProfileVersion::kIamfSimpleProfile;
 const auto kOmitOutputWavFiles =
     RenderingMixPresentationFinalizer::ProduceNoSampleProcessors;
 
-constexpr std::array<InternalSampleType, 8> kZeroSamples = {0.0, 0.0, 0.0, 0.0,
-                                                            0.0, 0.0, 0.0, 0.0};
-// A convenient view when multiple `kZeroSamples` are used in a coupled
+constexpr std::array<InternalSampleType, 8> kEightZeroSamples = {
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+// A convenient view when multiple `kEightZeroSamples` are used in a coupled
 // substream.
 constexpr std::array<uint8_t, 32> kEightCoupled16BitPcmSamples = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -432,7 +432,7 @@ TEST_F(IamfEncoderTest,
   auto iamf_encoder = CreateExpectOk();
   // Push the first temporal unit.
   EXPECT_THAT(iamf_encoder.Encode(
-                  MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples))),
+                  MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples))),
               IsOk());
   const AudioFrameObu kExpectedAudioFrame(
       ObuHeader(), kStereoSubstreamId,
@@ -500,7 +500,7 @@ TEST_F(IamfEncoderTest, GenerateDataObusTwoIterationsSucceeds) {
   bool continue_processing = true;
   int iteration = 0;
   auto temporal_unit_data =
-      MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
+      MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples));
   while (iamf_encoder.GeneratingTemporalUnits()) {
     std::string serialized_metadata;
     ASSERT_TRUE(
@@ -556,7 +556,7 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   // Use many parts of the API, to make sure the move did not break anything.
   EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
   auto temporal_unit_data =
-      MakeStereoTemporalUnitData(MakeConstSpan(kZeroSamples));
+      MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples));
   std::string serialized_metadata;
   ASSERT_TRUE(user_metadata_.parameter_block_metadata(0).SerializeToString(
       &serialized_metadata));
@@ -658,7 +658,7 @@ void ExpectFirstLayoutIntegratedLoudnessIs(
             expected_integrated_loudness);
 }
 
-TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedOrTrivialIaSequence) {
+TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterTrivialIaSequence) {
   SetupDescriptorObus();
   renderer_factory_ = std::make_unique<RendererFactory>();
   constexpr int16_t kIntegratedLoudness = 999;
@@ -678,6 +678,35 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedOrTrivialIaSequence) {
   EXPECT_TRUE(obus_are_finalized);
 }
 
+TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterAlignedIaSequence) {
+  SetupDescriptorObus();
+  AddAudioFrame(user_metadata_);
+  renderer_factory_ = std::make_unique<RendererFactory>();
+  constexpr int16_t kIntegratedLoudness = 999;
+  loudness_calculator_factory_ =
+      GetLoudnessCalculatorWhichReturnsIntegratedLoudness(kIntegratedLoudness);
+  auto iamf_encoder = CreateExpectOk();
+  // Make stereo data with frame-aligned data.
+  EXPECT_THAT(iamf_encoder.Encode(
+                  MakeStereoTemporalUnitData(MakeConstSpan(kEightZeroSamples))),
+              IsOk());
+  std::vector<uint8_t> unused_output_obus;
+  EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());
+  EXPECT_TRUE(iamf_encoder.GeneratingTemporalUnits());
+
+  // Outputting the final temporal unit of an aligned IA Sequence.
+  EXPECT_THAT(iamf_encoder.OutputTemporalUnit(unused_output_obus), IsOk());
+
+  // Now that no temporal units remain, the descriptors are reported as
+  // finalized.
+  EXPECT_FALSE(iamf_encoder.GeneratingTemporalUnits());
+  bool obus_are_finalized = false;
+  ExpectFirstLayoutIntegratedLoudnessIs(
+      iamf_encoder.GetMixPresentationObus(obus_are_finalized),
+      kIntegratedLoudness);
+  EXPECT_TRUE(obus_are_finalized);
+}
+
 TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
   SetupDescriptorObus();
   AddAudioFrame(user_metadata_);
@@ -688,7 +717,7 @@ TEST_F(IamfEncoderTest, LoudnessIsFinalizedAfterFinalOutputTemporalUnit) {
   auto iamf_encoder = CreateExpectOk();
   // Make stereo data with a single sample for each channel, to force a
   // non-frame aligned IA sequence.
-  constexpr auto kOneSample = MakeConstSpan(kZeroSamples).first(1);
+  constexpr auto kOneSample = MakeConstSpan(kEightZeroSamples).first(1);
   EXPECT_THAT(iamf_encoder.Encode(MakeStereoTemporalUnitData(kOneSample)),
               IsOk());
   EXPECT_THAT(iamf_encoder.FinalizeEncode(), IsOk());

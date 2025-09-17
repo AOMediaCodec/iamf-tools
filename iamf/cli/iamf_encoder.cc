@@ -557,20 +557,25 @@ absl::Status IamfEncoder::OutputTemporalUnit(
       SpliceArbitraryObus(timestamp_to_arbitrary_obus_.begin(),
                           timestamp_to_arbitrary_obus_,
                           temporal_unit_arbitrary_obus);
-      if (temporal_unit_arbitrary_obus.empty()) {
-        return absl::OkStatus();
-      }
+
       // There will be no further audio frames. Descriptors can be closed.
-      RETURN_IF_NOT_OK(FinalizeDescriptors(
-          validate_user_loudness_, mix_presentation_finalizer_,
-          mix_presentation_obus_, mix_presentation_obus_finalized_));
-      RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
-          parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
-          obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
+      // Carefully close them before writing out Arbitrary OBUs, which may
+      // marked as erronous.
+      if (!GeneratingTemporalUnits()) {
+        RETURN_IF_NOT_OK(FinalizeDescriptors(
+            validate_user_loudness_, mix_presentation_finalizer_,
+            mix_presentation_obus_, mix_presentation_obus_finalized_));
+      }
+
+      if (!temporal_unit_arbitrary_obus.empty()) {
+        RETURN_IF_NOT_OK(PushTemporalUnitToObuSequencers(
+            parameter_blocks, audio_frames, temporal_unit_arbitrary_obus,
+            obu_sequencers_, streaming_obu_sequencer_, temporal_unit_obus));
+      }
 
       if (!GeneratingTemporalUnits()) {
         // The final extraneous OBUs have been pushed out. Take this opportunity
-        // to finalize descriptors.
+        // to finalize the sequencers.
         return FinalizeObuSequencers(
             ia_sequence_header_obu_, *codec_config_obus_, *audio_elements_,
             mix_presentation_obus_, descriptor_arbitrary_obus_, obu_sequencers_,
@@ -671,8 +676,8 @@ absl::Status IamfEncoder::FinalizeEncode() {
     return absl::OkStatus();
   }
 
-  // This is a fully aligned, or trivial IA sequence. Take this opportunity to
-  // finalize the IA Sequence.
+  // This is a trivial IA sequence. Take this opportunity to finalize the IA
+  // Sequence.
   RETURN_IF_NOT_OK(FinalizeDescriptors(
       validate_user_loudness_, mix_presentation_finalizer_,
       mix_presentation_obus_, mix_presentation_obus_finalized_));

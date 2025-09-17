@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+-   Fix a bug where the encoder would fail to finalize loudness under certain
+    circumstances.
+
 ### Changed
 
 -   Changed encoder API to take in serialized protos. The previous API was buggy
