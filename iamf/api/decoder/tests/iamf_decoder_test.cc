@@ -1179,8 +1179,7 @@ TEST(Reset, ResetFailsWhenDescriptorProcessingIncomplete) {
   EXPECT_FALSE(decoder->Reset().ok());
 }
 
-TEST(ResetWithNewLayout,
-     DecodingAfterResetWithNewLayoutSucceedsInContainerizedCase) {
+TEST(ResetWithNewMix, DecodingAfterResetWithNewMixSucceedsInContainerizedCase) {
   // Create a decoder from descriptors.
   std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
   std::unique_ptr<api::IamfDecoder> decoder;
@@ -1229,7 +1228,7 @@ TEST(ResetWithNewLayout,
   EXPECT_EQ(bytes_written, expected_size);
 }
 
-TEST(ResetWithNewLayout, ResetWithNewLayoutFailsInStandaloneCase) {
+TEST(ResetWithNewMix, ResetWithNewMixFailsInStandaloneCase) {
   // Create a decoder from descriptors.
   std::unique_ptr<api::IamfDecoder> decoder;
   ASSERT_TRUE(

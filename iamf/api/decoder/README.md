@@ -26,10 +26,10 @@ and which refer to
 [Temporal Units](https://aomediacodec.github.io/iamf/#temporal-unit).
 Additionally, you know the boundaries between each temporal unit as well. mp4
 decoding falls into this use-case. Containerized decoding also allows you to use
-some enhanced features; this includes dynamic playback layout switching,
-seeking, and no-delay decoding. Delay here refers to having to wait for the next
-OBU to decode the current one; this is necessary in Standalone Decoding, but is
-not necessary in the Containerized mode.
+some enhanced features; this includes dynamic mix switching, seeking, and
+no-delay decoding. Delay here refers to having to wait for the next OBU to
+decode the current one; this is necessary in Standalone Decoding, but is not
+necessary in the Containerized mode.
 
 ```c++
 IamfDecoderSettings settings = {
@@ -61,11 +61,11 @@ if (end_of_stream) {
 }
 ```
 
-Containerized Decoding also supports dynamic playback layout switching. This
-enables you to change the playback layout (e.g. from stereo to 5.1) midstream.
-After decoding some audio, call:
+Containerized Decoding also supports dynamic mix switching. This enables you to
+change the mix presentation or output layout (e.g. from stereo to 5.1)
+midstream. After decoding some audio, call:
 
-`decoder.ResetWithNewLayout(desired_layout)`
+`decoder.ResetWithNewMix(requested_mix, selected_mix);
 
 Or, if seeking is desired, call:
 
@@ -114,5 +114,4 @@ if (end_of_stream) {
 }
 ```
 
-Seeking or dynamic playback layout switching is not supported in standalone
-mode.
+Seeking or dynamic mix switching is not supported in standalone mode.

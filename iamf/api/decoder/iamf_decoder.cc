@@ -526,7 +526,7 @@ IamfStatus IamfDecoder::ResetWithNewMix(const RequestedMix& requested_mix,
                                         SelectedMix& selected_mix) {
   if (!state_->created_from_descriptors) {
     return IamfStatus::ErrorStatus(
-        "Failed Precondition: ResetWithNewLayout() cannot be called in "
+        "Failed Precondition: ResetWithNewMix() cannot be called in "
         "standalone decoding mode.");
   }
   state_->requested_mix = requested_mix;
