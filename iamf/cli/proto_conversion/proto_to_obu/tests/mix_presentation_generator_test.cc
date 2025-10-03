@@ -392,7 +392,7 @@ TEST(Generate, NonDeprecatedAnnotationsTakePrecedence) {
       kAudioElementLocalizedElementAnnotations);
 }
 
-TEST(Generate, ObeysInconsistentCountLabel) {
+TEST(Generate, IgnoresDeprecatedCountLabel) {
   constexpr DecodedUleb128 kMassiveCountLabel =
       std::numeric_limits<DecodedUleb128>::max();
   MixPresentationObuMetadatas mix_presentation_metadata;
@@ -413,36 +413,64 @@ TEST(Generate, ObeysInconsistentCountLabel) {
                   .localized_element_annotations.empty());
 }
 
-TEST(Generate, ObeysInconsistentNumberOfLabels) {
-  const std::vector<std::string> kAnnotationsLanguage = {"Language 1",
-                                                         "Language 2"};
-  const std::vector<std::string> kOnlyOneLocalizedPresentationAnnotation = {
-      "Localized annotation 1"};
-  const std::vector<std::string> kNoAudioElementLocalizedElementAnnotations =
-      {};
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_count_label(2);
+void FillMixPresentationMetadataWithAnnotations(
+    const std::vector<std::string>& annotations_language,
+    const std::vector<std::string>& localized_presentation_annotations,
+    const std::vector<std::string>& audio_element_localized_element_annotations,
+    iamf_tools_cli_proto::MixPresentationObuMetadata& mix_presentation) {
   mix_presentation.mutable_annotations_language()->Add(
-      kAnnotationsLanguage.begin(), kAnnotationsLanguage.end());
+      annotations_language.begin(), annotations_language.end());
   mix_presentation.mutable_localized_presentation_annotations()->Add(
-      kOnlyOneLocalizedPresentationAnnotation.begin(),
-      kOnlyOneLocalizedPresentationAnnotation.end());
+      localized_presentation_annotations.begin(),
+      localized_presentation_annotations.end());
+  mix_presentation.mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_localized_element_annotations()
+      ->Add(audio_element_localized_element_annotations.begin(),
+            audio_element_localized_element_annotations.end());
+}
 
+TEST(Generate, InvalidWhenNumberOfAnnotationsLanguageIsInconsistent) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto& mix_presentation = *mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(&mix_presentation);
+  FillMixPresentationMetadataWithAnnotations({"en-us"}, {}, {},
+                                             mix_presentation);
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   std::list<MixPresentationObu> generated_obus;
   EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
+}
 
-  const auto& first_obu = generated_obus.front();
-  EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
-  EXPECT_EQ(first_obu.GetLocalizedPresentationAnnotations(),
-            kOnlyOneLocalizedPresentationAnnotation);
-  EXPECT_EQ(
-      first_obu.sub_mixes_[0].audio_elements[0].localized_element_annotations,
-      kNoAudioElementLocalizedElementAnnotations);
+TEST(Generate,
+     InvalidWhenNumberOfLocalizedPresentationAnnotationsIsInconsistent) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto& mix_presentation = *mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(&mix_presentation);
+  FillMixPresentationMetadataWithAnnotations(
+      {}, {"localized presentation annotation 1"}, {}, mix_presentation);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
+}
+
+TEST(Generate, InvalidWhenNumberOfLocalizedElementAnnotationsIsInconsistent) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto& mix_presentation = *mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(&mix_presentation);
+  FillMixPresentationMetadataWithAnnotations(
+      {}, {}, {"localized element annotation 1"}, mix_presentation);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
 }
 
 TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
@@ -863,12 +891,12 @@ TEST(Generate, SSConventionWithOneStereoAudioElement) {
 
 TEST(Generate, SupportsUtf8) {
   MixPresentationObuMetadatas mix_presentation_metadata;
-  auto* mix_presentation = mix_presentation_metadata.Add();
-  FillMixPresentationMetadata(mix_presentation);
+  auto& mix_presentation = *mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(&mix_presentation);
   const std::string kUtf8FourByteSequenceCode = "\xf0\x9d\x85\x9e\x00)";
-  mix_presentation->set_count_label(1);
-  mix_presentation->add_localized_presentation_annotations(
-      kUtf8FourByteSequenceCode);
+  FillMixPresentationMetadataWithAnnotations(
+      {"en-us"}, {kUtf8FourByteSequenceCode},
+      {"localized element annotation 1"}, mix_presentation);
 
   MixPresentationGenerator generator(mix_presentation_metadata);
   std::list<MixPresentationObu> generated_obus;

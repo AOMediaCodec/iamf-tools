@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Deprecated
+
+-   Deprecate `MixPresentationObuMetadata::count_label`, in favor of calculating
+    the size from related elements.
+
 ### Fixed
 
 -   Fix a bug where the encoder would fail to finalize loudness under certain

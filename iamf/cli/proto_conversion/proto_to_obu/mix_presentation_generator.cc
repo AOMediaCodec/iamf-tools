@@ -33,6 +33,7 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
@@ -69,12 +70,15 @@ std::vector<std::string> CreateVectorFromNewOrOldProtoField(
   }
 }
 
-void FillAnnotationsLanguageAndAnnotations(
+absl::Status FillAnnotationsLanguageAndAnnotations(
     const iamf_tools_cli_proto::MixPresentationObuMetadata&
         mix_presentation_metadata,
     DecodedUleb128& count_label, std::vector<std::string>& annotations_language,
     std::vector<std::string>& localized_presentation_annotations) {
-  count_label = mix_presentation_metadata.count_label();
+  if (mix_presentation_metadata.has_count_label()) {
+    LOG(WARNING) << "Ignoring deprecated `count_label` field."
+                 << "Please remove it.";
+  }
 
   // Prioritize the newer `annotations_language` field from IAMF v1.1.0, over
   // the deprecated `language_labels` field from IAMF v1.0.0.
@@ -82,6 +86,7 @@ void FillAnnotationsLanguageAndAnnotations(
       "annotations_language", mix_presentation_metadata.annotations_language(),
       "language_labels", mix_presentation_metadata.language_labels(),
       [](const std::string& s) { return s; });
+  count_label = annotations_language.size();
 
   // Prioritize the newer `localized_presentation_annotations` field from IAMF
   // v1.1.0, over the deprecated `mix_presentation_annotations_array` field from
@@ -94,6 +99,9 @@ void FillAnnotationsLanguageAndAnnotations(
       [](const auto& annotation) {
         return annotation.mix_presentation_friendly_label();
       });
+  return ValidateContainerSizeEqual("localized_presentation_annotations",
+                                    localized_presentation_annotations,
+                                    count_label);
 }
 
 void ReserveNumSubMixes(const iamf_tools_cli_proto::MixPresentationObuMetadata&
@@ -119,9 +127,9 @@ void ReserveSubMixNumAudioElements(
 
 absl::Status FillLocalizedElementAnnotations(
     const iamf_tools_cli_proto::SubMixAudioElement& input_sub_mix_audio_element,
-    SubMixAudioElement& sub_mix_audio_element) {
-  sub_mix_audio_element
-      .localized_element_annotations = CreateVectorFromNewOrOldProtoField(
+    DecodedUleb128& count_label,
+    std::vector<std::string>& localized_element_annotations) {
+  localized_element_annotations = CreateVectorFromNewOrOldProtoField(
       "localized_element_annotations",
       input_sub_mix_audio_element.localized_element_annotations(),
       "mix_presentation_element_annotations_array",
@@ -129,7 +137,9 @@ absl::Status FillLocalizedElementAnnotations(
       [](const auto& annotation) {
         return annotation.audio_element_friendly_label();
       });
-  return absl::OkStatus();
+
+  return ValidateContainerSizeEqual("localized_element_annotations",
+                                    localized_element_annotations, count_label);
 }
 
 absl::Status FillRenderingConfig(
@@ -496,10 +506,10 @@ absl::Status MixPresentationGenerator::Generate(
     obu_args.mix_presentation_id =
         mix_presentation_metadata.mix_presentation_id();
 
-    FillAnnotationsLanguageAndAnnotations(
+    RETURN_IF_NOT_OK(FillAnnotationsLanguageAndAnnotations(
         mix_presentation_metadata, obu_args.count_label,
         obu_args.annotations_language,
-        obu_args.localized_presentation_annotations);
+        obu_args.localized_presentation_annotations));
 
     ReserveNumSubMixes(mix_presentation_metadata, obu_args.sub_mixes);
     for (const auto& input_sub_mix : mix_presentation_metadata.sub_mixes()) {
@@ -513,7 +523,8 @@ absl::Status MixPresentationGenerator::Generate(
             input_sub_mix_audio_element.audio_element_id();
 
         RETURN_IF_NOT_OK(FillLocalizedElementAnnotations(
-            input_sub_mix_audio_element, sub_mix_audio_element));
+            input_sub_mix_audio_element, obu_args.count_label,
+            sub_mix_audio_element.localized_element_annotations));
 
         RETURN_IF_NOT_OK(
             FillRenderingConfig(input_sub_mix_audio_element.rendering_config(),

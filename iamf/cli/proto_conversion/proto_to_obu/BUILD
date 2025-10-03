@@ -154,6 +154,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
