@@ -392,6 +392,27 @@ TEST(Generate, NonDeprecatedAnnotationsTakePrecedence) {
       kAudioElementLocalizedElementAnnotations);
 }
 
+TEST(Generate, ObeysInconsistentCountLabel) {
+  constexpr DecodedUleb128 kMassiveCountLabel =
+      std::numeric_limits<DecodedUleb128>::max();
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0).set_count_label(kMassiveCountLabel);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+  ASSERT_FALSE(generated_obus.empty());
+
+  const auto& first_obu = generated_obus.front();
+  EXPECT_TRUE(first_obu.GetAnnotationsLanguage().empty());
+  EXPECT_TRUE(first_obu.GetLocalizedPresentationAnnotations().empty());
+  EXPECT_TRUE(first_obu.sub_mixes_[0]
+                  .audio_elements[0]
+                  .localized_element_annotations.empty());
+}
+
 TEST(Generate, ObeysInconsistentNumberOfLabels) {
   const std::vector<std::string> kAnnotationsLanguage = {"Language 1",
                                                          "Language 2"};

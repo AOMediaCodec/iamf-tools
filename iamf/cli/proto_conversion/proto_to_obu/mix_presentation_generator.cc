@@ -23,6 +23,7 @@
 #include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
@@ -35,10 +36,38 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/types.h"
+#include "src/google/protobuf/repeated_ptr_field.h"
 
 namespace iamf_tools {
 
 namespace {
+
+// Fills a vector of strings from one of two proto fields. Prefers the newer
+// field if present. The `old_field` may require an extractor to get a string
+// from a sub-message.
+template <typename DeprecatedFieldContainer, typename OldFieldExtractor>
+std::vector<std::string> CreateVectorFromNewOrOldProtoField(
+    absl::string_view new_field_name,
+    const google::protobuf::RepeatedPtrField<std::string>& new_field,
+    absl::string_view deprecated_field_name,
+    const DeprecatedFieldContainer& deprecated_field,
+    OldFieldExtractor deprecated_field_extractor) {
+  if (!new_field.empty()) {
+    return std::vector<std::string>(new_field.begin(), new_field.end());
+  } else if (!deprecated_field.empty()) {
+    LOG(WARNING) << "Please upgrade deprecated `" << deprecated_field_name
+                 << "` to `" << new_field_name << "`.";
+    std::vector<std::string> result;
+    result.reserve(deprecated_field.size());
+    for (const auto& item : deprecated_field) {
+      result.push_back(deprecated_field_extractor(item));
+    }
+    return result;
+  } else {
+    // OK, both fields were empty.
+    return {};
+  }
+}
 
 void FillAnnotationsLanguageAndAnnotations(
     const iamf_tools_cli_proto::MixPresentationObuMetadata&
@@ -47,42 +76,24 @@ void FillAnnotationsLanguageAndAnnotations(
     std::vector<std::string>& localized_presentation_annotations) {
   count_label = mix_presentation_metadata.count_label();
 
-  annotations_language.reserve(mix_presentation_metadata.count_label());
-  // Prioritize the `annotations_language` field from IAMF v1.1.0.
-  if (!mix_presentation_metadata.annotations_language().empty()) {
-    for (const auto& language :
-         mix_presentation_metadata.annotations_language()) {
-      annotations_language.push_back(language);
-    }
-  } else if (!mix_presentation_metadata.language_labels().empty()) {
-    LOG(WARNING) << "Please upgrade `language_labels` to "
-                    "`annotations_language`.";
-    for (const auto& language_label :
-         mix_presentation_metadata.language_labels()) {
-      annotations_language.push_back(language_label);
-    }
-  }
+  // Prioritize the newer `annotations_language` field from IAMF v1.1.0, over
+  // the deprecated `language_labels` field from IAMF v1.0.0.
+  annotations_language = CreateVectorFromNewOrOldProtoField(
+      "annotations_language", mix_presentation_metadata.annotations_language(),
+      "language_labels", mix_presentation_metadata.language_labels(),
+      [](const std::string& s) { return s; });
 
-  localized_presentation_annotations.reserve(
-      mix_presentation_metadata.count_label());
-  // Prioritize the `localized_presentation_annotations` field from
-  // IAMF v1.1.0.
-  if (!mix_presentation_metadata.localized_presentation_annotations().empty()) {
-    for (const auto& localized_presentation_annotation :
-         mix_presentation_metadata.localized_presentation_annotations()) {
-      localized_presentation_annotations.push_back(
-          localized_presentation_annotation);
-    }
-  } else if (!mix_presentation_metadata.mix_presentation_annotations_array()
-                  .empty()) {
-    LOG(WARNING) << "Please upgrade `mix_presentation_annotations_array` to "
-                    "`localized_presentation_annotations`.";
-    for (const auto& mix_presentation_annotation :
-         mix_presentation_metadata.mix_presentation_annotations_array()) {
-      localized_presentation_annotations.push_back(
-          mix_presentation_annotation.mix_presentation_friendly_label());
-    }
-  }
+  // Prioritize the newer `localized_presentation_annotations` field from IAMF
+  // v1.1.0, over the deprecated `mix_presentation_annotations_array` field from
+  // IAMF v1.0.0.
+  localized_presentation_annotations = CreateVectorFromNewOrOldProtoField(
+      "localized_presentation_annotations",
+      mix_presentation_metadata.localized_presentation_annotations(),
+      "mix_presentation_annotations_array",
+      mix_presentation_metadata.mix_presentation_annotations_array(),
+      [](const auto& annotation) {
+        return annotation.mix_presentation_friendly_label();
+      });
 }
 
 void ReserveNumSubMixes(const iamf_tools_cli_proto::MixPresentationObuMetadata&
@@ -109,25 +120,15 @@ void ReserveSubMixNumAudioElements(
 absl::Status FillLocalizedElementAnnotations(
     const iamf_tools_cli_proto::SubMixAudioElement& input_sub_mix_audio_element,
     SubMixAudioElement& sub_mix_audio_element) {
-  if (!input_sub_mix_audio_element.localized_element_annotations().empty()) {
-    for (const auto& localized_element_annotation :
-         input_sub_mix_audio_element.localized_element_annotations()) {
-      sub_mix_audio_element.localized_element_annotations.push_back(
-          localized_element_annotation);
-    }
-  } else if (!input_sub_mix_audio_element
-                  .mix_presentation_element_annotations_array()
-                  .empty()) {
-    LOG(WARNING)
-        << "Please upgrade `mix_presentation_element_annotations_array` to "
-           "`localized_element_annotations`.";
-    for (const auto& input_audio_element_friendly_label :
-         input_sub_mix_audio_element
-             .mix_presentation_element_annotations_array()) {
-      sub_mix_audio_element.localized_element_annotations.push_back(
-          input_audio_element_friendly_label.audio_element_friendly_label());
-    }
-  }
+  sub_mix_audio_element
+      .localized_element_annotations = CreateVectorFromNewOrOldProtoField(
+      "localized_element_annotations",
+      input_sub_mix_audio_element.localized_element_annotations(),
+      "mix_presentation_element_annotations_array",
+      input_sub_mix_audio_element.mix_presentation_element_annotations_array(),
+      [](const auto& annotation) {
+        return annotation.audio_element_friendly_label();
+      });
   return absl::OkStatus();
 }
 
