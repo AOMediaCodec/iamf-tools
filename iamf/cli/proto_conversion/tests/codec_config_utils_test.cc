@@ -11,6 +11,10 @@
  */
 #include "iamf/cli/proto_conversion/codec_config_utils.h"
 
+#include <cmath>
+#include <cstdint>
+#include <limits>
+
 #include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -83,6 +87,17 @@ TEST(CreateOpusEncoderSettings, SetsTargetBitratePerChannelForOneChannel) {
   EXPECT_EQ(settings->target_substream_bitrate, 96000);
 }
 
+TEST(CreateOpusEncoderSettings, SetsSentinelBitrateForOneChannel) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_target_bitrate_per_channel(OPUS_AUTO);
+
+  auto settings = CreateOpusEncoderSettings(opus_encoder_metadata, kOneChannel,
+                                            kSubstreamId);
+
+  ASSERT_THAT(settings, IsOk());
+  EXPECT_EQ(settings->target_substream_bitrate, OPUS_AUTO);
+}
+
 TEST(CreateOpusEncoderSettings,
      MultipliesTargetBitratePerChannelForTwoChannels) {
   auto opus_encoder_metadata = CreateOpusEncoderMetadata();
@@ -109,6 +124,17 @@ TEST(CreateOpusEncoderSettings,
 
   ASSERT_THAT(settings, IsOk());
   EXPECT_EQ(settings->target_substream_bitrate, 144000);
+}
+
+TEST(CreateOpusEncoderSettings, SetsSentinelBitrateForTwoChannels) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_target_bitrate_per_channel(OPUS_BITRATE_MAX);
+
+  auto settings = CreateOpusEncoderSettings(opus_encoder_metadata, kTwoChannels,
+                                            kSubstreamId);
+
+  ASSERT_THAT(settings, IsOk());
+  EXPECT_EQ(settings->target_substream_bitrate, OPUS_BITRATE_MAX);
 }
 
 TEST(CreateOpusEncoderSettings, CouplingRateAdjustmentIsIgnoredForOneChannel) {
@@ -141,6 +167,19 @@ TEST(CreateOpusEncoderSettings, MayOverrideBitrateForOneChannelSubstreamId) {
   EXPECT_EQ(settings->target_substream_bitrate, 24000);
 }
 
+TEST(CreateOpusEncoderSettings, SetsOverrideToSentinelBitrate) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  // Bitrate may be overridden per ID, even to sentinel values.
+  opus_encoder_metadata.mutable_substream_id_to_bitrate_override()->insert(
+      {kSubstreamId, OPUS_AUTO});
+
+  auto settings = CreateOpusEncoderSettings(opus_encoder_metadata, kOneChannel,
+                                            kSubstreamId);
+
+  ASSERT_THAT(settings, IsOk());
+  EXPECT_EQ(settings->target_substream_bitrate, OPUS_AUTO);
+}
+
 TEST(CreateOpusEncoderSettings, MayOverrideBitrateForTwoChannelSubstream) {
   auto opus_encoder_metadata = CreateOpusEncoderMetadata();
   opus_encoder_metadata.set_target_bitrate_per_channel(96000);
@@ -169,6 +208,81 @@ TEST(CreateOpusEncoderSettings, IgnoresBitrateOverrideForDifferentSubstreamId) {
   ASSERT_THAT(settings, IsOk());
   // The override for the other substream should be ignored.
   EXPECT_EQ(settings->target_substream_bitrate, 96000);
+}
+
+TEST(CreateOpusEncoderSettings, ReturnsErrorForUnsanitizedNumChannels) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  const int kInvalidNumChannels = std::numeric_limits<int32_t>::max();
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata,
+                                        kInvalidNumChannels, kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedLargeBitrateOneChannel) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_target_bitrate_per_channel(
+      std::numeric_limits<int32_t>::max());
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kOneChannel,
+                                        kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedLargeBitrateTwoChannels) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  // Set a value which will overflow when multiplied by two.
+  opus_encoder_metadata.set_target_bitrate_per_channel(
+      std::numeric_limits<int32_t>::max());
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kTwoChannels,
+                                        kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedLargeBitrateOverride) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.mutable_substream_id_to_bitrate_override()->insert(
+      {kSubstreamId, std::numeric_limits<int32_t>::max()});
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kOneChannel,
+                                        kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedCouplingRateAdjustmentInfinity) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_coupling_rate_adjustment(
+      std::numeric_limits<float>::infinity());
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kTwoChannels,
+                                        kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedCouplingRateAdjustmentNan) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_coupling_rate_adjustment(std::nan(""));
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kTwoChannels,
+                                        kSubstreamId),
+              Not(IsOk()));
+}
+
+TEST(CreateOpusEncoderSettings,
+     ReturnsErrorForUnsanitizedLargeCouplingRateAdjustment) {
+  auto opus_encoder_metadata = CreateOpusEncoderMetadata();
+  opus_encoder_metadata.set_coupling_rate_adjustment(
+      std::numeric_limits<int32_t>::max());
+
+  EXPECT_THAT(CreateOpusEncoderSettings(opus_encoder_metadata, kTwoChannels,
+                                        kSubstreamId),
+              Not(IsOk()));
 }
 
 }  // namespace

@@ -51,6 +51,11 @@ message OpusEncoderMetadata {
   //    - Two channels: `target_bitrate_per_channel * 2 *
   //  coupling_rate_adjustment`.
   int32 target_bitrate_per_channel = 1;
+  // The coupling rate adjustment should be in the range [0.5, 1.0].
+  // At the lower bound, the effective bitrate for coupled channels would be
+  // the same as a mono channel, for highly correlated signals.
+  // At the upper bound, the effective bitrate for a coupled channel would be
+  // two times the rate for a mono channel, for highly disparate signals.
   float coupling_rate_adjustment = 4 [default = 1.0];
 
   map<uint32, int32> substream_id_to_bitrate_override = 5;
