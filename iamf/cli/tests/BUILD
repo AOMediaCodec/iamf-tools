@@ -246,7 +246,7 @@ cc_test(
 
 cc_test(
     name = "encoder_main_lib_test",
-    size = "medium",
+    size = "small",
     srcs = ["encoder_main_lib_test.cc"],
     data = [
         "//iamf/cli/testdata:input_wav_files",
@@ -714,7 +714,6 @@ cc_test(
         "//iamf/cli/testdata:input_wav_files",
         "//iamf/cli/textproto_templates:textprotos",
     ],
-    shard_count = 4,
     deps = [
         ":cli_test_utils",
         "//iamf/cli:encoder_main_lib",
