@@ -174,10 +174,13 @@ absl::Status FillRenderingConfig(
       "RenderingConfig.reserved", input_rendering_config.reserved(),
       rendering_config.reserved));
 
-  const auto user_size =
-      input_rendering_config.rendering_config_extension_size();
-  rendering_config.rendering_config_extension_size = user_size;
-  rendering_config.rendering_config_extension_bytes.resize(user_size);
+  if (input_rendering_config.has_rendering_config_extension_size()) {
+    LOG(WARNING) << "Ignoring deprecated `rendering_config_extension_size` "
+                    "field. Please remove it.";
+  }
+
+  rendering_config.rendering_config_extension_bytes.resize(
+      input_rendering_config.rendering_config_extension_bytes().size());
   return StaticCastSpanIfInRange(
       "rendering_config_extension_bytes",
       absl::MakeConstSpan(

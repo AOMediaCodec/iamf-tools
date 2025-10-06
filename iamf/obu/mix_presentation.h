@@ -43,8 +43,8 @@ struct RenderingConfig {
                          const RenderingConfig& rhs) = default;
   HeadphonesRenderingMode headphones_rendering_mode;  // 2 bits.
   uint8_t reserved;                                   // 6 bits.
-  DecodedUleb128 rendering_config_extension_size;
-  // Length `rendering_config_extension_size`.
+  // `rendering_config_extension_size` is inferred from the length of
+  // `rendering_config_extension_bytes`.
   std::vector<uint8_t> rendering_config_extension_bytes;
 };
 

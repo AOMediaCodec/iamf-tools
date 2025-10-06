@@ -457,7 +457,6 @@ void InitializeDescriptorObusWithTwoSubmixes(
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
-      .rendering_config_extension_size = 0,
       .rendering_config_extension_bytes = {}};
   const MixPresentationLayout kStereoLayout = {
       .loudness_layout =

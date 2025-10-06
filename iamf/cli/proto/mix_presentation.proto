@@ -47,7 +47,7 @@ enum HeadPhonesRenderingMode {
 message RenderingConfig {
   HeadPhonesRenderingMode headphones_rendering_mode = 1;
   uint32 reserved = 2;
-  uint32 rendering_config_extension_size = 3;
+  uint32 rendering_config_extension_size = 3 [deprecated = true];
   bytes rendering_config_extension_bytes = 4;
 }
 

@@ -185,7 +185,6 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_EQ(generated_rendering_config.headphones_rendering_mode,
             kExpectedHeadphonesRenderingMode3);
-  EXPECT_EQ(generated_rendering_config.rendering_config_extension_size, 0);
   EXPECT_TRUE(
       generated_rendering_config.rendering_config_extension_bytes.empty());
 }
@@ -199,7 +198,6 @@ TEST(Generate, CopiesRenderingConfigExtension) {
                                       ->mutable_rendering_config();
   first_rendering_config.set_headphones_rendering_mode(
       HEADPHONES_RENDERING_MODE_RESERVED_3);
-  first_rendering_config.set_rendering_config_extension_size(5);
   first_rendering_config.set_rendering_config_extension_bytes("extra");
   constexpr std::array<char, 5> kExpectedRenderingConfigExtensionBytes = {
       'e', 'x', 't', 'r', 'a'};
@@ -211,13 +209,12 @@ TEST(Generate, CopiesRenderingConfigExtension) {
 
   const auto& generated_rendering_config =
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
-  EXPECT_EQ(generated_rendering_config.rendering_config_extension_size, 5);
   EXPECT_THAT(generated_rendering_config.rendering_config_extension_bytes,
               ElementsAreArray(kExpectedRenderingConfigExtensionBytes));
 }
 
-TEST(Generate, InvalidWhenRenderingConfigExtensionIsMismatched) {
-  constexpr size_t kMismatchedSize = 6;
+TEST(Generate, IgnoresDeprecatedRenderingConfigExtensionSize) {
+  constexpr uint32_t kMismatchedSize = std::numeric_limits<uint32_t>::max();
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& first_rendering_config = *mix_presentation_metadata.at(0)
@@ -228,13 +225,17 @@ TEST(Generate, InvalidWhenRenderingConfigExtensionIsMismatched) {
       HEADPHONES_RENDERING_MODE_RESERVED_3);
   first_rendering_config.set_rendering_config_extension_size(kMismatchedSize);
   first_rendering_config.set_rendering_config_extension_bytes("extra");
-
   MixPresentationGenerator generator(mix_presentation_metadata);
   std::list<MixPresentationObu> generated_obus;
 
   EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
-  EXPECT_TRUE(generated_obus.empty());
+              IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .rendering_config.rendering_config_extension_bytes,
+            std::vector<uint8_t>({'e', 'x', 't', 'r', 'a'}));
 }
 
 TEST(Generate, CopiesNoAnnotations) {

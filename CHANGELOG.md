@@ -14,6 +14,8 @@ and this project adheres to
     the size from related elements.
 -   Deprecate `MixPresentationObuMetadata::info_type_size`, in favor of
     calculating the size from related elements.
+-   Deprecate `MixPresentationObuMetadata::rendering_config_extension_size`, in
+    favor of calculating the size from related elements.
 
 ### Fixed
 

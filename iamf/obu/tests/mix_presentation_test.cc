@@ -86,7 +86,6 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                       {.headphones_rendering_mode =
                            RenderingConfig::kHeadphonesRenderingModeStereo,
                        .reserved = 0,
-                       .rendering_config_extension_size = 0,
                        .rendering_config_extension_bytes = {}},
               }},
               .layouts = {{.loudness_layout =
@@ -438,7 +437,6 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
-      .rendering_config_extension_size = 2,
       .rendering_config_extension_bytes = {'e', 'x'}};
 
   leb_generator_ =
@@ -590,7 +588,6 @@ TEST_F(MixPresentationObuTest, BinauralRenderingConfig) {
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
-      .rendering_config_extension_size = 0,
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 47};
@@ -620,7 +617,6 @@ TEST_F(
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = (1 << 6),
-      .rendering_config_extension_size = 0,
       .rendering_config_extension_bytes = {}};
 
   InitExpectOk();
@@ -644,7 +640,6 @@ TEST_F(MixPresentationObuTest, RenderingConfigExtension) {
       .headphones_rendering_mode =
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
-      .rendering_config_extension_size = 2,
       .rendering_config_extension_bytes = {'e', 'x'}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 49};
@@ -676,7 +671,6 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
                {.headphones_rendering_mode =
                     RenderingConfig::kHeadphonesRenderingModeBinaural,
                 .reserved = 0,
-                .rendering_config_extension_size = 0,
                 .rendering_config_extension_bytes = {}},
        }},
        .layouts = {

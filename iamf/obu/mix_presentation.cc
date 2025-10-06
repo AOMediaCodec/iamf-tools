@@ -87,11 +87,7 @@ absl::Status ValidateAndWriteSubMixAudioElement(
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint8_t>(element.rendering_config.reserved), 6));
   RETURN_IF_NOT_OK(wb.WriteUleb128(
-      element.rendering_config.rendering_config_extension_size));
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "rendering_config_extension_bytes",
-      element.rendering_config.rendering_config_extension_bytes,
-      element.rendering_config.rendering_config_extension_size));
+      element.rendering_config.rendering_config_extension_bytes.size()));
   RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
       element.rendering_config.rendering_config_extension_bytes)));
 
@@ -293,10 +289,10 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
   uint8_t reserved;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, reserved));
   rendering_config.reserved = reserved;
-  RETURN_IF_NOT_OK(
-      rb.ReadULeb128(rendering_config.rendering_config_extension_size));
+  DecodedUleb128 rendering_config_extension_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
   rendering_config.rendering_config_extension_bytes.resize(
-      rendering_config.rendering_config_extension_size);
+      rendering_config_extension_size);
   RETURN_IF_NOT_OK(rb.ReadUint8Span(
       absl::MakeSpan(rendering_config.rendering_config_extension_bytes)));
 
@@ -623,9 +619,9 @@ void MixPresentationObu::PrintObu() const {
                                     .headphones_rendering_mode);
       LOG(INFO) << "          reserved= "
                 << absl::StrCat(audio_element.rendering_config.reserved);
-      LOG(INFO)
-          << "          rendering_config_extension_size= "
-          << audio_element.rendering_config.rendering_config_extension_size;
+      LOG(INFO) << "          rendering_config_extension_size= "
+                << audio_element.rendering_config
+                       .rendering_config_extension_bytes.size();
       LOG(INFO) << "          rendering_config_extension_bytes omitted.";
       LOG(INFO) << "        element_mix_gain:";
       audio_element.element_mix_gain.Print();
