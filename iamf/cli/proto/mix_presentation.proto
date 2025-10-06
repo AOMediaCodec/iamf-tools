@@ -178,7 +178,7 @@ message LoudnessInfo {
   int32 digital_peak = 3;         // Q7.8.
   int32 true_peak = 4;            // Q7.8.
   AnchoredLoudness anchored_loudness = 5;
-  uint32 info_type_size = 6;
+  uint32 info_type_size = 6 [deprecated = true];
   bytes info_type_bytes = 7;
 
   // Next ID: 9

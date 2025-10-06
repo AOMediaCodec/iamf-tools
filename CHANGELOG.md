@@ -12,6 +12,8 @@ and this project adheres to
 
 -   Deprecate `MixPresentationObuMetadata::count_label`, in favor of calculating
     the size from related elements.
+-   Deprecate `MixPresentationObuMetadata::info_type_size`, in favor of
+    calculating the size from related elements.
 
 ### Fixed
 

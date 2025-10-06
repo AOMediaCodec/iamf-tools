@@ -477,9 +477,13 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
     // Not using layout extension.
     return absl::OkStatus();
   }
-  auto user_size = user_loudness.info_type_size();
-  output_loudness.layout_extension.info_type_size = user_size;
-  output_loudness.layout_extension.info_type_bytes.resize(user_size);
+  if (user_loudness.has_info_type_size()) {
+    LOG(WARNING) << "Ignoring deprecated `info_type_size` field."
+                 << "Please remove it.";
+  }
+
+  output_loudness.layout_extension.info_type_bytes.resize(
+      user_loudness.info_type_bytes().size());
   return StaticCastSpanIfInRange(
       "layout_extension_bytes",
       absl::MakeConstSpan(user_loudness.info_type_bytes()),

@@ -101,8 +101,7 @@ struct LayoutExtension {
   friend bool operator==(const LayoutExtension& lhs,
                          const LayoutExtension& rhs) = default;
 
-  DecodedUleb128 info_type_size = 0;
-  // Length `info_type_size`.
+  // `info_type_size` is implicit based on the size of `info_type_bytes`
   std::vector<uint8_t> info_type_bytes;
 };
 

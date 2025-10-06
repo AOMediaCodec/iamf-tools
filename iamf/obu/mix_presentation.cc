@@ -153,11 +153,8 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
   }
   // Conditionally write `layout_extension` based on `info_type`.
   if ((layout.loudness.info_type & LoudnessInfo::kAnyLayoutExtension) != 0) {
-    RETURN_IF_NOT_OK(
-        wb.WriteUleb128(layout.loudness.layout_extension.info_type_size));
-    RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-        "info_type_bytes", layout.loudness.layout_extension.info_type_bytes,
-        layout.loudness.layout_extension.info_type_size));
+    RETURN_IF_NOT_OK(wb.WriteUleb128(
+        layout.loudness.layout_extension.info_type_bytes.size()));
     RETURN_IF_NOT_OK(wb.WriteUint8Span(
         absl::MakeConstSpan(layout.loudness.layout_extension.info_type_bytes)));
   }
@@ -266,9 +263,9 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   }
   // Conditionally read `layout_extension` based on `info_type`.
   if (loudness.info_type & LoudnessInfo::kAnyLayoutExtension) {
-    RETURN_IF_NOT_OK(rb.ReadULeb128(loudness.layout_extension.info_type_size));
-    loudness.layout_extension.info_type_bytes.resize(
-        loudness.layout_extension.info_type_size);
+    DecodedUleb128 info_type_size;
+    RETURN_IF_NOT_OK(rb.ReadULeb128(info_type_size));
+    loudness.layout_extension.info_type_bytes.resize(info_type_size);
     RETURN_IF_NOT_OK(rb.ReadUint8Span(
         absl::MakeSpan(loudness.layout_extension.info_type_bytes)));
   }
@@ -691,7 +688,7 @@ void MixPresentationObu::PrintObu() const {
         const auto& layout_extension = loudness.layout_extension;
         LOG(INFO) << "        layout_extension: ";
         LOG(INFO) << "          info_type_size= "
-                  << layout_extension.info_type_size;
+                  << layout_extension.info_type_bytes.size();
         for (int i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
           LOG(INFO) << "          info_type_bytes[" << i
                     << "]= " << layout_extension.info_type_bytes[i];

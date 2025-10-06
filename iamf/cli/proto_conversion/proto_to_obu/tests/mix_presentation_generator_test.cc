@@ -1314,22 +1314,13 @@ TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        info_type_size: 3 info_type_bytes: "abc"
-      )pb",
-      &user_loudness));
-
-  // Configure expected data. The function only writes to the
-  // `LayoutExtension`.
-  const LayoutExtension expected_layout_extension = {
-      .info_type_size = 3,
-      .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
+  user_loudness.set_info_type_bytes("abc");
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
+  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+            std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 
 TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
@@ -1338,22 +1329,32 @@ TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        info_type_size: 3 info_type_bytes: "abc"
-      )pb",
-      &user_loudness));
-
-  // Configure expected data. The function only writes to the
-  // `LayoutExtension`.
-  const LayoutExtension expected_layout_extension = {
-      .info_type_size = 3,
-      .info_type_bytes = std::vector<uint8_t>({'a', 'b', 'c'})};
+  user_loudness.set_info_type_bytes("abc");
 
   EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
                   user_loudness, output_loudness),
               IsOk());
-  EXPECT_EQ(output_loudness.layout_extension, expected_layout_extension);
+  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+            std::vector<uint8_t>({'a', 'b', 'c'}));
+}
+
+TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kInfoTypeBitMask4};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  // Set up a non-sensical value for the deprecated field.
+  user_loudness.set_info_type_size(std::numeric_limits<uint32_t>::max());
+  user_loudness.set_info_type_bytes("abc");
+
+  EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
+                  user_loudness, output_loudness),
+              IsOk());
+  // Regardless the output size is calculated from the
+  // `info_type_bytes` field.
+  EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
+            std::vector<uint8_t>({'a', 'b', 'c'}));
 }
 
 }  // namespace

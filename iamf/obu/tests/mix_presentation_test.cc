@@ -407,8 +407,7 @@ TEST_F(MixPresentationObuTest,
 
 TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
   sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_size = 0,
-                                                        .info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 46};
   expected_payload_ = {
@@ -433,8 +432,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
 TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   // Initialize a test has several `DecodedUleb128` explicitly in the bitstream.
   sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
-  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_size = 0,
-                                                        .info_type_bytes{}};
+  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
 
   sub_mixes_[0].audio_elements[0].rendering_config = {
       .headphones_rendering_mode =
@@ -494,7 +492,7 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
 TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
   sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
   sub_mixes_[0].layouts[0].loudness.layout_extension = {
-      .info_type_size = 5, .info_type_bytes{'e', 'x', 't', 'r', 'a'}};
+      .info_type_bytes{'e', 'x', 't', 'r', 'a'}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 51};
   expected_payload_ = {
