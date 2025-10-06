@@ -213,7 +213,6 @@ cc_library(
         ":encoder_base",
         ":opus_utils",
         "//iamf/cli:audio_frame_with_data",
-        "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:sample_processing_utils",

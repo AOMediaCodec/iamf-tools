@@ -49,6 +49,7 @@
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto_conversion/channel_label_utils.h"
+#include "iamf/cli/proto_conversion/codec_config_utils.h"
 #include "iamf/cli/substream_frames.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/audio_frame.h"
@@ -74,11 +75,17 @@ absl::Status InitializeEncoder(
     case kCodecIdLpcm:
       encoder = std::make_unique<LpcmEncoder>(codec_config, num_channels);
       break;
-    case kCodecIdOpus:
-      encoder = std::make_unique<OpusEncoder>(
+    case kCodecIdOpus: {
+      auto opus_encoder_settings = CreateOpusEncoderSettings(
           codec_config_metadata.decoder_config_opus().opus_encoder_metadata(),
-          codec_config, num_channels, substream_id);
+          num_channels, substream_id);
+      if (!opus_encoder_settings.ok()) {
+        return opus_encoder_settings.status();
+      }
+      encoder = std::make_unique<OpusEncoder>(*opus_encoder_settings,
+                                              codec_config, num_channels);
       break;
+    }
     case kCodecIdAacLc:
       encoder = std::make_unique<AacEncoder>(
           codec_config_metadata.decoder_config_aac().aac_encoder_metadata(),

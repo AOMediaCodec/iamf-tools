@@ -19,23 +19,41 @@
 #include "absl/status/status.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/encoder_base.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "include/opus.h"
+#include "include/opus_defines.h"
 
 namespace iamf_tools {
 
 class OpusEncoder : public EncoderBase {
  public:
-  OpusEncoder(
-      const iamf_tools_cli_proto::OpusEncoderMetadata& opus_encoder_metadata,
-      const CodecConfigObu& codec_config, int num_channels, int substream_id)
+  struct Settings {
+    // Controls whether to use the `libopus` float API or int16_t API.
+    bool use_float_api = true;
+    // The `libopus` application mode, usually set to `OPUS_APPLICATION_AUDIO`,
+    // `OPUS_APPLICATION_VOIP`, or `OPUS_APPLICATION_RESTRICTED_LOWDELAY`.
+    int libopus_application_mode = OPUS_APPLICATION_AUDIO;
+    // The total target bitrate for the substream. I.e. in a coupled substream
+    // this bitrate is shared among two channels. Typically this in bits per
+    // second. Sentinel values defined by `libopus` are permitted, including
+    // `OPUS_BITRATE_MAX` and `OPUS_AUTO`.
+    int32_t target_substream_bitrate = OPUS_AUTO;
+  };
+
+  /*!\brief Constructor.
+   *
+   * \param settings Encoder settings.
+   * \param codec_config Codec config OBU.
+   * \param num_channels Number of channels in the encoded audio.
+   * \return `absl::OkStatus()` on success. A specific status on failure.
+   */
+  OpusEncoder(const Settings& settings, const CodecConfigObu& codec_config,
+              int num_channels)
       : EncoderBase(codec_config, num_channels),
-        encoder_metadata_(opus_encoder_metadata),
+        settings_(settings),
         decoder_config_(std::get<OpusDecoderConfig>(
-            codec_config.GetCodecConfig().decoder_config)),
-        substream_id_(substream_id) {}
+            codec_config.GetCodecConfig().decoder_config)) {}
 
   ~OpusEncoder() override;
 
@@ -85,9 +103,8 @@ class OpusEncoder : public EncoderBase {
    */
   absl::Status ValidateEncoderInfo();
 
-  const iamf_tools_cli_proto::OpusEncoderMetadata encoder_metadata_;
+  const Settings settings_;
   const OpusDecoderConfig decoder_config_;
-  const int substream_id_;
 
   LibOpusEncoder* encoder_ = nullptr;
 };

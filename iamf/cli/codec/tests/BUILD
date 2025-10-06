@@ -169,12 +169,15 @@ cc_test(
     deps = [
         ":encoder_test_base",
         "//iamf/cli/codec:opus_encoder",
-        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:codec_config",
         "//iamf/obu:obu_header",
+        "//iamf/obu:types",
         "//iamf/obu/decoder_config:opus_decoder_config",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
+        "@libopus",
     ],
 )
 

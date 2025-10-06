@@ -30,11 +30,11 @@
 #include "iamf/cli/codec/flac_encoder.h"
 #include "iamf/cli/codec/lpcm_encoder.h"
 #include "iamf/cli/codec/opus_encoder.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/types.h"
+#include "include/opus_defines.h"
 
 namespace iamf_tools {
 namespace {
@@ -71,12 +71,13 @@ static std::unique_ptr<FlacEncoder> CreateFlacEncoder(
 static std::unique_ptr<OpusEncoder> CreateOpusEncoder(
     const CodecConfigObu& codec_config) {
   // Encoder.
-  iamf_tools_cli_proto::OpusEncoderMetadata opus_encoder_metadata;
-  opus_encoder_metadata.set_target_bitrate_per_channel(48000);
-  opus_encoder_metadata.set_application(
-      iamf_tools_cli_proto::APPLICATION_AUDIO);
   auto encoder = std::make_unique<OpusEncoder>(
-      opus_encoder_metadata, codec_config, kOneChannel, kSubstreamId);
+      OpusEncoder::Settings{
+          .use_float_api = true,
+          .libopus_application_mode = OPUS_APPLICATION_AUDIO,
+          .target_substream_bitrate = 48000,
+      },
+      codec_config, kOneChannel);
   return encoder;
 }
 

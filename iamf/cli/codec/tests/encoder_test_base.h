@@ -115,7 +115,6 @@ class EncoderTestBase {
   }
 
   int num_channels_ = 1;
-  int substream_id_ = 0;
   uint32_t num_samples_per_frame_ = 1;
   std::unique_ptr<EncoderBase> encoder_;
 

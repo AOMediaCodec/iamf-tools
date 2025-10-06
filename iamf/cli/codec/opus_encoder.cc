@@ -25,7 +25,6 @@
 #include "absl/types/span.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/codec/opus_utils.h"
-#include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
@@ -122,7 +121,10 @@ absl::StatusOr<int> EncodeInt16(
 absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart(
     bool validate_codec_delay) {
   opus_int32 lookahead;
-  opus_encoder_ctl(encoder_, OPUS_GET_LOOKAHEAD(&lookahead));
+  int opus_error_code =
+      opus_encoder_ctl(encoder_, OPUS_GET_LOOKAHEAD(&lookahead));
+  RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(opus_error_code,
+                                             "Failed to get Opus lookahead."));
   LOG_FIRST_N(INFO, 1) << "Opus lookahead=" << lookahead;
   // Opus calls the number of samples that should be trimmed/pre-skipped
   // `lookahead`.
@@ -139,45 +141,18 @@ absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart(
 absl::Status OpusEncoder::InitializeEncoder() {
   MAYBE_RETURN_IF_NOT_OK(ValidateDecoderConfig(decoder_config_));
 
-  int application;
-  switch (encoder_metadata_.application()) {
-    using enum iamf_tools_cli_proto::OpusApplicationFlag;
-    case APPLICATION_VOIP:
-      application = OPUS_APPLICATION_VOIP;
-      break;
-    case APPLICATION_AUDIO:
-      application = OPUS_APPLICATION_AUDIO;
-      break;
-    case APPLICATION_RESTRICTED_LOWDELAY:
-      application = OPUS_APPLICATION_RESTRICTED_LOWDELAY;
-      break;
-    default:
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Unrecognized application.", encoder_metadata_.application()));
-  }
-
   int opus_error_code;
-  encoder_ = opus_encoder_create(input_sample_rate_, num_channels_, application,
-                                 &opus_error_code);
+  encoder_ =
+      opus_encoder_create(input_sample_rate_, num_channels_,
+                          settings_.libopus_application_mode, &opus_error_code);
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(
       opus_error_code, "Failed to initialize Opus encoder."));
 
-  // `OPUS_SET_BITRATE` treats this as the bit-rate for the entire substream.
-  // Configure `libopus` so coupled substreams and mono substreams have equally
-  // effective bit-rate per channel.
-  float opus_rate;
-  if (encoder_metadata_.substream_id_to_bitrate_override().contains(
-          substream_id_)) {
-    opus_rate =
-        encoder_metadata_.substream_id_to_bitrate_override().at(substream_id_);
-  } else if (num_channels_ > 1) {
-    opus_rate = encoder_metadata_.target_bitrate_per_channel() * num_channels_ *
-                encoder_metadata_.coupling_rate_adjustment();
-  } else {
-    opus_rate = encoder_metadata_.target_bitrate_per_channel();
-  }
-  opus_encoder_ctl(encoder_,
-                   OPUS_SET_BITRATE(static_cast<opus_int32>(opus_rate + 0.5f)));
+  opus_error_code =
+      opus_encoder_ctl(encoder_, OPUS_SET_BITRATE(static_cast<opus_int32>(
+                                     settings_.target_substream_bitrate)));
+  RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(opus_error_code,
+                                             "Failed to set Opus bitrate."));
 
   return absl::OkStatus();
 }
@@ -197,7 +172,7 @@ absl::Status OpusEncoder::EncodeAudioFrame(
   audio_frame.resize(num_samples_per_channel * num_channels_ * 4, 0);
 
   const auto encoded_length_bytes =
-      encoder_metadata_.use_float_api()
+      settings_.use_float_api
           ? EncodeFloat(samples, num_samples_per_channel, encoder_, audio_frame)
           : EncodeInt16(samples, num_samples_per_channel, num_channels_,
                         encoder_, audio_frame);

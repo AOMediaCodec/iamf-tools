@@ -15,6 +15,19 @@ cc_test(
 )
 
 cc_test(
+    name = "codec_config_utils_test",
+    srcs = ["codec_config_utils_test.cc"],
+    deps = [
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/cli/proto_conversion:codec_config_utils",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+        "@libopus",
+    ],
+)
+
+cc_test(
     name = "downmixing_reconstruction_util_test",
     srcs = ["downmixing_reconstruction_util_test.cc"],
     deps = [

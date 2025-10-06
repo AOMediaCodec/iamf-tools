@@ -78,7 +78,6 @@ cc_test(
         "//iamf/cli/codec:flac_encoder",
         "//iamf/cli/codec:lpcm_encoder",
         "//iamf/cli/codec:opus_encoder",
-        "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:types",
@@ -87,6 +86,7 @@ cc_test(
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",
+        "@libopus",
     ],
 )
 

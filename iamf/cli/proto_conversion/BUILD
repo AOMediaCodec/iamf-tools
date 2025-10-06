@@ -4,6 +4,8 @@
 
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+package(default_visibility = ["//iamf/cli/proto_conversion:__subpackages__"])
+
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
     name = "channel_label_utils",
@@ -26,6 +28,21 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "codec_config_utils",
+    srcs = ["codec_config_utils.cc"],
+    hdrs = ["codec_config_utils.h"],
+    deps = [
+        "//iamf/cli/codec:opus_encoder",
+        "//iamf/cli/proto:codec_config_cc_proto",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@libopus",
     ],
 )
 
@@ -57,7 +74,6 @@ cc_library(
 cc_library(
     name = "lookup_tables",
     hdrs = ["lookup_tables.h"],
-    visibility = ["//iamf/cli/proto_conversion:__subpackages__"],
     deps = [
         "//iamf/cli/proto:arbitrary_obu_cc_proto",
         "//iamf/cli/proto:audio_element_cc_proto",
@@ -110,6 +126,7 @@ cc_library(
     ],
     deps = [
         ":lookup_tables",
+        "//iamf/cli/codec:opus_encoder",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
