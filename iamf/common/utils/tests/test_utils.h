@@ -13,8 +13,8 @@
 #define COMMON_TESTS_TEST_UTILS_H_
 
 #include <cstdint>
-#include <vector>
 
+#include "absl/types/span.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
@@ -25,7 +25,7 @@ namespace iamf_tools {
  * \param expected_data Expected data that was written to the underlying buffer.
  */
 void ValidateWriteResults(const WriteBitBuffer& wb,
-                          const std::vector<uint8_t>& expected_data);
+                          absl::Span<const uint8_t> expected_data);
 
 /*!\brief Validates the buffer matches the expected OBU header and payload.
  *
@@ -36,8 +36,8 @@ void ValidateWriteResults(const WriteBitBuffer& wb,
  *        underlying buffer.
  */
 void ValidateObuWriteResults(const WriteBitBuffer& wb,
-                             const std::vector<uint8_t>& expected_header,
-                             const std::vector<uint8_t>& expected_payload);
+                             absl::Span<const uint8_t> expected_header,
+                             absl::Span<const uint8_t> expected_payload);
 
 }  // namespace iamf_tools
 

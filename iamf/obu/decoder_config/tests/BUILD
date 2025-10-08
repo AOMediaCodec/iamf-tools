@@ -11,7 +11,6 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",
         "//iamf/obu/decoder_config:aac_decoder_config",
-        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",

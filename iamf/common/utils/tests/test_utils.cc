@@ -14,13 +14,14 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 #include "iamf/common/write_bit_buffer.h"
 
 namespace iamf_tools {
 
 void ValidateWriteResults(const WriteBitBuffer& wb,
-                          const std::vector<uint8_t>& expected_data) {
+                          absl::Span<const uint8_t> expected_data) {
   // Check that sizes and amount of data written are all consistent.
   EXPECT_EQ(static_cast<int64_t>(expected_data.size()) * 8, wb.bit_offset());
 
@@ -29,8 +30,8 @@ void ValidateWriteResults(const WriteBitBuffer& wb,
 }
 
 void ValidateObuWriteResults(const WriteBitBuffer& wb,
-                             const std::vector<uint8_t>& header,
-                             const std::vector<uint8_t>& payload) {
+                             absl::Span<const uint8_t> header,
+                             absl::Span<const uint8_t> payload) {
   // Concatenate the header and payload the call `ValidateWriteResults()`.
   std::vector<uint8_t> concatenated;
   concatenated.reserve(header.size() + payload.size());

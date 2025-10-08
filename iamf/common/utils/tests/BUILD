@@ -74,6 +74,7 @@ cc_library(
     ],
     deps = [
         "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest",
     ],
 )
