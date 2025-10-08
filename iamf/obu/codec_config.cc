@@ -21,6 +21,7 @@
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
@@ -35,11 +36,8 @@ namespace iamf_tools {
 namespace {
 
 absl::Status ValidateNumSamplesPerFrame(uint32_t num_samples_per_frame) {
-  if (num_samples_per_frame == 0) {
-    return absl::InvalidArgumentError(
-        "Number of samples per frame must be non-zero.");
-  }
-  return absl::OkStatus();
+  return ValidateNotEqual(num_samples_per_frame, uint32_t{0},
+                          "Number of samples per frame");
 }
 
 absl::Status OverrideAudioRollDistance(CodecConfig::CodecId codec_id,
@@ -88,7 +86,7 @@ absl::Status SetSampleRatesAndBitDepths(
       input_sample_rate = opus_decoder_config.GetInputSampleRate();
       bit_depth_to_measure_loudness =
           OpusDecoderConfig::GetBitDepthToMeasureLoudness();
-      return absl::OkStatus();
+      break;
     }
     case kCodecIdLpcm: {
       const auto& lpcm_decoder_config =
@@ -98,7 +96,7 @@ absl::Status SetSampleRatesAndBitDepths(
       input_sample_rate = output_sample_rate;
       RETURN_IF_NOT_OK(lpcm_decoder_config.GetBitDepthToMeasureLoudness(
           bit_depth_to_measure_loudness));
-      return absl::OkStatus();
+      break;
     }
     case kCodecIdAacLc:
       RETURN_IF_NOT_OK(std::get<AacDecoderConfig>(decoder_config)
@@ -106,7 +104,7 @@ absl::Status SetSampleRatesAndBitDepths(
       input_sample_rate = output_sample_rate;
       bit_depth_to_measure_loudness =
           AacDecoderConfig::GetBitDepthToMeasureLoudness();
-      return absl::OkStatus();
+      break;
     case kCodecIdFlac: {
       const auto& flac_decoder_config =
           std::get<FlacDecoderConfig>(decoder_config);
@@ -115,13 +113,16 @@ absl::Status SetSampleRatesAndBitDepths(
       input_sample_rate = output_sample_rate;
       RETURN_IF_NOT_OK(flac_decoder_config.GetBitDepthToMeasureLoudness(
           bit_depth_to_measure_loudness));
-
-      return absl::OkStatus();
+      break;
     }
     default:
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown codec_id: ", codec_id));
   }
+
+  // For safety, check that this is never zero. But usually the decoder configs
+  // themselves would have rejected zero.
+  return ValidateNotEqual(output_sample_rate, uint32_t{0}, "Sample rate");
 }
 
 absl::Status InitializeCodecConfigAndMetadata(

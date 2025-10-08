@@ -281,6 +281,26 @@ TEST(AacDecoderConfig, ValidatesExtensionFlag) {
   EXPECT_THAT(aac_decoder_config.Validate(), Not(IsOk()));
 }
 
+TEST(Validate, ValidatesSampleRateIsNotReserved) {
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sample_frequency_index_ = SampleFrequencyIndex::kReservedA;
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sampling_frequency_ = 0;
+
+  EXPECT_THAT(aac_decoder_config.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, ValidatesSampleRateIsNotZero) {
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sampling_frequency_ = 0;
+
+  EXPECT_THAT(aac_decoder_config.Validate(), Not(IsOk()));
+}
+
 TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency64000) {
   AudioSpecificConfig audio_specific_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
@@ -644,6 +664,18 @@ TEST(GetOutputSampleRate, GetExplicitSampleRate) {
               IsOk());
 
   EXPECT_EQ(output_sample_rate, 1234);
+}
+
+TEST(GetOutputSampleRate, InvalidWhenExplicitSampleRateIsZero) {
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sampling_frequency_ = 0;
+
+  uint32_t output_sample_rate;
+  EXPECT_THAT(aac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
 }
 
 TEST(GetOutputSampleRate, InvalidReservedSampleRate) {

@@ -80,6 +80,7 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
         "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:flac_decoder_config",
         "//iamf/obu/decoder_config:lpcm_decoder_config",

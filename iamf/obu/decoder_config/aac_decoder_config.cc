@@ -166,6 +166,11 @@ absl::Status AacDecoderConfig::Validate() const {
   RETURN_IF_NOT_OK(ValidateEqual(
       audio_specific_config.ga_specific_config_.extension_flag,
       AudioSpecificConfig::GaSpecificConfig::kExtensionFlag, "extension_flag"));
+
+  // Also check the sample rate is valid.
+  uint32_t ignored_sample_rate;
+  RETURN_IF_NOT_OK(GetOutputSampleRate(ignored_sample_rate));
+
   return absl::OkStatus();
 }
 
@@ -299,7 +304,12 @@ absl::Status AacDecoderConfig::GetOutputSampleRate(
       decoder_specific_info_.audio_specific_config.sample_frequency_index_;
 
   if (sample_frequency_index == SampleFrequencyIndex::kEscapeValue) {
-    // Accept the value directly from the bitstream.
+    RETURN_IF_NOT_OK(ValidateNotEqual(
+        decoder_specific_info_.audio_specific_config.sampling_frequency_,
+        uint32_t{0}, "sampling_frequency"));
+    // Accept the value directly from the bitstream, defer to encoding/decoding
+    // library to check if it is reasonable. We just know that it is never valid
+    // to be zero.
     output_sample_rate =
         decoder_specific_info_.audio_specific_config.sampling_frequency_;
     return absl::OkStatus();
