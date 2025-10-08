@@ -203,7 +203,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementBeginReserved,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -218,7 +218,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementSceneBased,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -257,7 +257,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementBeginReserved,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -272,7 +272,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementSceneBased,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
@@ -337,7 +337,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementBeginReserved,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
@@ -353,7 +353,7 @@ TEST(FilterProfilesForAudioElement,
   AudioElementObu audio_element_obu(ObuHeader(), kFirstAudioElementId,
                                     AudioElementObu::kAudioElementSceneBased,
                                     kAudioElementReserved, kCodecConfigId);
-  audio_element_obu.InitializeExtensionConfig(0);
+  audio_element_obu.InitializeExtensionConfig();
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 

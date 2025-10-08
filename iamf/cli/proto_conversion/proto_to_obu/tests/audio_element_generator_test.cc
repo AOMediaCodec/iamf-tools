@@ -819,8 +819,6 @@ TEST_F(AudioElementGeneratorTest, IgnoresDeprecatedParamDefinitionSizeField) {
            .obu.audio_element_params_.front()
            .param_definition);
   ASSERT_NE(extended_param_definition, nullptr);
-  EXPECT_EQ(extended_param_definition->param_definition_size_,
-            kExpectedParamDefinitionSize);
   EXPECT_EQ(extended_param_definition->param_definition_bytes_.size(),
             kExpectedParamDefinitionSize);
 }

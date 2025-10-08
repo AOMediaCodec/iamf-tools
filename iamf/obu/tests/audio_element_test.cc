@@ -354,7 +354,6 @@ TEST_F(AudioElementScalableChannelTest, MaxParamDefinitionType) {
 TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
   ExtendedParamDefinition param_definition(
       ParamDefinition::kParameterDefinitionReservedStart);
-  param_definition.param_definition_size_ = 5;
   param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   required_args_.audio_element_params.clear();
@@ -1293,15 +1292,13 @@ class AudioElementExtensionConfigTest : public AudioElementObuTestBase,
  public:
   AudioElementExtensionConfigTest()
       : AudioElementObuTestBase(AudioElementObu::kAudioElementBeginReserved),
-        extension_config_({.audio_element_config_size = 0,
-                           .audio_element_config_bytes = {}}) {
+        extension_config_({.audio_element_config_bytes = {}}) {
     expected_header_ = {kObuIaAudioElement << 3, 15};
   }
 
  protected:
   void InitAudioElementTypeSpecificFields() override {
-    obu_->InitializeExtensionConfig(
-        extension_config_.audio_element_config_size);
+    obu_->InitializeExtensionConfig();
     std::get<ExtensionConfig>(obu_->config_) = extension_config_;
   }
 
@@ -1352,7 +1349,6 @@ TEST_F(AudioElementExtensionConfigTest, MaxAudioElementType) {
 }
 
 TEST_F(AudioElementExtensionConfigTest, ExtensionSizeNonzero) {
-  extension_config_.audio_element_config_size = 5;
   extension_config_.audio_element_config_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaAudioElement << 3, 20};
@@ -1747,7 +1743,6 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
   constexpr uint32_t kAudioElementId = 1;
   constexpr auto kExpectedParamDefinitionType =
       ParamDefinition::kParameterDefinitionReservedStart;
-  constexpr DecodedUleb128 kExpectedParamDefinitionSize = 1;
   const std::vector<uint8_t> kExpectedParamDefinitionBytes = {99};
   std::vector<uint8_t> bitstream = {
       ParamDefinition::kParameterDefinitionReservedStart,
@@ -1763,8 +1758,6 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
   const auto& param_definition =
       std::get<ExtendedParamDefinition>(param.param_definition);
   EXPECT_EQ(param_definition.GetType(), kExpectedParamDefinitionType);
-  EXPECT_EQ(param_definition.param_definition_size_,
-            kExpectedParamDefinitionSize);
   EXPECT_EQ(param_definition.param_definition_bytes_,
             kExpectedParamDefinitionBytes);
 }

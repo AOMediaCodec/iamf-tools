@@ -608,7 +608,6 @@ TEST(ExtendedParamDefinition, CopyConstructible) {
   extended_param_definition.param_definition_mode_ = 1;
   extended_param_definition.parameter_id_ = kParameterId;
   extended_param_definition.parameter_rate_ = kParameterRate;
-  extended_param_definition.param_definition_size_ = 5;
   extended_param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   const auto other = extended_param_definition;
@@ -643,32 +642,21 @@ TEST_F(ExtendedParamDefinitionTest, GetTypeHasCorrectValue) {
 
 TEST_F(ExtendedParamDefinitionTest, SizeMayBeZero) {
   Init(ParamDefinition::kParameterDefinitionReservedEnd);
-  extended_param_definition_->param_definition_size_ = 0;
   extended_param_definition_->param_definition_bytes_ = {};
 
-  TestWrite({// Param Definition Size.
+  TestWrite({// `param_definition_size`.
              0x00});
 }
 
 TEST_F(ExtendedParamDefinitionTest, WritesOnlySizeAndParamDefinitionBytes) {
   Init(ParamDefinition::kParameterDefinitionReservedEnd);
-  extended_param_definition_->param_definition_size_ = 4;
   extended_param_definition_->param_definition_bytes_ = {0x01, 0x02, 0x03,
                                                          0x04};
 
-  TestWrite({// Param Definition Size.
+  TestWrite({// `param_definition_size`.
              0x04,
-             // Param Definition Bytes.
+             // `param_definition_bytes`.
              0x01, 0x02, 0x03, 0x04});
-}
-
-TEST_F(ExtendedParamDefinitionTest, WriteFailsIfSizeIsInconsistent) {
-  Init(ParamDefinition::kParameterDefinitionReservedEnd);
-  extended_param_definition_->param_definition_size_ = 0;
-  extended_param_definition_->param_definition_bytes_ = {100};
-
-  expected_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWrite({});
 }
 
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
@@ -861,12 +849,10 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithZeroSize) {
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
   EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
-  EXPECT_EQ(param_definition.param_definition_size_, 0);
   EXPECT_TRUE(param_definition.param_definition_bytes_.empty());
 }
 
 TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
-  const DecodedUleb128 kExpectedParamDefinitionSize = 5;
   const std::vector<uint8_t> kExpectedParamDefinitionBytes = {'e', 'x', 't',
                                                               'r', 'a'};
   std::vector<uint8_t> bitstream = {// param_definition_size.
@@ -881,8 +867,6 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
 
   EXPECT_EQ(*param_definition.GetType(), kExtensiontype);
-  EXPECT_EQ(param_definition.param_definition_size_,
-            kExpectedParamDefinitionSize);
   EXPECT_EQ(param_definition.param_definition_bytes_,
             kExpectedParamDefinitionBytes);
 }
@@ -890,11 +874,9 @@ TEST(ExtendedParamDefinition, ReadAndValidateWithNonZeroSize) {
 TEST(ExtendedParamDefinitionEqualityOperator, Equals) {
   ExtendedParamDefinition lhs(
       ParamDefinition::kParameterDefinitionReservedStart);
-  lhs.param_definition_size_ = 5;
   lhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
   ExtendedParamDefinition rhs(
       ParamDefinition::kParameterDefinitionReservedStart);
-  rhs.param_definition_size_ = 5;
   rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   EXPECT_TRUE(lhs == rhs);
@@ -912,11 +894,9 @@ TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenTypeIsDifferent) {
 TEST(ExtendedParamDefinitionEqualityOperator, NotEqualsWhenPayloadIsDifferent) {
   ExtendedParamDefinition lhs(
       ParamDefinition::kParameterDefinitionReservedStart);
-  lhs.param_definition_size_ = 3;
   lhs.param_definition_bytes_ = {'e', 'x', 't'};
   ExtendedParamDefinition rhs(
       ParamDefinition::kParameterDefinitionReservedStart);
-  rhs.param_definition_size_ = 5;
   rhs.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
 
   EXPECT_NE(lhs, rhs);

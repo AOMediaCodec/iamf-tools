@@ -189,10 +189,8 @@ absl::Status GenerateParameterDefinitions(
           LOG(WARNING) << "Ignoring deprecated `param_definition_size` field. "
                           "Please remove it.";
         }
-        extended_param_definition.param_definition_size_ =
-            user_param_definition.param_definition_bytes().size();
         extended_param_definition.param_definition_bytes_.resize(
-            extended_param_definition.param_definition_size_);
+            user_param_definition.param_definition_bytes().size());
         RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
             "param_definition_bytes",
             absl::MakeConstSpan(user_param_definition.param_definition_bytes()),

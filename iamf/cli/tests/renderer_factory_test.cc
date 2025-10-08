@@ -52,8 +52,7 @@ const AmbisonicsConfig kFullZerothOrderAmbisonicsConfig = {
                                               .substream_count = 1,
                                               .channel_mapping = {0}}};
 
-const ExtensionConfig kExtensionConfig = {.audio_element_config_size = 0,
-                                          .audio_element_config_bytes = {}};
+const ExtensionConfig kExtensionConfig = {.audio_element_config_bytes = {}};
 
 const RenderingConfig kHeadphonesAsStereoRenderingConfig = {
     .headphones_rendering_mode =

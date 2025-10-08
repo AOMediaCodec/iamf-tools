@@ -333,8 +333,9 @@ class ExtendedParamDefinition : public ParamDefinition {
   friend bool operator==(const ExtendedParamDefinition& lhs,
                          const ExtendedParamDefinition& rhs) = default;
 
-  // Size and vector of the bytes the OBU parser should ignore.
-  DecodedUleb128 param_definition_size_ = 0;
+  // `param_definition_size_` is inferred from  the size of
+  // `param_definition_bytes_`.
+  // Vector of the bytes the OBU parser should ignore.
   std::vector<uint8_t> param_definition_bytes_ = {};
 };
 

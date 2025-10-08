@@ -692,10 +692,8 @@ absl::Status AudioElementObu::InitializeAmbisonicsProjection(
   return absl::OkStatus();
 }
 
-void AudioElementObu::InitializeExtensionConfig(
-    const DecodedUleb128 audio_element_config_size) {
-  config_ =
-      ExtensionConfig{.audio_element_config_size = audio_element_config_size};
+void AudioElementObu::InitializeExtensionConfig() {
+  config_ = ExtensionConfig{};
 }
 
 void AudioElementObu::PrintObu() const {
@@ -757,11 +755,7 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
       RETURN_IF_NOT_OK(
-          wb.WriteUleb128(extension_config.audio_element_config_size));
-      RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-          "audio_element_config_bytes",
-          extension_config.audio_element_config_bytes,
-          extension_config.audio_element_config_size));
+          wb.WriteUleb128(extension_config.audio_element_config_bytes.size()));
       RETURN_IF_NOT_OK(wb.WriteUint8Span(
           absl::MakeConstSpan(extension_config.audio_element_config_bytes)));
 
@@ -815,18 +809,13 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), rb);
     default: {
       ExtensionConfig extension_config;
-      RETURN_IF_NOT_OK(
-          rb.ReadULeb128(extension_config.audio_element_config_size));
-      for (int i = 0; i < extension_config.audio_element_config_size; ++i) {
+      DecodedUleb128 audio_element_config_size;
+      RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_config_size));
+      for (int i = 0; i < audio_element_config_size; ++i) {
         uint8_t config_bytes;
         RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, config_bytes));
         extension_config.audio_element_config_bytes.push_back(config_bytes);
       }
-
-      RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-          "audio_element_config_bytes",
-          extension_config.audio_element_config_bytes,
-          extension_config.audio_element_config_size));
 
       return absl::OkStatus();
     }

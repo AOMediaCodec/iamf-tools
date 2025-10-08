@@ -318,10 +318,7 @@ absl::Status ExtendedParamDefinition::ValidateAndWrite(
     WriteBitBuffer& wb) const {
   // This class does not write the base class's data, i.e. it doesn't call
   // `ParamDefinition::ValidateAndWrite(wb)`.
-  RETURN_IF_NOT_OK(wb.WriteUleb128(param_definition_size_));
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("param_definition_bytes_",
-                                              param_definition_bytes_,
-                                              param_definition_size_));
+  RETURN_IF_NOT_OK(wb.WriteUleb128(param_definition_bytes_.size()));
   RETURN_IF_NOT_OK(
       wb.WriteUint8Span(absl::MakeConstSpan(param_definition_bytes_)));
 
@@ -331,8 +328,9 @@ absl::Status ExtendedParamDefinition::ValidateAndWrite(
 absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   // This class does not read the base class's data, i.e. it doesn't call
   // `ParamDefinition::ReadAndWrite(wb)`.
-  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size_));
-  param_definition_bytes_.resize(param_definition_size_);
+  DecodedUleb128 param_definition_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size));
+  param_definition_bytes_.resize(param_definition_size);
   RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
 
   return absl::OkStatus();
@@ -347,7 +345,7 @@ void ExtendedParamDefinition::Print() const {
   LOG(INFO) << "ExtendedParamDefinition:";
   // This class does not read the base class's data, i.e. it doesn't call
   // `ParamDefinition::Print()`.
-  LOG(INFO) << "  param_definition_size= " << param_definition_size_;
+  LOG(INFO) << "  param_definition_size= " << param_definition_bytes_.size();
   LOG(INFO) << "  // Skipped printing param_definition_bytes";
 }
 

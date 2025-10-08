@@ -262,7 +262,8 @@ struct ExtensionConfig {
   friend bool operator==(const ExtensionConfig& lhs,
                          const ExtensionConfig& rhs) = default;
 
-  DecodedUleb128 audio_element_config_size;
+  // `audio_element_config_size` is inferred from the size of
+  // `audio_element_config_bytes`.
   std::vector<uint8_t> audio_element_config_bytes;
 };
 
@@ -390,11 +391,8 @@ class AudioElementObu : public ObuBase {
    * For future use when new `audio_element_type_` values are defined. Must be
    * called if and only if `audio_element_type_` is in the range of
    * [`kAudioElementBeginReserved`, `kAudioElementEndReserved`].
-   *
-   * \param audio_element_config_size Size in bytes of the
-   *        `audio_element_config_bytes`.
    */
-  void InitializeExtensionConfig(uint32_t audio_element_config_size);
+  void InitializeExtensionConfig();
 
   /*!\brief Prints logging information about the OBU.*/
   void PrintObu() const override;
