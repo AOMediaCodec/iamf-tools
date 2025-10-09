@@ -45,6 +45,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:parameter_data",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
@@ -72,6 +73,7 @@ cc_test(
     srcs = ["loudspeakers_renderer_test.cc"],
     deps = [
         "//iamf/cli/renderer:loudspeakers_renderer",
+        "//iamf/obu:parameter_data",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:string_view",

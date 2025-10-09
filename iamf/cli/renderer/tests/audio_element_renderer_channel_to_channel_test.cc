@@ -22,6 +22,7 @@
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -103,6 +104,13 @@ GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               {.loudspeaker_layout = kLayoutExpanded,
                .expanded_loudspeaker_layout = expanded_layout}}};
 }
+
+constexpr DownMixingParams kDMixPMode1DownMixingParams = {.alpha = 1.0,
+                                                          .beta = 1.0,
+                                                          .gamma = 0.707,
+                                                          .delta = 0.707,
+                                                          .w = 0.707,
+                                                          .in_bitstream = true};
 
 TEST(CreateFromScalableChannelLayoutConfig, SupportsDownMixingStereoToMono) {
   EXPECT_NE(AudioElementRendererChannelToChannel::
@@ -349,6 +357,33 @@ TEST(RenderLabeledFrame,
               Pointwise(DoubleEq(), rendered_samples[kStereoR2ChannelIndex]));
 }
 
+TEST(RenderLabeledFrame, Renders5_1_0WithDemixingParametersToStereo) {
+  auto renderer = AudioElementRendererChannelToChannel::
+      CreateFromScalableChannelLayoutConfig(k5_1_0ScalableChannelLayoutConfig,
+                                            kStereoLayout, kOneSamplePerFrame);
+  ASSERT_NE(renderer, nullptr);
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  RenderAndFlushExpectOk(
+      {
+          .label_to_samples =
+              {
+                  {kL5, {1.0}},
+                  {kR5, {2.0}},
+                  {kCentre, {3.0}},
+                  {kLFE, {100.0}},  // LFE should be ignored.
+                  {kLs5, {4.0}},
+                  {kRs5, {5.0}},
+              },
+          .demixing_params = kDMixPMode1DownMixingParams,
+      },
+      renderer.get(), rendered_samples);
+
+  // Just check that rendering successfully completed and there are two output
+  // channels.
+  EXPECT_EQ(rendered_samples.size(), 2);
+}
+
 TEST(RenderLabeledFrame, PassThroughLFE) {
   auto renderer = AudioElementRendererChannelToChannel::
       CreateFromScalableChannelLayoutConfig(
@@ -436,7 +471,7 @@ TEST(RenderLabeledFrame, PassThroughStereoS) {
                                                {kRs5, {kArbitrarySample2}}}},
                          renderer.get(), rendered_samples);
 
-  EXPECT_DOUBLE_EQ(rendered_samples.size(), 6);
+  EXPECT_EQ(rendered_samples.size(), 6);
   EXPECT_THAT(rendered_samples[k5_1_0Ls5ChannelIndex],
               Pointwise(DoubleEq(), {kArbitrarySample1}));
   EXPECT_THAT(rendered_samples[k5_1_0Rs5ChannelIndex],

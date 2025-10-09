@@ -63,6 +63,7 @@ cc_library(
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/log:absl_vlog_is_on",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
@@ -105,7 +106,6 @@ cc_library(
     ],
     deps = [
         ":precomputed_gains",
-        "//iamf/cli:channel_label",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:validation_utils",
