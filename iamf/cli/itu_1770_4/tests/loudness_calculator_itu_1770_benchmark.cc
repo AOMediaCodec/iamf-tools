@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
@@ -67,7 +67,7 @@ static void BM_LoudnessCalculatorItu1770_4(
   int32_t num_channels;
   absl::Status status = MixPresentationObu::GetNumChannelsFromLayout(
       layout.loudness_layout, num_channels);
-  CHECK_OK(status);
+  ABSL_CHECK_OK(status);
 
   // Create a loudness calculator.
   auto loudness_calculator = LoudnessCalculatorItu1770_4::CreateForLayout(
@@ -80,7 +80,8 @@ static void BM_LoudnessCalculatorItu1770_4(
   // Measure the calls to
   // `LoudnessCalculatorItu1770_4::AccumulateLoudnessForSamples()`.
   for (auto _ : state) {
-    CHECK_OK(loudness_calculator->AccumulateLoudnessForSamples(sample_spans));
+    ABSL_CHECK_OK(
+        loudness_calculator->AccumulateLoudnessForSamples(sample_spans));
   }
 }
 

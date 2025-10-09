@@ -65,7 +65,7 @@ cc_test(
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
-        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",
     ],

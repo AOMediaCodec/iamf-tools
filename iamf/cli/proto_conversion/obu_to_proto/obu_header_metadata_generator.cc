@@ -11,8 +11,6 @@
  */
 #include "iamf/cli/proto_conversion/obu_to_proto/obu_header_metadata_generator.h"
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "iamf/cli/proto/obu_header.pb.h"

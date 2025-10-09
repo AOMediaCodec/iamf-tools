@@ -11,7 +11,7 @@
  */
 #include "iamf/obu/mix_gain_parameter_data.h"
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -22,8 +22,8 @@
 namespace iamf_tools {
 
 void AnimationStepInt16::Print() const {
-  LOG(INFO) << "     // Step";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
+  ABSL_LOG(INFO) << "     // Step";
+  ABSL_LOG(INFO) << "     start_point_value= " << start_point_value;
 }
 
 absl::Status AnimationStepInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
@@ -37,9 +37,9 @@ absl::Status AnimationStepInt16::ReadAndValidate(ReadBitBuffer& rb) {
 }
 
 void AnimationLinearInt16::Print() const {
-  LOG(INFO) << "     // Linear";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
-  LOG(INFO) << "     end_point_value= " << end_point_value;
+  ABSL_LOG(INFO) << "     // Linear";
+  ABSL_LOG(INFO) << "     start_point_value= " << start_point_value;
+  ABSL_LOG(INFO) << "     end_point_value= " << end_point_value;
 }
 
 absl::Status AnimationLinearInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
@@ -55,12 +55,12 @@ absl::Status AnimationLinearInt16::ReadAndValidate(ReadBitBuffer& rb) {
 }
 
 void AnimationBezierInt16::Print() const {
-  LOG(INFO) << "     // Bezier";
-  LOG(INFO) << "     start_point_value= " << start_point_value;
-  LOG(INFO) << "     end_point_value= " << end_point_value;
-  LOG(INFO) << "     control_point_value= " << control_point_value;
-  LOG(INFO) << "     control_point_relative_time= "
-            << control_point_relative_time;
+  ABSL_LOG(INFO) << "     // Bezier";
+  ABSL_LOG(INFO) << "     start_point_value= " << start_point_value;
+  ABSL_LOG(INFO) << "     end_point_value= " << end_point_value;
+  ABSL_LOG(INFO) << "     control_point_value= " << control_point_value;
+  ABSL_LOG(INFO) << "     control_point_relative_time= "
+                 << control_point_relative_time;
 }
 
 absl::Status AnimationBezierInt16::ValidateAndWrite(WriteBitBuffer& wb) const {
@@ -135,7 +135,7 @@ absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void MixGainParameterData::Print() const {
-  LOG(INFO) << "    animation_type= " << absl::StrCat(animation_type);
+  ABSL_LOG(INFO) << "    animation_type= " << absl::StrCat(animation_type);
   switch (animation_type) {
     using enum MixGainParameterData::AnimationType;
     case kAnimateStep:
@@ -148,7 +148,8 @@ void MixGainParameterData::Print() const {
       std::get<AnimationBezierInt16>(param_data).Print();
       break;
     default:
-      LOG(ERROR) << "Unknown animation type: " << absl::StrCat(animation_type);
+      ABSL_LOG(ERROR) << "Unknown animation type: "
+                      << absl::StrCat(animation_type);
   }
 }
 

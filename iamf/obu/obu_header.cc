@@ -17,8 +17,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -138,7 +138,7 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
 // irrelevant.
 absl::Status ValidateObuIsUnderTwoMegabytes(DecodedUleb128 obu_size,
                                             size_t size_of_obu_size) {
-  CHECK_LE(size_of_obu_size, kMaxLeb128Size);
+  ABSL_CHECK_LE(size_of_obu_size, kMaxLeb128Size);
 
   // Subtract out `obu_size` and all preceding data (one byte).
   const uint32_t max_obu_size =
@@ -340,27 +340,28 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
   if (!GetObuSizeAndValidate(leb_generator, *this, payload_serialized_size,
                              obu_size)
            .ok()) {
-    LOG(ERROR) << "Error printing OBU header";
+    ABSL_LOG(ERROR) << "Error printing OBU header";
     return;
   }
-  LOG(INFO) << "  obu_type= " << obu_type;
-  LOG(INFO) << "  size_of(payload_) " << payload_serialized_size;
+  ABSL_LOG(INFO) << "  obu_type= " << obu_type;
+  ABSL_LOG(INFO) << "  size_of(payload_) " << payload_serialized_size;
 
-  LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
-  LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
-  LOG(INFO) << "  obu_trimming_status_flag= " << obu_trimming_status_flag;
-  LOG(INFO) << "  obu_extension_flag= " << obu_extension_flag;
+  ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
+  ABSL_LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
+  ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << obu_trimming_status_flag;
+  ABSL_LOG(INFO) << "  obu_extension_flag= " << obu_extension_flag;
 
-  LOG(INFO) << "  obu_size=" << obu_size;
+  ABSL_LOG(INFO) << "  obu_size=" << obu_size;
 
   if (obu_trimming_status_flag) {
-    LOG(INFO) << "  num_samples_to_trim_at_end= " << num_samples_to_trim_at_end;
-    LOG(INFO) << "  num_samples_to_trim_at_start= "
-              << num_samples_to_trim_at_start;
+    ABSL_LOG(INFO) << "  num_samples_to_trim_at_end= "
+                   << num_samples_to_trim_at_end;
+    ABSL_LOG(INFO) << "  num_samples_to_trim_at_start= "
+                   << num_samples_to_trim_at_start;
   }
   if (obu_extension_flag) {
-    LOG(INFO) << "  extension_header_size= " << extension_header_size;
-    LOG(INFO) << "  extension_header_bytes omitted.";
+    ABSL_LOG(INFO) << "  extension_header_size= " << extension_header_size;
+    ABSL_LOG(INFO) << "  extension_header_bytes omitted.";
   }
 }
 

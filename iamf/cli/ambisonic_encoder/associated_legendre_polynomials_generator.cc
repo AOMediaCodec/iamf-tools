@@ -16,7 +16,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "iamf/cli/ambisonic_encoder/ambisonic_utils.h"
 
 namespace iamf_tools {
@@ -26,7 +26,7 @@ AssociatedLegendrePolynomialsGenerator::AssociatedLegendrePolynomialsGenerator(
     : max_degree_(max_degree),
       condon_shortley_phase_(condon_shortley_phase),
       compute_negative_order_(compute_negative_order) {
-  DCHECK_GE(max_degree_, 0);
+  ABSL_DCHECK_GE(max_degree_, 0);
 }
 
 std::vector<float> AssociatedLegendrePolynomialsGenerator::Generate(
@@ -98,8 +98,8 @@ size_t AssociatedLegendrePolynomialsGenerator::GetIndex(int degree,
   } else {
     result = static_cast<size_t>((degree * (degree + 1)) / 2 + order);
   }
-  DCHECK_GE(result, 0U);
-  DCHECK_LT(result, GetNumValues());
+  ABSL_DCHECK_GE(result, 0U);
+  ABSL_DCHECK_LT(result, GetNumValues());
   return result;
 }
 
@@ -132,14 +132,14 @@ float AssociatedLegendrePolynomialsGenerator::ComputeValue(
 
 void AssociatedLegendrePolynomialsGenerator::CheckIndexValidity(
     int degree, int order) const {
-  DCHECK_GE(degree, 0);
-  DCHECK_LE(degree, max_degree_);
+  ABSL_DCHECK_GE(degree, 0);
+  ABSL_DCHECK_LE(degree, max_degree_);
   if (compute_negative_order_) {
-    DCHECK_LE(-degree, order);
+    ABSL_DCHECK_LE(-degree, order);
   } else {
-    DCHECK_GE(order, 0);
+    ABSL_DCHECK_GE(order, 0);
   }
-  DCHECK_LE(order, degree);
+  ABSL_DCHECK_LE(order, degree);
 }
 
 }  // namespace iamf_tools

@@ -17,8 +17,7 @@
 #include <optional>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/obu_sequencer_base.h"
@@ -85,7 +84,7 @@ void ObuSequencerStreamingIamf::CloseDerived() {
 }
 
 void ObuSequencerStreamingIamf::AbortDerived() {
-  LOG(INFO) << "Aborting ObuSequencerStreamingIamf.";
+  ABSL_LOG(INFO) << "Aborting ObuSequencerStreamingIamf.";
   serialized_descriptor_obus_.clear();
   previous_serialized_temporal_unit_.clear();
 }

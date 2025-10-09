@@ -19,7 +19,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -149,10 +149,10 @@ int main(int argc, char** argv) {
   } else if (iamf_profile == "enhanced") {
     profile_version = kIamfBaseEnhancedProfile;
   } else {
-    LOG(ERROR) << "Invalid profile version: " << iamf_profile;
+    ABSL_LOG(ERROR) << "Invalid profile version: " << iamf_profile;
     return static_cast<int>(absl::StatusCode::kInvalidArgument);
   }
-  LOG(INFO) << "Using IAMF" << iamf_profile << "profile version.";
+  ABSL_LOG(INFO) << "Using IAMF" << iamf_profile << "profile version.";
 
   // Prepare `user_metadata` and `input_wav_directory` depending on the
   // input source.
@@ -161,11 +161,11 @@ int main(int argc, char** argv) {
       absl::GetFlag(FLAGS_user_metadata_filename),
       absl::GetFlag(FLAGS_adm_filename), input_wav_directory, profile_version);
   if (!user_metadata.ok()) {
-    LOG(ERROR) << user_metadata.status();
+    ABSL_LOG(ERROR) << user_metadata.status();
     return static_cast<int>(user_metadata.status().code());
   }
 
-  LOG(INFO) << user_metadata;
+  ABSL_LOG(INFO) << user_metadata;
 
   // Get the directory for the output .iamf files.
   const auto& output_iamf_directory =
@@ -185,9 +185,9 @@ int main(int argc, char** argv) {
   ss << "Test case expected to " << (test_vector_is_valid ? "pass" : "fail")
      << ".\nstatus= " << status;
   if (test_vector_is_valid == status.ok()) {
-    LOG(INFO) << "Success. " << ss.str();
+    ABSL_LOG(INFO) << "Success. " << ss.str();
   } else {
-    LOG(ERROR) << "Failure. " << ss.str();
+    ABSL_LOG(ERROR) << "Failure. " << ss.str();
   }
 
   return static_cast<int>(status.code());

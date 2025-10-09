@@ -128,7 +128,6 @@ cc_test(
         "//iamf/common/utils:numeric_utils",
         "//iamf/obu:types",
         "//iamf/obu/decoder_config:lpcm_decoder_config",
-        "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",

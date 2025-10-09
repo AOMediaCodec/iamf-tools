@@ -18,8 +18,8 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -555,8 +555,9 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
     return absl::InvalidArgumentError("Possible overflow in `ReadBitBuffer`.");
   }
   const int64_t bits_read = final_position - initial_position;
-  DCHECK_EQ(bits_read % 8, 0) << "Parsed syntax between `Tell` calls should "
-                                 "have always been a multiple of 8.";
+  ABSL_DCHECK_EQ(bits_read % 8, 0)
+      << "Parsed syntax between `Tell` calls should "
+         "have always been a multiple of 8.";
   if (bits_read / 8 == payload_size) {
     // Ok. In IAMF v1.0.0, this was the end of the OBU. But in IAMF v1.1.0,
     // there is an optional `MixPresentationTags` field that follows the
@@ -574,71 +575,75 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
 }
 
 void LoudspeakersSsConventionLayout::Print() const {
-  LOG(INFO) << "        sound_system= " << absl::StrCat(sound_system);
-  LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
+  ABSL_LOG(INFO) << "        sound_system= " << absl::StrCat(sound_system);
+  ABSL_LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
 void LoudspeakersReservedOrBinauralLayout::Print() const {
-  LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
+  ABSL_LOG(INFO) << "        reserved= " << absl::StrCat(reserved);
 }
 
 void MixPresentationObu::PrintObu() const {
-  LOG(INFO) << "Mix Presentation OBU:";
-  LOG(INFO) << "  mix_presentation_id= " << mix_presentation_id_;
-  LOG(INFO) << "  count_label= " << count_label_;
-  LOG(INFO) << "  annotations_language:";
+  ABSL_LOG(INFO) << "Mix Presentation OBU:";
+  ABSL_LOG(INFO) << "  mix_presentation_id= " << mix_presentation_id_;
+  ABSL_LOG(INFO) << "  count_label= " << count_label_;
+  ABSL_LOG(INFO) << "  annotations_language:";
   for (int i = 0; i < count_label_; ++i) {
-    LOG(INFO) << "    annotations_languages[" << i << "]= \""
-              << annotations_language_[i] << "\"";
+    ABSL_LOG(INFO) << "    annotations_languages[" << i << "]= \""
+                   << annotations_language_[i] << "\"";
   }
-  LOG(INFO) << "  localized_presentation_annotations:";
+  ABSL_LOG(INFO) << "  localized_presentation_annotations:";
   for (int i = 0; i < count_label_; ++i) {
-    LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
-              << localized_presentation_annotations_[i] << "\"";
+    ABSL_LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
+                   << localized_presentation_annotations_[i] << "\"";
   }
-  LOG(INFO) << "  num_sub_mixes= " << sub_mixes_.size();
+  ABSL_LOG(INFO) << "  num_sub_mixes= " << sub_mixes_.size();
 
   // Submixes.
   for (int i = 0; i < sub_mixes_.size(); ++i) {
     const auto& sub_mix = sub_mixes_[i];
-    LOG(INFO) << "  // sub_mixes[" << i << "]:";
-    LOG(INFO) << "    num_audio_elements= " << sub_mix.audio_elements.size();
+    ABSL_LOG(INFO) << "  // sub_mixes[" << i << "]:";
+    ABSL_LOG(INFO) << "    num_audio_elements= "
+                   << sub_mix.audio_elements.size();
     // Audio elements.
     for (int j = 0; j < sub_mix.audio_elements.size(); ++j) {
       const auto& audio_element = sub_mix.audio_elements[j];
-      LOG(INFO) << "    // audio_elements[" << j << "]:";
-      LOG(INFO) << "      audio_element_id= " << audio_element.audio_element_id;
-      LOG(INFO) << "      localized_element_annotations:";
+      ABSL_LOG(INFO) << "    // audio_elements[" << j << "]:";
+      ABSL_LOG(INFO) << "      audio_element_id= "
+                     << audio_element.audio_element_id;
+      ABSL_LOG(INFO) << "      localized_element_annotations:";
       for (int k = 0; k < count_label_; ++k) {
-        LOG(INFO) << "        localized_element_annotations[" << k << "]= \""
-                  << audio_element.localized_element_annotations[k] << "\"";
+        ABSL_LOG(INFO) << "        localized_element_annotations[" << k
+                       << "]= \""
+                       << audio_element.localized_element_annotations[k]
+                       << "\"";
       }
-      LOG(INFO) << "        rendering_config:";
-      LOG(INFO) << "          headphones_rendering_mode= "
-                << absl::StrCat(audio_element.rendering_config
-                                    .headphones_rendering_mode);
-      LOG(INFO) << "          reserved= "
-                << absl::StrCat(audio_element.rendering_config.reserved);
-      LOG(INFO) << "          rendering_config_extension_size= "
-                << audio_element.rendering_config
-                       .rendering_config_extension_bytes.size();
-      LOG(INFO) << "          rendering_config_extension_bytes omitted.";
-      LOG(INFO) << "        element_mix_gain:";
+      ABSL_LOG(INFO) << "        rendering_config:";
+      ABSL_LOG(INFO) << "          headphones_rendering_mode= "
+                     << absl::StrCat(audio_element.rendering_config
+                                         .headphones_rendering_mode);
+      ABSL_LOG(INFO) << "          reserved= "
+                     << absl::StrCat(audio_element.rendering_config.reserved);
+      ABSL_LOG(INFO) << "          rendering_config_extension_size= "
+                     << audio_element.rendering_config
+                            .rendering_config_extension_bytes.size();
+      ABSL_LOG(INFO) << "          rendering_config_extension_bytes omitted.";
+      ABSL_LOG(INFO) << "        element_mix_gain:";
       audio_element.element_mix_gain.Print();
     }
 
-    LOG(INFO) << "    output_mix_gain:";
+    ABSL_LOG(INFO) << "    output_mix_gain:";
     sub_mix.output_mix_gain.Print();
 
-    LOG(INFO) << "    num_layouts= " << sub_mix.layouts.size();
+    ABSL_LOG(INFO) << "    num_layouts= " << sub_mix.layouts.size();
 
     // Layouts.
     for (int j = 0; j < sub_mix.layouts.size(); j++) {
       const auto& layout = sub_mix.layouts[j];
-      LOG(INFO) << "    // layouts[" << j << "]:";
-      LOG(INFO) << "      loudness_layout:";
-      LOG(INFO) << "        layout_type= "
-                << absl::StrCat(layout.loudness_layout.layout_type);
+      ABSL_LOG(INFO) << "    // layouts[" << j << "]:";
+      ABSL_LOG(INFO) << "      loudness_layout:";
+      ABSL_LOG(INFO) << "        layout_type= "
+                     << absl::StrCat(layout.loudness_layout.layout_type);
 
       // SpecificLayout.
       switch (layout.loudness_layout.layout_type) {
@@ -657,51 +662,54 @@ void MixPresentationObu::PrintObu() const {
       }
 
       const auto& loudness = layout.loudness;
-      LOG(INFO) << "      loudness:";
-      LOG(INFO) << "        info_type= " << absl::StrCat(loudness.info_type);
-      LOG(INFO) << "        integrated_loudness= "
-                << loudness.integrated_loudness;
-      LOG(INFO) << "        digital_peak= " << loudness.digital_peak;
+      ABSL_LOG(INFO) << "      loudness:";
+      ABSL_LOG(INFO) << "        info_type= "
+                     << absl::StrCat(loudness.info_type);
+      ABSL_LOG(INFO) << "        integrated_loudness= "
+                     << loudness.integrated_loudness;
+      ABSL_LOG(INFO) << "        digital_peak= " << loudness.digital_peak;
       if ((loudness.info_type & LoudnessInfo::kTruePeak) != 0) {
-        LOG(INFO) << "        true_peak= " << layout.loudness.true_peak;
+        ABSL_LOG(INFO) << "        true_peak= " << layout.loudness.true_peak;
       }
 
       if ((loudness.info_type & LoudnessInfo::kAnchoredLoudness) != 0) {
         const auto& anchored_loudness = loudness.anchored_loudness;
-        LOG(INFO) << "        anchored_loudness: ";
-        LOG(INFO) << "          num_anchored_loudness= "
-                  << absl::StrCat(anchored_loudness.anchor_elements.size());
+        ABSL_LOG(INFO) << "        anchored_loudness: ";
+        ABSL_LOG(INFO) << "          num_anchored_loudness= "
+                       << absl::StrCat(
+                              anchored_loudness.anchor_elements.size());
         for (int i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
-          LOG(INFO) << "          anchor_element[" << i << "]= "
-                    << absl::StrCat(
-                           anchored_loudness.anchor_elements[i].anchor_element);
-          LOG(INFO) << "          anchored_loudness[" << i << "]= "
-                    << anchored_loudness.anchor_elements[i].anchored_loudness;
+          ABSL_LOG(INFO) << "          anchor_element[" << i << "]= "
+                         << absl::StrCat(anchored_loudness.anchor_elements[i]
+                                             .anchor_element);
+          ABSL_LOG(INFO)
+              << "          anchored_loudness[" << i << "]= "
+              << anchored_loudness.anchor_elements[i].anchored_loudness;
         }
       }
 
       if ((loudness.info_type & LoudnessInfo::kAnyLayoutExtension) != 0) {
         const auto& layout_extension = loudness.layout_extension;
-        LOG(INFO) << "        layout_extension: ";
-        LOG(INFO) << "          info_type_size= "
-                  << layout_extension.info_type_bytes.size();
+        ABSL_LOG(INFO) << "        layout_extension: ";
+        ABSL_LOG(INFO) << "          info_type_size= "
+                       << layout_extension.info_type_bytes.size();
         for (int i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
-          LOG(INFO) << "          info_type_bytes[" << i
-                    << "]= " << layout_extension.info_type_bytes[i];
+          ABSL_LOG(INFO) << "          info_type_bytes[" << i
+                         << "]= " << layout_extension.info_type_bytes[i];
         }
       }
     }
   }
   if (mix_presentation_tags_.has_value()) {
-    LOG(INFO) << "  mix_presentation_tags:";
+    ABSL_LOG(INFO) << "  mix_presentation_tags:";
     for (int i = 0; i < mix_presentation_tags_->tags.size(); ++i) {
       const auto& tag = mix_presentation_tags_->tags[i];
-      LOG(INFO) << "    tags[" << i << "]:";
-      LOG(INFO) << "      tag_name= \"" << tag.tag_name << "\"";
-      LOG(INFO) << "      tag_value= \"" << tag.tag_value << "\"";
+      ABSL_LOG(INFO) << "    tags[" << i << "]:";
+      ABSL_LOG(INFO) << "      tag_name= \"" << tag.tag_name << "\"";
+      ABSL_LOG(INFO) << "      tag_value= \"" << tag.tag_value << "\"";
     }
   } else {
-    LOG(INFO) << "  No mix_presentation_tags detected.";
+    ABSL_LOG(INFO) << "  No mix_presentation_tags detected.";
   }
 }
 

@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -39,7 +39,7 @@ absl::StatusOr<WavReader> WavReader::CreateFromFile(
   if (num_samples_per_frame == 0) {
     return absl::InvalidArgumentError("num_samples_per_frame must be > 0");
   }
-  LOG(INFO) << "Reading \"" << wav_filename << "\"";
+  ABSL_LOG(INFO) << "Reading \"" << wav_filename << "\"";
   FILE* file = std::fopen(wav_filename.c_str(), "rb");
   if (file == nullptr) {
     return absl::FailedPreconditionError(
@@ -59,15 +59,15 @@ absl::StatusOr<WavReader> WavReader::CreateFromFile(
   info.destination_alignment_bytes = 4;
 
   // Log the header info.
-  LOG(INFO) << "WAV header info:";
-  LOG(INFO) << "  num_channels= " << info.num_channels;
-  LOG(INFO) << "  sample_rate_hz= " << info.sample_rate_hz;
-  LOG(INFO) << "  remaining_samples= " << info.remaining_samples;
-  LOG(INFO) << "  bit_depth= " << info.bit_depth;
-  LOG(INFO) << "  destination_alignment_bytes= "
-            << info.destination_alignment_bytes;
-  LOG(INFO) << "  encoding= " << info.encoding;
-  LOG(INFO) << "  sample_format= " << info.sample_format;
+  ABSL_LOG(INFO) << "WAV header info:";
+  ABSL_LOG(INFO) << "  num_channels= " << info.num_channels;
+  ABSL_LOG(INFO) << "  sample_rate_hz= " << info.sample_rate_hz;
+  ABSL_LOG(INFO) << "  remaining_samples= " << info.remaining_samples;
+  ABSL_LOG(INFO) << "  bit_depth= " << info.bit_depth;
+  ABSL_LOG(INFO) << "  destination_alignment_bytes= "
+                 << info.destination_alignment_bytes;
+  ABSL_LOG(INFO) << "  encoding= " << info.encoding;
+  ABSL_LOG(INFO) << "  sample_format= " << info.sample_format;
 
   return WavReader(num_samples_per_frame, file, info);
 }

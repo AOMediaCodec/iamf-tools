@@ -21,8 +21,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -230,8 +229,8 @@ absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
   // Write Audio Frame OBUs.
   for (const auto& audio_frame : temporal_unit.audio_frames_) {
     RETURN_IF_NOT_OK(audio_frame->obu.ValidateAndWriteObu(wb));
-    LOG_FIRST_N(INFO, 10) << "wb.bit_offset= " << wb.bit_offset()
-                          << " after Audio Frame";
+    ABSL_LOG_FIRST_N(INFO, 10)
+        << "wb.bit_offset= " << wb.bit_offset() << " after Audio Frame";
   }
 
   RETURN_IF_NOT_OK(
@@ -268,8 +267,8 @@ absl::Status WriteDescriptorObus(
     const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb) {
   // Write IA Sequence Header OBU.
   RETURN_IF_NOT_OK(ia_sequence_header_obu.ValidateAndWriteObu(wb));
-  LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
-            << " after IA Sequence Header";
+  ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
+                 << " after IA Sequence Header";
 
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterIaSequenceHeader, arbitrary_obus, wb));
@@ -280,7 +279,8 @@ absl::Status WriteDescriptorObus(
       SortedKeys(codec_config_obus, std::less<uint32_t>());
   for (const auto id : codec_config_ids) {
     RETURN_IF_NOT_OK(codec_config_obus.at(id).ValidateAndWriteObu(wb));
-    LOG(INFO) << "wb.bit_offset= " << wb.bit_offset() << " after Codec Config";
+    ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
+                   << " after Codec Config";
   }
 
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
@@ -292,7 +292,8 @@ absl::Status WriteDescriptorObus(
       SortedKeys(audio_elements, std::less<uint32_t>());
   for (const auto id : audio_element_ids) {
     RETURN_IF_NOT_OK(audio_elements.at(id).obu.ValidateAndWriteObu(wb));
-    LOG(INFO) << "wb.bit_offset= " << wb.bit_offset() << " after Audio Element";
+    ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
+                   << " after Audio Element";
   }
 
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
@@ -312,8 +313,8 @@ absl::Status WriteDescriptorObus(
         audio_elements, mix_presentation_obu, profile_version));
 
     RETURN_IF_NOT_OK(mix_presentation_obu.ValidateAndWriteObu(wb));
-    LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
-              << " after Mix Presentation";
+    ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset()
+                   << " after Mix Presentation";
   }
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterMixPresentations, arbitrary_obus, wb));
@@ -338,14 +339,15 @@ ObuSequencerBase::~ObuSequencerBase() {
       return;
     case kPushDescriptorObusCalled:
     case kPushSerializedDescriptorsCalled:
-      LOG(ERROR) << "OBUs have been pushed, but `ObuSequencerBase` is being "
-                    "destroyed without calling `Close` or `Abort`.";
+      ABSL_LOG(ERROR)
+          << "OBUs have been pushed, but `ObuSequencerBase` is being "
+             "destroyed without calling `Close` or `Abort`.";
       return;
     case kClosed:
       return;
   }
   // The above switch is exhaustive.
-  LOG(FATAL) << "Unexpected state: " << static_cast<int>(state_);
+  ABSL_LOG(FATAL) << "Unexpected state: " << static_cast<int>(state_);
 };
 
 absl::Status ObuSequencerBase::PushDescriptorObus(

@@ -17,7 +17,7 @@
 #include <variant>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -134,12 +134,12 @@ std::unique_ptr<LebGenerator> LebGenerator::Create(
       if (1 <= fixed_size && fixed_size <= kMaxLeb128Size) {
         return absl::WrapUnique(new LebGenerator(generation_mode, fixed_size));
       } else {
-        LOG(ERROR) << "Invalid fixed size: " << fixed_size;
+        ABSL_LOG(ERROR) << "Invalid fixed size: " << fixed_size;
         return nullptr;
       }
     default:
-      LOG(ERROR) << "Invalid generation mode: "
-                 << absl::StrCat(generation_mode);
+      ABSL_LOG(ERROR) << "Invalid generation mode: "
+                      << absl::StrCat(generation_mode);
       return nullptr;
   }
 }

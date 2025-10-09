@@ -17,9 +17,9 @@
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/log/vlog_is_on.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
+#include "absl/log/absl_vlog_is_on.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -109,7 +109,7 @@ absl::Status ParametersManager::Initialize() {
         }
         demixing_param_definition =
             std::get_if<DemixingParamDefinition>(&param.param_definition);
-        CHECK_NE(demixing_param_definition, nullptr);
+        ABSL_CHECK_NE(demixing_param_definition, nullptr);
 
         // Continue searching. Only to validate that there is at most one
         // `DemixingParamDefinition`.
@@ -122,7 +122,7 @@ absl::Status ParametersManager::Initialize() {
         }
         recon_gain_param_definition =
             std::get_if<ReconGainParamDefinition>(&param.param_definition);
-        CHECK_NE(recon_gain_param_definition, nullptr);
+        ABSL_CHECK_NE(recon_gain_param_definition, nullptr);
       }
     }
 
@@ -172,8 +172,8 @@ absl::Status ParametersManager::GetDownMixingParameters(
     DownMixingParams& down_mixing_params) {
   const auto demixing_states_iter = demixing_states_.find(audio_element_id);
   if (demixing_states_iter == demixing_states_.end()) {
-    if (VLOG_IS_ON(1)) {
-      LOG_FIRST_N(WARNING, 1)
+    if (ABSL_VLOG_IS_ON(1)) {
+      ABSL_LOG_FIRST_N(WARNING, 1)
           << "No demixing parameter definition found for Audio "
           << "Element with ID= " << audio_element_id
           << "; using some sensible values.";
@@ -193,7 +193,7 @@ absl::Status ParametersManager::GetDownMixingParameters(
     // no parameter blocks covering this substream. If there is only partial
     // coverage this will be marked invalid when the coverage of parameter
     // blocks is checked.
-    LOG_FIRST_N(WARNING, 10)
+    ABSL_LOG_FIRST_N(WARNING, 10)
         << "Failed to find a parameter block; using the default values";
     RETURN_IF_NOT_OK(DemixingInfoParameterData::DMixPModeToDownMixingParams(
         param_definition->default_demixing_info_parameter_data_.dmixp_mode,
@@ -222,7 +222,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
     ReconGainInfoParameterData& recon_gain_info_parameter_data) {
   const auto recon_gain_states_iter = recon_gain_states_.find(audio_element_id);
   if (recon_gain_states_iter == recon_gain_states_.end()) {
-    LOG_FIRST_N(WARNING, 1)
+    ABSL_LOG_FIRST_N(WARNING, 1)
         << "No recon gain parameter definition found for Audio "
         << "Element with ID= " << audio_element_id
         << "; setting recon gain to 255 (which represents a multiplier of 1.0, "
@@ -248,7 +248,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
     // OBUs provided. This is OK when there are no parameter blocks covering
     // this substream. If there is only partial coverage this will be marked
     // invalid when the coverage of parameter blocks is checked.
-    LOG_FIRST_N(WARNING, 10)
+    ABSL_LOG_FIRST_N(WARNING, 10)
         << "Failed to find a recon gain parameter block; "
            "A default recon gain value of 0 dB is implied when there are no "
            "Parameter Block OBUs provided";

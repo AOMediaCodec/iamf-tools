@@ -13,7 +13,6 @@
 
 #include <optional>
 
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"

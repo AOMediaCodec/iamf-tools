@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -58,13 +58,13 @@ void ConfigureUserMetadata(iamf_tools_cli_proto::UserMetadata& user_metadata,
   codec_config_metadata.mutable_codec_config()->set_audio_roll_distance(0);
 
   auto& audio_frame_metadata = *user_metadata.add_audio_frame_metadata();
-  CHECK_OK(AudioFrameMetadataBuilder::PopulateAudioFrameMetadata(
+  ABSL_CHECK_OK(AudioFrameMetadataBuilder::PopulateAudioFrameMetadata(
       /*wav_filename=*/"", kAudioElementId, IamfInputLayout::kStereo,
       audio_frame_metadata));
 
   AudioElementMetadataBuilder audio_element_builder;
   auto& audio_element_metadata = *user_metadata.add_audio_element_metadata();
-  CHECK_OK(audio_element_builder.PopulateAudioElementMetadata(
+  ABSL_CHECK_OK(audio_element_builder.PopulateAudioElementMetadata(
       kAudioElementId, kCodecConfigId, IamfInputLayout::kStereo,
       audio_element_metadata));
   // Override with the custom substream ID.
@@ -84,32 +84,33 @@ void InitializeAudioFrameGenerator(
   // derived from the `user_metadata`.
   CodecConfigGenerator codec_config_generator(
       user_metadata.codec_config_metadata());
-  CHECK_OK(codec_config_generator.Generate(codec_config_obus));
+  ABSL_CHECK_OK(codec_config_generator.Generate(codec_config_obus));
 
   AudioElementGenerator audio_element_generator(
       user_metadata.audio_element_metadata());
-  CHECK_OK(audio_element_generator.Generate(codec_config_obus, audio_elements));
+  ABSL_CHECK_OK(
+      audio_element_generator.Generate(codec_config_obus, audio_elements));
 
   const auto demixing_module =
       DemixingModule::CreateForReconstruction(audio_elements);
-  CHECK_OK(demixing_module);
+  ABSL_CHECK_OK(demixing_module);
   global_timing_module =
       GlobalTimingModule::Create(audio_elements, param_definitions);
-  CHECK_NE(global_timing_module, nullptr);
+  ABSL_CHECK_NE(global_timing_module, nullptr);
 
   parameters_manager.emplace(audio_elements);
-  CHECK(parameters_manager.has_value());
-  CHECK_OK(parameters_manager->Initialize());
+  ABSL_CHECK(parameters_manager.has_value());
+  ABSL_CHECK_OK(parameters_manager->Initialize());
 
   // Create an audio frame generator.
   audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
                                 user_metadata.codec_config_metadata(),
                                 audio_elements, *demixing_module,
                                 *parameters_manager, *global_timing_module);
-  CHECK(audio_frame_generator.has_value());
+  ABSL_CHECK(audio_frame_generator.has_value());
 
   // Initialize.
-  CHECK_OK(audio_frame_generator->Initialize());
+  ABSL_CHECK_OK(audio_frame_generator->Initialize());
 }
 
 static void BM_AddSamples(benchmark::State& state) {
@@ -139,7 +140,7 @@ static void BM_AddSamples(benchmark::State& state) {
   // Measure the calls to `AudioFrameGenerator::AddSamples()`.
   for (auto _ : state) {
     for (const auto& [label, frame] : label_to_frame) {
-      CHECK_OK(
+      ABSL_CHECK_OK(
           audio_frame_generator->AddSamples(kAudioElementId, label, frame));
     }
   }

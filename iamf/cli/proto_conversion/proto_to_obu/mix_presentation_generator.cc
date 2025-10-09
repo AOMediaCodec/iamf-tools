@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -56,8 +56,8 @@ std::vector<std::string> CreateVectorFromNewOrOldProtoField(
   if (!new_field.empty()) {
     return std::vector<std::string>(new_field.begin(), new_field.end());
   } else if (!deprecated_field.empty()) {
-    LOG(WARNING) << "Please upgrade deprecated `" << deprecated_field_name
-                 << "` to `" << new_field_name << "`.";
+    ABSL_LOG(WARNING) << "Please upgrade deprecated `" << deprecated_field_name
+                      << "` to `" << new_field_name << "`.";
     std::vector<std::string> result;
     result.reserve(deprecated_field.size());
     for (const auto& item : deprecated_field) {
@@ -76,8 +76,8 @@ absl::Status FillAnnotationsLanguageAndAnnotations(
     DecodedUleb128& count_label, std::vector<std::string>& annotations_language,
     std::vector<std::string>& localized_presentation_annotations) {
   if (mix_presentation_metadata.has_count_label()) {
-    LOG(WARNING) << "Ignoring deprecated `count_label` field."
-                 << "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `count_label` field."
+                      << "Please remove it.";
   }
 
   // Prioritize the newer `annotations_language` field from IAMF v1.1.0, over
@@ -108,8 +108,8 @@ void ReserveNumSubMixes(const iamf_tools_cli_proto::MixPresentationObuMetadata&
                             mix_presentation_metadata,
                         std::vector<MixPresentationSubMix>& sub_mixes) {
   if (mix_presentation_metadata.has_num_sub_mixes()) {
-    LOG(WARNING) << "Ignoring deprecated `num_sub_mixes` field."
-                 << "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `num_sub_mixes` field."
+                      << "Please remove it.";
   }
 
   sub_mixes.reserve(mix_presentation_metadata.sub_mixes_size());
@@ -119,8 +119,8 @@ void ReserveSubMixNumAudioElements(
     const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
     MixPresentationSubMix& sub_mix) {
   if (input_sub_mix.has_num_audio_elements()) {
-    LOG(WARNING) << "Ignoring deprecated `num_audio_elements` field."
-                 << "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `num_audio_elements` field."
+                      << "Please remove it.";
   }
   sub_mix.audio_elements.reserve(input_sub_mix.audio_elements_size());
 }
@@ -175,8 +175,9 @@ absl::Status FillRenderingConfig(
       rendering_config.reserved));
 
   if (input_rendering_config.has_rendering_config_extension_size()) {
-    LOG(WARNING) << "Ignoring deprecated `rendering_config_extension_size` "
-                    "field. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `rendering_config_extension_size` "
+           "field. Please remove it.";
   }
 
   rendering_config.rendering_config_extension_bytes.resize(
@@ -196,7 +197,7 @@ const iamf_tools_cli_proto::MixGainParamDefinition& SelectElementMixConfig(
   if (sub_mix_audio_element.has_element_mix_gain()) {
     return sub_mix_audio_element.element_mix_gain();
   } else {
-    LOG(WARNING)
+    ABSL_LOG(WARNING)
         << "Please upgrade `element_mix_config` to `element_mix_gain`.";
     return sub_mix_audio_element.element_mix_config().mix_gain();
   }
@@ -211,7 +212,8 @@ const iamf_tools_cli_proto::MixGainParamDefinition& SelectOutputMixConfig(
   if (mix_presentation_sub_mix.has_output_mix_gain()) {
     return mix_presentation_sub_mix.output_mix_gain();
   } else {
-    LOG(WARNING) << "Please upgrade `output_mix_config` to `output_mix_gain`.";
+    ABSL_LOG(WARNING)
+        << "Please upgrade `output_mix_config` to `output_mix_gain`.";
     return mix_presentation_sub_mix.output_mix_config().output_mix_gain();
   }
 }
@@ -248,8 +250,8 @@ absl::Status FillLayouts(
     const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
     MixPresentationSubMix& sub_mix) {
   if (input_sub_mix.has_num_layouts()) {
-    LOG(WARNING) << "Ignoring deprecated `num_layouts` field."
-                 << "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `num_layouts` field."
+                      << "Please remove it.";
   }
 
   // Reserve the layouts vector and copy in the layouts.
@@ -321,7 +323,8 @@ absl::Status FillMixPresentationTags(
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
   if (mix_presentation_tags.has_num_tags()) {
-    LOG(WARNING) << "Ignoring deprecated `num_tags` field. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_tags` field. Please remove it.";
   }
   obu_mix_presentation_tags = MixPresentationTags{};
 
@@ -431,8 +434,9 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
     return absl::OkStatus();
   }
   if (user_loudness.anchored_loudness().has_num_anchored_loudness()) {
-    LOG(WARNING) << "Ignoring deprecated `num_anchored_loudness` field. Please "
-                    "remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_anchored_loudness` field. Please "
+           "remove it.";
   }
 
   uint8_t num_anchored_loudness;
@@ -481,8 +485,8 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
     return absl::OkStatus();
   }
   if (user_loudness.has_info_type_size()) {
-    LOG(WARNING) << "Ignoring deprecated `info_type_size` field."
-                 << "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `info_type_size` field."
+                      << "Please remove it.";
   }
 
   output_loudness.layout_extension.info_type_bytes.resize(

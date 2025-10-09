@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
@@ -49,7 +49,7 @@ static void ConfigureAudioFrameMetadata(
     iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata) {
   for (const auto& label : labels) {
     auto proto_label = ChannelLabelUtils::LabelToProto(label);
-    CHECK_OK(proto_label);
+    ABSL_CHECK_OK(proto_label);
     audio_frame_metadata.add_channel_metadatas()->set_channel_label(
         *proto_label);
   }
@@ -62,7 +62,7 @@ static void ConfigureInputChannel(ChannelLabel::Label label, int num_ticks,
 
   // This function should not be called with the same label twice, so the
   // insertion should succeed.
-  CHECK(inserted);
+  ABSL_CHECK(inserted);
 }
 
 static void ConfigureOutputChannel(
@@ -109,7 +109,7 @@ static DemixingModule CreateDemixingModule(
           CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
   auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
       std::move(audio_element_id_to_demixing_metadata.value()));
-  CHECK_OK(demixing_module);
+  ABSL_CHECK_OK(demixing_module);
 
   return *demixing_module;
 }
@@ -200,7 +200,7 @@ void BM_Demixing(bool use_original_samples, benchmark::State& state) {
   for (auto _ : state) {
     auto id_to_labeled_frame =
         CallDemixing(use_original_samples, audio_frames, demixing_module);
-    CHECK_OK(id_to_labeled_frame);
+    ABSL_CHECK_OK(id_to_labeled_frame);
   }
 }
 

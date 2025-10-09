@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/itu_1770_4/loudness_calculator_factory_itu_1770_4.h"
@@ -51,7 +51,7 @@ std::vector<std::unique_ptr<ObuSequencerBase>> CreateObuSequencers(
   const auto leb_generator =
       CreateLebGenerator(user_metadata.test_vector_metadata().leb_generator());
   if (leb_generator == nullptr) {
-    LOG(ERROR) << "Failed to create LebGenerator.";
+    ABSL_LOG(ERROR) << "Failed to create LebGenerator.";
     return {};
   }
 

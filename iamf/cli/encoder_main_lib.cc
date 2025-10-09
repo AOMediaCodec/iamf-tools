@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -159,7 +159,7 @@ iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
     const iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
     const iamf_tools_cli_proto::TestVectorMetadata& test_vector_metadata) {
   if (test_vector_metadata.has_output_wav_file_bit_depth_override()) {
-    LOG(WARNING)
+    ABSL_LOG(WARNING)
         << "`output_wav_file_bit_depth_override` takes no effect. Please "
            "upgrade to `encoder_control_metadata.output_rendered_file_format` "
            "instead."
@@ -199,7 +199,7 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
   // slots in the inner maps; we can reuse them.
   api::IamfTemporalUnitData temporal_unit_data;
   while (iamf_encoder.GeneratingTemporalUnits()) {
-    LOG_EVERY_N_SEC(INFO, 5)
+    ABSL_LOG_EVERY_N_SEC(INFO, 5)
         << "\n\n============================= Generating Temporal Units Iter #"
         << temporal_unit_iteration++ << " =============================\n";
 
@@ -254,8 +254,9 @@ absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
     RETURN_IF_NOT_OK(
         iamf_encoder.OutputTemporalUnit(unused_temporal_unit_obus));
   }
-  LOG(INFO) << "\n============================= END of Generating Data OBUs"
-            << " =============================\n\n";
+  ABSL_LOG(INFO)
+      << "\n============================= END of Generating Data OBUs"
+      << " =============================\n\n";
 
   return absl::OkStatus();
 }
@@ -284,7 +285,7 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
       (std::filesystem::path(output_iamf_directory) /
        user_metadata.test_vector_metadata().file_name_prefix())
           .string();
-  LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
+  ABSL_LOG(INFO) << "output_wav_file_prefix = " << output_wav_file_prefix;
   RenderingMixPresentationFinalizer::SampleProcessorFactory
       sample_processor_factory =
           [output_wav_file_prefix](DecodedUleb128 mix_presentation_id,

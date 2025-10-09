@@ -27,8 +27,8 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -260,8 +260,8 @@ absl::Status GetAndApplyMixGain(
       linear_mix_gain_per_tick));
 
   if (!linear_mix_gain_per_tick.empty()) {
-    LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
-                         << linear_mix_gain_per_tick.front();
+    ABSL_LOG_FIRST_N(INFO, 6) << " First tick in this frame has gain: "
+                              << linear_mix_gain_per_tick.front();
   }
 
   for (auto& rendered_samples_for_channel : rendered_samples) {
@@ -284,13 +284,13 @@ absl::Status MixAudioElements(
                                 : rendered_audio_elements.front().size();
   const auto num_ticks =
       num_channels == 0 ? 0 : rendered_audio_elements.front().front().size();
-  CHECK_EQ(rendered_samples.size(), num_channels);
+  ABSL_CHECK_EQ(rendered_samples.size(), num_channels);
   for (auto& rendered_samples_for_channel : rendered_samples) {
     // To avoid re-allocations, `rendered_samples_for_channel` should already
     // be allocated with the maximum number of samples that it will hold, which
     // is the number of samples per frame. Rendering a partial (therefore
     // smaller) frame is allowed.
-    CHECK_GE(rendered_samples_for_channel.capacity(), num_ticks);
+    ABSL_CHECK_GE(rendered_samples_for_channel.capacity(), num_ticks);
     rendered_samples_for_channel.assign(num_ticks, 0.0);
   }
 
@@ -365,8 +365,8 @@ absl::Status RenderAllFramesForLayout(
   // Mix the audio elements.
   RETURN_IF_NOT_OK(MixAudioElements(rendered_audio_elements, rendered_samples));
 
-  LOG_FIRST_N(INFO, 1) << "    Applying output_mix_gain.default_mix_gain= "
-                       << output_mix_gain.default_mix_gain_;
+  ABSL_LOG_FIRST_N(INFO, 1) << "    Applying output_mix_gain.default_mix_gain= "
+                            << output_mix_gain.default_mix_gain_;
 
   RETURN_IF_NOT_OK(GetAndApplyMixGain(
       common_sample_rate, id_to_parameter_block, output_mix_gain, num_channels,
@@ -391,27 +391,28 @@ absl::Status ValidateUserLoudness(const LoudnessInfo& user_loudness,
                    sub_mix_index, "]->layouts[", layout_index, "]: ");
   if (output_loudness.integrated_loudness !=
       user_loudness.integrated_loudness) {
-    LOG(ERROR) << mix_presentation_sub_mix_layout_index
-               << "Computed integrated loudness different from "
-               << "user specification: " << output_loudness.integrated_loudness
-               << " vs " << user_loudness.integrated_loudness;
+    ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
+                    << "Computed integrated loudness different from "
+                    << "user specification: "
+                    << output_loudness.integrated_loudness << " vs "
+                    << user_loudness.integrated_loudness;
     loudness_matches_user_data = false;
   }
 
   if (output_loudness.digital_peak != user_loudness.digital_peak) {
-    LOG(ERROR) << mix_presentation_sub_mix_layout_index
-               << "Computed digital peak different from "
-               << "user specification: " << output_loudness.digital_peak
-               << " vs " << user_loudness.digital_peak;
+    ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
+                    << "Computed digital peak different from "
+                    << "user specification: " << output_loudness.digital_peak
+                    << " vs " << user_loudness.digital_peak;
     loudness_matches_user_data = false;
   }
 
   if (output_loudness.info_type & LoudnessInfo::kTruePeak) {
     if (output_loudness.true_peak != user_loudness.true_peak) {
-      LOG(ERROR) << mix_presentation_sub_mix_layout_index
-                 << "Computed true peak different from "
-                 << "user specification: " << output_loudness.true_peak
-                 << " vs " << user_loudness.true_peak;
+      ABSL_LOG(ERROR) << mix_presentation_sub_mix_layout_index
+                      << "Computed true peak different from "
+                      << "user specification: " << output_loudness.true_peak
+                      << " vs " << user_loudness.true_peak;
       loudness_matches_user_data = false;
     }
   }
@@ -715,11 +716,12 @@ RenderingMixPresentationFinalizer::Create(
     const std::list<MixPresentationObu>& mix_presentation_obus) {
   const bool rendering_enabled = renderer_factory != nullptr;
   if (!rendering_enabled) {
-    LOG(INFO) << "Rendering is safely disabled.";
+    ABSL_LOG(INFO) << "Rendering is safely disabled.";
   }
   if (loudness_calculator_factory == nullptr) {
-    VLOG(1) << "Loudness calculator factory is null so loudness will not be "
-               "calculated.";
+    ABSL_VLOG(1)
+        << "Loudness calculator factory is null so loudness will not be "
+           "calculated.";
   }
   absl::flat_hash_map<DecodedUleb128, std::vector<SubmixRenderingMetadata>>
       mix_presentation_id_to_rendering_metadata;
@@ -801,7 +803,7 @@ RenderingMixPresentationFinalizer::GetPostProcessedSamplesAsSpan(
     return layout_rendering_metadata.status();
   }
   // `absl::StatusOr<const T*> cannot hold a nullptr.
-  CHECK_NE(*layout_rendering_metadata, nullptr);
+  ABSL_CHECK_NE(*layout_rendering_metadata, nullptr);
 
   // Prioritize returning the post-processed samples if a post-processor is
   // available. Otherwise, return the rendered samples.
@@ -853,9 +855,9 @@ RenderingMixPresentationFinalizer::GetFinalizedMixPresentationObus(
             mix_presentation_obu.GetMixPresentationId());
     if (sub_mix_rendering_metadata_it ==
         mix_presentation_id_to_sub_mix_rendering_metadata_.end()) {
-      LOG(INFO) << "Rendering was disabled for Mix Presentation ID= "
-                << mix_presentation_obu.GetMixPresentationId()
-                << " echoing the input OBU.";
+      ABSL_LOG(INFO) << "Rendering was disabled for Mix Presentation ID= "
+                     << mix_presentation_obu.GetMixPresentationId()
+                     << " echoing the input OBU.";
       continue;
     }
 

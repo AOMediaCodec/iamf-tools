@@ -16,8 +16,8 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -61,7 +61,7 @@ absl::Status ValidateAudioRollDistance(int16_t audio_roll_distance) {
 // 14496-1:2010 expandable size field prepended.
 absl::Status PrependWithIso14496_1Expanded(const WriteBitBuffer& original_wb,
                                            WriteBitBuffer& output_wb) {
-  CHECK(original_wb.IsByteAligned());
+  ABSL_CHECK(original_wb.IsByteAligned());
   if (original_wb.bit_buffer().size() > kMaxClassSize) {
     return absl::ResourceExhaustedError(
         absl::StrCat("Buffer size ", original_wb.bit_buffer().size(),
@@ -334,37 +334,39 @@ uint8_t AacDecoderConfig::GetBitDepthToMeasureLoudness() {
 }
 
 void AudioSpecificConfig::Print() const {
-  VLOG(1) << "        audio_object_type= " << absl::StrCat(audio_object_type_);
-  VLOG(1) << "        sample_frequency_index= "
-          << absl::StrCat(sample_frequency_index_);
+  ABSL_VLOG(1) << "        audio_object_type= "
+               << absl::StrCat(audio_object_type_);
+  ABSL_VLOG(1) << "        sample_frequency_index= "
+               << absl::StrCat(sample_frequency_index_);
   if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
-    VLOG(1) << "        sampling_frequency= " << sampling_frequency_;
+    ABSL_VLOG(1) << "        sampling_frequency= " << sampling_frequency_;
   }
-  VLOG(1) << "        channel_configuration= "
-          << absl::StrCat(channel_configuration_);
-  VLOG(1) << "      ga_specific_info(aac):";
-  VLOG(1) << "        frame_length_flag= "
-          << ga_specific_config_.frame_length_flag;
-  VLOG(1) << "        depends_on_core_coder= "
-          << ga_specific_config_.depends_on_core_coder;
-  VLOG(1) << "        extension_flag= " << ga_specific_config_.extension_flag;
+  ABSL_VLOG(1) << "        channel_configuration= "
+               << absl::StrCat(channel_configuration_);
+  ABSL_VLOG(1) << "      ga_specific_info(aac):";
+  ABSL_VLOG(1) << "        frame_length_flag= "
+               << ga_specific_config_.frame_length_flag;
+  ABSL_VLOG(1) << "        depends_on_core_coder= "
+               << ga_specific_config_.depends_on_core_coder;
+  ABSL_VLOG(1) << "        extension_flag= "
+               << ga_specific_config_.extension_flag;
 }
 
 void AacDecoderConfig::Print() const {
-  VLOG(1) << "    decoder_config(aac):";
-  VLOG(1) << "      object_type_indication= "
-          << absl::StrCat(object_type_indication_);
-  VLOG(1) << "      stream_type= " << absl::StrCat(stream_type_);
-  VLOG(1) << "      upstream= " << upstream_;
-  VLOG(1) << "      reserved= " << reserved_;
-  VLOG(1) << "      buffer_size_db= " << buffer_size_db_;
-  VLOG(1) << "      max_bitrate= " << max_bitrate_;
-  VLOG(1) << "      average_bit_rate= " << average_bit_rate_;
-  VLOG(1) << "      decoder_specific_info(aac):";
+  ABSL_VLOG(1) << "    decoder_config(aac):";
+  ABSL_VLOG(1) << "      object_type_indication= "
+               << absl::StrCat(object_type_indication_);
+  ABSL_VLOG(1) << "      stream_type= " << absl::StrCat(stream_type_);
+  ABSL_VLOG(1) << "      upstream= " << upstream_;
+  ABSL_VLOG(1) << "      reserved= " << reserved_;
+  ABSL_VLOG(1) << "      buffer_size_db= " << buffer_size_db_;
+  ABSL_VLOG(1) << "      max_bitrate= " << max_bitrate_;
+  ABSL_VLOG(1) << "      average_bit_rate= " << average_bit_rate_;
+  ABSL_VLOG(1) << "      decoder_specific_info(aac):";
 
   decoder_specific_info_.audio_specific_config.Print();
-  VLOG(1) << "      // decoder_specific_info_extension omitted.";
-  VLOG(1) << "      // decoder_config_extension omitted.";
+  ABSL_VLOG(1) << "      // decoder_specific_info_extension omitted.";
+  ABSL_VLOG(1) << "      // decoder_config_extension omitted.";
 }
 
 }  // namespace iamf_tools

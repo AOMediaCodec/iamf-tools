@@ -15,7 +15,7 @@
 #include <optional>
 #include <variant>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
@@ -110,7 +110,7 @@ std::optional<Layout> ApiToInternalType(
       return MakeLayout(LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0);
   };
   // Switch above is exhaustive.
-  LOG(FATAL) << "Invalid output layout.";
+  ABSL_LOG(FATAL) << "Invalid output layout.";
 }
 
 absl::StatusOr<api::OutputLayout> InternalToApiType(Layout internal_layout) {

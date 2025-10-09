@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -88,14 +88,14 @@ absl::Status AudioFrameObu::ReadAndValidatePayloadDerived(int64_t payload_size,
 }
 
 void AudioFrameObu::PrintObu() const {
-  LOG(INFO) << "  audio_substream_id= " << GetSubstreamId();
-  LOG(INFO) << "  // obu_trimming_status_flag= "
-            << header_.obu_trimming_status_flag;
-  LOG(INFO) << "  // samples_to_trim_at_end= "
-            << header_.num_samples_to_trim_at_end;
-  LOG(INFO) << "  // samples_to_trim_at_start= "
-            << header_.num_samples_to_trim_at_start;
-  LOG(INFO) << "  // size_of(audio_frame)= " << audio_frame_.size();
+  ABSL_LOG(INFO) << "  audio_substream_id= " << GetSubstreamId();
+  ABSL_LOG(INFO) << "  // obu_trimming_status_flag= "
+                 << header_.obu_trimming_status_flag;
+  ABSL_LOG(INFO) << "  // samples_to_trim_at_end= "
+                 << header_.num_samples_to_trim_at_end;
+  ABSL_LOG(INFO) << "  // samples_to_trim_at_start= "
+                 << header_.num_samples_to_trim_at_start;
+  ABSL_LOG(INFO) << "  // size_of(audio_frame)= " << audio_frame_.size();
 }
 
 }  // namespace iamf_tools

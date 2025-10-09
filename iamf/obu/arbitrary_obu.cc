@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <list>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -56,13 +56,13 @@ absl::Status ArbitraryObu::ReadAndValidatePayloadDerived(
 }
 
 void ArbitraryObu::PrintObu() const {
-  LOG(INFO) << "Arbitrary OBU:";
-  LOG(INFO) << "// invalidates_bitstream= " << invalidates_bitstream_;
-  LOG(INFO) << "// insertion_hook= " << absl::StrCat(insertion_hook_);
+  ABSL_LOG(INFO) << "Arbitrary OBU:";
+  ABSL_LOG(INFO) << "// invalidates_bitstream= " << invalidates_bitstream_;
+  ABSL_LOG(INFO) << "// insertion_hook= " << absl::StrCat(insertion_hook_);
 
   PrintHeader(static_cast<int64_t>(payload_.size()));
 
-  LOG(INFO) << "  payload omitted.";
+  ABSL_LOG(INFO) << "  payload omitted.";
 }
 
 }  // namespace iamf_tools

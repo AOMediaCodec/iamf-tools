@@ -16,7 +16,7 @@
 #include <list>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
@@ -116,9 +116,9 @@ absl::Status PartitionMixGain(
     }
     case ANIMATE_LINEAR: {
       // Set partitioned start time to the value of the parameter at that time.
-      LOG_FIRST_N(INFO, 3) << subblock_start_time << " " << subblock_end_time
-                           << " " << partitioned_start_time << " "
-                           << partitioned_end_time;
+      ABSL_LOG_FIRST_N(INFO, 3)
+          << subblock_start_time << " " << subblock_end_time << " "
+          << partitioned_start_time << " " << partitioned_end_time;
       // Calculate the subblock's parameter value at the start of the partition.
       int16_t start_point_value;
       int16_t end_point_value;
@@ -188,11 +188,13 @@ absl::Status GetPartitionedSubblocks(
     std::list<iamf_tools_cli_proto::ParameterSubblock>& partitioned_subblocks,
     uint32_t& constant_subblock_duration) {
   if (full_parameter_block.has_num_subblocks()) {
-    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
-                    "Block OBU. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_subblocks` field in Parameter "
+           "Block OBU. Please remove it.";
   }
 
-  LOG_FIRST_N(INFO, 1) << "   full_parameter_block=\n" << full_parameter_block;
+  ABSL_LOG_FIRST_N(INFO, 1) << "   full_parameter_block=\n"
+                            << full_parameter_block;
 
   InternalTimestamp current_time = full_parameter_block.start_timestamp();
 
@@ -402,7 +404,7 @@ absl::Status ParameterBlockPartitioner::PartitionFrameAligned(
       full_parameter_block.start_timestamp() + full_parameter_block.duration();
   for (InternalTimestamp t = full_parameter_block.start_timestamp();
        t < end_timestamp; t += partition_duration) {
-    LOG_EVERY_N_SEC(INFO, 10)
+    ABSL_LOG_EVERY_N_SEC(INFO, 10)
         << "Partitioning parameter blocks at timestamp= " << t;
     ParameterBlockObuMetadata partitioned_parameter_block;
     RETURN_IF_NOT_OK(PartitionParameterBlock(full_parameter_block, t,

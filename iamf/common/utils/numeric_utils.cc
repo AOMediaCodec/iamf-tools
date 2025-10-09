@@ -18,8 +18,7 @@
 #include <limits>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -122,7 +121,7 @@ bool IsNativeBigEndian() {
   } else if (std::endian::native == std::endian::little) {
     return false;
   } else {
-    CHECK(false) << "Mixed-endian systems are not supported.";
+    ABSL_CHECK(false) << "Mixed-endian systems are not supported.";
   }
 }
 

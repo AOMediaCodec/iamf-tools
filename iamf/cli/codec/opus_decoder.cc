@@ -16,8 +16,8 @@
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -78,7 +78,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> OpusDecoder::Create(
 
 OpusDecoder::~OpusDecoder() {
   // The factory function prevents `decoder_` from ever being null.
-  CHECK_NE(decoder_, nullptr);
+  ABSL_CHECK_NE(decoder_, nullptr);
   opus_decoder_destroy(decoder_);
 }
 
@@ -99,9 +99,9 @@ absl::Status OpusDecoder::DecodeAudioFrame(
     return OpusErrorCodeToAbslStatus(num_output_samples,
                                      "Failed to decode Opus frame.");
   }
-  LOG_FIRST_N(INFO, 1) << "Opus decoded " << num_output_samples
-                       << " samples per channel. With " << num_channels_
-                       << " channels.";
+  ABSL_LOG_FIRST_N(INFO, 1)
+      << "Opus decoded " << num_output_samples << " samples per channel. With "
+      << num_channels_ << " channels.";
 
   // Convert the interleaved data to (channel, time) axes
   const absl::AnyInvocable<absl::Status(float, InternalSampleType&) const>

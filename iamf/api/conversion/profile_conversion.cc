@@ -12,7 +12,7 @@
 
 #include "iamf/api/conversion/profile_conversion.h"
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -34,8 +34,8 @@ InternalProfileVersion ApiToInternalType(
       return InternalProfileVersion::kIamfBaseEnhancedProfile;
   }
   // Switch above is exhaustive.
-  LOG(FATAL) << "Invalid profile version= "
-             << static_cast<int>(api_profile_version);
+  ABSL_LOG(FATAL) << "Invalid profile version= "
+                  << static_cast<int>(api_profile_version);
 }
 
 absl::StatusOr<api::ProfileVersion> InternalToApiType(

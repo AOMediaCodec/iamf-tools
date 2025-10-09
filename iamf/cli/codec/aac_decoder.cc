@@ -24,8 +24,8 @@
 #endif
 
 #include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -134,8 +134,8 @@ absl::Status ConfigureAacDecoder(const AacDecoderConfig& raw_aac_decoder_config,
     const UINT length[] = {static_cast<UINT>(wb.bit_offset() / 8)};
     aacDecoder_ConfigRaw(decoder_, conf, length);
   } else {
-    LOG(ERROR) << "Erroring writing audio specific config: " << status
-               << " wrote " << wb.bit_offset() << " bits.";
+    ABSL_LOG(ERROR) << "Erroring writing audio specific config: " << status
+                    << " wrote " << wb.bit_offset() << " bits.";
   }
 
   return status;
@@ -162,8 +162,8 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
   }
 
   const auto* stream_info = aacDecoder_GetStreamInfo(decoder);
-  LOG_FIRST_N(INFO, 1) << "Created an AAC decoder with "
-                       << stream_info->numChannels << " channels.";
+  ABSL_LOG_FIRST_N(INFO, 1) << "Created an AAC decoder with "
+                            << stream_info->numChannels << " channels.";
 
   return absl::WrapUnique(
       new AacDecoder(num_channels, num_samples_per_frame, decoder));
@@ -171,7 +171,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> AacDecoder::Create(
 
 AacDecoder::~AacDecoder() {
   // The factory function prevents `decoder_` from ever being null.
-  CHECK_NE(decoder_, nullptr);
+  ABSL_CHECK_NE(decoder_, nullptr);
   aacDecoder_Close(decoder_);
 }
 

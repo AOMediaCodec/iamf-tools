@@ -14,8 +14,6 @@
 #include <functional>
 
 #include "absl/functional/function_ref.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"

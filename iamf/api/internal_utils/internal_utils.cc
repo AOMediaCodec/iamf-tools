@@ -18,8 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/cli/wav_writer.h"
@@ -65,10 +64,10 @@ api::IamfStatus SetupAfterDescriptors(
     return sample_rate_status;
   }
 
-  LOG(INFO) << "Output sample rate: " << sample_rate;
-  LOG(INFO) << "Output frame size: " << frame_size;
-  LOG(INFO) << "Output number of channels: " << num_channels;
-  LOG(INFO) << "Output sample size bytes: " << sample_size_bytes;
+  ABSL_LOG(INFO) << "Output sample rate: " << sample_rate;
+  ABSL_LOG(INFO) << "Output frame size: " << frame_size;
+  ABSL_LOG(INFO) << "Output number of channels: " << num_channels;
+  ABSL_LOG(INFO) << "Output sample size bytes: " << sample_size_bytes;
 
   // Now that we know output properties, create the wav writer, and configure
   // the size of the reusable sample buffer.

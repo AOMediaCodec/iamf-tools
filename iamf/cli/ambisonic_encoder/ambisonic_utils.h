@@ -16,7 +16,7 @@
 #include <cmath>
 #include <numbers>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 
 // TODO(b/400635711): Use the one in the obr library once it is open-sourced.
 // This code is forked from Resonance Audio's `misc_math.h`.
@@ -81,7 +81,7 @@ inline float DoubleFactorial(int x) {
  */
 template <typename T>
 static inline T IntegerPow(T base, int exp) {
-  DCHECK_GE(exp, 0);
+  ABSL_DCHECK_GE(exp, 0);
   T result = static_cast<T>(1);
   while (true) {
     if (exp & 1) {
@@ -101,9 +101,9 @@ static inline T IntegerPow(T base, int exp) {
  * \return Computed ACN channel sequence.
  */
 inline int AcnSequence(int degree, int order) {
-  DCHECK_GE(degree, 0);
-  DCHECK_LE(-degree, order);
-  DCHECK_LE(order, degree);
+  ABSL_DCHECK_GE(degree, 0);
+  ABSL_DCHECK_LE(-degree, order);
+  ABSL_DCHECK_LE(order, degree);
 
   return degree * degree + degree + order;
 }
@@ -117,9 +117,9 @@ inline int AcnSequence(int degree, int order) {
  * \return Computed normalization factor.
  */
 inline float Sn3dNormalization(int degree, int order) {
-  DCHECK_GE(degree, 0);
-  DCHECK_LE(-degree, order);
-  DCHECK_LE(order, degree);
+  ABSL_DCHECK_GE(degree, 0);
+  ABSL_DCHECK_LE(-degree, order);
+  ABSL_DCHECK_LE(order, degree);
   return std::sqrt((2.0f - ((order == 0) ? 1.0f : 0.0f)) *
                    Factorial(degree - std::abs(order)) /
                    Factorial(degree + std::abs(order)));

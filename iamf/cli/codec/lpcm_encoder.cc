@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
@@ -47,14 +47,14 @@ absl::Status LpcmEncoder::InitializeEncoder() {
     return absl::InvalidArgumentError("Unrecognized sample_format_flags");
   }
 
-  VLOG(1) << "  Configured LPCM encoder for " << num_samples_per_frame_
-          << " samples of " << num_channels_ << " channels as "
-          << absl::StrCat(decoder_config_.sample_size_) << "-bit LPCM in "
-          << (decoder_config_.sample_format_flags_bitmask_ &
-                      LpcmDecoderConfig::kLpcmLittleEndian
-                  ? "little"
-                  : "big")
-          << " endian";
+  ABSL_VLOG(1) << "  Configured LPCM encoder for " << num_samples_per_frame_
+               << " samples of " << num_channels_ << " channels as "
+               << absl::StrCat(decoder_config_.sample_size_) << "-bit LPCM in "
+               << (decoder_config_.sample_format_flags_bitmask_ &
+                           LpcmDecoderConfig::kLpcmLittleEndian
+                       ? "little"
+                       : "big")
+               << " endian";
 
   return absl::OkStatus();
 }

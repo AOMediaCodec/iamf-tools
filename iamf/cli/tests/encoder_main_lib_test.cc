@@ -15,7 +15,7 @@
 #include <filesystem>
 #include <string>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
@@ -303,7 +303,7 @@ TEST_P(TestVector, ValidateTestSuite) {
   // these change over time.
   user_metadata.mutable_test_vector_metadata()->set_validate_user_loudness(
       false);
-  LOG(INFO) << "Testing with " << textproto_filename;
+  ABSL_LOG(INFO) << "Testing with " << textproto_filename;
   const absl::Status result = iamf_tools::TestMain(
       user_metadata, wav_directory, std::string(kIgnoredOutputPath));
 

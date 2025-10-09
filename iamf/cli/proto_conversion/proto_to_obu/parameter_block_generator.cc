@@ -21,8 +21,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -201,7 +201,7 @@ absl::Status ConvertReconGainsAndFlags(
   computed_recon_gains.resize(12, 0);
   computed_recon_gain_flag = 0;
   for (const auto& [label, recon_gain] : label_to_recon_gain) {
-    LOG_IF(INFO, additional_logging)
+    ABSL_LOG_IF(INFO, additional_logging)
         << "Recon Gain[" << label << "]= " << recon_gain;
 
     // Bit position is based on Figure 5 of the Spec.
@@ -247,7 +247,7 @@ absl::Status ConvertReconGainsAndFlags(
         // `kLFE` is never demixed. Skipping bit position = 11.
         break;
       default:
-        LOG(ERROR) << "Unrecognized demixed channel label: " << label;
+        ABSL_LOG(ERROR) << "Unrecognized demixed channel label: " << label;
     }
     computed_recon_gain_flag |= 1 << bit_position;
     computed_recon_gains[bit_position] =
@@ -274,7 +274,7 @@ absl::Status ComputeReconGains(
     RETURN_IF_NOT_OK(FindDemixedChannels(accumulated_channels, layer_channels,
                                          &demixed_channel_labels));
 
-    LOG_IF(INFO, additional_recon_gains_logging) << "Demixed channels: ";
+    ABSL_LOG_IF(INFO, additional_recon_gains_logging) << "Demixed channels: ";
     for (const auto& label : demixed_channel_labels) {
       RETURN_IF_NOT_OK(ReconGainGenerator::ComputeReconGain(
           label, labeled_samples, label_to_decoded_samples,
@@ -394,10 +394,10 @@ absl::Status GenerateReconGainSubblock(
     for (int i = 0; i < 12; i++) {
       if (user_recon_gains[i] != computed_recon_gains[i]) {
         // Find all mismatches before returning an error.
-        LOG(ERROR) << "Computed recon gain [" << i
-                   << "] different from what user specified: "
-                   << absl::StrCat(computed_recon_gains[i]) << " vs "
-                   << absl::StrCat(user_recon_gains[i]);
+        ABSL_LOG(ERROR) << "Computed recon gain [" << i
+                        << "] different from what user specified: "
+                        << absl::StrCat(computed_recon_gains[i]) << " vs "
+                        << absl::StrCat(user_recon_gains[i]);
         recon_gains_match = false;
       }
     }
@@ -489,8 +489,9 @@ absl::Status PopulateCommonFields(
     GlobalTimingModule& global_timing_module,
     ParameterBlockWithData& parameter_block_with_data) {
   if (parameter_block_metadata.has_num_subblocks()) {
-    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
-                    "Block OBU. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_subblocks` field in Parameter "
+           "Block OBU. Please remove it.";
   }
 
   // Get the duration from the parameter definition or the OBU itself as
@@ -562,12 +563,12 @@ absl::Status PopulateSubblocks(
 void LogParameterBlockObus(
     const std::list<ParameterBlockWithData>& output_parameter_blocks) {
   for (const auto& parameter_block_with_data : output_parameter_blocks) {
-    CHECK_NE(parameter_block_with_data.obu, nullptr);
+    ABSL_CHECK_NE(parameter_block_with_data.obu, nullptr);
     parameter_block_with_data.obu->PrintObu();
-    LOG(INFO) << "  // start_timestamp= "
-              << parameter_block_with_data.start_timestamp;
-    LOG(INFO) << "  // end_timestamp= "
-              << parameter_block_with_data.end_timestamp;
+    ABSL_LOG(INFO) << "  // start_timestamp= "
+                   << parameter_block_with_data.start_timestamp;
+    ABSL_LOG(INFO) << "  // end_timestamp= "
+                   << parameter_block_with_data.end_timestamp;
   }
 }
 

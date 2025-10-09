@@ -15,7 +15,7 @@
 #include <utility>
 #include <variant>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -291,12 +291,13 @@ absl::Status CodecConfigObu::ReadAndValidatePayloadDerived(
 }
 
 void CodecConfigObu::PrintObu() const {
-  VLOG(1) << "Codec Config OBU:";
-  VLOG(1) << "  codec_config_id= " << codec_config_id_;
-  VLOG(1) << "  codec_config:";
-  VLOG(1) << "    codec_id= " << codec_config_.codec_id;
-  VLOG(1) << "    num_samples_per_frame= " << GetNumSamplesPerFrame();
-  VLOG(1) << "    audio_roll_distance= " << codec_config_.audio_roll_distance;
+  ABSL_VLOG(1) << "Codec Config OBU:";
+  ABSL_VLOG(1) << "  codec_config_id= " << codec_config_id_;
+  ABSL_VLOG(1) << "  codec_config:";
+  ABSL_VLOG(1) << "    codec_id= " << codec_config_.codec_id;
+  ABSL_VLOG(1) << "    num_samples_per_frame= " << GetNumSamplesPerFrame();
+  ABSL_VLOG(1) << "    audio_roll_distance= "
+               << codec_config_.audio_roll_distance;
 
   // Print the `decoder_config_`. This is codec specific.
   switch (codec_config_.codec_id) {
@@ -314,14 +315,14 @@ void CodecConfigObu::PrintObu() const {
       std::get<AacDecoderConfig>(codec_config_.decoder_config).Print();
       break;
     default:
-      LOG(ERROR) << "Unknown codec_id: " << codec_config_.codec_id;
+      ABSL_LOG(ERROR) << "Unknown codec_id: " << codec_config_.codec_id;
       break;
   }
 
-  VLOG(1) << "  // input_sample_rate_= " << input_sample_rate_;
-  VLOG(1) << "  // output_sample_rate_= " << output_sample_rate_;
-  VLOG(1) << "  // bit_depth_to_measure_loudness_= "
-          << absl::StrCat(bit_depth_to_measure_loudness_);
+  ABSL_VLOG(1) << "  // input_sample_rate_= " << input_sample_rate_;
+  ABSL_VLOG(1) << "  // output_sample_rate_= " << output_sample_rate_;
+  ABSL_VLOG(1) << "  // bit_depth_to_measure_loudness_= "
+               << absl::StrCat(bit_depth_to_measure_loudness_);
 }
 
 absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
@@ -343,7 +344,7 @@ absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
       return absl::OkStatus();
     }
   }
-  LOG(FATAL) << "Unknown codec_id: " << codec_config_.codec_id;
+  ABSL_LOG(FATAL) << "Unknown codec_id: " << codec_config_.codec_id;
 }
 
 bool CodecConfigObu::IsLossless() const {

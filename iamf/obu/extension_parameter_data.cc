@@ -13,7 +13,7 @@
 
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -40,9 +40,10 @@ absl::Status ExtensionParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void ExtensionParameterData::Print() const {
-  LOG(INFO) << "    parameter_data_size= " << absl::StrCat(parameter_data_size);
-  LOG(INFO) << "    // parameter_data_bytes.size()= "
-            << absl::StrCat(parameter_data_bytes.size());
+  ABSL_LOG(INFO) << "    parameter_data_size= "
+                 << absl::StrCat(parameter_data_size);
+  ABSL_LOG(INFO) << "    // parameter_data_bytes.size()= "
+                 << absl::StrCat(parameter_data_bytes.size());
 }
 
 }  // namespace iamf_tools

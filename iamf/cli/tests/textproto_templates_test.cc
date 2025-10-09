@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
@@ -55,7 +55,7 @@ TEST_P(TextprotoTemplate, ValidateTextprotos) {
   // Clear `file_name_prefix`; we only care about the status and not the output
   // files.
   user_metadata.mutable_test_vector_metadata()->clear_file_name_prefix();
-  LOG(INFO) << "Testing with " << test_case.textproto_filename;
+  ABSL_LOG(INFO) << "Testing with " << test_case.textproto_filename;
 
   // Replace the wav filenames.
   ASSERT_EQ(user_metadata.audio_frame_metadata_size(),

@@ -15,8 +15,7 @@
 #include <utility>
 #include <variant>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -125,7 +124,7 @@ absl::Status AudioFrameDecoder::InitDecodersForSubstreams(
     }
     // The factories are not supposed to return an OK and `nullptr` decoder.
     // For defensive programming, check for that case.
-    CHECK_NE(*new_decoder, nullptr);
+    ABSL_CHECK_NE(*new_decoder, nullptr);
     decoder_for_substream = std::move(*new_decoder);
   }
 

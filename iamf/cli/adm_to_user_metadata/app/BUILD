@@ -18,7 +18,6 @@ cc_library(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/common/utils:macros",
         "//iamf/obu:ia_sequence_header",
-        "@abseil-cpp//absl/log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:string_view",
@@ -35,7 +34,7 @@ cc_binary(
         "@abseil-cpp//absl/flags:flag",
         "@abseil-cpp//absl/flags:parse",
         "@abseil-cpp//absl/flags:usage",
-        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/log:flags",
     ],
 )

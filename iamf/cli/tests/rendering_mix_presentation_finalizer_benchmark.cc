@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -104,7 +104,7 @@ CreateRenderingMixPresentationFinalizer(
       /*loudness_calculator_factory=*/nullptr, audio_elements,
       RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
       mix_presentation_obus);
-  CHECK_OK(finalizer);
+  ABSL_CHECK_OK(finalizer);
   return std::move(*finalizer);
 }
 
@@ -130,10 +130,10 @@ static void BM_PushTemporalUnit(
   // render the samples to layouts.
   std::list<ParameterBlockWithData> empty_parameter_blocks;
   for (auto _ : state) {
-    CHECK_OK(finalizer.PushTemporalUnit(id_to_labeled_frame,
-                                        /*start_timestamp=*/0,
-                                        /*end_timestamp=*/num_ticks,
-                                        empty_parameter_blocks));
+    ABSL_CHECK_OK(finalizer.PushTemporalUnit(id_to_labeled_frame,
+                                             /*start_timestamp=*/0,
+                                             /*end_timestamp=*/num_ticks,
+                                             empty_parameter_blocks));
   }
 }
 

@@ -16,7 +16,7 @@
 #include <variant>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/renderer/audio_element_renderer_ambisonics_to_channel.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
@@ -47,14 +47,16 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
     const Layout& loudness_layout, size_t num_samples_per_frame) {
   const auto* ambisonics_config = std::get_if<AmbisonicsConfig>(&config);
   if (ambisonics_config == nullptr) {
-    LOG(ERROR) << "Ambisonics config is inconsistent with audio element type.";
+    ABSL_LOG(ERROR)
+        << "Ambisonics config is inconsistent with audio element type.";
     return nullptr;
   }
 
   if (use_binaural) {
-    LOG(WARNING) << "Skipping creating an Ambisonics to binaural-based "
-                    "renderer. Binaural rendering is not yet supported for "
-                    "ambisonics.";
+    ABSL_LOG(WARNING)
+        << "Skipping creating an Ambisonics to binaural-based "
+           "renderer. Binaural rendering is not yet supported for "
+           "ambisonics.";
     return nullptr;
   }
 
@@ -69,7 +71,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&config);
   if (channel_config == nullptr) {
-    LOG(ERROR) << "Channel config is inconsistent with audio element type.";
+    ABSL_LOG(ERROR)
+        << "Channel config is inconsistent with audio element type.";
     return nullptr;
   }
   // Lazily try to make a pass-through renderer.
@@ -81,7 +84,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   }
 
   if (use_binaural) {
-    LOG(WARNING) << "Skipping creating a channel to binaural-based renderer.";
+    ABSL_LOG(WARNING)
+        << "Skipping creating a channel to binaural-based renderer.";
     return nullptr;
   }
   return AudioElementRendererChannelToChannel::
@@ -114,11 +118,12 @@ RendererFactory::CreateRendererForLayout(
                                         loudness_layout, num_samples_per_frame);
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
-      LOG(WARNING) << "Unsupported audio_element_type_= " << audio_element_type;
+      ABSL_LOG(WARNING) << "Unsupported audio_element_type_= "
+                        << audio_element_type;
       return nullptr;
   }
   // The above switch is exhaustive.
-  LOG(FATAL) << "Unsupported audio_element_type_= " << audio_element_type;
+  ABSL_LOG(FATAL) << "Unsupported audio_element_type_= " << audio_element_type;
 }
 
 }  // namespace iamf_tools

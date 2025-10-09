@@ -18,7 +18,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -433,7 +433,7 @@ std::string ChannelLabel::LabelToStringForDebugging(Label label) {
   }
 
   // The above switch statement is exhaustive.
-  LOG(FATAL) << "Enum out of range.";
+  ABSL_LOG(FATAL) << "Enum out of range.";
 }
 
 absl::StatusOr<ChannelLabel::Label> ChannelLabel::GetDemixedLabel(
@@ -518,12 +518,12 @@ ChannelLabel::GetDemixedChannelLabelForReconGain(
       } else if (layout == kLayout3_1_2_ch) {
         return kDemixedL3;
       } else {
-        LOG(WARNING)
+        ABSL_LOG(WARNING)
             << "Unexpected recon gain flag. No corresponding channel label.";
         return absl::InvalidArgumentError("Unexpected recon gain flag.");
       }
     case kReconGainFlagC:
-      LOG(WARNING)
+      ABSL_LOG(WARNING)
           << "Unexpected recon gain flag. No corresponding channel label.";
       return absl::InvalidArgumentError("Unexpected recon gain flag.");
     case kReconGainFlagR:
@@ -538,7 +538,7 @@ ChannelLabel::GetDemixedChannelLabelForReconGain(
       } else if (layout == kLayout3_1_2_ch) {
         return kDemixedR3;
       } else {
-        LOG(WARNING)
+        ABSL_LOG(WARNING)
             << "Unexpected recon gain flag. No corresponding channel label.";
         return absl::InvalidArgumentError("Unexpected recon gain flag.");
       }
@@ -560,7 +560,7 @@ ChannelLabel::GetDemixedChannelLabelForReconGain(
       return kDemixedRtb4;
     case kReconGainFlagLfe:
     default:
-      LOG(WARNING)
+      ABSL_LOG(WARNING)
           << "Unexpected recon gain flag. No corresponding channel label.";
       return absl::InvalidArgumentError("Unexpected recon gain flag.");
   }

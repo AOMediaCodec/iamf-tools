@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
@@ -104,8 +104,8 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
                        codec_config_obus);
     encoder = CreateOpusEncoder(codec_config_obus.at(kCodecConfigId));
   }
-  CHECK_NE(encoder, nullptr);
-  CHECK_OK(encoder->Initialize(kValidateCodecDelay));
+  ABSL_CHECK_NE(encoder, nullptr);
+  ABSL_CHECK_OK(encoder->Initialize(kValidateCodecDelay));
 
   std::vector<uint8_t> encoded_audio_frame_payload = {};
   auto partial_audio_frame_with_data = absl::WrapUnique(new AudioFrameWithData{
@@ -123,11 +123,11 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
   // Encode a frame of one channel with `num_samples_per_frame` samples.
   std::vector<std::vector<int32_t>> pcm_samples(kOneChannel);
   pcm_samples[0].resize(num_samples_per_frame, 0);
-  CHECK_OK(encoder->EncodeAudioFrame(pcm_samples,
-                                     std::move(partial_audio_frame_with_data)));
+  ABSL_CHECK_OK(encoder->EncodeAudioFrame(
+      pcm_samples, std::move(partial_audio_frame_with_data)));
   std::list<AudioFrameWithData> output_audio_frames;
-  CHECK_OK(encoder->Finalize());
-  CHECK_OK(encoder->Pop(output_audio_frames));
+  ABSL_CHECK_OK(encoder->Finalize());
+  ABSL_CHECK_OK(encoder->Pop(output_audio_frames));
 
   return output_audio_frames.back();
 }
@@ -141,7 +141,7 @@ static void InitAudioFrameDecoder(
       audio_elements);
   for (const auto& [audio_element_id, audio_element_with_data] :
        audio_elements) {
-    CHECK_OK(decoder.InitDecodersForSubstreams(
+    ABSL_CHECK_OK(decoder.InitDecodersForSubstreams(
         audio_element_with_data.substream_id_to_labels,
         *audio_element_with_data.codec_config));
   }
@@ -162,7 +162,7 @@ static void BM_DecodeForCodecId(const CodecConfig::CodecId codec_id_type,
 
   // Measure the calls to `AudioFrameDecoder::Decode()`, which decodes a frame.
   for (auto _ : state) {
-    CHECK_OK(decoder.Decode(audio_frame));
+    ABSL_CHECK_OK(decoder.Decode(audio_frame));
   }
 }
 

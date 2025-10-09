@@ -15,7 +15,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -48,7 +48,7 @@ absl::StatusOr<std::unique_ptr<DecoderBase>> FlacDecoder::Create(
 
 FlacDecoder::~FlacDecoder() {
   // The factory function prevents `decoder_` from ever being null.
-  CHECK_NE(decoder_, nullptr);
+  ABSL_CHECK_NE(decoder_, nullptr);
   FLAC__stream_decoder_delete(decoder_);
 }
 

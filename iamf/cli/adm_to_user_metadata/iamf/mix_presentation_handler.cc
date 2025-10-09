@@ -18,8 +18,8 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/cli/adm_to_user_metadata/adm/adm_elements.h"
@@ -118,7 +118,7 @@ absl::Status SetDefaultLoudnessLayout(
       iamf_tools_cli_proto::LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION);
   const auto& sound_system =
       LookupSoundSystemFromInputLayout(IamfInputLayout::kStereo);
-  CHECK_OK(sound_system);
+  ABSL_CHECK_OK(sound_system);
   loudness_layout->mutable_ss_layout()->set_sound_system(*sound_system);
   return CopyLoudness(loudness_metadata, *layout->mutable_loudness());
 }
@@ -208,8 +208,8 @@ bool IsChannelBasedAndNotStereo(IamfInputLayout input_layout) {
       return false;
   }
   // The above switch is exhaustive.
-  LOG(FATAL) << "Unexpcected value for `IamfInputLayout`: "
-             << static_cast<int>(input_layout);
+  ABSL_LOG(FATAL) << "Unexpcected value for `IamfInputLayout`: "
+                  << static_cast<int>(input_layout);
 }
 
 }  // namespace

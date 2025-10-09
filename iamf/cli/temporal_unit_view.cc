@@ -20,8 +20,7 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
@@ -191,19 +190,19 @@ absl::Status ValidateAllArbitraryObusMatchStatistics(
 bool CompareParameterId(const ParameterBlockWithData* a,
                         const ParameterBlockWithData* b) {
   // These were sanitized elsewhere in the class.
-  CHECK_NE(a, nullptr);
-  CHECK_NE(b, nullptr);
+  ABSL_CHECK_NE(a, nullptr);
+  ABSL_CHECK_NE(b, nullptr);
   return a->obu->parameter_id_ < b->obu->parameter_id_;
 }
 
 bool CompareAudioElementIdAudioSubstreamId(const AudioFrameWithData* a,
                                            const AudioFrameWithData* b) {
   // These were sanitized elsewhere in the class.
-  CHECK_NE(a, nullptr);
-  CHECK_NE(a->audio_element_with_data, nullptr);
-  CHECK_NE(b, nullptr);
-  CHECK_NE(b->audio_element_with_data, nullptr);
-  CHECK_NE(b, nullptr);
+  ABSL_CHECK_NE(a, nullptr);
+  ABSL_CHECK_NE(a->audio_element_with_data, nullptr);
+  ABSL_CHECK_NE(b, nullptr);
+  ABSL_CHECK_NE(b->audio_element_with_data, nullptr);
+  ABSL_CHECK_NE(b, nullptr);
   if (a->audio_element_with_data->obu.GetAudioElementId() !=
       b->audio_element_with_data->obu.GetAudioElementId()) {
     return a->audio_element_with_data->obu.GetAudioElementId() <

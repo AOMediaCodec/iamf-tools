@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -139,7 +139,7 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
   const auto mode = ambisonics_config.ambisonics_mode;
   if (mode != AmbisonicsConfig::kAmbisonicsModeMono &&
       mode != AmbisonicsConfig::kAmbisonicsModeProjection) {
-    LOG(ERROR) << "Unsupported ambisonics mode. mode= " << mode;
+    ABSL_LOG(ERROR) << "Unsupported ambisonics mode. mode= " << mode;
     return nullptr;
   }
   const bool is_mono = mode == AmbisonicsConfig::kAmbisonicsModeMono;
@@ -157,14 +157,14 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
           ambisonics_config, audio_substream_ids, substream_id_to_labels,
           channel_labels);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
 
   const auto& output_key =
       renderer_utils::LookupOutputKeyFromPlaybackLayout(playback_layout);
   if (!output_key.ok()) {
-    LOG(ERROR) << output_key.status();
+    ABSL_LOG(ERROR) << output_key.status();
     return nullptr;
   }
 
@@ -172,13 +172,13 @@ AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
   if (const auto status =
           GetAmbisonicsOrder(output_channel_count, ambisonics_order);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
   const std::string input_key = absl::StrCat("A", ambisonics_order);
   const auto& gains = LookupPrecomputedGains(input_key, *output_key);
   if (!gains.ok()) {
-    LOG(ERROR) << gains.status();
+    ABSL_LOG(ERROR) << gains.status();
     return nullptr;
   }
   const std::string gains_map_key =

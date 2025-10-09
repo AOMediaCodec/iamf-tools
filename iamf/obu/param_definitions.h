@@ -18,7 +18,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"

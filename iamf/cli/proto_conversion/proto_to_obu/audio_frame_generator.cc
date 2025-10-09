@@ -26,9 +26,9 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/log/vlog_is_on.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
+#include "absl/log/absl_vlog_is_on.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -266,14 +266,15 @@ absl::Status DownMixSamples(const DecodedUleb128 audio_element_id,
                             DownMixingParams& down_mixing_params) {
   RETURN_IF_NOT_OK(parameters_manager.GetDownMixingParameters(
       audio_element_id, down_mixing_params));
-  if (VLOG_IS_ON(1)) {
-    LOG_FIRST_N(INFO, 10) << "Using alpha=" << down_mixing_params.alpha
-                          << " beta=" << down_mixing_params.beta
-                          << " gamma=" << down_mixing_params.gamma
-                          << " delta=" << down_mixing_params.delta
-                          << " w_idx_offset=" << down_mixing_params.w_idx_offset
-                          << " w_idx_used=" << down_mixing_params.w_idx_used
-                          << " w=" << down_mixing_params.w;
+  if (ABSL_VLOG_IS_ON(1)) {
+    ABSL_LOG_FIRST_N(INFO, 10)
+        << "Using alpha=" << down_mixing_params.alpha
+        << " beta=" << down_mixing_params.beta
+        << " gamma=" << down_mixing_params.gamma
+        << " delta=" << down_mixing_params.delta
+        << " w_idx_offset=" << down_mixing_params.w_idx_offset
+        << " w_idx_used=" << down_mixing_params.w_idx_used
+        << " w=" << down_mixing_params.w;
   }
 
   // Down-mix OBU-aligned samples from input channels to substreams. May
@@ -457,11 +458,12 @@ absl::Status MaybeEncodeFramesForAudioElement(
       // Encode.
       if (frame_to_encode.front().size() < num_samples_per_frame) {
         // Wait until there is a whole frame of samples to encode.
-        LOG(INFO) << "Waiting for a complete frame;"
-                  << " current frame size= " << frame_to_encode.front().size();
+        ABSL_LOG(INFO) << "Waiting for a complete frame;"
+                       << " current frame size= "
+                       << frame_to_encode.front().size();
 
         // All frames corresponding to the same Audio Element should be skipped.
-        CHECK(!encoded_timestamp.has_value());
+        ABSL_CHECK(!encoded_timestamp.has_value());
         continue;
       }
 
@@ -481,7 +483,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
       if (encoded_timestamp.has_value()) {
         // All frames corresponding to the same Audio Element should have
         // the same start timestamp.
-        CHECK_EQ(*encoded_timestamp, start_timestamp);
+        ABSL_CHECK_EQ(*encoded_timestamp, start_timestamp);
       }
 
       auto partial_audio_frame_with_data =
@@ -597,8 +599,8 @@ absl::Status ValidateAndApplyUserTrimming(
     const bool is_last_frame,
     AudioFrameGenerator::TrimmingState& trimming_state,
     AudioFrameWithData& audio_frame) {
-  CHECK_NE(audio_frame.audio_element_with_data, nullptr);
-  CHECK_NE(audio_frame.audio_element_with_data->codec_config, nullptr);
+  ABSL_CHECK_NE(audio_frame.audio_element_with_data, nullptr);
+  ABSL_CHECK_NE(audio_frame.audio_element_with_data->codec_config, nullptr);
   const uint32_t num_samples_in_frame =
       audio_frame.audio_element_with_data->codec_config
           ->GetNumSamplesPerFrame();
@@ -776,7 +778,7 @@ absl::Status AudioFrameGenerator::AddSamples(
     absl::Span<const InternalSampleType> samples) {
   absl::MutexLock lock(&mutex_);
   if (state_ != kTakingSamples) {
-    LOG_FIRST_N(WARNING, 3)
+    ABSL_LOG_FIRST_N(WARNING, 3)
         << "Calling `AddSamples()` after `Finalize()` has no effect.";
     return absl::OkStatus();
   }

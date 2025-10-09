@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -133,8 +133,8 @@ absl::Status CollectBaseChannelGroupLabels(
       non_coupled_substream_labels->push_back(kCentre);
       break;
     default:
-      LOG(ERROR) << "Unsupported number of surround channels: "
-                 << layer_channels.surround;
+      ABSL_LOG(ERROR) << "Unsupported number of surround channels: "
+                      << layer_channels.surround;
       return InvalidArgumentError(
           StrCat("Unsupported number of surround channels: ",
                  layer_channels.surround));
@@ -159,8 +159,8 @@ absl::Status CollectBaseChannelGroupLabels(
       coupled_substream_labels->push_back(kRtb4);
       break;
     default:
-      LOG(ERROR) << "Unsupported number of height channels: "
-                 << layer_channels.height;
+      ABSL_LOG(ERROR) << "Unsupported number of height channels: "
+                      << layer_channels.height;
       return InvalidArgumentError(StrCat(
           "Unsupported number of height channels: ", layer_channels.height));
   }
@@ -257,7 +257,7 @@ absl::Status CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
                  *expanded_loudspeaker_layout));
   }
 
-  LOG(INFO) << "Layer[" << layer_index << "]:";
+  ABSL_LOG(INFO) << "Layer[" << layer_index << "]:";
   LogChannelNumbers("  layer_channels", channel_numbers);
 
   return absl::OkStatus();
@@ -354,7 +354,7 @@ absl::Status AddSubstreamLabels(
     const std::list<ChannelLabel::Label>& non_coupled_substream_labels,
     const std::vector<DecodedUleb128>& substream_ids,
     SubstreamIdLabelsMap& substream_id_to_labels, int& substream_index) {
-  CHECK_EQ(coupled_substream_labels.size() % 2, 0);
+  ABSL_CHECK_EQ(coupled_substream_labels.size() % 2, 0);
   // Determine how many substream IDs will be used below. This helps prevent
   // indexing `substream_ids` out of bounds.
   const auto substreams_to_add =
@@ -377,8 +377,8 @@ absl::Status AddSubstreamLabels(
 
     labels_for_substream_id.push_back(first_label);
     labels_for_substream_id.push_back(second_label);
-    VLOG(1) << "  substream_id_to_labels[" << substream_id
-            << "]: " << first_label << "/" << second_label;
+    ABSL_VLOG(1) << "  substream_id_to_labels[" << substream_id
+                 << "]: " << first_label << "/" << second_label;
   }
 
   // Then add non-coupled substream labels.
@@ -386,8 +386,8 @@ absl::Status AddSubstreamLabels(
        iter != non_coupled_substream_labels.end();) {
     const auto substream_id = substream_ids[substream_index++];
     substream_id_to_labels[substream_id].push_back(*iter++);
-    VLOG(1) << "  substream_id_to_labels[" << substream_id
-            << "]: " << substream_id_to_labels[substream_id].back();
+    ABSL_VLOG(1) << "  substream_id_to_labels[" << substream_id
+                 << "]: " << substream_id_to_labels[substream_id].back();
   }
   return absl::OkStatus();
 }
@@ -400,10 +400,10 @@ absl::Status ValidateSubstreamCounts(
       static_cast<uint32_t>(coupled_substream_labels.size()) / 2;
   const auto num_required_non_coupled_channels =
       static_cast<uint32_t>(non_coupled_substream_labels.size());
-  VLOG(1) << "num_required_coupled_channels = "
-          << num_required_coupled_channels;
-  VLOG(1) << "num_required_non_coupled_channels= "
-          << num_required_non_coupled_channels;
+  ABSL_VLOG(1) << "num_required_coupled_channels = "
+               << num_required_coupled_channels;
+  ABSL_VLOG(1) << "num_required_non_coupled_channels= "
+               << num_required_non_coupled_channels;
 
   const auto coupled_substream_count_in_obu =
       static_cast<uint32_t>(layer_config.coupled_substream_count);
@@ -467,8 +467,8 @@ absl::Status FinalizeAmbisonicsMonoConfig(
         mono_config.channel_mapping[ambisonics_channel_number];
     if (obu_substream_index ==
         AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
-      LOG(INFO) << "Detected mixed-order ambisonics with  A"
-                << ambisonics_channel_number << " dropped.";
+      ABSL_LOG(INFO) << "Detected mixed-order ambisonics with  A"
+                     << ambisonics_channel_number << " dropped.";
       continue;
     }
     const DecodedUleb128 substream_id =
@@ -540,7 +540,7 @@ absl::Status CollectChannelLayersAndLabelsForLoudspeakerLayout(
                "accumulated_channels to layer_channels"));
   }
 
-  VLOG(1) << "Layer[" << layer_index << "]:";
+  ABSL_VLOG(1) << "Layer[" << layer_index << "]:";
   LogChannelNumbers("  layer_channels", layer_channels);
   LogChannelNumbers("  accumulated_channels", accumulated_channels);
 
@@ -717,14 +717,16 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
       for (int i = previous_layer_substream_index; i < substream_index; i++) {
         const auto substream_id = audio_substream_ids[i];
 
-        LOG(INFO) << "Output gain for substream ID: " << substream_id << ":";
+        ABSL_LOG(INFO) << "Output gain for substream ID: " << substream_id
+                       << ":";
         for (const auto& label : substream_id_to_labels.at(substream_id)) {
           if (OutputGainApplies(layer_config.output_gain_flag, label)) {
             label_to_output_gain[label] = Q7_8ToFloat(layer_config.output_gain);
-            LOG(INFO) << "  " << label << ": Q7.8= " << layer_config.output_gain
-                      << "; dB= " << label_to_output_gain[label];
+            ABSL_LOG(INFO) << "  " << label
+                           << ": Q7.8= " << layer_config.output_gain
+                           << "; dB= " << label_to_output_gain[label];
           } else {
-            LOG(INFO) << "  " << label << ": (not found)";
+            ABSL_LOG(INFO) << "  " << label << ": (not found)";
           }
         }
       }

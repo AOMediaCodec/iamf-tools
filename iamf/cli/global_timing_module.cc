@@ -19,7 +19,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -101,7 +101,7 @@ std::unique_ptr<GlobalTimingModule> GlobalTimingModule::Create(
       InitializeInternal(audio_elements, param_definition_variants,
                          audio_frame_timing_data, parameter_block_timing_data);
   if (!status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
 

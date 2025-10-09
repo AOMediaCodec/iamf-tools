@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -160,19 +160,23 @@ absl::Status WriteStreamInfo(const FlacMetaBlockStreamInfo& stream_info,
 }
 
 void PrintStreamInfo(const FlacMetaBlockStreamInfo& stream_info) {
-  VLOG(1) << "      metadata_block(stream_info):";
+  ABSL_VLOG(1) << "      metadata_block(stream_info):";
 
-  VLOG(1) << "        minimum_block_size= " << stream_info.minimum_block_size;
-  VLOG(1) << "        maximum_block_size= " << stream_info.maximum_block_size;
-  VLOG(1) << "        minimum_frame_size= " << stream_info.minimum_frame_size;
-  VLOG(1) << "        maximum_frame_size= " << stream_info.maximum_frame_size;
-  VLOG(1) << "        sample_rate= " << stream_info.sample_rate;
-  VLOG(1) << "        number_of_channels= "
-          << absl::StrCat(stream_info.number_of_channels);
-  VLOG(1) << "        bits_per_sample= "
-          << absl::StrCat(stream_info.bits_per_sample);
-  VLOG(1) << "        total_samples_in_stream= "
-          << stream_info.total_samples_in_stream;
+  ABSL_VLOG(1) << "        minimum_block_size= "
+               << stream_info.minimum_block_size;
+  ABSL_VLOG(1) << "        maximum_block_size= "
+               << stream_info.maximum_block_size;
+  ABSL_VLOG(1) << "        minimum_frame_size= "
+               << stream_info.minimum_frame_size;
+  ABSL_VLOG(1) << "        maximum_frame_size= "
+               << stream_info.maximum_frame_size;
+  ABSL_VLOG(1) << "        sample_rate= " << stream_info.sample_rate;
+  ABSL_VLOG(1) << "        number_of_channels= "
+               << absl::StrCat(stream_info.number_of_channels);
+  ABSL_VLOG(1) << "        bits_per_sample= "
+               << absl::StrCat(stream_info.bits_per_sample);
+  ABSL_VLOG(1) << "        total_samples_in_stream= "
+               << stream_info.total_samples_in_stream;
 }
 
 absl::Status ReadStreamInfo(FlacMetaBlockStreamInfo& stream_info,
@@ -301,16 +305,16 @@ absl::Status FlacDecoderConfig::GetTotalSamplesInStream(
 }
 
 void FlacDecoderConfig::Print() const {
-  VLOG(1) << "    decoder_config(flac):";
+  ABSL_VLOG(1) << "    decoder_config(flac):";
 
   for (const auto& metadata_block : metadata_blocks_) {
-    VLOG(1) << "      header:";
-    VLOG(1) << "        last_metadata_block_flag= "
-            << metadata_block.header.last_metadata_block_flag;
-    VLOG(1) << "        block_type= "
-            << absl::StrCat(metadata_block.header.block_type);
-    VLOG(1) << "        metadata_data_block_length= "
-            << metadata_block.header.metadata_data_block_length;
+    ABSL_VLOG(1) << "      header:";
+    ABSL_VLOG(1) << "        last_metadata_block_flag= "
+                 << metadata_block.header.last_metadata_block_flag;
+    ABSL_VLOG(1) << "        block_type= "
+                 << absl::StrCat(metadata_block.header.block_type);
+    ABSL_VLOG(1) << "        metadata_data_block_length= "
+                 << metadata_block.header.metadata_data_block_length;
     switch (metadata_block.header.block_type) {
       case FlacMetaBlockHeader::kFlacStreamInfo:
         PrintStreamInfo(
@@ -319,9 +323,9 @@ void FlacDecoderConfig::Print() const {
       default: {
         const auto& generic_block =
             std::get<std::vector<uint8_t>>(metadata_block.payload);
-        VLOG(1) << "      metadata_block(generic_block):";
-        VLOG(1) << "        size= " << generic_block.size();
-        VLOG(1) << "        payload omitted.";
+        ABSL_VLOG(1) << "      metadata_block(generic_block):";
+        ABSL_VLOG(1) << "        size= " << generic_block.size();
+        ABSL_VLOG(1) << "        payload omitted.";
       }
     }
   }

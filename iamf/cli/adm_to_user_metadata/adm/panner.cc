@@ -24,8 +24,8 @@
 #include <vector>
 
 #include "Eigen/Core"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -72,7 +72,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
 
   // Read header of input wav file.
   ReadWavInfo info;
-  CHECK_NE(ReadWavHeader(input_file, &info), 0)
+  ABSL_CHECK_NE(ReadWavHeader(input_file, &info), 0)
       << "Error reading header of file \"" << input_file << "\"";
 
   const int ip_wav_bits_per_sample = info.bit_depth;
@@ -140,7 +140,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
   size_t num_samples_to_read = samples_per_frame;
   auto max_value_db = 0.0f;
   while (samples_remaining > 0) {
-    CHECK_EQ(num_samples_to_read, samples_per_frame);
+    ABSL_CHECK_EQ(num_samples_to_read, samples_per_frame);
     // When remaining samples is below buffer capacity, pad unused buffer space
     // with zeros to ensure only valid sample data is processed.
     if (samples_remaining < ip_buffer_alloc_size) {
@@ -151,7 +151,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
     // Read from the input file.
     const size_t samples_read = ReadWavSamples(
         input_file, &info, ip_buffer_int32.data(), ip_buffer_alloc_size);
-    CHECK_EQ(samples_read, num_samples_to_read * ip_wav_nch);
+    ABSL_CHECK_EQ(samples_read, num_samples_to_read * ip_wav_nch);
 
     // Convert int32 interleaved to float planar.
     for (size_t smp = 0; smp < samples_per_frame; ++smp) {
@@ -177,7 +177,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
             std::log10(std::abs(op_buffer_float[ch * samples_per_frame + smp]));
         max_value_db = std::max(max_value_db, level);
 
-        LOG_FIRST_N(WARNING, 5) << absl::StrFormat(
+        ABSL_LOG_FIRST_N(WARNING, 5) << absl::StrFormat(
             "Clipping detected at sample %d. Sample exceeds 0 dBFS by: "
             "%.2f dB.",
             timestamp, level);
@@ -207,7 +207,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
   }
 
   if (max_value_db > 0.0f) {
-    LOG(WARNING) << absl::StrFormat(
+    ABSL_LOG(WARNING) << absl::StrFormat(
         "Clipping detected during objects to Ambisonics panning. Maximum level "
         "exceeded 0 dBFS by: "
         "%.2f dB.",

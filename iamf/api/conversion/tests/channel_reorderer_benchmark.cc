@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
@@ -34,7 +34,7 @@ static int32_t GetNumberOfChannels(
        .specific_layout =
            LoudspeakersSsConventionLayout{.sound_system = sound_system}},
       num_channels);
-  CHECK_OK(status);
+  ABSL_CHECK_OK(status);
   return num_channels;
 }
 

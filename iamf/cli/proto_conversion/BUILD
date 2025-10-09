@@ -111,7 +111,7 @@ cc_library(
         "//iamf/cli/proto:output_audio_format_cc_proto",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:absl_log",
     ],
 )
 
@@ -128,7 +128,6 @@ cc_library(
     ],
     deps = [
         ":lookup_tables",
-        "//iamf/cli/codec:opus_encoder",
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
@@ -141,7 +140,7 @@ cc_library(
         "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings:string_view",
     ],

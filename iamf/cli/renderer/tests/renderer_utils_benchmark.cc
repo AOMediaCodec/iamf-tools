@@ -15,7 +15,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/random/random.h"
 #include "absl/types/span.h"
 #include "benchmark/benchmark.h"
@@ -114,7 +114,7 @@ static std::vector<ChannelLabel::Label> CreateLabels(int num_channels) {
   };
 
   // We cannot pick more labels than available ones.
-  CHECK_LE(num_channels, kLabelsToPick.size());
+  ABSL_CHECK_LE(num_channels, kLabelsToPick.size());
 
   // Randomly pick `num_channels` from the list.
   auto shuffled_labels = kLabelsToPick;
@@ -157,7 +157,7 @@ static void BM_ArrangeSamplesToRender(benchmark::State& state) {
     auto status =
         ArrangeSamplesToRender(labeled_frame, ordered_labels, kEmptyChannel,
                                samples_to_render, num_valid_samples);
-    CHECK_OK(status);
+    ABSL_CHECK_OK(status);
   }
 }
 

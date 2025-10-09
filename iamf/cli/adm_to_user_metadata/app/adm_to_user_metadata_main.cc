@@ -20,7 +20,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "iamf/cli/adm_to_user_metadata/app/adm_to_user_metadata_main_lib.h"
 #include "iamf/cli/adm_to_user_metadata/iamf/user_metadata_generator.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -52,17 +52,17 @@ int main(int32_t argc, char* argv[]) {
   } else if (iamf_profile == "base") {
     profile_version = kIamfBaseProfile;
   } else {
-    LOG(ERROR) << "Invalid IAMF profile version: " << iamf_profile
-               << ". Please provide a valid profile version with "
-                  "--profile_version.";
+    ABSL_LOG(ERROR) << "Invalid IAMF profile version: " << iamf_profile
+                    << ". Please provide a valid profile version with "
+                       "--profile_version.";
     return EXIT_FAILURE;
   }
-  LOG(INFO) << "Using profile version: " << iamf_profile << ".";
+  ABSL_LOG(INFO) << "Using profile version: " << iamf_profile << ".";
 
   const std::string adm_filename(absl::GetFlag(FLAGS_adm_filename));
   if (adm_filename.empty() || !std::filesystem::exists(adm_filename)) {
-    LOG(ERROR) << "ADM filename was not provided or could not be opened. "
-                  "Please provide a valid filename with --adm_filename.";
+    ABSL_LOG(ERROR) << "ADM filename was not provided or could not be opened. "
+                       "Please provide a valid filename with --adm_filename.";
     return EXIT_FAILURE;
   }
 
@@ -80,7 +80,7 @@ int main(int32_t argc, char* argv[]) {
           profile_version);
 
   if (!user_metadata.ok()) {
-    LOG(ERROR) << user_metadata.status();
+    ABSL_LOG(ERROR) << user_metadata.status();
     return user_metadata.status().raw_code();
   }
 
@@ -90,7 +90,7 @@ int main(int32_t argc, char* argv[]) {
               WriteUserMetadataToFile(absl::GetFlag(FLAGS_write_binary_proto),
                                       output_file_path, *user_metadata);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return status.raw_code();
   }
 

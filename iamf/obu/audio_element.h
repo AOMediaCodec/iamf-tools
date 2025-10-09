@@ -18,7 +18,7 @@
 #include <variant>
 #include <vector>
 
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -59,7 +59,7 @@ struct AudioElementParam {
               concrete_param_definition.GetType();
 
           // All alternatives have well-defined types.
-          CHECK(param_definition_type.has_value());
+          ABSL_CHECK(param_definition_type.has_value());
           return *param_definition_type;
         },
         param_definition);

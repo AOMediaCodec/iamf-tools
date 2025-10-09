@@ -19,8 +19,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -92,8 +91,8 @@ void GenerateAudioSubstreams(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     AudioElementObu& audio_element_obu) {
   if (audio_element_metadata.has_num_substreams()) {
-    LOG(WARNING) << "Ignoring deprecated `num_substreams` field. "
-                    "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `num_substreams` field. "
+                         "Please remove it.";
   }
 
   audio_element_obu.InitializeAudioSubstreams(
@@ -109,8 +108,8 @@ absl::Status GenerateParameterDefinitions(
     const CodecConfigObu& codec_config_obu,
     AudioElementObu& audio_element_obu) {
   if (audio_element_metadata.has_num_parameters()) {
-    LOG(WARNING) << "Ignoring deprecated `num_parameters` field. "
-                    "Please remove it.";
+    ABSL_LOG(WARNING) << "Ignoring deprecated `num_parameters` field. "
+                         "Please remove it.";
   }
 
   audio_element_obu.InitializeParams(
@@ -186,8 +185,9 @@ absl::Status GenerateParameterDefinitions(
             copied_param_definition_type);
         // Copy the extension bytes.
         if (user_param_definition.has_param_definition_size()) {
-          LOG(WARNING) << "Ignoring deprecated `param_definition_size` field. "
-                          "Please remove it.";
+          ABSL_LOG(WARNING)
+              << "Ignoring deprecated `param_definition_size` field. "
+                 "Please remove it.";
         }
         extended_param_definition.param_definition_bytes_.resize(
             user_param_definition.param_definition_bytes().size());
@@ -354,7 +354,8 @@ absl::Status FillScalableChannelLayoutConfig(
   const auto& input_config =
       audio_element_metadata.scalable_channel_layout_config();
   if (input_config.has_num_layers()) {
-    LOG(WARNING) << "Ignoring deprecated `num_layers` field. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_layers` field. Please remove it.";
   }
 
   RETURN_IF_NOT_OK(audio_element.obu.InitializeScalableChannelLayout(
@@ -500,10 +501,10 @@ absl::Status FillAmbisonicsConfig(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     AudioElementWithData& audio_element) {
   if (!audio_element_metadata.has_ambisonics_config()) {
-    LOG(ERROR) << "Audio Element Metadata ["
-               << audio_element_metadata.audio_element_id()
-               << " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
-               << " the `ambisonics_config` field.";
+    ABSL_LOG(ERROR) << "Audio Element Metadata ["
+                    << audio_element_metadata.audio_element_id()
+                    << " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
+                    << " the `ambisonics_config` field.";
     return InvalidArgumentError(StrCat(
         "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
         " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
@@ -528,8 +529,8 @@ absl::Status FillAmbisonicsConfig(
           audio_element.obu, audio_element.substream_id_to_labels));
       break;
     default:
-      LOG(ERROR) << "Unrecognized ambisonics_mode: "
-                 << input_config.ambisonics_mode();
+      ABSL_LOG(ERROR) << "Unrecognized ambisonics_mode: "
+                      << input_config.ambisonics_mode();
       return InvalidArgumentError(StrCat("Unrecognized ambisonics_mode: ",
                                          input_config.ambisonics_mode()));
   }
@@ -549,8 +550,8 @@ void LogAudioElements(
     // Log `substream_id_to_labels` separately.
     for (const auto& [substream_id, labels] :
          audio_element.substream_id_to_labels) {
-      VLOG(1) << "Substream ID: " << substream_id;
-      VLOG(1) << "  num_channels= " << labels.size();
+      ABSL_VLOG(1) << "Substream ID: " << substream_id;
+      ABSL_VLOG(1) << "  num_channels= " << labels.size();
     }
   }
 }

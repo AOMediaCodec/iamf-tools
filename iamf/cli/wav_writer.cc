@@ -23,8 +23,7 @@
 
 #include "absl/base/nullability.h"
 #include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -125,8 +124,9 @@ absl::Status WriteSamplesInternal(FILE* absl_nullable file, size_t num_channels,
   } else {
     // This should never happen because the factory method would never create
     // an object with disallowed `bit_depth_` values.
-    LOG(FATAL) << "WavWriter only supports 16, 24, and 32-bit samples; got "
-               << bit_depth;
+    ABSL_LOG(FATAL)
+        << "WavWriter only supports 16, 24, and 32-bit samples; got "
+        << bit_depth;
   }
 
   if (write_sample_result == kAudioToTactileResultSuccess) {
@@ -166,10 +166,11 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
                                              size_t num_samples_per_frame,
                                              bool write_header) {
   // Open the file to write to.
-  LOG(INFO) << "Writer \"" << wav_filename << "\"";
+  ABSL_LOG(INFO) << "Writer \"" << wav_filename << "\"";
   auto* file = std::fopen(wav_filename.c_str(), "wb");
   if (file == nullptr) {
-    LOG(ERROR).WithPerror() << "Error opening file \"" << wav_filename << "\"";
+    ABSL_LOG(ERROR).WithPerror()
+        << "Error opening file \"" << wav_filename << "\"";
     return nullptr;
   }
 
@@ -186,8 +187,8 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
       wav_header_writer = WriteWavHeader32Bit;
       break;
     default:
-      LOG(WARNING) << "This implementation does not support writing "
-                   << bit_depth << "-bit wav files.";
+      ABSL_LOG(WARNING) << "This implementation does not support writing "
+                        << bit_depth << "-bit wav files.";
       std::fclose(file);
       std::remove(wav_filename.c_str());
       return nullptr;
@@ -199,7 +200,8 @@ std::unique_ptr<WavWriter> WavWriter::Create(const std::string& wav_filename,
     wav_header_writer = WavHeaderWriter();
   } else if (wav_header_writer(file, 0, sample_rate_hz, num_channels) ==
              kAudioToTactileResultFailure) {
-    LOG(ERROR) << "Error writing header of file \"" << wav_filename << "\"";
+    ABSL_LOG(ERROR) << "Error writing header of file \"" << wav_filename
+                    << "\"";
     return nullptr;
   }
 

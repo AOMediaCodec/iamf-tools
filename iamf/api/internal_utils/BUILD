@@ -13,8 +13,7 @@ cc_library(
         "//iamf/api/decoder:iamf_decoder",
         "//iamf/cli:wav_writer",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
-        "@abseil-cpp//absl/log",
-        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/types:span",
     ],
 )

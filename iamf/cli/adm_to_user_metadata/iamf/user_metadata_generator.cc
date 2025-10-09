@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -62,7 +62,7 @@ absl::Status UserMetadataGenerator::WriteUserMetadataToFile(
   }
 
   output_file.close();
-  LOG(INFO) << file_name.string() << " generated successfully.";
+  ABSL_LOG(INFO) << file_name.string() << " generated successfully.";
 
   return absl::OkStatus();
 }

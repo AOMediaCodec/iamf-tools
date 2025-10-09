@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -50,7 +50,7 @@ absl::Status ComputeGains(absl::string_view input_layout_string,
   const auto w = down_mixing_params.w;
   // TODO(b/292174366): Strictly follow IAMF spec logic of when to use demixers
   //                    vs. libear renderer.
-  LOG_FIRST_N(INFO, 5)
+  ABSL_LOG_FIRST_N(INFO, 5)
       << "Rendering  may be buggy or not follow the spec "
          "recommendations. Computing gains based on demixing params: "
       << input_layout_string << " --> " << output_layout_string;
@@ -138,13 +138,13 @@ absl::Status ComputeChannelLayoutToLoudspeakersGains(
                                 down_mixing_params, gains));
 
   // Examine the computed gains.
-  LOG_FIRST_N(INFO, 5) << "Computed gains:";
+  ABSL_LOG_FIRST_N(INFO, 5) << "Computed gains:";
   auto fmt = std::setw(7);
   std::stringstream ss;
   for (const auto& label : channel_labels) {
     ss << fmt << absl::StrCat(label);
   }
-  LOG_FIRST_N(INFO, 5) << ss.str();
+  ABSL_LOG_FIRST_N(INFO, 5) << ss.str();
   for (size_t i = 0; i < gains.front().size(); i++) {
     ss.str({});
     ss.clear();
@@ -152,7 +152,7 @@ absl::Status ComputeChannelLayoutToLoudspeakersGains(
     for (size_t j = 0; j < gains.size(); j++) {
       ss << fmt << gains.at(j).at(i);
     }
-    LOG_FIRST_N(INFO, 5) << ss.str();
+    ABSL_LOG_FIRST_N(INFO, 5) << ss.str();
   }
 
   return absl::OkStatus();
@@ -166,7 +166,7 @@ void ProjectSamplesToRender(
     absl::Span<const absl::Span<const InternalSampleType>> input_samples,
     const int16_t* demixing_matrix, const int num_output_channels,
     std::vector<std::vector<InternalSampleType>>& projected_samples) {
-  CHECK_NE(demixing_matrix, nullptr);
+  ABSL_CHECK_NE(demixing_matrix, nullptr);
   const auto num_in_channels = input_samples.size();
   const auto num_ticks = input_samples.empty() ? 0 : input_samples[0].size();
   projected_samples.resize(num_output_channels);

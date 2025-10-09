@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
@@ -125,7 +125,7 @@ absl::Status OpusEncoder::SetNumberOfSamplesToDelayAtStart(
       opus_encoder_ctl(encoder_, OPUS_GET_LOOKAHEAD(&lookahead));
   RETURN_IF_NOT_OK(OpusErrorCodeToAbslStatus(opus_error_code,
                                              "Failed to get Opus lookahead."));
-  LOG_FIRST_N(INFO, 1) << "Opus lookahead=" << lookahead;
+  ABSL_LOG_FIRST_N(INFO, 1) << "Opus lookahead=" << lookahead;
   // Opus calls the number of samples that should be trimmed/pre-skipped
   // `lookahead`.
   required_samples_to_delay_at_start_ = static_cast<uint32_t>(lookahead);

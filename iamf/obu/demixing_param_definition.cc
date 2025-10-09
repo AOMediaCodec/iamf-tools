@@ -13,7 +13,7 @@
 
 #include <memory>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -50,7 +50,7 @@ std::unique_ptr<ParameterData> DemixingParamDefinition::CreateParameterData()
 }
 
 void DemixingParamDefinition::Print() const {
-  LOG(INFO) << "DemixingParamDefinition:";
+  ABSL_LOG(INFO) << "DemixingParamDefinition:";
   ParamDefinition::Print();
   default_demixing_info_parameter_data_.Print();
 }

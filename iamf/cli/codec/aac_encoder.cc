@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -200,7 +200,7 @@ absl::Status AacEncoder::EncodeAudioFrame(
     const std::vector<std::vector<int32_t>>& samples,
     std::unique_ptr<AudioFrameWithData> partial_audio_frame_with_data) {
   if (!encoder_) {
-    LOG(ERROR) << "Expected `encoder_` to be initialized.";
+    ABSL_LOG(ERROR) << "Expected `encoder_` to be initialized.";
   }
   RETURN_IF_NOT_OK(ValidateNotFinalized());
   RETURN_IF_NOT_OK(ValidateInputSamples(samples));
@@ -288,16 +288,16 @@ absl::Status AacEncoder::EncodeAudioFrame(
   finalized_audio_frames_.emplace_back(
       std::move(*partial_audio_frame_with_data));
 
-  LOG_FIRST_N(INFO, 1) << "Encoded " << num_samples_per_channel << " samples * "
-                       << num_channels_ << " channels using "
-                       << out_args.numOutBytes << " bytes";
+  ABSL_LOG_FIRST_N(INFO, 1)
+      << "Encoded " << num_samples_per_channel << " samples * " << num_channels_
+      << " channels using " << out_args.numOutBytes << " bytes";
   return absl::OkStatus();
 }
 
 absl::Status AacEncoder::SetNumberOfSamplesToDelayAtStart(
     bool /*validate_codec_delay*/) {
   if (!encoder_) {
-    LOG(ERROR) << "Expected `encoder_` to be initialized.";
+    ABSL_LOG(ERROR) << "Expected `encoder_` to be initialized.";
   }
 
   // Validate the configuration.

@@ -15,8 +15,7 @@
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/functional/function_ref.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -126,8 +125,8 @@ auto BuildStaticMapFromPairs(const InputContainer& pairs) {
     for (const auto& [key, value] : pairs) {
       const auto& [unused_iter, inserted] = map_from_pairs.insert({key, value});
       if (!inserted) [[unlikely]] {
-        LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
-                   << absl::StrCat(key) << ".";
+        ABSL_LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
+                        << absl::StrCat(key) << ".";
         return MapFromPairs{};
       }
     }
@@ -153,8 +152,8 @@ auto BuildStaticMapFromInvertedPairs(const InputContainer& pairs) {
       const auto& [unused_iter, inserted] =
           map_from_inverted_pairs.insert({key, value});
       if (!inserted) [[unlikely]] {
-        LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
-                   << absl::StrCat(key) << ".";
+        ABSL_LOG(ERROR) << "Failed building map from pairs. Duplicate key= "
+                        << absl::StrCat(key) << ".";
         return MapFromInvertedPairs{};
       }
     }

@@ -24,8 +24,8 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/numbers.h"
@@ -441,7 +441,7 @@ absl::Status ValidateAdmObjectForDolbyAdm(const ADM& adm,
           "object");
     }
   } else {
-    CHECK_EQ(type_definition, kTypeDefinitionDirectSpeakers);
+    ABSL_CHECK_EQ(type_definition, kTypeDefinitionDirectSpeakers);
     if (num_tracks_in_object > 10) {
       return absl::InvalidArgumentError(
           "Maximum number of occurrences of track UID refs for DirectSpeakers "
@@ -491,12 +491,12 @@ void ValidateAudioObjects(const ADM& adm, Handler& handler) {
       status = ValidateAdmObjectForDefaultAdm(type_definition,
                                               audio_pack_id_yyyy_part);
     } else {
-      CHECK_EQ(adm.file_type, kAdmFileTypeDolby);
+      ABSL_CHECK_EQ(adm.file_type, kAdmFileTypeDolby);
       status = ValidateAdmObjectForDolbyAdm(adm, audio_object, type_definition);
     }
     if (!status.ok()) {
-      LOG(WARNING) << "Ignoring unknown object with audio_object_id= "
-                   << audio_object.id << ". Error: " << status;
+      ABSL_LOG(WARNING) << "Ignoring unknown object with audio_object_id= "
+                        << audio_object.id << ". Error: " << status;
       handler.invalid_audio_objects.insert(audio_object.id);
     }
   }
@@ -560,7 +560,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
       // To handle unwanted character like spaces, new lines.
@@ -580,7 +580,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
       // To handle unwanted character like spaces, new lines.
@@ -622,7 +622,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
       // To handle unwanted character like spaces, new lines.
@@ -647,7 +647,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
 
@@ -667,7 +667,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
 
@@ -709,7 +709,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
           break;
         }
         default: {
-          LOG(ERROR) << "Unexpected case";
+          ABSL_LOG(ERROR) << "Unexpected case";
         }
       }
 
@@ -721,7 +721,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
       break;
     }
     default: {
-      LOG(ERROR) << "Unexpected case";
+      ABSL_LOG(ERROR) << "Unexpected case";
     }
   }
 }
@@ -828,7 +828,8 @@ void SetChannelIndices(ADM& adm) {
             std::distance(adm.audio_channels.begin(), channel_id);
         id_ref_and_index.second = channel_index;
       } else {
-        LOG(WARNING) << "Channel ID ref " << channel_id_ref << " not found!";
+        ABSL_LOG(WARNING) << "Channel ID ref " << channel_id_ref
+                          << " not found!";
       }
     }
   }

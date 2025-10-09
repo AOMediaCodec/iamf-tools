@@ -15,7 +15,7 @@
 #include <memory>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -158,24 +158,24 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 }
 
 void ParamDefinition::Print() const {
-  LOG(INFO) << "  parameter_type= "
-            << (type_.has_value() ? absl::StrCat(*type_) : "NONE");
-  LOG(INFO) << "  parameter_id= " << parameter_id_;
-  LOG(INFO) << "  parameter_rate= " << parameter_rate_;
-  LOG(INFO) << "  param_definition_mode= "
-            << absl::StrCat(param_definition_mode_);
-  LOG(INFO) << "  reserved= " << absl::StrCat(reserved_);
+  ABSL_LOG(INFO) << "  parameter_type= "
+                 << (type_.has_value() ? absl::StrCat(*type_) : "NONE");
+  ABSL_LOG(INFO) << "  parameter_id= " << parameter_id_;
+  ABSL_LOG(INFO) << "  parameter_rate= " << parameter_rate_;
+  ABSL_LOG(INFO) << "  param_definition_mode= "
+                 << absl::StrCat(param_definition_mode_);
+  ABSL_LOG(INFO) << "  reserved= " << absl::StrCat(reserved_);
   if (param_definition_mode_ == 0) {
-    LOG(INFO) << "  duration= " << duration_;
-    LOG(INFO) << "  constant_subblock_duration= "
-              << constant_subblock_duration_;
-    LOG(INFO) << "  num_subblocks= " << GetNumSubblocks();
+    ABSL_LOG(INFO) << "  duration= " << duration_;
+    ABSL_LOG(INFO) << "  constant_subblock_duration= "
+                   << constant_subblock_duration_;
+    ABSL_LOG(INFO) << "  num_subblocks= " << GetNumSubblocks();
 
     // Subblock durations.
     if (constant_subblock_duration_ == 0) {
       for (int k = 0; k < GetNumSubblocks(); k++) {
-        LOG(INFO) << "  subblock_durations[" << k
-                  << "]= " << GetSubblockDuration(k);
+        ABSL_LOG(INFO) << "  subblock_durations[" << k
+                       << "]= " << GetSubblockDuration(k);
       }
     }
   }
@@ -261,9 +261,9 @@ std::unique_ptr<ParameterData> MixGainParamDefinition::CreateParameterData()
 }
 
 void MixGainParamDefinition::Print() const {
-  LOG(INFO) << "MixGainParamDefinition:";
+  ABSL_LOG(INFO) << "MixGainParamDefinition:";
   ParamDefinition::Print();
-  LOG(INFO) << "  default_mix_gain= " << default_mix_gain_;
+  ABSL_LOG(INFO) << "  default_mix_gain= " << default_mix_gain_;
 }
 
 absl::Status ReconGainParamDefinition::ValidateAndWrite(
@@ -300,17 +300,17 @@ std::unique_ptr<ParameterData> ReconGainParamDefinition::CreateParameterData()
 }
 
 void ReconGainParamDefinition::Print() const {
-  LOG(INFO) << "ReconGainParamDefinition:";
+  ABSL_LOG(INFO) << "ReconGainParamDefinition:";
   ParamDefinition::Print();
-  LOG(INFO) << "  audio_element_id= " << audio_element_id_;
+  ABSL_LOG(INFO) << "  audio_element_id= " << audio_element_id_;
 
   for (int i = 0; i < aux_data_.size(); i++) {
-    LOG(INFO) << "  // recon_gain_is_present_flags[" << i
-              << "]= " << absl::StrCat(aux_data_[i].recon_gain_is_present_flag);
+    ABSL_LOG(INFO) << "  // recon_gain_is_present_flags[" << i << "]= "
+                   << absl::StrCat(aux_data_[i].recon_gain_is_present_flag);
     const auto& channel_numbers = aux_data_[i].channel_numbers_for_layer;
-    LOG(INFO) << "  // channel_numbers_for_layer[" << i
-              << "]= " << channel_numbers.surround << "." << channel_numbers.lfe
-              << "." << channel_numbers.height;
+    ABSL_LOG(INFO) << "  // channel_numbers_for_layer[" << i
+                   << "]= " << channel_numbers.surround << "."
+                   << channel_numbers.lfe << "." << channel_numbers.height;
   }
 }
 
@@ -342,11 +342,12 @@ std::unique_ptr<ParameterData> ExtendedParamDefinition::CreateParameterData()
 }
 
 void ExtendedParamDefinition::Print() const {
-  LOG(INFO) << "ExtendedParamDefinition:";
+  ABSL_LOG(INFO) << "ExtendedParamDefinition:";
   // This class does not read the base class's data, i.e. it doesn't call
   // `ParamDefinition::Print()`.
-  LOG(INFO) << "  param_definition_size= " << param_definition_bytes_.size();
-  LOG(INFO) << "  // Skipped printing param_definition_bytes";
+  ABSL_LOG(INFO) << "  param_definition_size= "
+                 << param_definition_bytes_.size();
+  ABSL_LOG(INFO) << "  // Skipped printing param_definition_bytes";
 }
 
 }  // namespace iamf_tools

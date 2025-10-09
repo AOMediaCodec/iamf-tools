@@ -26,8 +26,8 @@
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -262,11 +262,13 @@ bool ReadBitBuffer::IsDataAvailable() const {
 }
 
 bool ReadBitBuffer::CanReadBytes(int64_t num_bytes_requested) const {
-  CHECK_GE(num_bytes_requested, 0);
-  CHECK(source_bit_offset_ >= 0 && source_bit_offset_ <= source_size_bits_);
+  ABSL_CHECK_GE(num_bytes_requested, 0);
+  ABSL_CHECK(source_bit_offset_ >= 0 &&
+             source_bit_offset_ <= source_size_bits_);
   const int64_t num_bytes_in_source =
       (source_size_bits_ - source_bit_offset_) / 8;
-  CHECK(buffer_bit_offset_ >= 0 && buffer_bit_offset_ <= buffer_size_bits_);
+  ABSL_CHECK(buffer_bit_offset_ >= 0 &&
+             buffer_bit_offset_ <= buffer_size_bits_);
   const int64_t num_bytes_in_buffer =
       (buffer_size_bits_ - buffer_bit_offset_) / 8;
   return (num_bytes_in_source + num_bytes_in_buffer) >= num_bytes_requested;
@@ -347,7 +349,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   if (expected_final_position / 8 == Tell() / 8) {
     ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                             remaining_bits_to_read, output);
-    CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
+    ABSL_CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
     return absl::OkStatus();
   }
 
@@ -370,7 +372,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
         std::min(buffer_size_bits_ - buffer_bit_offset_,
                  (remaining_bits_to_read / 8) * 8);
 
-    CHECK(CanReadByteAligned(buffer_bit_offset_, num_bits_from_buffer));
+    ABSL_CHECK(CanReadByteAligned(buffer_bit_offset_, num_bits_from_buffer));
     remaining_bits_to_read -= num_bits_from_buffer;
     ReadUnsignedLiteralBytes(bit_buffer_, buffer_bit_offset_,
                              num_bits_from_buffer, output);
@@ -381,7 +383,7 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   remaining_bits_to_read -= num_bits_in_final_byte;
   ReadUnsignedLiteralBits(bit_buffer_, buffer_size_bits_, buffer_bit_offset_,
                           num_bits_in_final_byte, output);
-  CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
+  ABSL_CHECK_EQ(remaining_bits_to_read, 0) << remaining_bits_to_read;
   return absl::OkStatus();
 }
 
@@ -417,11 +419,11 @@ std::unique_ptr<FileBasedReadBitBuffer>
 FileBasedReadBitBuffer::CreateFromFilePath(
     const int64_t capacity_bytes, const std::filesystem::path& file_path) {
   if (capacity_bytes < 0) {
-    LOG(ERROR) << "FileBasedReadBitBuffer capacity_bytes must be >= 0.";
+    ABSL_LOG(ERROR) << "FileBasedReadBitBuffer capacity_bytes must be >= 0.";
     return nullptr;
   }
   if (!std::filesystem::exists(file_path)) {
-    LOG(ERROR) << "File not found: " << file_path;
+    ABSL_LOG(ERROR) << "File not found: " << file_path;
     return nullptr;
   }
   std::ifstream ifs(file_path, std::ios::binary | std::ios::in);
@@ -429,7 +431,7 @@ FileBasedReadBitBuffer::CreateFromFilePath(
   const auto file_size = static_cast<size_t>(ifs.tellg());
   ifs.seekg(0, ifs.beg);
   if (!ifs.good()) {
-    LOG(ERROR) << "Error accessing " << file_path;
+    ABSL_LOG(ERROR) << "Error accessing " << file_path;
     return nullptr;
   }
 
@@ -459,7 +461,7 @@ FileBasedReadBitBuffer::FileBasedReadBitBuffer(size_t capacity_bytes,
 std::unique_ptr<StreamBasedReadBitBuffer> StreamBasedReadBitBuffer::Create(
     int64_t capacity_bytes) {
   if (capacity_bytes < 0) {
-    LOG(ERROR) << "StreamBasedReadBitBuffer capacity_bytes must be >= 0.";
+    ABSL_LOG(ERROR) << "StreamBasedReadBitBuffer capacity_bytes must be >= 0.";
     return nullptr;
   }
   // Since this is a stream based buffer, we do not initialize with any data.

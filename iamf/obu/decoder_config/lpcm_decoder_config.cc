@@ -13,7 +13,7 @@
 
 #include <cstdint>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -126,11 +126,11 @@ absl::Status LpcmDecoderConfig::GetBitDepthToMeasureLoudness(
 }
 
 void LpcmDecoderConfig::Print() const {
-  VLOG(1) << "    decoder_config(ipcm):";
-  VLOG(1) << "      sample_format_flags= "
-          << absl::StrCat(sample_format_flags_bitmask_);
-  VLOG(1) << "      sample_size= " << absl::StrCat(sample_size_);
-  VLOG(1) << "      sample_rate= " << sample_rate_;
+  ABSL_VLOG(1) << "    decoder_config(ipcm):";
+  ABSL_VLOG(1) << "      sample_format_flags= "
+               << absl::StrCat(sample_format_flags_bitmask_);
+  ABSL_VLOG(1) << "      sample_size= " << absl::StrCat(sample_size_);
+  ABSL_VLOG(1) << "      sample_rate= " << sample_rate_;
 }
 
 }  // namespace iamf_tools

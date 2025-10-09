@@ -22,8 +22,8 @@
 #include "absl/base/nullability.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -127,13 +127,13 @@ void SpliceArbitraryObus(
 void PrintAudioFrames(const std::list<AudioFrameWithData>& audio_frames) {
   int i = 0;
   for (const auto& audio_frame_with_data : audio_frames) {
-    VLOG(1) << "Audio Frame OBU[" << i << "]";
+    ABSL_VLOG(1) << "Audio Frame OBU[" << i << "]";
 
     audio_frame_with_data.obu.PrintObu();
-    VLOG(1) << "    audio frame.start_timestamp= "
-            << audio_frame_with_data.start_timestamp;
-    VLOG(1) << "    audio frame.end_timestamp= "
-            << audio_frame_with_data.end_timestamp;
+    ABSL_VLOG(1) << "    audio frame.start_timestamp= "
+                 << audio_frame_with_data.start_timestamp;
+    ABSL_VLOG(1) << "    audio frame.end_timestamp= "
+                 << audio_frame_with_data.end_timestamp;
 
     i++;
   }
@@ -187,7 +187,7 @@ absl::Status FinalizeDescriptors(
     // Skip finalizing twice, in case this is called multiple times.
     return absl::OkStatus();
   }
-  LOG(INFO) << "Finalizing mix presentation OBUs";
+  ABSL_LOG(INFO) << "Finalizing mix presentation OBUs";
 
   RETURN_IF_NOT_OK(mix_presentation_finalizer.FinalizePushingTemporalUnits());
   auto finalized_mix_presentation_obus =
@@ -219,7 +219,7 @@ absl::Status FinalizeObuSequencers(
     // Skip finalizing twice, in case this is called multiple times.
     return absl::OkStatus();
   }
-  LOG(INFO) << "Finalizing OBU sequencers";
+  ABSL_LOG(INFO) << "Finalizing OBU sequencers";
 
   // Close all of the `ObuSequencer`s.
   for (auto& obu_sequencer : obu_sequencers) {
@@ -385,7 +385,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   auto obu_sequencers = obu_sequencer_factory();
   for (auto& obu_sequencer : obu_sequencers) {
     // Sanitize the sequencers, because they are tagged as non-nullable.
-    CHECK_NE(obu_sequencer, nullptr);
+    ABSL_CHECK_NE(obu_sequencer, nullptr);
     RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
         *ia_sequence_header_obu, *codec_config_obus, *audio_elements,
         mix_presentation_obus, descriptor_arbitrary_obus));
@@ -467,8 +467,9 @@ absl::Status IamfEncoder::Encode(
   if (finalize_encode_called_) {
     // Avoid adding any samples after they are finalized.
     if (!temporal_unit_data.audio_element_id_to_data.empty()) {
-      LOG_FIRST_N(WARNING, 3) << "Calling `Encode()` with samples after "
-                                 "`FinalizeEncode()` drops the audio samples.";
+      ABSL_LOG_FIRST_N(WARNING, 3)
+          << "Calling `Encode()` with samples after "
+             "`FinalizeEncode()` drops the audio samples.";
     }
 
     return absl::OkStatus();
@@ -549,7 +550,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
     // Some audio codec will only output an encoded frame after the next
     // frame "pushes" the old one out. So we wait until the next iteration to
     // retrieve it.
-    VLOG(1) << "No audio frames generated for this temporal unit.";
+    ABSL_VLOG(1) << "No audio frames generated for this temporal unit.";
 
     if (finalize_encode_called_) {
       // At the end of the sequence, there could be some extraneous arbitrary
@@ -595,8 +596,8 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   // determine the demixed frames.
   for (auto& audio_frame : audio_frames) {
     RETURN_IF_NOT_OK(audio_frame_decoder_.Decode(audio_frame));
-    CHECK_EQ(output_start_timestamp, audio_frame.start_timestamp);
-    CHECK_EQ(output_end_timestamp, audio_frame.end_timestamp);
+    ABSL_CHECK_EQ(output_start_timestamp, audio_frame.start_timestamp);
+    ABSL_CHECK_EQ(output_end_timestamp, audio_frame.end_timestamp);
   }
 
   // Demix the original and decoded audio frames, differences between them are
@@ -666,7 +667,7 @@ absl::Status IamfEncoder::OutputTemporalUnit(
 
 absl::Status IamfEncoder::FinalizeEncode() {
   if (finalize_encode_called_) {
-    LOG_FIRST_N(WARNING, 3)
+    ABSL_LOG_FIRST_N(WARNING, 3)
         << "Calling `FinalizeEncode()` multiple times has no effect.";
     return absl::OkStatus();
   }

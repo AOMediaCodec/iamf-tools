@@ -14,7 +14,7 @@
 #include <optional>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -95,25 +95,25 @@ absl::Status ReconGainInfoParameterData::Write(WriteBitBuffer& wb) const {
 }
 
 void ReconGainInfoParameterData::Print() const {
-  LOG(INFO) << "  ReconGainInfoParameterData:";
+  ABSL_LOG(INFO) << "  ReconGainInfoParameterData:";
   for (int l = 0; l < recon_gain_elements.size(); l++) {
     const auto& recon_gain_element = recon_gain_elements[l];
-    LOG(INFO) << "    recon_gain_elements[" << l << "]:";
+    ABSL_LOG(INFO) << "    recon_gain_elements[" << l << "]:";
     if (!recon_gain_element.has_value()) {
-      LOG(INFO) << "      NONE";
+      ABSL_LOG(INFO) << "      NONE";
       continue;
     }
-    LOG(INFO) << "      recon_gain_flag= "
-              << recon_gain_element->recon_gain_flag;
+    ABSL_LOG(INFO) << "      recon_gain_flag= "
+                   << recon_gain_element->recon_gain_flag;
     for (int b = 0; b < recon_gain_element->recon_gain.size(); b++) {
-      LOG(INFO) << "      recon_gain[" << b
-                << "]= " << absl::StrCat(recon_gain_element->recon_gain[b]);
+      ABSL_LOG(INFO) << "      recon_gain[" << b << "]= "
+                     << absl::StrCat(recon_gain_element->recon_gain[b]);
     }
   }
 
-  LOG(INFO) << "    // recon_gain_is_present_flags: ";
+  ABSL_LOG(INFO) << "    // recon_gain_is_present_flags: ";
   for (const auto& flag : recon_gain_is_present_flags) {
-    LOG(INFO) << "    //   " << absl::StrCat(flag);
+    ABSL_LOG(INFO) << "    //   " << absl::StrCat(flag);
   }
 }
 

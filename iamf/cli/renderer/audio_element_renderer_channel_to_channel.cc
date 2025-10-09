@@ -21,7 +21,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -118,7 +118,7 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
     const ScalableChannelLayoutConfig& scalable_channel_layout_config,
     const Layout& playback_layout, size_t num_samples_per_frame) {
   if (scalable_channel_layout_config.channel_audio_layer_configs.empty()) {
-    LOG(ERROR) << "No channel audio layer configs provided.";
+    ABSL_LOG(ERROR) << "No channel audio layer configs provided.";
     return nullptr;
   }
   const auto& highest_channel_audio_layer_config =
@@ -128,7 +128,7 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
           highest_channel_audio_layer_config.loudspeaker_layout,
           highest_channel_audio_layer_config.expanded_loudspeaker_layout);
   if (!ordered_labels.ok()) {
-    LOG(ERROR) << ordered_labels.status();
+    ABSL_LOG(ERROR) << ordered_labels.status();
     return nullptr;
   }
 
@@ -136,19 +136,19 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
       highest_channel_audio_layer_config.loudspeaker_layout,
       highest_channel_audio_layer_config.expanded_loudspeaker_layout);
   if (!input_key.ok()) {
-    LOG(ERROR) << input_key.status();
+    ABSL_LOG(ERROR) << input_key.status();
     return nullptr;
   }
   const auto& output_key =
       renderer_utils::LookupOutputKeyFromPlaybackLayout(playback_layout);
   if (!output_key.ok()) {
-    LOG(ERROR) << output_key.status();
+    ABSL_LOG(ERROR) << output_key.status();
     return nullptr;
   }
 
   const auto& gains = LookupPrecomputedGains(*input_key, *output_key);
   if (!gains.ok()) {
-    LOG(ERROR) << gains.status();
+    ABSL_LOG(ERROR) << gains.status();
     return nullptr;
   }
 

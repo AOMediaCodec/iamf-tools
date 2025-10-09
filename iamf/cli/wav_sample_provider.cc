@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -94,8 +94,8 @@ absl::Status FillChannelIdsAndLabels(
            .ok()) {
     // OK. The user is claiming some channel IDs are shared between labels.
     // This is strange, but permitted.
-    LOG(WARNING) << "Usually channel labels should be unique. Did you use "
-                    "the same channel ID for different channels?";
+    ABSL_LOG(WARNING) << "Usually channel labels should be unique. Did you use "
+                         "the same channel ID for different channels?";
   }
 
   // Precompute the internal `ChannelLabel::Label`s.
@@ -249,7 +249,7 @@ absl::Status WavSampleProvider::ReadFrames(
   }
   auto& wav_reader = wav_reader_iter->second;
   const size_t samples_read = wav_reader.ReadFrame();
-  LOG_FIRST_N(INFO, 1) << samples_read << " samples read";
+  ABSL_LOG_FIRST_N(INFO, 1) << samples_read << " samples read";
 
   // Note if the WAV reader is found for the Audio Element ID, then it's
   // guaranteed to have the other corresponding metadata (otherwise the

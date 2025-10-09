@@ -5,7 +5,6 @@
 #include <memory>
 #include <utility>
 
-#include "absl/log/log.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"

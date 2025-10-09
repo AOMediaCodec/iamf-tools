@@ -19,8 +19,7 @@
 #include <string>
 #include <system_error>
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/cli/obu_sequencer_base.h"
@@ -52,7 +51,7 @@ void MaybeRemoveFile(const std::string& filename,
   std::filesystem::remove(filename, error_code);
   if (!error_code) {
     // File clean up failed somehow. Just log the error and move on.
-    LOG(ERROR).WithPerror() << "Failed to remove " << filename;
+    ABSL_LOG(ERROR).WithPerror() << "Failed to remove " << filename;
   }
 }
 
@@ -72,7 +71,7 @@ absl::Status ObuSequencerIamf::PushSerializedDescriptorObus(
     std::optional<InternalTimestamp> /*first_untrimmed_timestamp*/,
     int /*num_channels*/, absl::Span<const uint8_t> descriptor_obus) {
   if (!iamf_filename_.empty()) {
-    LOG(INFO) << "Writing descriptor OBUs to " << iamf_filename_;
+    ABSL_LOG(INFO) << "Writing descriptor OBUs to " << iamf_filename_;
 
     output_iamf_.emplace(iamf_filename_, std::fstream::out | std::ios::binary);
   }
@@ -113,7 +112,7 @@ void ObuSequencerIamf::CloseDerived() {
 }
 
 void ObuSequencerIamf::AbortDerived() {
-  LOG(INFO) << "Aborting ObuSequencerIamf.";
+  ABSL_LOG(INFO) << "Aborting ObuSequencerIamf.";
   MaybeRemoveFile(iamf_filename_, output_iamf_);
 }
 

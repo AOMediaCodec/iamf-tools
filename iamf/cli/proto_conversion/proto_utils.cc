@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/obu_header.pb.h"
@@ -57,8 +57,9 @@ absl::Status CopyParamDefinition(
   }
 
   if (input_param_definition.has_num_subblocks()) {
-    LOG(WARNING) << "Ignoring deprecated `num_subblocks` field in Parameter "
-                    "Definition. Please remove it.";
+    ABSL_LOG(WARNING)
+        << "Ignoring deprecated `num_subblocks` field in Parameter "
+           "Definition. Please remove it.";
   }
 
   // Infer the number of subblocks.
@@ -76,7 +77,7 @@ absl::Status CopyParamDefinition(
 ObuHeader GetHeaderFromMetadata(
     const iamf_tools_cli_proto::ObuHeaderMetadata& input_obu_header) {
   if (input_obu_header.has_extension_header_size()) {
-    LOG(WARNING)
+    ABSL_LOG(WARNING)
         << "Ignoring deprecated `ObuHeaderMetadata.extension_header_size`. "
            "Please remove it.";
   }
@@ -143,14 +144,14 @@ std::unique_ptr<LebGenerator> CreateLebGenerator(
           StaticCastIfInRange("user_metadata.leb_generator.fixed_size",
                               user_config.fixed_size(), fixed_size_int8);
       if (!status.ok()) {
-        LOG(ERROR) << status;
+        ABSL_LOG(ERROR) << status;
         return nullptr;
       }
       return LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize,
                                   fixed_size_int8);
     }
     default:
-      LOG(ERROR) << "Invalid generation mode: " << user_config.mode();
+      ABSL_LOG(ERROR) << "Invalid generation mode: " << user_config.mode();
       return nullptr;
   }
 }

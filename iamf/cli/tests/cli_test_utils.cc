@@ -29,8 +29,7 @@
 
 // [internal] Placeholder for get runfiles header.
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/strings/str_cat.h"
@@ -124,7 +123,7 @@ absl::Status CollectObusFromIaSequence(
 
   bool continue_processing = true;
   int temporal_unit_count = 0;
-  LOG(INFO) << "Starting Temporal Unit OBU processing";
+  ABSL_LOG(INFO) << "Starting Temporal Unit OBU processing";
   while (continue_processing) {
     std::optional<ObuProcessor::OutputTemporalUnit> output_temporal_unit;
     RETURN_IF_NOT_OK(obu_processor->ProcessTemporalUnit(
@@ -138,7 +137,8 @@ absl::Status CollectObusFromIaSequence(
       temporal_unit_count++;
     }
   }
-  LOG(INFO) << "Processed " << temporal_unit_count << " Temporal Unit OBUs";
+  ABSL_LOG(INFO) << "Processed " << temporal_unit_count
+                 << " Temporal Unit OBUs";
 
   // Move the processed data to the output.
   ia_sequence_header = obu_processor->ia_sequence_header_;
@@ -532,7 +532,7 @@ double GetLogSpectralDistance(
     const absl::Span<const InternalSampleType>& second_log_spectrum) {
   const int num_samples = first_log_spectrum.size();
   if (num_samples != second_log_spectrum.size()) {
-    LOG(ERROR) << "Spectrum sizes are not equal.";
+    ABSL_LOG(ERROR) << "Spectrum sizes are not equal.";
     return false;
   }
   double log_spectral_distance = 0.0;
@@ -591,8 +591,8 @@ std::vector<DecodeSpecification> GetDecodeSpecifications(
                   .sound_system(),
               decode_specification.sound_system);
           if (!sound_system_status.ok()) {
-            LOG(ERROR) << "Failed to copy sound system: "
-                       << sound_system_status;
+            ABSL_LOG(ERROR)
+                << "Failed to copy sound system: " << sound_system_status;
             continue;
           }
         }

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
@@ -263,7 +263,7 @@ absl::Status WriteBitBuffer::FlushAndWriteToFile(
   }
 
   if (bit_offset_ > 0) {
-    LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
+    ABSL_LOG_EVERY_POW_2(INFO) << "Flushing " << bit_offset_ / 8 << " bytes";
   }
   Reset();
   return absl::OkStatus();

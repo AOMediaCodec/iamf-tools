@@ -16,7 +16,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/log/check.h"
 #include "absl/status/status.h"
 #include "absl/types/span.h"
 #include "iamf/obu/types.h"

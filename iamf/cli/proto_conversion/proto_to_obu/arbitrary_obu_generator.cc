@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/arbitrary_obu.pb.h"

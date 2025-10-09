@@ -13,7 +13,7 @@
 
 #include <cstdint>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -140,14 +140,14 @@ absl::Status OpusDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
 }
 
 void OpusDecoderConfig::Print() const {
-  VLOG(1) << "    decoder_config(opus):";
-  VLOG(1) << "      version= " << absl::StrCat(version_);
-  VLOG(1) << "      output_channel_count= "
-          << absl::StrCat(output_channel_count_);
-  VLOG(1) << "      pre_skip= " << pre_skip_;
-  VLOG(1) << "      input_sample_rate= " << input_sample_rate_;
-  VLOG(1) << "      output_gain= " << output_gain_;
-  VLOG(1) << "      mapping_family= " << absl::StrCat(mapping_family_);
+  ABSL_VLOG(1) << "    decoder_config(opus):";
+  ABSL_VLOG(1) << "      version= " << absl::StrCat(version_);
+  ABSL_VLOG(1) << "      output_channel_count= "
+               << absl::StrCat(output_channel_count_);
+  ABSL_VLOG(1) << "      pre_skip= " << pre_skip_;
+  ABSL_VLOG(1) << "      input_sample_rate= " << input_sample_rate_;
+  ABSL_VLOG(1) << "      output_gain= " << output_gain_;
+  ABSL_VLOG(1) << "      mapping_family= " << absl::StrCat(mapping_family_);
 }
 
 }  // namespace iamf_tools

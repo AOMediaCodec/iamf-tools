@@ -87,7 +87,7 @@ cc_test(
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:renderer_utils",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/random",
         "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",

@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/types/span.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/types.h"
@@ -63,9 +63,9 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
   auto* libflac_callback_data = static_cast<LibFlacCallbackData*>(client_data);
   if (libflac_callback_data->num_samples_per_channel_ <
       frame->header.blocksize) {
-    LOG(ERROR) << "Frame blocksize " << frame->header.blocksize
-               << " does not match expected number of samples per channel "
-               << libflac_callback_data->num_samples_per_channel_;
+    ABSL_LOG(ERROR) << "Frame blocksize " << frame->header.blocksize
+                    << " does not match expected number of samples per channel "
+                    << libflac_callback_data->num_samples_per_channel_;
     return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
   }
 
@@ -93,19 +93,19 @@ void LibFlacErrorCallback(const FLAC__StreamDecoder* /*decoder*/,
                           void* /*client_data*/) {
   switch (status) {
     case FLAC__STREAM_DECODER_ERROR_STATUS_LOST_SYNC:
-      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_LOST_SYNC";
+      ABSL_LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_LOST_SYNC";
       break;
     case FLAC__STREAM_DECODER_ERROR_STATUS_BAD_HEADER:
-      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_BAD_HEADER";
+      ABSL_LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_BAD_HEADER";
       break;
     case FLAC__STREAM_DECODER_ERROR_STATUS_FRAME_CRC_MISMATCH:
-      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_FRAME_CRC_MISMATCH";
+      ABSL_LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_FRAME_CRC_MISMATCH";
       break;
     case FLAC__STREAM_DECODER_ERROR_STATUS_UNPARSEABLE_STREAM:
-      LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_UNPARSEABLE_STREAM";
+      ABSL_LOG(ERROR) << "FLAC__STREAM_DECODER_ERROR_STATUS_UNPARSEABLE_STREAM";
       break;
     default:
-      LOG(ERROR) << "Unknown FLAC__StreamDecoderErrorStatus= " << status;
+      ABSL_LOG(ERROR) << "Unknown FLAC__StreamDecoderErrorStatus= " << status;
       break;
   }
 }

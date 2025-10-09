@@ -16,7 +16,7 @@
 #include <memory>
 #include <utility>
 
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
 #include "iamf/cli/sample_processor_base.h"
@@ -40,7 +40,8 @@ void ApplyOutputAudioFormatToSampleProcessorFactory(
   switch (output_audio_format) {
     using enum iamf_tools_cli_proto::OutputAudioFormat;
     case OUTPUT_FORMAT_INVALID:
-      LOG(WARNING) << "Invalid output audio format. Disabling output audio.";
+      ABSL_LOG(WARNING)
+          << "Invalid output audio format. Disabling output audio.";
       [[fallthrough]];
     case OUTPUT_FORMAT_NONE:
       // Disable wav writing entirely.

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "Eigen/Core"
-#include "absl/log/check.h"
+#include "absl/log/absl_check.h"
 #include "iamf/cli/ambisonic_encoder/ambisonic_utils.h"
 
 namespace iamf_tools {
@@ -32,8 +32,8 @@ AmbisonicEncoder::AmbisonicEncoder(size_t buffer_size_per_channel,
       number_of_output_channels_((ambisonic_order + 1) * (ambisonic_order + 1)),
       ambisonic_order_(ambisonic_order),
       alp_generator_(static_cast<int>(ambisonic_order), false, false) {
-  CHECK_GE(number_of_input_channels_, 0);
-  CHECK_GE(ambisonic_order_, 0);
+  ABSL_CHECK_GE(number_of_input_channels_, 0);
+  ABSL_CHECK_GE(ambisonic_order_, 0);
 
   // Initialize the encoding matrix.
   encoding_matrix_ =
@@ -44,9 +44,9 @@ AmbisonicEncoder::AmbisonicEncoder(size_t buffer_size_per_channel,
 void AmbisonicEncoder::SetSource(size_t input_channel, float gain,
                                  float azimuth, float elevation,
                                  float distance) {
-  CHECK_NE(number_of_input_channels_, 0);
-  CHECK_NE(number_of_output_channels_, 0);
-  CHECK_LT(input_channel, number_of_input_channels_);
+  ABSL_CHECK_NE(number_of_input_channels_, 0);
+  ABSL_CHECK_NE(number_of_output_channels_, 0);
+  ABSL_CHECK_LT(input_channel, number_of_input_channels_);
 
   // Check if the key exists in the map.
   if (sources_.find(input_channel) == sources_.end()) {
@@ -101,13 +101,13 @@ void AmbisonicEncoder::ProcessPlanarAudioData(
     std::vector<float>& output_buffer) const {
   // Check if the input buffer size matches the declared buffer size and number
   // of input channels.
-  CHECK_EQ(input_buffer.size(),
-           number_of_input_channels_ * buffer_size_per_channel_);
+  ABSL_CHECK_EQ(input_buffer.size(),
+                number_of_input_channels_ * buffer_size_per_channel_);
 
   // Check if the output buffer size matches the declared buffer size and number
   // of output channels.
-  CHECK_EQ(output_buffer.size(),
-           number_of_output_channels_ * buffer_size_per_channel_);
+  ABSL_CHECK_EQ(output_buffer.size(),
+                number_of_output_channels_ * buffer_size_per_channel_);
 
   // Create Eigen map for the input buffer.
   const Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic,

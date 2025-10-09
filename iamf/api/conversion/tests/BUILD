@@ -8,7 +8,7 @@ cc_test(
         "//iamf/api/conversion:channel_reorderer",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/log:check",
+        "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
         "@com_google_benchmark//:benchmark_main",

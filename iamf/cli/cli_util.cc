@@ -23,7 +23,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -128,9 +128,10 @@ absl::Status CollectAndValidateParamDefinitions(
           break;
         }
         default:
-          LOG(WARNING) << "Ignoring parameter definition of type= "
-                       << param_definition_type << " in audio element= "
-                       << audio_element_id_for_debugging;
+          ABSL_LOG(WARNING)
+              << "Ignoring parameter definition of type= "
+              << param_definition_type
+              << " in audio element= " << audio_element_id_for_debugging;
           continue;
       }
     }
@@ -243,8 +244,8 @@ absl::Status GetCommonSamplesPerFrame(
 
 void LogChannelNumbers(const std::string& name,
                        const ChannelNumbers& channel_numbers) {
-  VLOG(1) << name << ": [" << channel_numbers.surround << "."
-          << channel_numbers.lfe << "." << channel_numbers.height << "]";
+  ABSL_VLOG(1) << name << ": [" << channel_numbers.surround << "."
+               << channel_numbers.lfe << "." << channel_numbers.height << "]";
 }
 
 }  // namespace iamf_tools

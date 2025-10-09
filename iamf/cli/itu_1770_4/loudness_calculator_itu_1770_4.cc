@@ -21,8 +21,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -179,7 +178,7 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
     int32_t rendered_sample_rate) {
   const auto weights = GetItu1770_4ChannelWeights(layout.loudness_layout);
   if (!weights.ok()) {
-    LOG(ERROR) << "Failed to get channel weights: " << weights.status();
+    ABSL_LOG(ERROR) << "Failed to get channel weights: " << weights.status();
     return nullptr;
   }
 
@@ -187,12 +186,13 @@ LoudnessCalculatorItu1770_4::CreateForLayout(
 
   const bool enable_true_peak_measurement =
       IncludeTruePeak(layout.loudness.info_type);
-  VLOG(1) << "Creating AudioLoudness1770:";
-  VLOG(1) << "  num_channels= " << num_channels;
-  VLOG(1) << "  sample_rate= " << rendered_sample_rate;
-  VLOG(1) << "  sample_format= " << kSampleFormat;
-  VLOG(1) << "  enable_true_peak_measurement= " << enable_true_peak_measurement;
-  VLOG(1) << "  weights= " << absl::StrJoin(*weights, ", ");
+  ABSL_VLOG(1) << "Creating AudioLoudness1770:";
+  ABSL_VLOG(1) << "  num_channels= " << num_channels;
+  ABSL_VLOG(1) << "  sample_rate= " << rendered_sample_rate;
+  ABSL_VLOG(1) << "  sample_format= " << kSampleFormat;
+  ABSL_VLOG(1) << "  enable_true_peak_measurement= "
+               << enable_true_peak_measurement;
+  ABSL_VLOG(1) << "  weights= " << absl::StrJoin(*weights, ", ");
 
   return absl::WrapUnique(new LoudnessCalculatorItu1770_4(
       num_samples_per_frame, num_channels, *weights, rendered_sample_rate,
@@ -228,8 +228,8 @@ absl::StatusOr<LoudnessInfo> LoudnessCalculatorItu1770_4::QueryLoudness()
       !integrated_loudness.has_value()) {
     // TODO(b/274740345): Figure out if there is a better solution for short
     //                    audio sequences.
-    LOG(WARNING) << "Loudness cannot be computed or is too low; "
-                 << "using minimal value representable by Q7.8.";
+    ABSL_LOG(WARNING) << "Loudness cannot be computed or is too low; "
+                      << "using minimal value representable by Q7.8.";
     // OK. Fallback to the default values.
   } else {
     calculated_integrated_loudness =

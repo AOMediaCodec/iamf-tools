@@ -23,8 +23,8 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -77,7 +77,7 @@ absl::Status GetAndStoreCodecConfigObu(
   if (payload_size < kSmallestAcceptedCodecConfigSize) {
     // The OBU is implausibly small. It is likely the source file is corrupted.
     // For maximum compatibility, silently skip over the OBU.
-    LOG(WARNING)
+    ABSL_LOG(WARNING)
         << "Possible bitstream corruption. Skipping over an "
            "implausibly small Codec Config OBU with a payload size of: "
         << payload_size << " bytes.";
@@ -123,7 +123,7 @@ absl::Status GetAndStoreMixPresentationObu(
   if (!mix_presentation_obu.ok()) {
     return mix_presentation_obu.status();
   }
-  LOG(INFO) << "Mix Presentation OBU successfully parsed.";
+  ABSL_LOG(INFO) << "Mix Presentation OBU successfully parsed.";
   mix_presentation_obu->PrintObu();
   mix_presentation_obus.push_back(*std::move(mix_presentation_obu));
   return absl::OkStatus();
@@ -244,7 +244,7 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
-  LOG(INFO) << "Filtered mix presentations: " << cumulative_error_message;
+  ABSL_LOG(INFO) << "Filtered mix presentations: " << cumulative_error_message;
   return supported_mix_presentations;
 }
 
@@ -258,13 +258,13 @@ absl::Status InsufficientDataReset(
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         output_audio_elements_with_data,
     std::list<MixPresentationObu>& output_mix_presentation_obus) {
-  LOG(INFO) << "Insufficient data to process all descriptor OBUs.";
+  ABSL_LOG(INFO) << "Insufficient data to process all descriptor OBUs.";
   insufficient_data = true;
   output_codec_config_obus.clear();
   output_audio_elements_with_data.clear();
   output_mix_presentation_obus.clear();
   RETURN_IF_NOT_OK(read_bit_buffer.Seek(start_position));
-  LOG(INFO) << "Reset the buffer to the beginning.";
+  ABSL_LOG(INFO) << "Reset the buffer to the beginning.";
   return absl::ResourceExhaustedError(
       "Insufficient data to process all descriptor OBUs. Please provide "
       "more data and try again.");
@@ -276,8 +276,8 @@ void GetSampleRateAndFrameSize(
     std::optional<uint32_t>& output_sample_rate,
     std::optional<uint32_t>& output_frame_size) {
   if (output_codec_config_obus.size() != 1) {
-    LOG(WARNING) << "Expected exactly one codec config OBUs, but found "
-                 << output_codec_config_obus.size();
+    ABSL_LOG(WARNING) << "Expected exactly one codec config OBUs, but found "
+                      << output_codec_config_obus.size();
     return;
   }
   const auto& first_codec_config_obu = output_codec_config_obus.begin()->second;
@@ -290,12 +290,12 @@ void GetSampleRateAndFrameSize(
 absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
                                               bool& output_insufficient_data) {
   // Process the descriptor OBUs.
-  LOG(INFO) << "Starting Descriptor OBU processing";
+  ABSL_LOG(INFO) << "Starting Descriptor OBU processing";
   RETURN_IF_NOT_OK(ObuProcessor::ProcessDescriptorObus(
       is_exhaustive_and_exact, *read_bit_buffer_, ia_sequence_header_,
       codec_config_obus_, audio_elements_, mix_presentations_,
       output_insufficient_data));
-  LOG(INFO) << "Processed Descriptor OBUs";
+  ABSL_LOG(INFO) << "Processed Descriptor OBUs";
   RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
       audio_elements_, mix_presentations_, param_definition_variants_));
   GetSampleRateAndFrameSize(codec_config_obus_, output_sample_rate_,
@@ -366,7 +366,7 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
         auto error_status = absl::InvalidArgumentError(
             "Descriptor OBUs must not contain a temporal unit OBU when "
             "is_exhaustive_and_exact is true.");
-        LOG(ERROR) << error_status;
+        ABSL_LOG(ERROR) << error_status;
         RETURN_IF_NOT_OK(read_bit_buffer.Seek(global_position_before_all_obus));
         return error_status;
       }
@@ -404,7 +404,8 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
     switch (header.obu_type) {
       case kObuIaSequenceHeader: {
         if (processed_ia_header && !header.obu_redundant_copy) {
-          LOG(WARNING) << "Detected an IA Sequence without temporal units.";
+          ABSL_LOG(WARNING)
+              << "Detected an IA Sequence without temporal units.";
           continue_processing = false;
           break;
         }
@@ -445,8 +446,9 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
         // now, ignore any reserved OBUs by skipping over their bits in the
         // buffer.
         continue_processing = true;
-        LOG(INFO) << "Detected a reserved OBU while parsing Descriptor OBUs. "
-                  << "Safely ignoring it.";
+        ABSL_LOG(INFO)
+            << "Detected a reserved OBU while parsing Descriptor OBUs. "
+            << "Safely ignoring it.";
         std::vector<uint8_t> buffer_to_discard(payload_size);
         RETURN_IF_NOT_OK(
             read_bit_buffer.ReadUint8Span(absl::MakeSpan(buffer_to_discard)));
@@ -459,7 +461,7 @@ absl::Status ObuProcessor::ProcessDescriptorObus(
     }
     if (!continue_processing) {
       // Rewind the position to before the last header was read.
-      LOG(INFO) << "position_before_header: " << position_before_header;
+      ABSL_LOG(INFO) << "position_before_header: " << position_before_header;
       RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
     }
     if (!processed_ia_header) {
@@ -584,7 +586,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
       if (!header.obu_redundant_copy) {
         // OK. The user of this function will need to reconfigure its state to
         // process the next IA sequence.
-        LOG(INFO) << "Detected the start of the next IA Sequence.";
+        ABSL_LOG(INFO) << "Detected the start of the next IA Sequence.";
         continue_processing = false;
         break;
       }
@@ -604,7 +606,8 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
     default:
       // TODO(b/329705373): Read in the data as an `ArbitraryOBU` and output
       //                    it from this function.
-      LOG(INFO) << "Detected a reserved or redundant OBU. Safely ignoring it.";
+      ABSL_LOG(INFO)
+          << "Detected a reserved or redundant OBU. Safely ignoring it.";
       std::vector<uint8_t> buffer_to_discard(payload_size);
       RETURN_IF_NOT_OK(
           read_bit_buffer.ReadUint8Span(absl::MakeSpan(buffer_to_discard)));
@@ -613,7 +616,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
 
   if (!continue_processing) {
     // Rewind the position to before the last header was read.
-    LOG(INFO) << "position_before_header: " << position_before_header;
+    ABSL_LOG(INFO) << "position_before_header: " << position_before_header;
     RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
   }
 
@@ -634,7 +637,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
   if (const auto status = obu_processor->InitializeInternal(
           is_exhaustive_and_exact, output_insufficient_data);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
   return obu_processor;
@@ -659,7 +662,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   if (const auto status = obu_processor->InitializeInternal(
           is_exhaustive_and_exact, output_insufficient_data);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
 
@@ -667,7 +670,7 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
           desired_profile_versions, desired_mix_presentation_id, desired_layout,
           sample_processor_factory);
       !status.ok()) {
-    LOG(ERROR) << status;
+    ABSL_LOG(ERROR) << status;
     return nullptr;
   }
   return obu_processor;
@@ -789,9 +792,9 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     std::optional<OutputTemporalUnit>& output_temporal_unit,
     bool& continue_processing) {
   // Various checks that should have been handled by the factory functions.
-  CHECK(parameters_manager_.has_value());
-  CHECK(global_timing_module_ != nullptr);
-  CHECK(read_bit_buffer_ != nullptr);
+  ABSL_CHECK(parameters_manager_.has_value());
+  ABSL_CHECK(global_timing_module_ != nullptr);
+  ABSL_CHECK(read_bit_buffer_ != nullptr);
 
   continue_processing = true;
   while (continue_processing) {
