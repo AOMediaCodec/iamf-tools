@@ -208,7 +208,7 @@ class MixGainParamDefinition : public ParamDefinition {
   friend bool operator==(const MixGainParamDefinition& lhs,
                          const MixGainParamDefinition& rhs) = default;
 
-  int16_t default_mix_gain_;
+  int16_t default_mix_gain_ = 0;
 };
 
 struct ChannelNumbers {
