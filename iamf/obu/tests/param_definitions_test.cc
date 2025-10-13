@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -39,6 +40,17 @@ constexpr DecodedUleb128 kParameterId = 0;
 constexpr DecodedUleb128 kParameterRate = 48000;
 constexpr DecodedUleb128 kDuration = 64;
 
+class MockParamDefinition : public ParamDefinition {
+ public:
+  MOCK_METHOD(absl::Status, ValidateAndWrite, (WriteBitBuffer & wb),
+              (const, override));
+  MOCK_METHOD(absl::Status, ReadAndValidate, (ReadBitBuffer & rb), (override));
+
+  MOCK_METHOD(std::unique_ptr<ParameterData>, CreateParameterData, (),
+              (const, override));
+  MOCK_METHOD(void, Print, (), (const, override));
+};
+
 void PopulateParameterDefinitionMode1(ParamDefinition& param_definition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
@@ -64,6 +76,182 @@ void InitSubblockDurations(
     EXPECT_THAT(param_definition.SetSubblockDuration(i, subblock_durations[i]),
                 IsOk());
   }
+}
+
+TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode1) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode1(param_definition);
+  param_definition.InitializeSubblockDurations(0);
+
+  EXPECT_EQ(param_definition.GetNumSubblocks(), 0);
+}
+
+TEST(GetNumSubblocks, ReturnsZeroWhenSubblockDurationsAreImplicitMode0) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 64;
+  param_definition.InitializeSubblockDurations(1);
+
+  // TODO(b/345799072): Reporting zero is strange here, the parameter definition
+  //                    represents one subblock, because the duration is implied
+  //                    by "constant_subblock_duration". Also,
+  //                    `GetSubblockDuration` calls would index out of bounds.
+  EXPECT_EQ(param_definition.GetNumSubblocks(), 0);
+}
+
+TEST(GetNumSubblocks,
+     ReturnsNumSubblocksWhenSubblockDurationsAreExplicitMode0) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  const DecodedUleb128 kNumSubblocks = 2;
+  param_definition.InitializeSubblockDurations(kNumSubblocks);
+
+  EXPECT_EQ(param_definition.GetNumSubblocks(), kNumSubblocks);
+}
+
+TEST(Validate, ValidatesParamDefinitionMode1) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode1(param_definition);
+
+  EXPECT_THAT(param_definition.Validate(), IsOk());
+}
+
+TEST(Validate, InvalidWhenParameterRateIsZero) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode1(param_definition);
+  param_definition.parameter_rate_ = 0;
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, ValidatesParamDefinitionMode0) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+
+  EXPECT_THAT(param_definition.Validate(), IsOk());
+}
+
+TEST(Validate, InvalidWhenParameterDefinitionMode0DurationIsZero) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 0;
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, InvalidWhenConstantSubblockDurationIsGreaterThanDuration) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 65;
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, ValidWhenConstantSubblockDurationIsLessThanDuration) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  // It is OK for `constant_subblock_duration` to be less than `duration`. The
+  // spec has rounding rules for the final subblock duration.
+  param_definition.constant_subblock_duration_ = 63;
+
+  EXPECT_THAT(param_definition.Validate(), IsOk());
+}
+
+TEST(Validate, ValidForExplicitSubblockDurations) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  // Subblock durations sum to 64.
+  InitSubblockDurations(param_definition, {60, 4});
+
+  EXPECT_THAT(param_definition.Validate(), IsOk());
+}
+
+TEST(Validate, InvalidWhenSubblockDurationsSumIsLessThanDuration) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  // Subblock durations sum to less than 64.
+  InitSubblockDurations(param_definition, {60, 3});
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, InvalidWhenSubblockDurationsSumIsGreaterThanDuration) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  // Subblock durations sum to less than 64.
+  InitSubblockDurations(param_definition, {60, 5});
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(Validate, InvalidWhenAnySubblockDurationIsZero) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  // Subblock durations sum to less than 64.
+  InitSubblockDurations(param_definition, {64, 0});
+
+  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
+}
+
+TEST(GetType, ReturnsNulloptForDefaultConstructor) {
+  MockParamDefinition param_definition;
+
+  EXPECT_EQ(param_definition.GetType(), std::nullopt);
+}
+
+TEST(GetSubblockDuration, MatchesExplicitSetSubblockDurations) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  const DecodedUleb128 kNumSubblocks = 2;
+  param_definition.InitializeSubblockDurations(kNumSubblocks);
+
+  const DecodedUleb128 kSubblockDuration0 = 60;
+  const DecodedUleb128 kSubblockDuration1 = 4;
+  EXPECT_THAT(param_definition.SetSubblockDuration(0, kSubblockDuration0),
+              IsOk());
+  EXPECT_THAT(param_definition.SetSubblockDuration(1, kSubblockDuration1),
+              IsOk());
+
+  EXPECT_EQ(param_definition.GetSubblockDuration(0), kSubblockDuration0);
+  EXPECT_EQ(param_definition.GetSubblockDuration(1), kSubblockDuration1);
+}
+
+TEST(SetSubblockDuration, InvalidWhenSubblockIndexIsTooLarge) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  const DecodedUleb128 kNumSubblocks = 2;
+  param_definition.InitializeSubblockDurations(kNumSubblocks);
+
+  // The indices are zero-based, configure an off-by-one error.
+  EXPECT_THAT(param_definition.SetSubblockDuration(2, 0), Not(IsOk()));
+}
+
+TEST(SetSubblockDuration, InvalidWhenSubblockIndexIsNegative) {
+  MockParamDefinition param_definition;
+  PopulateParameterDefinitionMode0(param_definition);
+  param_definition.duration_ = 64;
+  param_definition.constant_subblock_duration_ = 0;
+  const DecodedUleb128 kNumSubblocks = 2;
+  param_definition.InitializeSubblockDurations(kNumSubblocks);
+
+  EXPECT_THAT(param_definition.SetSubblockDuration(-1, 0), Not(IsOk()));
 }
 
 TEST(MixGainParamDefinition, ConstructorSetsDefaultMixGainToZero) {
@@ -128,7 +316,7 @@ TEST(MixGainParamDefinitionValidateAndWrite, NonMinimalLeb) {
   mix_gain_param_definition.parameter_rate_ = 5;
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
-  ASSERT_NE(leb_generator.get(), nullptr);
+  ASSERT_NE(leb_generator, nullptr);
   WriteBitBuffer wb(kDefaultBufferSize, *leb_generator);
 
   EXPECT_THAT(mix_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -238,40 +426,6 @@ TEST(MixGainParamDefinitionValidateAndWrite,
                             0, 0});
 }
 
-TEST(MixGainParamDefinitionValidate,
-     InvalidWhenExplicitSubblockDurationsDoNotSumToDuration) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ = false;
-  param_definition.duration_ = 100;
-  param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(param_definition, {1, 2, 3, 4});  // Does not sum 100.
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
-TEST(MixGainParamDefinitionValidate, InvalidWhenDurationIsZero) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ = false;
-  param_definition.duration_ = 0;
-  param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(param_definition, {0});
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
-TEST(MixGainParamDefinitionValidate, InvalidWhenSubblockDurationIsZero) {
-  MixGainParamDefinition param_definition;
-  PopulateParameterDefinitionMode1(param_definition);
-  param_definition.param_definition_mode_ = false;
-  param_definition.duration_ = 10;
-  param_definition.constant_subblock_duration_ = 0;
-  InitSubblockDurations(param_definition, {5, 0, 5});
-
-  EXPECT_THAT(param_definition.Validate(), Not(IsOk()));
-}
-
 TEST(DemixingParamDefinition, CopyConstructible) {
   DemixingParamDefinition demixing_param_definition;
   PopulateParameterDefinitionMode0(demixing_param_definition);
@@ -378,7 +532,7 @@ TEST(DemixingParamDefinitionValidate,
      InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
   auto demixing_param_definition = CreateDemixingParamDefinition();
   demixing_param_definition.duration_ = 64;
-  demixing_param_definition.constant_subblock_duration_ = 65;
+  demixing_param_definition.constant_subblock_duration_ = 63;
 
   EXPECT_THAT(demixing_param_definition.Validate(), Not(IsOk()));
 }
@@ -584,6 +738,7 @@ TEST(ReconGainParamDefinitionValidateAndWrite,
      NonMinimalLebGeneratorAffectsAllLeb128s) {
   auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
+  ASSERT_NE(leb_generator, nullptr);
   auto recon_gain_param_definition = CreateReconGainParamDefinition();
   recon_gain_param_definition.parameter_id_ = 0;
   recon_gain_param_definition.parameter_rate_ = 1;
@@ -626,7 +781,7 @@ TEST(ReconGainParamDefinitionValidate,
      InvalidWhenDurationDoesNotEqualConstantSubblockDuration) {
   auto recon_gain_param_definition = CreateReconGainParamDefinition();
   recon_gain_param_definition.duration_ = 64;
-  recon_gain_param_definition.constant_subblock_duration_ = 65;
+  recon_gain_param_definition.constant_subblock_duration_ = 63;
 
   EXPECT_THAT(recon_gain_param_definition.Validate(), Not(IsOk()));
 }

@@ -91,10 +91,11 @@ DecodedUleb128 ParamDefinition::GetSubblockDuration(int subblock_index) const {
 
 absl::Status ParamDefinition::SetSubblockDuration(int subblock_index,
                                                   DecodedUleb128 duration) {
-  if (subblock_index > subblock_durations_.size()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Subblock index greater than `subblock_durations_.size()`= ",
-        subblock_durations_.size()));
+  if (subblock_index >= subblock_durations_.size() || subblock_index < 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Subblock index ", subblock_index,
+                     " is out of bounds. `subblock_durations_.size()`= ",
+                     subblock_durations_.size()));
   }
 
   subblock_durations_[subblock_index] = duration;
@@ -201,6 +202,12 @@ absl::Status ParamDefinition::Validate() const {
     if (duration_ == 0) {
       status = absl::InvalidArgumentError(absl::StrCat(
           "Duration should not be zero. Parameter ID = ", parameter_id));
+    }
+    if (constant_subblock_duration_ > duration_) {
+      status = absl::InvalidArgumentError(absl::StrCat(
+          "Constant subblock duration should not be greater than duration. "
+          "Parameter ID = ",
+          parameter_id));
     }
 
     // Check if the `subblock_durations` is included.
