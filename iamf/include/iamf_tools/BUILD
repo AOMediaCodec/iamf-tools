@@ -56,7 +56,6 @@ cc_library(
     visibility = [
         "//iamf/api:__subpackages__",
         "//iamf/cli:__pkg__",
-        "//iamf/cli/tests:__pkg__",
     ],
     deps = [
         ":iamf_tools_encoder_api_types",
