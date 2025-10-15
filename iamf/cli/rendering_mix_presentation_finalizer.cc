@@ -30,6 +30,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/time/clock.h"
@@ -141,10 +142,12 @@ absl::Status InitializeRenderers(
         sub_mix_audio_element.obu.config_,
         sub_mix_audio_elements[i].rendering_config, loudness_layout,
         static_cast<size_t>(
-            sub_mix_audio_element.codec_config->GetNumSamplesPerFrame()));
+            sub_mix_audio_element.codec_config->GetNumSamplesPerFrame()),
+        static_cast<size_t>(
+            sub_mix_audio_element.codec_config->GetOutputSampleRate()));
 
     if (renderers[i] == nullptr) {
-      return absl::UnknownError("Unable to create renderer.");
+      return absl::UnimplementedError("Unable to create renderer.");
     }
 
     const uint32_t output_sample_rate =

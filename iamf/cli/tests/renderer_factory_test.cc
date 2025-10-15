@@ -35,7 +35,8 @@ const Layout kMonoLayout = {
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem12_0_1_0}};
 const Layout kBinauralLayout = {.layout_type = Layout::kLayoutTypeBinaural};
 
-constexpr size_t kNumSamplesPerFrame = 8;
+constexpr size_t kNumSamplesPerFrame = 16;
+constexpr size_t kSampleRate = 48000;
 
 const ScalableChannelLayoutConfig kBinauralChannelLayoutConfig = {
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
@@ -69,7 +70,7 @@ TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
       factory.CreateRendererForLayout(
           {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
           kMonoScalableChannelLayoutConfig, kHeadphonesAsStereoRenderingConfig,
-          kMonoLayout, kNumSamplesPerFrame),
+          kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
 
@@ -80,7 +81,7 @@ TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
       factory.CreateRendererForLayout(
           {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
           kBinauralChannelLayoutConfig, kHeadphonesAsBinauralRenderingConfig,
-          kBinauralLayout, kNumSamplesPerFrame),
+          kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
 
@@ -92,7 +93,7 @@ TEST(CreateRendererForLayout,
       factory.CreateRendererForLayout(
           {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
           kMonoScalableChannelLayoutConfig, kHeadphonesAsStereoRenderingConfig,
-          kMonoLayout, kNumSamplesPerFrame),
+          kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
 
@@ -104,7 +105,7 @@ TEST(CreateRendererForLayout,
       factory.CreateRendererForLayout(
           {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
           kFullZerothOrderAmbisonicsConfig, kHeadphonesAsStereoRenderingConfig,
-          kMonoLayout, kNumSamplesPerFrame),
+          kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
 
@@ -116,7 +117,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForChannelToBinauralRenderer) {
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementChannelBased,
                 kMonoScalableChannelLayoutConfig,
                 kHeadphonesAsBinauralRenderingConfig, kBinauralLayout,
-                kNumSamplesPerFrame),
+                kNumSamplesPerFrame, kSampleRate),
             nullptr);
 }
 
@@ -126,7 +127,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
   EXPECT_EQ(factory.CreateRendererForLayout(
                 {0}, {{0, {kMono}}}, AudioElementObu::kAudioElementEndReserved,
                 kExtensionConfig, kHeadphonesAsStereoRenderingConfig,
-                kBinauralLayout, kNumSamplesPerFrame),
+                kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
             nullptr);
 }
 
@@ -137,7 +138,8 @@ TEST(CreateRendererForLayout, SupportsChannelToChannelRenderer) {
       factory.CreateRendererForLayout(
           {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
           kStereoScalableChannelLayoutConfig,
-          kHeadphonesAsStereoRenderingConfig, kMonoLayout, kNumSamplesPerFrame),
+          kHeadphonesAsStereoRenderingConfig, kMonoLayout, kNumSamplesPerFrame,
+          kSampleRate),
       nullptr);
 }
 
@@ -148,7 +150,7 @@ TEST(CreateRendererForLayout, SupportsAmbisonicsToChannelRenderer) {
       factory.CreateRendererForLayout(
           {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
           kFullZerothOrderAmbisonicsConfig, kHeadphonesAsStereoRenderingConfig,
-          kMonoLayout, kNumSamplesPerFrame),
+          kMonoLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
 
@@ -160,7 +162,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForAmbisonicsToBinauralRenderer) {
                 {0}, {{0, {kA0}}}, AudioElementObu::kAudioElementSceneBased,
                 kFullZerothOrderAmbisonicsConfig,
                 kHeadphonesAsBinauralRenderingConfig, kBinauralLayout,
-                kNumSamplesPerFrame),
+                kNumSamplesPerFrame, kSampleRate),
             nullptr);
 }
 

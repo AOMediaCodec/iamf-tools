@@ -43,6 +43,7 @@ class RendererFactoryBase {
    * \param rendering_config Configuration of the renderer.
    * \param loudness_layout Layout to render to.
    * \param num_samples_per_frame Number of samples per frame.
+   * \param sample_rate Sample rate of the rendered output.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
    *         known how to render the audio element.
    */
@@ -52,7 +53,7 @@ class RendererFactoryBase {
       AudioElementObu::AudioElementType audio_element_type,
       const AudioElementObu::AudioElementConfig& audio_element_config,
       const RenderingConfig& rendering_config, const Layout& loudness_layout,
-      size_t num_samples_per_frame) const = 0;
+      size_t num_samples_per_frame, size_t sample_rate) const = 0;
 
   /*!\brief Destructor. */
   virtual ~RendererFactoryBase() = 0;
@@ -76,6 +77,7 @@ class RendererFactory : public RendererFactoryBase {
    * \param rendering_config Configuration of the renderer.
    * \param loudness_layout Layout to render to.
    * \param num_samples_per_frame Number of samples per frame.
+   * \param sample_rate Sample rate of the rendered output.
    * \return Unique pointer to an audio element renderer or `nullptr` if it not
    *         known how to render the audio element.
    */
@@ -85,7 +87,7 @@ class RendererFactory : public RendererFactoryBase {
       AudioElementObu::AudioElementType audio_element_type,
       const AudioElementObu::AudioElementConfig& audio_element_config,
       const RenderingConfig& rendering_config, const Layout& loudness_layout,
-      size_t num_samples_per_frame) const override;
+      size_t num_samples_per_frame, size_t sample_rate) const override;
 
   /*!\brief Destructor. */
   ~RendererFactory() override = default;

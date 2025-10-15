@@ -44,7 +44,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
     bool use_binaural, const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout, size_t num_samples_per_frame) {
+    const Layout& loudness_layout, size_t num_samples_per_frame,
+    size_t sample_rate) {
   const auto* ambisonics_config = std::get_if<AmbisonicsConfig>(&config);
   if (ambisonics_config == nullptr) {
     ABSL_LOG(ERROR)
@@ -53,6 +54,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
   }
 
   if (use_binaural) {
+    // TODO(b/450473100): Render ambisonics to binaural using OBR here.
     ABSL_LOG(WARNING)
         << "Skipping creating an Ambisonics to binaural-based "
            "renderer. Binaural rendering is not yet supported for "
@@ -67,7 +69,8 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
 
 std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
     bool use_binaural, const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout, size_t num_samples_per_frame) {
+    const Layout& loudness_layout, size_t num_samples_per_frame,
+    size_t sample_rate) {
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&config);
   if (channel_config == nullptr) {
@@ -84,6 +87,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   }
 
   if (use_binaural) {
+    // TODO(b/450472803): Render channel layouts to binaural using OBR here.
     ABSL_LOG(WARNING)
         << "Skipping creating a channel to binaural-based renderer.";
     return nullptr;
@@ -104,7 +108,7 @@ RendererFactory::CreateRendererForLayout(
     AudioElementObu::AudioElementType audio_element_type,
     const AudioElementObu::AudioElementConfig& audio_element_config,
     const RenderingConfig& rendering_config, const Layout& loudness_layout,
-    size_t num_samples_per_frame) const {
+    size_t num_samples_per_frame, size_t sample_rate) const {
   const bool use_binaural = IsAudioElementRenderedBinaural(
       rendering_config.headphones_rendering_mode, loudness_layout.layout_type);
 
@@ -112,10 +116,12 @@ RendererFactory::CreateRendererForLayout(
     case AudioElementObu::kAudioElementSceneBased:
       return MaybeCreateAmbisonicsRenderer(
           use_binaural, audio_substream_ids, substream_id_to_labels,
-          audio_element_config, loudness_layout, num_samples_per_frame);
+          audio_element_config, loudness_layout, num_samples_per_frame,
+          sample_rate);
     case AudioElementObu::kAudioElementChannelBased:
       return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
-                                        loudness_layout, num_samples_per_frame);
+                                        loudness_layout, num_samples_per_frame,
+                                        sample_rate);
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
       ABSL_LOG(WARNING) << "Unsupported audio_element_type_= "

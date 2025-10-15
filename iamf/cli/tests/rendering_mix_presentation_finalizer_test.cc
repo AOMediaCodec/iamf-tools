@@ -141,7 +141,8 @@ class MockRendererFactory : public RendererFactoryBase {
                AudioElementObu::AudioElementType audio_element_type,
                const AudioElementObu::AudioElementConfig& audio_element_config,
                const RenderingConfig& rendering_config,
-               const Layout& loudness_layout, size_t num_samples_per_frame),
+               const Layout& loudness_layout, size_t num_samples_per_frame,
+               size_t sample_rate),
               (const, override));
 };
 
@@ -157,8 +158,8 @@ class AlwaysNullRendererFactory : public RendererFactoryBase {
       AudioElementObu::AudioElementType /*audio_element_type*/,
       const AudioElementObu::AudioElementConfig& /*audio_element_config*/,
       const RenderingConfig& /*rendering_config*/,
-      const Layout& /*loudness_layout*/,
-      size_t /*num_samples_per_frame*/) const override {
+      const Layout& /*loudness_layout*/, size_t /*num_samples_per_frame*/,
+      size_t /*sample_rate*/) const override {
     return nullptr;
   }
 };
@@ -381,14 +382,14 @@ TEST_F(FinalizerTest, ForwardsAudioElementToRenderer) {
   // the renderer factory.
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   const auto& forwarded_audio_element = audio_elements_.at(kAudioElementId);
-  EXPECT_CALL(
-      *mock_renderer_factory,
-      CreateRendererForLayout(
-          forwarded_audio_element.obu.audio_substream_ids_,
-          forwarded_audio_element.substream_id_to_labels,
-          forwarded_audio_element.obu.GetAudioElementType(),
-          forwarded_audio_element.obu.config_, _, _,
-          forwarded_audio_element.codec_config->GetNumSamplesPerFrame()));
+  EXPECT_CALL(*mock_renderer_factory,
+              CreateRendererForLayout(
+                  forwarded_audio_element.obu.audio_substream_ids_,
+                  forwarded_audio_element.substream_id_to_labels,
+                  forwarded_audio_element.obu.GetAudioElementType(),
+                  forwarded_audio_element.obu.config_, _, _,
+                  forwarded_audio_element.codec_config->GetNumSamplesPerFrame(),
+                  forwarded_audio_element.codec_config->GetOutputSampleRate()));
   renderer_factory_ = std::move(mock_renderer_factory);
 
   auto finalizer = CreateFinalizerExpectOk();
@@ -407,7 +408,7 @@ TEST_F(FinalizerTest, ForwardsRenderingConfigToRenderer) {
       forwarded_sub_mix.audio_elements[0].rendering_config;
   EXPECT_CALL(
       *mock_renderer_factory,
-      CreateRendererForLayout(_, _, _, _, forwarded_rendering_config, _, _));
+      CreateRendererForLayout(_, _, _, _, forwarded_rendering_config, _, _, _));
   renderer_factory_ = std::move(mock_renderer_factory);
 
   CreateFinalizerExpectOk();
@@ -424,7 +425,7 @@ TEST_F(FinalizerTest, ForwardsLayoutToRenderer) {
   const auto& forwarded_sub_mix = obus_to_finalize_.front().sub_mixes_[0];
   const auto& forwarded_layout = forwarded_sub_mix.layouts[0].loudness_layout;
   EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, forwarded_layout, _));
+              CreateRendererForLayout(_, _, _, _, _, forwarded_layout, _, _));
   renderer_factory_ = std::move(mock_renderer_factory);
 
   CreateFinalizerExpectOk();
@@ -446,7 +447,7 @@ TEST_F(FinalizerTest, ForwardsOrderedSamplesToRenderer) {
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   ASSERT_NE(mock_renderer_factory, nullptr);
   EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, _, _))
+              CreateRendererForLayout(_, _, _, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   renderer_factory_ = std::move(mock_renderer_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
@@ -465,7 +466,7 @@ TEST_F(FinalizerTest, CreatesWavFileWhenRenderingIsSupported) {
   EXPECT_CALL(*mock_renderer, RenderSamples(_));
   auto mock_renderer_factory = std::make_unique<MockRendererFactory>();
   EXPECT_CALL(*mock_renderer_factory,
-              CreateRendererForLayout(_, _, _, _, _, _, _))
+              CreateRendererForLayout(_, _, _, _, _, _, _, _))
       .WillOnce(Return(std::move(mock_renderer)));
   renderer_factory_ = std::move(mock_renderer_factory);
   std::list<ParameterBlockWithData> parameter_blocks;
