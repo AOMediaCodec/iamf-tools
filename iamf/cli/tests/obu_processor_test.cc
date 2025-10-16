@@ -1143,8 +1143,8 @@ TEST(ProcessTemporalUnitObusTest,
   param_definition.constant_subblock_duration_ = kParameterBlockDuration;
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   param_definitions.emplace(kParameterBlockId, param_definition);
-  auto parameter_block = ParameterBlockObu::CreateMode0(
-      ObuHeader(), kParameterBlockId, param_definition);
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data =
       std::make_unique<MixGainParameterData>(
@@ -2154,9 +2154,8 @@ void RenderOneSampleZoaToStereoWavExpectOk(
   constexpr DecodedUleb128 kConstantSubblockDuration = 1;
   constexpr uint32_t kNumSubblocks = 1;
   auto parameter_block = ParameterBlockObu::CreateMode1(
-      ObuHeader(), kCommonMixGainParameterId,
-      mix_presentation_obus.front().sub_mixes_[0].output_mix_gain, kDuration,
-      kConstantSubblockDuration, kNumSubblocks);
+      ObuHeader(), mix_presentation_obus.front().sub_mixes_[0].output_mix_gain,
+      kDuration, kConstantSubblockDuration, kNumSubblocks);
   EXPECT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data =
       std::make_unique<MixGainParameterData>(

@@ -511,13 +511,12 @@ absl::Status PopulateCommonFields(
   if (param_definition.param_definition_mode_ == 0) {
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode0(
         GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-        parameter_block_metadata.parameter_id(), param_definition);
+        param_definition);
   } else {
     // Several fields are dependent on `param_definition_mode`.
     parameter_block_with_data.obu = ParameterBlockObu::CreateMode1(
         GetHeaderFromMetadata(parameter_block_metadata.obu_header()),
-        parameter_block_metadata.parameter_id(), param_definition,
-        parameter_block_metadata.duration(),
+        param_definition, parameter_block_metadata.duration(),
         parameter_block_metadata.constant_subblock_duration(),
         parameter_block_metadata.subblocks_size());
   }

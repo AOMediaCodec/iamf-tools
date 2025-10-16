@@ -114,8 +114,8 @@ void AddMixGainParameterBlock(
   auto data = std::make_unique<MixGainParameterData>();
   data->animation_type = MixGainParameterData::kAnimateStep;
   data->param_data = AnimationStepInt16{.start_point_value = 1};
-  auto parameter_block = ParameterBlockObu::CreateMode0(
-      ObuHeader(), param_definition.parameter_id_, param_definition);
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{

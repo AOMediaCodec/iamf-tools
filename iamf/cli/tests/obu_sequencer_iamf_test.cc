@@ -115,8 +115,8 @@ void InitializeOneParameterBlockAndOneAudioFrame(
   auto data = std::make_unique<DemixingInfoParameterData>();
   data->dmixp_mode = DemixingInfoParameterData::kDMixPMode1;
   data->reserved = 0;
-  auto parameter_block = ParameterBlockObu::CreateMode0(
-      ObuHeader(), param_definition.parameter_id_, param_definition);
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(parameter_block, NotNull());
   parameter_block->subblocks_[0].param_data = std::move(data);
   parameter_blocks.emplace_back(ParameterBlockWithData{

@@ -70,16 +70,15 @@ void ParameterSubblock::Print() const {
 }
 
 std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
-    const ObuHeader& header, DecodedUleb128 parameter_id,
-    const ParamDefinition& param_definition) {
+    const ObuHeader& header, const ParamDefinition& param_definition) {
   if (param_definition.param_definition_mode_ != 0) {
     ABSL_LOG(WARNING) << "CreateMode0() should only be called when "
                          "param_definition_mode == 0.";
     return nullptr;
   }
 
-  auto parameter_block_obu = absl::WrapUnique(
-      new ParameterBlockObu(header, parameter_id, param_definition));
+  auto parameter_block_obu =
+      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
   parameter_block_obu->subblocks_.resize(
       static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
 
@@ -87,16 +86,16 @@ std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
 }
 
 std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
-    const ObuHeader& header, DecodedUleb128 parameter_id,
-    const ParamDefinition& param_definition, DecodedUleb128 duration,
-    DecodedUleb128 constant_subblock_duration, DecodedUleb128 num_subblocks) {
+    const ObuHeader& header, const ParamDefinition& param_definition,
+    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
+    DecodedUleb128 num_subblocks) {
   if (param_definition.param_definition_mode_ != 1) {
     ABSL_LOG(WARNING) << "CreateMode1() should only be called when "
                          "param_definition_mode == 1.";
     return nullptr;
   }
-  auto parameter_block_obu = absl::WrapUnique(
-      new ParameterBlockObu(header, parameter_id, param_definition));
+  auto parameter_block_obu =
+      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
 
   // Under param definition mode 1, several fields are explicitly in the OBU.
   parameter_block_obu->duration_ = duration;
@@ -143,7 +142,7 @@ ParameterBlockObu::CreateFromBuffer(
   };
   const int64_t remaining_payload_size = payload_size - encoded_uleb128_size;
   auto parameter_block_obu = absl::WrapUnique(new ParameterBlockObu(
-      header, parameter_id,
+      header,
       *std::visit(cast_to_base_pointer, parameter_definition_it->second)));
 
   // TODO(b/338474387): Test reading in extension parameters.
@@ -153,10 +152,9 @@ ParameterBlockObu::CreateFromBuffer(
 }
 
 ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
-                                     DecodedUleb128 parameter_id,
                                      const ParamDefinition& param_definition)
     : ObuBase(header, kObuIaParameterBlock),
-      parameter_id_(parameter_id),
+      parameter_id_(param_definition.parameter_id_),
       param_definition_(param_definition) {}
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(

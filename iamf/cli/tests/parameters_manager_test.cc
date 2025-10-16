@@ -57,8 +57,7 @@ void AppendParameterBlock(
     DecodedUleb128 parameter_id, InternalTimestamp start_timestamp,
     const ParamDefinition& param_definition,
     std::vector<ParameterBlockWithData>& parameter_blocks) {
-  auto obu = ParameterBlockObu::CreateMode0(ObuHeader(), parameter_id,
-                                            param_definition);
+  auto obu = ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
   ASSERT_THAT(obu, NotNull());
 
   parameter_blocks.emplace_back(

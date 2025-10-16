@@ -57,29 +57,28 @@ constexpr DecodedUleb128 kNumSubblocks = 1;
 // TODO(b/273545873): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
 
-std::unique_ptr<MixGainParamDefinition> CreateParamDefinitionMode0() {
-  auto param_definition = std::make_unique<MixGainParamDefinition>();
-  param_definition->param_definition_mode_ = 0;
-  param_definition->parameter_id_ = kParameterId;
-  param_definition->parameter_rate_ = kParameterRate;
-  param_definition->duration_ = kDuration;
-  param_definition->constant_subblock_duration_ = kConstantSubblockDuration;
+MixGainParamDefinition CreateParamDefinitionMode0() {
+  MixGainParamDefinition param_definition;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = kParameterRate;
+  param_definition.duration_ = kDuration;
+  param_definition.constant_subblock_duration_ = kConstantSubblockDuration;
   return param_definition;
 }
 
-std::unique_ptr<MixGainParamDefinition> CreateParamDefinitionMode1() {
-  auto param_definition = std::make_unique<MixGainParamDefinition>();
-  param_definition->param_definition_mode_ = 1;
-  param_definition->parameter_id_ = kParameterId;
-  param_definition->parameter_rate_ = kParameterRate;
+MixGainParamDefinition CreateParamDefinitionMode1() {
+  MixGainParamDefinition param_definition;
+  param_definition.param_definition_mode_ = 1;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = kParameterRate;
   return param_definition;
 }
 
 TEST(CreateMode0, GettersReturnExpectedValues) {
   auto param_definition = CreateParamDefinitionMode0();
 
-  auto obu = ParameterBlockObu::CreateMode0(ObuHeader(), kParameterId,
-                                            *param_definition);
+  auto obu = ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
 
   // Under mode 0, the getters effectively return data from the
   // `param_definition` rather than the OBU.
@@ -95,17 +94,16 @@ TEST(CreateMode0, GettersReturnExpectedValues) {
 TEST(CreateMode0, ReturnsNullptrWhenParamDefinitionIsMode1) {
   auto param_definition = CreateParamDefinitionMode1();
 
-  EXPECT_EQ(ParameterBlockObu::CreateMode0(ObuHeader(), kParameterId,
-                                           *param_definition),
+  EXPECT_EQ(ParameterBlockObu::CreateMode0(ObuHeader(), param_definition),
             nullptr);
 }
 
 TEST(CreateMode1, GettersReturnExpectedValues) {
   auto param_definition = CreateParamDefinitionMode1();
 
-  auto obu = ParameterBlockObu::CreateMode1(
-      ObuHeader(), kParameterId, *param_definition, kDuration,
-      kConstantSubblockDuration, kNumSubblocks);
+  auto obu =
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
+                                     kConstantSubblockDuration, kNumSubblocks);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
@@ -122,9 +120,9 @@ TEST(CreateMode1, SetsNumSubblocksWhenConstantSubblockDurationIsZero) {
 
   constexpr DecodedUleb128 kTwoSubblocks = 2;
   constexpr DecodedUleb128 kConstantSubblockDuration = 0;
-  auto obu = ParameterBlockObu::CreateMode1(
-      ObuHeader(), kParameterId, *param_definition, kDuration,
-      kConstantSubblockDuration, kTwoSubblocks);
+  auto obu =
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
+                                     kConstantSubblockDuration, kTwoSubblocks);
 
   // Under mode 1, the getters return data directly in the OBU.
   EXPECT_THAT(obu, NotNull());
@@ -134,10 +132,10 @@ TEST(CreateMode1, SetsNumSubblocksWhenConstantSubblockDurationIsZero) {
 TEST(CreateMode1, ReturnsNullptrWhenParamDefinitionIsMode0) {
   auto param_definition = CreateParamDefinitionMode0();
 
-  EXPECT_EQ(ParameterBlockObu::CreateMode1(ObuHeader(), 1, *param_definition,
-                                           kDuration, kConstantSubblockDuration,
-                                           kNumSubblocks),
-            nullptr);
+  EXPECT_EQ(
+      ParameterBlockObu::CreateMode1(ObuHeader(), param_definition, kDuration,
+                                     kConstantSubblockDuration, kNumSubblocks),
+      nullptr);
 }
 
 TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
@@ -526,7 +524,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
     // initialized based on `metadata_args_`.
     if (param_definition_->param_definition_mode_ == 1) {
       obu_ = ParameterBlockObu::CreateMode1(
-          header_, parameter_id_, *param_definition_, duration_args_.duration,
+          header_, *param_definition_, duration_args_.duration,
           duration_args_.constant_subblock_duration,
           duration_args_.num_subblocks);
       EXPECT_THAT(obu_, NotNull());
@@ -538,8 +536,7 @@ class ParameterBlockObuTestBase : public ObuTestBase {
             IsOk());
       }
     } else {
-      obu_ = ParameterBlockObu::CreateMode0(header_, parameter_id_,
-                                            *param_definition_);
+      obu_ = ParameterBlockObu::CreateMode0(header_, *param_definition_);
       EXPECT_THAT(obu_, (NotNull()));
     }
   }

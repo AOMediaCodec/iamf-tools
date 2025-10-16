@@ -73,19 +73,16 @@ class ParameterBlockObu : public ObuBase {
   /*!\brief Creates a `ParameterBlockObu` with `param_definition_mode` of 0.
    *
    * \param header `ObuHeader` of the OBU.
-   * \param parameter_id Parameter ID for this parameter block.
    * \param param_definition Parameter definition to use.
    * \return Unique pointer to a `ParameterBlockObu` on success, or `nullptr`
    *         on failure.
    */
   static std::unique_ptr<ParameterBlockObu> CreateMode0(
-      const ObuHeader& header, DecodedUleb128 parameter_id,
-      const ParamDefinition& param_definition);
+      const ObuHeader& header, const ParamDefinition& param_definition);
 
   /*!\brief Creates a `ParameterBlockObu` with `param_definition_mode` of 1.
    *
    * \param header `ObuHeader` of the OBU.
-   * \param parameter_id Parameter ID for this parameter block.
    * \param param_definition Parameter definition to use.
    * \param duration Duration of the parameter block.
    * \param constant_subblock_duration Constant subblock duration of the
@@ -95,9 +92,9 @@ class ParameterBlockObu : public ObuBase {
    *         on failure.
    */
   static std::unique_ptr<ParameterBlockObu> CreateMode1(
-      const ObuHeader& header, DecodedUleb128 parameter_id,
-      const ParamDefinition& param_definition, DecodedUleb128 duration,
-      DecodedUleb128 constant_subblock_duration, DecodedUleb128 num_subblocks);
+      const ObuHeader& header, const ParamDefinition& param_definition,
+      DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration,
+      DecodedUleb128 num_subblocks);
 
   /*!\brief Creates a `ParameterBlockObu` from a `ReadBitBuffer`.
    *
@@ -204,10 +201,9 @@ class ParameterBlockObu : public ObuBase {
   /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
-   * \param parameter_id Parameter ID.
    * \param param_definition Parameter definition.
    */
-  ParameterBlockObu(const ObuHeader& header, DecodedUleb128 parameter_id,
+  ParameterBlockObu(const ObuHeader& header,
                     const ParamDefinition& param_definition);
 
   /*!\brief Writes the OBU payload to the buffer.
