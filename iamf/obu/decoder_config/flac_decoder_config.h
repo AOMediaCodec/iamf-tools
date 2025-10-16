@@ -32,6 +32,9 @@ struct FlacStreamInfoStrictConstraints {
   // Required 0 audio_roll_distance as per IAMF spec.
   static constexpr int16_t kAudioRollDistance = 0;
 
+  // The stream info block length is encoded using fields of fixed lengths.
+  static constexpr uint16_t kStreamInfoBlockLength = 34;
+
   // Block size must be equal to num_samples_per_frame and at least 16, as per
   // FLAC spec.
   static constexpr uint16_t kMinMinAndMaxBlockSize = 16;

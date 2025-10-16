@@ -42,6 +42,12 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
+
+using iamf_tools_cli_proto::CodecConfigObuMetadata;
+
+typedef ::google::protobuf::RepeatedPtrField<CodecConfigObuMetadata>
+    CodecConfigMetadatas;
 
 const DecodedUleb128 kCodecConfigId = 200;
 
@@ -177,9 +183,7 @@ void InitExpectedObuForAac(
   expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
 }
 
-void InitMetadataForFlac(
-    ::google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata) {
+void FillMetadataForFlac(CodecConfigObuMetadata& codec_config_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         codec_config_id: 200
@@ -197,14 +201,9 @@ void InitMetadataForFlac(
               stream_info {
                 minimum_block_size: 64
                 maximum_block_size: 64
-                minimum_frame_size: 0
-                maximum_frame_size: 0
                 sample_rate: 48000
-                number_of_channels: 1  # Flac interprets this as 2 channels.
-                bits_per_sample: 15    # Flac interprets this as 16 bits.
+                bits_per_sample: 15  # Flac interprets this as 16 bits.
                 total_samples_in_stream: 24000
-                md5_signature: "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                               "\x00\x00\x00\x00\x00"
               }
             }
             flac_encoder_metadata { compression_level: 0 }
@@ -212,28 +211,7 @@ void InitMetadataForFlac(
           }
         }
       )pb",
-      codec_config_metadata.Add()));
-}
-
-void InitExpectedObuForFlac(
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& expected_obus) {
-  auto codec_config = CodecConfigObu::Create(
-      ObuHeader(), kCodecConfigId,
-      {.codec_id = CodecConfig::kCodecIdFlac,
-       .num_samples_per_frame = 64,
-       .audio_roll_distance = 0,
-       .decoder_config = FlacDecoderConfig{
-           {{.header = {.last_metadata_block_flag = true,
-                        .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
-                        .metadata_data_block_length = 34},
-             .payload =
-                 FlacMetaBlockStreamInfo{.minimum_block_size = 64,
-                                         .maximum_block_size = 64,
-                                         .sample_rate = 48000,
-                                         .bits_per_sample = 15,
-                                         .total_samples_in_stream = 24000}}}}});
-  ASSERT_THAT(codec_config, IsOk());
-  expected_obus.emplace(kCodecConfigId, *std::move(codec_config));
+      &codec_config_metadata));
 }
 
 class CodecConfigGeneratorTest : public testing::Test {
@@ -843,36 +821,103 @@ TEST_F(CodecConfigGeneratorTest, InvalidAacDecoderConfigIsMissing) {
   EXPECT_FALSE(InitAndGenerate().ok());
 }
 
-TEST_F(CodecConfigGeneratorTest, GeneratesObuForFlac) {
-  InitMetadataForFlac(codec_config_metadata_);
-  InitExpectedObuForFlac(expected_obus_);
+TEST(Generate, FillsTopLevelFieldsForFlac) {
+  CodecConfigMetadatas codec_config_metadatas;
+  FillMetadataForFlac(*codec_config_metadatas.Add());
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_THAT(output_obus, IsOk());
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
-  EXPECT_EQ(*output_obus, expected_obus_);
+  EXPECT_TRUE(output_obus.contains(kCodecConfigId));
+  const auto& codec_config = output_obus.at(kCodecConfigId).GetCodecConfig();
+  EXPECT_EQ(codec_config.num_samples_per_frame, 64);
+  EXPECT_EQ(codec_config.audio_roll_distance, 0);
 }
 
-TEST_F(CodecConfigGeneratorTest, IamfFlacFixedFieldsMayBeOmitted) {
-  InitMetadataForFlac(codec_config_metadata_);
-  // Some fields are fixed in IAMF. It is OK to omit these from the input data.
-  auto* stream_info = codec_config_metadata_.at(0)
-                          .mutable_codec_config()
+TEST(Generate, FillsStreamInfoForFlac) {
+  CodecConfigMetadatas codec_config_metadatas;
+  FillMetadataForFlac(*codec_config_metadatas.Add());
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
+
+  EXPECT_TRUE(output_obus.contains(kCodecConfigId));
+  auto* decoder_config = std::get_if<FlacDecoderConfig>(
+      &output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
+  ASSERT_NE(decoder_config, nullptr);
+  EXPECT_EQ(decoder_config->metadata_blocks_.size(), 1);
+  EXPECT_EQ(decoder_config->metadata_blocks_[0].header.block_type,
+            FlacMetaBlockHeader::kFlacStreamInfo);
+  EXPECT_EQ(decoder_config->metadata_blocks_[0].header.last_metadata_block_flag,
+            true);
+  EXPECT_EQ(
+      decoder_config->metadata_blocks_[0].header.metadata_data_block_length,
+      FlacStreamInfoStrictConstraints::kStreamInfoBlockLength);
+  auto* stream_info = std::get_if<FlacMetaBlockStreamInfo>(
+      &decoder_config->metadata_blocks_[0].payload);
+  ASSERT_NE(stream_info, nullptr);
+  EXPECT_EQ(stream_info->minimum_block_size, 64);
+  EXPECT_EQ(stream_info->maximum_block_size, 64);
+  EXPECT_EQ(stream_info->sample_rate, 48000);
+  EXPECT_EQ(stream_info->bits_per_sample, 15);
+  EXPECT_EQ(stream_info->total_samples_in_stream, 24000);
+  EXPECT_EQ(stream_info->minimum_frame_size,
+            FlacStreamInfoLooseConstraints::kMinFrameSize);
+  EXPECT_EQ(stream_info->maximum_frame_size,
+            FlacStreamInfoLooseConstraints::kMaxFrameSize);
+  EXPECT_EQ(stream_info->number_of_channels,
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
+  EXPECT_EQ(stream_info->md5_signature,
+            FlacStreamInfoLooseConstraints::kMd5Signature);
+}
+
+TEST(Generate, IamfFlacFixedFieldsMayBeIncluded) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  // Some fields are fixed in IAMF, and default to the fixed value. It's OK to
+  // explicitly set these fields
+  auto* stream_info = codec_config_metadata.mutable_codec_config()
                           ->mutable_decoder_config_flac()
-                          ->mutable_metadata_blocks(0);
-  stream_info->mutable_stream_info()->clear_minimum_frame_size();
-  stream_info->mutable_stream_info()->clear_maximum_frame_size();
-  stream_info->mutable_stream_info()->clear_number_of_channels();
-  stream_info->mutable_stream_info()->clear_md5_signature();
-  InitExpectedObuForFlac(expected_obus_);
+                          ->mutable_metadata_blocks(0)
+                          ->mutable_stream_info();
+  stream_info->set_minimum_block_size(
+      FlacStreamInfoLooseConstraints::kMinFrameSize);
+  stream_info->set_maximum_block_size(
+      FlacStreamInfoLooseConstraints::kMaxFrameSize);
+  stream_info->set_number_of_channels(
+      FlacStreamInfoStrictConstraints::kNumberOfChannels);
+  stream_info->set_md5_signature(
+      FlacStreamInfoLooseConstraints::kMd5Signature.data(),
+      FlacStreamInfoLooseConstraints::kMd5Signature.size());
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_THAT(output_obus, IsOk());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
-  EXPECT_EQ(*output_obus, expected_obus_);
+  ASSERT_TRUE(output_obus.contains(kCodecConfigId));
+  const auto* decoder_config = std::get_if<FlacDecoderConfig>(
+      &output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
+  ASSERT_NE(decoder_config, nullptr);
+  const auto* stream_info_block = std::get_if<FlacMetaBlockStreamInfo>(
+      &decoder_config->metadata_blocks_[0].payload);
+  ASSERT_NE(stream_info_block, nullptr);
+  EXPECT_EQ(stream_info_block->minimum_frame_size,
+            FlacStreamInfoLooseConstraints::kMinFrameSize);
+  EXPECT_EQ(stream_info_block->maximum_frame_size,
+            FlacStreamInfoLooseConstraints::kMaxFrameSize);
+  EXPECT_EQ(stream_info_block->number_of_channels,
+            FlacStreamInfoStrictConstraints::kNumberOfChannels);
+  EXPECT_EQ(stream_info_block->md5_signature,
+            FlacStreamInfoLooseConstraints::kMd5Signature);
 }
 
-TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
+TEST(Generate, ObeysInvalidFlacStreamInfo) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
   // IAMF requires several fields in the Stream Info block are fixed. The
   // generator does not validate OBU requirements.
   const uint32_t kInvalidMinimumFrameSize = 99;
@@ -887,9 +932,7 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
   const std::array<uint8_t, 16> kInvalidMd5Signature = {1};
   ASSERT_NE(kInvalidMd5Signature,
             FlacStreamInfoLooseConstraints::kMd5Signature);
-  InitMetadataForFlac(codec_config_metadata_);
-  auto* stream_info_metadata = codec_config_metadata_.at(0)
-                                   .mutable_codec_config()
+  auto* stream_info_metadata = codec_config_metadata.mutable_codec_config()
                                    ->mutable_decoder_config_flac()
                                    ->mutable_metadata_blocks(0)
                                    ->mutable_stream_info();
@@ -898,25 +941,29 @@ TEST_F(CodecConfigGeneratorTest, ObeysInvalidFlacStreamInfo) {
   stream_info_metadata->set_number_of_channels(kInvalidNumberOfChannels);
   stream_info_metadata->set_md5_signature(kInvalidMd5Signature.data(),
                                           kInvalidMd5Signature.size());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_THAT(output_obus, IsOk());
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
-  const auto& stream_info = std::get<FlacMetaBlockStreamInfo>(
-      std::get<FlacDecoderConfig>(
-          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
-          .metadata_blocks_[0]
-          .payload);
-  EXPECT_EQ(stream_info.minimum_frame_size, kInvalidMinimumFrameSize);
-  EXPECT_EQ(stream_info.maximum_frame_size, kInvalidMaximumFrameSize);
-  EXPECT_EQ(stream_info.number_of_channels, kInvalidNumberOfChannels);
-  EXPECT_EQ(stream_info.md5_signature, kInvalidMd5Signature);
+  ASSERT_TRUE(output_obus.contains(kCodecConfigId));
+  const auto* decoder_config = std::get_if<FlacDecoderConfig>(
+      &output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
+  ASSERT_NE(decoder_config, nullptr);
+  const auto* stream_info = std::get_if<FlacMetaBlockStreamInfo>(
+      &decoder_config->metadata_blocks_[0].payload);
+  ASSERT_NE(stream_info, nullptr);
+  EXPECT_EQ(stream_info->minimum_frame_size, kInvalidMinimumFrameSize);
+  EXPECT_EQ(stream_info->maximum_frame_size, kInvalidMaximumFrameSize);
+  EXPECT_EQ(stream_info->number_of_channels, kInvalidNumberOfChannels);
+  EXPECT_EQ(stream_info->md5_signature, kInvalidMd5Signature);
 }
 
-TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
-  InitMetadataForFlac(codec_config_metadata_);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
+TEST(Generate, ConfiguresFlacWithExtraBlocks) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
       ->mutable_decoder_config_flac()
       ->mutable_metadata_blocks(0)
       ->mutable_header()
@@ -930,8 +977,7 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
         }
         generic_block: "abc"
       )pb",
-      codec_config_metadata_.at(0)
-          .mutable_codec_config()
+      codec_config_metadata.mutable_codec_config()
           ->mutable_decoder_config_flac()
           ->add_metadata_blocks()));
   const auto kExpectedPictureBlock = FlacMetadataBlock{
@@ -940,37 +986,41 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresFlacWithExtraBlocks) {
                  .metadata_data_block_length = 3},
       .payload = std::vector<uint8_t>({'a', 'b', 'c'})};
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_THAT(output_obus, IsOk());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& decoder_config = std::get<FlacDecoderConfig>(
-      output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config);
+      output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
   ASSERT_EQ(decoder_config.metadata_blocks_.size(), 2);
 
   EXPECT_EQ(decoder_config.metadata_blocks_[0].header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);
-  EXPECT_EQ(decoder_config.metadata_blocks_[0].header.last_metadata_block_flag,
-            false);
   EXPECT_EQ(decoder_config.metadata_blocks_[1], kExpectedPictureBlock);
 }
 
-TEST_F(CodecConfigGeneratorTest, FailsWhenMd5SignatureIsNotSixteenBytes) {
-  InitMetadataForFlac(codec_config_metadata_);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
+TEST(Generate, FailsWhenFlacMd5SignatureIsNotSixteenBytes) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
       ->mutable_decoder_config_flac()
       ->mutable_metadata_blocks(0)
       ->mutable_stream_info()
       ->mutable_md5_signature()
       ->assign("0");
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest, InvalidUnknownBlockType) {
-  InitMetadataForFlac(codec_config_metadata_);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
+TEST(Generate, InvalidUnknownBlockType) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
       ->mutable_decoder_config_flac()
       ->mutable_metadata_blocks(0)
       ->mutable_header()
@@ -983,18 +1033,20 @@ TEST_F(CodecConfigGeneratorTest, InvalidUnknownBlockType) {
           metadata_data_block_length: 0
         }
       )pb",
-      codec_config_metadata_.at(0)
-          .mutable_codec_config()
+      codec_config_metadata.mutable_codec_config()
           ->mutable_decoder_config_flac()
           ->add_metadata_blocks()));
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest, InvalidMissingGenericBlock) {
-  InitMetadataForFlac(codec_config_metadata_);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
+TEST(Generate, InvalidMissingGenericBlock) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
       ->mutable_decoder_config_flac()
       ->mutable_metadata_blocks(0)
       ->mutable_header()
@@ -1006,47 +1058,49 @@ TEST_F(CodecConfigGeneratorTest, InvalidMissingGenericBlock) {
           block_type: FLAC_BLOCK_TYPE_PICTURE
           metadata_data_block_length: 3
         }
+        # Missing generic_block
       )pb",
-      codec_config_metadata_.at(0)
-          .mutable_codec_config()
+      codec_config_metadata.mutable_codec_config()
           ->mutable_decoder_config_flac()
           ->add_metadata_blocks()));
-  ASSERT_FALSE(codec_config_metadata_.at(0)
-                   .codec_config()
-                   .decoder_config_flac()
-                   .metadata_blocks(1)
-                   .has_generic_block());
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest, InvalidFlacDecoderConfigIsMissing) {
-  InitMetadataForFlac(codec_config_metadata_);
-  ASSERT_EQ(codec_config_metadata_.at(0).codec_config().codec_id(),
-            iamf_tools_cli_proto::CODEC_ID_FLAC);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
-      ->clear_decoder_config_flac();
+TEST(Generate, InvalidFlacDecoderConfigIsMissing) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()->clear_decoder_config_flac();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
-TEST_F(CodecConfigGeneratorTest, InvalidMissingStreamInfoBlock) {
-  InitMetadataForFlac(codec_config_metadata_);
-  ASSERT_EQ(codec_config_metadata_.at(0)
-                .codec_config()
+TEST(Generate, InvalidMissingStreamInfoBlock) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  ASSERT_EQ(codec_config_metadata.codec_config()
                 .decoder_config_flac()
                 .metadata_blocks(0)
                 .header()
                 .block_type(),
             iamf_tools_cli_proto::FLAC_BLOCK_TYPE_STREAMINFO);
-  codec_config_metadata_.at(0)
-      .mutable_codec_config()
+  codec_config_metadata.mutable_codec_config()
       ->mutable_decoder_config_flac()
       ->mutable_metadata_blocks(0)
       ->clear_stream_info();
 
-  EXPECT_FALSE(InitAndGenerate().ok());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
 }
 
 }  // namespace
