@@ -151,7 +151,6 @@ void AddMixPresentation(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         mix_presentation_id: 42
-        count_label: 0
         sub_mixes {
           audio_elements {
             audio_element_id: 300
@@ -228,8 +227,9 @@ void AddAudioFrame(UserMetadata& user_metadata) {
         samples_to_trim_at_end_includes_padding: false
         samples_to_trim_at_start_includes_codec_delay: false
         audio_element_id: 300
-        channel_ids: [ 0, 1 ]
-        channel_labels: [ "L2", "R2" ]
+        channel_metadatas:
+        [ { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 }
+          , { channel_id: 1 channel_label: CHANNEL_LABEL_R_2 }]
       )pb",
       user_metadata.add_audio_frame_metadata()));
 }

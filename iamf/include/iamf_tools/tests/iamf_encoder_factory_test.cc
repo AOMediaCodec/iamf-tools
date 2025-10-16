@@ -86,7 +86,6 @@ void AddMixPresentation(UserMetadata& user_metadata) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         mix_presentation_id: 42
-        count_label: 0
         sub_mixes {
           audio_elements {
             audio_element_id: 300

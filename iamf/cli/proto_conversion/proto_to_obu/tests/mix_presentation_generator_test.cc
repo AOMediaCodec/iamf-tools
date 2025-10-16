@@ -79,7 +79,6 @@ void FillMixPresentationMetadata(
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         mix_presentation_id: 42
-        count_label: 0
         sub_mixes {
           audio_elements {
             audio_element_id: 300
@@ -87,7 +86,6 @@ void FillMixPresentationMetadata(
               headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
             }
           }
-          num_layouts: 1
           layouts {
             loudness_layout {
               layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
@@ -241,7 +239,6 @@ TEST(Generate, IgnoresDeprecatedRenderingConfigExtensionSize) {
 TEST(Generate, CopiesNoAnnotations) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  mix_presentation_metadata.at(0).set_count_label(0);
   mix_presentation_metadata.at(0).clear_annotations_language();
   mix_presentation_metadata.at(0).clear_localized_presentation_annotations();
   mix_presentation_metadata.at(0)
@@ -264,7 +261,6 @@ TEST(Generate, CopiesNoAnnotations) {
 }
 
 TEST(Generate, CopiesDeprecatedAnnotations) {
-  constexpr int kCountLabel = 2;
   const std::vector<std::string> kAnnotationsLanguage = {"en-us", "en-gb"};
   const std::vector<std::string> kLocalizedPresentationAnnotations = {
       "US Label", "GB Label"};
@@ -273,7 +269,6 @@ TEST(Generate, CopiesDeprecatedAnnotations) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_count_label(kCountLabel);
   mix_presentation.mutable_language_labels()->Add(kAnnotationsLanguage.begin(),
                                                   kAnnotationsLanguage.end());
   *mix_presentation.mutable_mix_presentation_annotations_array()
@@ -309,7 +304,6 @@ TEST(Generate, CopiesDeprecatedAnnotations) {
 }
 
 TEST(Generate, CopiesAnnotations) {
-  constexpr int kCountLabel = 2;
   const std::vector<std::string> kAnnotationsLanguage = {"en-us", "en-gb"};
   const std::vector<std::string> kLocalizedPresentationAnnotations = {
       "US Label", "GB Label"};
@@ -318,7 +312,6 @@ TEST(Generate, CopiesAnnotations) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_count_label(kCountLabel);
   mix_presentation.mutable_annotations_language()->Add(
       kAnnotationsLanguage.begin(), kAnnotationsLanguage.end());
   mix_presentation.mutable_localized_presentation_annotations()->Add(
@@ -346,7 +339,6 @@ TEST(Generate, CopiesAnnotations) {
 }
 
 TEST(Generate, NonDeprecatedAnnotationsTakePrecedence) {
-  constexpr int kCountLabel = 1;
   const std::vector<std::string> kDeprecatedAnnotations = {"Deprecated"};
   const std::vector<std::string> kAnnotationsLanguage = {"en-us"};
   const std::vector<std::string> kLocalizedPresentationAnnotations = {
@@ -356,7 +348,6 @@ TEST(Generate, NonDeprecatedAnnotationsTakePrecedence) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_count_label(kCountLabel);
   mix_presentation.mutable_annotations_language()->Add(
       kAnnotationsLanguage.begin(), kAnnotationsLanguage.end());
   mix_presentation.mutable_localized_presentation_annotations()->Add(

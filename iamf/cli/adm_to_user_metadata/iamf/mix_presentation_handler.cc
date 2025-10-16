@@ -93,7 +93,6 @@ absl::Status CopyLoudness(const LoudnessMetadata& loudness_metadata,
       return status;
     }
 
-    loudness_info.mutable_anchored_loudness()->set_num_anchored_loudness(1);
     auto* anchor_element =
         loudness_info.mutable_anchored_loudness()->add_anchor_elements();
     anchor_element->set_anchor_element(
@@ -221,7 +220,6 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
     iamf_tools_cli_proto::MixPresentationObuMetadata&
         mix_presentation_obu_metadata) {
   mix_presentation_obu_metadata.set_mix_presentation_id(mix_presentation_id);
-  mix_presentation_obu_metadata.set_count_label(1);
   mix_presentation_obu_metadata.add_annotations_language("en-us");
   mix_presentation_obu_metadata.add_localized_presentation_annotations(
       "test_mix_pres");
@@ -275,8 +273,6 @@ absl::Status MixPresentationHandler::PopulateMixPresentation(
       }
     }
   }
-
-  mix_presentation_sub_mix.set_num_layouts(num_layouts);
 
   return absl::OkStatus();
 }

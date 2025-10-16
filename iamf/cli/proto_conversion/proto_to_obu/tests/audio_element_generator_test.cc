@@ -83,7 +83,6 @@ void AddFirstOrderAmbisonicsMetadata(
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 0, 1, 2, 3 ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -105,9 +104,7 @@ void AddTwoLayerStereoMetadata(
         audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
         reserved: 0
         codec_config_id: 200
-        num_parameters: 0
         scalable_channel_layout_config {
-          num_layers: 2
           reserved: 0
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_MONO
@@ -145,7 +142,6 @@ TEST(Generate, PopulatesExpandedLoudspeakerLayout) {
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
-          num_layers: 1
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
             substream_count: 1
@@ -182,7 +178,6 @@ TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
-          num_layers: 1
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
             substream_count: 1
@@ -210,7 +205,6 @@ TEST(Generate, IgnoresExpandedLayoutWhenNotSignalled) {
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
-          num_layers: 1
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
             substream_count: 1
@@ -243,7 +237,6 @@ TEST(Generate, LeavesExpandedLayoutEmptyWhenNotSignalled) {
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
         scalable_channel_layout_config {
-          num_layers: 1
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
             substream_count: 1
@@ -309,7 +302,6 @@ TEST_F(AudioElementGeneratorTest, FirstOrderMonoAmbisonicsLargeSubstreamIds) {
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 1000, 2000, 3000, 4000 ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -342,7 +334,6 @@ TEST_F(AudioElementGeneratorTest, FirstOrderMonoAmbisonicsArbitraryOrder) {
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 100, 101, 102, 103 ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -384,7 +375,6 @@ TEST_F(AudioElementGeneratorTest,
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 100, 101, 102 ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -418,7 +408,6 @@ TEST_F(AudioElementGeneratorTest, MixedFirstOrderMonoAmbisonics) {
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 1000, 2000, 3000 ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -462,7 +451,6 @@ TEST_F(AudioElementGeneratorTest, ThirdOrderMonoAmbisonics) {
           14,
           15
         ]
-        num_parameters: 0
         ambisonics_config {
           ambisonics_mode: AMBISONICS_MODE_MONO
           ambisonics_mono_config {
@@ -528,9 +516,7 @@ TEST_F(AudioElementGeneratorTest, DeprecatedLoudspeakerLayoutIsNotSupported) {
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
-        num_parameters: 0
         scalable_channel_layout_config {
-          num_layers: 1
           reserved: 0
           channel_audio_layer_configs {
             deprecated_loudspeaker_layout: 1  # Stereo
@@ -557,9 +543,7 @@ TEST_F(AudioElementGeneratorTest, DefaultLoudspeakerLayoutIsNotSupported) {
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 99 ]
-        num_parameters: 0
         scalable_channel_layout_config {
-          num_layers: 1
           reserved: 0
           channel_audio_layer_configs {
             # loudspeaker_layout: LOUDSPEAKER_LAYOUT_STEREO
@@ -588,9 +572,7 @@ void AddTwoLayer7_1_0_And7_1_4(::google::protobuf::RepeatedPtrField<
         reserved: 0
         codec_config_id: 200
         audio_substream_ids: [ 700, 701, 702, 703, 704, 740, 741 ]
-        num_parameters: 0
         scalable_channel_layout_config {
-          num_layers: 2
           reserved: 0
           channel_audio_layer_configs {
             loudspeaker_layout: LOUDSPEAKER_LAYOUT_7_1_CH

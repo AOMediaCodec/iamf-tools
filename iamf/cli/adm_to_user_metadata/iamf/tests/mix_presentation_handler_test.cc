@@ -100,7 +100,6 @@ TEST(PopulateMixPresentation, PopulatesMixPresentationId) {
 TEST(PopulateMixPresentation, PopulatesLabels) {
   const auto& mix_presentation_metadata = GetMixObuMetataExpectOk();
 
-  EXPECT_EQ(mix_presentation_metadata.count_label(), 1);
   EXPECT_FALSE(mix_presentation_metadata.annotations_language(0).empty());
   EXPECT_FALSE(
       mix_presentation_metadata.localized_presentation_annotations(0).empty());
@@ -160,7 +159,8 @@ TEST(PopulateMixPresentation, PopulatesLayout) {
       {GetStereoAudioObject()},
       LoudnessMetadata({.integrated_loudness = kIntegratedLoudness}));
 
-  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0).num_layouts(), 1);
+  // Ignoring the deprecated `num_layouts` field.
+  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0).layouts_size(), 1);
   const auto& layout = mix_presentation_metadata.sub_mixes(0).layouts(0);
   ExpectSsLayout(layout);
   EXPECT_EQ(layout.loudness_layout().ss_layout().sound_system(),
@@ -198,7 +198,8 @@ TEST(PopulateMixPresentation, PopulatesOptionalLoudnessValues) {
   EXPECT_EQ(layout.loudness().true_peak(), kExpectedMaxTruePeak);
   const auto& anchored_loudness = layout.loudness().anchored_loudness();
   // ADM only supports dialogue anchored loudness.
-  EXPECT_EQ(anchored_loudness.num_anchored_loudness(), 1);
+  // Ignoring the deprecated `num_anchored_loudness` field.
+  EXPECT_EQ(anchored_loudness.anchor_elements_size(), 1);
   EXPECT_EQ(anchored_loudness.anchor_elements(0).anchor_element(),
             iamf_tools_cli_proto::ANCHOR_TYPE_DIALOGUE);
   EXPECT_EQ(anchored_loudness.anchor_elements(0).anchored_loudness(),
@@ -209,7 +210,8 @@ TEST(PopulateMixPresentation, PopulatesStereoAndHighestLayout) {
   const auto& mix_presentation_metadata =
       GetMixObuMetataExpectOk({Get5_1AudioObject()});
 
-  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0).num_layouts(), 2);
+  // Ignoring the deprecated `num_layouts` field.
+  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0).layouts_size(), 2);
   const auto& layout_stereo = mix_presentation_metadata.sub_mixes(0).layouts(0);
   ExpectSsLayout(layout_stereo);
   EXPECT_EQ(layout_stereo.loudness_layout().ss_layout().sound_system(),

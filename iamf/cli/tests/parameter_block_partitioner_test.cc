@@ -104,7 +104,6 @@ absl::Status CreateMinimalParameterBlockObuMetadata(
     duration += subblock_duration;
   }
   full_parameter_block.set_duration(duration);
-  full_parameter_block.set_num_subblocks(subblock_durations.size());
   full_parameter_block.set_constant_subblock_duration(
       constant_subblock_duration);
   for (int i = 0; i < subblock_durations.size(); i++) {
@@ -186,8 +185,6 @@ TEST_P(PartitionParameterBlocks, PartitionParameterBlock) {
   if (test_case.status_ok) {
     // Validate the parameter block has as many subblocks in the partition as
     // expected.
-    EXPECT_EQ(partitioned_parameter_block.num_subblocks(),
-              test_case.expected_partition_durations.size());
     EXPECT_EQ(partitioned_parameter_block.subblocks_size(),
               test_case.expected_partition_durations.size());
 
@@ -353,7 +350,6 @@ TEST(PartitionParameterBlock, InvalidForUnknownOrMissingParameterData) {
         parameter_id: 100
         start_timestamp: 0
         duration: 4000
-        num_subblocks: 1
         constant_subblock_duration: 4000
         subblocks {
           # Parameter data is missing.
@@ -388,7 +384,6 @@ TEST(PartitionParameterBlock,
         parameter_id: 100
         start_timestamp: 0
         duration: 12000
-        num_subblocks: 3
         constant_subblock_duration: 4000
         # t = [0, 4000).
         subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_1 } }
@@ -424,7 +419,6 @@ TEST(PartitionParameterBlock, InvalidWhenSubblockBoundaryIsCrossedForDemixing) {
         parameter_id: 100
         start_timestamp: 0
         duration: 12000
-        num_subblocks: 3
         constant_subblock_duration: 4000
         # t = [0, 4000).
         subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_1 } }
@@ -459,7 +453,6 @@ TEST(PartitionParameterBlock,
         parameter_id: 100
         start_timestamp: 0
         duration: 8000
-        num_subblocks: 1
         constant_subblock_duration: 8000
         subblocks {
           recon_gain_info_parameter_data {
@@ -506,7 +499,6 @@ TEST(PartitionParameterBlock,
         parameter_id: 100
         start_timestamp: 0
         duration: 8000
-        num_subblocks: 2
         constant_subblock_duration: 4000
         # t = [0, 4000).
         subblocks {

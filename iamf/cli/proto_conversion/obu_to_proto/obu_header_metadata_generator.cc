@@ -29,7 +29,6 @@ ObuHeaderMetadataGenerator::Generate(const ObuHeader& obu_header) {
   result.set_num_samples_to_trim_at_end(obu_header.num_samples_to_trim_at_end);
   result.set_num_samples_to_trim_at_start(
       obu_header.num_samples_to_trim_at_start);
-  result.set_extension_header_size(obu_header.extension_header_size);
   result.mutable_extension_header_bytes()->resize(
       obu_header.extension_header_size);
   RETURN_IF_NOT_OK(StaticCastSpanIfInRange(

@@ -437,8 +437,9 @@ void AddStereoAudioElementAndAudioFrameMetadata(
         wav_filename: ""
         samples_to_trim_at_end: 0
         samples_to_trim_at_start: 0
-        channel_ids: [ 0, 1 ]
-        channel_labels: [ "L2", "R2" ]
+        channel_metadatas:
+        [ { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 }
+          , { channel_id: 1 channel_label: CHANNEL_LABEL_R_2 }]
       )pb",
       audio_frame_metadata));
   audio_frame_metadata->set_audio_element_id(audio_element_id);

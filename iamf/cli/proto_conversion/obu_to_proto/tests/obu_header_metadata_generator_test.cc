@@ -73,7 +73,7 @@ TEST(ObuHeaderMetadataGeneratorGenerate, SetsEmptyObuExtension) {
   ASSERT_THAT(result, IsOk());
 
   EXPECT_TRUE(result->obu_extension_flag());
-  EXPECT_EQ(result->extension_header_size(), 0);
+  // Ignoring the deprecated `extension_header_bytes` field.
   EXPECT_TRUE(result->extension_header_bytes().empty());
 }
 
@@ -90,7 +90,7 @@ TEST(ObuHeaderMetadataGeneratorTest, SetsNonEmptyObuExtension) {
   ASSERT_THAT(result, IsOk());
 
   EXPECT_TRUE(result->obu_extension_flag());
-  EXPECT_EQ(result->extension_header_size(), kExtensionHeaderSize);
+  // Ignoring the deprecated `extension_header_bytes` field.
   EXPECT_THAT(result->extension_header_bytes(),
               ElementsAreArray(extension_header_bytes));
 }

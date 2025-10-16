@@ -92,7 +92,6 @@ TEST(Generate, SetsObuRedundantCopy) {
 TEST(Generate, SetsExtensionHeader) {
   auto metadata = GetSimpleProfileMetadata();
   metadata.mutable_obu_header()->set_obu_extension_flag(true);
-  metadata.mutable_obu_header()->set_extension_header_size(5);
   metadata.mutable_obu_header()->set_extension_header_bytes("extra");
 
   std::optional<IASequenceHeaderObu> output_obu;

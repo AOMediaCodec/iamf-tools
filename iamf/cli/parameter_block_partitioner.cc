@@ -384,7 +384,6 @@ absl::Status ParameterBlockPartitioner::PartitionParameterBlock(
   partitioned.set_parameter_id(full_parameter_block.parameter_id());
   partitioned.set_duration(
       static_cast<uint32_t>(partitioned_end_time - partitioned_start_time));
-  partitioned.set_num_subblocks(partitioned_subblocks.size());
   partitioned.set_constant_subblock_duration(constant_subblock_duration);
   *partitioned.mutable_obu_header() = full_parameter_block.obu_header();
   for (const auto& subblock : partitioned_subblocks) {

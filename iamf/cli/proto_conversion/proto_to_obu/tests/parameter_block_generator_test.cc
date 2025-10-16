@@ -100,7 +100,6 @@ void ConfigureDemixingParameterBlocks(
       R"pb(
         parameter_id: 100
         duration: 8
-        num_subblocks: 1
         constant_subblock_duration: 8
         subblocks { demixing_info_parameter_data { dmixp_mode: DMIXP_MODE_3 } }
         start_timestamp: 0
@@ -227,7 +226,6 @@ void ConfigureMixGainParameterBlocks(
       R"pb(
         parameter_id: 100
         duration: 8
-        num_subblocks: 1
         constant_subblock_duration: 8
         subblocks:
         [ {
@@ -243,7 +241,6 @@ void ConfigureMixGainParameterBlocks(
       R"pb(
         parameter_id: 100
         duration: 8
-        num_subblocks: 1
         constant_subblock_duration: 8
         subblocks:
         [ {
