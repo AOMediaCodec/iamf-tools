@@ -52,9 +52,7 @@ codec_config_metadata {
     decoder_config_flac: {
       metadata_blocks: {
         header: {
-          last_metadata_block_flag: true
           block_type: FLAC_BLOCK_TYPE_STREAMINFO
-          metadata_data_block_length: 34
         }
         stream_info {
           minimum_block_size: 64
@@ -94,7 +92,6 @@ audio_element_metadata {
 
 mix_presentation_metadata {
   mix_presentation_id: 42
-  count_label: 1
   annotations_language: ["en-us"]
   localized_presentation_annotations: ["test_mix_pres"]
   sub_mixes {

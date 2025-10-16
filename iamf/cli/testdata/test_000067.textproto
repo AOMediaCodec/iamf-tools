@@ -75,7 +75,6 @@ audio_element_metadata {
 
 mix_presentation_metadata {
   mix_presentation_id: 42
-  count_label: 1
   annotations_language: ["en-us"]
   localized_presentation_annotations: ["test_mix_pres"]
   sub_mixes {
@@ -84,7 +83,6 @@ mix_presentation_metadata {
       localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
       rendering_config {
         headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
-        rendering_config_extension_size: 5
         rendering_config_extension_bytes: "extra"
       }
       element_mix_gain {

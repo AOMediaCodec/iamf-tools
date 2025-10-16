@@ -104,7 +104,6 @@ audio_element_metadata: [
 
 mix_presentation_metadata {
   mix_presentation_id: 42
-  count_label: 1
   annotations_language: ["en-us"]
   localized_presentation_annotations: ["test_mix_pres"]
   sub_mixes {
