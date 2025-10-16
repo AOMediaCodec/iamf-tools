@@ -36,6 +36,8 @@ namespace {
 using absl::StatusCode::kInvalidArgument;
 using absl::StatusCode::kResourceExhausted;
 
+using ::testing::Not;
+
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
 
@@ -84,7 +86,7 @@ template <>
 std::unique_ptr<FileBasedReadBitBuffer> CreateConcreteReadBitBuffer(
     int64_t capacity, absl::Span<const uint8_t> source_data) {
   // First write the content of `source_data` into a temporary file.
-  const auto output_filename = GetAndCleanupOutputFileName(".iamf");
+  const auto output_filename = GetAndCleanupOutputFileName(".bin");
   std::ofstream ofs(output_filename, std::ios::binary | std::ios::out);
   ofs.write(reinterpret_cast<const char*>(source_data.data()),
             source_data.size());
@@ -162,12 +164,20 @@ TYPED_TEST(ReadBitBufferTest, SeekFailsWithNegativePosition) {
   EXPECT_THAT(this->rb_->Seek(-1), StatusIs(kInvalidArgument));
 }
 
+TYPED_TEST(ReadBitBufferTest, SeekSucceedsWithPositionEqualToSourceSize) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  EXPECT_THAT(this->rb_->Seek(24), IsOk());
+}
+
 TYPED_TEST(ReadBitBufferTest, SeekFailsWithPositionTooLarge) {
   this->source_data_ = {0xab, 0xcd, 0xef};
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
 
-  EXPECT_THAT(this->rb_->Seek(24), StatusIs(kResourceExhausted));
+  EXPECT_THAT(this->rb_->Seek(25), StatusIs(kResourceExhausted));
 }
 
 // ---- ReadUnsignedLiteral Tests -----
@@ -810,6 +820,52 @@ TYPED_TEST(ReadBitBufferTest, InvalidStringMissingNullTerminatorMaxLength) {
   this->CreateReadBitBuffer();
   std::string output;
   EXPECT_FALSE(this->rb_->ReadString(output).ok());
+}
+
+// ---- IgnoreBytes Tests ----
+TYPED_TEST(ReadBitBufferTest, IgnoreBytesSucceeds) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  // Skip 1 byte.
+  EXPECT_THAT(this->rb_->IgnoreBytes(1), IsOk());
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+TYPED_TEST(ReadBitBufferTest, IgnoreBytesFailsWhenNegativeNumBytes) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  EXPECT_THAT(this->rb_->IgnoreBytes(-8), Not(IsOk()));
+}
+
+TYPED_TEST(ReadBitBufferTest, IgnoreBytesFailsWhenSkippingPastEnd) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  const size_t kNumBytesToSkip = 4;
+  EXPECT_THAT(this->rb_->IgnoreBytes(kNumBytesToSkip), Not(IsOk()));
+}
+
+TYPED_TEST(ReadBitBufferTest, SkipZeroBytesSucceeds) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  EXPECT_THAT(this->rb_->IgnoreBytes(0), IsOk());
+  EXPECT_TRUE(this->rb_->CanReadBytes(3));
+}
+
+TYPED_TEST(ReadBitBufferTest, IgnoreBytesExactlyToEndSucceeds) {
+  this->source_data_ = {0xab, 0xcd, 0xef};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  EXPECT_THAT(this->rb_->IgnoreBytes(3), IsOk());
+  EXPECT_EQ(this->rb_->Tell(), 24);
 }
 
 // --- Specific StreamBasedReadBitBuffer tests ---

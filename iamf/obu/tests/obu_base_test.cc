@@ -170,8 +170,7 @@ TEST(ObuBaseTest, ReadDoesNotOverflowWhenBufferIsLarge) {
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       absl::MakeConstSpan(source_data));
   // Advance the buffer to just before the OBU of interest.
-  std::vector<uint8_t> junk_data(kJunkDataSize);
-  ASSERT_THAT(rb->ReadUint8Span(absl::MakeSpan(junk_data)), IsOk());
+  ASSERT_THAT(rb->IgnoreBytes(kJunkDataSize), IsOk());
 
   EXPECT_THAT(OneByteObu::CreateFromBuffer(ObuHeader(), 1, *rb), IsOk());
 }

@@ -212,6 +212,14 @@ class ReadBitBuffer {
    */
   absl::Status Seek(int64_t position);
 
+  /*!\brief Consumes and ignores `num_bytes` bytes from the source.
+   *
+   * \param num_bytes Number of bytes to ignore.
+   * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
+   *         the buffer runs out of data.
+   */
+  absl::Status IgnoreBytes(int64_t num_bytes);
+
  protected:
   /*!\brief Constructor.
    *

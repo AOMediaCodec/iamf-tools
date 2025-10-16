@@ -290,10 +290,10 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
         absl::StrCat("Invalid source position: ", position));
   }
 
-  if (position >= source_size_bits_) {
+  if (position > source_size_bits_) {
     return absl::ResourceExhaustedError(
         absl::StrCat("Not enough bits in source: position= ", position,
-                     " >= #(bits in source)= ", source_size_bits_));
+                     " > #(bits in source)= ", source_size_bits_));
   }
 
   // Simply move the `buffer_bit_offset_` if the requested position lies
@@ -321,6 +321,10 @@ absl::Status ReadBitBuffer::Seek(const int64_t position) {
   return absl::OkStatus();
 }
 
+absl::Status ReadBitBuffer::IgnoreBytes(int64_t num_bytes) {
+  return Seek(Tell() + num_bytes * 8);
+}
+
 absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
                                                         const int max_num_bits,
                                                         uint64_t& output) {
@@ -332,6 +336,9 @@ absl::Status ReadBitBuffer::ReadUnsignedLiteralInternal(const int num_bits,
   }
   if (buffer_bit_offset_ < 0) {
     return absl::InvalidArgumentError("buffer_bit_offset_ must be >= 0.");
+  }
+  if (Tell() + num_bits > source_size_bits_) {
+    return absl::ResourceExhaustedError("Not enough bits to read");
   }
   output = 0;
 

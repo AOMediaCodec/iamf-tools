@@ -56,8 +56,7 @@ absl::Status GetAndStoreCodecConfigObu(
         << "Possible bitstream corruption. Skipping over an "
            "implausibly small Codec Config OBU with a payload size of: "
         << payload_size << " bytes.";
-    std::vector<uint8_t> buffer_to_discard(payload_size);
-    return read_bit_buffer.ReadUint8Span(absl::MakeSpan(buffer_to_discard));
+    return read_bit_buffer.IgnoreBytes(payload_size);
   }
 
   absl::StatusOr<CodecConfigObu> codec_config_obu =
@@ -238,9 +237,7 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
         ABSL_LOG(INFO)
             << "Detected a reserved OBU while parsing Descriptor OBUs. "
             << "Safely ignoring it.";
-        std::vector<uint8_t> buffer_to_discard(payload_size);
-        RETURN_IF_NOT_OK(
-            read_bit_buffer.ReadUint8Span(absl::MakeSpan(buffer_to_discard)));
+        RETURN_IF_NOT_OK(read_bit_buffer.IgnoreBytes(payload_size));
         break;
       }
       default:
