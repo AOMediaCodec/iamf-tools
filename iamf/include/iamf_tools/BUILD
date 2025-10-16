@@ -69,7 +69,7 @@ cc_library(
     hdrs = ["iamf_tools_api_types.h"],
     visibility = [
         "//iamf/api:__subpackages__",
-        "//iamf/cli/internal/decoder:__subpackages__",
+        "//iamf/cli:__subpackages__",
         "//iamf/include/iamf_tools/tests:__pkg__",
     ],
 )

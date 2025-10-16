@@ -718,6 +718,26 @@ cc_library(
 )
 
 cc_binary(
+    name = "decoder_main",
+    srcs = ["decoder_main.cc"],
+    deps = [
+        ":wav_writer",
+        "//iamf/api/decoder:iamf_decoder",
+        "//iamf/api/internal_utils",
+        "//iamf/common/utils:map_utils",
+        "//iamf/include/iamf_tools:iamf_tools_api_types",
+        "@abseil-cpp//absl/flags:flag",
+        "@abseil-cpp//absl/flags:parse",
+        "@abseil-cpp//absl/flags:usage",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/log:flags",
+        "@abseil-cpp//absl/strings:string_view",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_binary(
     name = "encoder_main",
     srcs = [
         "encoder_main.cc",

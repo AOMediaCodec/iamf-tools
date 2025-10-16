@@ -7,7 +7,7 @@ cc_library(
     srcs = ["internal_utils.cc"],
     hdrs = ["internal_utils.h"],
     visibility = [
-        "//iamf/cli/internal/decoder:__pkg__",
+        "//iamf/cli:__subpackages__",
     ],
     deps = [
         "//iamf/api/decoder:iamf_decoder",

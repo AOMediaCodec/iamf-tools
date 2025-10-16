@@ -10,7 +10,7 @@ cc_library(
     visibility = [
         "//iamf/api/decoder/tests:__pkg__",
         "//iamf/api/internal_utils:__pkg__",
-        "//iamf/cli/internal/decoder:__pkg__",
+        "//iamf/cli:__subpackages__",
         "//iamf/include/iamf_tools:__pkg__",
     ],
     deps = [
