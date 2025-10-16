@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/log/absl_log.h"
@@ -27,6 +28,9 @@
 namespace iamf_tools {
 
 namespace {
+
+using ::absl::MakeConstSpan;
+using ::absl::MakeSpan;
 
 absl::Status GetStreamInfo(const FlacDecoderConfig& decoder_config,
                            const FlacMetaBlockStreamInfo** stream_info) {
@@ -73,19 +77,6 @@ absl::Status ValidateTotalSamplesInStream(uint64_t total_samples_in_stream) {
 // that are not valid, some restrictions are relaxed.
 absl::Status ValidateDecodingRestrictions(
     uint32_t num_samples_per_frame, const FlacDecoderConfig& decoder_config) {
-  for (int i = 0; i < decoder_config.metadata_blocks_.size(); i++) {
-    const bool last_metadata_block_flag =
-        decoder_config.metadata_blocks_[i].header.last_metadata_block_flag;
-
-    const bool last_block = (i == decoder_config.metadata_blocks_.size() - 1);
-
-    if (last_metadata_block_flag != last_block) {
-      return absl::InvalidArgumentError(
-          "There MUST be exactly one FLAC metadata block with "
-          "`last_metadata_block_flag == true` and it MUST be the final block.");
-    }
-  }
-
   const FlacMetaBlockStreamInfo* stream_info;
   RETURN_IF_NOT_OK(GetStreamInfo(decoder_config, &stream_info));
 
@@ -154,8 +145,7 @@ absl::Status WriteStreamInfo(const FlacMetaBlockStreamInfo& stream_info,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(stream_info.bits_per_sample, 5));
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral64(stream_info.total_samples_in_stream, 36));
-  RETURN_IF_NOT_OK(
-      wb.WriteUint8Span(absl::MakeConstSpan(stream_info.md5_signature)));
+  RETURN_IF_NOT_OK(wb.WriteUint8Span(MakeConstSpan(stream_info.md5_signature)));
   return absl::OkStatus();
 }
 
@@ -202,33 +192,34 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
 
   RETURN_IF_NOT_OK(ValidateEncodingRestrictions(num_samples_per_frame, *this));
 
-  for (const auto& metadata_block : metadata_blocks_) {
-    RETURN_IF_NOT_OK(
-        wb.WriteBoolean(metadata_block.header.last_metadata_block_flag));
+  for (int i = 0; i < metadata_blocks_.size(); ++i) {
+    const auto& metadata_block = metadata_blocks_[i];
+    const bool is_last_block = (i == metadata_blocks_.size() - 1);
+    RETURN_IF_NOT_OK(wb.WriteBoolean(is_last_block));
     RETURN_IF_NOT_OK(
         wb.WriteUnsignedLiteral(metadata_block.header.block_type, 7));
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-        metadata_block.header.metadata_data_block_length, 24));
-
-    int64_t expected_end =
-        wb.bit_offset() + metadata_block.header.metadata_data_block_length * 8;
 
     switch (metadata_block.header.block_type) {
-      case FlacMetaBlockHeader::kFlacStreamInfo:
-        RETURN_IF_NOT_OK(WriteStreamInfo(
-            std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), wb));
+      case FlacMetaBlockHeader::kFlacStreamInfo: {
+        auto* stream_info =
+            std::get_if<FlacMetaBlockStreamInfo>(&metadata_block.payload);
+        RETURN_IF_NOT_OK(ValidateNotNull(
+            stream_info,
+            "Stream info payload is not a `FlacMetaBlockStreamInfo`."));
+        RETURN_IF_NOT_OK(
+            wb.WriteUnsignedLiteral(StrictCons::kStreamInfoBlockLength, 24));
+        RETURN_IF_NOT_OK(WriteStreamInfo(*stream_info, wb));
+      } break;
+      default: {
+        auto* generic_block =
+            std::get_if<std::vector<uint8_t>>(&metadata_block.payload);
+        RETURN_IF_NOT_OK(ValidateNotNull(
+            generic_block,
+            "Generic block payload is not a `FlacMetaBlockStreamInfo`."));
+        RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(generic_block->size(), 24));
+        RETURN_IF_NOT_OK(wb.WriteUint8Span(MakeConstSpan(*generic_block)));
         break;
-      default:
-        RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
-            std::get<std::vector<uint8_t>>(metadata_block.payload))));
-        break;
-    }
-
-    if (expected_end != wb.bit_offset()) {
-      return absl::UnknownError(
-          absl::StrCat("`FlacDecoderConfig` was expected to be using ",
-                       metadata_block.header.metadata_data_block_length,
-                       " bytes, but it was not."));
+      }
     }
   }
 
@@ -244,18 +235,16 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
   // to read. Instead, we must look at the `last_metadata_block_flag` to
   // determine when to stop reading.
   std::vector<FlacMetadataBlock> metadata_blocks;
-  bool is_last_metadata_block = false;
-  while (!is_last_metadata_block) {
+  bool last_metadata_block_flag = false;
+  while (!last_metadata_block_flag) {
     FlacMetadataBlock metadata_block;
-    RETURN_IF_NOT_OK(
-        rb.ReadBoolean(metadata_block.header.last_metadata_block_flag));
-    is_last_metadata_block = metadata_block.header.last_metadata_block_flag;
+    RETURN_IF_NOT_OK(rb.ReadBoolean(last_metadata_block_flag));
     uint8_t block_type;
     RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(7, block_type));
     metadata_block.header.block_type =
         static_cast<FlacMetaBlockHeader::FlacBlockType>(block_type);
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(
-        24, metadata_block.header.metadata_data_block_length));
+    uint32_t metadata_data_block_length;
+    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, metadata_data_block_length));
 
     switch (metadata_block.header.block_type) {
       case FlacMetaBlockHeader::kFlacStreamInfo:
@@ -263,9 +252,8 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
             std::get<FlacMetaBlockStreamInfo>(metadata_block.payload), rb));
         break;
       default: {
-        std::vector<uint8_t> payload;
-        payload.resize(metadata_block.header.metadata_data_block_length);
-        RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(payload)));
+        std::vector<uint8_t> payload(metadata_data_block_length);
+        RETURN_IF_NOT_OK(rb.ReadUint8Span(MakeSpan(payload)));
         metadata_block.payload = std::move(payload);
         break;
       }
@@ -309,20 +297,22 @@ void FlacDecoderConfig::Print() const {
 
   for (const auto& metadata_block : metadata_blocks_) {
     ABSL_VLOG(1) << "      header:";
-    ABSL_VLOG(1) << "        last_metadata_block_flag= "
-                 << metadata_block.header.last_metadata_block_flag;
+    ABSL_VLOG(1) << "        last_metadata_block_flag (omitted).";
     ABSL_VLOG(1) << "        block_type= "
                  << absl::StrCat(metadata_block.header.block_type);
-    ABSL_VLOG(1) << "        metadata_data_block_length= "
-                 << metadata_block.header.metadata_data_block_length;
+
     switch (metadata_block.header.block_type) {
       case FlacMetaBlockHeader::kFlacStreamInfo:
+        ABSL_VLOG(1) << "        metadata_data_block_length= "
+                     << StrictCons::kStreamInfoBlockLength;
         PrintStreamInfo(
             std::get<FlacMetaBlockStreamInfo>(metadata_block.payload));
         break;
       default: {
         const auto& generic_block =
             std::get<std::vector<uint8_t>>(metadata_block.payload);
+        ABSL_VLOG(1) << "        metadata_data_block_length= "
+                     << generic_block.size();
         ABSL_VLOG(1) << "      metadata_block(generic_block):";
         ABSL_VLOG(1) << "        size= " << generic_block.size();
         ABSL_VLOG(1) << "        payload omitted.";

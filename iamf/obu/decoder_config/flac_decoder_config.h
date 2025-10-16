@@ -110,9 +110,9 @@ struct FlacMetaBlockHeader {
   friend bool operator==(const FlacMetaBlockHeader& lhs,
                          const FlacMetaBlockHeader& rhs) = default;
 
-  bool last_metadata_block_flag;
-  FlacBlockType block_type;             // 7 bits.
-  uint32_t metadata_data_block_length;  // 24 bits.
+  // `last_metadata_block_flag` is automatically inserted (1 bit).
+  FlacBlockType block_type;  // 7 bits.
+  // `metadata_data_block_length` is automatically inserted (24 bits).
 };
 
 struct FlacMetadataBlock {

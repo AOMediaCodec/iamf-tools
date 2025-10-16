@@ -16,6 +16,7 @@ and this project adheres to
     calculating the size from related elements.
 -   Deprecate `MixPresentationObuMetadata::rendering_config_extension_size`, in
     favor of calculating the size from related elements.
+-   Deprecate `FlacMetaBlockHeader::last_metadata_block_flag` and `metadata_data_block_length` in favor of automatically determining the related values.
 
 ### Fixed
 

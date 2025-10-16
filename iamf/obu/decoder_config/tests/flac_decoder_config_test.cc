@@ -38,9 +38,7 @@ class FlacTest : public testing::Test {
   FlacTest()
       : num_samples_per_frame_(16),
         flac_decoder_config_{
-            {{.header = {.last_metadata_block_flag = true,
-                         .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
-                         .metadata_data_block_length = 34},
+            {{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
               .payload =
                   FlacMetaBlockStreamInfo{.minimum_block_size = 16,
                                           .maximum_block_size = 16,
@@ -118,19 +116,15 @@ TEST_F(FlacTest, WriteDefault) {
 }
 
 TEST_F(FlacTest, CanContainAdditionalBlocks) {
-  flac_decoder_config_.metadata_blocks_[0].header.last_metadata_block_flag =
-      false;
-
   flac_decoder_config_.metadata_blocks_.push_back(FlacMetadataBlock{
-      .header = {.last_metadata_block_flag = false,
-                 .block_type = FlacMetaBlockHeader::kFlacPicture,
-                 .metadata_data_block_length = 3},
+      .header = {.block_type = FlacMetaBlockHeader::kFlacPicture},
       .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   flac_decoder_config_.metadata_blocks_.push_back(FlacMetadataBlock{
-      .header = {.last_metadata_block_flag = true,
-                 .block_type = FlacMetaBlockHeader::kFlacApplication,
-                 .metadata_data_block_length = 3},
+      .header =
+          {
+              .block_type = FlacMetaBlockHeader::kFlacApplication,
+          },
       .payload = std::vector<uint8_t>{'d', 'e', 'f'}});
 
   expected_decoder_config_payload_ = {
@@ -173,44 +167,14 @@ TEST_F(FlacTest, CanContainAdditionalBlocks) {
   TestWriteDecoderConfig();
 }
 
-TEST_F(FlacTest, IllegalMetadataBlockLengthInconsistent) {
-  flac_decoder_config_.metadata_blocks_[0].header.last_metadata_block_flag =
-      false;
-
-  // `metadata_data_block_length` is inconsistent with the payload.
-  flac_decoder_config_.metadata_blocks_.push_back(FlacMetadataBlock{
-      .header = {.last_metadata_block_flag = true,
-                 .block_type = FlacMetaBlockHeader::kFlacPicture,
-                 .metadata_data_block_length = 10},
-      .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
-
-  expected_write_status_code_ = absl::StatusCode::kUnknown;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(FlacTest, IllegalExtraneousLastMetadataBlockFlag) {
-  // The final block and only the final block MUST have
-  // `last_metadata_block_flag` set.
-  flac_decoder_config_.metadata_blocks_[0].header.last_metadata_block_flag =
-      true;
-  flac_decoder_config_.metadata_blocks_.push_back(FlacMetadataBlock{
-      .header = {.last_metadata_block_flag = true,
-                 .block_type = FlacMetaBlockHeader::kFlacPicture,
-                 .metadata_data_block_length = 3},
-      .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
-
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
-
 TEST_F(FlacTest, IllegalStreamInfoMustBeFirstBlock) {
   flac_decoder_config_.metadata_blocks_.insert(
       flac_decoder_config_.metadata_blocks_.begin(),
-      FlacMetadataBlock{
-          .header = {.last_metadata_block_flag = true,
-                     .block_type = FlacMetaBlockHeader::kFlacPicture,
-                     .metadata_data_block_length = 3},
-          .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
+      FlacMetadataBlock{.header =
+                            {
+                                .block_type = FlacMetaBlockHeader::kFlacPicture,
+                            },
+                        .payload = std::vector<uint8_t>{'a', 'b', 'c'}});
 
   ASSERT_EQ(flac_decoder_config_.metadata_blocks_.back().header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);
@@ -220,9 +184,7 @@ TEST_F(FlacTest, IllegalStreamInfoMustBeFirstBlock) {
 
 TEST_F(FlacTest, IllegalStreamInfoMustBePresent) {
   flac_decoder_config_.metadata_blocks_[0].header = {
-      .last_metadata_block_flag = true,
-      .block_type = FlacMetaBlockHeader::kFlacPadding,
-      .metadata_data_block_length = 0};
+      .block_type = FlacMetaBlockHeader::kFlacPadding};
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
@@ -412,13 +374,6 @@ TEST_F(FlacTest, InvalidBitsPerSampleZero) {
 
 TEST_F(FlacTest, InvalidBitsPerSampleTooLow) {
   first_stream_info_payload_->bits_per_sample = 2;
-  expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
-  TestWriteDecoderConfig();
-}
-
-TEST_F(FlacTest, InvalidLastMetadataFlag) {
-  flac_decoder_config_.metadata_blocks_[0].header.last_metadata_block_flag =
-      false;
   expected_write_status_code_ = absl::StatusCode::kInvalidArgument;
   TestWriteDecoderConfig();
 }
@@ -766,7 +721,6 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
   EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
   FlacMetaBlockHeader header = decoder_config.metadata_blocks_[0].header;
   EXPECT_EQ(header.block_type, FlacMetaBlockHeader::kFlacStreamInfo);
-  EXPECT_EQ(header.metadata_data_block_length, 34);
   FlacMetaBlockStreamInfo stream_info = std::get<FlacMetaBlockStreamInfo>(
       decoder_config.metadata_blocks_[0].payload);
   EXPECT_EQ(stream_info.minimum_block_size, 64);
@@ -831,23 +785,16 @@ TEST(ReadAndValidateTest, ReadAndValidateCanReadMultipleMetadataBlocks) {
   // just check that it is not labelled as the last block.
   EXPECT_THAT(decoder_config.metadata_blocks_[0].header.block_type,
               Eq(FlacMetaBlockHeader::kFlacStreamInfo));
-  EXPECT_FALSE(
-      decoder_config.metadata_blocks_[0].header.last_metadata_block_flag);
 
   EXPECT_THAT(decoder_config.metadata_blocks_.size(), Eq(3));
   auto& picture_block = decoder_config.metadata_blocks_[1];
   auto& application_block = decoder_config.metadata_blocks_[2];
 
-  // Check that the subsequent blocks have the correct header (block type,
-  // payload length, last block flag).
+  // Check that the subsequent blocks have the correct header.
   EXPECT_THAT(picture_block.header.block_type,
               Eq(FlacMetaBlockHeader::kFlacPicture));
   EXPECT_THAT(application_block.header.block_type,
               Eq(FlacMetaBlockHeader::kFlacApplication));
-  EXPECT_THAT(picture_block.header.metadata_data_block_length, Eq(3));
-  EXPECT_THAT(application_block.header.metadata_data_block_length, Eq(3));
-  EXPECT_FALSE(picture_block.header.last_metadata_block_flag);
-  EXPECT_TRUE(application_block.header.last_metadata_block_flag);
 
   // Check that the subsequent blocks have the correct payload variant and
   // contents.

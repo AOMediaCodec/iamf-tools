@@ -116,6 +116,7 @@ cc_library(
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@com_google_protobuf//:protobuf",

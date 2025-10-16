@@ -18,6 +18,7 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/proto/codec_config.pb.h"
@@ -197,15 +198,17 @@ absl::Status GenerateFlacDecoderConfig(
     FlacMetadataBlock obu_metadata_block;
 
     // Generate the header.
-    obu_metadata_block.header.last_metadata_block_flag =
-        metadata_block.header().last_metadata_block_flag();
+    if (metadata_block.header().has_last_metadata_block_flag()) {
+      ABSL_LOG(WARNING)
+          << "`last_metadata_block_flag` is deprecated will be ignored.";
+    }
+    if (metadata_block.header().has_metadata_data_block_length()) {
+      ABSL_LOG(WARNING)
+          << "`metadata_data_block_length` is deprecated will be ignored.";
+    }
 
     RETURN_IF_NOT_OK(CopyFlacBlockType(metadata_block.header().block_type(),
                                        obu_metadata_block.header.block_type));
-
-    obu_metadata_block.header.metadata_data_block_length =
-        metadata_block.header().metadata_data_block_length();
-
     // Generate the block specific fields.
     if (obu_metadata_block.header.block_type ==
         FlacMetaBlockHeader::kFlacStreamInfo) {
@@ -224,14 +227,11 @@ absl::Status GenerateFlacDecoderConfig(
         return absl::InvalidArgumentError("Missing generic block.");
       }
 
-      obu_metadata_block.payload = std::vector<uint8_t>(
-          obu_metadata_block.header.metadata_data_block_length);
-
-      std::transform(
-          metadata_block.generic_block().begin(),
-          metadata_block.generic_block().end(),
-          std::get<std::vector<uint8_t>>(obu_metadata_block.payload).begin(),
-          [](const char x) { return static_cast<uint8_t>(x); });
+      std::vector<uint8_t> payload(metadata_block.generic_block().size());
+      std::transform(metadata_block.generic_block().begin(),
+                     metadata_block.generic_block().end(), payload.begin(),
+                     [](const char x) { return static_cast<uint8_t>(x); });
+      obu_metadata_block.payload = payload;
     }
 
     obu_decoder_config.metadata_blocks_.push_back(obu_metadata_block);

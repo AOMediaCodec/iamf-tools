@@ -752,9 +752,8 @@ class CodecConfigFlacTest : public CodecConfigTestBase, public testing::Test {
       : CodecConfigTestBase(
             CodecConfig::kCodecIdFlac,
             FlacDecoderConfig{
-                {{.header = {.last_metadata_block_flag = true,
-                             .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
-                             .metadata_data_block_length = 34},
+                {{.header = {.block_type =
+                                 FlacMetaBlockHeader::kFlacStreamInfo},
                   .payload = FlacMetaBlockStreamInfo{
                       .minimum_block_size = 16,
                       .maximum_block_size = 16,
@@ -884,7 +883,6 @@ TEST(CreateFromBuffer, ValidFlacDecoderConfig) {
       flac_decoder_config.metadata_blocks_[0].header;
   EXPECT_EQ(flac_meta_block_header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);
-  EXPECT_EQ(flac_meta_block_header.metadata_data_block_length, 34);
   FlacMetaBlockStreamInfo stream_info = std::get<FlacMetaBlockStreamInfo>(
       flac_decoder_config.metadata_blocks_[0].payload);
   EXPECT_EQ(stream_info.minimum_block_size, 64);

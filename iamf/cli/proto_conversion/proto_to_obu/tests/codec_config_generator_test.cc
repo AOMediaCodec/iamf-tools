@@ -193,11 +193,7 @@ void FillMetadataForFlac(CodecConfigObuMetadata& codec_config_metadata) {
           audio_roll_distance: 0
           decoder_config_flac: {
             metadata_blocks: {
-              header: {
-                last_metadata_block_flag: true
-                block_type: FLAC_BLOCK_TYPE_STREAMINFO
-                metadata_data_block_length: 34
-              }
+              header: { block_type: FLAC_BLOCK_TYPE_STREAMINFO }
               stream_info {
                 minimum_block_size: 64
                 maximum_block_size: 64
@@ -850,11 +846,6 @@ TEST(Generate, FillsStreamInfoForFlac) {
   EXPECT_EQ(decoder_config->metadata_blocks_.size(), 1);
   EXPECT_EQ(decoder_config->metadata_blocks_[0].header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);
-  EXPECT_EQ(decoder_config->metadata_blocks_[0].header.last_metadata_block_flag,
-            true);
-  EXPECT_EQ(
-      decoder_config->metadata_blocks_[0].header.metadata_data_block_length,
-      FlacStreamInfoStrictConstraints::kStreamInfoBlockLength);
   auto* stream_info = std::get_if<FlacMetaBlockStreamInfo>(
       &decoder_config->metadata_blocks_[0].payload);
   ASSERT_NE(stream_info, nullptr);
@@ -970,21 +961,18 @@ TEST(Generate, ConfiguresFlacWithExtraBlocks) {
       ->set_last_metadata_block_flag(false);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        header: {
-          last_metadata_block_flag: true
-          block_type: FLAC_BLOCK_TYPE_PICTURE
-          metadata_data_block_length: 3
-        }
+        header: { block_type: FLAC_BLOCK_TYPE_PICTURE }
         generic_block: "abc"
       )pb",
       codec_config_metadata.mutable_codec_config()
           ->mutable_decoder_config_flac()
           ->add_metadata_blocks()));
-  const auto kExpectedPictureBlock = FlacMetadataBlock{
-      .header = {.last_metadata_block_flag = true,
-                 .block_type = FlacMetaBlockHeader::kFlacPicture,
-                 .metadata_data_block_length = 3},
-      .payload = std::vector<uint8_t>({'a', 'b', 'c'})};
+  const auto kExpectedPictureBlock =
+      FlacMetadataBlock{.header =
+                            {
+                                .block_type = FlacMetaBlockHeader::kFlacPicture,
+                            },
+                        .payload = std::vector<uint8_t>({'a', 'b', 'c'})};
 
   CodecConfigGenerator codec_config_generator(codec_config_metadatas);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
@@ -997,6 +985,45 @@ TEST(Generate, ConfiguresFlacWithExtraBlocks) {
   EXPECT_EQ(decoder_config.metadata_blocks_[0].header.block_type,
             FlacMetaBlockHeader::kFlacStreamInfo);
   EXPECT_EQ(decoder_config.metadata_blocks_[1], kExpectedPictureBlock);
+}
+
+TEST(Generate, IgnoresDeprecatedMetadataDataBlockLength) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
+      ->mutable_decoder_config_flac()
+      ->mutable_metadata_blocks(0)
+      ->mutable_header()
+      ->set_metadata_data_block_length(std::numeric_limits<uint32_t>::max());
+
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
+
+  const auto& decoder_config = std::get<FlacDecoderConfig>(
+      output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
+  EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
+}
+
+TEST(Generate, IgnoresDeprecatedLastMetadataBlockFlag) {
+  CodecConfigMetadatas codec_config_metadatas;
+  CodecConfigObuMetadata& codec_config_metadata = *codec_config_metadatas.Add();
+  FillMetadataForFlac(codec_config_metadata);
+  codec_config_metadata.mutable_codec_config()
+      ->mutable_decoder_config_flac()
+      ->mutable_metadata_blocks(0)
+      ->mutable_header()
+      ->set_last_metadata_block_flag(false);
+
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
+
+  const auto& decoder_config = std::get<FlacDecoderConfig>(
+      output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config);
+  EXPECT_EQ(decoder_config.metadata_blocks_.size(), 1);
 }
 
 TEST(Generate, FailsWhenFlacMd5SignatureIsNotSixteenBytes) {
@@ -1027,11 +1054,7 @@ TEST(Generate, InvalidUnknownBlockType) {
       ->set_last_metadata_block_flag(false);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        header: {
-          last_metadata_block_flag: true
-          block_type: FLAC_BLOCK_TYPE_INVALID
-          metadata_data_block_length: 0
-        }
+        header: { block_type: FLAC_BLOCK_TYPE_INVALID }
       )pb",
       codec_config_metadata.mutable_codec_config()
           ->mutable_decoder_config_flac()
@@ -1053,11 +1076,7 @@ TEST(Generate, InvalidMissingGenericBlock) {
       ->set_last_metadata_block_flag(false);
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
-        header: {
-          last_metadata_block_flag: true
-          block_type: FLAC_BLOCK_TYPE_PICTURE
-          metadata_data_block_length: 3
-        }
+        header: { block_type: FLAC_BLOCK_TYPE_PICTURE }
         # Missing generic_block
       )pb",
       codec_config_metadata.mutable_codec_config()

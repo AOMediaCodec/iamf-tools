@@ -153,9 +153,11 @@ enum FlacBlockType {
 }
 
 message FlacMetaBlockHeader {
-  bool last_metadata_block_flag = 1;
+  // Ignored, inferred by the order of repeated fields.
+  bool last_metadata_block_flag = 1 [deprecated = true];
   FlacBlockType block_type = 2;
-  uint32 metadata_data_block_length = 3;
+  // Ignored, inferred from the block type and payload size.
+  uint32 metadata_data_block_length = 3 [deprecated = true];
 }
 
 message FlacMetaBlockStreamInfo {

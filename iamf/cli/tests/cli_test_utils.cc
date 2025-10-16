@@ -220,9 +220,7 @@ void AddFlacCodecConfig(
       {.codec_id = CodecConfig::kCodecIdFlac,
        .num_samples_per_frame = num_samples_per_frame,
        .decoder_config = FlacDecoderConfig(
-           {{{.header = {.last_metadata_block_flag = true,
-                         .block_type = FlacMetaBlockHeader::kFlacStreamInfo,
-                         .metadata_data_block_length = 34},
+           {{{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
               .payload = FlacMetaBlockStreamInfo{
                   .minimum_block_size =
                       static_cast<uint16_t>(num_samples_per_frame),
