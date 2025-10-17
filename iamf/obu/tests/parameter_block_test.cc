@@ -16,7 +16,6 @@
 #include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
@@ -31,7 +30,6 @@
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/tests/obu_test_base.h"
@@ -42,6 +40,7 @@ namespace {
 
 using absl_testing::IsOk;
 using absl_testing::IsOkAndHolds;
+using ::testing::Not;
 using ::testing::NotNull;
 using enum MixGainParameterData::AnimationType;
 using enum DemixingInfoParameterData::DMixPMode;
@@ -73,6 +72,32 @@ MixGainParamDefinition CreateParamDefinitionMode1() {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = kParameterRate;
   return param_definition;
+}
+
+TEST(PeekParameterId, ReturnsExpectedParameterId) {
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan({0x01});
+
+  EXPECT_THAT(ParameterBlockObu::PeekParameterId(*rb), IsOkAndHolds(1));
+  // Peek implies it doesn't consume the buffer.
+  EXPECT_EQ(rb->Tell(), 0);
+}
+
+TEST(PeekParameterId, ReturnsErrorWhenBufferIsExhausted) {
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan({});
+
+  EXPECT_THAT(ParameterBlockObu::PeekParameterId(*rb), Not(IsOk()));
+  // Even under errors, the buffer should not be consumed.
+  EXPECT_EQ(rb->Tell(), 0);
+}
+
+TEST(PeekParameterId, ReturnsErrorWhenParameterIdIsTooLarge) {
+  // The parameter ID is too large to fit into an IAMF leb128.
+  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
+      {0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01});
+
+  EXPECT_THAT(ParameterBlockObu::PeekParameterId(*rb), Not(IsOk()));
+  // Even under errors, the buffer should not be consumed.
+  EXPECT_EQ(rb->Tell(), 0);
 }
 
 TEST(CreateMode0, GettersReturnExpectedValues) {
@@ -164,19 +189,17 @@ TEST(CreateFromBuffer, InvalidWhenObuSizeIsTooSmallToReadParameterId) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
 
   // Sanity check that the OBU is valid.
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, kCorrectObuSize,
-                  param_definitions, *buffer),
+                  param_definition, *buffer),
               IsOk());
 
   // But it would be invalid if the OBU size is too small.
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock},
-                   kIncorrectObuSize, param_definitions, *buffer)
+                   kIncorrectObuSize, param_definition, *buffer)
                    .ok());
 }
 
@@ -220,11 +243,9 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      param_definitions, *buffer);
+      param_definition, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data.
@@ -283,11 +304,9 @@ TEST(CreateFromBuffer, ParamDefinitionMode0) {
   ASSERT_THAT(param_definition.SetSubblockDuration(0, 1), IsOk());
   ASSERT_THAT(param_definition.SetSubblockDuration(1, 3), IsOk());
   ASSERT_THAT(param_definition.SetSubblockDuration(2, 6), IsOk());
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      param_definitions, *buffer);
+      param_definition, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data
@@ -341,15 +360,13 @@ TEST(CreateFromBuffer, FailsWhenSubblockDurationsAreInconsistent) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   param_definitions, *buffer)
+                   param_definition, *buffer)
                    .ok());
 }
 
-TEST(CreateFromBuffer, ParamRequiresParamDefinition) {
+TEST(CreateFromBuffer, InvalidWhenParamDefinitionIdDoesNotMatchBitstream) {
   const DecodedUleb128 kParameterId = 0x07;
   std::vector<uint8_t> source_data = {
       // Parameter ID.
@@ -371,22 +388,19 @@ TEST(CreateFromBuffer, ParamRequiresParamDefinition) {
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 1;
   param_definition.param_definition_mode_ = 1;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
   EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
                   ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                  param_definitions, *buffer),
+                  param_definition, *buffer),
               IsOk());
 
-  // When there is no matching param definition, the parameter block cannot be
-  // created.
-  param_definitions.erase(kParameterId);
+  // When the ID mismatches, the parameter block cannot be created.
+  param_definition.parameter_id_ = 0x08;
   auto buffer_to_use_without_metadata =
       MemoryBasedReadBitBuffer::CreateFromSpan(
           absl::MakeConstSpan(source_data));
   EXPECT_FALSE(ParameterBlockObu::CreateFromBuffer(
                    ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-                   param_definitions, *buffer_to_use_without_metadata)
+                   param_definition, *buffer_to_use_without_metadata)
                    .ok());
 }
 
@@ -406,11 +420,9 @@ TEST(CreateFromBuffer, DemixingParamDefinitionMode0) {
   param_definition.duration_ = 10;
   param_definition.constant_subblock_duration_ = 10;
   param_definition.InitializeSubblockDurations(1);
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-  param_definitions.emplace(kParameterId, param_definition);
   auto parameter_block = ParameterBlockObu::CreateFromBuffer(
       ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
-      param_definitions, *buffer);
+      param_definition, *buffer);
   EXPECT_THAT(parameter_block, IsOk());
 
   // Validate all the getters match the input data. Note the getters return data

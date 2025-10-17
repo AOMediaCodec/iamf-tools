@@ -221,7 +221,6 @@ cc_test(
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",

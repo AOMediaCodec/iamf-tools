@@ -214,7 +214,6 @@ cc_library(
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:obu_util",
-        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/memory",

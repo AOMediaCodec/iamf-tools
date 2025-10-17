@@ -16,12 +16,16 @@ and this project adheres to
     calculating the size from related elements.
 -   Deprecate `MixPresentationObuMetadata::rendering_config_extension_size`, in
     favor of calculating the size from related elements.
--   Deprecate `FlacMetaBlockHeader::last_metadata_block_flag` and `metadata_data_block_length` in favor of automatically determining the related values.
+-   Deprecate `FlacMetaBlockHeader::last_metadata_block_flag` and
+    `metadata_data_block_length` in favor of automatically determining the
+    related values.
 
 ### Fixed
 
 -   Fix a bug where the encoder would fail to finalize loudness under certain
     circumstances.
+-   Improve spec compliance, when decoding streams with unknown parameter
+    blocks.
 
 ### Changed
 

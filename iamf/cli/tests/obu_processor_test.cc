@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iterator>
+#include <limits>
 #include <list>
 #include <memory>
 #include <optional>
@@ -1410,6 +1411,61 @@ TEST(ProcessTemporalUnit, ConsumesOneAudioFrameAsTemporalUnit) {
               IsOk());
 
   EXPECT_FALSE(continue_processing);
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
+  // Set up inputs with a single audio frame.
+  auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
+  // Insert an extra parameter block, the descriptors don't have a parameter
+  // definition for it.
+  constexpr DecodedUleb128 kStrayParameterBlockId =
+      std::numeric_limits<DecodedUleb128>::max();
+  MixGainParamDefinition param_definition;
+  param_definition.parameter_id_ = kStrayParameterBlockId;
+  constexpr DecodedUleb128 kParameterBlockDuration = 10;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.duration_ = kParameterBlockDuration;
+  param_definition.constant_subblock_duration_ = kParameterBlockDuration;
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
+  param_definitions.emplace(kStrayParameterBlockId, param_definition);
+  auto parameter_block =
+      ParameterBlockObu::CreateMode0(ObuHeader(), param_definition);
+  ASSERT_THAT(parameter_block, NotNull());
+  parameter_block->subblocks_[0].param_data =
+      std::make_unique<MixGainParameterData>(
+          MixGainParameterData::kAnimateStep,
+          AnimationStepInt16{.start_point_value = 99});
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                kArbitraryAudioFrame);
+  auto temporal_unit_obus =
+      SerializeObusExpectOk({&*parameter_block, &audio_frame_obu});
+  bitstream.insert(bitstream.end(), temporal_unit_obus.begin(),
+                   temporal_unit_obus.end());
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  // Call `ProcessTemporalUnit()` with `eos_is_end_of_sequence` set to true.
+  // This means that we can assume that the end of the stream implies the end of
+  // the temporal unit.
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // The temporal unit is consumed, but the parameter block is gracefully
+  // ignored.
+  EXPECT_FALSE(continue_processing);
+  EXPECT_TRUE(output_temporal_unit->output_parameter_blocks.empty());
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
 }
 

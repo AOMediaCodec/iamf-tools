@@ -15,10 +15,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <variant>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
@@ -32,7 +30,6 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
@@ -67,6 +64,18 @@ void ParameterSubblock::Print() const {
     ABSL_LOG(INFO) << "    subblock_duration= " << *subblock_duration;
   }
   param_data->Print();
+}
+
+absl::StatusOr<DecodedUleb128> ParameterBlockObu::PeekParameterId(
+    ReadBitBuffer& rb) {
+  auto initial_location = rb.Tell();
+  DecodedUleb128 parameter_id;
+  auto status = rb.ReadULeb128(parameter_id);
+  RETURN_IF_NOT_OK(rb.Seek(initial_location));
+  if (!status.ok()) {
+    return status;
+  }
+  return parameter_id;
 }
 
 std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
@@ -111,43 +120,15 @@ std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
 }
 
 absl::StatusOr<std::unique_ptr<ParameterBlockObu>>
-ParameterBlockObu::CreateFromBuffer(
-    const ObuHeader& header, int64_t payload_size,
-    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
-        param_definition_variants,
-    ReadBitBuffer& rb) {
-  DecodedUleb128 parameter_id;
-  int8_t encoded_uleb128_size = 0;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_id, encoded_uleb128_size));
-
-  if (payload_size < encoded_uleb128_size) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Read beyond the end of the OBU for parameter_id=", parameter_id));
-  }
-
-  const auto parameter_definition_it =
-      param_definition_variants.find(parameter_id);
-  if (parameter_definition_it == param_definition_variants.end()) {
-    return absl::InvalidArgumentError(
-        "Found a stray parameter block OBU (no matching parameter "
-        "definition).");
-  }
-
-  // TODO(b/359588455): Use `ReadBitBuffer::Seek` to go back to the start of the
-  //                    OBU. Update `ReadAndValidatePayload` to expect to read
-  //                    `parameter_id`.
-
-  const auto cast_to_base_pointer = [](const auto& param_definition) {
-    return static_cast<const ParamDefinition*>(&param_definition);
-  };
-  const int64_t remaining_payload_size = payload_size - encoded_uleb128_size;
-  auto parameter_block_obu = absl::WrapUnique(new ParameterBlockObu(
-      header,
-      *std::visit(cast_to_base_pointer, parameter_definition_it->second)));
-
+ParameterBlockObu::CreateFromBuffer(const ObuHeader& header,
+                                    int64_t payload_size,
+                                    const ParamDefinition& param_definition,
+                                    ReadBitBuffer& rb) {
   // TODO(b/338474387): Test reading in extension parameters.
+  auto parameter_block_obu =
+      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
   RETURN_IF_NOT_OK(
-      parameter_block_obu->ReadAndValidatePayload(remaining_payload_size, rb));
+      parameter_block_obu->ReadAndValidatePayload(payload_size, rb));
   return parameter_block_obu;
 }
 
@@ -393,6 +374,15 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
     int64_t /*payload_size*/, ReadBitBuffer& rb) {
   // Validate the associated `param_definition`.
   RETURN_IF_NOT_OK(param_definition_.Validate());
+  // Make sure the parameter definition ID actually agrees with the parameter
+  // definition ID in the bitstream.
+  DecodedUleb128 bitstream_parameter_id;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(bitstream_parameter_id));
+  if (bitstream_parameter_id != parameter_id_) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Parameter ID mismatch: ", bitstream_parameter_id, " vs ",
+                     parameter_id_));
+  }
 
   if (param_definition_.param_definition_mode_) {
     RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));

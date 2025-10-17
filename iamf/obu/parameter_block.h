@@ -17,7 +17,6 @@
 #include <optional>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -25,7 +24,6 @@
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
@@ -70,6 +68,17 @@ struct ParameterSubblock {
  */
 class ParameterBlockObu : public ObuBase {
  public:
+  /*!\brief Peeks the parameter ID from the bitstream.
+   *
+   * This function does not consume any data from the bitstream.
+   *
+   * \param rb Buffer to read from.
+   * \return Parameter ID if successful. Returns `absl::ResourceExhaustedError`
+   *        if there is not enough data to read a parameter ID. Returns other
+   *        errors if the bitstream is invalid.
+   */
+  static absl::StatusOr<DecodedUleb128> PeekParameterId(ReadBitBuffer& rb);
+
   /*!\brief Creates a `ParameterBlockObu` with `param_definition_mode` of 0.
    *
    * \param header `ObuHeader` of the OBU.
@@ -98,14 +107,16 @@ class ParameterBlockObu : public ObuBase {
 
   /*!\brief Creates a `ParameterBlockObu` from a `ReadBitBuffer`.
    *
+   * The user may need to call `PeekParameterId` in order to determine the param
+   * definition to pass to this function.
+   *
    * This function is designed to be used from the perspective of the decoder.
    * It will call `ReadAndValidatePayload` in order to read from the buffer;
    * therefore it can fail.
    *
    * \param header `ObuHeader` of the OBU.
    * \param payload_size Size of the obu payload in bytes.
-   * \param param_definition_variants Mapping from parameter IDs to param
-   *        definitions.
+   * \param param_definition Associated param definition.
    * \param rb `ReadBitBuffer` where the `ParameterBlockObu` data is stored.
    *        Data read from the buffer is consumed.
    * \return Unique pointer to a `ParameterBlockObu` on success. A specific
@@ -113,9 +124,7 @@ class ParameterBlockObu : public ObuBase {
    */
   static absl::StatusOr<std::unique_ptr<ParameterBlockObu>> CreateFromBuffer(
       const ObuHeader& header, int64_t payload_size,
-      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
-          param_definition_variants,
-      ReadBitBuffer& rb);
+      const ParamDefinition& param_definition, ReadBitBuffer& rb);
 
   /*!\brief Destructor. */
   ~ParameterBlockObu() override = default;

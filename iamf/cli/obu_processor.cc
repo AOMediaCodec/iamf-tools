@@ -19,7 +19,7 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -54,6 +54,7 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definition_variant.h"
+#include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/temporal_delimiter.h"
 #include "iamf/obu/types.h"
@@ -190,14 +191,45 @@ absl::Status GetAndStoreAudioFrameWithData(
   return absl::OkStatus();
 }
 
+const ParamDefinition* PeekParameterIdAndLookupParamDefinition(
+    const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
+        param_definition_variants,
+    ReadBitBuffer& read_bit_buffer) {
+  auto parameter_id = ParameterBlockObu::PeekParameterId(read_bit_buffer);
+  if (!parameter_id.ok()) {
+    return nullptr;
+  }
+  const auto parameter_definition_it =
+      param_definition_variants.find(*parameter_id);
+  if (parameter_definition_it == param_definition_variants.end()) {
+    return nullptr;
+  }
+
+  const auto cast_to_base_pointer = [](const auto& param_definition) {
+    return static_cast<const ParamDefinition*>(&param_definition);
+  };
+  return std::visit(cast_to_base_pointer, parameter_definition_it->second);
+}
+
 absl::Status GetAndStoreParameterBlockWithData(
     const ObuHeader& header, const int64_t payload_size,
     const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants,
     ReadBitBuffer& read_bit_buffer, GlobalTimingModule& global_timing_module,
     std::optional<ParameterBlockWithData>& output_parameter_block_with_data) {
+  const ParamDefinition* parameter_definition =
+      PeekParameterIdAndLookupParamDefinition(param_definition_variants,
+                                              read_bit_buffer);
+  if (parameter_definition == nullptr) {
+    ABSL_LOG(WARNING)
+        << "Found a stray parameter block OBU (no matching parameter "
+           "definition).";
+    // The spec prefers skipping over unknown parameter blocks.
+    return read_bit_buffer.IgnoreBytes(payload_size);
+  }
+
   auto parameter_block_obu = ParameterBlockObu::CreateFromBuffer(
-      header, payload_size, param_definition_variants, read_bit_buffer);
+      header, payload_size, *parameter_definition, read_bit_buffer);
   if (!parameter_block_obu.ok()) {
     return parameter_block_obu.status();
   }
