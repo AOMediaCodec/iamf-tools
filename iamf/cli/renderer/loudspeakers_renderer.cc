@@ -73,17 +73,23 @@ std::optional<std::vector<std::vector<double>>> ComputeGains(
         {0, 0, 0, 0, 0, gamma}};
   } else if (input_layout_string == "4+7+0" &&
              output_layout_string == "7.1.2") {
-    // TODO(b/292174366): Investigate if this is needed, it would be simpler to
-    //                    just rely on the precomputed gains. Just drop the last
-    //                    two channels.
+    // clang-format off
     return std::vector<std::vector<double>>{
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 1, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    /*       L, R, C, LFE, Lss, Rss, Lrs, Rrs,   Ltf,   Rtf */
+    /*  L*/ {1, 0, 0,   0,   0,   0,   0,   0,     0,     0},
+    /*  R*/ {0, 1, 0,   0,   0,   0,   0,   0,     0,     0},
+    /*  C*/ {0, 0, 1,   0,   0,   0,   0,   0,     0,     0},
+    /*LFE*/ {0, 0, 0,   1,   0,   0,   0,   0,     0,     0},
+    /*Lss*/ {0, 0, 0,   0,   1,   0,   0,   0,     0,     0},
+    /*Rss*/ {0, 0, 0,   0,   0,   1,   0,   0,     0,     0},
+    /*Lrs*/ {0, 0, 0,   0,   0,   0,   1,   0,     0,     0},
+    /*Rrs*/ {0, 0, 0,   0,   0,   0,   0,   1,     0,     0},
+    /*Ltf*/ {0, 0, 0,   0,   0,   0,   0,   0,     1,     0},
+    /*Rtf*/ {0, 0, 0,   0,   0,   0,   0,   0,     0,     1},
+    /*Ltb*/ {0, 0, 0,   0,   0,   0,   0,   0, gamma,     0},
+    /*Rtb*/ {0, 0, 0,   0,   0,   0,   0,   0,     0, gamma},
     };
+    // clang-format on
   } else {
     // Ok, gain matrices are not defined or implemented. But it is reasonable
     // for the caller to try to use the precomputed gains.

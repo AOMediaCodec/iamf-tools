@@ -42,6 +42,7 @@ constexpr InternalSampleType kArbitrarySample3 = 0.000101112;
 constexpr InternalSampleType kArbitrarySample4 = 0.009999999;
 constexpr InternalSampleType kArbitrarySample5 = 0.987654321;
 constexpr InternalSampleType kArbitrarySample6 = 0.000001024;
+constexpr double kFloatingPointTolerance = 1e-9;
 
 constexpr int kMonoChannelIndex = 0;
 constexpr int kStereoL2ChannelIndex = 0;
@@ -382,6 +383,46 @@ TEST(RenderLabeledFrame, Renders5_1_0WithDemixingParametersToStereo) {
   // Just check that rendering successfully completed and there are two output
   // channels.
   EXPECT_EQ(rendered_samples.size(), 2);
+}
+
+TEST(RenderLabeledFrame,
+     AppliesGammaToHeightChannelsWhenDownmixing7_1_4to7_1_2) {
+  auto renderer = AudioElementRendererChannelToChannel::
+      CreateFromScalableChannelLayoutConfig(k7_1_4ScalableChannelLayoutConfig,
+                                            k7_1_2Layout, kOneSamplePerFrame);
+  ASSERT_NE(renderer, nullptr);
+  constexpr DownMixingParams kDownMixParams = {.gamma = 0.5,
+                                               .in_bitstream = true};
+  const InternalSampleType kLtbSample = kArbitrarySample1;
+  const InternalSampleType kRtbSample = kArbitrarySample2;
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  RenderAndFlushExpectOk({.label_to_samples = {{kL7, {0}},
+                                               {kR7, {0}},
+                                               {kCentre, {0}},
+                                               {kLFE, {0}},
+                                               {kLss7, {0}},
+                                               {kRss7, {0}},
+                                               {kLrs7, {0}},
+                                               {kRrs7, {0}},
+                                               {kLtf4, {0}},
+                                               {kRtf4, {0}},
+                                               {kLtb4, {kLtbSample}},
+                                               {kRtb4, {kRtbSample}}},
+                          .demixing_params = kDownMixParams},
+                         renderer.get(), rendered_samples);
+
+  // The output is 7.1.2 layout, which has 10 channels:
+  // L7, R7, C, LFE, Lss7, Rss7, Lrs7, Rrs7, Ltf2, Rtf2
+  // We expect Ltb4 to be mixed into Ltf2, and Rtb4 into Rtf2, both scaled by
+  // gamma.
+  constexpr int k7_1_2Ltf2ChannelIndex = 8;
+  constexpr int k7_1_2Rtf2ChannelIndex = 9;
+  EXPECT_EQ(rendered_samples.size(), 10);
+  EXPECT_NEAR(rendered_samples[k7_1_2Ltf2ChannelIndex][0],
+              kDownMixParams.gamma * kLtbSample, kFloatingPointTolerance);
+  EXPECT_NEAR(rendered_samples[k7_1_2Rtf2ChannelIndex][0],
+              kDownMixParams.gamma * kRtbSample, kFloatingPointTolerance);
 }
 
 TEST(RenderLabeledFrame, PassThroughLFE) {
