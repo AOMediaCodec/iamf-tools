@@ -19,6 +19,7 @@ cc_test(
     name = "read_bit_buffer_fuzz_test",
     size = "small",
     srcs = ["read_bit_buffer_fuzz_test.cc"],
+    shard_count = 8,
     target_compatible_with = [
         "@platforms//os:linux",
     ],
