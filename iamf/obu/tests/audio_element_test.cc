@@ -11,16 +11,18 @@
  */
 #include "iamf/obu/audio_element.h"
 
-#include <cstddef>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
+#include "absl/status/statusor.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -39,6 +41,11 @@ namespace iamf_tools {
 namespace {
 
 using absl_testing::IsOk;
+using ::testing::Not;
+
+using absl::MakeConstSpan;
+
+constexpr int64_t kInitialBufferCapacity = 1024;
 
 // TODO(b/272003291): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
@@ -65,77 +72,38 @@ DemixingParamDefinition CreateDemixingInfoParamDefinition(
   return param_definition;
 }
 
-class AudioElementObuTestBase : public ObuTestBase {
- public:
-  struct RequiredAudioElementArgs {
-    DecodedUleb128 audio_element_id;
-    AudioElementObu::AudioElementType audio_element_type;
-    uint8_t reserved;
+// A structure for arguments common to all `AudioElementObu` constructors.
+struct CommonAudioElementArgs {
+  ObuHeader header;
+  DecodedUleb128 audio_element_id;
+  AudioElementObu::AudioElementType audio_element_type;
+  uint8_t reserved;
 
-    DecodedUleb128 codec_config_id;
+  DecodedUleb128 codec_config_id;
 
-    // Length `num_substreams`.
-    std::vector<DecodedUleb128> substream_ids;
+  // Length `num_substreams`.
+  std::vector<DecodedUleb128> substream_ids;
 
-    // Length `num_parameters`.
-    std::vector<AudioElementParam> audio_element_params;
-  };
-
-  AudioElementObuTestBase(AudioElementObu::AudioElementType audio_element_type)
-      : ObuTestBase(
-            /*expected_header=*/{kObuIaAudioElement << 3, 21},
-            /*expected_payload=*/{}),
-        obu_(nullptr),
-        required_args_({
-            .audio_element_id = 1,
-            .audio_element_type = audio_element_type,
-            .reserved = 0,
-            .codec_config_id = 2,
-            .substream_ids = {3},
-            .audio_element_params = {},
-        }) {
-    required_args_.audio_element_params.emplace_back(
-        AudioElementParam{CreateDemixingInfoParamDefinition(
-            DemixingInfoParameterData::kDMixPMode1)});
-  }
-
-  ~AudioElementObuTestBase() = default;
-
- protected:
-  void InitExpectOk() override {
-    InitMainAudioElementObu();
-    InitAudioElementTypeSpecificFields();
-  }
-
-  virtual void InitAudioElementTypeSpecificFields() = 0;
-
-  void WriteObuExpectOk(WriteBitBuffer& wb) override {
-    EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
-  }
-
-  std::unique_ptr<AudioElementObu> obu_;
-  RequiredAudioElementArgs required_args_;
-
- private:
-  void InitMainAudioElementObu() {
-    obu_ = std::make_unique<AudioElementObu>(
-        header_, required_args_.audio_element_id,
-        required_args_.audio_element_type, required_args_.reserved,
-        required_args_.codec_config_id);
-
-    // Create the Audio Substream IDs array. Loop to populate it.
-    obu_->InitializeAudioSubstreams(required_args_.substream_ids.size());
-    obu_->audio_substream_ids_ = required_args_.substream_ids;
-
-    // Create the Audio Parameters array. Loop to populate it.
-    obu_->InitializeParams(required_args_.audio_element_params.size());
-    for (auto& audio_element_param : required_args_.audio_element_params) {
-      obu_->audio_element_params_.emplace_back(
-          AudioElementParam{audio_element_param.param_definition});
-    }
-  }
+  // Length `num_parameters`.
+  std::vector<AudioElementParam> audio_element_params;
 };
 
+// Returns suitable common arguments for a channel-based `AudioElementObu`.
+CommonAudioElementArgs CreateScalableAudioElementArgs() {
+  return {
+      .header = ObuHeader(),
+      .audio_element_id = 1,
+      .audio_element_type = AudioElementObu::kAudioElementChannelBased,
+      .reserved = 0,
+      .codec_config_id = 2,
+      .substream_ids = {3},
+      .audio_element_params = {AudioElementParam{
+          CreateDemixingInfoParamDefinition(
+              DemixingInfoParameterData::kDMixPMode1)}},
+  };
+}
+
+// Returns a one-layer stereo `ScalableChannelLayoutConfig`.
 ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
   return ScalableChannelLayoutConfig{
       .reserved = 0,
@@ -153,247 +121,283 @@ ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
   };
 }
 
-class AudioElementScalableChannelTest : public AudioElementObuTestBase,
-                                        public testing::Test {
- public:
-  AudioElementScalableChannelTest()
-      : AudioElementObuTestBase(AudioElementObu::kAudioElementChannelBased),
-        scalable_channel_layout_config_(
-            GetOneLayerStereoScalableChannelLayout()) {}
+// Constructs, and initializes the Audio Substreams, Audio Element Params, and
+// Scalable Channel Layout for an `AudioElementObu`.
+AudioElementObu CreateBaseAudioElement(
+    const CommonAudioElementArgs& common_args) {
+  AudioElementObu obu(common_args.header, common_args.audio_element_id,
+                      common_args.audio_element_type, common_args.reserved,
+                      common_args.codec_config_id);
 
- protected:
-  void InitAudioElementTypeSpecificFields() override {
-    EXPECT_THAT(obu_->InitializeScalableChannelLayout(
-                    scalable_channel_layout_config_.GetNumLayers(),
-                    scalable_channel_layout_config_.reserved),
-                IsOk());
-
-    obu_->config_ = scalable_channel_layout_config_;
+  obu.InitializeAudioSubstreams(common_args.substream_ids.size());
+  obu.audio_substream_ids_ = common_args.substream_ids;
+  obu.InitializeParams(common_args.audio_element_params.size());
+  for (auto& audio_element_param : common_args.audio_element_params) {
+    obu.audio_element_params_.emplace_back(
+        AudioElementParam{audio_element_param.param_definition});
   }
-
-  ScalableChannelLayoutConfig scalable_channel_layout_config_;
-};
-
-TEST_F(AudioElementScalableChannelTest, ConstructSetsObuType) {
-  InitExpectOk();
-  EXPECT_EQ(obu_->header_.obu_type, kObuIaAudioElement);
+  return obu;
 }
 
-TEST_F(AudioElementScalableChannelTest, Default) {
-  expected_payload_ = {
-      // `audio_element_id`.
-      1,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementChannelBased << 5,
-      // `codec_config_id`.
-      2,
-      // `num_substreams`.
-      1,
-      // `audio_substream_ids`
-      3,
-      // `num_parameters`.
-      1,
-      // `audio_element_params[0]`.
-      kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      1,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
-  InitAndTestWrite();
+absl::StatusOr<AudioElementObu> CreateScalableAudioElementObu(
+    const CommonAudioElementArgs& common_args,
+    const ScalableChannelLayoutConfig& scalable_channel_layout_config) {
+  AudioElementObu obu = CreateBaseAudioElement(common_args);
+
+  auto status = obu.InitializeScalableChannelLayout(
+      scalable_channel_layout_config.GetNumLayers(),
+      scalable_channel_layout_config.reserved);
+  if (!status.ok()) {
+    return status;
+  }
+  obu.config_ = scalable_channel_layout_config;
+  return obu;
 }
 
-TEST_F(AudioElementScalableChannelTest, RedundantCopy) {
-  header_.obu_redundant_copy = true;
-  expected_header_ = {kObuIaAudioElement << 3 | kObuRedundantCopyBitMask, 21};
-  expected_payload_ = {
-      // `audio_element_id`.
-      1,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementChannelBased << 5,
-      // `codec_config_id`.
-      2,
-      // `num_substreams`.
-      1,
-      // `audio_substream_ids`
-      3,
-      // `num_parameters`.
-      1,
-      // `audio_element_params[0]`.
-      kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      1,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
-  InitAndTestWrite();
+// Payload agreeing with `CreateScalableAudioElementArgs`,
+// `GetOneLayerStereoScalableChannelLayout`.
+constexpr auto kExpectedOneLayerStereoPayload = std::to_array<uint8_t>(
+    {// `audio_element_id`.
+     1,
+     // `audio_element_type (3), reserved (5).
+     AudioElementObu::kAudioElementChannelBased << 5,
+     // `codec_config_id`.
+     2,
+     // `num_substreams`.
+     1,
+     // `audio_substream_ids`
+     3,
+     // `num_parameters`.
+     1,
+     // `audio_element_params[0]`.
+     kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
+     // `scalable_channel_layout_config`.
+     // `num_layers` (3), reserved (5).
+     1 << 5,
+     // `channel_audio_layer_config[0]`.
+     // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+     // `recon_gain_is_present_flag` (1), `reserved` (2).
+     ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+     // `substream_count`.
+     1,
+     // `coupled_substream_count`.
+     1,
+     // `output_gain_flags` (6) << reserved.
+     1 << 2,
+     // `output_gain`.
+     0, 1});
+
+TEST(Constructor, SetsObuType) {
+  const CommonAudioElementArgs kCommonArgs = CreateScalableAudioElementArgs();
+  AudioElementObu obu(kCommonArgs.header, kCommonArgs.audio_element_id,
+                      kCommonArgs.audio_element_type, kCommonArgs.reserved,
+                      kCommonArgs.codec_config_id);
+
+  EXPECT_EQ(obu.header_.obu_type, kObuIaAudioElement);
 }
 
-TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteFailsWithInvalidObuTrimmingStatusFlag) {
-  header_.obu_trimming_status_flag = true;
+TEST(ValidateAndWriteObu, SerializesOneLayerStereoScalableChannelLayout) {
+  auto obu =
+      CreateScalableAudioElementObu(CreateScalableAudioElementArgs(),
+                                    GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 21});
 
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedOneLayerStereoPayload);
 }
 
-TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteFailsWithInvalidNumSubstreams) {
-  required_args_.substream_ids = {};
+TEST(ValidateAndWriteObu, WritesRedundantCopyFlag) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.header.obu_redundant_copy = true;
+  constexpr auto kExpectedHeader = std::to_array<uint8_t>(
+      {kObuIaAudioElement << 3 | ObuTestBase::kObuRedundantCopyBitMask, 21});
 
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedOneLayerStereoPayload);
 }
 
-TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionZero) {
-  required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(
+TEST(ValidateAndWriteObu, FailsWithInvalidObuTrimmingStatusFlag) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.header.obu_trimming_status_flag = true;
+
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+
+  WriteBitBuffer undefined_wb(kInitialBufferCapacity);
+  EXPECT_THAT(obu->ValidateAndWriteObu(undefined_wb), Not(IsOk()));
+}
+
+TEST(ValidateAndWriteObu, FailsWithInvalidNumSubstreams) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.substream_ids = {};
+
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+
+  WriteBitBuffer undefined_wb(kInitialBufferCapacity);
+  EXPECT_THAT(obu->ValidateAndWriteObu(undefined_wb), Not(IsOk()));
+}
+
+TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionZero) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.audio_element_params.clear();
+  common_args.audio_element_params.emplace_back(
       AudioElementParam{ExtendedParamDefinition{
           ParamDefinition::kParameterDefinitionReservedStart}});
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 15});
 
-  expected_header_ = {kObuIaAudioElement << 3, 15};
+  const auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id`.
+       1,
+       // `audio_element_type (3), reserved (5).
+       AudioElementObu::kAudioElementChannelBased << 5,
+       // `codec_config_id`.
+       2,
+       // `num_substreams`.
+       1,
+       // `audio_substream_ids`
+       3,
+       // `num_parameters`.
+       1,
+       // `audio_element_params[0]`.
+       3, 0,
+       // `scalable_channel_layout_config`.
+       // `num_layers` (3), reserved (5).
+       1 << 5,
+       // `channel_audio_layer_config[0]`.
+       // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+       // `recon_gain_is_present_flag` (1), `reserved` (2).
+       ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+       // `substream_count`.
+       1,
+       // `coupled_substream_count`.
+       1,
+       // `output_gain_flags` (6) << reserved.
+       1 << 2,
+       // `output_gain`.
+       0, 1});
 
-  expected_payload_ = {
-      // `audio_element_id`.
-      1,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementChannelBased << 5,
-      // `codec_config_id`.
-      2,
-      // `num_substreams`.
-      1,
-      // `audio_substream_ids`
-      3,
-      // `num_parameters`.
-      1,
-      // `audio_element_params[0]`.
-      3, 0,
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      1,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
 
-  InitAndTestWrite();
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-TEST_F(AudioElementScalableChannelTest, MaxParamDefinitionType) {
-  required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(
+TEST(ValidateAndWriteObu, WritesMaxParamDefinitionType) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.audio_element_params.clear();
+  common_args.audio_element_params.emplace_back(
       AudioElementParam{ExtendedParamDefinition{
           ParamDefinition::kParameterDefinitionReservedEnd}});
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 19});
+  const auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id`.
+       1,
+       // `audio_element_type (3), reserved (5).
+       AudioElementObu::kAudioElementChannelBased << 5,
+       // `codec_config_id`.
+       2,
+       // `num_substreams`.
+       1,
+       // `audio_substream_ids`
+       3,
+       // `num_parameters`.
+       1,
+       // `audio_element_params[0]`.
+       0xff, 0xff, 0xff, 0xff, 0x0f, 0,
+       // `scalable_channel_layout_config`.
+       // `num_layers` (3), reserved (5).
+       1 << 5,
+       // `channel_audio_layer_config[0]`.
+       // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+       // `recon_gain_is_present_flag` (1), `reserved` (2).
+       ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+       // `substream_count`.
+       1,
+       // `coupled_substream_count`.
+       1,
+       // `output_gain_flags` (6) << reserved.
+       1 << 2,
+       // `output_gain`.
+       0, 1});
 
-  expected_header_ = {kObuIaAudioElement << 3, 19};
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
 
-  expected_payload_ = {
-      // `audio_element_id`.
-      1,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementChannelBased << 5,
-      // `codec_config_id`.
-      2,
-      // `num_substreams`.
-      1,
-      // `audio_substream_ids`
-      3,
-      // `num_parameters`.
-      1,
-      // `audio_element_params[0]`.
-      0xff, 0xff, 0xff, 0xff, 0x0f, 0,
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      1,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
 
-  InitAndTestWrite();
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-TEST_F(AudioElementScalableChannelTest, ParamDefinitionExtensionNonZero) {
+TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionNonZero) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   ExtendedParamDefinition param_definition(
       ParamDefinition::kParameterDefinitionReservedStart);
   param_definition.param_definition_bytes_ = {'e', 'x', 't', 'r', 'a'};
-
-  required_args_.audio_element_params.clear();
-  required_args_.audio_element_params.emplace_back(
+  common_args.audio_element_params.clear();
+  common_args.audio_element_params.emplace_back(
       AudioElementParam{param_definition});
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 20});
+  const auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id`.
+       1,
+       // `audio_element_type (3), reserved (5).
+       AudioElementObu::kAudioElementChannelBased << 5,
+       // `codec_config_id`.
+       2,
+       // `num_substreams`.
+       1,
+       // `audio_substream_ids`
+       3,
+       // `num_parameters`.
+       1,
+       // `audio_element_params[0]`.
+       3, 5, 'e', 'x', 't', 'r', 'a',
+       // `scalable_channel_layout_config`.
+       // `num_layers` (3), reserved (5).
+       1 << 5,
+       // `channel_audio_layer_config[0]`.
+       // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+       // `recon_gain_is_present_flag` (1), `reserved` (2).
+       ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+       // `substream_count`.
+       1,
+       // `coupled_substream_count`.
+       1,
+       // `output_gain_flags` (6) << reserved.
+       1 << 2,
+       // `output_gain`.
+       0, 1});
 
-  expected_header_ = {kObuIaAudioElement << 3, 20};
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
 
-  expected_payload_ = {
-      // `audio_element_id`.
-      1,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementChannelBased << 5,
-      // `codec_config_id`.
-      2,
-      // `num_substreams`.
-      1,
-      // `audio_substream_ids`
-      3,
-      // `num_parameters`.
-      1,
-      // `audio_element_params[0]`.
-      3, 5, 'e', 'x', 't', 'r', 'a',
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      1,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
 
-  InitAndTestWrite();
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
 constexpr int kLoudspeakerLayoutBitShift = 4;
@@ -673,8 +677,7 @@ TEST(ChannelAudioLayerConfig, ReadsBinauralLayer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutBinaural << kLoudspeakerLayoutBitShift, 1,
       1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -692,8 +695,7 @@ TEST(ChannelAudioLayerConfig, ReadsReserved10Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved10 << kLoudspeakerLayoutBitShift,
       1, 1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -706,8 +708,7 @@ TEST(ChannelAudioLayerConfig, ReadsReserved11Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved11 << kLoudspeakerLayoutBitShift,
       1, 1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -720,8 +721,7 @@ TEST(ChannelAudioLayerConfig, ReadsReserved12Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved12 << kLoudspeakerLayoutBitShift,
       1, 1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -734,8 +734,7 @@ TEST(ChannelAudioLayerConfig, ReadsReserved13Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved13 << kLoudspeakerLayoutBitShift,
       1, 1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -748,8 +747,7 @@ TEST(ChannelAudioLayerConfig, ReadsReserved14Layer) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutReserved14 << kLoudspeakerLayoutBitShift,
       1, 1};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -762,8 +760,7 @@ TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutLFE) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1, ChannelAudioLayerConfig::kExpandedLayoutLFE};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -780,8 +777,7 @@ TEST(ChannelAudioLayerConfig,
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1
       /*`expanded_loudspeaker_layout` is omitted*/};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_FALSE(config.Read(*buffer).ok());
@@ -791,8 +787,7 @@ TEST(ChannelAudioLayerConfig, ReadsExpandedLayoutReserved13) {
   std::vector<uint8_t> data = {
       ChannelAudioLayerConfig::kLayoutExpanded << kLoudspeakerLayoutBitShift, 1,
       1, ChannelAudioLayerConfig::kExpandedLayoutReserved13};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -816,8 +811,7 @@ TEST(ChannelAudioLayerConfig, ReadsOutputGainIsPresentRelatedFields) {
       kOutputGainFlag << kOutputGainIsPresentFlagBitShift | kReservedB,
       0,
       5};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -834,8 +828,7 @@ TEST(ChannelAudioLayerConfig, ReadsReconGainIsPresent) {
       ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
           kReconGainIsPresent << kReconGainIsPresentBitShift,
       1, 0};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -849,8 +842,7 @@ TEST(ChannelAudioLayerConfig, ReadsFirstReservedField) {
       ChannelAudioLayerConfig::kLayoutStereo << kLoudspeakerLayoutBitShift |
           kReservedField,
       1, 0};
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(data));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(data));
   ChannelAudioLayerConfig config;
 
   EXPECT_THAT(config.Read(*buffer), IsOk());
@@ -919,459 +911,514 @@ TEST(ScalableChannelLayoutConfigValidate,
   EXPECT_FALSE(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2).ok());
 }
 
-TEST_F(AudioElementScalableChannelTest, TwoSubstreams) {
-  required_args_.substream_ids = {1, 2};
-  scalable_channel_layout_config_.channel_audio_layer_configs[0]
-      .substream_count = 2;
+TEST(ValidateAndWriteObu, WritesWithTwoSubstreams) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.substream_ids = {1, 2};
+  auto scalable_channel_layout = GetOneLayerStereoScalableChannelLayout();
+  scalable_channel_layout.channel_audio_layer_configs[0].substream_count = 2;
 
-  expected_header_ = {kObuIaAudioElement << 3, 22};
-  expected_payload_ = {
-      1, AudioElementObu::kAudioElementChannelBased << 5, 2,
-      // `num_substreams`.
-      2,
-      // `audio_substream_ids`.
-      1, 2,
-      // `num_parameters`.
-      1, kParameterDefinitionDemixingAsUint8,
-      // Start `DemixingParamDefinition`.
-      4, 5, 0x00, 64, 64, 0, 0,
-      // `scalable_channel_layout_config`.
-      // `num_layers` (3), reserved (5).
-      1 << 5,
-      // `channel_audio_layer_config[0]`.
-      // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
-      // `recon_gain_is_present_flag` (1), `reserved` (2).
-      ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
-      // `substream_count`.
-      2,
-      // `coupled_substream_count`.
-      1,
-      // `output_gain_flags` (6) << reserved.
-      1 << 2,
-      // `output_gain`.
-      0, 1};
-  InitAndTestWrite();
+  auto obu =
+      CreateScalableAudioElementObu(common_args, scalable_channel_layout);
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 22});
+  const auto kExpectedPayload = std::to_array<uint8_t>(
+      {1, AudioElementObu::kAudioElementChannelBased << 5, 2,
+       // `num_substreams`.
+       2,
+       // `audio_substream_ids`.
+       1, 2,
+       // `num_parameters`.
+       1, kParameterDefinitionDemixingAsUint8,
+       // Start `DemixingParamDefinition`.
+       4, 5, 0x00, 64, 64, 0, 0,
+       // `scalable_channel_layout_config`.
+       // `num_layers` (3), reserved (5).
+       1 << 5,
+       // `channel_audio_layer_config[0]`.
+       // `loudspeaker_layout` (4), `output_gain_is_present_flag` (1),
+       // `recon_gain_is_present_flag` (1), `reserved` (2).
+       ChannelAudioLayerConfig::kLayoutStereo << 4 | (1 << 3) | (1 << 2),
+       // `substream_count`.
+       2,
+       // `coupled_substream_count`.
+       1,
+       // `output_gain_flags` (6) << reserved.
+       1 << 2,
+       // `output_gain`.
+       0, 1});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesExtension) {
-  required_args_.audio_element_params.clear();
+TEST(ValidateAndWriteObu,
+     FailsWithInvalidDuplicateParamDefinitionTypesExtension) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.audio_element_params.clear();
   const auto kDuplicateParameterDefinition =
       ParamDefinition::kParameterDefinitionReservedStart;
 
-  required_args_.audio_element_params.emplace_back(AudioElementParam{
+  common_args.audio_element_params.emplace_back(AudioElementParam{
       ExtendedParamDefinition(kDuplicateParameterDefinition)});
-  required_args_.audio_element_params.emplace_back(AudioElementParam{
+  common_args.audio_element_params.emplace_back(AudioElementParam{
       ExtendedParamDefinition(kDuplicateParameterDefinition)});
 
-  InitExpectOk();
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
-TEST_F(AudioElementScalableChannelTest,
-       ValidateAndWriteFailsWithInvalidDuplicateParamDefinitionTypesDemixing) {
-  required_args_.audio_element_params.clear();
-
+TEST(ValidateAndWriteObu,
+     FailsWithInvalidDuplicateParamDefinitionTypesDemixing) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.audio_element_params.clear();
   const auto demixing_param_definition =
       CreateDemixingInfoParamDefinition(DemixingInfoParameterData::kDMixPMode1);
   for (int i = 0; i < 2; i++) {
-    required_args_.audio_element_params.emplace_back(
+    common_args.audio_element_params.emplace_back(
         AudioElementParam{demixing_param_definition});
   }
 
-  InitExpectOk();
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
+
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
-class AudioElementMonoAmbisonicsTest : public AudioElementObuTestBase,
-                                       public testing::Test {
- public:
-  struct AmbisonicsMonoArguments {
-    DecodedUleb128 ambisonics_mode;
-
-    AmbisonicsMonoConfig config;
+// Reasonable for mono or projection ambisonics.
+CommonAudioElementArgs CreateAmbisonicsArgs() {
+  return {
+      .header = ObuHeader(),
+      .audio_element_id = 1,
+      .audio_element_type = AudioElementObu::kAudioElementSceneBased,
+      .reserved = 0,
+      .codec_config_id = 2,
+      .substream_ids = {3},
+      .audio_element_params = {},
   };
-
-  AudioElementMonoAmbisonicsTest()
-      : AudioElementObuTestBase(AudioElementObu::kAudioElementSceneBased),
-        ambisonics_mono_arguments_(
-            {AmbisonicsConfig::kAmbisonicsModeMono,
-             AmbisonicsMonoConfig{.output_channel_count = 1,
-                                  .substream_count = 1,
-                                  .channel_mapping = {0}}}) {}
-
- protected:
-  void InitSubstreamsAndChannelMapping() {
-    required_args_.substream_ids = std::vector<DecodedUleb128>(
-        ambisonics_mono_arguments_.config.substream_count);
-    std::iota(required_args_.substream_ids.begin(),
-              required_args_.substream_ids.end(), 0);
-
-    // Overwrite the variable-sized `channel_mapping`  with default data of a
-    // length implied by the default argument.
-    ambisonics_mono_arguments_.config.channel_mapping = std::vector<uint8_t>(
-        ambisonics_mono_arguments_.config.output_channel_count,
-        AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
-    // Assign channels [0, substream_count - 1] in order. The remaining channels
-    // (if any) represent dropped channels in mixed-order ambisonics.
-
-    std::iota(ambisonics_mono_arguments_.config.channel_mapping.begin(),
-              ambisonics_mono_arguments_.config.channel_mapping.begin() +
-                  ambisonics_mono_arguments_.config.substream_count,
-              0);
-  }
-
-  void InitAudioElementTypeSpecificFields() override {
-    EXPECT_THAT(obu_->InitializeAmbisonicsMono(
-                    ambisonics_mono_arguments_.config.output_channel_count,
-                    ambisonics_mono_arguments_.config.substream_count),
-                IsOk());
-    std::get<AmbisonicsMonoConfig>(
-        std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =
-        ambisonics_mono_arguments_.config;
-  }
-
-  AmbisonicsMonoArguments ambisonics_mono_arguments_;
-};
-
-TEST_F(AudioElementMonoAmbisonicsTest, Default) {
-  expected_header_ = {kObuIaAudioElement << 3, 18},
-  expected_payload_ = {// `audio_element_id`.
-                       1,
-                       // `audio_element_type (3), reserved (5).
-                       AudioElementObu::kAudioElementSceneBased << 5,
-                       // `codec_config_id`.
-                       2,
-                       // `num_substreams`.
-                       1,
-                       // `audio_substream_ids`
-                       3,
-                       // `num_parameters`.
-                       1,
-                       // `audio_element_params[0]`.
-                       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64,
-                       0, 0,
-                       // Start `ambisonics_config`.
-                       // `ambisonics_mode`.
-                       AmbisonicsConfig::kAmbisonicsModeMono,
-                       // `output_channel_count`.
-                       1,
-                       // `substream_count`.
-                       1,
-                       // `channel_mapping`.
-                       0};
-  InitAndTestWrite();
 }
 
-TEST_F(AudioElementMonoAmbisonicsTest,
-       NonMinimalLebGeneratorAffectsAllLeb128s) {
-  leb_generator_ =
+absl::StatusOr<AudioElementObu> CreateMonoAmbisonicsAudioElement(
+    const CommonAudioElementArgs& common_args,
+    const absl::Span<const uint8_t> channel_mapping) {
+  AudioElementObu obu = CreateBaseAudioElement(common_args);
+
+  auto status = obu.InitializeAmbisonicsMono(channel_mapping.size(),
+                                             common_args.substream_ids.size());
+  if (!status.ok()) {
+    return status;
+  }
+  auto* config = std::get_if<AmbisonicsConfig>(&obu.config_);
+  if (config == nullptr) {
+    return absl::InternalError("AmbisonicsConfig not set.");
+  }
+
+  auto* mono_config =
+      std::get_if<AmbisonicsMonoConfig>(&config->ambisonics_config);
+  if (mono_config == nullptr) {
+    return absl::InternalError("AmbisonicsMonoConfig not set.");
+  }
+  mono_config->channel_mapping = {channel_mapping.begin(),
+                                  channel_mapping.end()};
+
+  return obu;
+}
+
+TEST(ValidateAndWriteObu, WritesAmbisonicsMono) {
+  auto obu = CreateMonoAmbisonicsAudioElement(CreateAmbisonicsArgs(), {0});
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 10});
+  const auto kExpectedPayload =
+      std::to_array<uint8_t>({// `audio_element_id`.
+                              1,
+                              // `audio_element_type (3), reserved (5).
+                              AudioElementObu::kAudioElementSceneBased << 5,
+                              // `codec_config_id`.
+                              2,
+                              // `num_substreams`.
+                              1,
+                              // `audio_substream_ids`
+                              3,
+                              // `num_parameters`.
+                              0,
+                              // Start `ambisonics_config`.
+                              // `ambisonics_mode`.
+                              AmbisonicsConfig::kAmbisonicsModeMono,
+                              // `output_channel_count`.
+                              1,
+                              // `substream_count`.
+                              1,
+                              // `channel_mapping`.
+                              0});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
+}
+
+TEST(ValidateAndWriteObu, NonMinimalLebGeneratorAffectsAllLeb128s) {
+  auto leb_generator =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
+  ASSERT_NE(leb_generator, nullptr);
+  auto obu = CreateMonoAmbisonicsAudioElement(CreateAmbisonicsArgs(), {0});
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 0x80 | 16, 0x00});
 
-  expected_header_ = {kObuIaAudioElement << 3, 0x80 | 29, 0x00},
-  expected_payload_ = {
-      // `audio_element_id` is affected by the `LebGenerator`.
-      0x80 | 1, 0x00,
-      // `audio_element_type (3), reserved (5).
-      AudioElementObu::kAudioElementSceneBased << 5,
-      // `codec_config_id` is affected by the `LebGenerator`.
-      0x80 | 2, 0x00,
-      // `num_substreams` is affected by the `LebGenerator`.
-      0x80 | 1, 0x00,
-      // `audio_substream_ids` is affected by the `LebGenerator`.
-      0x80 | 3, 0x00,
-      // `num_parameters`. is affected by the `LebGenerator`.
-      0x80 | 1, 0x00,
-      // `audio_element_params[0]`.
-      // `param_definition_type` is affected by the `LebGenerator`.
-      0x80 | kParameterDefinitionDemixingAsUint8, 0x00,
-      // `parameter_id` is affected by the `LebGenerator`.
-      0x80 | 4, 0x00,
-      // `parameter_rate` is affected by the `LebGenerator`.
-      0x80 | 5, 0x00, 0x00,
-      // `duration` is affected by the `LebGenerator`.
-      0x80 | 64, 0x00,
-      // `constant_subblock_duration` is affected by the `LebGenerator`.
-      0x80 | 64, 0x00, 0, 0,
-      // Start `ambisonics_config`.
-      // `ambisonics_mode` is affected by the `LebGenerator`.
-      0x80 | AmbisonicsConfig::kAmbisonicsModeMono, 0x00,
-      // `output_channel_count`.
-      1,
-      // `substream_count`.
-      1,
-      // `channel_mapping`.
-      0};
-  InitAndTestWrite();
-}
-
-TEST_F(AudioElementMonoAmbisonicsTest, FoaAmbisonicsMono) {
-  ambisonics_mono_arguments_.config.output_channel_count = 4;
-  ambisonics_mono_arguments_.config.substream_count = 4;
-  InitSubstreamsAndChannelMapping();
-
-  expected_header_ = {kObuIaAudioElement << 3, 24},
-  expected_payload_ =
-      {// `audio_element_id`.
-       1,
+  const auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id` is affected by the `LebGenerator`.
+       0x80 | 1, 0x00,
        // `audio_element_type (3), reserved (5).
        AudioElementObu::kAudioElementSceneBased << 5,
-       // `codec_config_id`.
-       2,
-       // `num_substreams`.
-       4,
-       // `audio_substream_ids`
-       0, 1, 2, 3,
-       // `num_parameters`.
-       1,
-       // `audio_element_params[0]`.
-       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
+       // `codec_config_id` is affected by the `LebGenerator`.
+       0x80 | 2, 0x00,
+       // `num_substreams` is affected by the `LebGenerator`.
+       0x80 | 1, 0x00,
+       // `audio_substream_ids` is affected by the `LebGenerator`.
+       0x80 | 3, 0x00,
+       // `num_parameters`. is affected by the `LebGenerator`.
+       0x80 | 0, 0x00,
        // Start `ambisonics_config`.
-       // `ambisonics_mode`.
-       AmbisonicsConfig::kAmbisonicsModeMono,
+       // `ambisonics_mode` is affected by the `LebGenerator`.
+       0x80 | AmbisonicsConfig::kAmbisonicsModeMono, 0x00,
        // `output_channel_count`.
-       4,
+       1,
        // `substream_count`.
-       4,
+       1,
        // `channel_mapping`.
-       0, 1, 2, 3},
-  InitAndTestWrite();
+       0});
+
+  WriteBitBuffer wb(kInitialBufferCapacity, *leb_generator);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-TEST_F(AudioElementMonoAmbisonicsTest, MaxAmbisonicsMono) {
-  ambisonics_mono_arguments_.config.output_channel_count = 225;
-  ambisonics_mono_arguments_.config.substream_count = 225;
-  InitSubstreamsAndChannelMapping();
+TEST(ValidateAndWriteObu, WritesFoaAmbisonicsMono) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = {10, 20, 30, 40};
+  auto obu = CreateMonoAmbisonicsAudioElement(common_args, {0, 1, 2, 3});
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 16});
+  const auto kExpectedPayload =
+      std::to_array<uint8_t>({// `audio_element_id`.
+                              1,
+                              // `audio_element_type (3), reserved (5).
+                              AudioElementObu::kAudioElementSceneBased << 5,
+                              // `codec_config_id`.
+                              2,
+                              // `num_substreams`.
+                              4,
+                              // `audio_substream_ids`
+                              10, 20, 30, 40,
+                              // `num_parameters`.
+                              0,
+                              // Start `ambisonics_config`.
+                              // `ambisonics_mode`.
+                              AmbisonicsConfig::kAmbisonicsModeMono,
+                              // `output_channel_count`.
+                              4,
+                              // `substream_count`.
+                              4,
+                              // `channel_mapping`.
+                              0, 1, 2, 3});
 
-  // The actual OBU would be verbose. Just validate the size of the write
-  // matches expectations.
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
 
-  expected_header_ = std::vector<uint8_t>(3),
-  expected_payload_ = std::vector<uint8_t>(564),
-  InitAndTestWrite(/*only_validate_size=*/true);
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-class AudioElementProjAmbisonicsTest : public AudioElementObuTestBase,
-                                       public testing::Test {
- public:
-  struct AmbisonicsProjArguments {
-    DecodedUleb128 ambisonics_mode;
-    AmbisonicsProjectionConfig config;
+TEST(ValidateAndWriteObu, WritesMaxAmbisonicsMono) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = std::vector<DecodedUleb128>(225);
+  std::iota(common_args.substream_ids.begin(), common_args.substream_ids.end(),
+            0);
+  std::vector<uint8_t> channel_mapping(225, 0);
+  std::iota(channel_mapping.begin(), channel_mapping.end(), 0);
+  auto obu = CreateMonoAmbisonicsAudioElement(common_args, channel_mapping);
+  constexpr auto kExpectedSizeOfObu = 559;
+  ASSERT_THAT(obu, IsOk());
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+  EXPECT_EQ(wb.bit_buffer().size(), kExpectedSizeOfObu);
+}
+
+absl::StatusOr<AudioElementObu> CreateProjectionAmbisonicsAudioElement(
+    const CommonAudioElementArgs& common_args, uint8_t output_channel_count,
+    uint8_t coupled_substream_count,
+    const absl::Span<const int16_t> demixing_matrix) {
+  AudioElementObu obu = CreateBaseAudioElement(common_args);
+
+  auto status = obu.InitializeAmbisonicsProjection(
+      output_channel_count, common_args.substream_ids.size(),
+      coupled_substream_count);
+  if (!status.ok()) {
+    return status;
+  }
+  auto* config = std::get_if<AmbisonicsConfig>(&obu.config_);
+  if (config == nullptr) {
+    return absl::InternalError("AmbisonicsConfig not set.");
+  }
+
+  auto* projection_config =
+      std::get_if<AmbisonicsProjectionConfig>(&config->ambisonics_config);
+  if (projection_config == nullptr) {
+    return absl::InternalError("AmbisonicsMonoConfig not set.");
+  }
+  projection_config->demixing_matrix = {demixing_matrix.begin(),
+                                        demixing_matrix.end()};
+
+  return obu;
+}
+
+TEST(ValidateAndWriteObu, WritesAmbisonicsProjection) {
+  constexpr uint8_t kOutputChannelCount = 1;
+  constexpr uint8_t kCoupledSubstreamCount = 0;
+  auto obu = CreateProjectionAmbisonicsAudioElement(
+      CreateAmbisonicsArgs(), kOutputChannelCount, kCoupledSubstreamCount, {1});
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 12});
+  const auto kExpectedPayload =
+      std::to_array<uint8_t>({// `audio_element_id`.
+                              1,
+                              // `audio_element_type (3), reserved (5).
+                              AudioElementObu::kAudioElementSceneBased << 5,
+                              // `codec_config_id`.
+                              2,
+                              // `num_substreams`.
+                              1,
+                              // `audio_substream_ids`
+                              3,
+                              // `num_parameters`.
+                              0,
+                              // Start `ambisonics_config`.
+                              // `ambisonics_mode`.
+                              AmbisonicsConfig::kAmbisonicsModeProjection,
+                              // `output_channel_count`.
+                              1,
+                              // `substream_count`.
+                              1,
+                              // `coupled_substream_count`.
+                              0,
+                              // `demixing_matrix`.
+                              /*             ACN#:    0*/
+                              /* Substream   0: */ 0, 1});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
+}
+
+TEST(ValidateAndWriteObu, WritesFoaAmbisonicsProjection) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = {0, 1, 2, 3};
+  constexpr uint8_t kOutputChannelCount = 4;
+  constexpr uint8_t kCoupledSubstreamCount = 0;
+  std::vector<int16_t> demixing_matrix(16, 0);
+  std::iota(demixing_matrix.begin(), demixing_matrix.end(), 1);
+  auto obu = CreateProjectionAmbisonicsAudioElement(
+      common_args, kOutputChannelCount, kCoupledSubstreamCount,
+      demixing_matrix);
+  ASSERT_THAT(obu, IsOk());
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 45});
+  const auto kExpectedPayload =
+      std::to_array<uint8_t>({// `audio_element_id`.
+                              1,
+                              // `audio_element_type (3), reserved (5).
+                              AudioElementObu::kAudioElementSceneBased << 5,
+                              // `codec_config_id`.
+                              2,
+                              // `num_substreams`.
+                              4,
+                              // `audio_substream_ids`
+                              0, 1, 2, 3,
+                              // `num_parameters`.
+                              0,
+                              // Start `ambisonics_config`.
+                              // `ambisonics_mode`.
+                              AmbisonicsConfig::kAmbisonicsModeProjection,
+                              // `output_channel_count`.
+                              4,
+                              // `substream_count`.
+                              4,
+                              // `coupled_substream_count`.
+                              0,
+                              // `demixing_matrix`.
+                              /*             ACN#:    0,    1,    2,    3 */
+                              /* Substream   0: */ 0, 1, 0, 2, 0, 3, 0, 4,
+                              /* Substream   1: */ 0, 5, 0, 6, 0, 7, 0, 8,
+                              /* Substream   2: */ 0, 9, 0, 10, 0, 11, 0, 12,
+                              /* Substream   3: */ 0, 13, 0, 14, 0, 15, 0, 16});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
+}
+
+TEST(ValidateAndWriteObu, WritesMaxAmbisonicsProjection) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = std::vector<DecodedUleb128>(225);
+  std::iota(common_args.substream_ids.begin(), common_args.substream_ids.end(),
+            0);
+  constexpr uint8_t kOutputChannelCount = 225;
+  constexpr uint8_t kCoupledSubstreamCount = 0;
+  std::vector<int16_t> demixing_matrix(50625, 0);
+  auto obu = CreateProjectionAmbisonicsAudioElement(
+      common_args, kOutputChannelCount, kCoupledSubstreamCount,
+      demixing_matrix);
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+  constexpr auto kExpectedSizeOfObu = 101586;
+
+  EXPECT_EQ(wb.bit_buffer().size(), kExpectedSizeOfObu);
+}
+
+CommonAudioElementArgs CreateExtensionConfigAudioElementArgs(
+    AudioElementObu::AudioElementType audio_element_type) {
+  return {
+      .header = ObuHeader(),
+      .audio_element_id = 1,
+      .audio_element_type = audio_element_type,
+      .reserved = 0,
+      .codec_config_id = 2,
+      .substream_ids = {3},
+      .audio_element_params = {AudioElementParam{
+          CreateDemixingInfoParamDefinition(
+              DemixingInfoParameterData::kDMixPMode1)}},
   };
-
-  AudioElementProjAmbisonicsTest()
-      : AudioElementObuTestBase(AudioElementObu::kAudioElementSceneBased),
-        ambisonics_proj_arguments_(
-            {AmbisonicsConfig::kAmbisonicsModeProjection,
-             AmbisonicsProjectionConfig{.output_channel_count = 1,
-                                        .substream_count = 1,
-                                        .coupled_substream_count = 0,
-                                        .demixing_matrix = {1}}}) {}
-
- protected:
-  void InitSubstreamsAndDemixingMatrix() {
-    required_args_.substream_ids = std::vector<DecodedUleb128>(
-        ambisonics_proj_arguments_.config.substream_count);
-    std::iota(required_args_.substream_ids.begin(),
-              required_args_.substream_ids.end(), 0);
-
-    const size_t demixing_matrix_size =
-        ambisonics_proj_arguments_.config.substream_count *
-        ambisonics_proj_arguments_.config.output_channel_count;
-
-    // Overwrite the variable-sized `demixing_matrix` channel_mapping  with
-    // default data of a length implied by the default argument.
-    ambisonics_proj_arguments_.config.demixing_matrix =
-        std::vector<int16_t>(demixing_matrix_size, 0);
-    std::iota(ambisonics_proj_arguments_.config.demixing_matrix.begin(),
-              ambisonics_proj_arguments_.config.demixing_matrix.end(), 1);
-  }
-
-  void InitAudioElementTypeSpecificFields() {
-    EXPECT_THAT(obu_->InitializeAmbisonicsProjection(
-                    ambisonics_proj_arguments_.config.output_channel_count,
-                    ambisonics_proj_arguments_.config.substream_count,
-                    ambisonics_proj_arguments_.config.coupled_substream_count),
-                IsOk());
-
-    std::get<AmbisonicsProjectionConfig>(
-        std::get<AmbisonicsConfig>(obu_->config_).ambisonics_config) =
-        ambisonics_proj_arguments_.config;
-  }
-
-  AmbisonicsProjArguments ambisonics_proj_arguments_;
-};
-
-TEST_F(AudioElementProjAmbisonicsTest, Default) {
-  expected_header_ = {kObuIaAudioElement << 3, 20};
-  expected_payload_ = {// `audio_element_id`.
-                       1,
-                       // `audio_element_type (3), reserved (5).
-                       AudioElementObu::kAudioElementSceneBased << 5,
-                       // `codec_config_id`.
-                       2,
-                       // `num_substreams`.
-                       1,
-                       // `audio_substream_ids`
-                       3,
-                       // `num_parameters`.
-                       1,
-                       // `audio_element_params[0]`.
-                       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64,
-                       0, 0,
-                       // Start `ambisonics_config`.
-                       // `ambisonics_mode`.
-                       AmbisonicsConfig::kAmbisonicsModeProjection,
-                       // `output_channel_count`.
-                       1,
-                       // `substream_count`.
-                       1,
-                       // `coupled_substream_count`.
-                       0,
-                       // `demixing_matrix`.
-                       /*             ACN#:    0*/
-                       /* Substream   0: */ 0, 1};
-  InitAndTestWrite();
 }
 
-TEST_F(AudioElementProjAmbisonicsTest, FoaAmbisonicsOutputChannelCount) {
-  ambisonics_proj_arguments_.config.output_channel_count = 4;
-  ambisonics_proj_arguments_.config.substream_count = 4;
-  InitSubstreamsAndDemixingMatrix();
+absl::StatusOr<AudioElementObu> CreateExtensionConfigAudioElement(
+    const CommonAudioElementArgs& common_args,
+    absl::Span<const uint8_t> audio_element_config_bytes) {
+  AudioElementObu obu = CreateBaseAudioElement(common_args);
 
-  expected_header_ = {kObuIaAudioElement << 3, 53},
-  expected_payload_ =
+  obu.InitializeExtensionConfig();
+
+  obu.config_ = ExtensionConfig{
+      .audio_element_config_bytes = {audio_element_config_bytes.begin(),
+                                     audio_element_config_bytes.end()}};
+  return obu;
+}
+
+TEST(ValidateAndWriteObu, WriteExtensionConfigSizeZero) {
+  CommonAudioElementArgs common_args = CreateExtensionConfigAudioElementArgs(
+      AudioElementObu::kAudioElementBeginReserved);
+  auto obu = CreateExtensionConfigAudioElement(common_args, {});
+
+  ASSERT_THAT(obu, IsOk());
+
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 15});
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>(
       {// `audio_element_id`.
        1,
        // `audio_element_type (3), reserved (5).
-       AudioElementObu::kAudioElementSceneBased << 5,
+       AudioElementObu::kAudioElementBeginReserved << 5,
        // `codec_config_id`.
        2,
        // `num_substreams`.
-       4,
+       1,
        // `audio_substream_ids`
-       0, 1, 2, 3,
+       3,
        // `num_parameters`.
        1,
        // `audio_element_params[0]`.
        kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
-       // Start `ambisonics_config`.
-       // `ambisonics_mode`.
-       AmbisonicsConfig::kAmbisonicsModeProjection,
-       // `output_channel_count`.
-       4,
-       // `substream_count`.
-       4,
-       // `coupled_substream_count`.
-       0,
-       // `demixing_matrix`.
-       /*             ACN#:    0,    1,    2,    3 */
-       /* Substream   0: */ 0, 1, 0, 2, 0, 3, 0, 4,
-       /* Substream   1: */ 0, 5, 0, 6, 0, 7, 0, 8,
-       /* Substream   2: */ 0, 9, 0, 10, 0, 11, 0, 12,
-       /* Substream   3: */ 0, 13, 0, 14, 0, 15, 0, 16},
-  InitAndTestWrite();
+       // `audio_element_config_size`.
+       0});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-TEST_F(AudioElementProjAmbisonicsTest, MaxAmbisonicsOutputChannelCount) {
-  ambisonics_proj_arguments_.config.output_channel_count = 225;
-  ambisonics_proj_arguments_.config.substream_count = 225;
-  InitSubstreamsAndDemixingMatrix();
-  // The actual OBU would be verbose. Just validate the size of the write
-  // matches expectations.
+TEST(ValidateAndWriteObu, WriteExtensionConfigSizeMax) {
+  CommonAudioElementArgs common_args = CreateExtensionConfigAudioElementArgs(
+      AudioElementObu::kAudioElementEndReserved);
+  auto obu = CreateExtensionConfigAudioElement(common_args, {});
 
-  expected_header_ = std::vector<uint8_t>(4);
-  expected_payload_ = std::vector<uint8_t>(101590);
-  InitAndTestWrite(/*only_validate_size=*/true);
+  ASSERT_THAT(obu, IsOk());
+
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 15});
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id`.
+       1,
+       // `audio_element_type (3), reserved (5).
+       AudioElementObu::kAudioElementEndReserved << 5,
+       // `codec_config_id`.
+       2,
+       // `num_substreams`.
+       1,
+       // `audio_substream_ids`
+       3,
+       // `num_parameters`.
+       1,
+       // `audio_element_params[0]`.
+       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
+       // `audio_element_config_size`.
+       0});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
-class AudioElementExtensionConfigTest : public AudioElementObuTestBase,
-                                        public testing::Test {
- public:
-  AudioElementExtensionConfigTest()
-      : AudioElementObuTestBase(AudioElementObu::kAudioElementBeginReserved),
-        extension_config_({.audio_element_config_bytes = {}}) {
-    expected_header_ = {kObuIaAudioElement << 3, 15};
-  }
+TEST(ValidateAndWriteObu, WritesMaxNonEmptyExtensionConfig) {
+  CommonAudioElementArgs common_args = CreateExtensionConfigAudioElementArgs(
+      AudioElementObu::kAudioElementEndReserved);
+  auto obu =
+      CreateExtensionConfigAudioElement(common_args, {'e', 'x', 't', 'r', 'a'});
 
- protected:
-  void InitAudioElementTypeSpecificFields() override {
-    obu_->InitializeExtensionConfig();
-    std::get<ExtensionConfig>(obu_->config_) = extension_config_;
-  }
+  ASSERT_THAT(obu, IsOk());
 
-  ExtensionConfig extension_config_;
-};
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 20});
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `audio_element_id`.
+       1,
+       // `audio_element_type (3), reserved (5).
+       AudioElementObu::kAudioElementEndReserved << 5,
+       // `codec_config_id`.
+       2,
+       // `num_substreams`.
+       1,
+       // `audio_substream_ids`
+       3,
+       // `num_parameters`.
+       1,
+       // `audio_element_params[0]`.
+       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64, 0, 0,
+       // `audio_element_config_size`.
+       5,
+       // 'audio_element_config_bytes`.
+       'e', 'x', 't', 'r', 'a'});
 
-TEST_F(AudioElementExtensionConfigTest, ExtensionSizeZero) {
-  expected_payload_ = {// `audio_element_id`.
-                       1,
-                       // `audio_element_type (3), reserved (5).
-                       AudioElementObu::kAudioElementBeginReserved << 5,
-                       // `codec_config_id`.
-                       2,
-                       // `num_substreams`.
-                       1,
-                       // `audio_substream_ids`
-                       3,
-                       // `num_parameters`.
-                       1,
-                       // `audio_element_params[0]`.
-                       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64,
-                       0, 0,
-                       // `audio_element_config_size`.
-                       0};
-  InitAndTestWrite();
-}
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
 
-TEST_F(AudioElementExtensionConfigTest, MaxAudioElementType) {
-  required_args_.audio_element_type = AudioElementObu::kAudioElementEndReserved;
-  expected_payload_ = {// `audio_element_id`.
-                       1,
-                       // `audio_element_type (3), reserved (5).
-                       AudioElementObu::kAudioElementEndReserved << 5,
-                       // `codec_config_id`.
-                       2,
-                       // `num_substreams`.
-                       1,
-                       // `audio_substream_ids`
-                       3,
-                       // `num_parameters`.
-                       1,
-                       // `audio_element_params[0]`.
-                       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64,
-                       0, 0,
-                       // `audio_element_config_size`.
-                       0};
-  InitAndTestWrite();
-}
-
-TEST_F(AudioElementExtensionConfigTest, ExtensionSizeNonzero) {
-  extension_config_.audio_element_config_bytes = {'e', 'x', 't', 'r', 'a'};
-
-  expected_header_ = {kObuIaAudioElement << 3, 20};
-  expected_payload_ = {// `audio_element_id`.
-                       1,
-                       // `audio_element_type (3), reserved (5).
-                       AudioElementObu::kAudioElementBeginReserved << 5,
-                       // `codec_config_id`.
-                       2,
-                       // `num_substreams`.
-                       1,
-                       // `audio_substream_ids`
-                       3,
-                       // `num_parameters`.
-                       1,
-                       // `audio_element_params[0]`.
-                       kParameterDefinitionDemixingAsUint8, 4, 5, 0x00, 64, 64,
-                       0, 0,
-                       // `audio_element_config_size`.
-                       5,
-                       // 'audio_element_config_bytes`.
-                       'e', 'x', 't', 'r', 'a'};
-  InitAndTestWrite();
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedPayload);
 }
 
 TEST(TestValidateAmbisonicsMono, MappingInAscendingOrder) {
@@ -1683,7 +1730,7 @@ TEST(ReadAudioElementParamTest, ValidReconGainParamDefinition) {
       64};
 
   auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   AudioElementParam param;
   EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
 }
@@ -1703,7 +1750,7 @@ TEST(ReadAudioElementParamTest, RejectMixGainParamDefinition) {
       // Constant Subblock Duration.
       64};
   auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   AudioElementParam param;
   EXPECT_FALSE(param.ReadAndValidate(kAudioElementId, *buffer).ok());
 }
@@ -1727,7 +1774,7 @@ TEST(ReadAudioElementParamTest, ValidDemixingParamDefinition) {
       // `default_w`.
       0};
   auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   AudioElementParam param;
   EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
 
@@ -1751,7 +1798,7 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
       // param_definition_bytes.
       99};
   auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
   AudioElementParam param;
   EXPECT_THAT(param.ReadAndValidate(kAudioElementId, *buffer), IsOk());
 
@@ -1765,8 +1812,7 @@ TEST(AudioElementParam, ReadAndValidateReadsReservedParamDefinition3) {
 // --- Begin CreateFromBuffer tests ---
 TEST(CreateFromBuffer, InvalidWhenPayloadIsEmpty) {
   std::vector<uint8_t> source;
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   EXPECT_FALSE(AudioElementObu::CreateFromBuffer(header, 0, *buffer).ok());
 }
@@ -1813,8 +1859,7 @@ TEST(CreateFromBuffer, ScalableChannelConfigMultipleChannelsNoParams) {
       // `output_gain`.
       0, 1};
   const int64_t payload_size = source.size();
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
@@ -1891,8 +1936,7 @@ TEST(CreateFromBuffer, InvalidMultipleChannelConfigWithBinauralLayout) {
       // `coupled_substream_count`.
       1};
   const int64_t payload_size = source.size();
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
@@ -1922,8 +1966,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
       0, 1, 2, 3  // `channel_mapping`, one per `output_channel_count`.
   };
   const int64_t payload_size = source.size();
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
@@ -1971,8 +2014,7 @@ TEST(CreateFromBuffer, ValidAmbisonicsProjectionConfig) {
       0x00, 0x07, 0x00, 0x08, 0x00, 0x09, 0x00, 0x0a, 0x00, 0x0b, 0x00, 0x0c,
       0x00, 0x0d, 0x00, 0x0e, 0x00, 0x0f, 0x00, 0x10};
   const int64_t payload_size = source.size();
-  auto buffer =
-      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
   ObuHeader header;
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
