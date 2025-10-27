@@ -4,9 +4,13 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 cc_test(
     name = "iamf_decoder_fuzz_test",
     srcs = ["iamf_decoder_fuzz_test.cc"],
+    args = [
+        "--fuzztest_rss_limit_mb=8092",
+    ],
     data = [
         "//iamf/cli/testdata:fuzz_test_iamf",
     ],
+    shard_count = 2,
     target_compatible_with = [
         "@platforms//os:linux",
     ],

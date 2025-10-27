@@ -42,6 +42,9 @@ cc_test(
 cc_test(
     name = "iamf_encoder_factory_fuzz_test",
     srcs = ["iamf_encoder_factory_fuzz_test.cc"],
+    args = [
+        "--fuzztest_rss_limit_mb=8092",
+    ],
     data = [
         "//iamf/cli/testdata:test_vectors",
     ],
