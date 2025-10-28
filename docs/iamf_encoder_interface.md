@@ -21,7 +21,8 @@ basis. This is especially useful for streaming applications.
 
 Either creation mode is configured by a `UserMetadata`. Many properties of the
 IAMF bitstream can be changed. See
-[Textproto templates](iamf/cli/textproto_templates) for common configurations.
+[Textproto templates](../iamf/cli/textproto_templates) for common
+configurations.
 
 ## Sample Usage
 
