@@ -15,7 +15,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <unordered_set>
 
 #include "iamf_tools_api_types.h"
 
@@ -27,35 +26,43 @@ namespace api {
  * The functions below constitute our IAMF Iterative Decoder API. Below is a
  * sample usage of the API.
  *
- * Reconfigurable Standalone IAMF Usage
+ * Example Reconfigurable Standalone IAMF Usage
+ * using iamf_tools::api::IamfDecoderFactory;
+ * using iamf_tools::api::IamfDecoderInterface;
  *
- * IamfDecoderSettings settings = {
- *   .requested_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0,
+ * IamfDecoderFactory::Settings settings = {
+ *   // Decoder can be configured here, for example, to request stereo output.
+ *   .requested_mix = {
+ *       .output_layout = OutputLayout::kItu2051_SoundSystemA_0_2_0
+ *   },
  * };
  * std::unique_ptr<IamfDecoderInterface> decoder =
- *   IamfDecoderFactory::Create(settings);
+ *     IamfDecoderFactory::Create(settings);
  * for chunk of data in iamf stream:
- *    decoder.Decode()
+ *    auto status = decoder->Decode(chunk, chunk_size)
+ *    if (!status.ok() {
+ *      // Calls returning a status can fail. Check the status to detect errors.
+ *    }
  *    if (IsDescriptorProcessingComplete()) {
- *      // Can call various getters here to get info about decoder.
- *      decoder.GetOutputLayout(output_layout);
- *      decoder.GetNumberOfOutputChannels(output_num_channels);
- *      decoder.GetOutputSampleType();
- *      decoder.GetSampleRate(output_sample_rate);
- *      decoder.GetFrameSize(output_frame_size);
+ *      // Can call various getters here to get info about the output.
+ *      status = decoder->GetOutputLayout(selected_mix);
+ *      status = decoder->GetNumberOfOutputChannels(output_num_channels);
+ *      output_sample_type = decoder->GetOutputSampleType();
+ *      status = decoder->GetSampleRate(output_sample_rate);
+ *      status = decoder->GetFrameSize(output_frame_size);
  *    }
  * for chunk of data in iamf stream:
- *    decoder.Decode(chunk)
- *    while (decoder.IsTemporalUnitAvailable()) {
- *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
- *      Playback(output_buffer)
+ *    decoder->Decode(chunk, chunk_size);
+ *    while (decoder->IsTemporalUnitAvailable()) {
+ *      decoder->GetOutputTemporalUnit(output_buffer, bytes_written)
+ *      // Do something with the decoded audio like
+ *      MyPlaybackFunction(output_buffer, bytes_written);
  *    }
  * if (end_of_stream):
- *    decoder.SignalEndOfDecoding()
+ *    decoder->SignalEndOfDecoding()
  *    // Get remaining audio
- *    while (decoder.IsTemporalUnitAvailable()) {
- *      decoder.GetOutputTemporalUnit(output_buffer, bytes_written)
- *      Playback(output_buffer)
+ *    while (decoder->IsTemporalUnitAvailable()) {
+ *      // Get and use the buffer like before.
  *    }
  */
 class IamfDecoderInterface {
