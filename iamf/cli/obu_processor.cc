@@ -43,7 +43,6 @@
 #include "iamf/cli/profile_filter.h"
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/rendering_mix_presentation_finalizer.h"
-#include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
@@ -674,11 +673,8 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
 std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const std::optional<uint32_t>& desired_mix_presentation_id,
-    const std::optional<Layout>& desired_layout,
-    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-        sample_processor_factory,
-    bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-    bool& output_insufficient_data) {
+    const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
+    ReadBitBuffer* read_bit_buffer, bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
@@ -695,8 +691,8 @@ std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
   }
 
   if (const auto status = obu_processor->InitializeForRendering(
-          desired_profile_versions, desired_mix_presentation_id, desired_layout,
-          sample_processor_factory);
+          desired_profile_versions, desired_mix_presentation_id,
+          desired_layout);
       !status.ok()) {
     ABSL_LOG(ERROR) << status;
     return nullptr;
@@ -736,9 +732,7 @@ absl::StatusOr<Layout> ObuProcessor::GetOutputLayout() const {
 absl::Status ObuProcessor::InitializeForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const std::optional<uint32_t>& desired_mix_presentation_id,
-    const std::optional<Layout>& desired_layout,
-    const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-        sample_processor_factory) {
+    const std::optional<Layout>& desired_layout) {
   if (mix_presentations_.empty()) {
     return absl::InvalidArgumentError("No mix presentation OBUs found.");
   }
@@ -781,21 +775,6 @@ absl::Status ObuProcessor::InitializeForRendering(
       .sub_mix_index = selected_mix_presentation->sub_mix_index,
       .layout_index = selected_mix_presentation->layout_index,
   };
-  auto builds_processor_only_for_selected_mix =
-      [&sample_processor_factory, &selected_mix_presentation](
-          DecodedUleb128 mix_presentation_id, int sub_mix_index,
-          int layout_index, const Layout& layout, int num_channels,
-          int sample_rate, int bit_depth, size_t max_input_samples_per_frame)
-      -> std::unique_ptr<SampleProcessorBase> {
-    if (mix_presentation_id == selected_mix_presentation->mix_presentation_id &&
-        sub_mix_index == selected_mix_presentation->sub_mix_index &&
-        layout_index == selected_mix_presentation->layout_index) {
-      return sample_processor_factory(
-          mix_presentation_id, sub_mix_index, layout_index, layout,
-          num_channels, sample_rate, bit_depth, max_input_samples_per_frame);
-    }
-    return nullptr;
-  };
 
   // Create the mix presentation finalizer which is used to render the output
   // files. We neither trust the user-provided loudness, nor care about the
@@ -805,7 +784,8 @@ absl::Status ObuProcessor::InitializeForRendering(
       RenderingMixPresentationFinalizer::Create(
           /*renderer_factory=*/&renderer_factory,
           /*loudness_calculator_factory=*/nullptr, audio_elements_,
-          builds_processor_only_for_selected_mix, mix_presentations_);
+          RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+          mix_presentations_);
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();
   }

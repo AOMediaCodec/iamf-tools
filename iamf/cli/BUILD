@@ -339,7 +339,6 @@ cc_library(
         ":profile_filter",
         ":renderer_factory",
         ":rendering_mix_presentation_finalizer",
-        ":sample_processor_base",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",

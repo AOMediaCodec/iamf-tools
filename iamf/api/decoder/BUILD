@@ -18,7 +18,6 @@ cc_library(
         "//iamf/api/conversion:mix_presentation_conversion",
         "//iamf/api/conversion:profile_conversion",
         "//iamf/cli:obu_processor",
-        "//iamf/cli:rendering_mix_presentation_finalizer",
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:numeric_utils",
@@ -31,6 +30,7 @@ cc_library(
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
     ],
 )

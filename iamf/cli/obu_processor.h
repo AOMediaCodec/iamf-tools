@@ -126,7 +126,6 @@ class ObuProcessor {
    * \param desired_layout Optionally, specifies the desired layout that will be
    *        used to render the audio, if available in the mix presentations.
    *        The actually selected Layout can be verified with `GetOutputLayout`.
-   * \param sample_processor_factory Factory to create post processors.
    * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
    *        include all descriptor OBUs and no other data. This should only be
    *        set to true if the user knows the exact boundaries of their set of
@@ -141,11 +140,8 @@ class ObuProcessor {
   static std::unique_ptr<ObuProcessor> CreateForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const std::optional<uint32_t>& desired_mix_presentation_id,
-      const std::optional<Layout>& desired_layout,
-      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory,
-      bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
-      bool& output_insufficient_data);
+      const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
+      ReadBitBuffer* read_bit_buffer, bool& output_insufficient_data);
 
   /*!\brief Gets the sample rate of the output audio.
    *
@@ -313,16 +309,13 @@ class ObuProcessor {
    * \param desired_layout Optionally, specifies the desired layout that will be
    *        used to render the audio, if available in the mix presentations.
    *        The actually selected Layout can be verified with `GetOutputLayout`.
-   * \param sample_processor_factory Factory to create post processors.
    * \return `absl::OkStatus()` if the process is successful. A specific status
    *         on failure.
    */
   absl::Status InitializeForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const std::optional<uint32_t>& desired_mix_presentation_id,
-      const std::optional<Layout>& desired_layout,
-      const RenderingMixPresentationFinalizer::SampleProcessorFactory&
-          sample_processor_factory);
+      const std::optional<Layout>& desired_layout);
 
   struct DecodingLayoutInfo {
     DecodedUleb128 mix_presentation_id;
