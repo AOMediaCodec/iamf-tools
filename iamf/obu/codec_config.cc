@@ -36,8 +36,24 @@ namespace iamf_tools {
 namespace {
 
 absl::Status ValidateNumSamplesPerFrame(uint32_t num_samples_per_frame) {
-  return ValidateNotEqual(num_samples_per_frame, uint32_t{0},
-                          "Number of samples per frame");
+  // The spec only explicitly forbids a frame size of zero, with no upper bound.
+  //
+  // For practical purpsoes, it is reasonable to restrict the upper bound to
+  // prevent excessive memory usage. Underlyng codecs or their implementations
+  // usually have conservative limits.
+  //
+  // - AAC: 1024 samples per frame.
+  // - FLAC: 65,535 samples per frame.
+  // - Opus: 60 ms frames (at 48 kHz).
+  //
+  // LPCM has no limit under the IAMF spec. Here we pick a large limit that
+  // would support frames up to 1 second at 96 kHz. Which is both a longer
+  // duration and a higher sample rate than we would typically expect.
+  constexpr uint32_t kMinPracticalFrameSize = 1;
+  return ValidateInRange(
+      num_samples_per_frame,
+      {kMinPracticalFrameSize, CodecConfigObu::kMaxPracticalFrameSize},
+      "Number of samples per frame");
 }
 
 absl::Status OverrideAudioRollDistance(CodecConfig::CodecId codec_id,
@@ -215,6 +231,8 @@ absl::StatusOr<CodecConfigObu> CodecConfigObu::Create(
     const ObuHeader& header, DecodedUleb128 codec_config_id,
     const CodecConfig& input_codec_config,
     bool automatically_override_roll_distance) {
+  RETURN_IF_NOT_OK(
+      ValidateNumSamplesPerFrame(input_codec_config.num_samples_per_frame));
   // Copy the codec config, it may be modified to correct the roll distance.
   CodecConfig codec_config = input_codec_config;
   uint32_t output_sample_rate = 0;

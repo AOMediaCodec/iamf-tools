@@ -72,6 +72,35 @@ CodecConfig GetLpcmCodecConfig(uint32_t sample_rate) {
               .sample_rate_ = sample_rate}};
 }
 
+TEST(Create, SucceedsWithMaxPracticalFrameSize) {
+  auto lpcm_codec_config = GetLpcmCodecConfig(48000);
+  lpcm_codec_config.num_samples_per_frame =
+      CodecConfigObu::kMaxPracticalFrameSize;
+
+  EXPECT_THAT(
+      CodecConfigObu::Create(ObuHeader(), kCodecConfigId, lpcm_codec_config),
+      IsOk());
+}
+
+TEST(Create, FailsWithZeroSamplesPerFrame) {
+  auto lpcm_codec_config = GetLpcmCodecConfig(48000);
+  lpcm_codec_config.num_samples_per_frame = 0;
+
+  EXPECT_THAT(
+      CodecConfigObu::Create(ObuHeader(), kCodecConfigId, lpcm_codec_config),
+      Not(IsOk()));
+}
+
+TEST(Create, FailsWithTooManySamplesPerFrame) {
+  auto lpcm_codec_config = GetLpcmCodecConfig(48000);
+  lpcm_codec_config.num_samples_per_frame =
+      CodecConfigObu::kMaxPracticalFrameSize + 1;
+
+  EXPECT_THAT(
+      CodecConfigObu::Create(ObuHeader(), kCodecConfigId, lpcm_codec_config),
+      Not(IsOk()));
+}
+
 class CodecConfigTestBase : public ObuTestBase {
  public:
   CodecConfigTestBase(CodecConfig::CodecId codec_id,
@@ -267,15 +296,6 @@ TEST_F(CodecConfigLpcmTest, CreateFailsWithGetIllegalSampleSize) {
               Not(IsOk()));
 }
 
-TEST_F(CodecConfigLpcmTest,
-       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
-  codec_config_.num_samples_per_frame = 0;
-
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
-}
-
 TEST_F(CodecConfigLpcmTest, Default) { InitAndTestWrite(); }
 
 TEST_F(CodecConfigLpcmTest, ExtensionHeader) {
@@ -453,8 +473,7 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
   codec_config_id_ = std::numeric_limits<DecodedUleb128>::max();
-  codec_config_.num_samples_per_frame =
-      std::numeric_limits<DecodedUleb128>::max();
+  codec_config_.num_samples_per_frame = CodecConfigObu::kMaxPracticalFrameSize;
   codec_config_.audio_roll_distance = -1;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).pre_skip_ = 0xffff;
   std::get<OpusDecoderConfig>(codec_config_.decoder_config).input_sample_rate_ =
@@ -466,7 +485,7 @@ TEST_F(CodecConfigOpusTest, ManyLargeValues) {
                        // `codec_id`.
                        'O', 'p', 'u', 's',
                        // `num_samples_per_frame`.
-                       0xff, 0xff, 0xff, 0xff, 0x8f, 0x80, 0x80, 0x00,
+                       0x80, 0xee, 0x85, 0x80, 0x80, 0x80, 0x80, 0x00,
                        // `audio_roll_distance`.
                        0xff, 0xff,
                        // Start `DecoderConfig`.
@@ -503,22 +522,6 @@ TEST_F(CodecConfigOpusTest, CreateFailsWhenOverridingAudioRollDistanceFails) {
   EXPECT_THAT(CodecConfigObu::Create(header_, codec_config_id_, codec_config_,
                                      override_audio_roll_distance_),
               Not(IsOk()));
-}
-
-TEST_F(CodecConfigOpusTest,
-       ValidateAndWriteFailsWithIllegalNumSamplesPerFrame) {
-  constexpr uint32_t kNumSamplesPerFrameCausesDivideByZero = 0;
-  codec_config_.num_samples_per_frame = kNumSamplesPerFrameCausesDivideByZero;
-  override_audio_roll_distance_ = kDontOverrideAudioRollDistance;
-
-  // User does not request to calculate the roll distance, so the invalid
-  // `num_samples_per_frame` is not detected at initialization time.
-  InitExpectOk();
-
-  // But later the write fails because `num_samples_per_frame` is invalid and/or
-  // the roll distance is undefined.
-  WriteBitBuffer undefined_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(undefined_wb).ok());
 }
 
 TEST_F(CodecConfigOpusTest, Default) { InitAndTestWrite(); }

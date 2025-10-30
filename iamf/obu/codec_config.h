@@ -80,8 +80,16 @@ struct CodecConfig {
   DecoderConfig decoder_config;
 };
 
+/*!\brief Codec Config OBU based on section 3.5 of the IAMF specification.
+ *
+ * This class has stricter limits than the specification:
+ *   - Number of samples per frame is limited to `kMaxPracticalFrameSize`.
+ */
 class CodecConfigObu : public ObuBase {
  public:
+  /*!\brief Artificial limit on the maximum number of samples per frame. */
+  static constexpr uint32_t kMaxPracticalFrameSize = 96000;
+
   /*!\brief Constructor.
    *
    * \param header `ObuHeader` of the OBU.
