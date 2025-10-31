@@ -19,6 +19,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -31,6 +32,7 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
+#include "iamf/cli/audio_frame_decoder.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
@@ -509,14 +511,14 @@ absl::StatusOr<uint32_t> ObuProcessor::GetOutputFrameSize() const {
 
 absl::StatusOr<DecodedUleb128> ObuProcessor::GetOutputMixPresentationId()
     const {
-  if (rendering_) {
+  if (rendering_models_.has_value()) {
     return decoding_layout_info_.mix_presentation_id;
   }
   return absl::FailedPreconditionError("Not initialized for rendering.");
 }
 
 absl::StatusOr<Layout> ObuProcessor::GetOutputLayout() const {
-  if (rendering_) {
+  if (rendering_models_.has_value()) {
     return decoding_layout_info_.layout;
   }
   return absl::FailedPreconditionError("Not initialized for rendering.");
@@ -531,23 +533,6 @@ absl::Status ObuProcessor::InitializeForRendering(
   }
   if (audio_elements_->empty()) {
     return absl::InvalidArgumentError("No audio element OBUs found.");
-  }
-
-  // TODO(b/377747704): Decode only the frames selected for the playback
-  //                    layout.
-  audio_frame_decoder_.emplace();
-  for (const auto& [unused_id, audio_element_with_data] : *audio_elements_) {
-    RETURN_IF_NOT_OK(audio_frame_decoder_->InitDecodersForSubstreams(
-        audio_element_with_data.substream_id_to_labels,
-        *audio_element_with_data.codec_config));
-  }
-  {
-    auto temp_demixing_module = DemixingModule::CreateForReconstruction(
-        DemixingModule::CreateIdToReconstructionConfig(*audio_elements_));
-    if (!temp_demixing_module.ok()) {
-      return temp_demixing_module.status();
-    }
-    demixing_module_.emplace(*std::move(temp_demixing_module));
   }
 
   const std::list<MixPresentationObu*> supported_mix_presentations =
@@ -582,22 +567,14 @@ absl::Status ObuProcessor::InitializeForRendering(
     return simplified_mix_presentation.status();
   }
 
-  // Create the mix presentation finalizer which is used to render the output
-  // files. We neither trust the user-provided loudness, nor care about the
-  // calculated loudness.
-  const RendererFactory renderer_factory;
-  absl::StatusOr<RenderingMixPresentationFinalizer> mix_presentation_finalizer =
-      RenderingMixPresentationFinalizer::Create(
-          /*renderer_factory=*/&renderer_factory,
-          /*loudness_calculator_factory=*/nullptr, *audio_elements_,
-          RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-          {*simplified_mix_presentation});
-  if (!mix_presentation_finalizer.ok()) {
-    return mix_presentation_finalizer.status();
+  // Configure simplified audio pipeline, from the simplified mix presentation.
+  absl::StatusOr<RenderingModels> rendering_models =
+      ConfigureSimplifiedAudioProcessingPipeline(*audio_elements_,
+                                                 *simplified_mix_presentation);
+  if (!rendering_models.ok()) {
+    return rendering_models.status();
   }
-  mix_presentation_finalizer_.emplace(*std::move(mix_presentation_finalizer));
-
-  rendering_ = true;
+  rendering_models_.emplace(*std::move(rendering_models));
   return absl::OkStatus();
 }
 
@@ -678,26 +655,21 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     // Nothing to decode, render, or measure loudness of.
     return absl::OkStatus();
   }
-
-  if (!audio_frame_decoder_.has_value()) {
-    return absl::InvalidArgumentError(
-        "Audio frame decoder is not constructed; "
-        "remember to call `InitializeForRendering()` first.");
-  }
-  if (!demixing_module_.has_value()) {
-    return absl::InvalidArgumentError(
-        "Demxing module is not constructed; "
-        "remember to call `InitializeForRendering()` first.");
-  }
-  if (!mix_presentation_finalizer_.has_value()) {
-    return absl::InvalidArgumentError(
-        "Mix presentation finalizer is not constructed; "
-        "remember to call `InitializeForRendering()` first.");
+  if (!rendering_models_.has_value()) {
+    return absl::FailedPreconditionError(
+        "Not initialized for rendering. Did you call "
+        "`CreateForRendering()`?");
   }
 
   // Decode the temporal unit.
   std::optional<InternalTimestamp> end_timestamp;
   for (auto& audio_frame : audio_frames) {
+    // `ObuProcessor` renders only a single mix. Substreams may be irrelevant,
+    // and the end-user should not pay to decode them.
+    if (!rendering_models_->relevant_substream_ids.contains(
+            audio_frame.obu.GetSubstreamId())) {
+      continue;
+    }
     if (!end_timestamp.has_value()) {
       end_timestamp = audio_frame.end_timestamp;
     }
@@ -709,28 +681,30 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
                                        audio_frame.end_timestamp,
                                        "Audio frame has a different end "
                                        "timestamp than the temporal unit: "));
-    RETURN_IF_NOT_OK(audio_frame_decoder_->Decode(audio_frame));
+    RETURN_IF_NOT_OK(
+        rendering_models_->audio_frame_decoder.Decode(audio_frame));
   }
 
   // Reconstruct the temporal unit and store the result in the output map.
   const auto& decoded_labeled_frames_for_temporal_unit =
-      demixing_module_->DemixDecodedAudioSamples(audio_frames);
+      rendering_models_->demixing_module.DemixDecodedAudioSamples(audio_frames);
   if (!decoded_labeled_frames_for_temporal_unit.ok()) {
     return decoded_labeled_frames_for_temporal_unit.status();
   }
 
-  RETURN_IF_NOT_OK(mix_presentation_finalizer_->PushTemporalUnit(
-      *decoded_labeled_frames_for_temporal_unit, start_timestamp,
-      *end_timestamp, parameter_blocks));
+  RETURN_IF_NOT_OK(
+      rendering_models_->mix_presentation_finalizer.PushTemporalUnit(
+          *decoded_labeled_frames_for_temporal_unit, start_timestamp,
+          *end_timestamp, parameter_blocks));
 
   // `ObuProcessor` renders a simplified Mix Presentation OBU with a single
   // sub-mix and a single layout.
   constexpr int kSubMixIndex = 0;
   constexpr int kLayoutIndex = 0;
-  auto rendered_samples =
-      mix_presentation_finalizer_->GetPostProcessedSamplesAsSpan(
-          decoding_layout_info_.mix_presentation_id, kSubMixIndex,
-          kLayoutIndex);
+  auto rendered_samples = rendering_models_->mix_presentation_finalizer
+                              .GetPostProcessedSamplesAsSpan(
+                                  decoding_layout_info_.mix_presentation_id,
+                                  kSubMixIndex, kLayoutIndex);
   if (!rendered_samples.ok()) {
     return rendered_samples.status();
   }
@@ -743,6 +717,73 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   //                    interface.
 
   return absl::OkStatus();
+}
+
+absl::StatusOr<ObuProcessor::RenderingModels>
+ObuProcessor::ConfigureSimplifiedAudioProcessingPipeline(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
+    const MixPresentationObu& simplified_mix_presentation) {
+  // The audio elements IDs that are relevant to the selected mix presentation.
+  absl::flat_hash_set<DecodedUleb128> relevant_audio_element_ids;
+  for (const auto& sub_mix : simplified_mix_presentation.sub_mixes_) {
+    for (const auto& audio_element : sub_mix.audio_elements) {
+      relevant_audio_element_ids.insert(audio_element.audio_element_id);
+    }
+  }
+
+  // Configure the `AudioFrameDecoder`, and prepare the strucutre which
+  // configures the `DemixingModule`. Filter out any irrelevant audio
+  // elements. Also cache any irrelevant substream IDs to be filtered out in
+  // temporal units.
+  AudioFrameDecoder audio_frame_decoder;
+  absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
+      id_to_reconstruction_config;
+  absl::flat_hash_set<DecodedUleb128> relevant_substream_ids;
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       audio_elements) {
+    if (!relevant_audio_element_ids.contains(audio_element_id)) {
+      continue;
+    }
+    relevant_substream_ids.insert(
+        audio_element_with_data.obu.audio_substream_ids_.begin(),
+        audio_element_with_data.obu.audio_substream_ids_.end());
+    RETURN_IF_NOT_OK(audio_frame_decoder.InitDecodersForSubstreams(
+        audio_element_with_data.substream_id_to_labels,
+        *audio_element_with_data.codec_config));
+    id_to_reconstruction_config[audio_element_id] = {
+        .audio_element_obu = &audio_element_with_data.obu,
+        .substream_id_to_labels =
+            audio_element_with_data.substream_id_to_labels,
+        .label_to_output_gain = audio_element_with_data.label_to_output_gain};
+  }
+
+  absl::StatusOr<DemixingModule> demixing_module =
+      DemixingModule::CreateForReconstruction(id_to_reconstruction_config);
+  if (!demixing_module.ok()) {
+    return demixing_module.status();
+  }
+
+  // Create the mix presentation finalizer which is used to render the output
+  // files. We neither trust the user-provided loudness, nor care about the
+  // calculated loudness.
+  const RendererFactory renderer_factory;
+  absl::StatusOr<RenderingMixPresentationFinalizer> mix_presentation_finalizer =
+      RenderingMixPresentationFinalizer::Create(
+          /*renderer_factory=*/&renderer_factory,
+          /*loudness_calculator_factory=*/nullptr, audio_elements,
+          RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
+          {simplified_mix_presentation});
+  if (!mix_presentation_finalizer.ok()) {
+    return mix_presentation_finalizer.status();
+  }
+
+  return RenderingModels{
+      .relevant_substream_ids = std::move(relevant_substream_ids),
+      .audio_frame_decoder = std::move(audio_frame_decoder),
+      .demixing_module = *std::move(demixing_module),
+      .mix_presentation_finalizer = *std::move(mix_presentation_finalizer),
+  };
 }
 
 }  // namespace iamf_tools

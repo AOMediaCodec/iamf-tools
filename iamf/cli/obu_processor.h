@@ -236,6 +236,25 @@ class ObuProcessor {
   std::list<MixPresentationObu> mix_presentations_;
 
  private:
+  /*\brief Models required to render audio for playback.
+   *
+   * The IAMF v1.0.0 specification describes several stages of processing in
+   * Figure 2. This struct contains classes which help perform audio processing
+   * in stages to ultimately produce audio content that can be played back.
+   */
+  struct RenderingModels {
+    // Substream IDs that are relevant to the rendering, below models are only
+    // initialized for these substreams.
+    absl::flat_hash_set<DecodedUleb128> relevant_substream_ids;
+    // "Codec Decoder", according to Figure 2 in IAMF specification.
+    AudioFrameDecoder audio_frame_decoder;
+    // "Element Reconstructor", according to Figure 2 in IAMF specification.
+    DemixingModule demixing_module;
+    // Combined "Renderer" and "Mixer", according to Figure 2 in IAMF
+    // specification.
+    RenderingMixPresentationFinalizer mix_presentation_finalizer;
+  };
+
   /*!\brief Private constructor used only by Create() and CreateForRendering().
    *
    * \param read_bit_buffer Pointer to the read bit buffer that reads the IAMF
@@ -250,6 +269,17 @@ class ObuProcessor {
             std::make_unique<
                 absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()),
         read_bit_buffer_(buffer) {}
+
+  /*!\brief Configures the audio processing pipeline for rendering.
+   *
+   * \param audio_elements Audio elements, irrelevant ones will be ignored.
+   * \param simplified_mix_presentation Simplified mix presentation to render.
+   */
+  static absl::StatusOr<RenderingModels>
+  ConfigureSimplifiedAudioProcessingPipeline(
+      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          audio_elements,
+      const MixPresentationObu& simplified_mix_presentation);
 
   /*!\brief Performs internal initialization of the OBU processor.
    *
@@ -359,11 +389,8 @@ class ObuProcessor {
   TemporalUnitData current_temporal_unit_;
   TemporalUnitData next_temporal_unit_;
 
-  // Modules used for rendering.
-  bool rendering_ = false;
-  std::optional<AudioFrameDecoder> audio_frame_decoder_;
-  std::optional<DemixingModule> demixing_module_;
-  std::optional<RenderingMixPresentationFinalizer> mix_presentation_finalizer_;
+  // Modules used for rendering, present iff `CreateForRendering()` was called.
+  std::optional<RenderingModels> rendering_models_;
 };
 }  // namespace iamf_tools
 #endif  // CLI_OBU_PROCESSOR_H_
