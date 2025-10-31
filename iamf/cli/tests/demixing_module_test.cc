@@ -185,10 +185,10 @@ TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
-  const std::list<Demixer>* down_mixers = nullptr;
-  EXPECT_THAT(demixing_module->GetDownMixers(kAudioElementId, down_mixers),
-              IsOk());
-  EXPECT_TRUE(down_mixers->empty());
+  absl::StatusOr<const std::list<Demixer>*> down_mixers =
+      demixing_module->GetDownMixers(kAudioElementId);
+  EXPECT_THAT(down_mixers, IsOk());
+  EXPECT_TRUE((*down_mixers)->empty());
 }
 
 TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
@@ -201,9 +201,10 @@ TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
-  const std::list<Demixer>* demixer = nullptr;
-  EXPECT_THAT(demixing_module->GetDemixers(kAudioElementId, demixer), IsOk());
-  EXPECT_EQ(demixer->size(), 1);
+  absl::StatusOr<const std::list<Demixer>*> demixer =
+      demixing_module->GetDemixers(kAudioElementId);
+  EXPECT_THAT(demixer, IsOk());
+  EXPECT_EQ((*demixer)->size(), 1);
 }
 
 TEST(CreateForReconstruction, FailsForReservedLayout14) {
@@ -244,9 +245,10 @@ TEST(CreateForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
-  const std::list<Demixer>* demixer = nullptr;
-  EXPECT_THAT(demixing_module->GetDemixers(kAudioElementId, demixer), IsOk());
-  EXPECT_TRUE(demixer->empty());
+  absl::StatusOr<const std::list<Demixer>*> demixer =
+      demixing_module->GetDemixers(kAudioElementId);
+  EXPECT_THAT(demixer, IsOk());
+  EXPECT_TRUE((*demixer)->empty());
 }
 
 TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
@@ -263,9 +265,10 @@ TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
-  const std::list<Demixer>* demixer = nullptr;
-  EXPECT_THAT(demixing_module->GetDemixers(kAudioElementId, demixer), IsOk());
-  EXPECT_TRUE(demixer->empty());
+  absl::StatusOr<const std::list<Demixer>*> demixer =
+      demixing_module->GetDemixers(kAudioElementId);
+  EXPECT_THAT(demixer, IsOk());
+  EXPECT_TRUE((*demixer)->empty());
 }
 
 TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
@@ -588,17 +591,18 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
 
 void ExpectHasNumDownMixers(const DemixingModule& demixing_module,
                             int expected_number_of_down_mixers) {
-  const std::list<Demixer>* down_mixers = nullptr;
-  ASSERT_THAT(demixing_module.GetDownMixers(kAudioElementId, down_mixers),
-              IsOk());
-  EXPECT_EQ(down_mixers->size(), expected_number_of_down_mixers);
+  absl::StatusOr<const std::list<Demixer>*> down_mixers =
+      demixing_module.GetDownMixers(kAudioElementId);
+  ASSERT_THAT(down_mixers, IsOk());
+  EXPECT_EQ((*down_mixers)->size(), expected_number_of_down_mixers);
 }
 
 void ExpectHasNumDemixers(const DemixingModule& demixing_module,
                           int expected_number_of_demixers) {
-  const std::list<Demixer>* demixers = nullptr;
-  ASSERT_THAT(demixing_module.GetDemixers(kAudioElementId, demixers), IsOk());
-  EXPECT_EQ(demixers->size(), expected_number_of_demixers);
+  absl::StatusOr<const std::list<Demixer>*> demixers =
+      demixing_module.GetDemixers(kAudioElementId);
+  ASSERT_THAT(demixers, IsOk());
+  EXPECT_EQ((*demixers)->size(), expected_number_of_demixers);
 }
 
 void DownMixAndExpectOutput(

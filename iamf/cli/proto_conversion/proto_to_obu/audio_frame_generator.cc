@@ -31,6 +31,7 @@
 #include "absl/log/absl_vlog_is_on.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
@@ -722,12 +723,14 @@ absl::Status AudioFrameGenerator::Initialize() {
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
-    const std::list<Demixer>* down_mixers = nullptr;
-    RETURN_IF_NOT_OK(
-        demixing_module_.GetDownMixers(audio_element_id, down_mixers));
+    absl::StatusOr<const std::list<Demixer>*> down_mixers =
+        demixing_module_.GetDownMixers(audio_element_id);
+    if (!down_mixers.ok()) {
+      return down_mixers.status();
+    }
     if (!parameters_manager_.DemixingParamDefinitionAvailable(
             audio_element_id) &&
-        !down_mixers->empty()) {
+        !(*down_mixers)->empty()) {
       return absl::InvalidArgumentError(
           "Must include `DemixingParamDefinition` in the Audio Element if "
           "down-mixers are required to produce audio substreams");

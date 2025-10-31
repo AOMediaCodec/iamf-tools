@@ -945,26 +945,22 @@ absl::StatusOr<IdLabeledFrameMap> DemixingModule::DemixDecodedAudioSamples(
   return id_to_labeled_decoded_frame;
 }
 
-absl::Status DemixingModule::GetDownMixers(
-    DecodedUleb128 audio_element_id,
-    const std::list<Demixer>*& down_mixers) const {
+absl::StatusOr<const std::list<Demixer>*> DemixingModule::GetDownMixers(
+    DecodedUleb128 audio_element_id) const {
   const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
   RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
                                       demixing_metadata));
-  down_mixers = &demixing_metadata->down_mixers;
-  return absl::OkStatus();
+  return &demixing_metadata->down_mixers;
 }
 
-absl::Status DemixingModule::GetDemixers(
-    DecodedUleb128 audio_element_id,
-    const std::list<Demixer>*& demixers) const {
+absl::StatusOr<const std::list<Demixer>*> DemixingModule::GetDemixers(
+    DecodedUleb128 audio_element_id) const {
   const DemixingMetadataForAudioElementId* demixing_metadata = nullptr;
   RETURN_IF_NOT_OK(GetDemixerMetadata(audio_element_id,
                                       audio_element_id_to_demixing_metadata_,
                                       demixing_metadata));
-  demixers = &demixing_metadata->demixers;
-  return absl::OkStatus();
+  return &demixing_metadata->demixers;
 }
 
 }  // namespace iamf_tools

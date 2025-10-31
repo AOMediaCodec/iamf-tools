@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/container/node_hash_map.h"
@@ -221,8 +222,8 @@ class DemixingModule {
    * \param down_mixers Output pointer to the list of down-mixers.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status GetDownMixers(DecodedUleb128 audio_element_id,
-                             const std::list<Demixer>*& down_mixers) const;
+  absl::StatusOr<const std::list<Demixer>* absl_nonnull> GetDownMixers(
+      DecodedUleb128 audio_element_id) const;
 
   /*!\brief Gets the demixers associated with an Audio Element ID.
    *
@@ -230,8 +231,8 @@ class DemixingModule {
    * \param demixers Output pointer to the list of demixers.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
-  absl::Status GetDemixers(DecodedUleb128 audio_element_id,
-                           const std::list<Demixer>*& demixers) const;
+  absl::StatusOr<const std::list<Demixer>* absl_nonnull> GetDemixers(
+      DecodedUleb128 audio_element_id) const;
 
  private:
   enum class DemixingMode { kDownMixingAndReconstruction, kReconstruction };
