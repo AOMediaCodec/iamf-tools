@@ -243,13 +243,13 @@ class ObuProcessor {
    * \return ObuProcessor instance.
    */
   explicit ObuProcessor(ReadBitBuffer* absl_nonnull buffer)
-      : read_bit_buffer_(buffer),
-        codec_config_obus_(
+      : codec_config_obus_(
             std::make_unique<
                 absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
         audio_elements_(
             std::make_unique<
-                absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()) {}
+                absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()),
+        read_bit_buffer_(buffer) {}
 
   /*!\brief Performs internal initialization of the OBU processor.
    *
