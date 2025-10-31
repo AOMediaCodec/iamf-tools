@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/codec/flac_encoder.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -22,12 +23,12 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/sample_processing_utils.h"
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 #include "include/FLAC/format.h"
@@ -37,6 +38,44 @@
 namespace iamf_tools {
 
 namespace {
+
+absl::Status FlacStreamEncoderInitStatusToAbslStatus(
+    FLAC__StreamEncoderInitStatus init_status) {
+  if (init_status == FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
+    return absl::OkStatus();
+  }
+
+  using enum absl::StatusCode;
+  constexpr auto kFlacErrorAndAbslStatusCode = std::to_array<
+      std::pair<FLAC__StreamEncoderInitStatus, absl::StatusCode>>({
+      {FLAC__STREAM_ENCODER_INIT_STATUS_ENCODER_ERROR, kFailedPrecondition},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_UNSUPPORTED_CONTAINER, kUnimplemented},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_CALLBACKS, kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_NUMBER_OF_CHANNELS,
+       kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_BITS_PER_SAMPLE,
+       kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_SAMPLE_RATE, kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_BLOCK_SIZE, kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_MAX_LPC_ORDER,
+       kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_QLP_COEFF_PRECISION,
+       kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_BLOCK_SIZE_TOO_SMALL_FOR_LPC_ORDER,
+       kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_NOT_STREAMABLE, kFailedPrecondition},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_INVALID_METADATA, kInvalidArgument},
+      {FLAC__STREAM_ENCODER_INIT_STATUS_ALREADY_INITIALIZED,
+       kFailedPrecondition},
+  });
+  static const auto kFlacErrorToAbslStatusCode =
+      BuildStaticMapFromPairs(kFlacErrorAndAbslStatusCode);
+
+  return absl::Status(LookupInMap(*kFlacErrorToAbslStatusCode, init_status,
+                                  "FLAC__StreamEncoderInitStatus")
+                          .value_or(kUnknown),
+                      FLAC__StreamEncoderInitStatusString[init_status]);
+}
 
 absl::Status Configure(
     const iamf_tools_cli_proto::FlacEncoderMetadata& encoder_metadata,
@@ -235,12 +274,7 @@ absl::Status FlacEncoder::InitializeEncoder() {
       /*tell_callback=*/nullptr, LibFlacMetadataCallback,
       static_cast<void*>(this));
 
-  if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK) {
-    return absl::UnknownError(
-        absl::StrCat("Failed to initialize Flac stream: ", init_status));
-  }
-
-  return absl::OkStatus();
+  return FlacStreamEncoderInitStatusToAbslStatus(init_status);
 }
 
 }  // namespace iamf_tools

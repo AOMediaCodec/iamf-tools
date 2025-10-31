@@ -11,20 +11,25 @@
  */
 #include "iamf/obu/obu_header.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
+#include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -362,6 +367,54 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
   if (obu_extension_flag) {
     ABSL_LOG(INFO) << "  extension_header_size= " << extension_header_size;
     ABSL_LOG(INFO) << "  extension_header_bytes omitted.";
+  }
+}
+
+template <typename Sink>
+void AbslStringify(Sink& sink, ObuType obu_type) {
+  constexpr auto kObuTypeAndDebugString =
+      std::to_array<std::pair<ObuType, absl::string_view>>({
+          {kObuIaCodecConfig, "Codec Config"},
+          {kObuIaAudioElement, "Audio Element"},
+          {kObuIaMixPresentation, "Mix Presentation"},
+          {kObuIaParameterBlock, "Parameter Block"},
+          {kObuIaTemporalDelimiter, "Temporal Delimiter"},
+          {kObuIaAudioFrame, "Audio Frame (explicit ID)"},
+          {kObuIaAudioFrameId0, "Audio Frame ID 0"},
+          {kObuIaAudioFrameId1, "Audio Frame ID 1"},
+          {kObuIaAudioFrameId2, "Audio Frame ID 2"},
+          {kObuIaAudioFrameId3, "Audio Frame ID 3"},
+          {kObuIaAudioFrameId4, "Audio Frame ID 4"},
+          {kObuIaAudioFrameId5, "Audio Frame ID 5"},
+          {kObuIaAudioFrameId6, "Audio Frame ID 6"},
+          {kObuIaAudioFrameId7, "Audio Frame ID 7"},
+          {kObuIaAudioFrameId8, "Audio Frame ID 8"},
+          {kObuIaAudioFrameId9, "Audio Frame ID 9"},
+          {kObuIaAudioFrameId10, "Audio Frame ID 10"},
+          {kObuIaAudioFrameId11, "Audio Frame ID 11"},
+          {kObuIaAudioFrameId12, "Audio Frame ID 12"},
+          {kObuIaAudioFrameId13, "Audio Frame ID 13"},
+          {kObuIaAudioFrameId14, "Audio Frame ID 14"},
+          {kObuIaAudioFrameId15, "Audio Frame ID 15"},
+          {kObuIaAudioFrameId16, "Audio Frame ID 16"},
+          {kObuIaAudioFrameId17, "Audio Frame ID 17"},
+          {kObuIaReserved24, "Reserved 24"},
+          {kObuIaReserved25, "Reserved 25"},
+          {kObuIaReserved26, "Reserved 26"},
+          {kObuIaReserved27, "Reserved 27"},
+          {kObuIaReserved28, "Reserved 28"},
+          {kObuIaReserved29, "Reserved 29"},
+          {kObuIaReserved30, "Reserved 30"},
+          {kObuIaSequenceHeader, "IA Sequence Header"},
+      });
+  static const auto kObuTypeToDebugString =
+      BuildStaticMapFromPairs(kObuTypeAndDebugString);
+
+  auto debug_string = LookupInMap(*kObuTypeToDebugString, obu_type, "ObuType");
+  if (debug_string.ok()) {
+    sink.Append(*debug_string);
+  } else {
+    sink.Append(absl::StrCat("Unknown ObuType(", obu_type, ")"));
   }
 }
 

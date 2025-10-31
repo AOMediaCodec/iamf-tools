@@ -162,6 +162,7 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
+        "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
         "@abseil-cpp//absl/container:flat_hash_set",

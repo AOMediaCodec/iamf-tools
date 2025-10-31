@@ -60,6 +60,9 @@ enum ObuType : uint8_t {
   kObuIaSequenceHeader = 31,
 };
 
+template <typename Sink>
+void AbslStringify(Sink& sink, ObuType obu_type);
+
 struct HeaderMetadata {
   ObuType obu_type;
   int64_t total_obu_size;
