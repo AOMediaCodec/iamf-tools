@@ -26,6 +26,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -337,9 +338,11 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   RETURN_IF_NOT_OK(parameter_block_generator.Initialize(*audio_elements));
 
   // Put generated parameter blocks in a manager that supports easier queries.
-  auto parameters_manager =
-      std::make_unique<ParametersManager>(*audio_elements);
-  RETURN_IF_NOT_OK(parameters_manager->Initialize());
+  auto parameters_manager = ParametersManager::Create(*audio_elements);
+  if (!parameters_manager.ok()) {
+    return parameters_manager.status();
+  }
+  ABSL_CHECK_NE(*parameters_manager, nullptr);
 
   // Down-mix the audio samples and then demix audio samples while decoding
   // them. This is useful to create multi-layer audio elements and to determine
@@ -361,7 +364,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
   auto audio_frame_generator = std::make_unique<AudioFrameGenerator>(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), *audio_elements, *demixing_module,
-      *parameters_manager, *global_timing_module);
+      **parameters_manager, *global_timing_module);
   RETURN_IF_NOT_OK(audio_frame_generator->Initialize());
 
   // Initialize the audio frame decoder. It is needed to determine the recon
@@ -403,7 +406,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
       std::move(descriptor_arbitrary_obus),
       std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
-      std::move(parameter_block_generator), std::move(parameters_manager),
+      std::move(parameter_block_generator), std::move(*parameters_manager),
       *demixing_module, std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),
       std::move(*mix_presentation_finalizer), std::move(obu_sequencers),

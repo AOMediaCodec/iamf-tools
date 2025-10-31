@@ -573,11 +573,10 @@ TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
                                  /*param_definitions=*/{});
   ASSERT_THAT(global_timing_module, NotNull());
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
-
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {};
-  ParametersManager parameters_manager(kNoAudioElementsWithData);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(kNoAudioElementsWithData);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   bool continue_processing = true;
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
@@ -585,9 +584,10 @@ TEST(ProcessTemporalUnitObus, OkAndProducesNoObusIfEmpty) {
   EXPECT_THAT(
       ObuProcessor::ProcessTemporalUnitObu(
           kNoAudioElementsWithData, kNoCodecConfigs,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *empty_read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
+          substream_id_to_audio_element, param_definitions,
+          **parameters_manager, *empty_read_bit_buffer, *global_timing_module,
+          audio_frame_with_data, parameter_block_with_data, temporal_delimiter,
+          continue_processing),
       IsOk());
 
   EXPECT_FALSE(audio_frame_with_data.has_value());
@@ -619,8 +619,8 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(one_temporal_unit));
@@ -629,13 +629,13 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnits) {
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -672,8 +672,8 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(
@@ -683,13 +683,13 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -697,13 +697,13 @@ TEST(ProcessTemporalUnitObus, ReadsAllTemporalUnitsBeforeNewIaSequence) {
 
   // Process again, this time a new IA sequence is encountred, empty OBUs
   // are returned, and `continue_processing` is set to false.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -744,8 +744,8 @@ TEST(ProcessTemporalUnitObus,
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(one_temporal_unit_before_redundant_descriptor_obu));
@@ -754,13 +754,13 @@ TEST(ProcessTemporalUnitObus,
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -768,13 +768,13 @@ TEST(ProcessTemporalUnitObus,
 
   // Process again, this time the redundant IA sequence header is read and
   // outputs are empty.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -782,13 +782,13 @@ TEST(ProcessTemporalUnitObus,
 
   // Process again, this time the redundant Codec Config is read and outputs
   // are empty.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -824,8 +824,8 @@ TEST(ProcessTemporalUnitObus,
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(temporal_unit_with_non_redundant_codec_config_obu));
@@ -834,13 +834,13 @@ TEST(ProcessTemporalUnitObus,
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -851,9 +851,10 @@ TEST(ProcessTemporalUnitObus,
   EXPECT_FALSE(ObuProcessor::ProcessTemporalUnitObu(
                    audio_elements_with_data, codec_config_obus,
                    substream_id_to_audio_element, param_definitions,
-                   parameters_manager, *read_bit_buffer, *global_timing_module,
-                   audio_frame_with_data, parameter_block_with_data,
-                   temporal_delimiter, continue_processing)
+                   **parameters_manager, *read_bit_buffer,
+                   *global_timing_module, audio_frame_with_data,
+                   parameter_block_with_data, temporal_delimiter,
+                   continue_processing)
                    .ok());
 }
 
@@ -886,8 +887,8 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(temporal_unit_with_reserved_obus));
@@ -898,39 +899,39 @@ TEST(ProcessTemporalUnitObus, ConsumesAllTemporalUnitsAndReservedObus) {
   std::optional<TemporalDelimiterObu> temporal_delimiter;
 
   // First call: reading and discarding the reserved OBU.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
   EXPECT_TRUE(continue_processing);
 
   // Second call: reading the Audio Frame OBU.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
   EXPECT_TRUE(continue_processing);
 
   // Third call: reading and discarding the reserved OBU.
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -972,8 +973,8 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
           {kFirstSubstreamId, first_audio_element},
           {kSecondSubstreamId, first_audio_element},
           {kImplicitSubstreamId, first_audio_element}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(multiple_audio_substreams));
@@ -985,13 +986,14 @@ TEST(ProcessTemporalUnitObusTest, ProcessMultipleAudioSubstreams) {
 
   // Call three times, each outputing an audio frame.
   for (int i = 0; i < 3; i++) {
-    EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
-                    audio_elements_with_data, codec_config_obus,
-                    substream_id_to_audio_element, param_definitions,
-                    parameters_manager, *read_bit_buffer, *global_timing_module,
-                    audio_frame_with_data, parameter_block_with_data,
-                    temporal_delimiter, continue_processing),
-                IsOk());
+    EXPECT_THAT(
+        ObuProcessor::ProcessTemporalUnitObu(
+            audio_elements_with_data, codec_config_obus,
+            substream_id_to_audio_element, param_definitions,
+            **parameters_manager, *read_bit_buffer, *global_timing_module,
+            audio_frame_with_data, parameter_block_with_data,
+            temporal_delimiter, continue_processing),
+        IsOk());
     EXPECT_TRUE(audio_frame_with_data.has_value());
     EXPECT_FALSE(parameter_block_with_data.has_value());
     EXPECT_FALSE(temporal_delimiter.has_value());
@@ -1025,8 +1027,8 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId, first_audio_element}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(audio_substream_with_two_frames));
@@ -1038,13 +1040,14 @@ TEST(ProcessTemporalUnitObusTest, ProcessesSubstreamWithMultipleFrames) {
 
   // Call two times, each outputing an audio frame.
   for (int i = 0; i < 2; i++) {
-    EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
-                    audio_elements_with_data, codec_config_obus,
-                    substream_id_to_audio_element, param_definitions,
-                    parameters_manager, *read_bit_buffer, *global_timing_module,
-                    audio_frame_with_data, parameter_block_with_data,
-                    temporal_delimiter, continue_processing),
-                IsOk());
+    EXPECT_THAT(
+        ObuProcessor::ProcessTemporalUnitObu(
+            audio_elements_with_data, codec_config_obus,
+            substream_id_to_audio_element, param_definitions,
+            **parameters_manager, *read_bit_buffer, *global_timing_module,
+            audio_frame_with_data, parameter_block_with_data,
+            temporal_delimiter, continue_processing),
+        IsOk());
     EXPECT_TRUE(audio_frame_with_data.has_value());
     EXPECT_FALSE(parameter_block_with_data.has_value());
     EXPECT_FALSE(temporal_delimiter.has_value());
@@ -1082,8 +1085,8 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId, first_audio_element}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(two_temporal_units_with_delimiter_obu));
@@ -1098,13 +1101,14 @@ TEST(ProcessTemporalUnitObusTest, ProcessesTemporalDelimiterObu) {
   const std::vector<bool> expecting_temporal_delimiter = {true, false, true,
                                                           false};
   for (int i = 0; i < 4; i++) {
-    EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
-                    audio_elements_with_data, codec_config_obus,
-                    substream_id_to_audio_element, param_definitions,
-                    parameters_manager, *read_bit_buffer, *global_timing_module,
-                    audio_frame_with_data, parameter_block_with_data,
-                    temporal_delimiter, continue_processing),
-                IsOk());
+    EXPECT_THAT(
+        ObuProcessor::ProcessTemporalUnitObu(
+            audio_elements_with_data, codec_config_obus,
+            substream_id_to_audio_element, param_definitions,
+            **parameters_manager, *read_bit_buffer, *global_timing_module,
+            audio_frame_with_data, parameter_block_with_data,
+            temporal_delimiter, continue_processing),
+        IsOk());
     EXPECT_EQ(audio_frame_with_data.has_value(), expecting_audio_frame[i]);
     EXPECT_FALSE(parameter_block_with_data.has_value());
     EXPECT_EQ(temporal_delimiter.has_value(), expecting_temporal_delimiter[i]);
@@ -1153,8 +1157,8 @@ TEST(ProcessTemporalUnitObusTest,
   const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element = {
           {kFirstSubstreamId, first_audio_element}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
       MakeConstSpan(one_parameter_block_obu));
 
@@ -1162,13 +1166,13 @@ TEST(ProcessTemporalUnitObusTest,
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_TRUE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -1207,8 +1211,8 @@ TEST(ProcessTemporalUnitObus,
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   // Add a single byte to the end of the temporal unit to represent an
   // incomplete header (A header requires at least 2 bytes).
@@ -1221,24 +1225,24 @@ TEST(ProcessTemporalUnitObus,
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
 
   // Confirm that the second temporal unit it is incomplete.
   auto start_position = read_bit_buffer->Tell();
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());
@@ -1270,8 +1274,8 @@ TEST(ProcessTemporalUnitObus,
       substream_id_to_audio_element = {
           {kFirstSubstreamId,
            &audio_elements_with_data.at(kFirstAudioElementId)}};
-  ParametersManager parameters_manager(audio_elements_with_data);
-  ASSERT_THAT(parameters_manager.Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_with_data);
+  ASSERT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> param_definitions;
   std::vector<uint8_t> extra_audio_frame_obu_header_bytes = {
       kObuIaAudioFrameId0 << kObuTypeBitShift,
@@ -1288,24 +1292,24 @@ TEST(ProcessTemporalUnitObus,
   std::optional<AudioFrameWithData> audio_frame_with_data;
   std::optional<ParameterBlockWithData> parameter_block_with_data;
   std::optional<TemporalDelimiterObu> temporal_delimiter;
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_TRUE(audio_frame_with_data.has_value());
 
   // Confirm that the second temporal unit it is incomplete.
   auto start_position = read_bit_buffer->Tell();
-  EXPECT_THAT(
-      ObuProcessor::ProcessTemporalUnitObu(
-          audio_elements_with_data, codec_config_obus,
-          substream_id_to_audio_element, param_definitions, parameters_manager,
-          *read_bit_buffer, *global_timing_module, audio_frame_with_data,
-          parameter_block_with_data, temporal_delimiter, continue_processing),
-      IsOk());
+  EXPECT_THAT(ObuProcessor::ProcessTemporalUnitObu(
+                  audio_elements_with_data, codec_config_obus,
+                  substream_id_to_audio_element, param_definitions,
+                  **parameters_manager, *read_bit_buffer, *global_timing_module,
+                  audio_frame_with_data, parameter_block_with_data,
+                  temporal_delimiter, continue_processing),
+              IsOk());
   EXPECT_FALSE(audio_frame_with_data.has_value());
   EXPECT_FALSE(parameter_block_with_data.has_value());
   EXPECT_FALSE(temporal_delimiter.has_value());

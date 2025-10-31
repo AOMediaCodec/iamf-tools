@@ -379,7 +379,7 @@ class ObuProcessor {
   absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>
       substream_id_to_audio_element_;
   std::unique_ptr<GlobalTimingModule> global_timing_module_;
-  std::optional<ParametersManager> parameters_manager_;
+  std::unique_ptr<ParametersManager> parameters_manager_;
   ReadBitBuffer* absl_nonnull read_bit_buffer_;
 
   // Contains target layout information for rendering.

@@ -14,9 +14,12 @@
 #define CLI_PARAMETERS_MANAGER_H_
 
 #include <cstdint>
+#include <memory>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -43,20 +46,14 @@ namespace iamf_tools {
  */
 class ParametersManager {
  public:
-  /*!\brief Constructor.
+  /*!\brief Factory function.
    *
    * \param audio_elements Input Audio Element OBUs with data.
-   * \param parameter_blocks Input Parameter Block OBUs with data.
+   * \return `ParametersManager` on success. A specific status on failure.
    */
-  ParametersManager(
+  static absl::StatusOr<std::unique_ptr<ParametersManager> absl_nonnull> Create(
       const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
           audio_elements);
-
-  /*!\brief Initializes some internal data.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize();
 
   /*!\brief Checks if a `DemixingParamDefinition` exists for an audio element.
    *
@@ -64,7 +61,7 @@ class ParametersManager {
    * \return True if a `DemixingParamDefinition` is available for the audio
    *         element queried.
    */
-  bool DemixingParamDefinitionAvailable(DecodedUleb128 audio_element_id);
+  bool DemixingParamDefinitionAvailable(DecodedUleb128 audio_element_id) const;
 
   /*!\brief Gets current down-mixing parameters for an audio element.
    *
@@ -87,7 +84,7 @@ class ParametersManager {
    */
   absl::Status GetReconGainInfoParameterData(
       DecodedUleb128 audio_element_id, int32_t num_layers,
-      ReconGainInfoParameterData& recon_gain_info_parameter_data);
+      ReconGainInfoParameterData& recon_gain_info_parameter_data) const;
 
   /*!\brief Adds a new demixing parameter block.
    *
@@ -155,9 +152,30 @@ class ParametersManager {
     InternalTimestamp next_timestamp;
   };
 
-  // Mapping from Audio Element ID to audio element data.
-  const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-      audio_elements_;
+  /*!\brief Constructor.
+   *
+   * Used only by factory function.
+   *
+   * \param demixing_parameter_blocks Mapping from Parameter ID to demixing
+   *        parameter blocks.
+   * \param recon_gain_parameter_blocks Mapping from Parameter ID to recon gain
+   *        parameter blocks.
+   * \param demixing_states Mapping from Audio Element ID to the demixing
+   *        state.
+   * \param recon_gain_states Mapping from Audio Element ID to the recon gain
+   *        state.
+   */
+  ParametersManager(
+      absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
+          demixing_parameter_blocks,
+      absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>
+          recon_gain_parameter_blocks,
+      absl::flat_hash_map<DecodedUleb128, DemixingState> demixing_states,
+      absl::flat_hash_map<DecodedUleb128, ReconGainState> recon_gain_states)
+      : demixing_parameter_blocks_(demixing_parameter_blocks),
+        recon_gain_parameter_blocks_(recon_gain_parameter_blocks),
+        demixing_states_(demixing_states),
+        recon_gain_states_(recon_gain_states) {}
 
   // Mapping from Parameter ID to demixing parameter blocks.
   absl::flat_hash_map<DecodedUleb128, const ParameterBlockWithData*>

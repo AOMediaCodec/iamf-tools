@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -78,7 +79,7 @@ void InitializeAudioFrameGenerator(
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::unique_ptr<GlobalTimingModule>& global_timing_module,
-    std::optional<ParametersManager>& parameters_manager,
+    std::unique_ptr<ParametersManager>& parameters_manager,
     std::optional<AudioFrameGenerator>& audio_frame_generator) {
   // Initialize pre-requisite OBUs and the global timing module. This is all
   // derived from the `user_metadata`.
@@ -98,9 +99,9 @@ void InitializeAudioFrameGenerator(
       GlobalTimingModule::Create(audio_elements, param_definitions);
   ABSL_CHECK_NE(global_timing_module, nullptr);
 
-  parameters_manager.emplace(audio_elements);
-  ABSL_CHECK(parameters_manager.has_value());
-  ABSL_CHECK_OK(parameters_manager->Initialize());
+  auto temp_parameters_manager = ParametersManager::Create(audio_elements);
+  ABSL_CHECK_OK(temp_parameters_manager);
+  parameters_manager = *std::move(temp_parameters_manager);
 
   // Create an audio frame generator.
   audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
@@ -131,7 +132,7 @@ static void BM_AddSamples(benchmark::State& state) {
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus = {};
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
-  std::optional<ParametersManager> parameters_manager;
+  std::unique_ptr<ParametersManager> parameters_manager;
   std::optional<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,

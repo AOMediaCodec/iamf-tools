@@ -19,7 +19,6 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <variant>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -350,8 +349,12 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
     return absl::InvalidArgumentError(
         "Failed to initialize the global timing module");
   }
-  parameters_manager_.emplace(audio_elements_);
-  RETURN_IF_NOT_OK(parameters_manager_->Initialize());
+  auto temp_parameters_manager = ParametersManager::Create(audio_elements_);
+  if (!temp_parameters_manager.ok()) {
+    return temp_parameters_manager.status();
+  }
+  ABSL_CHECK_NE(*temp_parameters_manager, nullptr);
+  parameters_manager_ = *std::move(temp_parameters_manager);
   return absl::OkStatus();
 }
 
@@ -800,7 +803,7 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
     std::optional<OutputTemporalUnit>& output_temporal_unit,
     bool& continue_processing) {
   // Various checks that should have been handled by the factory functions.
-  ABSL_CHECK(parameters_manager_.has_value());
+  ABSL_CHECK(parameters_manager_ != nullptr);
   ABSL_CHECK(global_timing_module_ != nullptr);
   ABSL_CHECK(read_bit_buffer_ != nullptr);
 

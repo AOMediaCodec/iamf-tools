@@ -50,6 +50,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::ElementsAreArray;
 using ::testing::NotNull;
 
@@ -260,9 +261,10 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
     ASSERT_THAT(global_timing_module_, NotNull());
 
     // Set up the parameters manager.
-    parameters_manager_ =
-        std::make_unique<ParametersManager>(audio_elements_with_data_);
-    ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
+    auto temp_parameters_manager =
+        ParametersManager::Create(audio_elements_with_data_);
+    ASSERT_THAT(temp_parameters_manager, IsOkAndHolds(NotNull()));
+    parameters_manager_ = *std::move(temp_parameters_manager);
   }
 
   void SetUpParameterBlockWithData(

@@ -38,7 +38,10 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::absl_testing::IsOkAndHolds;
 using ::testing::NotNull;
+
+using ::testing::Not;
 
 constexpr DecodedUleb128 kCodecConfigId = 1450;
 constexpr DecodedUleb128 kSampleRate = 16000;
@@ -119,25 +122,24 @@ class ParametersManagerTest : public testing::Test {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_;
   std::vector<ParameterBlockWithData> demixing_parameter_blocks_;
   std::vector<ParameterBlockWithData> recon_gain_parameter_blocks_;
-  std::unique_ptr<ParametersManager> parameters_manager_;
 };
 
-TEST_F(ParametersManagerTest, InitializeSucceeds) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  EXPECT_THAT(parameters_manager_->Initialize(), IsOk());
+TEST_F(ParametersManagerTest, CreateSucceeds) {
+  auto parameters_manager = ParametersManager::Create(audio_elements_);
+  EXPECT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
 }
 
-TEST_F(ParametersManagerTest, InitializeWithTwoDemixingParametersFails) {
+TEST_F(ParametersManagerTest, CreateWithTwoDemixingParametersFails) {
   // Add one more demixing parameter definition, which is disallowed.
   AddDemixingParamDefinition(kParameterId, kSampleRate, kDuration,
                              audio_elements_.at(kAudioElementId).obu);
 
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  EXPECT_FALSE(parameters_manager_->Initialize().ok());
+  auto parameters_manager = ParametersManager::Create(audio_elements_);
+  EXPECT_THAT(parameters_manager, Not(IsOk()));
 }
 
-TEST_F(ParametersManagerTest, InitializeWithReconGainParameterSucceeds) {
-  // Remove existng param definitions added in the constructor of the
+TEST_F(ParametersManagerTest, CreateWithReconGainParameterSucceeds) {
+  // Remove existing param definitions added in the constructor of the
   // test fixture.
   audio_elements_.at(kAudioElementId).obu.audio_element_params_.clear();
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
@@ -147,27 +149,37 @@ TEST_F(ParametersManagerTest, InitializeWithReconGainParameterSucceeds) {
                                              .obu.audio_element_params_[0]
                                              .param_definition),
       /*start_timestamp=*/0, recon_gain_parameter_blocks_);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  EXPECT_THAT(parameters_manager_->Initialize(), IsOk());
+  auto parameters_manager = ParametersManager::Create(audio_elements_);
+  EXPECT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+}
+
+// Creates and unwraps the `ParametersManager` from the `StatusOr`, to keep
+// tests more direct.
+std::unique_ptr<ParametersManager> CreateAndUnwrapParametersManager(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  auto parameters_manager = ParametersManager::Create(audio_elements);
+  EXPECT_THAT(parameters_manager, IsOkAndHolds(NotNull()));
+
+  return parameters_manager.ok() ? *std::move(parameters_manager) : nullptr;
 }
 
 TEST_F(ParametersManagerTest, DemixingParamDefinitionIsAvailable) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
 
   EXPECT_TRUE(
-      parameters_manager_->DemixingParamDefinitionAvailable(kAudioElementId));
+      parameters_manager->DemixingParamDefinitionAvailable(kAudioElementId));
 }
 
 TEST_F(ParametersManagerTest, GetDownMixingParametersSucceeds) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   DownMixingParams down_mixing_params;
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // Validate the values correspond to `kDMixPMode3_n`.
@@ -188,14 +200,14 @@ TEST_F(ParametersManagerTest, GetReconGainInfoParameterDataSucceeds) {
                                              .obu.audio_element_params_[1]
                                              .param_definition),
       /*start_timestamp=*/0, recon_gain_parameter_blocks_);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddReconGainParameterBlock(
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[0]);
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
       IsOk());
 
@@ -213,12 +225,12 @@ TEST_F(ParametersManagerTest,
        GetReconGainInfoParameterDataSucceedsWithNoParameterBlocks) {
   AddReconGainParamDefinition(kSecondParameterId, kSampleRate, kDuration,
                               audio_elements_.at(kAudioElementId).obu);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
       IsOk());
 
@@ -235,12 +247,12 @@ TEST_F(ParametersManagerTest,
 
 TEST_F(ParametersManagerTest,
        GetReconGainInfoParameterDataSucceedsWithNoParamDefinition) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
 
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_info_parameter_data),
       IsOk());
 
@@ -266,15 +278,15 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
                                              .obu.audio_element_params_[1]
                                              .param_definition),
       /*start_timestamp=*/0, recon_gain_parameter_blocks_);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddReconGainParameterBlock(
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[0]);
 
   // First recon gain parameter block.
   ReconGainInfoParameterData recon_gain_parameter_data_0;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_0),
       IsOk());
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements.size(), 1);
@@ -284,7 +296,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0]->recon_gain[0],
             0);
 
-  EXPECT_THAT(parameters_manager_->UpdateReconGainState(
+  EXPECT_THAT(parameters_manager->UpdateReconGainState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kDuration),
               IsOk());
@@ -296,11 +308,11 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
                                              .param_definition),
       /*start_timestamp=*/kDurationAsInternalTimestamp,
       recon_gain_parameter_blocks_);
-  parameters_manager_->AddReconGainParameterBlock(
+  parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[1]);
   ReconGainInfoParameterData recon_gain_parameter_data_1;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_1),
       IsOk());
   EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements.size(), 1);
@@ -311,7 +323,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
             0);
   // Updating should succeed a second time with the expected timestamp now
   // offset by the duration of the parameter block.
-  EXPECT_THAT(parameters_manager_->UpdateReconGainState(
+  EXPECT_THAT(parameters_manager->UpdateReconGainState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kDuration + kDuration),
               IsOk());
@@ -326,15 +338,15 @@ TEST_F(ParametersManagerTest,
                                              .obu.audio_element_params_[1]
                                              .param_definition),
       /*start_timestamp=*/0, recon_gain_parameter_blocks_);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddReconGainParameterBlock(
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[0]);
 
   // First recon gain parameter block.
   ReconGainInfoParameterData recon_gain_parameter_data_0;
   EXPECT_THAT(
-      parameters_manager_->GetReconGainInfoParameterData(
+      parameters_manager->GetReconGainInfoParameterData(
           kAudioElementId, /*num_layers=*/1, recon_gain_parameter_data_0),
       IsOk());
 
@@ -345,10 +357,10 @@ TEST_F(ParametersManagerTest,
                                              .param_definition),
       /*start_timestamp=*/kDurationAsInternalTimestamp,
       recon_gain_parameter_blocks_);
-  parameters_manager_->AddReconGainParameterBlock(
+  parameters_manager->AddReconGainParameterBlock(
       &recon_gain_parameter_blocks_[1]);
   ReconGainInfoParameterData recon_gain_parameter_data_1;
-  EXPECT_FALSE(parameters_manager_
+  EXPECT_FALSE(parameters_manager
                    ->GetReconGainInfoParameterData(kAudioElementId,
                                                    /*num_layers=*/1,
                                                    recon_gain_parameter_data_1)
@@ -356,18 +368,17 @@ TEST_F(ParametersManagerTest,
 }
 
 TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
 
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   DownMixingParams down_mixing_params;
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kDurationAsInternalTimestamp),
               IsOk());
@@ -375,8 +386,8 @@ TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
   // Get the parameters for the second time. Since there is only one
   // parameter block and is already used up the previous time, the function
   // will not find a parameter block and will return default values.
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // Validate the values correspond to `kDMixPMode1` and `default_w = 10`,
@@ -392,7 +403,7 @@ TEST_F(ParametersManagerTest, ParameterBlocksRunOutReturnsDefault) {
   // `UpdateDemixingState()` also succeeds with some arbitrary timestamp,
   // because technically there's nothing to update.
   const DecodedUleb128 kArbitraryTimestamp = 972;
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kArbitraryTimestamp),
               IsOk());
@@ -409,14 +420,13 @@ TEST_F(ParametersManagerTest, ParameterIdNotFoundReturnsDefault) {
   // Create the parameters manager and get down mixing parameters; default
   // values are returned because the parameter ID is different from those
   // in the `parameter_blocks_`.
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   DownMixingParams down_mixing_params;
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // Validate the values correspond to `kDMixPMode1` and `default_w = 10`,
@@ -437,17 +447,16 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceDifferentW) {
                                             .obu.audio_element_params_[0]
                                             .param_definition),
       /*start_timestamp=*/kDuration, demixing_parameter_blocks_);
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // Get down-mix parameters for the first time.
   DownMixingParams down_mixing_params;
-  ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  ASSERT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kDuration),
               IsOk());
@@ -458,10 +467,9 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceDifferentW) {
   EXPECT_FLOAT_EQ(down_mixing_params.w, kWFirst);
 
   // Add and get down-mix parameters for the second time.
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[1]);
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[1]);
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // Validate the values correspond to `kDMixPMode3_n`. Since `w_idx` has
@@ -486,25 +494,24 @@ TEST_F(ParametersManagerTest, GetDownMixingParametersTwiceWithoutUpdateSameW) {
                                             .param_definition),
       /*start_timestamp=*/kDuration, demixing_parameter_blocks_);
 
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // Get down-mix parameters twice without calling
   // `AddDemixingParameterBlock()` and `UpdateDemixngState()`; the same
   // down-mix parameters will be returned.
   DownMixingParams down_mixing_params;
-  ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  ASSERT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // The first time `w_idx` is 0, and the corresponding `w` is 0.
   EXPECT_EQ(down_mixing_params.w_idx_used, 0);
   EXPECT_FLOAT_EQ(down_mixing_params.w, 0.0);
 
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // Validate the values correspond to `kDMixPMode3_n`. Since `w_idx` has
@@ -536,20 +543,19 @@ TEST_F(ParametersManagerTest,
   AddDemixingParamDefinition(kParameterId, kSampleRate, kDuration,
                              second_audio_element_obu);
 
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // Get down-mix parameters for the first audio element corresponding to the
   // first frame; the `w` value is 0.
   const double kWFirst = 0.0;
   const double kWSecond = 0.0179;
   DownMixingParams down_mixing_params;
-  ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  ASSERT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(
                   kAudioElementId,
                   /*expected_next_timestamp=*/kDuration),
               IsOk());
@@ -557,10 +563,9 @@ TEST_F(ParametersManagerTest,
 
   // Add the parameter block for the first audio element corresponding to the
   // second frame.
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[1]);
-  ASSERT_THAT(parameters_manager_->GetDownMixingParameters(kAudioElementId,
-                                                           down_mixing_params),
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[1]);
+  ASSERT_THAT(parameters_manager->GetDownMixingParameters(kAudioElementId,
+                                                          down_mixing_params),
               IsOk());
   EXPECT_FLOAT_EQ(down_mixing_params.w, kWSecond);
 
@@ -569,44 +574,42 @@ TEST_F(ParametersManagerTest,
   // parameter block for the first frame (while the manager is already
   // holding the parameter block for the second frame). So the getter fails.
   EXPECT_FALSE(
-      parameters_manager_
+      parameters_manager
           ->GetDownMixingParameters(kAudioElementId2, down_mixing_params)
           .ok());
 }
 
 TEST_F(ParametersManagerTest, DemixingParamDefinitionIsNotAvailableForWrongId) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   const DecodedUleb128 kWrongAudioElementId = kAudioElementId + 1;
-  EXPECT_FALSE(parameters_manager_->DemixingParamDefinitionAvailable(
+  EXPECT_FALSE(parameters_manager->DemixingParamDefinitionAvailable(
       kWrongAudioElementId));
 
   // However, `GetDownMixingParameters()` still succeeds.
   DownMixingParams down_mixing_params;
-  EXPECT_THAT(parameters_manager_->GetDownMixingParameters(kWrongAudioElementId,
-                                                           down_mixing_params),
+  EXPECT_THAT(parameters_manager->GetDownMixingParameters(kWrongAudioElementId,
+                                                          down_mixing_params),
               IsOk());
 
   // `UpdateDemixingState()` also succeeds.
-  EXPECT_THAT(parameters_manager_->UpdateDemixingState(
+  EXPECT_THAT(parameters_manager->UpdateDemixingState(
                   kWrongAudioElementId,
                   /*expected_next_timestamp=*/kDuration),
               IsOk());
 }
 
 TEST_F(ParametersManagerTest, UpdateFailsWithWrongTimestamps) {
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // The second frame starts with timestamp = 8, so updating with a different
   // timestamp fails.
   constexpr InternalTimestamp kWrongNextTimestamp = 17;
-  EXPECT_FALSE(parameters_manager_
+  EXPECT_FALSE(parameters_manager
                    ->UpdateDemixingState(kAudioElementId, kWrongNextTimestamp)
                    .ok());
 }
@@ -621,16 +624,15 @@ TEST_F(ParametersManagerTest, UpdateNotValidatingWhenParameterIdNotFound) {
 
   // Create the parameters manager and get down mixing parameters; default
   // values are returned because the parameter ID is not found.
-  parameters_manager_ = std::make_unique<ParametersManager>(audio_elements_);
-  ASSERT_THAT(parameters_manager_->Initialize(), IsOk());
-  parameters_manager_->AddDemixingParameterBlock(
-      &demixing_parameter_blocks_[0]);
+  auto parameters_manager = CreateAndUnwrapParametersManager(audio_elements_);
+  ASSERT_THAT(parameters_manager, NotNull());
+  parameters_manager->AddDemixingParameterBlock(&demixing_parameter_blocks_[0]);
 
   // `UpdateDemixingState()` succeeds with any timestamp passed in,
   // because no validation is performed.
   for (const InternalTimestamp timestamp : {0, 8, -200, 61, 4772}) {
     EXPECT_THAT(
-        parameters_manager_->UpdateDemixingState(kAudioElementId, timestamp),
+        parameters_manager->UpdateDemixingState(kAudioElementId, timestamp),
         IsOk());
   }
 }
