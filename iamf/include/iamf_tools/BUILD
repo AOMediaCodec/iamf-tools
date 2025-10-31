@@ -5,9 +5,7 @@ cc_library(
     name = "iamf_decoder_factory",
     srcs = ["iamf_decoder_factory.cc"],
     hdrs = ["iamf_decoder_factory.h"],
-    visibility = [
-        "//iamf/include/iamf_tools/tests:__pkg__",
-    ],
+    visibility = ["//iamf/include/iamf_tools/tests:__pkg__"],
     deps = [
         ":iamf_decoder_interface",
         ":iamf_tools_api_types",
@@ -18,11 +16,9 @@ cc_library(
 cc_library(
     name = "iamf_decoder_interface",
     hdrs = ["iamf_decoder_interface.h"],
-    visibility = [
-        "//iamf/api/decoder:__pkg__",
-    ],
+    visibility = ["//iamf/api/decoder:__pkg__"],
     deps = [
-        "//iamf/include/iamf_tools:iamf_tools_api_types",
+        ":iamf_tools_api_types",
     ],
 )
 
