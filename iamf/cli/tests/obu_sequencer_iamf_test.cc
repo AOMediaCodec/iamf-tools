@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/temporal_unit_view.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -47,8 +48,12 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Key;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pointee;
+using ::testing::SizeIs;
+using ::testing::UnorderedElementsAre;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr uint32_t kSampleRate = 48000;
@@ -323,22 +328,17 @@ TEST_F(ObuSequencerIamfTest, OutputFileCanBeReadBack) {
   auto read_bit_buffer = FileBasedReadBitBuffer::CreateFromFilePath(
       kReadBitBufferCapacity, kOutputIamfFilename);
   ASSERT_NE(read_bit_buffer, nullptr);
-  IASequenceHeaderObu ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentations;
+  DescriptorObuParser::ParsedDescriptorObus descriptor_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
-  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
-                                        codec_config_obus, audio_elements,
-                                        mix_presentations, audio_frames,
-                                        parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, descriptor_obus,
+                                        audio_frames, parameter_blocks),
               IsOk());
-  EXPECT_EQ(ia_sequence_header, ia_sequence_header_obu_);
-  EXPECT_EQ(codec_config_obus.size(), 1);
-  EXPECT_EQ(codec_config_obus.size(), 1);
-  EXPECT_EQ(audio_elements.size(), 1);
-  EXPECT_EQ(mix_presentations.size(), 1);
+  EXPECT_EQ(descriptor_obus.ia_sequence_header, ia_sequence_header_obu_);
+  EXPECT_THAT(descriptor_obus.codec_config_obus,
+              Pointee(UnorderedElementsAre(Key(kCodecConfigId))));
+  EXPECT_THAT(descriptor_obus.audio_elements, Pointee(SizeIs(1)));
+  EXPECT_EQ(descriptor_obus.mix_presentation_obus.size(), 1);
   EXPECT_EQ(audio_frames.size(), 1);
   EXPECT_TRUE(parameter_blocks.empty());
 }
@@ -447,20 +447,16 @@ TEST_F(ObuSequencerIamfTest,
   auto read_bit_buffer = FileBasedReadBitBuffer::CreateFromFilePath(
       kReadBitBufferCapacity, kOutputIamfFilename);
   ASSERT_NE(read_bit_buffer, nullptr);
-  IASequenceHeaderObu read_ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> read_codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> read_audio_elements;
-  std::list<MixPresentationObu> read_mix_presentation_obus;
+  DescriptorObuParser::ParsedDescriptorObus read_descriptor_obus;
   std::list<AudioFrameWithData> read_audio_frames;
   std::list<ParameterBlockWithData> read_parameter_blocks;
   EXPECT_THAT(
-      CollectObusFromIaSequence(*read_bit_buffer, read_ia_sequence_header,
-                                read_codec_config_obus, read_audio_elements,
-                                read_mix_presentation_obus, read_audio_frames,
-                                read_parameter_blocks),
+      CollectObusFromIaSequence(*read_bit_buffer, read_descriptor_obus,
+                                read_audio_frames, read_parameter_blocks),
       IsOk());
   // Finally we expect to see evidence of the modified IA Sequence Header.
-  EXPECT_EQ(read_ia_sequence_header.GetPrimaryProfile(), kUpdatedProfile);
+  EXPECT_EQ(read_descriptor_obus.ia_sequence_header.GetPrimaryProfile(),
+            kUpdatedProfile);
 }
 
 }  // namespace

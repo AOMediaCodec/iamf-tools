@@ -164,7 +164,6 @@ cc_library(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
-        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -332,6 +331,7 @@ cc_library(
         ":audio_frame_with_data",
         ":cli_util",
         ":demixing_module",
+        ":descriptor_obu_parser",
         ":global_timing_module",
         ":obu_processor_utils",
         ":obu_with_data_generator",
@@ -343,7 +343,6 @@ cc_library(
         "//iamf/common:read_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
-        "//iamf/obu:audio_element",
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",

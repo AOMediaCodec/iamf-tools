@@ -14,6 +14,7 @@
 #define CLI_DESCRIPTOR_OBU_PARSER_H_
 
 #include <list>
+#include <memory>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
@@ -28,14 +29,29 @@ namespace iamf_tools {
 
 class DescriptorObuParser {
  public:
+  /*!\brief Collection of parsed OBUs.
+   *
+   * OBUs that are commonly pointed to are indirectly held via `std::unique_ptr`
+   * for pointer stability. For example, `AudioElementWithData` contains a
+   * pointer to the corresponding `CodecConfigObu`. This extra layer of wrapping
+   * ensures this type of more move-safe.
+   */
   struct ParsedDescriptorObus {
+    /*!\brief Default constructor.
+     *
+     * Ensures the `std::unique_ptr` members are set to empty maps, instead of
+     * `nullptr`.
+     */
+    ParsedDescriptorObus();
+
     // IA sequence header processed from the bitstream.
-    IASequenceHeaderObu sequence_header;
+    IASequenceHeaderObu ia_sequence_header;
     // Map of Codec Config OBUs processed from the bitstream.
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+    std::unique_ptr<absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>
+        codec_config_obus;
     // Map of Audio Elements and metadata processed from the bitstream.
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-        audio_elements_with_data;
+    std::unique_ptr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
+        audio_elements;
     // List of Mix Presentation OBUs processed from the bitstream.
     std::list<MixPresentationObu> mix_presentation_obus;
   };

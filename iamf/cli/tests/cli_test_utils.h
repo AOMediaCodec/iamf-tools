@@ -32,6 +32,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/loudness_calculator_base.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_sequencer_base.h"
@@ -46,7 +47,6 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/param_definitions.h"
@@ -61,20 +61,15 @@ namespace iamf_tools {
  *
  * \param read_bit_buffer Buffer reader that reads the IAMF bitstream. The
  *        reader's position will be moved past the first IA sequence.
- * \param sequence_header Output IA sequence header.
- * \param codec_config_obus Output codec configs.
- * \param audio_elements Output audio elements.
- * \param mix_presentations Output mix presentations.
+ * \param parsed_descriptor_obus Output parsed descriptor OBUs.
  * \param audio_frames Output audio frames.
  * \param parameter_blocks Output parameter blocks.
  * \return `absl::OkStatus()` if the process is successful. A specific status
  *         on failure.
  */
 absl::Status CollectObusFromIaSequence(
-    ReadBitBuffer& read_bit_buffer, IASequenceHeaderObu& ia_sequence_header,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentations,
+    ReadBitBuffer& read_bit_buffer,
+    DescriptorObuParser::ParsedDescriptorObus& parsed_descriptor_obus,
     std::list<AudioFrameWithData>& audio_frames,
     std::list<ParameterBlockWithData>& parameter_blocks);
 

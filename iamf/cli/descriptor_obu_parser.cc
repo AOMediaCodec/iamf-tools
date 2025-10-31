@@ -12,17 +12,16 @@
 
 #include "iamf/cli/descriptor_obu_parser.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -117,6 +116,15 @@ absl::Status InsufficientDataReset(ReadBitBuffer& read_bit_buffer,
 
 }  // namespace
 
+// For defensive programming, initialize the types wrapped in pointers to
+// empty maps.
+DescriptorObuParser::ParsedDescriptorObus::ParsedDescriptorObus()
+    : codec_config_obus(std::make_unique<
+                        absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
+      audio_elements(
+          std::make_unique<
+              absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()) {}
+
 absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus>
 DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
                                            ReadBitBuffer& read_bit_buffer,
@@ -201,14 +209,14 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
         if (!ia_sequence_header_obu.ok()) {
           return ia_sequence_header_obu.status();
         }
-        parsed_obus.sequence_header = *std::move(ia_sequence_header_obu);
-        parsed_obus.sequence_header.PrintObu();
+        parsed_obus.ia_sequence_header = *std::move(ia_sequence_header_obu);
+        parsed_obus.ia_sequence_header.PrintObu();
         processed_ia_header = true;
         break;
       }
       case kObuIaCodecConfig: {
         RETURN_IF_NOT_OK(GetAndStoreCodecConfigObu(
-            header, payload_size, parsed_obus.codec_config_obus,
+            header, payload_size, *parsed_obus.codec_config_obus,
             read_bit_buffer));
         break;
       }
@@ -264,11 +272,13 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
   if (!audio_element_obu_map.empty()) {
     auto audio_elements_with_data =
         ObuWithDataGenerator::GenerateAudioElementsWithData(
-            parsed_obus.codec_config_obus, audio_element_obu_map);
+            *parsed_obus.codec_config_obus, audio_element_obu_map);
     if (!audio_elements_with_data.ok()) {
       return audio_elements_with_data.status();
     }
-    parsed_obus.audio_elements_with_data = std::move(*audio_elements_with_data);
+    parsed_obus.audio_elements = std::make_unique<
+        absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>(
+        *std::move(audio_elements_with_data));
   }
   return parsed_obus;
 }

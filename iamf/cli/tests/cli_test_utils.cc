@@ -41,6 +41,7 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/demixing_module.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/obu_processor.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
@@ -66,7 +67,6 @@
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/demixing_param_definition.h"
-#include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
@@ -110,10 +110,8 @@ void AddParamDefinition(DecodedUleb128 parameter_id,
 using ::absl_testing::IsOk;
 
 absl::Status CollectObusFromIaSequence(
-    ReadBitBuffer& read_bit_buffer, IASequenceHeaderObu& ia_sequence_header,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentations,
+    ReadBitBuffer& read_bit_buffer,
+    DescriptorObuParser::ParsedDescriptorObus& parsed_descriptor_obus,
     std::list<AudioFrameWithData>& audio_frames,
     std::list<ParameterBlockWithData>& parameter_blocks) {
   bool insufficient_data = false;
@@ -141,10 +139,14 @@ absl::Status CollectObusFromIaSequence(
                  << " Temporal Unit OBUs";
 
   // Move the processed data to the output.
-  ia_sequence_header = obu_processor->ia_sequence_header_;
-  codec_config_obus.swap(obu_processor->codec_config_obus_);
-  audio_elements.swap(obu_processor->audio_elements_);
-  mix_presentations.swap(obu_processor->mix_presentations_);
+  parsed_descriptor_obus.ia_sequence_header =
+      std::move(obu_processor->ia_sequence_header_);
+  parsed_descriptor_obus.codec_config_obus =
+      std::move(obu_processor->codec_config_obus_);
+  parsed_descriptor_obus.audio_elements =
+      std::move(obu_processor->audio_elements_);
+  parsed_descriptor_obus.mix_presentation_obus =
+      std::move(obu_processor->mix_presentations_);
   return absl::OkStatus();
 }
 

@@ -225,10 +225,12 @@ class ObuProcessor {
           output_rendered_samples);
 
   IASequenceHeaderObu ia_sequence_header_;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus_ = {};
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements_ =
-      {};
-  std::list<MixPresentationObu> mix_presentations_ = {};
+  std::unique_ptr<
+      absl::flat_hash_map<DecodedUleb128, CodecConfigObu>> absl_nonnull
+  codec_config_obus_;
+  std::unique_ptr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
+      audio_elements_;
+  std::list<MixPresentationObu> mix_presentations_;
 
  private:
   /*!\brief Private constructor used only by Create() and CreateForRendering().
@@ -238,46 +240,13 @@ class ObuProcessor {
    * \return ObuProcessor instance.
    */
   explicit ObuProcessor(ReadBitBuffer* absl_nonnull buffer)
-      : read_bit_buffer_(buffer) {}
-
-  /*!\brief Processes the Descriptor OBUs of an IA Sequence.
-   *
-   * If insufficient data to process all descriptor OBUs is provided, a failing
-   * status will be returned. `insufficient_data` will be set to true, the
-   * read_bit_buffer will not be consumed, and the output parameters will not be
-   * populated. A user should call this function again after providing more
-   * data within the read_bit_buffer.
-   *
-   * \param is_exhaustive_and_exact Whether the bitstream provided is meant to
-   *        include all descriptor OBUs and no other data. This should only be
-   *        set to true if the user knows the exact boundaries of their set of
-   *        descriptor OBUs.
-   * \param read_bit_buffer Buffer containing a portion of an iamf bitstream
-   *        containing a sequence of OBUs. The buffer will be consumed up to the
-   *        end of the descriptor OBUs if processing is successful.
-   * \param output_sequence_header IA sequence header processed from the
-   *        bitstream.
-   * \param output_codec_config_obus Map of Codec Config OBUs processed from the
-   *        bitstream.
-   * \param output_audio_elements_with_data Map of Audio Elements and metadata
-   *        processed from the bitstream.
-   * \param output_mix_presentation_obus List of Mix Presentation OBUs processed
-   *        from the bitstream.
-   * \param insufficient_data Whether the bitstream provided is insufficient  to
-   *        process all descriptor OBUs.
-   * \return `absl::OkStatus()` if the process is successful. A specific status
-   *         on failure.
-   */
-  [[deprecated("Remove when class starts using DescriptorObuParser")]]
-  static absl::Status ProcessDescriptorObus(
-      bool is_exhaustive_and_exact, ReadBitBuffer& read_bit_buffer,
-      IASequenceHeaderObu& output_sequence_header,
-      absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-          output_codec_config_obus,
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          output_audio_elements_with_data,
-      std::list<MixPresentationObu>& output_mix_presentation_obus,
-      bool& insufficient_data);
+      : read_bit_buffer_(buffer),
+        codec_config_obus_(
+            std::make_unique<
+                absl::flat_hash_map<DecodedUleb128, CodecConfigObu>>()),
+        audio_elements_(
+            std::make_unique<
+                absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>()) {}
 
   /*!\brief Performs internal initialization of the OBU processor.
    *

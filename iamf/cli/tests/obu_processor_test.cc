@@ -31,6 +31,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/parameters_manager.h"
@@ -62,11 +63,15 @@ using ::testing::AllOf;
 using ::testing::Each;
 using ::testing::ElementsAre;
 using ::testing::Eq;
+using ::testing::IsEmpty;
 using ::testing::IsNull;
+using ::testing::Key;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pointee;
 using ::testing::Pointwise;
 using ::testing::SizeIs;
+using ::testing::UnorderedElementsAre;
 
 using absl::MakeConstSpan;
 
@@ -154,9 +159,9 @@ TEST(Create, CollectsCodecConfigsBeforeATemporalUnit) {
                            read_bit_buffer.get(), insufficient_data);
 
   ASSERT_THAT(obu_processor, NotNull());
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 2);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kSecondCodecConfigId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                           Key(kSecondCodecConfigId))));
   // `insufficient_data` is false because we have successfully read all
   // provided descriptor obus. The presence of a temporal unit OBU indicates
   // the end of the descriptor OBUs.
@@ -191,8 +196,8 @@ TEST(Create, IgnoresImplausibleCodecConfigObus) {
   ASSERT_THAT(obu_processor, NotNull());
 
   // We only find the valid Codec Config OBU, with no sign of the tiny one.
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 1);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
   // The buffer advanced past the tiny Codec Config OBU.
   EXPECT_FALSE(read_bit_buffer->CanReadBytes(1));
 }
@@ -217,9 +222,9 @@ TEST(Create, CollectsCodecConfigsAtEndOfBitstream) {
   // `is_exhaustive_and_exact` is true so it could not be a more-data situation.
   EXPECT_FALSE(insufficient_data);
 
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 2);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kSecondCodecConfigId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                           Key(kSecondCodecConfigId))));
 }
 
 TEST(Create,
@@ -373,9 +378,9 @@ TEST(Create, CollectsIaSequenceHeaderWithCodecConfigs) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->ia_sequence_header_.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 2);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kSecondCodecConfigId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId),
+                                           Key(kSecondCodecConfigId))));
 }
 
 // Returns a bitstream with all the descriptor obus for a zeroth order
@@ -415,10 +420,10 @@ TEST(Create, SucceedsWithoutTemporalUnitFollowing) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->ia_sequence_header_.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 1);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
-  EXPECT_EQ(obu_processor->audio_elements_.size(), 1);
-  EXPECT_TRUE(obu_processor->audio_elements_.contains(kFirstAudioElementId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+  EXPECT_THAT(obu_processor->audio_elements_,
+              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
   EXPECT_EQ(obu_processor->mix_presentations_.size(), 1);
   EXPECT_EQ(obu_processor->mix_presentations_.front().GetMixPresentationId(),
             kFirstMixPresentationId);
@@ -495,10 +500,10 @@ TEST(Create, SucceedsWithTemporalUnitFollowing) {
   EXPECT_FALSE(insufficient_data);
   EXPECT_EQ(obu_processor->ia_sequence_header_.GetPrimaryProfile(),
             ProfileVersion::kIamfSimpleProfile);
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 1);
-  EXPECT_TRUE(obu_processor->codec_config_obus_.contains(kFirstCodecConfigId));
-  EXPECT_EQ(obu_processor->audio_elements_.size(), 1);
-  EXPECT_TRUE(obu_processor->audio_elements_.contains(kFirstAudioElementId));
+  EXPECT_THAT(obu_processor->codec_config_obus_,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+  EXPECT_THAT(obu_processor->audio_elements_,
+              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
   EXPECT_EQ(obu_processor->mix_presentations_.size(), 1);
   EXPECT_EQ(obu_processor->mix_presentations_.front().GetMixPresentationId(),
             kFirstMixPresentationId);
@@ -1846,28 +1851,26 @@ TEST(CollectObusFromIaSequence, ConsumesIaSequenceAndCollectsAllObus) {
                    temporal_unit_obus.end());
   const int64_t ia_sequence_size = bitstream.size();
 
-  IASequenceHeaderObu ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  DescriptorObuParser::ParsedDescriptorObus descriptor_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
-                                        codec_config_obus, audio_elements,
-                                        mix_presentation_obus, audio_frames,
-                                        parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, descriptor_obus,
+                                        audio_frames, parameter_blocks),
               IsOk());
   EXPECT_EQ(read_bit_buffer->Tell(), ia_sequence_size * 8);
 
   // Reaching the end of the stream.
   EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
-  EXPECT_TRUE(codec_config_obus.contains(kFirstCodecConfigId));
-  EXPECT_TRUE(audio_elements.contains(kFirstAudioElementId));
-  EXPECT_FALSE(mix_presentation_obus.empty());
-  EXPECT_EQ(mix_presentation_obus.front().GetMixPresentationId(),
-            kFirstMixPresentationId);
+  EXPECT_THAT(descriptor_obus.codec_config_obus,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+  EXPECT_THAT(descriptor_obus.audio_elements,
+              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
+  EXPECT_FALSE(descriptor_obus.mix_presentation_obus.empty());
+  EXPECT_EQ(
+      descriptor_obus.mix_presentation_obus.front().GetMixPresentationId(),
+      kFirstMixPresentationId);
   EXPECT_FALSE(audio_frames.empty());
   EXPECT_EQ(audio_frames.front().obu.GetSubstreamId(), kFirstSubstreamId);
   EXPECT_TRUE(parameter_blocks.empty());
@@ -1894,33 +1897,26 @@ TEST(CollectObusFromIaSequence, ConsumesTrivialIaSequence) {
                           non_trivial_ia_sequence.end());
   const int64_t two_ia_sequences_size = two_ia_sequences.size();
 
-  IASequenceHeaderObu ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  DescriptorObuParser::ParsedDescriptorObus descriptor_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(two_ia_sequences));
-  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
-                                        codec_config_obus, audio_elements,
-                                        mix_presentation_obus, audio_frames,
-                                        parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, descriptor_obus,
+                                        audio_frames, parameter_blocks),
               IsOk());
   EXPECT_EQ(read_bit_buffer->Tell(), trivial_ia_sequence_size * 8);
 
   // The first IA sequence is trivial and should be consumed.
-  EXPECT_TRUE(codec_config_obus.empty());
-  EXPECT_TRUE(audio_elements.empty());
-  EXPECT_TRUE(mix_presentation_obus.empty());
+  EXPECT_THAT(descriptor_obus.codec_config_obus, Pointee(IsEmpty()));
+  EXPECT_THAT(descriptor_obus.audio_elements, Pointee(IsEmpty()));
+  EXPECT_THAT(descriptor_obus.mix_presentation_obus, IsEmpty());
   EXPECT_TRUE(audio_frames.empty());
   EXPECT_TRUE(parameter_blocks.empty());
 
   // A second call retrieves the next IA sequence, which has an audio frame.
-  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
-                                        codec_config_obus, audio_elements,
-                                        mix_presentation_obus, audio_frames,
-                                        parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, descriptor_obus,
+                                        audio_frames, parameter_blocks),
               IsOk());
   EXPECT_FALSE(audio_frames.empty());
   EXPECT_EQ(read_bit_buffer->Tell(), two_ia_sequences_size * 8);
@@ -1942,18 +1938,13 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
   bitstream.insert(bitstream.end(), start_of_second_ia_sequence.begin(),
                    start_of_second_ia_sequence.end());
 
-  IASequenceHeaderObu ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentation_obus;
+  DescriptorObuParser::ParsedDescriptorObus descriptor_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(bitstream));
-  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, ia_sequence_header,
-                                        codec_config_obus, audio_elements,
-                                        mix_presentation_obus, audio_frames,
-                                        parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*read_bit_buffer, descriptor_obus,
+                                        audio_frames, parameter_blocks),
               IsOk());
 
   // Expect the reader position to be right next to the end of the first IA
@@ -1973,8 +1964,8 @@ TEST(Create, Succeeds) {
 
   EXPECT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
-  EXPECT_EQ(obu_processor->audio_elements_.size(), 1);
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 1);
+  EXPECT_THAT(obu_processor->codec_config_obus_, Pointee(SizeIs(1)));
+  EXPECT_THAT(obu_processor->audio_elements_, Pointee(SizeIs(1)));
   EXPECT_EQ(obu_processor->mix_presentations_.size(), 1);
 }
 

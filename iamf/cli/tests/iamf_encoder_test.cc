@@ -29,8 +29,8 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/iamf_components.h"
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/obu_processor.h"
@@ -52,7 +52,6 @@
 #include "iamf/include/iamf_tools/iamf_tools_encoder_api_types.h"
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/audio_frame.h"
-#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
@@ -74,7 +73,9 @@ using ::testing::_;
 using ::testing::Contains;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pointee;
 using ::testing::Return;
+using ::testing::SizeIs;
 
 constexpr DecodedUleb128 kCodecConfigId = 200;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -379,8 +380,8 @@ TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   EXPECT_FALSE(get_descriptors_obus_are_finalized);
   EXPECT_EQ(obu_processor->ia_sequence_header_.GetPrimaryProfile(),
             kExpectedPrimaryProfile);
-  EXPECT_EQ(obu_processor->codec_config_obus_.size(), 1);
-  EXPECT_EQ(obu_processor->audio_elements_.size(), 1);
+  EXPECT_THAT(obu_processor->codec_config_obus_, Pointee(SizeIs(1)));
+  EXPECT_THAT(obu_processor->audio_elements_, Pointee(SizeIs(1)));
   EXPECT_EQ(obu_processor->mix_presentations_.size(), 1);
   // Also, check the equivalent in the deprecated getters.
   EXPECT_EQ(iamf_encoder.GetAudioElements().size(), 1);
@@ -567,21 +568,18 @@ TEST_F(IamfEncoderTest, SafeToUseAfterMove) {
   EXPECT_THAT(rb->PushBytes(MakeConstSpan(output_obus)), IsOk());
 
   // Collect the full IA Sequence.
-  IASequenceHeaderObu ia_sequence_header;
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  std::list<MixPresentationObu> mix_presentations;
+  DescriptorObuParser::ParsedDescriptorObus parsed_obus;
   std::list<AudioFrameWithData> audio_frames;
   std::list<ParameterBlockWithData> parameter_blocks;
-  EXPECT_THAT(CollectObusFromIaSequence(
-                  *rb, ia_sequence_header, codec_config_obus, audio_elements,
-                  mix_presentations, audio_frames, parameter_blocks),
+  EXPECT_THAT(CollectObusFromIaSequence(*rb, parsed_obus, audio_frames,
+                                        parameter_blocks),
               IsOk());
   // Check that the OBUs look reasonable.
-  EXPECT_EQ(ia_sequence_header.GetPrimaryProfile(), kExpectedPrimaryProfile);
-  EXPECT_EQ(codec_config_obus.size(), 1);
-  EXPECT_EQ(audio_elements.size(), 1);
-  EXPECT_EQ(mix_presentations.size(), 1);
+  EXPECT_EQ(parsed_obus.ia_sequence_header.GetPrimaryProfile(),
+            kExpectedPrimaryProfile);
+  EXPECT_THAT(parsed_obus.codec_config_obus, Pointee(SizeIs(1)));
+  EXPECT_THAT(parsed_obus.audio_elements, Pointee(SizeIs(1)));
+  EXPECT_EQ(parsed_obus.mix_presentation_obus.size(), 1);
   EXPECT_EQ(audio_frames.size(), 1);
   EXPECT_EQ(parameter_blocks.size(), 1);
 }
