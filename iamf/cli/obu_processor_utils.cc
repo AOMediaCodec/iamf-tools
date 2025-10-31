@@ -6,8 +6,8 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -63,7 +63,6 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
     mix_presentation = supported_mix_presentations.front();
   }
   // Set output then check the selected Mix has at least one submix.
-  DecodedUleb128 mix_presentation_id = mix_presentation->GetMixPresentationId();
   if (mix_presentation->sub_mixes_.empty()) {
     return absl::InvalidArgumentError(
         "No submixes found in the selected mix presentation.");
@@ -78,7 +77,7 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
           "presentation.");
     }
     return SelectedMixPresentation{
-        mix_presentation_id,
+        mix_presentation,
         mix_presentation->sub_mixes_.front().layouts.front().loudness_layout,
         0,
         0,
@@ -94,7 +93,7 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
       const auto& layout = sub_mix.layouts[layout_index];
       if (desired_layout == layout.loudness_layout) {
         return SelectedMixPresentation{
-            mix_presentation_id,
+            mix_presentation,
             layout.loudness_layout,
             sub_mix_index,
             layout_index,
@@ -107,12 +106,35 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
   mix_presentation->sub_mixes_.front().layouts.push_back(
       {.loudness_layout = *desired_layout});
   return SelectedMixPresentation{
-
-      mix_presentation_id,
+      mix_presentation,
       *desired_layout,
       0,
       static_cast<int>(mix_presentation->sub_mixes_.front().layouts.size()) - 1,
   };
+}
+
+absl::StatusOr<MixPresentationObu> CreateSimplifiedMixPresentationForRendering(
+    const MixPresentationObu& mix_presentation, int sub_mix_index,
+    int layout_index) {
+  if (sub_mix_index < 0 ||
+      sub_mix_index >= mix_presentation.sub_mixes_.size()) {
+    return absl::OutOfRangeError(absl::StrCat(
+        "Sub-mix index is out of bounds for the given Mix Presentation: ",
+        mix_presentation.sub_mixes_.size(), " sub_mix_index: ", sub_mix_index));
+  }
+  const auto& selected_sub_mix = mix_presentation.sub_mixes_[sub_mix_index];
+  if (layout_index < 0 || layout_index >= selected_sub_mix.layouts.size()) {
+    return absl::OutOfRangeError(
+        "Layout index is out of bounds for the given Mix Presentation.");
+  }
+  const auto& selected_layout = selected_sub_mix.layouts[layout_index];
+
+  // Clone the mix presentation, keep only the selected sub-mix and layout.
+  MixPresentationObu simplified_mix_presentation = mix_presentation;
+  simplified_mix_presentation.sub_mixes_ = {selected_sub_mix};
+  simplified_mix_presentation.sub_mixes_[0].layouts = {selected_layout};
+
+  return simplified_mix_presentation;
 }
 
 }  // namespace iamf_tools

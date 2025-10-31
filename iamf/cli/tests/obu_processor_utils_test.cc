@@ -131,7 +131,8 @@ TEST(FindMixPresentationAndLayoutTest, NeitherIdNorLayoutSpecified) {
       supported_mix_presentations, std::nullopt, std::nullopt);
 
   ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId1);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId1);
   EXPECT_EQ(result->output_layout, kLayoutA);
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 0);
@@ -153,7 +154,8 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedAndFound) {
       supported_mix_presentations, kLayoutE, std::nullopt);
 
   ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId2);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId2);
   EXPECT_EQ(result->output_layout, kLayoutE);
   EXPECT_EQ(result->sub_mix_index, 1);
   EXPECT_EQ(result->layout_index, 0);
@@ -175,7 +177,8 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedAndFoundInMultipleMixes) {
 
   ASSERT_THAT(result, IsOk());
   // Should return the first MixPresentation that has the desired layout.
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId1);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId1);
   EXPECT_EQ(result->output_layout, kLayoutB);
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 1);
@@ -196,7 +199,8 @@ TEST(FindMixPresentationAndLayoutTest, LayoutSpecifiedNotFound) {
 
   ASSERT_THAT(result, IsOk());
   // Should default to the first MixPresentation and add the desired layout.
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId1);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId1);
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 1);
   EXPECT_EQ(result->output_layout, kLayoutD);
@@ -222,7 +226,8 @@ TEST(FindMixPresentationAndLayoutTest, IdSpecifiedAndFound) {
       supported_mix_presentations, std::nullopt, kMixPresentationId2);
 
   ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId2);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId2);
   // Should default to the first layout of the Mix.
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 0);
@@ -245,7 +250,8 @@ TEST(FindMixPresentationAndLayoutTest, IdSpecifiedNotFound) {
 
   ASSERT_THAT(result, IsOk());
   // Should default to the first MixPresentation, first Layout.
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId1);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId1);
   EXPECT_EQ(result->output_layout, kLayoutA);
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 0);
@@ -267,7 +273,8 @@ TEST(FindMixPresentationAndLayoutTest, BothIdAndLayoutSpecifiedAndFound) {
       supported_mix_presentations, kLayoutB, kMixPresentationId2);
 
   ASSERT_THAT(result, IsOk());
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId2);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId2);
   EXPECT_EQ(result->output_layout, kLayoutB);
   EXPECT_EQ(result->sub_mix_index, 1);
   EXPECT_EQ(result->layout_index, 0);
@@ -291,12 +298,77 @@ TEST(FindMixPresentationAndLayoutTest, IdAndLayoutSpecifiedIdTakesPrecedence) {
   ASSERT_THAT(result, IsOk());
   // Should pick mix_presentation_2 because the ID matches, and use an inserted
   // layout.
-  EXPECT_EQ(result->mix_presentation_id, kMixPresentationId2);
+  EXPECT_EQ(result->mix_presentation->GetMixPresentationId(),
+            kMixPresentationId2);
   EXPECT_EQ(result->output_layout, kLayoutB);
   EXPECT_EQ(result->sub_mix_index, 0);
   EXPECT_EQ(result->layout_index, 1);
   // Verify the layout has been added.
   EXPECT_EQ(mix_presentation_2.sub_mixes_.front().layouts.size(), 2);
+}
+
+TEST(CreateSimplifiedMixPresentationForRenderingTest,
+     SimplifiesToSubMix0Layout1) {
+  MixPresentationObu mix_presentation = CreateMixPresentationObu(
+      kMixPresentationId1, {{kLayoutA, kLayoutB}, {kLayoutC}});
+
+  absl::StatusOr<MixPresentationObu> result =
+      CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                  /*sub_mix_index=*/0,
+                                                  /*layout_index=*/1);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->GetMixPresentationId(), kMixPresentationId1);
+  ASSERT_EQ(result->sub_mixes_.size(), 1);
+  ASSERT_EQ(result->sub_mixes_[0].layouts.size(), 1);
+  EXPECT_EQ(result->sub_mixes_[0].layouts[0].loudness_layout, kLayoutB);
+}
+
+TEST(CreateSimplifiedMixPresentationForRenderingTest,
+     SimplifiesToSubMix1Layout0) {
+  MixPresentationObu mix_presentation = CreateMixPresentationObu(
+      kMixPresentationId1, {{kLayoutA, kLayoutB}, {kLayoutC}});
+
+  absl::StatusOr<MixPresentationObu> result =
+      CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                  /*sub_mix_index=*/1,
+                                                  /*layout_index=*/0);
+
+  ASSERT_THAT(result, IsOk());
+  EXPECT_EQ(result->GetMixPresentationId(), kMixPresentationId1);
+  ASSERT_EQ(result->sub_mixes_.size(), 1);
+  ASSERT_EQ(result->sub_mixes_[0].layouts.size(), 1);
+  EXPECT_EQ(result->sub_mixes_[0].layouts[0].loudness_layout, kLayoutC);
+}
+
+TEST(CreateSimplifiedMixPresentationForRenderingTest,
+     ReturnsErrorIfSubMixIndexIsOutOfBounds) {
+  MixPresentationObu mix_presentation = CreateMixPresentationObu(
+      kMixPresentationId1, {{kLayoutA, kLayoutB}, {kLayoutC}});
+
+  EXPECT_THAT(CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                          /*sub_mix_index=*/2,
+                                                          /*layout_index=*/0),
+              Not(IsOk()));
+  EXPECT_THAT(CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                          /*sub_mix_index=*/-1,
+                                                          /*layout_index=*/0),
+              Not(IsOk()));
+}
+
+TEST(CreateSimplifiedMixPresentationForRenderingTest,
+     ReturnsErrorIfLayoutIndexIsOutOfBounds) {
+  MixPresentationObu mix_presentation = CreateMixPresentationObu(
+      kMixPresentationId1, {{kLayoutA, kLayoutB}, {kLayoutC}});
+
+  EXPECT_THAT(CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                          /*sub_mix_index=*/0,
+                                                          /*layout_index=*/2),
+              Not(IsOk()));
+  EXPECT_THAT(CreateSimplifiedMixPresentationForRendering(mix_presentation,
+                                                          /*sub_mix_index=*/0,
+                                                          /*layout_index=*/-1),
+              Not(IsOk()));
 }
 
 }  // namespace

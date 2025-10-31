@@ -372,9 +372,10 @@ cc_library(
     hdrs = ["obu_processor_utils.h"],
     deps = [
         "//iamf/obu:mix_presentation",
-        "//iamf/obu:types",
+        "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
     ],
 )
 

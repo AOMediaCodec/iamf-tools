@@ -26,6 +26,8 @@ and this project adheres to
     circumstances.
 -   Improve spec compliance, when decoding streams with unknown parameter
     blocks.
+-   Improve CPU/memory efficiency when decoding streams with multiple layouts
+    and/or mix presentations.
 
 ### Changed
 

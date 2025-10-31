@@ -117,6 +117,9 @@ class ObuProcessor {
    * Creation succeeds only if the descriptor OBUs are successfully processed
    * and all rendering modules are successfully initialized.
    *
+   * Configures the OBU processor to render and manage a single Mix Presentation
+   * and a single Layout.
+   *
    * \param desired_profile_versions Profiles that are permitted to be used
    *        selecting the mix presentation.
    * \param desired_mix_presentation_id Optionally specifies the ID of the Mix
@@ -289,8 +292,6 @@ class ObuProcessor {
   struct DecodingLayoutInfo {
     DecodedUleb128 mix_presentation_id;
     Layout layout;
-    int sub_mix_index;
-    int layout_index;
   };
 
   struct TemporalUnitData {

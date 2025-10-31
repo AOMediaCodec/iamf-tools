@@ -562,12 +562,25 @@ absl::Status ObuProcessor::InitializeForRendering(
   if (!selected_mix_presentation.ok()) {
     return selected_mix_presentation.status();
   }
+  // Cache the information.
   decoding_layout_info_ = {
-      .mix_presentation_id = selected_mix_presentation->mix_presentation_id,
-      .layout = selected_mix_presentation->output_layout,
-      .sub_mix_index = selected_mix_presentation->sub_mix_index,
-      .layout_index = selected_mix_presentation->layout_index,
-  };
+      .mix_presentation_id =
+          selected_mix_presentation->mix_presentation->GetMixPresentationId(),
+      .layout = selected_mix_presentation->output_layout};
+
+  // Even though the bitstream may have many mixes and layouts, `ObuProcessor`
+  // exposes an interface to render one of them at a time.
+  //
+  // Clone a simplified version of the selected mix presentation, so clients do
+  // not pay for mixes they cannot observe.
+  absl::StatusOr<MixPresentationObu> simplified_mix_presentation =
+      CreateSimplifiedMixPresentationForRendering(
+          *selected_mix_presentation->mix_presentation,
+          selected_mix_presentation->sub_mix_index,
+          selected_mix_presentation->layout_index);
+  if (!simplified_mix_presentation.ok()) {
+    return simplified_mix_presentation.status();
+  }
 
   // Create the mix presentation finalizer which is used to render the output
   // files. We neither trust the user-provided loudness, nor care about the
@@ -578,7 +591,7 @@ absl::Status ObuProcessor::InitializeForRendering(
           /*renderer_factory=*/&renderer_factory,
           /*loudness_calculator_factory=*/nullptr, *audio_elements_,
           RenderingMixPresentationFinalizer::ProduceNoSampleProcessors,
-          mix_presentations_);
+          {*simplified_mix_presentation});
   if (!mix_presentation_finalizer.ok()) {
     return mix_presentation_finalizer.status();
   }
@@ -710,11 +723,14 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
       *decoded_labeled_frames_for_temporal_unit, start_timestamp,
       *end_timestamp, parameter_blocks));
 
+  // `ObuProcessor` renders a simplified Mix Presentation OBU with a single
+  // sub-mix and a single layout.
+  constexpr int kSubMixIndex = 0;
+  constexpr int kLayoutIndex = 0;
   auto rendered_samples =
       mix_presentation_finalizer_->GetPostProcessedSamplesAsSpan(
-          decoding_layout_info_.mix_presentation_id,
-          decoding_layout_info_.sub_mix_index,
-          decoding_layout_info_.layout_index);
+          decoding_layout_info_.mix_presentation_id, kSubMixIndex,
+          kLayoutIndex);
   if (!rendered_samples.ok()) {
     return rendered_samples.status();
   }
