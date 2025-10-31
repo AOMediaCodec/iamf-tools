@@ -26,7 +26,7 @@
 
 namespace iamf_tools {
 
-/*!\brief Abstract class representing a buffer to read bit from.
+/*!\brief Abstract class representing a buffer to read bits from.
  *
  * Concrete subclasses should hold the actual storage of the data and
  * implement `LoadBytesToBuffer()` to handle how data are loaded from the
@@ -105,7 +105,7 @@ class ReadBitBuffer {
    * \param output String will be written here.
    * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
    *         the string is not terminated within `kIamfMaxStringSize` bytes.
-   *         `absl::Status::kResourceExhausted` if the buffer is exhausted
+   *         `absl::ResourceExhaustedError()` if the buffer is exhausted
    *         before the string is terminated and source does not have the
    *         requisite data to complete the string. Other specific statuses on
    *         failure.
@@ -204,6 +204,10 @@ class ReadBitBuffer {
   int64_t Tell();
 
   /*!\brief Moves the next reading position in bits of the source.
+   *
+   * It is OK to move exactly to the end of the source, in which case further
+   * reads will fail, until the reading position is moved back, or additional
+   * data is provided.
    *
    * \param position Requested position in bits to move to.
    * \return `absl::OkStatus()` on success. `absl::ResourceExhaustedError()` if
@@ -327,7 +331,7 @@ class MemoryBasedReadBitBuffer : public ReadBitBuffer {
 
 /*!\brief File-based read bit buffer.
  *
- * The file is read and buffer loaded only when necessary.
+ * The file is read and the buffer is loaded only when necessary.
  */
 class FileBasedReadBitBuffer : public ReadBitBuffer {
  public:
