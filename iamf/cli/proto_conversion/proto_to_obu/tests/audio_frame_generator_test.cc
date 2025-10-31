@@ -307,8 +307,8 @@ void InitializeAudioFrameGenerator(
       audio_element_generator.Generate(codec_config_obus, audio_elements),
       IsOk());
 
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
   global_timing_module =
       GlobalTimingModule::Create(audio_elements, param_definitions);

@@ -746,6 +746,24 @@ void LogForAudioElementId(absl::string_view log_prefix,
 
 }  // namespace
 
+absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
+DemixingModule::CreateIdToReconstructionConfig(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  absl::flat_hash_map<DecodedUleb128, DemixingModule::ReconstructionConfig>
+      result;
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       audio_elements) {
+    result[audio_element_id] = {
+        .audio_element_obu = &audio_element_with_data.obu,
+        .substream_id_to_labels =
+            audio_element_with_data.substream_id_to_labels,
+        .label_to_output_gain = audio_element_with_data.label_to_output_gain,
+    };
+  }
+  return result;
+}
+
 absl::Status DemixingModule::FindSamplesOrDemixedSamples(
     ChannelLabel::Label label, const LabelSamplesMap& label_to_samples,
     absl::Span<const InternalSampleType>& samples) {
@@ -786,14 +804,14 @@ DemixingModule::CreateForDownMixingAndReconstruction(
 }
 
 absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+    const absl::flat_hash_map<DecodedUleb128, ReconstructionConfig>&
+        id_to_config) {
   absl::flat_hash_map<DecodedUleb128, DemixingMetadataForAudioElementId>
       audio_element_id_to_demixing_metadata;
-  for (const auto& [audio_element_id, audio_element_with_data] :
-       audio_elements) {
+  for (const auto& [audio_element_id, reconstruction_config] : id_to_config) {
+    ABSL_CHECK_NE(reconstruction_config.audio_element_obu, nullptr);
     const auto labels_to_reconstruct =
-        LookupLabelsToReconstruct(audio_element_with_data.obu);
+        LookupLabelsToReconstruct(*reconstruction_config.audio_element_obu);
     if (!labels_to_reconstruct.ok()) {
       return labels_to_reconstruct.status();
     }
@@ -804,8 +822,8 @@ absl::StatusOr<DemixingModule> DemixingModule::CreateForReconstruction(
         << "The target map was initially empty, iterating over "
            "`audio_elements` cannot produce a duplicate key.";
     RETURN_IF_NOT_OK(FillRequiredDemixingMetadata(
-        *labels_to_reconstruct, audio_element_with_data.substream_id_to_labels,
-        audio_element_with_data.label_to_output_gain, iter->second));
+        *labels_to_reconstruct, reconstruction_config.substream_id_to_labels,
+        reconstruction_config.label_to_output_gain, iter->second));
     iter->second.down_mixers.clear();
   }
 

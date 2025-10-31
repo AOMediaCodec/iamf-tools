@@ -542,8 +542,8 @@ absl::Status ObuProcessor::InitializeForRendering(
         *audio_element_with_data.codec_config));
   }
   {
-    auto temp_demixing_module =
-        DemixingModule::CreateForReconstruction(*audio_elements_);
+    auto temp_demixing_module = DemixingModule::CreateForReconstruction(
+        DemixingModule::CreateIdToReconstructionConfig(*audio_elements_));
     if (!temp_demixing_module.ok()) {
       return temp_demixing_module.status();
     }

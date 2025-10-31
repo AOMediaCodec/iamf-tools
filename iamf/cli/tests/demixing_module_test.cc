@@ -181,8 +181,8 @@ TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
                                       {ChannelAudioLayerConfig::kLayoutMono,
                                        ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const std::list<Demixer>* down_mixers = nullptr;
@@ -197,8 +197,8 @@ TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
                                       {ChannelAudioLayerConfig::kLayoutMono,
                                        ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
@@ -212,8 +212,8 @@ TEST(CreateForReconstruction, FailsForReservedLayout14) {
       {{0, {kOmitted}}}, {ChannelAudioLayerConfig::kLayoutReserved14},
       audio_elements);
 
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
 
   EXPECT_FALSE(demixing_module.ok());
 }
@@ -229,8 +229,8 @@ TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
       .expanded_loudspeaker_layout =
       ChannelAudioLayerConfig::kExpandedLayoutLFE;
 
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
 
   EXPECT_THAT(demixing_module, IsOk());
 }
@@ -240,8 +240,8 @@ TEST(CreateForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
   InitAudioElementWithLabelsAndLayers({{0, {kL2, kR2}}},
                                       {ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
@@ -259,8 +259,8 @@ TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
                                                 kAmbisonicsSubstreamIds,
                                                 codec_configs, audio_elements);
 
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const std::list<Demixer>* demixer = nullptr;
@@ -275,8 +275,8 @@ TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
       {ChannelAudioLayerConfig::kLayoutMono,
        ChannelAudioLayerConfig::kLayoutStereo},
       audio_elements);
-  auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   EXPECT_THAT(demixing_module->DemixOriginalAudioSamples({}), Not(IsOk()));
@@ -310,8 +310,8 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
       .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
-  auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
   const auto id_to_labeled_decoded_frame =
       demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
@@ -331,8 +331,8 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
   InitAudioElementWithLabelsAndLayers({{kStereoSubstreamId, {kL2, kR2}}},
                                       {ChannelAudioLayerConfig::kLayoutStereo},
                                       audio_elements);
-  auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
   std::list<AudioFrameWithData> decoded_audio_frames;
   // The decoded audio frame has one channel, which is inconsistent with a
@@ -394,8 +394,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
       .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedSamples),
       .down_mixing_params = DownMixingParams()});
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const auto id_to_labeled_decoded_frame =
@@ -444,8 +444,8 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
       .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedL2Samples),
       .down_mixing_params = DownMixingParams()});
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   IdLabeledFrameMap unused_id_labeled_frame;
@@ -503,8 +503,8 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
       .end_timestamp = kEndTimestamp,
       .decoded_samples = absl::MakeConstSpan(kDecodedL2Samples),
       .down_mixing_params = DownMixingParams()});
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
 
   const auto id_to_labeled_decoded_frame =
@@ -558,8 +558,8 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
       .down_mixing_params = DownMixingParams(),
       .recon_gain_info_parameter_data = recon_gain_info_parameter_data,
       .audio_element_with_data = &audio_elements.at(kAudioElementId)});
-  const auto demixing_module =
-      DemixingModule::CreateForReconstruction(audio_elements);
+  const auto demixing_module = DemixingModule::CreateForReconstruction(
+      DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
   const auto id_to_labeled_decoded_frame =
       demixing_module->DemixDecodedAudioSamples(decoded_audio_frames);
