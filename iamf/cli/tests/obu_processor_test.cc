@@ -58,7 +58,6 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
-using ::testing::_;
 using ::testing::AllOf;
 using ::testing::Each;
 using ::testing::ElementsAre;
