@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "absl/base/nullability.h"
 #include "absl/status/statusor.h"
@@ -28,6 +29,7 @@
 #include "absl/status/status.h"
 #include "iamf/cli/codec/decoder_base.h"
 #include "libAACdec/include/aacdecoder_lib.h"
+#include "libSYS/include/machine_type.h"
 
 namespace iamf_tools {
 
@@ -76,7 +78,7 @@ class AacDecoder : public DecoderBase {
   std::vector<UCHAR> raws_frame_to_libfdk_aac_;
   // Size fixed at construction time.
   std::vector<INT_PCM> interleaved_pcm_from_libfdk_aac_;
-  AAC_DECODER_INSTANCE* const absl_nonnull absl_nonnull decoder_;
+  AAC_DECODER_INSTANCE* absl_nonnull const decoder_;
 };
 
 }  // namespace iamf_tools
