@@ -94,6 +94,24 @@ void LogChannelBased(const ScalableChannelLayoutConfig& channel_config) {
   }
 }
 
+absl::Status ValidateNumParameters(size_t num_parameters) {
+  // Section 3.6 of IAMF specification says that: "Parsers SHALL support any
+  // value of num_parameters."
+  //
+  // In practice IAMF defines only a small number of parameter types,
+  // forbids them from being duplicate, and only permits certain types in Audio
+  // Elements.
+  //
+  // To reduce the risk of allocating massive amounts of memory, we limit the
+  // number of parameters.
+  if (num_parameters > AudioElementObu::kMaxNumParameters) {
+    return absl::UnimplementedError(absl::StrCat(
+        "Number of parameters exceeds the maximum supported by the decoder: ",
+        num_parameters));
+  }
+  return absl::OkStatus();
+}
+
 void LogAmbisonicsMonoConfig(const AmbisonicsMonoConfig& mono_config) {
   ABSL_VLOG(1) << "  ambisonics_mono_config:";
   ABSL_VLOG(1) << "    output_channel_count:"
@@ -738,6 +756,7 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
     RETURN_IF_NOT_OK(wb.WriteUleb128(audio_substream_id));
   }
 
+  RETURN_IF_NOT_OK(ValidateNumParameters(GetNumParameters()));
   RETURN_IF_NOT_OK(wb.WriteUleb128(GetNumParameters()));
 
   // Loop to write the parameter portion of the obu.
@@ -789,6 +808,7 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
 
   DecodedUleb128 num_parameters;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters));
+  RETURN_IF_NOT_OK(ValidateNumParameters(num_parameters));
 
   // Loop to read the parameter portion of the obu.
   audio_element_params_.reserve(num_parameters);

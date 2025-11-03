@@ -278,9 +278,14 @@ struct ExtensionConfig {
  *      `InitializeExtensionConfig()`
  *    ].
  *
+ * This class has stricter limits than the specification:
+ *   - Maximum number parameters is limited to `kMaxNumParameters`.
  */
 class AudioElementObu : public ObuBase {
  public:
+  /*!\brief Artificial limit on the maximum number of parameters. */
+  static constexpr uint32_t kMaxNumParameters = 256;
+
   /*!\brief A 3-bit enum for the type of Audio Element. */
   enum AudioElementType : uint8_t {
     kAudioElementChannelBased = 0,
