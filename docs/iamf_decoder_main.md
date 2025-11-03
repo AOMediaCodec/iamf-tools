@@ -19,6 +19,7 @@ Required flags:
 
 Optional flags:
 
+-   `--mix_id` Mix Presentation to render (default is automatic selection).
 -   `--output_layout` Output layout to render to (default is `2.0`).
 
 Example:

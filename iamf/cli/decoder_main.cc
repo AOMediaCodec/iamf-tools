@@ -15,6 +15,7 @@
 #include <fstream>
 #include <ios>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,15 +40,17 @@ ABSL_FLAG(std::string, output_filename, "", "Filename of the output wav file.");
 // Control properties of the input and output files.
 ABSL_FLAG(int, block_size, 1024,
           "Size in bytes of blocks to feed the decoder.");
-ABSL_FLAG(bool, override_output_sample_type, false,
-          "If true, override the output bit depth.");
-ABSL_FLAG(iamf_tools::api::OutputSampleType, output_sample_type,
-          iamf_tools::api::OutputSampleType::kInt16LittleEndian,
+ABSL_FLAG(std::optional<iamf_tools::api::OutputSampleType>, output_sample_type,
+          std::nullopt,
           "Type of output. Currently `sle16` and `sle32` are supported. "
-          "Ignored if `override_output_sample_type` is false.");
+          "If omitted, the decoder will select one based on the input stream.");
 ABSL_FLAG(iamf_tools::api::OutputLayout, output_layout,
           iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0,
           "Output layout.");
+ABSL_FLAG(
+    std::optional<uint32_t>, mix_id, std::nullopt,
+    "Mix ID to decode. If omitted, one is selected automatically, depending on "
+    "the requested layout and mix presentations in the file.");
 
 namespace iamf_tools {
 namespace api {
@@ -143,6 +146,24 @@ std::string AbslUnparseFlag(
   }
 }
 
+void LogSelectedMix(std::optional<uint32_t> requested_mix_presentation_id,
+                    const IamfDecoder& decoder) {
+  iamf_tools::api::SelectedMix selected_mix;
+  auto status = decoder.GetOutputMix(selected_mix);
+  if (!status.ok()) {
+    ABSL_LOG(FATAL) << "Failed to get output mix: " << status;
+  }
+  // Sometimes the user selected mix is not present, or available. Log a
+  // warning, but proceed with the mix that was selected.
+  if (requested_mix_presentation_id.has_value() &&
+      selected_mix.mix_presentation_id != *requested_mix_presentation_id) {
+    ABSL_LOG(WARNING) << "Failed to decode requested mix presentation ID. "
+                         "Falling back to a different mix presentation ID.";
+  }
+  ABSL_LOG(INFO) << "Decoding Mix Presentation ID: "
+                 << selected_mix.mix_presentation_id << ".";
+}
+
 }  // namespace api
 }  // namespace iamf_tools
 
@@ -168,8 +189,7 @@ int main(int argc, char** argv) {
   const auto output_filename = absl::GetFlag(FLAGS_output_filename);
   const int block_size = absl::GetFlag(FLAGS_block_size);
   const auto output_layout = absl::GetFlag(FLAGS_output_layout);
-  const bool override_output_sample_type =
-      absl::GetFlag(FLAGS_override_output_sample_type);
+  const auto requested_mix_presentation_id = absl::GetFlag(FLAGS_mix_id);
   const auto output_sample_type = absl::GetFlag(FLAGS_output_sample_type);
 
   if (input_filename.empty() || output_filename.empty()) {
@@ -181,11 +201,12 @@ int main(int argc, char** argv) {
   ABSL_LOG(INFO) << "Creating decoder.";
   std::unique_ptr<IamfDecoder> decoder;
   IamfDecoder::Settings settings = {
-      .requested_mix = {.output_layout = output_layout}};
-  // Force the output sample type when requested.
+      .requested_mix = {.mix_presentation_id = requested_mix_presentation_id,
+                        .output_layout = output_layout}};
 
-  if (override_output_sample_type) {
-    settings.requested_output_sample_type = output_sample_type;
+  // Force the output sample type when requested.
+  if (output_sample_type.has_value()) {
+    settings.requested_output_sample_type = *output_sample_type;
   }
   iamf_tools::api::IamfStatus status = IamfDecoder::Create(settings, decoder);
   if (!status.ok()) {
@@ -238,6 +259,7 @@ int main(int argc, char** argv) {
       if (!status.ok()) {
         ABSL_LOG(FATAL) << "Failed to setup after descriptors: " << status;
       }
+      LogSelectedMix(requested_mix_presentation_id, *decoder);
     }
     if (got_descriptors) {
       // Should only be called after descriptors are processed. Descriptors may
