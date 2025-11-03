@@ -1984,16 +1984,6 @@ TEST(Create, SucceedsForTrivialIaSequence) {
   EXPECT_FALSE(insufficient_data);
 }
 
-TEST(Create, FailsOnNullReadBitBuffer) {
-  bool insufficient_data;
-
-  auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
-                                            nullptr, insufficient_data);
-
-  EXPECT_THAT(obu_processor, IsNull());
-  EXPECT_FALSE(insufficient_data);
-}
-
 TEST(Create, FailsOnInsufficientData) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer =

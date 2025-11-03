@@ -105,9 +105,9 @@ class ObuProcessor {
    *        error.
    * \return std::unique_ptr<ObuProcessor> on success. `nullptr` on failure.
    */
-  static std::unique_ptr<ObuProcessor> Create(bool is_exhaustive_and_exact,
-                                              ReadBitBuffer* read_bit_buffer,
-                                              bool& output_insufficient_data);
+  static std::unique_ptr<ObuProcessor> absl_nullable Create(
+      bool is_exhaustive_and_exact, ReadBitBuffer* absl_nonnull read_bit_buffer,
+      bool& output_insufficient_data);
 
   /*!\brief Move constructor. */
   ObuProcessor(ObuProcessor&& obu_processor) = delete;

@@ -90,7 +90,8 @@ class ParametersManager {
    *
    * \param parameter_block Pointer to the new demixing parameter block to add.
    */
-  void AddDemixingParameterBlock(const ParameterBlockWithData* parameter_block);
+  void AddDemixingParameterBlock(
+      const ParameterBlockWithData* absl_nonnull parameter_block);
 
   /*!\brief Adds a new recon gain parameter block.
    *
@@ -98,7 +99,7 @@ class ParametersManager {
    * add.
    */
   void AddReconGainParameterBlock(
-      const ParameterBlockWithData* parameter_block);
+      const ParameterBlockWithData* absl_nonnull parameter_block);
 
   /*!\brief Updates the state of demixing parameters for an audio element.
    *
@@ -129,7 +130,7 @@ class ParametersManager {
  private:
   // State used when generating demixing parameters for an audio element.
   struct DemixingState {
-    const DemixingParamDefinition* param_definition;
+    const DemixingParamDefinition* absl_nonnull param_definition;
 
     // `w_idx` for the frame just processed, i.e. `wIdx(k - 1)` in the Spec.
     int previous_w_idx;
@@ -146,7 +147,7 @@ class ParametersManager {
   };
 
   struct ReconGainState {
-    const ReconGainParamDefinition* param_definition;
+    const ReconGainParamDefinition* absl_nonnull param_definition;
 
     // Timestamp for the next frame to be processed.
     InternalTimestamp next_timestamp;
