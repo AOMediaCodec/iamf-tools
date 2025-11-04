@@ -22,10 +22,11 @@
 #include "absl/container/flat_hash_map.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/wav_writer.h"
+#include "iamf/include/iamf_tools/iamf_decoder_factory.h"
+#include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -37,7 +38,8 @@
 namespace iamf_tools {
 namespace {
 
-using api::IamfDecoder;
+using api::IamfDecoderFactory;
+using api::IamfDecoderInterface;
 using api::OutputLayout;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
@@ -75,14 +77,15 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
 
 TEST(SetUpAfterDescriptors, SetsWavWriterAndSampleBuffer) {
   auto bitstream = GenerateBasicDescriptorObus();
-  std::unique_ptr<IamfDecoder> decoder;
-  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
-      IamfDecoder::Settings{
-          .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0},
-          .requested_output_sample_type =
-              api::OutputSampleType::kInt16LittleEndian},
-      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::CreateFromDescriptors(
+          IamfDecoderFactory::Settings{
+              .requested_mix = {.output_layout =
+                                    OutputLayout::kItu2051_SoundSystemA_0_2_0},
+              .requested_output_sample_type =
+                  api::OutputSampleType::kInt16LittleEndian},
+          bitstream.data(), bitstream.size());
+  ASSERT_NE(decoder, nullptr);
   api::SelectedMix selected_mix;
   ASSERT_TRUE(decoder->GetOutputMix(selected_mix).ok());
   ASSERT_THAT(selected_mix.output_layout,
@@ -104,12 +107,13 @@ TEST(SetUpAfterDescriptors, SetsWavWriterAndSampleBuffer) {
 
 TEST(SetUpAfterDescriptors, FailsWithInvalidWavWriter) {
   auto bitstream = GenerateBasicDescriptorObus();
-  std::unique_ptr<IamfDecoder> decoder;
-  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
-      IamfDecoder::Settings{
-          .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0}},
-      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::CreateFromDescriptors(
+          IamfDecoderFactory::Settings{
+              .requested_mix = {.output_layout =
+                                    OutputLayout::kItu2051_SoundSystemA_0_2_0}},
+          bitstream.data(), bitstream.size());
+  ASSERT_NE(decoder, nullptr);
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;
 
@@ -122,12 +126,13 @@ TEST(SetUpAfterDescriptors, FailsWithInvalidWavWriter) {
 
 TEST(DumpPendingTemporalUnitsToWav, SucceedsWithNoTemporalUnits) {
   auto bitstream = GenerateBasicDescriptorObus();
-  std::unique_ptr<IamfDecoder> decoder;
-  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
-      IamfDecoder::Settings{
-          .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0}},
-      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::CreateFromDescriptors(
+          IamfDecoderFactory::Settings{
+              .requested_mix = {.output_layout =
+                                    OutputLayout::kItu2051_SoundSystemA_0_2_0}},
+          bitstream.data(), bitstream.size());
+  ASSERT_NE(decoder, nullptr);
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;
   ASSERT_TRUE(SetupAfterDescriptors(*decoder,
@@ -145,12 +150,12 @@ TEST(DumpPendingTemporalUnitsToWav, SucceedsWithNoTemporalUnits) {
 TEST(DumpPendingTemporalUnitsToWav,
      SucceedsWithVariousTemporalUnitsInSequence) {
   auto bitstream = GenerateBasicDescriptorObus();
-  std::unique_ptr<IamfDecoder> decoder;
-  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
-      IamfDecoder::Settings{
-          .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0}},
-      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::CreateFromDescriptors(
+          IamfDecoderFactory::Settings{
+              .requested_mix = {.output_layout =
+                                    OutputLayout::kItu2051_SoundSystemA_0_2_0}},
+          bitstream.data(), bitstream.size());
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;
   ASSERT_TRUE(SetupAfterDescriptors(*decoder,
@@ -181,12 +186,12 @@ TEST(DumpPendingTemporalUnitsToWav,
 
 TEST(DumpPendingTemporalUnitsToWav, SucceedsWithVariousTemporalUnitsAtOnce) {
   auto bitstream = GenerateBasicDescriptorObus();
-  std::unique_ptr<IamfDecoder> decoder;
-  iamf_tools::api::IamfStatus status = IamfDecoder::CreateFromDescriptors(
-      IamfDecoder::Settings{
-          .requested_mix = {.output_layout =
-                                OutputLayout::kItu2051_SoundSystemA_0_2_0}},
-      bitstream.data(), bitstream.size(), decoder);
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::CreateFromDescriptors(
+          IamfDecoderFactory::Settings{
+              .requested_mix = {.output_layout =
+                                    OutputLayout::kItu2051_SoundSystemA_0_2_0}},
+          bitstream.data(), bitstream.size());
   std::unique_ptr<WavWriter> wav_writer;
   std::vector<uint8_t> reusable_sample_buffer;
   ASSERT_TRUE(SetupAfterDescriptors(*decoder,

@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/cli/wav_writer.h"
+#include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 namespace iamf_tools {
 
@@ -38,8 +38,8 @@ namespace iamf_tools {
  * \param reusable_sample_buffer Sample buffer to configure.
  */
 api::IamfStatus SetupAfterDescriptors(
-    const api::IamfDecoder& decoder, const std::string& output_filename,
-    std::unique_ptr<WavWriter>& wav_writer,
+    const api::IamfDecoderInterface& decoder,
+    const std::string& output_filename, std::unique_ptr<WavWriter>& wav_writer,
     std::vector<uint8_t>& reusable_sample_buffer);
 
 /*!\brief Dump all pending temporal units from the decoder to the wav writer.
@@ -52,8 +52,9 @@ api::IamfStatus SetupAfterDescriptors(
  *        processed.
  */
 api::IamfStatus DumpPendingTemporalUnitsToWav(
-    api::IamfDecoder& decoder, std::vector<uint8_t>& reusable_sample_buffer,
-    WavWriter& wav_writer, int32_t& output_num_temporal_units_processed);
+    api::IamfDecoderInterface& decoder,
+    std::vector<uint8_t>& reusable_sample_buffer, WavWriter& wav_writer,
+    int32_t& output_num_temporal_units_processed);
 
 }  // namespace iamf_tools
 

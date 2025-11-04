@@ -16,6 +16,7 @@
 #include <memory>
 #include <utility>
 
+#include "absl/log/absl_log.h"
 #include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
@@ -41,6 +42,7 @@ std::unique_ptr<IamfDecoderInterface> IamfDecoderFactory::Create(
   IamfStatus status =
       IamfDecoder::Create(ApiToInternalSettings(settings), output_decoder);
   if (!status.ok()) {
+    ABSL_LOG(ERROR) << "Failed to create decoder: " << status.error_message;
     return nullptr;
   }
   return std::move(output_decoder);
@@ -54,6 +56,7 @@ std::unique_ptr<IamfDecoderInterface> IamfDecoderFactory::CreateFromDescriptors(
       ApiToInternalSettings(settings), input_buffer, input_buffer_size,
       output_decoder);
   if (!status.ok()) {
+    ABSL_LOG(ERROR) << "Failed to create decoder: " << status.error_message;
     return nullptr;
   }
   return std::move(output_decoder);

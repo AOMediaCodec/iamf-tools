@@ -5,18 +5,27 @@ cc_library(
     name = "iamf_decoder_factory",
     srcs = ["iamf_decoder_factory.cc"],
     hdrs = ["iamf_decoder_factory.h"],
-    visibility = ["//iamf/include/iamf_tools/tests:__pkg__"],
+    visibility = [
+        "//iamf/api/internal_utils:__pkg__",
+        "//iamf/cli:__pkg__",
+        "//iamf/include/iamf_tools/tests:__pkg__",
+    ],
     deps = [
         ":iamf_decoder_interface",
         ":iamf_tools_api_types",
         "//iamf/api/decoder:iamf_decoder",
+        "@abseil-cpp//absl/log:absl_log",
     ],
 )
 
 cc_library(
     name = "iamf_decoder_interface",
     hdrs = ["iamf_decoder_interface.h"],
-    visibility = ["//iamf/api/decoder:__pkg__"],
+    visibility = [
+        "//iamf/api/decoder:__pkg__",
+        "//iamf/api/internal_utils:__pkg__",
+        "//iamf/cli:__pkg__",
+    ],
     deps = [
         ":iamf_tools_api_types",
     ],

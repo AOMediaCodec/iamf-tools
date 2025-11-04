@@ -23,14 +23,15 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
-#include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "iamf/api/decoder/iamf_decoder.h"
 #include "iamf/api/internal_utils/internal_utils.h"
 #include "iamf/cli/wav_writer.h"
 #include "iamf/common/utils/map_utils.h"
+#include "iamf/include/iamf_tools/iamf_decoder_factory.h"
+#include "iamf/include/iamf_tools/iamf_decoder_interface.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
 // Control input and output files.
@@ -147,7 +148,7 @@ std::string AbslUnparseFlag(
 }
 
 void LogSelectedMix(std::optional<uint32_t> requested_mix_presentation_id,
-                    const IamfDecoder& decoder) {
+                    const IamfDecoderInterface& decoder) {
   iamf_tools::api::SelectedMix selected_mix;
   auto status = decoder.GetOutputMix(selected_mix);
   if (!status.ok()) {
@@ -168,7 +169,8 @@ void LogSelectedMix(std::optional<uint32_t> requested_mix_presentation_id,
 }  // namespace iamf_tools
 
 using ::iamf_tools::WavWriter;
-using ::iamf_tools::api::IamfDecoder;
+using ::iamf_tools::api::IamfDecoderFactory;
+using ::iamf_tools::api::IamfDecoderInterface;
 
 // Read a chunk of data from the input stream into a backing buffer. Return a
 // span to the valid portion of the buffer.
@@ -198,9 +200,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  ABSL_LOG(INFO) << "Creating decoder.";
-  std::unique_ptr<IamfDecoder> decoder;
-  IamfDecoder::Settings settings = {
+  IamfDecoderFactory::Settings settings = {
       .requested_mix = {.mix_presentation_id = requested_mix_presentation_id,
                         .output_layout = output_layout}};
 
@@ -208,9 +208,11 @@ int main(int argc, char** argv) {
   if (output_sample_type.has_value()) {
     settings.requested_output_sample_type = *output_sample_type;
   }
-  iamf_tools::api::IamfStatus status = IamfDecoder::Create(settings, decoder);
-  if (!status.ok()) {
-    ABSL_LOG(FATAL) << "Failed to create decoder: " << status;
+  ABSL_LOG(INFO) << "Creating decoder.";
+  std::unique_ptr<IamfDecoderInterface> decoder =
+      IamfDecoderFactory::Create(settings);
+  if (decoder == nullptr) {
+    ABSL_LOG(FATAL) << "Failed to create decoder.";
   }
 
   // Source file to stream to the decoder.
