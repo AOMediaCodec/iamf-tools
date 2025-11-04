@@ -140,11 +140,12 @@ class ObuProcessor {
    *        error.
    * \return Pointer to an ObuProcessor on success. `nullptr` on failure.
    */
-  static std::unique_ptr<ObuProcessor> CreateForRendering(
+  static std::unique_ptr<ObuProcessor> absl_nullable CreateForRendering(
       const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
       const std::optional<uint32_t>& desired_mix_presentation_id,
       const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
-      ReadBitBuffer* read_bit_buffer, bool& output_insufficient_data);
+      ReadBitBuffer* absl_nonnull read_bit_buffer,
+      bool& output_insufficient_data);
 
   /*!\brief Gets the sample rate of the output audio.
    *
