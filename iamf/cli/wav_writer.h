@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "absl/functional/any_invocable.h"
 #include "absl/status/status.h"
@@ -121,6 +122,9 @@ class WavWriter : public SampleProcessorBase {
   FILE* file_;
   const std::string filename_to_remove_;
   WavHeaderWriter wav_header_writer_;
+  // Reusable buffer for writing PCM samples, sized to hold a full frame of data
+  // based on `SampleProcessorBase::num_samples_per_frame_`.
+  std::vector<uint8_t> reusable_pcm_buffer_;
 };
 }  // namespace iamf_tools
 
