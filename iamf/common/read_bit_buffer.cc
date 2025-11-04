@@ -253,16 +253,9 @@ ReadBitBuffer::ReadBitBuffer(size_t capacity_bytes, int64_t source_size_bits)
       source_size_bits_(source_size_bits),
       source_bit_offset_(0) {}
 
-bool ReadBitBuffer::IsDataAvailable() const {
-  const bool valid_data_in_buffer =
-      (buffer_bit_offset_ >= 0 && buffer_bit_offset_ < buffer_size_bits_);
-  const bool valid_data_in_source =
-      (source_bit_offset_ >= 0 && source_bit_offset_ < source_size_bits_);
-  return valid_data_in_buffer || valid_data_in_source;
-}
+bool ReadBitBuffer::IsDataAvailable() const { return NumBytesAvailable() > 0; }
 
-bool ReadBitBuffer::CanReadBytes(int64_t num_bytes_requested) const {
-  ABSL_CHECK_GE(num_bytes_requested, 0);
+int64_t ReadBitBuffer::NumBytesAvailable() const {
   ABSL_CHECK(source_bit_offset_ >= 0 &&
              source_bit_offset_ <= source_size_bits_);
   const int64_t num_bytes_in_source =
@@ -271,7 +264,7 @@ bool ReadBitBuffer::CanReadBytes(int64_t num_bytes_requested) const {
              buffer_bit_offset_ <= buffer_size_bits_);
   const int64_t num_bytes_in_buffer =
       (buffer_size_bits_ - buffer_bit_offset_) / 8;
-  return (num_bytes_in_source + num_bytes_in_buffer) >= num_bytes_requested;
+  return num_bytes_in_source + num_bytes_in_buffer;
 }
 
 int64_t ReadBitBuffer::Tell() {

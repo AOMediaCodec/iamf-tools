@@ -183,7 +183,7 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
     }
 
     // Now, we know that this is not a temporal unit OBU.
-    if (!read_bit_buffer.CanReadBytes(header_metadata->total_obu_size)) {
+    if (read_bit_buffer.NumBytesAvailable() < header_metadata->total_obu_size) {
       // This is a descriptor OBU for which we don't have enough data.
       return InsufficientDataReset(read_bit_buffer,
                                    global_position_before_all_obus,

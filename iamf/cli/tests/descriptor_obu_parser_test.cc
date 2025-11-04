@@ -138,7 +138,7 @@ TEST(ProcessDescriptorObus, IgnoresImplausibleCodecConfigObus) {
   EXPECT_THAT(parsed_obus->codec_config_obus,
               Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
   // The buffer advanced past the tiny Codec Config OBU.
-  EXPECT_FALSE(read_bit_buffer->CanReadBytes(1));
+  EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
 }
 
 TEST(ProcessDescriptorObus, CollectsCodecConfigsAtEndOfBitstream) {

@@ -189,13 +189,11 @@ class ReadBitBuffer {
    */
   bool IsDataAvailable() const;
 
-  /*!\brief Checks whether num_bytes_requested can be read.
+  /*!\brief Returns the number of bytes available in the buffer.
    *
-   * \param num_bytes_requested Desired number of bytes to read.
-   * \return `true` if the buffer has enough data to read the requested bytes.
-   *         `false` otherwise.
+   * \return Number of bytes available in the buffer.
    */
-  bool CanReadBytes(int64_t num_bytes_requested) const;
+  int64_t NumBytesAvailable() const;
 
   /*!\brief Returns the next reading position of the source in bits.
    *

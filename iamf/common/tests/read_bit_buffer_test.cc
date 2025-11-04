@@ -693,15 +693,14 @@ TYPED_TEST(ReadBitBufferTest, IsDataAvailable) {
   EXPECT_FALSE(this->rb_->IsDataAvailable());
 }
 
-TYPED_TEST(ReadBitBufferTest, CanReadBytes) {
+TYPED_TEST(ReadBitBufferTest, NumBytesAvailable) {
   this->source_data_ = {0xff, 0xff};
   this->rb_capacity_ = 1024;
   this->CreateReadBitBuffer();
-  EXPECT_TRUE(this->rb_->CanReadBytes(2));
-  EXPECT_FALSE(this->rb_->CanReadBytes(3));
+  EXPECT_EQ(this->rb_->NumBytesAvailable(), 2);
   uint64_t output = 0;
   EXPECT_THAT(this->rb_->ReadUnsignedLiteral(16, output), IsOk());
-  EXPECT_FALSE(this->rb_->CanReadBytes(1));
+  EXPECT_EQ(this->rb_->NumBytesAvailable(), 0);
 }
 
 TYPED_TEST(ReadBitBufferTest, ReadUnsignedLiteralMax32) {
@@ -856,7 +855,7 @@ TYPED_TEST(ReadBitBufferTest, SkipZeroBytesSucceeds) {
   this->CreateReadBitBuffer();
 
   EXPECT_THAT(this->rb_->IgnoreBytes(0), IsOk());
-  EXPECT_TRUE(this->rb_->CanReadBytes(3));
+  EXPECT_EQ(this->rb_->NumBytesAvailable(), 3);
 }
 
 TYPED_TEST(ReadBitBufferTest, IgnoreBytesExactlyToEndSucceeds) {
@@ -926,26 +925,20 @@ TEST(StreamBasedReadBitBufferTest, TellFlushAndSeek) {
   EXPECT_FALSE(rb->Seek(0).ok());
 }
 
-TEST(StreamBasedReadBitBufferTest, PushBytesCanReadBytesSucceeds) {
+TEST(StreamBasedReadBitBufferTest, PushBytesNumBytesAvailableSucceeds) {
   auto rb = StreamBasedReadBitBuffer::Create(1024);
   EXPECT_NE(rb, nullptr);
-  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_EQ(rb->NumBytesAvailable(), 0);
   EXPECT_THAT(rb->PushBytes(absl::MakeConstSpan(kThreeBytes)), IsOk());
-  EXPECT_TRUE(rb->CanReadBytes(3));
+  EXPECT_EQ(rb->NumBytesAvailable(), 3);
   std::vector<uint8_t> output_buffer(kThreeBytes.size());
   EXPECT_THAT(rb->ReadUint8Span(absl::MakeSpan(output_buffer)), IsOk());
-  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_EQ(rb->NumBytesAvailable(), 0);
   EXPECT_THAT(rb->Flush(kThreeBytes.size()), IsOk());
-  EXPECT_FALSE(rb->CanReadBytes(1));
+  EXPECT_EQ(rb->NumBytesAvailable(), 0);
   EXPECT_THAT(rb->PushBytes(kThreeBytes), IsOk());
-  EXPECT_TRUE(rb->CanReadBytes(3));
+  EXPECT_EQ(rb->NumBytesAvailable(), 3);
 }
 
-TEST(StreamBasedReadBitBufferTest, PushBytesFailsOnNegativeNumBytes) {
-  auto rb = StreamBasedReadBitBuffer::Create(1024);
-  EXPECT_NE(rb, nullptr);
-
-  EXPECT_DEATH(rb->CanReadBytes(-1), "");
-}
 }  // namespace
 }  // namespace iamf_tools

@@ -344,7 +344,7 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
     }
   }
 
-  if (!read_bit_buffer.CanReadBytes(header_metadata->total_obu_size)) {
+  if (read_bit_buffer.NumBytesAvailable() < header_metadata->total_obu_size) {
     // This is a temporal unit OBU for which we don't have enough data. This is
     // not an error, but we're done processing for now.
     continue_processing = false;
