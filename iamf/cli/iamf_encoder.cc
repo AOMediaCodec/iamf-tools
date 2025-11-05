@@ -361,11 +361,14 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     return demixing_module.status();
   }
 
-  auto audio_frame_generator = std::make_unique<AudioFrameGenerator>(
+  auto audio_frame_generator = AudioFrameGenerator::Create(
       user_metadata.audio_frame_metadata(),
       user_metadata.codec_config_metadata(), *audio_elements, *demixing_module,
       **parameters_manager, *global_timing_module);
-  RETURN_IF_NOT_OK(audio_frame_generator->Initialize());
+  if (!audio_frame_generator.ok()) {
+    return audio_frame_generator.status();
+  }
+  ABSL_CHECK_NE(*audio_frame_generator, nullptr);
 
   // Initialize the audio frame decoder. It is needed to determine the recon
   // gain parameters and measure the loudness of the mixes.
@@ -407,7 +410,7 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
       std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
       std::move(parameter_block_generator), std::move(*parameters_manager),
-      *demixing_module, std::move(audio_frame_generator),
+      *demixing_module, *std::move(audio_frame_generator),
       std::move(audio_frame_decoder), std::move(global_timing_module),
       std::move(*mix_presentation_finalizer), std::move(obu_sequencers),
       std::move(streaming_obu_sequencer)));

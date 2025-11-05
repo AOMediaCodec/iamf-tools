@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_check.h"
@@ -625,58 +626,35 @@ absl::Status ValidateAndApplyUserTrimming(
 
 }  // namespace
 
-AudioFrameGenerator::AudioFrameGenerator(
+absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
+AudioFrameGenerator::Create(
     const ::google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
+        iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadatas,
     const ::google::protobuf::RepeatedPtrField<
-        iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadata,
+        iamf_tools_cli_proto::CodecConfigObuMetadata>& codec_config_metadatas,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements,
     const DemixingModule& demixing_module,
     ParametersManager& parameters_manager,
-    GlobalTimingModule& global_timing_module)
-    : audio_elements_(audio_elements),
-      demixing_module_(demixing_module),
-      parameters_manager_(parameters_manager),
-      global_timing_module_(global_timing_module),
-      // Set to a state NOT taking samples at first; may be changed to
-      // `kTakingSamples` once `Initialize()` is called.
-      state_(kFlushingRemaining) {
-  for (const auto& audio_frame_obu_metadata : audio_frame_metadata) {
-    audio_frame_metadata_[audio_frame_obu_metadata.audio_element_id()] =
-        audio_frame_obu_metadata;
+    GlobalTimingModule& global_timing_module) {
+  if (audio_frame_metadatas.empty()) {
+    // Ok, nothing will be generated. This state helps clients handle trivial IA
+    // Sequences.
+    return absl::WrapUnique(
+        new AudioFrameGenerator({}, {}, demixing_module, parameters_manager,
+                                global_timing_module, {}, {}, {}));
   }
 
-  for (const auto& codec_config_obu_metadata : codec_config_metadata) {
-    codec_config_metadata_[codec_config_obu_metadata.codec_config_id()] =
+  // Mapping from Codec Config ID to additional codec config metadata used
+  // to configure encoders.
+  absl::flat_hash_map<DecodedUleb128, iamf_tools_cli_proto::CodecConfig>
+      codec_config_metadata;
+  for (const auto& codec_config_obu_metadata : codec_config_metadatas) {
+    codec_config_metadata[codec_config_obu_metadata.codec_config_id()] =
         codec_config_obu_metadata.codec_config();
   }
-}
 
-absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
-    const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
-    const CodecConfigObu& codec_config) {
-  // This function is useful when querying what the codec delay should be. We
-  // don't want it to fail if the user-provided codec delay is wrong.
-  constexpr bool kDontValidateCodecDelay = false;
-
-  std::unique_ptr<EncoderBase> encoder;
-  RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata, codec_config,
-                                     /*num_channels=*/1, encoder,
-                                     kDontValidateCodecDelay));
-  if (encoder == nullptr) {
-    return absl::InvalidArgumentError("Failed to initialize encoder");
-  }
-  return encoder->GetNumberOfSamplesToDelayAtStart();
-}
-
-absl::Status AudioFrameGenerator::Initialize() {
-  absl::MutexLock lock(&mutex_);
-  if (audio_frame_metadata_.empty()) {
-    return absl::OkStatus();
-  }
-  const auto& first_audio_frame_metadata =
-      audio_frame_metadata_.begin()->second;
+  const auto& first_audio_frame_metadata = *audio_frame_metadatas.begin();
   const int64_t common_samples_to_trim_at_start = static_cast<int64_t>(
       first_audio_frame_metadata.samples_to_trim_at_start());
   const int64_t common_samples_to_trim_at_end =
@@ -687,15 +665,23 @@ absl::Status AudioFrameGenerator::Initialize() {
       first_audio_frame_metadata
           .samples_to_trim_at_start_includes_codec_delay();
 
-  for (const auto& [audio_element_id, audio_frame_metadata] :
-       audio_frame_metadata_) {
+  absl::flat_hash_map<DecodedUleb128, absl::flat_hash_set<ChannelLabel::Label>>
+      audio_element_id_to_labels;
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
+  absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state;
+  for (const auto& audio_frame_metadata : audio_frame_metadatas) {
+    const DecodedUleb128 audio_element_id =
+        audio_frame_metadata.audio_element_id();
+
     // Precompute the `ChannelLabel::Label` for each channel label string.
     RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
-        audio_frame_metadata, audio_element_id_to_labels_[audio_element_id]));
+        audio_frame_metadata, audio_element_id_to_labels[audio_element_id]));
 
     // Find the Codec Config OBU for this mono or coupled stereo substream.
-    const auto audio_elements_iter = audio_elements_.find(audio_element_id);
-    if (audio_elements_iter == audio_elements_.end()) {
+    const auto audio_elements_iter = audio_elements.find(audio_element_id);
+    if (audio_elements_iter == audio_elements.end()) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Audio Element with ID= ", audio_element_id, " not found"));
     }
@@ -710,25 +696,25 @@ absl::Status AudioFrameGenerator::Initialize() {
           "The spec disallows trimming multiple frames from the end.");
     }
     RETURN_IF_NOT_OK(GetEncodingDataAndInitializeEncoders(
-        codec_config_metadata_, audio_element_with_data,
-        substream_id_to_encoder_));
+        codec_config_metadata, audio_element_with_data,
+        substream_id_to_encoder));
 
     // Intermediate data for all substreams belonging to an Audio Element.
     RETURN_IF_NOT_OK(InitializeSubstreamData(
-        audio_element_with_data.substream_id_to_labels,
-        substream_id_to_encoder_, num_samples_per_frame,
+        audio_element_with_data.substream_id_to_labels, substream_id_to_encoder,
+        num_samples_per_frame,
         audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay(),
         audio_frame_metadata.samples_to_trim_at_start(),
-        substream_id_to_substream_data_));
+        substream_id_to_substream_data));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.
     absl::StatusOr<const std::list<Demixer>*> down_mixers =
-        demixing_module_.GetDownMixers(audio_element_id);
+        demixing_module.GetDownMixers(audio_element_id);
     if (!down_mixers.ok()) {
       return down_mixers.status();
     }
-    if (!parameters_manager_.DemixingParamDefinitionAvailable(
+    if (!parameters_manager.DemixingParamDefinitionAvailable(
             audio_element_id) &&
         !(*down_mixers)->empty()) {
       return absl::InvalidArgumentError(
@@ -749,9 +735,9 @@ absl::Status AudioFrameGenerator::Initialize() {
       const int64_t additional_samples_to_trim_at_start =
           common_samples_to_trim_at_start_includes_codec_delay
               ? 0
-              : substream_id_to_encoder_[substream_id]
+              : substream_id_to_encoder[substream_id]
                     ->GetNumberOfSamplesToDelayAtStart();
-      substream_id_to_trimming_state_[substream_id] = {
+      substream_id_to_trimming_state[substream_id] = {
           .increment_samples_to_trim_at_end_by_padding =
               !audio_frame_metadata.samples_to_trim_at_end_includes_padding(),
           .user_samples_left_to_trim_at_end = common_samples_to_trim_at_end,
@@ -762,13 +748,29 @@ absl::Status AudioFrameGenerator::Initialize() {
     }
   }
 
-  // If `substream_id_to_substream_data_` is not empty, meaning this generator
-  // is expecting audio substreams and is ready to take audio samples.
-  if (!substream_id_to_substream_data_.empty()) {
-    state_ = kTakingSamples;
-  }
+  return absl::WrapUnique(new AudioFrameGenerator(
+      audio_element_id_to_labels, audio_elements, demixing_module,
+      parameters_manager, global_timing_module,
+      std::move(substream_id_to_encoder),
+      std::move(substream_id_to_substream_data),
+      std::move(substream_id_to_trimming_state)));
+}
 
-  return absl::OkStatus();
+absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
+    const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
+    const CodecConfigObu& codec_config) {
+  // This function is useful when querying what the codec delay should be. We
+  // don't want it to fail if the user-provided codec delay is wrong.
+  constexpr bool kDontValidateCodecDelay = false;
+
+  std::unique_ptr<EncoderBase> encoder;
+  RETURN_IF_NOT_OK(InitializeEncoder(codec_config_metadata, codec_config,
+                                     /*num_channels=*/1, encoder,
+                                     kDontValidateCodecDelay));
+  if (encoder == nullptr) {
+    return absl::InvalidArgumentError("Failed to initialize encoder");
+  }
+  return encoder->GetNumberOfSamplesToDelayAtStart();
 }
 
 bool AudioFrameGenerator::TakingSamples() const {

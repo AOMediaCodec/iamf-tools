@@ -16,7 +16,9 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <utility>
 
+#include "absl/base/nullability.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -55,8 +57,7 @@ namespace iamf_tools {
  *
  * The use pattern of this class is:
  *
- *   - Initialize (`Initialize()`).
- *     - (This puts the generator in the `kTakingSamples` state.)
+ *   - Call `Create()`.
  *
  *   Thread 1:
  *   - Repeat until no new sample to add (by checking `TakingSamples()`):
@@ -84,7 +85,7 @@ class AudioFrameGenerator {
     int64_t user_samples_left_to_trim_at_start;
   };
 
-  /*!\brief Constructor.
+  /*!\brief Factory function to create an `AudioFrameGenerator`.
    *
    * \param audio_frame_metadata Input audio frame metadata.
    * \param codec_config_metadata Input codec config metadata.
@@ -93,7 +94,8 @@ class AudioFrameGenerator {
    * \param parameters_manager Manager of parameters.
    * \param global_timing_module Global Timing Module.
    */
-  AudioFrameGenerator(
+  static absl::StatusOr<std::unique_ptr<AudioFrameGenerator> absl_nonnull>
+  Create(
       const ::google::protobuf::RepeatedPtrField<
           iamf_tools_cli_proto::AudioFrameObuMetadata>& audio_frame_metadata,
       const ::google::protobuf::RepeatedPtrField<
@@ -117,12 +119,6 @@ class AudioFrameGenerator {
   static absl::StatusOr<uint32_t> GetNumberOfSamplesToDelayAtStart(
       const iamf_tools_cli_proto::CodecConfig& codec_config_metadata,
       const CodecConfigObu& codec_config);
-
-  /*!\brief Initializes encoders and relevant data structures.
-   *
-   * \return `absl::OkStatus()` on success. A specific status on failure.
-   */
-  absl::Status Initialize();
 
   /*!\brief Returns whether the generator is still taking audio samples.
    *
@@ -183,23 +179,56 @@ class AudioFrameGenerator {
     kFlushingRemaining,
   };
 
-  // Mapping from Audio Element ID to audio frame metadata.
-  absl::flat_hash_map<DecodedUleb128,
-                      iamf_tools_cli_proto::AudioFrameObuMetadata>
-      audio_frame_metadata_;
+  /*!\brief Private constructor.
+   *
+   * \param audio_element_id_to_labels Mapping from Audio Element ID to labels.
+   * \param audio_elements Mapping from Audio Element ID to audio element data.
+   * \param demixing_module Demixng module.
+   * \param parameters_manager Manager of parameters.
+   * \param global_timing_module Global Timing Module.
+   * \param substream_id_to_encoder Mapping from audio substream IDs to
+   *        encoders.
+   * \param substream_id_to_substream_data Mapping from substream IDs to
+   *        substream data.
+   * \param substream_id_to_trimming_state Mapping from substream IDs to
+   *        trimming states.
+   */
+  AudioFrameGenerator(
+      absl::flat_hash_map<DecodedUleb128,
+                          absl::flat_hash_set<ChannelLabel::Label>>
+          audio_element_id_to_labels,
+      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+          audio_elements,
+      const DemixingModule& demixing_module,
+      ParametersManager& parameters_manager,
+      GlobalTimingModule& global_timing_module,
+      absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+          substream_id_to_encoder,
+      absl::flat_hash_map<uint32_t, SubstreamData>
+          substream_id_to_substream_data,
+      absl::flat_hash_map<uint32_t, TrimmingState>
+          substream_id_to_trimming_state)
+      : audio_element_id_to_labels_(std::move(audio_element_id_to_labels)),
+        audio_elements_(audio_elements),
+        substream_id_to_encoder_(std::move(substream_id_to_encoder)),
+        substream_id_to_substream_data_(
+            std::move(substream_id_to_substream_data)),
+        substream_id_to_trimming_state_(
+            std::move(substream_id_to_trimming_state)),
+        demixing_module_(demixing_module),
+        parameters_manager_(parameters_manager),
+        global_timing_module_(global_timing_module),
+        state_(substream_id_to_encoder_.empty() ? kFlushingRemaining
+                                                : kTakingSamples) {}
 
   // Mapping from Audio Element ID to labels.
-  absl::flat_hash_map<DecodedUleb128, absl::flat_hash_set<ChannelLabel::Label>>
+  const absl::flat_hash_map<DecodedUleb128,
+                            absl::flat_hash_set<ChannelLabel::Label>>
       audio_element_id_to_labels_;
 
   // Mapping from Audio Element ID to audio element data.
   const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
       audio_elements_;
-
-  // Mapping from Codec Config ID to additional codec config metadata used
-  // to configure encoders.
-  absl::flat_hash_map<DecodedUleb128, iamf_tools_cli_proto::CodecConfig>
-      codec_config_metadata_;
 
   // Mapping from audio substream IDs to encoders.
   absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>

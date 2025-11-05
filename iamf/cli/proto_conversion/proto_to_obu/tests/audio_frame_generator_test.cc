@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <optional>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -56,6 +55,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::ElementsAre;
+using ::testing::Not;
 using ::testing::NotNull;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
@@ -293,7 +293,7 @@ void InitializeAudioFrameGenerator(
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::unique_ptr<GlobalTimingModule>& global_timing_module,
     std::unique_ptr<ParametersManager>& parameters_manager,
-    std::optional<AudioFrameGenerator>& audio_frame_generator,
+    std::unique_ptr<AudioFrameGenerator>& audio_frame_generator,
     bool expected_initialize_is_ok = true) {
   // Initialize pre-requisite OBUs and the global timing module. This is all
   // derived from the `user_metadata`.
@@ -319,17 +319,17 @@ void InitializeAudioFrameGenerator(
   parameters_manager = *std::move(temp_parameters_manager);
 
   // Generate the audio frames.
-  audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
-                                user_metadata.codec_config_metadata(),
-                                audio_elements, *demixing_module,
-                                *parameters_manager, *global_timing_module);
-  ASSERT_TRUE(audio_frame_generator.has_value());
+  auto temp_audio_frame_generator = AudioFrameGenerator::Create(
+      user_metadata.audio_frame_metadata(),
+      user_metadata.codec_config_metadata(), audio_elements, *demixing_module,
+      *parameters_manager, *global_timing_module);
 
   // Initialize.
   if (expected_initialize_is_ok) {
-    EXPECT_THAT(audio_frame_generator->Initialize(), IsOk());
+    ASSERT_THAT(temp_audio_frame_generator, IsOk());
+    audio_frame_generator = std::move(*temp_audio_frame_generator);
   } else {
-    EXPECT_FALSE(audio_frame_generator->Initialize().ok());
+    EXPECT_THAT(temp_audio_frame_generator, Not(IsOk()));
   }
 }
 
@@ -341,7 +341,7 @@ void ExpectAudioFrameGeneratorInitializeIsNotOk(
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
 
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
@@ -410,7 +410,7 @@ void GenerateAudioFrameWithEightSamplesExpectOk(
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   // For delayed initialization.
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   // Initialize, add samples, generate frames, and finalize.
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
@@ -537,7 +537,7 @@ TEST(AudioFrameGenerator, AddSamplesAfterFinalizeHasNoEffect) {
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   // For delayed initialization.
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -582,7 +582,7 @@ TEST(AudioFrameGenerator, AddZeroSamplesBeforeFinalizeFails) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -862,7 +862,7 @@ TEST(AudioFrameGenerator, InvalidIfTooFewSamplesToTrimAtEnd) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -909,7 +909,7 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtEndIsRequestedToBeTrimmed) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -937,7 +937,7 @@ TEST(AudioFrameGenerator,
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
 
   constexpr bool kExpectInitializeIsOk = false;
   InitializeAudioFrameGenerator(user_metadata, param_definitions,
@@ -967,7 +967,7 @@ TEST(AudioFrameGenerator,
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -1121,7 +1121,7 @@ TEST(AudioFrameGenerator, NoAudioFrames) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -1144,7 +1144,7 @@ TEST(AudioFrameGenerator, MultipleCallsToAddSamplesSucceed) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
@@ -1175,7 +1175,7 @@ TEST(AudioFrameGenerator, ManyFramesThreaded) {
       param_definitions = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);

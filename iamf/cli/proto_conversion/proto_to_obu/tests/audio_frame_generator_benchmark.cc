@@ -12,7 +12,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -80,7 +79,7 @@ void InitializeAudioFrameGenerator(
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements,
     std::unique_ptr<GlobalTimingModule>& global_timing_module,
     std::unique_ptr<ParametersManager>& parameters_manager,
-    std::optional<AudioFrameGenerator>& audio_frame_generator) {
+    std::unique_ptr<AudioFrameGenerator>& audio_frame_generator) {
   // Initialize pre-requisite OBUs and the global timing module. This is all
   // derived from the `user_metadata`.
   CodecConfigGenerator codec_config_generator(
@@ -104,14 +103,12 @@ void InitializeAudioFrameGenerator(
   parameters_manager = *std::move(temp_parameters_manager);
 
   // Create an audio frame generator.
-  audio_frame_generator.emplace(user_metadata.audio_frame_metadata(),
-                                user_metadata.codec_config_metadata(),
-                                audio_elements, *demixing_module,
-                                *parameters_manager, *global_timing_module);
-  ABSL_CHECK(audio_frame_generator.has_value());
-
-  // Initialize.
-  ABSL_CHECK_OK(audio_frame_generator->Initialize());
+  auto temp_audio_frame_generator = AudioFrameGenerator::Create(
+      user_metadata.audio_frame_metadata(),
+      user_metadata.codec_config_metadata(), audio_elements, *demixing_module,
+      *parameters_manager, *global_timing_module);
+  ABSL_CHECK_OK(temp_audio_frame_generator);
+  audio_frame_generator = std::move(*temp_audio_frame_generator);
 }
 
 static void BM_AddSamples(benchmark::State& state) {
@@ -133,7 +130,7 @@ static void BM_AddSamples(benchmark::State& state) {
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements = {};
   std::unique_ptr<GlobalTimingModule> global_timing_module;
   std::unique_ptr<ParametersManager> parameters_manager;
-  std::optional<AudioFrameGenerator> audio_frame_generator;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
   InitializeAudioFrameGenerator(
       user_metadata, param_definitions, codec_config_obus, audio_elements,
       global_timing_module, parameters_manager, audio_frame_generator);
