@@ -255,62 +255,7 @@ void GetSampleRateAndFrameSize(
   output_frame_size = first_codec_config_obu.GetNumSamplesPerFrame();
 }
 
-}  // namespace
-
-absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
-                                              bool& output_insufficient_data) {
-  // Process the descriptor OBUs.
-  ABSL_LOG(INFO) << "Starting Descriptor OBU processing";
-  absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus> parsed_obus =
-      DescriptorObuParser::ProcessDescriptorObus(
-          is_exhaustive_and_exact, *read_bit_buffer_, output_insufficient_data);
-  if (!parsed_obus.ok()) {
-    return parsed_obus.status();
-  }
-  RETURN_IF_NOT_OK(
-      ValidateNotNull(parsed_obus->codec_config_obus, "codec_config_obus"));
-  RETURN_IF_NOT_OK(
-      ValidateNotNull(parsed_obus->audio_elements, "audio_elements"));
-  ia_sequence_header_ = std::move(parsed_obus->ia_sequence_header);
-  codec_config_obus_ = std::move(parsed_obus->codec_config_obus);
-  audio_elements_ = std::move(parsed_obus->audio_elements);
-  mix_presentations_ = std::move(parsed_obus->mix_presentation_obus);
-
-  ABSL_LOG(INFO) << "Processed Descriptor OBUs";
-  RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
-      *audio_elements_, mix_presentations_, param_definition_variants_));
-  GetSampleRateAndFrameSize(*codec_config_obus_, output_sample_rate_,
-                            output_frame_size_);
-  // Mapping from substream IDs to pointers to audio element with data.
-  for (const auto& [audio_element_id, audio_element_with_data] :
-       *audio_elements_) {
-    for (const auto& [substream_id, unused_labels] :
-         audio_element_with_data.substream_id_to_labels) {
-      auto [unused_iter, inserted] = substream_id_to_audio_element_.insert(
-          {substream_id, &audio_element_with_data});
-      if (!inserted) {
-        return absl::InvalidArgumentError(absl::StrCat(
-            "Duplicated substream ID: ", substream_id,
-            " associated with audio element ID: ", audio_element_id));
-      }
-    }
-  }
-  global_timing_module_ =
-      GlobalTimingModule::Create(*audio_elements_, param_definition_variants_);
-  if (global_timing_module_ == nullptr) {
-    return absl::InvalidArgumentError(
-        "Failed to initialize the global timing module");
-  }
-  auto temp_parameters_manager = ParametersManager::Create(*audio_elements_);
-  if (!temp_parameters_manager.ok()) {
-    return temp_parameters_manager.status();
-  }
-  ABSL_CHECK_NE(*temp_parameters_manager, nullptr);
-  parameters_manager_ = *std::move(temp_parameters_manager);
-  return absl::OkStatus();
-}
-
-absl::Status ObuProcessor::ProcessTemporalUnitObu(
+absl::Status ProcessTemporalUnitObu(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements_with_data,
     const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
@@ -442,6 +387,61 @@ absl::Status ObuProcessor::ProcessTemporalUnitObu(
     RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
   }
 
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
+                                              bool& output_insufficient_data) {
+  // Process the descriptor OBUs.
+  ABSL_LOG(INFO) << "Starting Descriptor OBU processing";
+  absl::StatusOr<DescriptorObuParser::ParsedDescriptorObus> parsed_obus =
+      DescriptorObuParser::ProcessDescriptorObus(
+          is_exhaustive_and_exact, *read_bit_buffer_, output_insufficient_data);
+  if (!parsed_obus.ok()) {
+    return parsed_obus.status();
+  }
+  RETURN_IF_NOT_OK(
+      ValidateNotNull(parsed_obus->codec_config_obus, "codec_config_obus"));
+  RETURN_IF_NOT_OK(
+      ValidateNotNull(parsed_obus->audio_elements, "audio_elements"));
+  ia_sequence_header_ = std::move(parsed_obus->ia_sequence_header);
+  codec_config_obus_ = std::move(parsed_obus->codec_config_obus);
+  audio_elements_ = std::move(parsed_obus->audio_elements);
+  mix_presentations_ = std::move(parsed_obus->mix_presentation_obus);
+
+  ABSL_LOG(INFO) << "Processed Descriptor OBUs";
+  RETURN_IF_NOT_OK(CollectAndValidateParamDefinitions(
+      *audio_elements_, mix_presentations_, param_definition_variants_));
+  GetSampleRateAndFrameSize(*codec_config_obus_, output_sample_rate_,
+                            output_frame_size_);
+  // Mapping from substream IDs to pointers to audio element with data.
+  for (const auto& [audio_element_id, audio_element_with_data] :
+       *audio_elements_) {
+    for (const auto& [substream_id, unused_labels] :
+         audio_element_with_data.substream_id_to_labels) {
+      auto [unused_iter, inserted] = substream_id_to_audio_element_.insert(
+          {substream_id, &audio_element_with_data});
+      if (!inserted) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Duplicated substream ID: ", substream_id,
+            " associated with audio element ID: ", audio_element_id));
+      }
+    }
+  }
+  global_timing_module_ =
+      GlobalTimingModule::Create(*audio_elements_, param_definition_variants_);
+  if (global_timing_module_ == nullptr) {
+    return absl::InvalidArgumentError(
+        "Failed to initialize the global timing module");
+  }
+  auto temp_parameters_manager = ParametersManager::Create(*audio_elements_);
+  if (!temp_parameters_manager.ok()) {
+    return temp_parameters_manager.status();
+  }
+  ABSL_CHECK_NE(*temp_parameters_manager, nullptr);
+  parameters_manager_ = *std::move(temp_parameters_manager);
   return absl::OkStatus();
 }
 

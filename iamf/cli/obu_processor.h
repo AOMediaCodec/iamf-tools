@@ -44,52 +44,6 @@ namespace iamf_tools {
 
 class ObuProcessor {
  public:
-  // TODO(b/330732117): Remove this function and use the non-static version.
-  /*!\brief Processes one Temporal Unit OBU of an IA Sequence.
-   *
-   * This function should only be called after successfully calling
-   * ProcessDescriptorObus. Output audio frames and parameter blocks are
-   * ordered by timestamps first and then by IDs.
-   *
-   * \param audio_elements_with_data Map containing the audio elements that
-   *        were present in the descriptor OBUs, keyed by audio element ID.
-   * \param codec_config_obus Map containing the codec configs that were
-   *        present in the descriptor OBUs, keyed by codec config ID.
-   * \param substream_id_to_audio_element Mapping from substream IDs to the
-   *        audio elements that they belong to.
-   * \param param_definition_variants Map containing the param definitions that
-   *        were present in the descriptor OBUs, keyed by parameter ID.
-   * \param parameters_manager Manager of parameters.
-   * \param read_bit_buffer Buffer reader that reads the IAMF bitstream.
-   * \param global_timing_module Module to keep track of the timing of audio
-   *        frames and parameters.
-   * \param output_audio_frame_with_data Output Audio Frame with the requisite
-   *        data.
-   * \param output_parameter_block_with_data Output parameter Block with the
-   *        requisite data.
-   * \param output_temporal_delimiter Output temporal deilimiter OBU.
-   * \param continue_processing Whether the processing should be continued.
-   * \return `absl::OkStatus()` if the process is successful. A specific status
-   *         on failure.
-   */
-  [[deprecated(
-      "Remove when all tests are ported. Use the non-static version instead.")]]
-  static absl::Status ProcessTemporalUnitObu(
-      const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-          audio_elements_with_data,
-      const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-          codec_config_obus,
-      const absl::flat_hash_map<DecodedUleb128, const AudioElementWithData*>&
-          substream_id_to_audio_element,
-      const absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
-          param_definition_variants,
-      ParametersManager& parameters_manager, ReadBitBuffer& read_bit_buffer,
-      GlobalTimingModule& global_timing_module,
-      std::optional<AudioFrameWithData>& output_audio_frame_with_data,
-      std::optional<ParameterBlockWithData>& output_parameter_block_with_data,
-      std::optional<TemporalDelimiterObu>& output_temporal_delimiter,
-      bool& continue_processing);
-
   /*!\brief Creates the OBU processor.
    *
    * Creation succeeds only if the descriptor OBUs are successfully processed.
