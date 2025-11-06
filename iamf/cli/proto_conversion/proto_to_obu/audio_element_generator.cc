@@ -18,9 +18,9 @@
 
 #include "absl/base/no_destructor.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -42,6 +42,7 @@
 namespace iamf_tools {
 
 using absl::InvalidArgumentError;
+using absl::MakeSpan;
 using absl::StrCat;
 
 using enum ChannelLabel::Label;
@@ -340,10 +341,19 @@ absl::Status CopyLoudspeakerLayoutAndExpandedLoudspeakerLayout(
   return absl::OkStatus();
 }
 
-absl::Status FillScalableChannelLayoutConfig(
+absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
-    const CodecConfigObu& codec_config_obu,
-    AudioElementWithData& audio_element) {
+    const CodecConfigObu& codec_config_obu) {
+  AudioElementObu obu(
+      GetHeaderFromMetadata(audio_element_metadata.obu_header()),
+      audio_element_metadata.audio_element_id(),
+      AudioElementObu::kAudioElementChannelBased,
+      audio_element_metadata.reserved(),
+      audio_element_metadata.codec_config_id());
+  GenerateAudioSubstreams(audio_element_metadata, obu);
+  RETURN_IF_NOT_OK(GenerateParameterDefinitions(audio_element_metadata,
+                                                codec_config_obu, obu));
+
   if (!audio_element_metadata.has_scalable_channel_layout_config()) {
     return InvalidArgumentError(StrCat(
         "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
@@ -358,11 +368,10 @@ absl::Status FillScalableChannelLayoutConfig(
         << "Ignoring deprecated `num_layers` field. Please remove it.";
   }
 
-  RETURN_IF_NOT_OK(audio_element.obu.InitializeScalableChannelLayout(
+  RETURN_IF_NOT_OK(obu.InitializeScalableChannelLayout(
       input_config.channel_audio_layer_configs_size(),
       input_config.reserved()));
-  auto& config =
-      std::get<ScalableChannelLayoutConfig>(audio_element.obu.config_);
+  auto& config = std::get<ScalableChannelLayoutConfig>(obu.config_);
   for (int i = 0; i < config.GetNumLayers(); ++i) {
     ChannelAudioLayerConfig* const layer_config =
         &config.channel_audio_layer_configs[i];
@@ -405,74 +414,74 @@ absl::Status FillScalableChannelLayoutConfig(
           input_layer_config.output_gain(), layer_config->output_gain));
     }
   }
+  RETURN_IF_NOT_OK(ValidateReconGainDefined(codec_config_obu, obu));
 
-  RETURN_IF_NOT_OK(
-      ValidateReconGainDefined(codec_config_obu, audio_element.obu));
-
-  return ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-      audio_element.obu.audio_substream_ids_, config,
-      audio_element.substream_id_to_labels, audio_element.label_to_output_gain,
-      audio_element.channel_numbers_for_layers);
+  SubstreamIdLabelsMap substream_id_to_labels;
+  LabelGainMap label_to_output_gain;
+  std::vector<ChannelNumbers> channel_numbers_for_layers;
+  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+      obu.audio_substream_ids_, config, substream_id_to_labels,
+      label_to_output_gain, channel_numbers_for_layers));
+  return AudioElementWithData{
+      .obu = std::move(obu),
+      .codec_config = &codec_config_obu,
+      .substream_id_to_labels = std::move(substream_id_to_labels),
+      .label_to_output_gain = std::move(label_to_output_gain),
+      .channel_numbers_for_layers = std::move(channel_numbers_for_layers)};
 }
 
-absl::Status FillAmbisonicsMonoConfig(
-    const iamf_tools_cli_proto::AmbisonicsConfig& input_config,
-    const DecodedUleb128 audio_element_id, AudioElementObu& audio_element_obu,
-    SubstreamIdLabelsMap& substream_id_to_labels) {
+absl::StatusOr<AmbisonicsMonoConfig> GetAmbisonicsMonoConfig(
+    DecodedUleb128 audio_element_id_for_debugging,
+    DecodedUleb128 num_substreams_in_obu,
+    const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
   if (!input_config.has_ambisonics_mono_config()) {
     return InvalidArgumentError(
-        StrCat("Audio Element Metadata [", audio_element_id,
+        StrCat("Audio Element Metadata [", audio_element_id_for_debugging,
                " is of mode AMBISONICS_MODE_MONO but does not have the "
                "`ambisonics_mono_config` field."));
   }
   const auto& input_mono_config = input_config.ambisonics_mono_config();
-  RETURN_IF_NOT_OK(audio_element_obu.InitializeAmbisonicsMono(
-      input_mono_config.output_channel_count(),
-      input_mono_config.substream_count()));
-  auto& mono_config = std::get<AmbisonicsMonoConfig>(
-      std::get<AmbisonicsConfig>(audio_element_obu.config_).ambisonics_config);
+  AmbisonicsMonoConfig mono_config;
   if (input_mono_config.channel_mapping_size() !=
       input_mono_config.output_channel_count()) {
     return InvalidArgumentError(StrCat(
-        "Audio Element Metadata [", audio_element_id,
+        "Audio Element Metadata [", audio_element_id_for_debugging,
         " has output_channel_count= ", input_mono_config.output_channel_count(),
         ", but `channel_mapping` has ",
         input_mono_config.channel_mapping_size(), " elements."));
   }
-
-  for (int i = 0; i < input_mono_config.channel_mapping_size(); ++i) {
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-        "AmbisonicsMonoConfig.channel_mapping",
-        input_mono_config.channel_mapping(i), mono_config.channel_mapping[i]));
-  }
-
+  // Set output channel count, etc.
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsMonoConfig.output_channel_count",
+      input_mono_config.output_channel_count(),
+      mono_config.output_channel_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsMonoConfig.substream_count",
+      input_mono_config.substream_count(), mono_config.substream_count));
+  mono_config.channel_mapping.resize(input_mono_config.channel_mapping_size());
+  RETURN_IF_NOT_OK(StaticCastSpanIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsMonoConfig.channel_mapping",
+      input_mono_config.channel_mapping(),
+      MakeSpan(mono_config.channel_mapping)));
   // Validate the mono config. This ensures no substream indices should be out
   // of bounds.
-  RETURN_IF_NOT_OK(mono_config.Validate(audio_element_obu.GetNumSubstreams()));
-  // Populate substream_id_to_labels.
-  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
-      audio_element_obu, substream_id_to_labels));
-  return absl::OkStatus();
+  RETURN_IF_NOT_OK(mono_config.Validate(num_substreams_in_obu));
+  return mono_config;
 }
 
-absl::Status FillAmbisonicsProjectionConfig(
-    const iamf_tools_cli_proto::AmbisonicsConfig& input_config,
-    const DecodedUleb128 audio_element_id, AudioElementObu& audio_element_obu,
-    SubstreamIdLabelsMap& substream_id_to_labels) {
+absl::StatusOr<AmbisonicsProjectionConfig> GetAmbisonicsProjectionConfig(
+    DecodedUleb128 audio_element_id_for_debugging,
+    DecodedUleb128 num_substreams_in_obu,
+    const iamf_tools_cli_proto::AmbisonicsConfig& input_config) {
   if (!input_config.has_ambisonics_projection_config()) {
     return InvalidArgumentError(
-        StrCat("Audio Element Metadata [", audio_element_id,
+        StrCat("Audio Element Metadata [", audio_element_id_for_debugging,
                " is of mode AMBISONICS_MODE_PROJECTION but does not have"
                " the `AMBISONICS_MODE_PROJECTION` field."));
   }
   const auto& input_projection_config =
       input_config.ambisonics_projection_config();
-  RETURN_IF_NOT_OK(audio_element_obu.InitializeAmbisonicsProjection(
-      input_projection_config.output_channel_count(),
-      input_projection_config.substream_count(),
-      input_projection_config.coupled_substream_count()));
-  auto& projection_config = std::get<AmbisonicsProjectionConfig>(
-      std::get<AmbisonicsConfig>(audio_element_obu.config_).ambisonics_config);
+  AmbisonicsProjectionConfig projection_config;
   const int expected_demixing_matrix_size =
       (input_projection_config.substream_count() +
        input_projection_config.coupled_substream_count()) *
@@ -480,79 +489,148 @@ absl::Status FillAmbisonicsProjectionConfig(
   if (input_projection_config.demixing_matrix_size() !=
       expected_demixing_matrix_size) {
     return InvalidArgumentError(
-        StrCat("Audio Element Metadata [", audio_element_id,
+        StrCat("Audio Element Metadata [", audio_element_id_for_debugging,
                " expects demixing_matrix_size= ", expected_demixing_matrix_size,
                ", but `demixing_matrix` has ",
                input_projection_config.demixing_matrix_size(), " elements."));
   }
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.output_channel_count",
+      input_projection_config.output_channel_count(),
+      projection_config.output_channel_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.substream_count",
+      input_projection_config.substream_count(),
+      projection_config.substream_count));
+  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
+      "AmbisonicsProjectionConfig.coupled_substream_count",
+      input_projection_config.coupled_substream_count(),
+      projection_config.coupled_substream_count));
+  projection_config.demixing_matrix.resize(expected_demixing_matrix_size);
 
-  for (int i = 0; i < input_projection_config.demixing_matrix_size(); ++i) {
-    RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
-        absl::StrCat("AmbisonicsProjectionConfig.demixing_matrix[", i, "]"),
-        input_projection_config.demixing_matrix(i),
-        projection_config.demixing_matrix[i]));
-  }
-  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
-      audio_element_obu, substream_id_to_labels));
-  return absl::OkStatus();
+  RETURN_IF_NOT_OK(StaticCastSpanIfInRange<int32_t, int16_t>(
+      "AmbisonicsProjectionConfig.demixing_matrix",
+      input_projection_config.demixing_matrix(),
+      MakeSpan(projection_config.demixing_matrix)));
+  RETURN_IF_NOT_OK(projection_config.Validate(num_substreams_in_obu));
+  return projection_config;
 }
 
-absl::Status FillAmbisonicsConfig(
+absl::StatusOr<AudioElementWithData> CreateAmbisonicsMonoAudioElementWithData(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
-    AudioElementWithData& audio_element) {
-  if (!audio_element_metadata.has_ambisonics_config()) {
-    ABSL_LOG(ERROR) << "Audio Element Metadata ["
-                    << audio_element_metadata.audio_element_id()
-                    << " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
-                    << " the `ambisonics_config` field.";
-    return InvalidArgumentError(StrCat(
-        "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
-        " is of type AUDIO_ELEMENT_SCENE_BASED but does not have"
-        " the `ambisonics_config` field."));
-  }
+    const CodecConfigObu& codec_config_obu) {
+  AudioElementObu obu(
+      GetHeaderFromMetadata(audio_element_metadata.obu_header()),
+      audio_element_metadata.audio_element_id(),
+      AudioElementObu::kAudioElementSceneBased,
+      audio_element_metadata.reserved(),
+      audio_element_metadata.codec_config_id());
+  GenerateAudioSubstreams(audio_element_metadata, obu);
+  RETURN_IF_NOT_OK(GenerateParameterDefinitions(audio_element_metadata,
+                                                codec_config_obu, obu));
 
-  const auto& input_config = audio_element_metadata.ambisonics_config();
-  AmbisonicsConfig::AmbisonicsMode ambisonics_mode;
-  switch (input_config.ambisonics_mode()) {
-    using enum iamf_tools_cli_proto::AmbisonicsMode;
-    using enum AmbisonicsConfig::AmbisonicsMode;
-    case AMBISONICS_MODE_MONO:
-      ambisonics_mode = kAmbisonicsModeMono;
-      RETURN_IF_NOT_OK(FillAmbisonicsMonoConfig(
-          input_config, audio_element_metadata.audio_element_id(),
-          audio_element.obu, audio_element.substream_id_to_labels));
-      break;
-    case AMBISONICS_MODE_PROJECTION:
-      ambisonics_mode = kAmbisonicsModeProjection;
-      RETURN_IF_NOT_OK(FillAmbisonicsProjectionConfig(
-          input_config, audio_element_metadata.audio_element_id(),
-          audio_element.obu, audio_element.substream_id_to_labels));
-      break;
-    default:
-      ABSL_LOG(ERROR) << "Unrecognized ambisonics_mode: "
-                      << input_config.ambisonics_mode();
-      return InvalidArgumentError(StrCat("Unrecognized ambisonics_mode: ",
-                                         input_config.ambisonics_mode()));
+  auto mono_config =
+      GetAmbisonicsMonoConfig(audio_element_metadata.audio_element_id(),
+                              obu.audio_substream_ids_.size(),
+                              audio_element_metadata.ambisonics_config());
+  if (!mono_config.ok()) {
+    return mono_config.status();
   }
-  std::get<AmbisonicsConfig>(audio_element.obu.config_).ambisonics_mode =
-      ambisonics_mode;
+  obu.config_ = AmbisonicsConfig{
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+      .ambisonics_config = *std::move(mono_config),
+  };
 
-  return absl::OkStatus();
+  SubstreamIdLabelsMap substream_id_to_labels;
+  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
+      obu, substream_id_to_labels));
+  return AudioElementWithData{
+      .obu = std::move(obu),
+      .codec_config = &codec_config_obu,
+      .substream_id_to_labels = std::move(substream_id_to_labels)};
 }
 
-void LogAudioElements(
-    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
-  // Examine Audio Element OBUs.
-  for (const auto& [audio_element_id, audio_element] : audio_elements) {
-    audio_element.obu.PrintObu();
+absl::StatusOr<AudioElementWithData>
+CreateAmbisonicsProjectionAudioElementWithData(
+    const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
+    const CodecConfigObu& codec_config_obu) {
+  AudioElementObu obu(
+      GetHeaderFromMetadata(audio_element_metadata.obu_header()),
+      audio_element_metadata.audio_element_id(),
+      AudioElementObu::kAudioElementSceneBased,
+      audio_element_metadata.reserved(),
+      audio_element_metadata.codec_config_id());
+  GenerateAudioSubstreams(audio_element_metadata, obu);
+  RETURN_IF_NOT_OK(GenerateParameterDefinitions(audio_element_metadata,
+                                                codec_config_obu, obu));
+  auto projection_config =
+      GetAmbisonicsProjectionConfig(audio_element_metadata.audio_element_id(),
+                                    obu.audio_substream_ids_.size(),
+                                    audio_element_metadata.ambisonics_config());
+  if (!projection_config.ok()) {
+    return projection_config.status();
+  }
+  obu.config_ = AmbisonicsConfig{
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+      .ambisonics_config = *std::move(projection_config),
+  };
+  SubstreamIdLabelsMap substream_id_to_labels;
+  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
+      obu, substream_id_to_labels));
+  return AudioElementWithData{
+      .obu = std::move(obu),
+      .codec_config = &codec_config_obu,
+      .substream_id_to_labels = std::move(substream_id_to_labels)};
+}
 
-    // Log `substream_id_to_labels` separately.
-    for (const auto& [substream_id, labels] :
-         audio_element.substream_id_to_labels) {
-      ABSL_VLOG(1) << "Substream ID: " << substream_id;
-      ABSL_VLOG(1) << "  num_channels= " << labels.size();
+absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(
+    const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
+    const CodecConfigObu& codec_config_obu) {
+  // Dispatch to specific functions, depending on the type (or sub-type) of the
+  // Audio Element OBU.
+  switch (audio_element_metadata.audio_element_type()) {
+    using enum iamf_tools_cli_proto::AudioElementType;
+    case AUDIO_ELEMENT_CHANNEL_BASED:
+      return CreateChannelBasedAudioElementWithData(audio_element_metadata,
+                                                    codec_config_obu);
+    case AUDIO_ELEMENT_SCENE_BASED: {
+      const std::string error_prefix = StrCat(
+          "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
+          "] is type ", audio_element_metadata.audio_element_type(), " but ");
+      if (!audio_element_metadata.has_ambisonics_config()) {
+        return InvalidArgumentError(
+            StrCat(error_prefix, "has missing `ambisonics_config` field."));
+      }
+      // Dispatch between the different sub-types of Ambisonics.
+      switch (audio_element_metadata.ambisonics_config().ambisonics_mode()) {
+        using enum iamf_tools_cli_proto::AmbisonicsMode;
+        case AMBISONICS_MODE_MONO:
+          return CreateAmbisonicsMonoAudioElementWithData(
+              audio_element_metadata, codec_config_obu);
+        case AMBISONICS_MODE_PROJECTION:
+          return CreateAmbisonicsProjectionAudioElementWithData(
+              audio_element_metadata, codec_config_obu);
+        default:
+          return InvalidArgumentError(
+              StrCat(error_prefix, "has unknown `ambisonics_mode`"));
+      }
     }
+    default:
+      return InvalidArgumentError(
+          StrCat("Unrecognized audio_element_type: ",
+                 audio_element_metadata.audio_element_type()));
+  }
+}
+
+void LogAudioElement(const AudioElementWithData& audio_element) {
+  // Examine Audio Element OBU.
+  audio_element.obu.PrintObu();
+
+  // Log `substream_id_to_labels` separately.
+  for (const auto& [substream_id, labels] :
+       audio_element.substream_id_to_labels) {
+    ABSL_VLOG(1) << "Substream ID: " << substream_id;
+    ABSL_VLOG(1) << "  num_channels= " << labels.size();
   }
 }
 
@@ -562,82 +640,33 @@ absl::Status AudioElementGenerator::Generate(
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_configs,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
   for (const auto& audio_element_metadata : audio_element_metadata_) {
-    // Common data.
-    const auto audio_element_id = audio_element_metadata.audio_element_id();
-
-    AudioElementObu::AudioElementType audio_element_type;
-    switch (audio_element_metadata.audio_element_type()) {
-      using enum iamf_tools_cli_proto::AudioElementType;
-      using enum AudioElementObu::AudioElementType;
-      case AUDIO_ELEMENT_CHANNEL_BASED:
-        audio_element_type = kAudioElementChannelBased;
-        break;
-      case AUDIO_ELEMENT_SCENE_BASED:
-        audio_element_type = kAudioElementSceneBased;
-        break;
-      default:
-        return InvalidArgumentError(
-            StrCat("Unrecognized audio_element_type= ",
-                   audio_element_metadata.audio_element_type()));
-    }
-    uint8_t reserved;
-    RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-        "AudioElementObuMetadata.reserved", audio_element_metadata.reserved(),
-        reserved));
-    const auto codec_config_id = audio_element_metadata.codec_config_id();
-
-    AudioElementObu audio_element_obu(
-        GetHeaderFromMetadata(audio_element_metadata.obu_header()),
-        audio_element_id, audio_element_type, reserved, codec_config_id);
-
-    // Audio Substreams.
-    GenerateAudioSubstreams(audio_element_metadata, audio_element_obu);
-
-    // Parameter definitions.
-    if (!codec_configs.contains(audio_element_metadata.codec_config_id())) {
-      return InvalidArgumentError(
-          StrCat("Failed to find matching codec_config_id=",
-                 audio_element_metadata.codec_config_id()));
-    }
-    const auto& codec_config_obu =
-        codec_configs.at(audio_element_metadata.codec_config_id());
-    RETURN_IF_NOT_OK(GenerateParameterDefinitions(
-        audio_element_metadata, codec_config_obu, audio_element_obu));
-
-    // Config data based on `audio_element_type`.
-    // Insert first so even if the following operations fail, the OBU will be
-    // destroyed by one of the transitive callers of this function.
-    auto [new_audio_element_iter, inserted] = audio_elements.emplace(
-        audio_element_id, AudioElementWithData{
-                              .obu = std::move(audio_element_obu),
-                              .codec_config = &codec_config_obu,
-                          });
-    if (!inserted) {
+    // Ensure the ID is unique before generating data for it.
+    if (audio_elements.contains(audio_element_metadata.audio_element_id())) {
       return InvalidArgumentError(StrCat(
           "Inserting Audio Element with ID ",
           audio_element_metadata.audio_element_id(),
           " failed because there is a duplicated element with the same ID"));
     }
 
-    switch (new_audio_element_iter->second.obu.GetAudioElementType()) {
-      using enum AudioElementObu::AudioElementType;
-      case kAudioElementChannelBased:
-        RETURN_IF_NOT_OK(FillScalableChannelLayoutConfig(
-            audio_element_metadata, codec_config_obu,
-            new_audio_element_iter->second));
-        break;
-      case kAudioElementSceneBased:
-        RETURN_IF_NOT_OK(FillAmbisonicsConfig(audio_element_metadata,
-                                              new_audio_element_iter->second));
-        break;
-      default:
-        return InvalidArgumentError(
-            StrCat("Unrecognized audio_element_type= ",
-                   new_audio_element_iter->second.obu.GetAudioElementType()));
+    const auto codec_config_iter =
+        codec_configs.find(audio_element_metadata.codec_config_id());
+    if (codec_config_iter == codec_configs.end()) {
+      return InvalidArgumentError(
+          StrCat("Failed to find matching codec_config_id=",
+                 audio_element_metadata.codec_config_id()));
     }
+
+    absl::StatusOr<AudioElementWithData> audio_element_with_data =
+        CreateAudioElementWithData(audio_element_metadata,
+                                   codec_config_iter->second);
+    if (!audio_element_with_data.ok()) {
+      return audio_element_with_data.status();
+    }
+    LogAudioElement(*audio_element_with_data);
+    audio_elements.emplace(audio_element_metadata.audio_element_id(),
+                           *std::move(audio_element_with_data));
   }
 
-  LogAudioElements(audio_elements);
   return absl::OkStatus();
 }
 
