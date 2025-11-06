@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-11-06
+
+### Added
+
+-   Add an [example binary](docs/iamf_decoder_main.md) to decode IAMF.
+
 ### Deprecated
 
 -   Deprecate `MixPresentationObuMetadata::count_label`, in favor of calculating
@@ -19,6 +25,21 @@ and this project adheres to
 -   Deprecate `FlacMetaBlockHeader::last_metadata_block_flag` and
     `metadata_data_block_length` in favor of automatically determining the
     related values.
+-   Deprecate `param_definition_size`, in favor of calculating the size from
+    related elements.
+-   Deprecate `param_data_size`, in favor of calculating the size from related
+    elements.
+
+### Changed
+
+-   Changed encoder API to take in serialized protos. The previous API was buggy
+    due to directly taking in C++ proto classes, which is
+    [strongly discouraged](https://protobuf.dev/support/cross-version-runtime-guarantee/).
+-   Update several library dependencies.
+-   Use `ABSL_LOG` and `ABSL_CHECK` family of functions, to avoid conflicts with
+    users that need other logging libraries.
+-   Avoid use of global static initializers.
+-   Fix issues when building under `-Wnullability-completeness`.
 
 ### Fixed
 
@@ -29,11 +50,10 @@ and this project adheres to
 -   Improve CPU/memory efficiency when decoding streams with multiple layouts
     and/or mix presentations.
 
-### Changed
+### Security
 
--   Changed encoder API to take in serialized protos. The previous API was buggy
-    due to directly taking in C++ proto classes, which is
-    [strongly discouraged](https://protobuf.dev/support/cross-version-runtime-guarantee/).
+-   Fix potential buffer overflows, invalid memory access, or excessive memory
+    usage for certain bitstreams.
 
 ## [2.0.0] - 2025-08-18
 
@@ -44,8 +64,8 @@ and this project adheres to
 -   Add support for binary proto input in the encoder.
 -   Add support for encoding [Standalone IAMF Representation] for Base-Enhanced.
     profile based on [IAMF v1.1.0]("Expanded" layouts, Mix Presentation Tags).
--   Add an iterative [encoding API](iamf/api/encoder/README.md).
--   Add an iterative [decoding API](iamf/api/decoder/README.md).
+-   Add an iterative [encoding API](docs/iamf_encoder_interface.md).
+-   Add an iterative [decoding API](docs/iamf_decoder_interface.md).
 
 ### Deprecated
 
@@ -60,7 +80,7 @@ and this project adheres to
         `localized_element_annotations`.
     -   Deprecate `OutputMixConfig` and `output_mix_config` in favor of
         `output_mix_gain`.
-    -   Deprecate `ElementMixConfig` and `element_mix_config` in favour of
+    -   Deprecate `ElementMixConfig` and `element_mix_config` in favor of
         `element_mix_gain`.
 -   Deprecate `channel_ids` and `channel_labels` in `AudioElementObuMetadata` in
     favor of `ChannelMetadata`.
@@ -105,7 +125,7 @@ and this project adheres to
     [https://github.com/AOMediaCodec/iamf-tools/commit/8c1a71378].
 -   Fix issues when using AAC with a 24 kHz sample rate.
 -   Permit one fully trimmed audio frame at the end of a substream.
--   Fix several CPU and memory inefficiencies to improve perforamnce.
+-   Fix several CPU and memory inefficiencies to improve performance.
 -   Avoid use of run-time type information (RTTI).
 
 ## [1.0.0] - 2024-01-26
@@ -128,8 +148,9 @@ and this project adheres to
     `deprecated_param_definition_type`, `deprecated_loudspeaker_layout` from the
     forked `.protos`.
 
-[Unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0...v2.0.0
+[Unreleased]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/AOMediaCodec/iamf-tools/compare/v2.0.0...v2.1.0
+[2.0.0]: https://github.com/AOMediaCodec/iamf-tools/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/AOMediaCodec/iamf-tools/releases/tag/v1.0.0
 [Standalone IAMF Representation]: https://aomediacodec.github.io/iamf/#standalone
 [IAMF v1.0.0]: https://aomediacodec.github.io/iamf/v1.0.0.html
