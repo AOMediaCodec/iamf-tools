@@ -17,7 +17,6 @@
 #include <memory>
 #include <numeric>
 #include <optional>
-#include <variant>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -121,36 +120,20 @@ ScalableChannelLayoutConfig GetOneLayerStereoScalableChannelLayout() {
   };
 }
 
-// Constructs, and initializes the Audio Substreams, Audio Element Params, and
-// Scalable Channel Layout for an `AudioElementObu`.
-AudioElementObu CreateBaseAudioElement(
-    const CommonAudioElementArgs& common_args) {
-  AudioElementObu obu(common_args.header, common_args.audio_element_id,
-                      common_args.audio_element_type, common_args.reserved,
-                      common_args.codec_config_id);
-
-  obu.InitializeAudioSubstreams(common_args.substream_ids.size());
-  obu.audio_substream_ids_ = common_args.substream_ids;
-  obu.InitializeParams(common_args.audio_element_params.size());
-  for (auto& audio_element_param : common_args.audio_element_params) {
-    obu.audio_element_params_.emplace_back(
-        AudioElementParam{audio_element_param.param_definition});
-  }
-  return obu;
-}
-
 absl::StatusOr<AudioElementObu> CreateScalableAudioElementObu(
     const CommonAudioElementArgs& common_args,
     const ScalableChannelLayoutConfig& scalable_channel_layout_config) {
-  AudioElementObu obu = CreateBaseAudioElement(common_args);
-
-  auto status = obu.InitializeScalableChannelLayout(
-      scalable_channel_layout_config.GetNumLayers(),
-      scalable_channel_layout_config.reserved);
-  if (!status.ok()) {
-    return status;
+  auto obu = AudioElementObu::CreateForScalableChannelLayout(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids,
+      scalable_channel_layout_config);
+  if (!obu.ok()) {
+    return obu.status();
   }
-  obu.config_ = scalable_channel_layout_config;
+  obu->InitializeParams(common_args.audio_element_params.size());
+  for (const auto& param : common_args.audio_element_params) {
+    obu->audio_element_params_.push_back(param);
+  }
   return obu;
 }
 
@@ -187,13 +170,26 @@ constexpr auto kExpectedOneLayerStereoPayload = std::to_array<uint8_t>(
      // `output_gain`.
      0, 1});
 
-TEST(Constructor, SetsObuType) {
-  const CommonAudioElementArgs kCommonArgs = CreateScalableAudioElementArgs();
-  AudioElementObu obu(kCommonArgs.header, kCommonArgs.audio_element_id,
-                      kCommonArgs.audio_element_type, kCommonArgs.reserved,
-                      kCommonArgs.codec_config_id);
+TEST(CreateScalableAudioElementArgs, SetsObuType) {
+  auto args = CreateScalableAudioElementArgs();
+  auto obu = AudioElementObu::CreateForScalableChannelLayout(
+      args.header, args.audio_element_id, args.reserved, args.codec_config_id,
+      args.substream_ids, GetOneLayerStereoScalableChannelLayout());
+  ASSERT_THAT(obu, IsOk());
 
-  EXPECT_EQ(obu.header_.obu_type, kObuIaAudioElement);
+  EXPECT_EQ(obu->header_.obu_type, kObuIaAudioElement);
+  EXPECT_EQ(obu->GetAudioElementType(),
+            AudioElementObu::kAudioElementChannelBased);
+}
+
+TEST(CreateScalableAudioElementObu, FailsWithInvalidNumSubstreams) {
+  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
+  common_args.substream_ids = {};
+
+  auto obu = CreateScalableAudioElementObu(
+      common_args, GetOneLayerStereoScalableChannelLayout());
+
+  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 TEST(ValidateAndWriteObu, SerializesOneLayerStereoScalableChannelLayout) {
@@ -229,18 +225,6 @@ TEST(ValidateAndWriteObu, WritesRedundantCopyFlag) {
 TEST(ValidateAndWriteObu, FailsWithInvalidObuTrimmingStatusFlag) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   common_args.header.obu_trimming_status_flag = true;
-
-  auto obu = CreateScalableAudioElementObu(
-      common_args, GetOneLayerStereoScalableChannelLayout());
-  ASSERT_THAT(obu, IsOk());
-
-  WriteBitBuffer undefined_wb(kInitialBufferCapacity);
-  EXPECT_THAT(obu->ValidateAndWriteObu(undefined_wb), Not(IsOk()));
-}
-
-TEST(ValidateAndWriteObu, FailsWithInvalidNumSubstreams) {
-  CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
-  common_args.substream_ids = {};
 
   auto obu = CreateScalableAudioElementObu(
       common_args, GetOneLayerStereoScalableChannelLayout());
@@ -1006,29 +990,45 @@ CommonAudioElementArgs CreateAmbisonicsArgs() {
   };
 }
 
+TEST(CreateMonoAmbisonicsAudioElement, SetsObuType) {
+  const auto common_args = CreateAmbisonicsArgs();
+
+  constexpr std::array<uint8_t, 1> kChannelMapping = {0};
+  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids, kChannelMapping);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_EQ(obu->GetAudioElementType(),
+            AudioElementObu::kAudioElementSceneBased);
+}
+
+TEST(CreateMonoAmbisonicsAudioElement, FailsWithInvalidChannelMapping) {
+  auto common_args = CreateAmbisonicsArgs();
+  common_args.substream_ids = {0, 1, 2};
+
+  // The size of the channel mapping represents the output channel count; a
+  // square number.
+  constexpr std::array<uint8_t, 3> kInvalidChannelMapping = {0, 1, 2};
+  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids,
+      kInvalidChannelMapping);
+}
+
 absl::StatusOr<AudioElementObu> CreateMonoAmbisonicsAudioElement(
     const CommonAudioElementArgs& common_args,
     const absl::Span<const uint8_t> channel_mapping) {
-  AudioElementObu obu = CreateBaseAudioElement(common_args);
-
-  auto status = obu.InitializeAmbisonicsMono(channel_mapping.size(),
-                                             common_args.substream_ids.size());
-  if (!status.ok()) {
-    return status;
+  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids, channel_mapping);
+  if (!obu.ok()) {
+    return obu.status();
   }
-  auto* config = std::get_if<AmbisonicsConfig>(&obu.config_);
-  if (config == nullptr) {
-    return absl::InternalError("AmbisonicsConfig not set.");
+  obu->InitializeParams(common_args.audio_element_params.size());
+  for (const auto& param : common_args.audio_element_params) {
+    obu->audio_element_params_.push_back(param);
   }
-
-  auto* mono_config =
-      std::get_if<AmbisonicsMonoConfig>(&config->ambisonics_config);
-  if (mono_config == nullptr) {
-    return absl::InternalError("AmbisonicsMonoConfig not set.");
-  }
-  mono_config->channel_mapping = {channel_mapping.begin(),
-                                  channel_mapping.end()};
-
   return obu;
 }
 
@@ -1160,27 +1160,17 @@ absl::StatusOr<AudioElementObu> CreateProjectionAmbisonicsAudioElement(
     const CommonAudioElementArgs& common_args, uint8_t output_channel_count,
     uint8_t coupled_substream_count,
     const absl::Span<const int16_t> demixing_matrix) {
-  AudioElementObu obu = CreateBaseAudioElement(common_args);
-
-  auto status = obu.InitializeAmbisonicsProjection(
-      output_channel_count, common_args.substream_ids.size(),
-      coupled_substream_count);
-  if (!status.ok()) {
-    return status;
+  auto obu = AudioElementObu::CreateForProjectionAmbisonics(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids,
+      output_channel_count, coupled_substream_count, demixing_matrix);
+  if (!obu.ok()) {
+    return obu.status();
   }
-  auto* config = std::get_if<AmbisonicsConfig>(&obu.config_);
-  if (config == nullptr) {
-    return absl::InternalError("AmbisonicsConfig not set.");
+  obu->InitializeParams(common_args.audio_element_params.size());
+  for (const auto& param : common_args.audio_element_params) {
+    obu->audio_element_params_.push_back(param);
   }
-
-  auto* projection_config =
-      std::get_if<AmbisonicsProjectionConfig>(&config->ambisonics_config);
-  if (projection_config == nullptr) {
-    return absl::InternalError("AmbisonicsMonoConfig not set.");
-  }
-  projection_config->demixing_matrix = {demixing_matrix.begin(),
-                                        demixing_matrix.end()};
-
   return obu;
 }
 
@@ -1309,13 +1299,18 @@ CommonAudioElementArgs CreateExtensionConfigAudioElementArgs(
 absl::StatusOr<AudioElementObu> CreateExtensionConfigAudioElement(
     const CommonAudioElementArgs& common_args,
     absl::Span<const uint8_t> audio_element_config_bytes) {
-  AudioElementObu obu = CreateBaseAudioElement(common_args);
-
-  obu.InitializeExtensionConfig();
-
-  obu.config_ = ExtensionConfig{
-      .audio_element_config_bytes = {audio_element_config_bytes.begin(),
-                                     audio_element_config_bytes.end()}};
+  auto obu = AudioElementObu::CreateForExtension(
+      common_args.header, common_args.audio_element_id,
+      common_args.audio_element_type, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids,
+      audio_element_config_bytes);
+  if (!obu.ok()) {
+    return obu.status();
+  }
+  obu->InitializeParams(common_args.audio_element_params.size());
+  for (const auto& param : common_args.audio_element_params) {
+    obu->audio_element_params_.push_back(param);
+  }
   return obu;
 }
 

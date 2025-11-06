@@ -41,6 +41,8 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/log:check",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@com_google_googletest//:gtest_main",

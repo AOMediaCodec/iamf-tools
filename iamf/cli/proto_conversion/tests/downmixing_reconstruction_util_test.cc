@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/absl_check.h"
+#include "absl/log/check.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "gmock/gmock.h"
@@ -47,11 +49,20 @@ AudioElementWithData MakeAudioElement(
     DecodedUleb128 audio_element_id,
     const SubstreamIdLabelsMap& substream_id_to_labels = {},
     const LabelGainMap& label_to_output_gain = {}) {
+  std::vector<DecodedUleb128> audio_substream_ids;
+  for (const auto& [substream_id, labels] : substream_id_to_labels) {
+    audio_substream_ids.push_back(substream_id);
+  }
+
+  auto obu = AudioElementObu::CreateForExtension(
+      ObuHeader(), audio_element_id,
+      AudioElementObu::AudioElementType::kAudioElementEndReserved,
+      /*reserved=*/0,
+      /*codec_config_id=*/0, audio_substream_ids, {});
+  ABSL_CHECK_OK(obu);
+
   return {
-      .obu = AudioElementObu(ObuHeader(), audio_element_id,
-                             AudioElementObu::kAudioElementChannelBased,
-                             /*reserved=*/0,
-                             /*codec_config_id=*/0),
+      .obu = *std::move(obu),
       .substream_id_to_labels = substream_id_to_labels,
       .label_to_output_gain = label_to_output_gain,
   };

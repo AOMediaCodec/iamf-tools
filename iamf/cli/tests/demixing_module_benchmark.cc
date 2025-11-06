@@ -26,10 +26,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
-#include "iamf/cli/proto_conversion/channel_label_utils.h"
-#include "iamf/cli/proto_conversion/downmixing_reconstruction_util.h"
 #include "iamf/cli/substream_frames.h"
-#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
@@ -43,17 +40,6 @@ constexpr DecodedUleb128 kAudioElementId = 591;
 constexpr DownMixingParams kDownMixingParams = {
     .alpha = 1, .beta = .866, .gamma = .866, .delta = .866, .w = 0.25};
 constexpr InternalTimestamp kStartTimestamp = 0;
-
-static void ConfigureAudioFrameMetadata(
-    absl::Span<const ChannelLabel::Label> labels,
-    iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata) {
-  for (const auto& label : labels) {
-    auto proto_label = ChannelLabelUtils::LabelToProto(label);
-    ABSL_CHECK_OK(proto_label);
-    audio_frame_metadata.add_channel_metadatas()->set_channel_label(
-        *proto_label);
-  }
-}
 
 static void ConfigureInputChannel(ChannelLabel::Label label, int num_ticks,
                                   LabelSamplesMap& input_label_to_samples) {
@@ -88,27 +74,12 @@ static void ConfigureOutputChannel(
 static DemixingModule CreateDemixingModule(
     const SubstreamIdLabelsMap& substream_id_to_labels) {
   // To form a complete stereo layout, R2 will be demixed from mono and L2.
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  auto& audio_frame_metadata = *user_metadata.add_audio_frame_metadata();
-  audio_frame_metadata.set_audio_element_id(kAudioElementId);
-  ConfigureAudioFrameMetadata({kL2, kR2}, audio_frame_metadata);
-
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  audio_elements.emplace(
-      kAudioElementId,
-      AudioElementWithData{
-          .obu = AudioElementObu(ObuHeader(), kAudioElementId,
-                                 AudioElementObu::kAudioElementChannelBased,
-                                 /*reserved=*/0,
-                                 /*codec_config_id=*/0),
-          .substream_id_to_labels = substream_id_to_labels,
-      });
-  const absl::StatusOr<absl::flat_hash_map<
-      DecodedUleb128, DemixingModule::DownmixingAndReconstructionConfig>>
-      audio_element_id_to_demixing_metadata =
-          CreateAudioElementIdToDemixingMetadata(user_metadata, audio_elements);
   auto demixing_module = DemixingModule::CreateForDownMixingAndReconstruction(
-      std::move(audio_element_id_to_demixing_metadata.value()));
+      {{kAudioElementId, DemixingModule::DownmixingAndReconstructionConfig{
+                             .user_labels = {kL2, kR2},
+                             .substream_id_to_labels = substream_id_to_labels,
+                             .label_to_output_gain = {{kMono, 0}, {kR2, 0}},
+                         }}});
   ABSL_CHECK_OK(demixing_module);
 
   return *demixing_module;

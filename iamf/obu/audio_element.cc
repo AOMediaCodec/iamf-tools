@@ -24,11 +24,11 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_param_definition.h"
@@ -607,16 +607,84 @@ absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
       ". Max=", kValidAmbisonicChannelCounts.back(), "."));
 }
 
-AudioElementObu::AudioElementObu(const ObuHeader& header,
-                                 DecodedUleb128 audio_element_id,
-                                 AudioElementType audio_element_type,
-                                 const uint8_t reserved,
-                                 DecodedUleb128 codec_config_id)
+AudioElementObu::AudioElementObu(
+    const ObuHeader& header, DecodedUleb128 audio_element_id,
+    AudioElementType audio_element_type, uint8_t reserved,
+    DecodedUleb128 codec_config_id,
+    absl::Span<const DecodedUleb128> audio_substream_ids,
+    const AudioElementConfig& config)
     : ObuBase(header, kObuIaAudioElement),
+      audio_substream_ids_(audio_substream_ids.begin(),
+                           audio_substream_ids.end()),
+      config_(config),
       audio_element_id_(audio_element_id),
       audio_element_type_(audio_element_type),
       reserved_(reserved),
       codec_config_id_(codec_config_id) {}
+
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateForScalableChannelLayout(
+    const ObuHeader& header, DecodedUleb128 audio_element_id, uint8_t reserved,
+    DecodedUleb128 codec_config_id,
+    absl::Span<const DecodedUleb128> audio_substream_ids,
+    const ScalableChannelLayoutConfig& scalable_channel_layout_config) {
+  RETURN_IF_NOT_OK(
+      scalable_channel_layout_config.Validate(audio_substream_ids.size()));
+  return AudioElementObu(header, audio_element_id, kAudioElementChannelBased,
+                         reserved, codec_config_id, audio_substream_ids,
+                         scalable_channel_layout_config);
+}
+
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateForMonoAmbisonics(
+    const ObuHeader& header, DecodedUleb128 audio_element_id, uint8_t reserved,
+    DecodedUleb128 codec_config_id,
+    absl::Span<const DecodedUleb128> audio_substream_ids,
+    absl::Span<const uint8_t> channel_mapping) {
+  AmbisonicsMonoConfig mono_config = {
+      .output_channel_count = static_cast<uint8_t>(channel_mapping.size()),
+      .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
+      .channel_mapping = {channel_mapping.begin(), channel_mapping.end()}};
+  RETURN_IF_NOT_OK(mono_config.Validate(audio_substream_ids.size()));
+  return AudioElementObu(
+      header, audio_element_id, kAudioElementSceneBased, reserved,
+      codec_config_id, audio_substream_ids,
+      AmbisonicsConfig{.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+                       .ambisonics_config = mono_config});
+}
+
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
+    const ObuHeader& header, DecodedUleb128 audio_element_id, uint8_t reserved,
+    DecodedUleb128 codec_config_id,
+    absl::Span<const DecodedUleb128> audio_substream_ids,
+    uint8_t output_channel_count, uint8_t coupled_substream_count,
+    absl::Span<const int16_t> demixing_matrix) {
+  AmbisonicsProjectionConfig projection_config = {
+      .output_channel_count = output_channel_count,
+      .substream_count = static_cast<uint8_t>(audio_substream_ids.size()),
+      .coupled_substream_count = coupled_substream_count,
+      .demixing_matrix = {demixing_matrix.begin(), demixing_matrix.end()}};
+  RETURN_IF_NOT_OK(projection_config.Validate(audio_substream_ids.size()));
+
+  return AudioElementObu(
+      header, audio_element_id, kAudioElementSceneBased, reserved,
+      codec_config_id, audio_substream_ids,
+      AmbisonicsConfig{
+          .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+          .ambisonics_config = projection_config});
+}
+
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateForExtension(
+    const ObuHeader& header, DecodedUleb128 audio_element_id,
+    AudioElementType audio_element_type, uint8_t reserved,
+    DecodedUleb128 codec_config_id,
+    absl::Span<const DecodedUleb128> audio_substream_ids,
+    absl::Span<const uint8_t> audio_element_config_bytes) {
+  ExtensionConfig extension_config = {
+      .audio_element_config_bytes = {audio_element_config_bytes.begin(),
+                                     audio_element_config_bytes.end()}};
+  return AudioElementObu(header, audio_element_id, audio_element_type, reserved,
+                         codec_config_id, audio_substream_ids,
+                         extension_config);
+}
 
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
     const ObuHeader& header, int64_t payload_size, ReadBitBuffer& rb) {
@@ -625,96 +693,8 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateFromBuffer(
   return audio_element_obu;
 }
 
-void AudioElementObu::InitializeAudioSubstreams(DecodedUleb128 num_substreams) {
-  audio_substream_ids_.resize(static_cast<size_t>(num_substreams));
-}
-
 void AudioElementObu::InitializeParams(const DecodedUleb128 num_parameters) {
   audio_element_params_.reserve(static_cast<size_t>(num_parameters));
-}
-
-// Initializes the scalable channel portion of an `AudioElementObu`.
-absl::Status AudioElementObu::InitializeScalableChannelLayout(
-    const uint32_t num_layers, const uint32_t reserved) {
-  // Validate the audio element type is correct.
-  if (audio_element_type_ != kAudioElementChannelBased) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "`InitializeScalableChannelLayout()` can only be called ",
-        "when `audio_element_type_ == kAudioElementChannelBased`, ", "but got ",
-        audio_element_type_));
-  }
-
-  ScalableChannelLayoutConfig config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "ScalableChannelLayoutConfig.reserved", reserved, config.reserved));
-  config.channel_audio_layer_configs.resize(num_layers);
-  config_ = config;
-  return absl::OkStatus();
-}
-
-// Initializes the ambisonics mono portion of an `AudioElementObu`.
-absl::Status AudioElementObu::InitializeAmbisonicsMono(
-    const uint32_t output_channel_count, const uint32_t substream_count) {
-  // Validate the audio element type and ambisonics mode are correct.
-  if (audio_element_type_ != kAudioElementSceneBased) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("`InitializeAmbisonicsMono()` can only be called ",
-                     "when `audio_element_type_ == kAudioElementSceneBased`, ",
-                     "but got ", audio_element_type_));
-  }
-
-  AmbisonicsConfig config;
-  config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono;
-
-  AmbisonicsMonoConfig mono_config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AmbisonicsMonoConfig.output_channel_count", output_channel_count,
-      mono_config.output_channel_count));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AmbisonicsMonoConfig.substream_count", substream_count,
-      mono_config.substream_count));
-  mono_config.channel_mapping.resize(output_channel_count);
-  config.ambisonics_config = mono_config;
-  config_ = config;
-
-  return absl::OkStatus();
-}
-
-// Initializes the ambisonics projection portion of an `AudioElementObu`.
-absl::Status AudioElementObu::InitializeAmbisonicsProjection(
-    const uint32_t output_channel_count, const uint32_t substream_count,
-    const uint32_t coupled_substream_count) {
-  // Validate the audio element type and ambisonics mode are correct.
-  if (audio_element_type_ != kAudioElementSceneBased) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("`InitializeAmbisonicsProjection()` can only be called ",
-                     "when `audio_element_type_ == kAudioElementSceneBased`, ",
-                     "but got ", audio_element_type_));
-  }
-
-  AmbisonicsConfig config;
-  config.ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection;
-
-  AmbisonicsProjectionConfig projection_config;
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AmbisonicsProjectionConfig.output_channel_count", output_channel_count,
-      projection_config.output_channel_count));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AmbisonicsProjectionConfig.substream_count", substream_count,
-      projection_config.substream_count));
-  RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
-      "AmbisonicsProjectionConfig.coupled_substream_count",
-      coupled_substream_count, projection_config.coupled_substream_count));
-  const size_t num_elements = GetNumDemixingMatrixElements(projection_config);
-  projection_config.demixing_matrix.resize(num_elements);
-  config.ambisonics_config = projection_config;
-  config_ = config;
-
-  return absl::OkStatus();
-}
-
-void AudioElementObu::InitializeExtensionConfig() {
-  config_ = ExtensionConfig{};
 }
 
 void AudioElementObu::PrintObu() const {

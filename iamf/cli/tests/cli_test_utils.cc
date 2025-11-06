@@ -24,6 +24,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -288,42 +289,36 @@ void AddAmbisonicsMonoAudioElementWithSubstreamIds(
   ASSERT_NE(codec_config_iter, codec_config_obus.end());
   ASSERT_EQ(audio_elements.find(audio_element_id), audio_elements.end());
 
-  // Initialize the Audio Element OBU without any parameters.
-  AudioElementObu obu = AudioElementObu(
-      ObuHeader(), audio_element_id, AudioElementObu::kAudioElementSceneBased,
-      0, codec_config_id);
-  obu.InitializeParams(0);
-  obu.InitializeAudioSubstreams(substream_ids.size());
-  obu.audio_substream_ids_.assign(substream_ids.begin(), substream_ids.end());
-
   // Initialize to n-th order ambisonics. Choose the lowest order that can fit
   // all `substream_ids`. This may result in mixed-order ambisonics.
   uint8_t next_valid_output_channel_count;
   ASSERT_THAT(AmbisonicsConfig::GetNextValidOutputChannelCount(
                   substream_ids.size(), next_valid_output_channel_count),
               IsOk());
-  EXPECT_THAT(obu.InitializeAmbisonicsMono(next_valid_output_channel_count,
-                                           substream_ids.size()),
-              IsOk());
 
-  auto& channel_mapping =
-      std::get<AmbisonicsMonoConfig>(
-          std::get<AmbisonicsConfig>(obu.config_).ambisonics_config)
-          .channel_mapping;
   // Map the first n channels from [0, n] in input order. Leave the rest of
   // the channels as unmapped.
-  std::fill(channel_mapping.begin(), channel_mapping.end(),
-            AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
+  std::vector<uint8_t> channel_mapping(
+      next_valid_output_channel_count,
+      AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber);
   std::iota(channel_mapping.begin(),
             channel_mapping.begin() + substream_ids.size(), 0);
 
-  AudioElementWithData audio_element = {
-      .obu = std::move(obu), .codec_config = &codec_config_iter->second};
-  ASSERT_THAT(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
-                  audio_element.obu, audio_element.substream_id_to_labels),
-              IsOk());
+  // Create the Audio Element OBU without any parameters.
+  auto obu = AudioElementObu::CreateForMonoAmbisonics(
+      ObuHeader(), audio_element_id, 0, codec_config_id, substream_ids,
+      channel_mapping);
+  ASSERT_THAT(obu, IsOk());
 
-  audio_elements.emplace(audio_element_id, std::move(audio_element));
+  AudioElementWithData audio_element_with_data{
+      .obu = *std::move(obu),
+      .codec_config = &codec_config_iter->second,
+  };
+  ASSERT_THAT(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
+                  audio_element_with_data.obu,
+                  audio_element_with_data.substream_id_to_labels),
+              IsOk());
+  audio_elements.emplace(audio_element_id, std::move(audio_element_with_data));
 }
 
 // Adds a scalable Audio Element OBU based on the input arguments.

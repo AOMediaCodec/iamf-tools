@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <list>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -27,6 +28,7 @@
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/global_timing_module.h"
+#include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -36,6 +38,7 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
+#include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definition_variant.h"
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/parameter_block.h"
@@ -423,38 +426,42 @@ void ConfigureReconGainParameterBlocks(
       user_metadata.add_parameter_block_metadata()));
 }
 
-void PrepareAudioElementWithDataForReconGain(
-    AudioElementWithData& audio_element_with_data) {
-  audio_element_with_data.channel_numbers_for_layers = {
-      {2, 0, 0},  // Stereo.
-      {5, 1, 0},  // 5.1.
-  };
-
+void Add5_1AudioElementForReconGain(
+    DecodedUleb128 audio_element_id,
+    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+        codec_config_obus,
+    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
   // To compute recon gains, we need at least two layers in the
   // `ScalableChannelLayoutConfig`.
-  auto& audio_element_obu = audio_element_with_data.obu;
-  EXPECT_THAT(audio_element_obu.InitializeScalableChannelLayout(2, 0), IsOk());
-  auto& layer_configs =
-      std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_)
-          .channel_audio_layer_configs;
-
-  // First layer.
-  layer_configs[0] = ChannelAudioLayerConfig{
-      .loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
-      .output_gain_is_present_flag = 0,
-      .recon_gain_is_present_flag = 0,
-      .reserved_a = 0,
-      .substream_count = 1,
-      .coupled_substream_count = 1,
+  const ScalableChannelLayoutConfig scalable_channel_layout_config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+           .recon_gain_is_present_flag = 0,
+           .substream_count = 1,
+           .coupled_substream_count = 1},
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch,
+           .recon_gain_is_present_flag = 1,
+           .reserved_a = 0,
+           .substream_count = 3,
+           .coupled_substream_count = 1},
+      }};
+  constexpr std::array<DecodedUleb128, 4> kSubstreamIds{0, 1, 2, 3};
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), audio_element_id, /*reserved=*/0, kCodecConfigId,
+      kSubstreamIds, scalable_channel_layout_config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  AudioElementWithData audio_element_with_data = {
+      .obu = *std::move(audio_element_obu),
+      .codec_config = &codec_config_obus.at(kCodecConfigId),
   };
-  layer_configs[1] = ChannelAudioLayerConfig{
-      .loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch,
-      .output_gain_is_present_flag = 0,
-      .recon_gain_is_present_flag = 1,
-      .reserved_a = 0,
-      .substream_count = 3,
-      .coupled_substream_count = 1,
-  };
+  ASSERT_THAT(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+                  audio_element_with_data.obu.audio_substream_ids_,
+                  scalable_channel_layout_config,
+                  audio_element_with_data.substream_id_to_labels,
+                  audio_element_with_data.label_to_output_gain,
+                  audio_element_with_data.channel_numbers_for_layers),
+              IsOk());
+  audio_elements.emplace(audio_element_id, std::move(audio_element_with_data));
 }
 
 IdLabeledFrameMap PrepareIdLabeledFrameMap() {
@@ -476,12 +483,14 @@ TEST(ParameterBlockGeneratorTest, GenerateReconGainParameterBlocks) {
 
   // Initialize pre-requisite OBUs.
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(IamfInputLayout::k5_1, kFourSubtreamIds,
-                             codec_config_obus, audio_elements);
+  constexpr uint32_t kSampleRate = 48000;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
 
-  // Extra data needed to compute recon gain.
-  PrepareAudioElementWithDataForReconGain(audio_elements.begin()->second);
+  // Add a multi-layer 5.1 Audio Element to compute recon gain.
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
+  Add5_1AudioElementForReconGain(kAudioElementId, codec_config_obus,
+                                 audio_elements);
 
   // Add a recon gain parameter definition inside the Audio Element OBU.
   AddReconGainParamDefinition(kParameterId, kParameterRate, kDuration,

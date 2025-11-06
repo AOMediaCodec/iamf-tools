@@ -125,29 +125,25 @@ TEST(FindSamplesOrDemixedSamples, ErrorNoMatchingSamples) {
                    .ok());
 }
 
-void InitAudioElementWithLabelsAndLayers(
+void InitAudioElementWithLabelsAndScalableChannelLayout(
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const std::vector<ChannelAudioLayerConfig::LoudspeakerLayout>&
-        loudspeaker_layouts,
+    const ScalableChannelLayoutConfig& config,
     absl::flat_hash_map<DecodedUleb128, AudioElementWithData>& audio_elements) {
-  auto [iter, unused_inserted] = audio_elements.emplace(
-      kAudioElementId,
-      AudioElementWithData{
-          .obu = AudioElementObu(ObuHeader(), kAudioElementId,
-                                 AudioElementObu::kAudioElementChannelBased,
-                                 /*reserved=*/0,
-                                 /*codec_config_id=*/0),
-          .substream_id_to_labels = substream_id_to_labels,
-      });
-  auto& obu = iter->second.obu;
-  ASSERT_THAT(
-      obu.InitializeScalableChannelLayout(loudspeaker_layouts.size(), 0),
-      IsOk());
-  auto& config = std::get<ScalableChannelLayoutConfig>(obu.config_);
-  for (int i = 0; i < loudspeaker_layouts.size(); ++i) {
-    config.channel_audio_layer_configs[i].loudspeaker_layout =
-        loudspeaker_layouts[i];
+  std::vector<DecodedUleb128> substream_ids;
+  substream_ids.reserve(substream_id_to_labels.size());
+  for (const auto& [substream_id, _] : substream_id_to_labels) {
+    substream_ids.push_back(substream_id);
   }
+  auto obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kAudioElementId, /*reserved=*/0, /*codec_config_id=*/0,
+      substream_ids, config);
+  ASSERT_THAT(obu, IsOk());
+
+  audio_elements.emplace(kAudioElementId,
+                         AudioElementWithData{
+                             .obu = *std::move(obu),
+                             .substream_id_to_labels = substream_id_to_labels,
+                         });
 }
 
 TEST(CreateForDownMixingAndReconstruction, EmptyConfigMapIsOk) {
@@ -175,12 +171,23 @@ TEST(CreateForDownMixingAndReconstruction, ValidWithTwoLayerStereo) {
   EXPECT_THAT(demixing_module, IsOk());
 }
 
+const ScalableChannelLayoutConfig kOneLayerStereoConfig = {
+    .channel_audio_layer_configs = {
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+         .substream_count = 1,
+         .coupled_substream_count = 1}}};
+
+const ScalableChannelLayoutConfig kTwoLayerStereoConfig = {
+    .channel_audio_layer_configs = {
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
+         .substream_count = 1},
+        {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
+         .substream_count = 1}}};
+
 TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{0, {kMono}}, {1, {kL2}}},
-                                      {ChannelAudioLayerConfig::kLayoutMono,
-                                       ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kMono}}, {1, {kL2}}}, kTwoLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
@@ -193,10 +200,8 @@ TEST(InitializeForReconstruction, NeverCreatesDownMixers) {
 
 TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{0, {kMono}}, {1, {kL2}}},
-                                      {ChannelAudioLayerConfig::kLayoutMono,
-                                       ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kMono}}, {1, {kL2}}}, kTwoLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
@@ -208,10 +213,14 @@ TEST(CreateForReconstruction, CreatesOneDemixerForTwoLayerStereo) {
 }
 
 TEST(CreateForReconstruction, FailsForReservedLayout14) {
+  const ScalableChannelLayoutConfig kReserved14Config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutReserved14,
+           .substream_count = 1}}};
+
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
-      {{0, {kOmitted}}}, {ChannelAudioLayerConfig::kLayoutReserved14},
-      audio_elements);
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kOmitted}}}, kReserved14Config, audio_elements);
 
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
@@ -220,15 +229,16 @@ TEST(CreateForReconstruction, FailsForReservedLayout14) {
 }
 
 TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
+  const ScalableChannelLayoutConfig kExpandedLayoutLFEConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutLFE}}};
+
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
-      {{0, {kLFE}}}, {ChannelAudioLayerConfig::kLayoutExpanded},
-      audio_elements);
-  std::get<ScalableChannelLayoutConfig>(
-      audio_elements.at(kAudioElementId).obu.config_)
-      .channel_audio_layer_configs[0]
-      .expanded_loudspeaker_layout =
-      ChannelAudioLayerConfig::kExpandedLayoutLFE;
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kLFE}}}, kExpandedLayoutLFEConfig, audio_elements);
 
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
@@ -238,9 +248,8 @@ TEST(CreateForReconstruction, ValidForExpandedLayoutLFE) {
 
 TEST(CreateForReconstruction, CreatesNoDemixersForSingleLayerChannelBased) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{0, {kL2, kR2}}},
-                                      {ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{0, {kL2, kR2}}}, kOneLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
@@ -273,11 +282,9 @@ TEST(CreateForReconstruction, CreatesNoDemixersForAmbisonics) {
 
 TEST(DemixOriginalAudioSamples, ReturnsErrorAfterCreateForReconstruction) {
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
@@ -289,11 +296,9 @@ TEST(DemixDecodedAudioSamples, OutputContainsOriginalAndDemixedSamples) {
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   decoded_audio_frames.push_back(AudioFrameWithData{
       .obu = AudioFrameObu(
@@ -331,9 +336,9 @@ TEST(DemixDecodedAudioSamples, ReturnsErrorWhenChannelCountsMismatch) {
   // Configure a stereo audio element. We'd typically expected audio frames to
   // have two channels.
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers({{kStereoSubstreamId, {kL2, kR2}}},
-                                      {ChannelAudioLayerConfig::kLayoutStereo},
-                                      audio_elements);
+  InitAudioElementWithLabelsAndScalableChannelLayout(
+      {{kStereoSubstreamId, {kL2, kR2}}}, kOneLayerStereoConfig,
+      audio_elements);
   const auto demixing_module = DemixingModule::CreateForReconstruction(
       DemixingModule::CreateIdToReconstructionConfig(audio_elements));
   ASSERT_THAT(demixing_module, IsOk());
@@ -369,11 +374,9 @@ TEST(DemixDecodedAudioSamples, OutputEchoesTimingInformation) {
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   decoded_audio_frames.push_back(AudioFrameWithData{
       .obu = AudioFrameObu(
@@ -421,11 +424,9 @@ TEST(DemixDecodedAudioSamples, OutputEchoesOriginalLabels) {
   const auto kDecodedL2Samples =
       Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   decoded_audio_frames.push_back(AudioFrameWithData{
       .obu = AudioFrameObu(
@@ -478,11 +479,9 @@ TEST(DemixDecodedAudioSamples, OutputHasReconstructedLayers) {
       Int32ToInternalSampleType2D(kDecodedL2SamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
 
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   decoded_audio_frames.push_back(AudioFrameWithData{
       .obu = AudioFrameObu(
@@ -526,11 +525,9 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
   const std::vector<std::vector<int32_t>> kDecodedSamplesInt = {{0}};
   const auto kDecodedSamples = Int32ToInternalSampleType2D(kDecodedSamplesInt);
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitAudioElementWithLabelsAndLayers(
+  InitAudioElementWithLabelsAndScalableChannelLayout(
       {{kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}},
-      {ChannelAudioLayerConfig::kLayoutMono,
-       ChannelAudioLayerConfig::kLayoutStereo},
-      audio_elements);
+      kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   ReconGainInfoParameterData recon_gain_info_parameter_data;
   recon_gain_info_parameter_data.recon_gain_elements.push_back(ReconGainElement{
