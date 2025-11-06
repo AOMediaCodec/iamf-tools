@@ -1224,6 +1224,18 @@ TEST(Create, SucceedsForTrivialIaSequence) {
   EXPECT_FALSE(insufficient_data);
 }
 
+TEST(Create, FailsOnNullReadBitBuffer)
+__attribute__((no_sanitize("nullability"))) {
+  bool insufficient_data;
+  ReadBitBuffer* read_bit_buffer = nullptr;
+
+  auto obu_processor = ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                                            read_bit_buffer, insufficient_data);
+
+  EXPECT_THAT(obu_processor, IsNull());
+  EXPECT_FALSE(insufficient_data);
+}
+
 TEST(Create, FailsOnInsufficientData) {
   auto bitstream = InitAllDescriptorsForZerothOrderAmbisonics();
   auto read_bit_buffer =
@@ -1991,7 +2003,8 @@ TEST(CreateForRendering, CanChooseLayoutByMixPresentationIdOnly) {
               IsOkAndHolds(kSecondMixPresentationId));
 }
 
-TEST(CreateForRendering, NullReadBitBufferRejected) {
+TEST(CreateForRendering, NullReadBitBufferRejected)
+__attribute__((no_sanitize("nullability"))) {
   ReadBitBuffer* read_bit_buffer_nullptr = nullptr;
   bool insufficient_data;
 
