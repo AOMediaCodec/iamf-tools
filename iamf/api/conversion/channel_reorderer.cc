@@ -125,6 +125,7 @@ MakeFunction(LoudspeakersSsConventionLayout::SoundSystem original_layout,
              ChannelReorderer::RearrangementScheme scheme) {
   switch (scheme) {
     case ChannelReorderer::RearrangementScheme::kDefaultNoOp:
+    default:
       return NoOp;
     case ChannelReorderer::RearrangementScheme::kReorderForAndroid: {
       switch (original_layout) {

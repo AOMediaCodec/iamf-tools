@@ -267,7 +267,6 @@ absl::Status ParameterBlockObu::GetLinearMixGain(
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
   int target_subblock_index = -1;
-  InternalTimestamp target_subblock_start_time = -1;
   InternalTimestamp subblock_relative_start_time = 0;
   InternalTimestamp subblock_relative_end_time = 0;
   for (int i = 0; i < num_subblocks; i++) {
@@ -280,7 +279,6 @@ absl::Status ParameterBlockObu::GetLinearMixGain(
         obu_relative_time <
             (subblock_relative_start_time + subblock_duration.value())) {
       target_subblock_index = i;
-      target_subblock_start_time = subblock_relative_start_time;
       subblock_relative_end_time =
           subblock_relative_start_time + subblock_duration.value();
       break;
