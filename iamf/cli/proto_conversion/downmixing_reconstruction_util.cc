@@ -50,8 +50,8 @@ CreateAudioElementIdToDemixingMetadata(
           absl::StrCat("Audio Element ID= ", audio_element_id, " not found"));
     }
     absl::flat_hash_set<ChannelLabel::Label> user_channel_labels;
-    RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
-        user_audio_frame_metadata, user_channel_labels));
+    RETURN_IF_NOT_OK(ChannelLabelUtils::ConvertAndFillLabels(
+        user_audio_frame_metadata.channel_metadatas(), user_channel_labels));
     const auto& audio_element_with_data = audio_element->second;
     result[audio_element_id] = {user_channel_labels,
                                 audio_element_with_data.substream_id_to_labels,

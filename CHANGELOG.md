@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Removed
+
+-   Drop support `channel_ids` and `channel_labels` in `AudioElementObuMetadata`
+    in favor of `ChannelMetadata`.
+
 ## [2.1.0] - 2025-11-06
 
 ### Added

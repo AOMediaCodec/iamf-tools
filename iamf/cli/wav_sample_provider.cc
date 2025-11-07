@@ -22,6 +22,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/audio_element_with_data.h"
@@ -41,69 +42,25 @@ namespace iamf_tools {
 
 namespace {
 
-absl::Status FillChannelIdsFromDeprecatedChannelIds(
+void FillChannelIds(
     const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
     std::vector<uint32_t>& channel_ids) {
-  if (audio_frame_metadata.channel_ids_size() !=
-      audio_frame_metadata.channel_labels_size()) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("#channel IDs and #channel labels differ: (",
-                     audio_frame_metadata.channel_ids_size(), " vs ",
-                     audio_frame_metadata.channel_labels_size(), ")"));
-  }
-
-  // Precompute the channel IDs for the audio element.
-  channel_ids.reserve(audio_frame_metadata.channel_ids_size());
-  for (const uint32_t channel_id : audio_frame_metadata.channel_ids()) {
-    channel_ids.push_back(channel_id);
-  }
-
-  return absl::OkStatus();
-}
-
-absl::Status FillChannelIdsFromChannelMetadatas(
-    const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
-    std::vector<uint32_t>& channel_ids) {
-  if (!audio_frame_metadata.channel_ids().empty()) {
-    return absl::InvalidArgumentError(
-        "Please fully upgrade to `channel_metadatas`. Leave `channel_ids` "
-        "empty");
-  }
-  // Collect the channel IDs from the `channel_metadatas` field.
+  // Collect the channel IDs.
   channel_ids.reserve(audio_frame_metadata.channel_metadatas().size());
   for (const auto& channel_metadata :
        audio_frame_metadata.channel_metadatas()) {
     channel_ids.push_back(channel_metadata.channel_id());
   }
-  return absl::OkStatus();
-}
 
-absl::Status FillChannelIdsAndLabels(
-    const iamf_tools_cli_proto::AudioFrameObuMetadata& audio_frame_metadata,
-    std::vector<uint32_t>& channel_ids,
-    std::vector<ChannelLabel::Label>& channel_labels) {
-  // Collect the channel IDs.
-  if (!audio_frame_metadata.channel_metadatas().empty()) {
-    RETURN_IF_NOT_OK(
-        FillChannelIdsFromChannelMetadatas(audio_frame_metadata, channel_ids));
-  } else {
-    RETURN_IF_NOT_OK(FillChannelIdsFromDeprecatedChannelIds(
-        audio_frame_metadata, channel_ids));
-  }
   if (!ValidateUnique(channel_ids.begin(), channel_ids.end(), "channel ids")
            .ok()) {
     // OK. The user is claiming some channel IDs are shared between labels.
     // This is strange, but permitted.
     ABSL_LOG(WARNING) << "Usually channel labels should be unique. Did you use "
                          "the same channel ID for different channels?";
-  }
-
-  // Precompute the internal `ChannelLabel::Label`s.
-  RETURN_IF_NOT_OK(ChannelLabelUtils::SelectConvertAndFillLabels(
-      audio_frame_metadata, channel_labels));
-
-  return absl::OkStatus();
+  };
 }
+
 absl::Status ValidateWavReaderIsConsistentWithData(
     absl::string_view wav_filename_for_debugging, const WavReader& wav_reader,
     const CodecConfigObu& codec_config,
@@ -163,8 +120,9 @@ absl::Status InitializeForAudioElement(
     std::vector<ChannelLabel::Label>& labels,
     absl::flat_hash_map<DecodedUleb128, WavReader>&
         audio_element_id_to_wav_reader) {
-  RETURN_IF_NOT_OK(
-      FillChannelIdsAndLabels(audio_frame_metadata, channel_ids, labels));
+  FillChannelIds(audio_frame_metadata, channel_ids);
+  RETURN_IF_NOT_OK(ChannelLabelUtils::ConvertAndFillLabels(
+      audio_frame_metadata.channel_metadatas(), labels));
 
   auto wav_reader = WavReader::CreateFromFile(
       wav_filename, static_cast<size_t>(codec_config.GetNumSamplesPerFrame()));

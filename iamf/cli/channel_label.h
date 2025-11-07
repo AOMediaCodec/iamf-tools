@@ -19,7 +19,6 @@
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 
@@ -204,23 +203,6 @@ class ChannelLabel {
   static absl::StatusOr<ChannelLabel::Label> GetDemixedChannelLabelForReconGain(
       const ChannelAudioLayerConfig::LoudspeakerLayout& layout,
       const ReconGainElement::ReconGainFlagBitmask& recon_gain_flag);
-
-  /*!\brief Converts the input string to a `Label`.
-   *
-   * Used only to support the deprecated `AudioFrameObuMetadata.channel_labels`
-   * field.
-   *
-   * Channel Labels, e.g. "L2", "Ls5". For ambisonics, use "A{ACN number}",
-   * e.g. "A0", "A13", but prefer using `AmbisonicsChannelNumberToLabel()`
-   * instead.
-   *
-   * \param label Label to convert.
-   * \return Converted label on success. A specific status on failure.
-   */
-  // TODO(b/330558209): Remove when `AudioFrameObuMetadata.channel_labels` is
-  //                    removed.
-  static absl::StatusOr<Label> DeprecatedStringBasedLabelToLabel(
-      absl::string_view label);
 };
 
 }  // namespace iamf_tools

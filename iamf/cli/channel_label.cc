@@ -168,101 +168,19 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
 
 absl::StatusOr<ChannelLabel::Label>
 ChannelLabel::AmbisonicsChannelNumberToLabel(int ambisonics_channel_number) {
-  return ChannelLabel::DeprecatedStringBasedLabelToLabel(
-      absl::StrCat("A", ambisonics_channel_number));
-}
-
-absl::StatusOr<ChannelLabel::Label>
-ChannelLabel::DeprecatedStringBasedLabelToLabel(absl::string_view label) {
   using enum ChannelLabel::Label;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<absl::string_view, ChannelLabel::Label>>
-      kStringToChannelLabel({
-          {"Omitted", kOmitted},
-          {"M", kMono},
-          {"L2", kL2},
-          {"R2", kR2},
-          {"DemixedR2", kDemixedR2},
-          {"C", kCentre},
-          {"LFE", kLFE},
-          {"L3", kL3},
-          {"R3", kR3},
-          {"Rtf3", kRtf3},
-          {"Ltf3", kLtf3},
-          {"DemixedL3", kDemixedL3},
-          {"DemixedR3", kDemixedR3},
-          {"L5", kL5},
-          {"R5", kR5},
-          {"Ls5", kLs5},
-          {"Rs5", kRs5},
-          {"DemixedL5", kDemixedL5},
-          {"DemixedR5", kDemixedR5},
-          {"DemixedLs5", kDemixedLs5},
-          {"DemixedRs5", kDemixedRs5},
-          {"Ltf2", kLtf2},
-          {"Rtf2", kRtf2},
-          {"DemixedRtf2", kDemixedRtf2},
-          {"DemixedLtf2", kDemixedLtf2},
-          {"Ltf4", kLtf4},
-          {"Rtf4", kRtf4},
-          {"Ltb4", kLtb4},
-          {"Rtb4", kRtb4},
-          {"DemixedLtb4", kDemixedLtb4},
-          {"DemixedRtb4", kDemixedRtb4},
-          {"L7", kL7},
-          {"R7", kR7},
-          {"Lss7", kLss7},
-          {"Rss7", kRss7},
-          {"Lrs7", kLrs7},
-          {"Rrs7", kRrs7},
-          {"DemixedL7", kDemixedL7},
-          {"DemixedR7", kDemixedR7},
-          {"DemixedLrs7", kDemixedLrs7},
-          {"DemixedRrs7", kDemixedRrs7},
-          {"FLc", kFLc},
-          {"FC", kFC},
-          {"FRc", kFRc},
-          {"FL", kFL},
-          {"FR", kFR},
-          {"SiL", kSiL},
-          {"SiR", kSiR},
-          {"BL", kBL},
-          {"BR", kBR},
-          {"TpFL", kTpFL},
-          {"TpFR", kTpFR},
-          {"TpSiL", kTpSiL},
-          {"TpSiR", kTpSiR},
-          {"TpBL", kTpBL},
-          {"TpBR", kTpBR},
-          {"A0", kA0},
-          {"A1", kA1},
-          {"A2", kA2},
-          {"A3", kA3},
-          {"A4", kA4},
-          {"A5", kA5},
-          {"A6", kA6},
-          {"A7", kA7},
-          {"A8", kA8},
-          {"A9", kA9},
-          {"A10", kA10},
-          {"A11", kA11},
-          {"A12", kA12},
-          {"A13", kA13},
-          {"A14", kA14},
-          {"A15", kA15},
-          {"A16", kA16},
-          {"A17", kA17},
-          {"A18", kA18},
-          {"A19", kA19},
-          {"A20", kA20},
-          {"A21", kA21},
-          {"A22", kA22},
-          {"A23", kA23},
-          {"A24", kA24},
+  static const absl::NoDestructor<absl::flat_hash_map<int, ChannelLabel::Label>>
+      kAmbisonicsChannelNumberToLabel({
+          {0, kA0},   {1, kA1},   {2, kA2},   {3, kA3},   {4, kA4},
+          {5, kA5},   {6, kA6},   {7, kA7},   {8, kA8},   {9, kA9},
+          {10, kA10}, {11, kA11}, {12, kA12}, {13, kA13}, {14, kA14},
+          {15, kA15}, {16, kA16}, {17, kA17}, {18, kA18}, {19, kA19},
+          {20, kA20}, {21, kA21}, {22, kA22}, {23, kA23}, {24, kA24},
       });
 
-  return LookupInMap(*kStringToChannelLabel, label,
-                     "`Channel::Label` for string-based label");
+  return LookupInMap(*kAmbisonicsChannelNumberToLabel,
+                     ambisonics_channel_number,
+                     "`Channel::Label` for `ambisonics_channel_number`");
 }
 
 std::string ChannelLabel::LabelToStringForDebugging(Label label) {
