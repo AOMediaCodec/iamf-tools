@@ -18,18 +18,6 @@ import "iamf/cli/proto/param_definitions.proto";
 option features.enum_type = CLOSED;
 option features.utf8_validation = NONE;
 
-message MixPresentationAnnotations {
-  option deprecated = true;
-
-  string mix_presentation_friendly_label = 1;
-}
-
-message MixPresentationElementAnnotations {
-  option deprecated = true;
-
-  string audio_element_friendly_label = 1;
-}
-
 message ElementMixConfig {
   option deprecated = true;
 
@@ -52,13 +40,10 @@ message RenderingConfig {
 }
 
 message SubMixAudioElement {
-  reserved 2;
+  reserved 2, 4;
+  reserved mix_presentation_element_annotations_array;
 
   uint32 audio_element_id = 1;
-
-  // Superseded by `localized_element_annotations`.
-  repeated MixPresentationElementAnnotations
-      mix_presentation_element_annotations_array = 4 [deprecated = true];
 
   // Annotations, for this audio element. The length should be `count_label`.
   repeated string localized_element_annotations = 6;
@@ -224,21 +209,15 @@ message MixPresentationTags {
 }
 
 message MixPresentationObuMetadata {
-  reserved 2;
+  reserved 2, 6, 7;
+  reserved language_labels, mix_presentation_annotations_array;
 
   uint32 mix_presentation_id = 1;
   uint32 count_label = 5 [deprecated = true];
 
-  // Superseded by `annotations_language`.
-  repeated string language_labels = 6 [deprecated = true];
-
   // Language codes of the annotations themselves, infer the spec `count_label`
   // from the length of this field.
   repeated string annotations_language = 9;
-
-  // Superseded by `localized_presentation_annotations`.
-  repeated MixPresentationAnnotations mix_presentation_annotations_array = 7
-      [deprecated = true];
 
   // Annotations, for this mix. The length should be `count_label`.
   repeated string localized_presentation_annotations = 10;

@@ -12,6 +12,13 @@ and this project adheres to
 
 -   Drop support `channel_ids` and `channel_labels` in `AudioElementObuMetadata`
     in favor of `ChannelMetadata`.
+-   Drop support of `language_labels` in favor of `annotations_language`.
+-   Drop support of `MixPresentationAnnotations` and
+    `mix_presentation_annotations_array` in favor of
+    `localized_presentation_annotations`.
+-   Drop support of `MixPresentationElementAnnotations` and
+    `mix_presentation_element_annotations_array` in favor of
+    `localized_element_annotations`.
 
 ## [2.1.0] - 2025-11-06
 

@@ -260,49 +260,6 @@ TEST(Generate, CopiesNoAnnotations) {
                   .localized_element_annotations.empty());
 }
 
-TEST(Generate, CopiesDeprecatedAnnotations) {
-  const std::vector<std::string> kAnnotationsLanguage = {"en-us", "en-gb"};
-  const std::vector<std::string> kLocalizedPresentationAnnotations = {
-      "US Label", "GB Label"};
-  const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
-      "US AE Label", "GB AE Label"};
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.mutable_language_labels()->Add(kAnnotationsLanguage.begin(),
-                                                  kAnnotationsLanguage.end());
-  *mix_presentation.mutable_mix_presentation_annotations_array()
-       ->Add()
-       ->mutable_mix_presentation_friendly_label() =
-      kLocalizedPresentationAnnotations[0];
-  *mix_presentation.mutable_mix_presentation_annotations_array()
-       ->Add()
-       ->mutable_mix_presentation_friendly_label() =
-      kLocalizedPresentationAnnotations[1];
-  auto* first_element_annotations_array =
-      mix_presentation.mutable_sub_mixes(0)
-          ->mutable_audio_elements(0)
-          ->mutable_mix_presentation_element_annotations_array();
-  first_element_annotations_array->Add()->set_audio_element_friendly_label(
-      kAudioElementLocalizedElementAnnotations[0]);
-  first_element_annotations_array->Add()->set_audio_element_friendly_label(
-      kAudioElementLocalizedElementAnnotations[1]);
-
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
-
-  const auto& first_obu = generated_obus.front();
-  EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
-  EXPECT_EQ(first_obu.GetLocalizedPresentationAnnotations(),
-            kLocalizedPresentationAnnotations);
-  EXPECT_EQ(
-      first_obu.sub_mixes_[0].audio_elements[0].localized_element_annotations,
-      kAudioElementLocalizedElementAnnotations);
-}
-
 TEST(Generate, CopiesAnnotations) {
   const std::vector<std::string> kAnnotationsLanguage = {"en-us", "en-gb"};
   const std::vector<std::string> kLocalizedPresentationAnnotations = {
@@ -322,52 +279,6 @@ TEST(Generate, CopiesAnnotations) {
       ->mutable_localized_element_annotations()
       ->Add(kAudioElementLocalizedElementAnnotations.begin(),
             kAudioElementLocalizedElementAnnotations.end());
-
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
-
-  const auto& first_obu = generated_obus.front();
-  EXPECT_EQ(first_obu.GetAnnotationsLanguage(), kAnnotationsLanguage);
-  EXPECT_EQ(first_obu.GetLocalizedPresentationAnnotations(),
-            kLocalizedPresentationAnnotations);
-  EXPECT_EQ(
-      first_obu.sub_mixes_[0].audio_elements[0].localized_element_annotations,
-      kAudioElementLocalizedElementAnnotations);
-}
-
-TEST(Generate, NonDeprecatedAnnotationsTakePrecedence) {
-  const std::vector<std::string> kDeprecatedAnnotations = {"Deprecated"};
-  const std::vector<std::string> kAnnotationsLanguage = {"en-us"};
-  const std::vector<std::string> kLocalizedPresentationAnnotations = {
-      "US Label"};
-  const std::vector<std::string> kAudioElementLocalizedElementAnnotations = {
-      "US AE Label"};
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.mutable_annotations_language()->Add(
-      kAnnotationsLanguage.begin(), kAnnotationsLanguage.end());
-  mix_presentation.mutable_localized_presentation_annotations()->Add(
-      kLocalizedPresentationAnnotations.begin(),
-      kLocalizedPresentationAnnotations.end());
-  mix_presentation.mutable_sub_mixes(0)
-      ->mutable_audio_elements(0)
-      ->mutable_localized_element_annotations()
-      ->Add(kAudioElementLocalizedElementAnnotations.begin(),
-            kAudioElementLocalizedElementAnnotations.end());
-  mix_presentation.mutable_language_labels()->Add(
-      kDeprecatedAnnotations.begin(), kDeprecatedAnnotations.end());
-  *mix_presentation.mutable_mix_presentation_annotations_array()
-       ->Add()
-       ->mutable_mix_presentation_friendly_label() = kDeprecatedAnnotations[0];
-  *mix_presentation.mutable_sub_mixes(0)
-       ->mutable_audio_elements(0)
-       ->mutable_mix_presentation_element_annotations_array()
-       ->Add()
-       ->mutable_audio_element_friendly_label() = kDeprecatedAnnotations[0];
 
   MixPresentationGenerator generator(mix_presentation_metadata);
 
