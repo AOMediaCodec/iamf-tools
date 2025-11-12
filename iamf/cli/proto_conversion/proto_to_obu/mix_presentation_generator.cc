@@ -137,35 +137,6 @@ absl::Status FillRenderingConfig(
       absl::MakeSpan(rendering_config.rendering_config_extension_bytes));
 }
 
-// Prefers selecting `element_mix_gain` (IAMF v1.1.0 field) if it present over
-// `element_mix_config.mix_gain` (deprecated in the proto based on IAMF v1.0
-// spec).
-const iamf_tools_cli_proto::MixGainParamDefinition& SelectElementMixConfig(
-    const iamf_tools_cli_proto::SubMixAudioElement& sub_mix_audio_element) {
-  if (sub_mix_audio_element.has_element_mix_gain()) {
-    return sub_mix_audio_element.element_mix_gain();
-  } else {
-    ABSL_LOG(WARNING)
-        << "Please upgrade `element_mix_config` to `element_mix_gain`.";
-    return sub_mix_audio_element.element_mix_config().mix_gain();
-  }
-}
-
-// Prefers selecting `output_mix_gain` (IAMF v1.1.0 field) if it present over
-// `output_mix_config.output_mix_gain` (deprecated in the proto based on IAMF
-// v1.0 spec).
-const iamf_tools_cli_proto::MixGainParamDefinition& SelectOutputMixConfig(
-    const iamf_tools_cli_proto::MixPresentationSubMix&
-        mix_presentation_sub_mix) {
-  if (mix_presentation_sub_mix.has_output_mix_gain()) {
-    return mix_presentation_sub_mix.output_mix_gain();
-  } else {
-    ABSL_LOG(WARNING)
-        << "Please upgrade `output_mix_config` to `output_mix_gain`.";
-    return mix_presentation_sub_mix.output_mix_config().output_mix_gain();
-  }
-}
-
 absl::Status FillMixConfig(
     const iamf_tools_cli_proto::MixGainParamDefinition& input_mix_gain,
     MixGainParamDefinition& mix_gain) {
@@ -496,12 +467,12 @@ absl::Status MixPresentationGenerator::Generate(
                                 sub_mix_audio_element.rendering_config));
 
         RETURN_IF_NOT_OK(
-            FillMixConfig(SelectElementMixConfig(input_sub_mix_audio_element),
+            FillMixConfig(input_sub_mix_audio_element.element_mix_gain(),
                           sub_mix_audio_element.element_mix_gain));
         sub_mix.audio_elements.push_back(sub_mix_audio_element);
       }
 
-      RETURN_IF_NOT_OK(FillMixConfig(SelectOutputMixConfig(input_sub_mix),
+      RETURN_IF_NOT_OK(FillMixConfig(input_sub_mix.output_mix_gain(),
                                      sub_mix.output_mix_gain));
 
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));

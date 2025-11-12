@@ -19,6 +19,8 @@ and this project adheres to
 -   Drop support of `MixPresentationElementAnnotations` and
     `mix_presentation_element_annotations_array` in favor of
     `localized_element_annotations`.
+-   Drop support of `element_mix_config` and `output_mix_config` in favor of
+    `element_mix_gain` and `output_mix_gain`.
 
 ## [2.1.0] - 2025-11-06
 

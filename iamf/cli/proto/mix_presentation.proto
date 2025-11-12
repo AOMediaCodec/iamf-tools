@@ -18,12 +18,6 @@ import "iamf/cli/proto/param_definitions.proto";
 option features.enum_type = CLOSED;
 option features.utf8_validation = NONE;
 
-message ElementMixConfig {
-  option deprecated = true;
-
-  MixGainParamDefinition mix_gain = 1;
-}
-
 enum HeadPhonesRenderingMode {
   HEADPHONES_RENDERING_MODE_INVALID = 0;
   HEADPHONES_RENDERING_MODE_STEREO = 1;
@@ -40,8 +34,8 @@ message RenderingConfig {
 }
 
 message SubMixAudioElement {
-  reserved 2, 4;
-  reserved mix_presentation_element_annotations_array;
+  reserved 2, 3, 4;
+  reserved element_mix_config, mix_presentation_element_annotations_array;
 
   uint32 audio_element_id = 1;
 
@@ -49,16 +43,7 @@ message SubMixAudioElement {
   repeated string localized_element_annotations = 6;
   RenderingConfig rendering_config = 5;
 
-  // Superseded by `element_mix_gain`.
-  ElementMixConfig element_mix_config = 3 [deprecated = true];
-
   MixGainParamDefinition element_mix_gain = 7;
-}
-
-message OutputMixConfig {
-  option deprecated = true;
-
-  MixGainParamDefinition output_mix_gain = 1;
 }
 
 enum SoundSystem {
@@ -175,14 +160,14 @@ message MixPresentationLayout {
 }
 
 message MixPresentationSubMix {
+  reserved 3;
+  reserved output_mix_config;
+
   // `num_audio_elements` is ignored. The value in the bitstream is inferred
   // based on the number of `audio_elements`.
   uint32 num_audio_elements = 1 [deprecated = true];
 
   repeated SubMixAudioElement audio_elements = 2;
-
-  // Superseded by `output_mix_gain`.
-  OutputMixConfig output_mix_config = 3 [deprecated = true];
 
   MixGainParamDefinition output_mix_gain = 6;
 
