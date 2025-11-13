@@ -27,6 +27,7 @@
 #include "absl/log/absl_vlog_is_on.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -162,8 +163,7 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
     ABSL_LOG(ERROR) << input_key.status();
     return nullptr;
   }
-  const auto& output_key =
-      renderer_utils::LookupOutputKeyFromPlaybackLayout(playback_layout);
+  const auto& output_key = LookupOutputKeyFromPlaybackLayout(playback_layout);
   if (!output_key.ok()) {
     ABSL_LOG(ERROR) << output_key.status();
     return nullptr;

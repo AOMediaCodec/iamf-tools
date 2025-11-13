@@ -100,9 +100,12 @@ cc_test(
     name = "renderer_utils_test",
     srcs = ["renderer_utils_test.cc"],
     deps = [
+        "//iamf/cli:audio_element_with_data",
         "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli/renderer:renderer_utils",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",

@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "iamf/cli/demixing_module.h"
@@ -30,7 +31,7 @@ absl::StatusOr<size_t> AudioElementRendererBase::RenderLabeledFrame(
   absl::MutexLock lock(&mutex_);
 
   size_t num_valid_samples = 0;
-  RETURN_IF_NOT_OK(iamf_tools::renderer_utils::ArrangeSamplesToRender(
+  RETURN_IF_NOT_OK(iamf_tools::ArrangeSamplesToRender(
       labeled_frame, ordered_labels_, kEmptyChannel, samples_to_render_,
       num_valid_samples));
 
