@@ -12,9 +12,9 @@
 #include "iamf/cli/proto_conversion/proto_utils.h"
 
 #include <algorithm>
-#include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -81,24 +81,23 @@ ObuHeader GetHeaderFromMetadata(
         << "Ignoring deprecated `ObuHeaderMetadata.extension_header_size`. "
            "Please remove it.";
   }
-  const uint32_t extension_header_size =
-      input_obu_header.extension_header_bytes().size();
-  std::vector<uint8_t> extension_header_bytes(
-      static_cast<size_t>(extension_header_size));
-  std::transform(input_obu_header.extension_header_bytes().begin(),
-                 input_obu_header.extension_header_bytes().end(),
-                 extension_header_bytes.begin(),
-                 [](char c) { return static_cast<uint8_t>(c); });
+  std::optional<std::vector<uint8_t>> extension_header_bytes;
+  if (input_obu_header.obu_extension_flag()) {
+    extension_header_bytes =
+        std::vector<uint8_t>(input_obu_header.extension_header_bytes().size());
+    std::transform(input_obu_header.extension_header_bytes().begin(),
+                   input_obu_header.extension_header_bytes().end(),
+                   extension_header_bytes->begin(),
+                   [](char c) { return static_cast<uint8_t>(c); });
+  }
 
   return ObuHeader{
       .obu_redundant_copy = input_obu_header.obu_redundant_copy(),
       .obu_trimming_status_flag = input_obu_header.obu_trimming_status_flag(),
-      .obu_extension_flag = input_obu_header.obu_extension_flag(),
       .num_samples_to_trim_at_end =
           input_obu_header.num_samples_to_trim_at_end(),
       .num_samples_to_trim_at_start =
           input_obu_header.num_samples_to_trim_at_start(),
-      .extension_header_size = extension_header_size,
       .extension_header_bytes = extension_header_bytes};
 }
 

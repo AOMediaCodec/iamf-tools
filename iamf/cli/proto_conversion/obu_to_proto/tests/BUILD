@@ -25,7 +25,6 @@ cc_test(
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/cli/proto_conversion/obu_to_proto:obu_header_metadata_generator",
         "//iamf/obu:obu_header",
-        "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
     ],

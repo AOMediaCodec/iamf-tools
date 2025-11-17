@@ -98,8 +98,8 @@ TEST(Generate, SetsExtensionHeader) {
   EXPECT_THAT(generator.Generate(output_obu), IsOk());
   ASSERT_TRUE(output_obu.has_value());
 
-  EXPECT_EQ(output_obu->header_.obu_extension_flag, true);
-  EXPECT_EQ(output_obu->header_.extension_header_size, 5);
+  EXPECT_EQ(output_obu->header_.GetExtensionHeaderFlag(), true);
+  EXPECT_EQ(output_obu->header_.GetExtensionHeaderSize(), 5);
   EXPECT_EQ(output_obu->header_.extension_header_bytes,
             std::vector<uint8_t>({'e', 'x', 't', 'r', 'a'}));
 }

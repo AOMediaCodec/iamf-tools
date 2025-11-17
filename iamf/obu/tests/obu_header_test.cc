@@ -367,14 +367,12 @@ TEST_F(ObuHeaderTest, TrimmingStatusFlagNonZeroBothTrims) {
 TEST_F(ObuHeaderTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   obu_header_.obu_type = kObuIaAudioFrameId0;
   obu_header_.obu_trimming_status_flag = true;
-  obu_header_.obu_extension_flag = true;
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 8);
 
   obu_header_.num_samples_to_trim_at_end = 1;
   obu_header_.num_samples_to_trim_at_start = 0;
 
-  obu_header_.extension_header_size = 2;
   obu_header_.extension_header_bytes = {100, 101};
 
   expected_data_ = {// `obu_type`, `obu_redundant_copy`,
@@ -446,8 +444,7 @@ TEST_F(ObuHeaderTest, SerializedSizeTooBig) {
 }
 
 TEST_F(ObuHeaderTest, ExtensionHeaderSizeZero) {
-  obu_header_.extension_header_size = 0;
-  obu_header_.obu_extension_flag = true;
+  obu_header_.extension_header_bytes = std::vector<uint8_t>{};
   expected_data_ = {
       kObuIaTemporalDelimiter << kObuTypeBitShift | kObuExtensionFlagBitMask, 1,
       0};
@@ -455,8 +452,6 @@ TEST_F(ObuHeaderTest, ExtensionHeaderSizeZero) {
 }
 
 TEST_F(ObuHeaderTest, ExtensionHeaderSizeNonzero) {
-  obu_header_.obu_extension_flag = true;
-  obu_header_.extension_header_size = 3;
   obu_header_.extension_header_bytes = {100, 101, 102};
   expected_data_ = {
       kObuIaTemporalDelimiter << kObuTypeBitShift | kObuExtensionFlagBitMask,
@@ -469,18 +464,8 @@ TEST_F(ObuHeaderTest, ExtensionHeaderSizeNonzero) {
   TestGenerateAndWrite();
 }
 
-TEST_F(ObuHeaderTest, InconsistentExtensionHeader) {
-  obu_header_.obu_extension_flag = false;
-  obu_header_.extension_header_size = 1;
-  obu_header_.extension_header_bytes = {100};
-
-  TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
-}
-
 TEST_F(ObuHeaderTest, ExtensionHeaderIaSequenceHeader) {
   obu_header_.obu_type = kObuIaSequenceHeader;
-  obu_header_.obu_extension_flag = true;
-  obu_header_.extension_header_size = 3;
   obu_header_.extension_header_bytes = {100, 101, 102};
   payload_serialized_size_ = 6;
   expected_data_ = {
@@ -497,10 +482,8 @@ TEST_F(ObuHeaderTest, ExtensionHeaderIaSequenceHeader) {
 TEST_F(ObuHeaderTest, ObuSizeIncludesAllConditionalFields) {
   obu_header_.obu_type = kObuIaAudioFrameId1;
   obu_header_.obu_trimming_status_flag = true;
-  obu_header_.obu_extension_flag = true;
   obu_header_.num_samples_to_trim_at_end = 128;
   obu_header_.num_samples_to_trim_at_start = 128;
-  obu_header_.extension_header_size = 3;
   obu_header_.extension_header_bytes = {100, 101, 102};
   payload_serialized_size_ = 1016;
 
@@ -549,16 +532,14 @@ TEST_F(ObuHeaderTest, ReadAndValidateIncludeAllConditionalFields) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(obu_header_.obu_extension_flag, true);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), true);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 128);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 128);
-  EXPECT_EQ(obu_header_.extension_header_size, 3);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 3);
   std::vector<uint8_t> expected_extension_header_bytes = {100, 101, 102};
-  for (int i = 0; i < obu_header_.extension_header_bytes.size(); ++i) {
-    EXPECT_EQ(obu_header_.extension_header_bytes[i],
-              expected_extension_header_bytes[i]);
-  }
+  EXPECT_EQ(obu_header_.extension_header_bytes,
+            expected_extension_header_bytes);
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
@@ -582,12 +563,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderNoConditionalFields) {
@@ -611,12 +592,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderNoConditionalFields) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderRedundantCopy) {
@@ -640,12 +621,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateIaSequenceHeaderRedundantCopy) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, true);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeOneByteLeb128) {
@@ -669,12 +650,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateUpperEdgeObuSizeOneByteLeb128) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeTwoByteLeb128) {
@@ -698,12 +679,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateLowerEdgeObuSizeTwoByteLeb128) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, InvalidWhenObuWouldExceedTwoMegabytes_FourByteObuSize) {
@@ -825,12 +806,12 @@ TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
   EXPECT_EQ(obu_header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(obu_header_.obu_extension_flag, false);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest,
@@ -856,7 +837,7 @@ void ValidateAudioFrameId0WithTrim(const ObuHeader& header) {
   EXPECT_EQ(header.obu_type, kObuIaAudioFrameId0);
   EXPECT_EQ(header.obu_redundant_copy, false);
   EXPECT_EQ(header.obu_trimming_status_flag, true);
-  EXPECT_EQ(header.obu_extension_flag, false);
+  EXPECT_EQ(header.GetExtensionHeaderFlag(), false);
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
@@ -878,8 +859,8 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtEnd) {
   EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
@@ -901,8 +882,8 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroTrimAtStart) {
   EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 2);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
@@ -924,8 +905,8 @@ TEST_F(ObuHeaderTest, ReadAndValidateTrimmingStatusFlagNonZeroBothTrims) {
   EXPECT_EQ(payload_serialized_size_, 0);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 2);
-  EXPECT_EQ(obu_header_.extension_header_size, 0);
-  EXPECT_TRUE(obu_header_.extension_header_bytes.empty());
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
 }
 
 TEST_F(ObuHeaderTest, NegativePayloadSizeNotAcceptable) {

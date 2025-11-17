@@ -144,13 +144,12 @@ TEST_F(AudioFrameObuTest, AudioFrameEmpty) {
 }
 
 TEST_F(AudioFrameObuTest, VaryMostLegalFields) {
-  header_ = ObuHeader{.obu_redundant_copy = false,
-                      .obu_trimming_status_flag = true,
-                      .obu_extension_flag = true,
-                      .num_samples_to_trim_at_end = 128,
-                      .num_samples_to_trim_at_start = 256,
-                      .extension_header_size = 3,
-                      .extension_header_bytes = {'a', 'b', 'c'}};
+  header_ =
+      ObuHeader{.obu_redundant_copy = false,
+                .obu_trimming_status_flag = true,
+                .num_samples_to_trim_at_end = 128,
+                .num_samples_to_trim_at_start = 256,
+                .extension_header_bytes = std::vector<uint8_t>{'a', 'b', 'c'}};
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 5);
   audio_substream_id_ = 512;
@@ -269,8 +268,6 @@ TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagBothStartAndEnd) {
 }
 
 TEST_F(AudioFrameObuTest, ExtensionHeader) {
-  header_.obu_extension_flag = 1;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaAudioFrameId0 << 3 | kObuExtensionFlagBitMask,

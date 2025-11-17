@@ -11,11 +11,9 @@
  */
 #include "iamf/obu/obu_header.h"
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <utility>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -30,9 +28,7 @@
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
-#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
 
@@ -74,17 +70,6 @@ bool IsTrimmingStatusFlagAllowed(ObuType type) {
 // Validates the OBU and returns an error if anything is non-comforming.
 // Requires that all fields including `obu_size_` are initialized.
 absl::Status Validate(const ObuHeader& header) {
-  // Validate member fields are self-consistent.
-  if (!header.obu_extension_flag && header.extension_header_size > 0) {
-    return absl::InvalidArgumentError(
-        "`obu_extension_flag_` implied there was no extension header, "
-        "but `extension_header_size_` indicates there is one.");
-  }
-
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual("extension_header_bytes_",
-                                              header.extension_header_bytes,
-                                              header.extension_header_size));
-
   // Validate IAMF imposed requirements.
   if (header.obu_redundant_copy && !IsRedundantCopyAllowed(header.obu_type)) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -112,13 +97,10 @@ absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
   }
 
   // These fields are conditionally in the OBU.
-  if (header.obu_extension_flag) {
-    RETURN_IF_NOT_OK(wb.WriteUleb128(header.extension_header_size));
-    RETURN_IF_NOT_OK(ValidateContainerSizeEqual("extension_header_bytes_",
-                                                header.extension_header_bytes,
-                                                header.extension_header_size));
+  if (header.GetExtensionHeaderFlag()) {
+    RETURN_IF_NOT_OK(wb.WriteUleb128(header.GetExtensionHeaderSize()));
     RETURN_IF_NOT_OK(
-        wb.WriteUint8Span(absl::MakeConstSpan(header.extension_header_bytes)));
+        wb.WriteUint8Span(absl::MakeConstSpan(*header.extension_header_bytes)));
   }
 
   return absl::OkStatus();
@@ -285,7 +267,7 @@ absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_type, 5));
   RETURN_IF_NOT_OK(wb.WriteBoolean(obu_redundant_copy));
   RETURN_IF_NOT_OK(wb.WriteBoolean(obu_trimming_status_flag));
-  RETURN_IF_NOT_OK(wb.WriteBoolean(obu_extension_flag));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(GetExtensionHeaderFlag()));
   RETURN_IF_NOT_OK(wb.WriteUleb128(obu_size));
 
   RETURN_IF_NOT_OK(WriteFieldsAfterObuSize(*this, wb));
@@ -307,6 +289,7 @@ absl::Status ObuHeader::ReadAndValidate(
   obu_type = static_cast<ObuType>(obu_type_uint64_t);
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_redundant_copy));
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_trimming_status_flag));
+  bool obu_extension_flag;
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_extension_flag));
   DecodedUleb128 obu_size;
   int8_t size_of_obu_size = 0;
@@ -322,15 +305,16 @@ absl::Status ObuHeader::ReadAndValidate(
   }
   int8_t extension_header_size_size = 0;
   if (obu_extension_flag) {
+    DecodedUleb128 extension_header_size = 0;
     RETURN_IF_NOT_OK(
         rb.ReadULeb128(extension_header_size, extension_header_size_size));
-    extension_header_bytes.resize(extension_header_size);
-    RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(extension_header_bytes)));
+    extension_header_bytes = std::vector<uint8_t>(extension_header_size);
+    RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(*extension_header_bytes)));
   }
-  output_payload_serialized_size = GetObuPayloadSize(
-      obu_size, num_samples_to_trim_at_end_size,
-      num_samples_to_trim_at_start_size, extension_header_size_size,
-      extension_header_bytes.size());
+  output_payload_serialized_size =
+      GetObuPayloadSize(obu_size, num_samples_to_trim_at_end_size,
+                        num_samples_to_trim_at_start_size,
+                        extension_header_size_size, GetExtensionHeaderSize());
   if (output_payload_serialized_size < 0) {
     return absl::InvalidArgumentError(
         "obu_size not valid for OBU flags. Negative remaining payload size.");
@@ -339,6 +323,15 @@ absl::Status ObuHeader::ReadAndValidate(
   RETURN_IF_NOT_OK(Validate(*this));
 
   return absl::OkStatus();
+}
+
+bool ObuHeader::GetExtensionHeaderFlag() const {
+  return extension_header_bytes.has_value();
+}
+
+DecodedUleb128 ObuHeader::GetExtensionHeaderSize() const {
+  return extension_header_bytes.has_value() ? extension_header_bytes->size()
+                                            : 0;
 }
 
 void ObuHeader::Print(const LebGenerator& leb_generator,
@@ -358,7 +351,7 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
   ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   ABSL_LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
   ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << obu_trimming_status_flag;
-  ABSL_LOG(INFO) << "  obu_extension_flag= " << obu_extension_flag;
+  ABSL_LOG(INFO) << "  obu_extension_flag= " << GetExtensionHeaderFlag();
 
   ABSL_LOG(INFO) << "  obu_size=" << obu_size;
 
@@ -368,8 +361,8 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
     ABSL_LOG(INFO) << "  num_samples_to_trim_at_start= "
                    << num_samples_to_trim_at_start;
   }
-  if (obu_extension_flag) {
-    ABSL_LOG(INFO) << "  extension_header_size= " << extension_header_size;
+  if (GetExtensionHeaderFlag()) {
+    ABSL_LOG(INFO) << "  extension_header_size= " << GetExtensionHeaderSize();
     ABSL_LOG(INFO) << "  extension_header_bytes omitted.";
   }
 }

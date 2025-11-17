@@ -299,8 +299,6 @@ TEST_F(CodecConfigLpcmTest, CreateFailsWithGetIllegalSampleSize) {
 TEST_F(CodecConfigLpcmTest, Default) { InitAndTestWrite(); }
 
 TEST_F(CodecConfigLpcmTest, ExtensionHeader) {
-  header_.obu_extension_flag = true;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaCodecConfig << 3 | kObuExtensionFlagBitMask,

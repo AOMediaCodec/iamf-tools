@@ -268,9 +268,8 @@ TEST_F(ArbitraryObuGeneratorTest, ObuWithExtensionHeader) {
 
   expected_obus_.emplace_back(
       kObuIaSequenceHeader,
-      ObuHeader{.obu_extension_flag = true,
-                .extension_header_size = 5,
-                .extension_header_bytes = {'e', 'x', 't', 'r', 'a'}},
+      ObuHeader{.extension_header_bytes =
+                    std::vector<uint8_t>{'e', 'x', 't', 'r', 'a'}},
       std::vector<uint8_t>({'i', 'a', 'm', 'f', '\0', '\0'}),
       ArbitraryObu::kInsertionHookAfterDescriptors);
   InitAndTestGenerateExpectOk();

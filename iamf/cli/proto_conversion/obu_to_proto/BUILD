@@ -31,7 +31,7 @@ cc_library(
     deps = [
         "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/common/utils:macros",
-        "//iamf/common/utils:obu_util",
+        "//iamf/common/utils:numeric_utils",
         "//iamf/obu:obu_header",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",

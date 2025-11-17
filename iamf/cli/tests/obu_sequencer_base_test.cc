@@ -1519,7 +1519,7 @@ TEST(UpdateDescriptorObusAndClose, FailsWhenSerializedSizeChanges) {
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseProfile);
   const IASequenceHeaderObu kResizedIaSequenceHeader(
-      ObuHeader{.obu_extension_flag = true, .extension_header_size = 0},
+      ObuHeader{.extension_header_bytes = std::vector<uint8_t>{'a', 'b', 'c'}},
       ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;

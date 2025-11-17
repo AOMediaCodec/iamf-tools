@@ -288,8 +288,10 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresExtensionHeader) {
   const auto output_obus = InitAndGenerate();
   ASSERT_THAT(output_obus, IsOk());
 
-  EXPECT_EQ(output_obus->at(kCodecConfigId).header_.obu_extension_flag, true);
-  EXPECT_EQ(output_obus->at(kCodecConfigId).header_.extension_header_size, 5);
+  EXPECT_EQ(output_obus->at(kCodecConfigId).header_.GetExtensionHeaderFlag(),
+            true);
+  EXPECT_EQ(output_obus->at(kCodecConfigId).header_.GetExtensionHeaderSize(),
+            5);
   EXPECT_EQ(output_obus->at(kCodecConfigId).header_.extension_header_bytes,
             std::vector<uint8_t>({'e', 'x', 't', 'r', 'a'}));
 }

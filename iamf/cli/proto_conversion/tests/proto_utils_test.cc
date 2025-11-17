@@ -67,7 +67,7 @@ TEST(GetHeaderFromMetadata, Default) {
   // cases.
   EXPECT_EQ(header_.obu_redundant_copy, false);
   EXPECT_EQ(header_.obu_trimming_status_flag, false);
-  EXPECT_EQ(header_.obu_extension_flag, false);
+  EXPECT_EQ(header_.GetExtensionHeaderFlag(), false);
 }
 
 TEST(GetHeaderFromMetadata, MostValuesModified) {
@@ -86,10 +86,10 @@ TEST(GetHeaderFromMetadata, MostValuesModified) {
 
   EXPECT_EQ(header_.obu_redundant_copy, true);
   EXPECT_EQ(header_.obu_trimming_status_flag, true);
-  EXPECT_EQ(header_.obu_extension_flag, true);
+  EXPECT_EQ(header_.GetExtensionHeaderFlag(), true);
   EXPECT_EQ(header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(header_.num_samples_to_trim_at_start, 2);
-  EXPECT_EQ(header_.extension_header_size, 5);
+  EXPECT_EQ(header_.GetExtensionHeaderSize(), 5);
   EXPECT_EQ(header_.extension_header_bytes,
             (std::vector<uint8_t>{'e', 'x', 't', 'r', 'a'}));
 }
@@ -110,8 +110,9 @@ TEST(GetHeaderFromMetadata, IgnoresDeprecatedExtensionHeaderSize) {
 
   // Regardless, the true size is inferred from the size of the
   // `extension_header_bytes`.
-  EXPECT_EQ(header_.extension_header_size, kExpectedExtensionHeaderSize);
-  EXPECT_EQ(header_.extension_header_bytes.size(),
+  EXPECT_EQ(header_.GetExtensionHeaderSize(), kExpectedExtensionHeaderSize);
+  ASSERT_TRUE(header_.extension_header_bytes.has_value());
+  EXPECT_EQ(header_.extension_header_bytes->size(),
             kExpectedExtensionHeaderSize);
 }
 

@@ -14,11 +14,13 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -148,6 +150,18 @@ struct ObuHeader {
   absl::Status ReadAndValidate(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
 
+  /*!\brief Returns true if the extension header is present.
+   *
+   * \return true if the extension header is present, false otherwise.
+   */
+  bool GetExtensionHeaderFlag() const;
+
+  /*!\brief Returns the size of the extension header in bytes.
+   *
+   * \return the size of the extension header in bytes, or 0 if it is absent.
+   */
+  DecodedUleb128 GetExtensionHeaderSize() const;
+
   /*!\brief Prints logging information about an `ObuHeader`.
    *
    * \param leb_generator `LebGenerator` to use when calculating `obu_size_`.
@@ -176,11 +190,11 @@ struct ObuHeader {
   // `obu_size` is inserted automatically.
   bool obu_redundant_copy = false;
   bool obu_trimming_status_flag = false;
-  bool obu_extension_flag = false;
+  /// `obu_extension_flag` is inserted automatically.
   DecodedUleb128 num_samples_to_trim_at_end = 0;
   DecodedUleb128 num_samples_to_trim_at_start = 0;
-  DecodedUleb128 extension_header_size = 0;
-  std::vector<uint8_t> extension_header_bytes = {};
+  // `extension_header_size` is inserted automatically.
+  std::optional<std::vector<uint8_t>> extension_header_bytes;
 };
 
 }  // namespace iamf_tools

@@ -610,8 +610,6 @@ TEST_F(MixGainParameterBlockTest,
 }
 
 TEST_F(MixGainParameterBlockTest, ExtensionHeader) {
-  header_.obu_extension_flag = true;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaParameterBlock << 3 | kObuExtensionFlagBitMask,

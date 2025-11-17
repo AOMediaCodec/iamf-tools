@@ -66,8 +66,6 @@ class TemporalDelimiterTest : public TemporalDelimiterTestBase,
 TEST_F(TemporalDelimiterTest, Default) { InitAndTestWrite(); }
 
 TEST_F(TemporalDelimiterTest, ExtensionHeader) {
-  header_.obu_extension_flag = true;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaTemporalDelimiter << 3 | kObuExtensionFlagBitMask,
@@ -84,8 +82,6 @@ TEST_F(TemporalDelimiterTest, NonMinimalLebGeneratorAffectsObuHeader) {
   leb_generator_ =
       LebGenerator::Create(LebGenerator::GenerationMode::kFixedSize, 2);
 
-  header_.obu_extension_flag = true;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
   expected_header_ = {kObuIaTemporalDelimiter << 3 | kObuExtensionFlagBitMask,

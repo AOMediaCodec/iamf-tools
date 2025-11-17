@@ -20,7 +20,6 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 namespace {
@@ -67,7 +66,8 @@ TEST(ObuHeaderMetadataGeneratorGenerate,
 }
 
 TEST(ObuHeaderMetadataGeneratorGenerate, SetsEmptyObuExtension) {
-  const ObuHeader kObuHeaderWithEmptyExtension{.obu_extension_flag = true};
+  const ObuHeader kObuHeaderWithEmptyExtension{.extension_header_bytes =
+                                                   std::vector<uint8_t>()};
   auto result =
       ObuHeaderMetadataGenerator::Generate(kObuHeaderWithEmptyExtension);
   ASSERT_THAT(result, IsOk());
@@ -78,13 +78,10 @@ TEST(ObuHeaderMetadataGeneratorGenerate, SetsEmptyObuExtension) {
 }
 
 TEST(ObuHeaderMetadataGeneratorTest, SetsNonEmptyObuExtension) {
-  constexpr DecodedUleb128 kExtensionHeaderSize = 10;
   const std::vector<uint8_t> extension_header_bytes = {0, 1, 2, 3, 4,
                                                        5, 6, 7, 8, 9};
-  const ObuHeader kObuHeaderWithNonEmptyExtension{
-      .obu_extension_flag = true,
-      .extension_header_size = kExtensionHeaderSize,
-      .extension_header_bytes = extension_header_bytes};
+  const ObuHeader kObuHeaderWithNonEmptyExtension{.extension_header_bytes =
+                                                      extension_header_bytes};
   auto result =
       ObuHeaderMetadataGenerator::Generate(kObuHeaderWithNonEmptyExtension);
   ASSERT_THAT(result, IsOk());
@@ -93,20 +90,6 @@ TEST(ObuHeaderMetadataGeneratorTest, SetsNonEmptyObuExtension) {
   // Ignoring the deprecated `extension_header_bytes` field.
   EXPECT_THAT(result->extension_header_bytes(),
               ElementsAreArray(extension_header_bytes));
-}
-
-TEST(ObuHeaderMetadataGeneratorGenerate, InvalidWhenExtensionSizeMismatch) {
-  constexpr DecodedUleb128 kExtensionHeaderSizeMismatch = 99;
-  const std::vector<uint8_t> extension_header_bytes = {0, 1, 2, 3, 4,
-                                                       5, 6, 7, 8, 9};
-  const ObuHeader kObuHeaderWithExtensionSizeMismatch{
-      .obu_extension_flag = true,
-      .extension_header_size = kExtensionHeaderSizeMismatch,
-      .extension_header_bytes = extension_header_bytes};
-
-  EXPECT_FALSE(
-      ObuHeaderMetadataGenerator::Generate(kObuHeaderWithExtensionSizeMismatch)
-          .ok());
 }
 
 void ExpectIsSymmetricWithGenerator(const ObuHeader& original_obu_header) {
@@ -122,11 +105,10 @@ TEST(ObuHeaderMetadataGeneratorGenerate, IsSymmetricWithGetHeaderFromMetadata) {
   const ObuHeader kObuHeaderWithManyFieldsSet{
       .obu_redundant_copy = true,
       .obu_trimming_status_flag = true,
-      .obu_extension_flag = true,
       .num_samples_to_trim_at_end = 5,
       .num_samples_to_trim_at_start = 10,
-      .extension_header_size = 10,
-      .extension_header_bytes = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}};
+      .extension_header_bytes =
+          std::vector<uint8_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}};
 
   ExpectIsSymmetricWithGenerator(kObuHeaderWithManyFieldsSet);
 }

@@ -15,7 +15,7 @@
 #include "absl/types/span.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/obu_header.h"
 
 namespace iamf_tools {
@@ -25,16 +25,19 @@ ObuHeaderMetadataGenerator::Generate(const ObuHeader& obu_header) {
   iamf_tools_cli_proto::ObuHeaderMetadata result;
   result.set_obu_redundant_copy(obu_header.obu_redundant_copy);
   result.set_obu_trimming_status_flag(obu_header.obu_trimming_status_flag);
-  result.set_obu_extension_flag(obu_header.obu_extension_flag);
+  result.set_obu_extension_flag(obu_header.GetExtensionHeaderFlag());
   result.set_num_samples_to_trim_at_end(obu_header.num_samples_to_trim_at_end);
   result.set_num_samples_to_trim_at_start(
       obu_header.num_samples_to_trim_at_start);
   result.mutable_extension_header_bytes()->resize(
-      obu_header.extension_header_size);
-  RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
-      "extension_header_bytes",
-      absl::MakeConstSpan(obu_header.extension_header_bytes),
-      absl::MakeSpan(*result.mutable_extension_header_bytes())));
+      obu_header.GetExtensionHeaderSize());
+  if (obu_header.GetExtensionHeaderFlag()) {
+    RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
+        "extension_header_bytes",
+        absl::MakeConstSpan(*obu_header.extension_header_bytes),
+        absl::MakeSpan(*result.mutable_extension_header_bytes())));
+  }
+
   return result;
 }
 

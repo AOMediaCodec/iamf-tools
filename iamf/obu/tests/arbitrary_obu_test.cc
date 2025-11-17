@@ -166,8 +166,6 @@ TEST_F(ArbitraryObuTest, ObuTrimmingStatusFlag) {
 }
 
 TEST_F(ArbitraryObuTest, ObuExtensionFlag) {
-  header_.obu_extension_flag = true;
-  header_.extension_header_size = 5;
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
   expected_header_ = {kObuIaReserved24 << 3 | kObuExtensionFlagBitMask,
                       6,

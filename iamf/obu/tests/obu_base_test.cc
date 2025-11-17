@@ -120,9 +120,7 @@ TEST(ObuBaseTest, OneByteObu) {
 }
 
 TEST(ObuBaseTest, OneByteObuExtensionHeader) {
-  const OneByteObu obu({.obu_extension_flag = true,
-                        .extension_header_size = 1,
-                        .extension_header_bytes = {128}});
+  const OneByteObu obu({.extension_header_bytes = std::vector<uint8_t>{128}});
 
   WriteBitBuffer wb(1024);
   EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
