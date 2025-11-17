@@ -106,8 +106,8 @@ TEST(GetPreviousSerializedTemporalUnit, IsEmptyAfterClose) {
 
 TEST(GetSerializedDescriptorObus, ReturnsSerializedPushedDescriptorObus) {
   const IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(sequencer.PushDescriptorObus(
@@ -125,8 +125,8 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedPushedDescriptorObus) {
 
 TEST(GetSerializedDescriptorObus, ReturnsSerializedUpdatedDescriptorObus) {
   const IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(sequencer.PushDescriptorObus(
@@ -137,8 +137,8 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedUpdatedDescriptorObus) {
 
   // Push a new descriptor OBU.
   const IASequenceHeaderObu updated_ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseProfile);
   const std::vector<uint8_t> expected_serialized_descriptor_obus =
       SerializeObusExpectOk(
           std::list<const ObuBase*>({&updated_ia_sequence_header_obu}));
@@ -153,9 +153,9 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedUpdatedDescriptorObus) {
 }
 
 TEST(GetPreviousSerializedTemporalUnit, GetsPreviousSerializedTemporalUnit) {
-  IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
+                                             ProfileVersion::kIamfSimpleProfile,
+                                             ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,
@@ -186,9 +186,9 @@ TEST(GetPreviousSerializedTemporalUnit, GetsPreviousSerializedTemporalUnit) {
 }
 
 TEST(Close, ClearsSerializedTemporalUnitObus) {
-  IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
+                                             ProfileVersion::kIamfSimpleProfile,
+                                             ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,
@@ -217,9 +217,9 @@ TEST(Close, ClearsSerializedTemporalUnitObus) {
 }
 
 TEST(Abort, ClearsSerializedDescriptorAndTemporalUnitObus) {
-  IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
+                                             ProfileVersion::kIamfSimpleProfile,
+                                             ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
   AddLpcmCodecConfig(kCodecConfigId, kEightSamplesPerFrame, kBitDepth,

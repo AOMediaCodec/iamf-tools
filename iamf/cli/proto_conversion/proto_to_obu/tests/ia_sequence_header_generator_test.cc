@@ -34,7 +34,6 @@ using iamf_tools_cli_proto::IASequenceHeaderObuMetadata;
 
 IASequenceHeaderObuMetadata GetSimpleProfileMetadata() {
   IASequenceHeaderObuMetadata metadata;
-  metadata.set_ia_code(IASequenceHeaderObu::kIaCode);
   metadata.set_primary_profile(iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
   metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE);
   return metadata;
@@ -105,18 +104,17 @@ TEST(Generate, SetsExtensionHeader) {
             std::vector<uint8_t>({'e', 'x', 't', 'r', 'a'}));
 }
 
-TEST(Generate, SetsInvalidIaCode) {
+TEST(Generate, IgnoredDeprecatedInvalidIaCode) {
   auto metadata = GetSimpleProfileMetadata();
   metadata.set_ia_code(0x12345678);
 
   std::optional<IASequenceHeaderObu> output_obu;
   const IaSequenceHeaderGenerator generator(metadata);
 
-  // IAMF requires `ia_code == IASequenceHeaderObu::kIaCode`. But the generator
-  // does not validate OBU requirements.
+  // The invalid IA code is automatically fixed.
   EXPECT_THAT(generator.Generate(output_obu), IsOk());
   ASSERT_TRUE(output_obu.has_value());
-  EXPECT_FALSE(output_obu->Validate().ok());
+  EXPECT_THAT(output_obu->Validate(), IsOk());
 }
 
 TEST(Generate, SetsPrimaryProfileBase) {

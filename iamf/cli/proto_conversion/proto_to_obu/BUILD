@@ -135,6 +135,7 @@ cc_library(
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/obu:ia_sequence_header",
+        "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
     ],
 )

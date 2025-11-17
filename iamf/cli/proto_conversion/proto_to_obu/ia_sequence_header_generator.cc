@@ -13,6 +13,7 @@
 
 #include <optional>
 
+#include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
@@ -57,6 +58,9 @@ absl::Status IaSequenceHeaderGenerator::Generate(
       !ia_sequence_header_metadata_.has_additional_profile()) {
     return absl::OkStatus();
   }
+  if (ia_sequence_header_metadata_.has_ia_code()) {
+    ABSL_LOG(WARNING) << "ia_code is deprecated and will be ignored.";
+  }
 
   // IA Sequence Header-related arguments.
   ProfileVersion primary_profile;
@@ -68,8 +72,7 @@ absl::Status IaSequenceHeaderGenerator::Generate(
 
   ia_sequence_header_obu.emplace(
       GetHeaderFromMetadata(ia_sequence_header_metadata_.obu_header()),
-      ia_sequence_header_metadata_.ia_code(), primary_profile,
-      additional_profile);
+      primary_profile, additional_profile);
 
   ia_sequence_header_obu->PrintObu();
   return absl::OkStatus();

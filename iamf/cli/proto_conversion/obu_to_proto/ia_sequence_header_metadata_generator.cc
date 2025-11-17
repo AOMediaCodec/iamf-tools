@@ -64,7 +64,6 @@ IaSequenceHeaderMetadataGenerator::Generate(
   }
   result.mutable_obu_header()->CopyFrom(*obu_header);
 
-  result.set_ia_code(ia_sequence_header.GetIaCode());
   RETURN_IF_NOT_OK(SetProfileVersion(
       ia_sequence_header.GetPrimaryProfile(),
       std::bind_front(&IASequenceHeaderObuMetadata::set_primary_profile,

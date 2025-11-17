@@ -134,7 +134,7 @@ void InitializeOneParameterBlockAndOneAudioFrame(
 class ObuSequencerIamfTest : public ::testing::Test {
  public:
   void InitializeDescriptorObus() {
-    ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+    ia_sequence_header_obu_.emplace(ObuHeader(),
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
@@ -154,7 +154,7 @@ class ObuSequencerIamfTest : public ::testing::Test {
   }
 
   void InitObusForOneFrameIaSequence() {
-    ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+    ia_sequence_header_obu_.emplace(ObuHeader(),
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
     param_definition_ =
@@ -185,8 +185,8 @@ TEST(ObuSequencerIamf, PushDescriptorObusWritesFileWithOnlyIaSequenceHeader) {
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   {
     const IASequenceHeaderObu ia_sequence_header_obu(
-        ObuHeader(), IASequenceHeaderObu::kIaCode,
-        ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+        ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+        ProfileVersion::kIamfBaseProfile);
     ObuSequencerIamf sequencer(kOutputIamfFilename,
                                kDoNotIncludeTemporalDelimiters,
                                *LebGenerator::Create());
@@ -214,8 +214,7 @@ using TestProfileVersionAndEnableTemporalDelimiters =
 
 TEST_P(TestProfileVersionAndEnableTemporalDelimiters, PushDescriptorObus) {
   const IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode, GetParam().primary_profile,
-      GetParam().additional_profile);
+      ObuHeader(), GetParam().primary_profile, GetParam().additional_profile);
   ObuSequencerIamf sequencer(std::string(kOmitOutputIamfFile),
                              GetParam().enable_temporal_delimiters,
                              *LebGenerator::Create());
@@ -258,8 +257,8 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(ObuSequencerIamf, PushDescriptorObusAndCloseSucceedsWithEmptyOutputFile) {
   const IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
 
   ObuSequencerIamf sequencer(std::string(kOmitOutputIamfFile),
                              kDoNotIncludeTemporalDelimiters,
@@ -345,13 +344,13 @@ TEST_F(ObuSequencerIamfTest, OutputFileCanBeReadBack) {
 
 TEST_F(ObuSequencerIamfTest,
        PushDescriptorObusLeavesNoFileWhenDescriptorsAreInvalid) {
-  constexpr uint32_t kInvalidIaCode = IASequenceHeaderObu::kIaCode + 1;
+  constexpr ProfileVersion kInvalidPrimaryProfile =
+      ProfileVersion::kIamfReserved255Profile;
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   InitObusForOneFrameIaSequence();
   // Overwrite the IA Sequence Header with an invalid one.
   ia_sequence_header_obu_ = IASequenceHeaderObu(
-      ObuHeader(), kInvalidIaCode, ProfileVersion::kIamfSimpleProfile,
-      ProfileVersion::kIamfSimpleProfile);
+      ObuHeader(), kInvalidPrimaryProfile, ProfileVersion::kIamfSimpleProfile);
   ObuSequencerIamf sequencer(kOutputIamfFilename,
                              kDoNotIncludeTemporalDelimiters,
                              *LebGenerator::Create());
@@ -419,8 +418,7 @@ TEST_F(ObuSequencerIamfTest,
   InitObusForOneFrameIaSequence();
   parameter_blocks_.clear();
   ia_sequence_header_obu_ =
-      IASequenceHeaderObu(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                          kOriginalProfile, kOriginalProfile);
+      IASequenceHeaderObu(ObuHeader(), kOriginalProfile, kOriginalProfile);
   const std::string kOutputIamfFilename = GetAndCleanupOutputFileName(".iamf");
   ObuSequencerIamf sequencer(kOutputIamfFilename,
                              kDoNotIncludeTemporalDelimiters,
@@ -435,8 +433,7 @@ TEST_F(ObuSequencerIamfTest,
   EXPECT_THAT(sequencer.PushTemporalUnit(*temporal_unit), IsOk());
   // As a toy example, we will update the IA Sequence Header.
   ia_sequence_header_obu_ =
-      IASequenceHeaderObu(ObuHeader(), IASequenceHeaderObu::kIaCode,
-                          kUpdatedProfile, kUpdatedProfile);
+      IASequenceHeaderObu(ObuHeader(), kUpdatedProfile, kUpdatedProfile);
 
   // Finalize the descriptor OBUs with a new IA Sequence Header.
   EXPECT_THAT(sequencer.UpdateDescriptorObusAndClose(

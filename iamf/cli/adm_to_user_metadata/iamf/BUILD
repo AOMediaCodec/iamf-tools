@@ -11,10 +11,7 @@ cc_library(
         "ia_sequence_header_obu_metadata_handler.cc",
     ],
     hdrs = ["ia_sequence_header_obu_metadata_handler.h"],
-    deps = [
-        "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "//iamf/obu:ia_sequence_header",
-    ],
+    deps = ["//iamf/cli/proto:ia_sequence_header_cc_proto"],
 )
 
 cc_library(

@@ -12,7 +12,6 @@
 
 #include "iamf/include/iamf_tools/iamf_decoder_factory.h"
 
-#include <array>
 #include <cstdint>
 #include <list>
 #include <vector>
@@ -44,8 +43,7 @@ constexpr DecodedUleb128 kCommonParameterRate = kSampleRate;
 
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const iamf_tools::IASequenceHeaderObu ia_sequence_header(
-      iamf_tools::ObuHeader(), iamf_tools::IASequenceHeaderObu::kIaCode,
-      iamf_tools::ProfileVersion::kIamfSimpleProfile,
+      iamf_tools::ObuHeader(), iamf_tools::ProfileVersion::kIamfSimpleProfile,
       iamf_tools::ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, iamf_tools::CodecConfigObu> codec_configs;
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,

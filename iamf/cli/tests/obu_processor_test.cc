@@ -112,8 +112,8 @@ auto HasShape(size_t num_channels, size_t num_time_ticks) {
 std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
     const std::list<const ObuBase*>& input_ia_sequence_without_header) {
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<const ObuBase*> input_ia_sequence(input_ia_sequence_without_header);
   input_ia_sequence.push_front(&ia_sequence_header);
   return SerializeObusExpectOk(input_ia_sequence);
@@ -269,8 +269,8 @@ TEST(Create, CollectsIaSequenceHeaderWithoutOtherObus) {
 
 TEST(Create, DescriptorObusMustStartWithIaSequenceHeader) {
   const IASequenceHeaderObu input_ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
 
@@ -307,8 +307,8 @@ TEST(Create, DescriptorObusMustStartWithIaSequenceHeader) {
 
 TEST(Create, SucceedsWithSuccessiveRedundantSequenceHeaders) {
   const IASequenceHeaderObu input_redundant_ia_sequence_header(
-      ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&input_redundant_ia_sequence_header});
 
@@ -325,8 +325,8 @@ TEST(Create, SucceedsWithSuccessiveRedundantSequenceHeaders) {
 
 TEST(Create, ConsumesUpToNextNonRedundantSequenceHeader) {
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   auto buffer =
       SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   const int64_t first_ia_sequence_size = buffer.size();
@@ -1117,8 +1117,8 @@ TEST(CollectObusFromIaSequence, ConsumesIaSequenceAndCollectsAllObus) {
 
 TEST(CollectObusFromIaSequence, ConsumesTrivialIaSequence) {
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const auto trivial_ia_sequence =
       SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   auto non_trivial_ia_sequence = InitAllDescriptorsForZerothOrderAmbisonics();
@@ -1170,7 +1170,7 @@ TEST(CollectObusFromIaSequence, ConsumesUpToNextIaSequence) {
                    temporal_unit_obus.end());
   const int64_t first_ia_sequence_size = bitstream.size();
   const IASequenceHeaderObu non_redundant_ia_sequence_header(
-      ObuHeader{.obu_redundant_copy = false}, IASequenceHeaderObu::kIaCode,
+      ObuHeader{.obu_redundant_copy = false},
       ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
   const auto start_of_second_ia_sequence =
       SerializeObusExpectOk({&non_redundant_ia_sequence_header});
@@ -1210,8 +1210,8 @@ TEST(Create, Succeeds) {
 
 TEST(Create, SucceedsForTrivialIaSequence) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
@@ -1241,8 +1241,8 @@ TEST(Create, FailsOnInsufficientData) {
 
 TEST(GetOutputSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
@@ -1261,8 +1261,8 @@ TEST(GetOutputSampleRate, ReturnsSampleRateBasedOnCodecConfigObu) {
 
 TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
@@ -1277,8 +1277,8 @@ TEST(GetOutputSampleRate, FailsForTrivialIaSequence) {
 
 TEST(GetOutputSampleRate, FailsForMultipleCodecConfigObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);
@@ -1300,8 +1300,8 @@ TEST(GetOutputSampleRate, FailsForMultipleCodecConfigObus) {
 
 TEST(GetOutputFrameSize, ReturnsSampleRateBasedOnCodecConfigObu) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfig(kFirstCodecConfigId, kFrameSize, kBitDepth, kSampleRate,
                      codec_config_obus);
@@ -1320,8 +1320,8 @@ TEST(GetOutputFrameSize, ReturnsSampleRateBasedOnCodecConfigObu) {
 
 TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const auto buffer = SerializeObusExpectOk({&kIaSequenceHeader});
   auto read_bit_buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(buffer));
@@ -1336,8 +1336,8 @@ TEST(GetOutputFrameSize, FailsForTrivialIaSequence) {
 
 TEST(GetOutputFrameSize, FailsForMultipleCodecConfigObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_config_obus);

@@ -14,7 +14,6 @@
 
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -29,8 +28,6 @@ TEST(GenerateBaseProfileIaSequenceHeaderObuMetadata, GeneratesBaseProfile) {
   PopulateIaSequenceHeaderObuMetadata(kBaseProfileVersion,
                                       ia_sequence_header_obu_metadata);
 
-  EXPECT_EQ(ia_sequence_header_obu_metadata.ia_code(),
-            IASequenceHeaderObu::kIaCode);
   EXPECT_EQ(ia_sequence_header_obu_metadata.primary_profile(),
             kBaseProfileVersion);
   EXPECT_EQ(ia_sequence_header_obu_metadata.additional_profile(),

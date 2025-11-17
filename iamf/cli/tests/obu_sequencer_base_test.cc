@@ -205,8 +205,8 @@ void ExpectPushedTemporalUnitMatchesExpectedSequence(
 
 TEST(PushTemporalUnit, SerializesArbitraryObuBeforeParameterBlocksAtTime) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -245,8 +245,8 @@ TEST(PushTemporalUnit, SerializesArbitraryObuBeforeParameterBlocksAtTime) {
 
 TEST(PushTemporalUnit, SerializesArbitraryObuAfterParameterBlocksAtTime) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -284,8 +284,8 @@ TEST(PushTemporalUnit, SerializesArbitraryObuAfterParameterBlocksAtTime) {
 
 TEST(PushTemporalUnit, SerializesArbitraryObuAfterAudioFramesAtTime) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -322,8 +322,8 @@ TEST(PushTemporalUnit, SerializesArbitraryObuAfterAudioFramesAtTime) {
 
 TEST(PushTemporalUnit, PassesZeroSamplesForFullyTrimmedAudioFrame) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -353,8 +353,8 @@ TEST(PushTemporalUnit, PassesZeroSamplesForFullyTrimmedAudioFrame) {
 
 TEST(PushTemporalUnit, PAssesNumberOfUntrimmedSamplesToNumSamples) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
@@ -384,8 +384,8 @@ TEST(PushTemporalUnit, PAssesNumberOfUntrimmedSamplesToNumSamples) {
 
 TEST(WriteTemporalUnit, WritesTemporalDelimiterObuWhenEnabled) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -420,8 +420,8 @@ TEST(WriteTemporalUnit, WritesTemporalDelimiterObuWhenEnabled) {
 
 TEST(WriteTemporalUnit, OmitsTemporalDelimiterObuWhenDisabled) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<ParameterBlockWithData> parameter_blocks;
   std::list<AudioFrameWithData> audio_frames;
   absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
@@ -455,7 +455,7 @@ TEST(WriteTemporalUnit, OmitsTemporalDelimiterObuWhenDisabled) {
 class ObuSequencerTest : public ::testing::Test {
  public:
   void InitializeDescriptorObus() {
-    ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+    ia_sequence_header_obu_.emplace(ObuHeader(),
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
     AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
@@ -475,7 +475,7 @@ class ObuSequencerTest : public ::testing::Test {
   }
 
   void InitObusForOneFrameIaSequence() {
-    ia_sequence_header_obu_.emplace(ObuHeader(), IASequenceHeaderObu::kIaCode,
+    ia_sequence_header_obu_.emplace(ObuHeader(),
                                     ProfileVersion::kIamfSimpleProfile,
                                     ProfileVersion::kIamfSimpleProfile);
     param_definition_ =
@@ -711,8 +711,8 @@ TEST_F(ObuSequencerTest, MixPresentationsMaintainOriginalOrder) {
 TEST(WriteDescriptorObus,
      InvalidWhenMixPresentationDoesNotAgreeWithIaSequenceHeader) {
   IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -729,9 +729,9 @@ TEST(WriteDescriptorObus,
 }
 
 TEST(WriteDescriptorObus, ValidWhenMixPresentationAgreesWithIaSequenceHeader) {
-  IASequenceHeaderObu ia_sequence_header_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+  IASequenceHeaderObu ia_sequence_header_obu(ObuHeader(),
+                                             ProfileVersion::kIamfSimpleProfile,
+                                             ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -749,8 +749,8 @@ TEST(WriteDescriptorObus, ValidWhenMixPresentationAgreesWithIaSequenceHeader) {
 
 TEST(PushDescriptorObus, SucceedsWithIaSequenceHeaderOnly) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -767,8 +767,8 @@ TEST(PushDescriptorObus, SucceedsWithIaSequenceHeaderOnly) {
 
 TEST(PushDescriptorObus, FailsWhenCalledTwice) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -789,8 +789,8 @@ TEST(PushDescriptorObus, FailsWhenCalledTwice) {
 
 TEST(PushDescriptorObus, ForwardsPropertiesToPushSerializedDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -829,8 +829,8 @@ TEST(PushDescriptorObus,
   // Configure the OBU sequencer to not delay descriptors. This means the
   // properties can be forwarded right away.
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -867,8 +867,8 @@ TEST(
   // sample is known. We can't detect it is a trivial IA Sequence, until the
   // sequencer is closed.
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -902,8 +902,8 @@ TEST(
 TEST(PushDescriptorObusThenClose,
      ForwardsDefaultPropertiesForTrivialIaSequences) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -937,8 +937,8 @@ TEST(PushDescriptorObusThenClose,
 
 TEST(PushDescriptorObus, ForwardsSerializedDescriptorObusToPushDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -965,8 +965,8 @@ TEST(PushDescriptorObus, ForwardsSerializedDescriptorObusToPushDescriptorObus) {
 
 TEST(PushDescriptorObus, ForwardsArbitraryObusToPushSerializedDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -992,8 +992,8 @@ TEST(PushDescriptorObus, ForwardsArbitraryObusToPushSerializedDescriptorObus) {
 
 TEST(PushTemporalUnit, ForwardsPropertiesToPushAllTemporalUnits) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1028,8 +1028,8 @@ TEST(PushTemporalUnit, ForwardsPropertiesToPushAllTemporalUnits) {
 TEST(PushTemporalUnit,
      ForwardsNumUntrimmedSamplesToPushSerializedTemporalUnitWhenConfigured) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1077,8 +1077,8 @@ TEST(PushTemporalUnit,
 
 TEST(PushDescriptorObus, ReturnsErrorWhenResamplingWouldBeRequired) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   // Theoretically, a future profile may support multiple codec config OBUs with
   // different sample rates. The underlying code is written to only support IAMF
@@ -1107,8 +1107,8 @@ TEST(PushDescriptorObus, ReturnsErrorWhenResamplingWouldBeRequired) {
 TEST(PushTemporalUnit,
      ReturnsErrorWhenSamplesAreTrimmedFromStartAfterFirstUntrimmedSample) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1150,8 +1150,8 @@ TEST(PushTemporalUnit,
 
 TEST(PushTemporalUnit, ForwardsObusToPushSerializedTemporalUnit) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1187,8 +1187,8 @@ TEST(PushTemporalUnit, ForwardsObusToPushSerializedTemporalUnit) {
 
 TEST(PushTemporalUnit, ForwardsArbitraryObusToPushSerializedTemporalUnit) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1258,8 +1258,8 @@ TEST(Abort, CallsAbortDerived) {
 
 TEST(PushDescriptorObus, CallsAbortDerivedWhenPushDescriptorObusFails) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1285,8 +1285,8 @@ TEST(PushDescriptorObus, CallsAbortDerivedWhenPushDescriptorObusFails) {
 
 TEST(PushTemporalUnit, CallsAbortDerivedWhenPushAllTemporalUnitsFails) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1318,8 +1318,8 @@ TEST(PushTemporalUnit, CallsAbortDerivedWhenPushAllTemporalUnitsFails) {
 
 TEST(PushTemporalUnit, FailsWhenBeforePushDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1341,8 +1341,8 @@ TEST(PushTemporalUnit, FailsWhenBeforePushDescriptorObus) {
 
 TEST(PushTemporalUnit, FailsWhenCalledAfterClose) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1364,8 +1364,8 @@ TEST(PushTemporalUnit, FailsWhenCalledAfterClose) {
 
 TEST(PushTemporalUnit, FailsWhenCalledAfterAbort) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1388,11 +1388,11 @@ TEST(PushTemporalUnit, FailsWhenCalledAfterAbort) {
 TEST(UpdateDescriptorObusAndClose,
      ForwardsDescriptorObusToPushFinalizedDescriptorObus) {
   const IASequenceHeaderObu kOriginalIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const IASequenceHeaderObu kUpdatedIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1420,8 +1420,8 @@ TEST(UpdateDescriptorObusAndClose,
 
 TEST(UpdateDescriptorObusAndClose, FailsBeforePushDescriptorObus) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1438,8 +1438,8 @@ TEST(UpdateDescriptorObusAndClose, FailsBeforePushDescriptorObus) {
 
 TEST(UpdateDescriptorObusAndClose, SubsequentCloseCallsFails) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1461,11 +1461,11 @@ TEST(UpdateDescriptorObusAndClose, SubsequentCloseCallsFails) {
 
 TEST(UpdateDescriptorObusAndClose, CallsCloseDerived) {
   const IASequenceHeaderObu kOriginalIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const IASequenceHeaderObu kUpdatedIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1488,11 +1488,11 @@ TEST(UpdateDescriptorObusAndClose, CallsCloseDerived) {
 TEST(UpdateDescriptorObusAndClose,
      CallsAbortDerivedWhenPushFinalizedDescriptorObusFails) {
   const IASequenceHeaderObu kOriginalIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const IASequenceHeaderObu kUpdatedIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfBaseProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1516,12 +1516,11 @@ TEST(UpdateDescriptorObusAndClose,
 
 TEST(UpdateDescriptorObusAndClose, FailsWhenSerializedSizeChanges) {
   const IASequenceHeaderObu kOriginalIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const IASequenceHeaderObu kResizedIaSequenceHeader(
       ObuHeader{.obu_extension_flag = true, .extension_header_size = 0},
-      IASequenceHeaderObu::kIaCode, ProfileVersion::kIamfBaseProfile,
-      ProfileVersion::kIamfBaseProfile);
+      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1546,8 +1545,8 @@ TEST(UpdateDescriptorObusAndClose, FailsWhenSerializedSizeChanges) {
 TEST(UpdateDescriptorObusAndClose,
      OmitsCallToPushFinalizedDescriptorObusWhenDescriptorsAreUnchanged) {
   const IASequenceHeaderObu kOriginalIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const absl::flat_hash_map<DecodedUleb128, CodecConfigObu> kNoCodecConfigObus;
   const absl::flat_hash_map<uint32_t, AudioElementWithData> kNoAudioElements;
   const std::list<MixPresentationObu> kNoMixPresentationObus;
@@ -1573,8 +1572,8 @@ TEST(UpdateDescriptorObusAndClose,
 
 TEST(UpdateDescriptorObusAndClose, FailsWhenCodecConfigPropertiesChange) {
   const IASequenceHeaderObu kIaSequenceHeader(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu>
       original_codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, 48000,

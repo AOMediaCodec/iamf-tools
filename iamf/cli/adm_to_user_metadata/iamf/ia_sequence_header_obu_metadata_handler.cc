@@ -13,7 +13,6 @@
 #include "iamf/cli/adm_to_user_metadata/iamf/ia_sequence_header_obu_metadata_handler.h"
 
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
-#include "iamf/obu/ia_sequence_header.h"
 
 namespace iamf_tools {
 namespace adm_to_user_metadata {
@@ -23,7 +22,6 @@ void PopulateIaSequenceHeaderObuMetadata(
     iamf_tools_cli_proto::ProfileVersion profile_version,
     iamf_tools_cli_proto::IASequenceHeaderObuMetadata&
         ia_sequence_header_obu_metadata) {
-  ia_sequence_header_obu_metadata.set_ia_code(IASequenceHeaderObu::kIaCode);
   ia_sequence_header_obu_metadata.set_primary_profile(profile_version);
   ia_sequence_header_obu_metadata.set_additional_profile(profile_version);
 }

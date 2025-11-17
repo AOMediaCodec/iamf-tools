@@ -33,19 +33,10 @@ enum class ProfileVersion : uint8_t {
 
 class IASequenceHeaderObu : public ObuBase {
  public:
-  /*!\brief The spec requires the `ia_code` field to be: "iamf".
-   *
-   * This four-character code (4CC) is used to determine the start of an IA
-   * Sequence.
-   */
-  static constexpr uint32_t kIaCode = 0x69616d66;  // "iamf".
-
   /*!\brief Constructor. */
-  IASequenceHeaderObu(const ObuHeader& header, uint32_t ia_code,
-                      ProfileVersion primary_profile,
+  IASequenceHeaderObu(const ObuHeader& header, ProfileVersion primary_profile,
                       ProfileVersion additional_profile)
       : ObuBase(header, kObuIaSequenceHeader),
-        ia_code_(ia_code),
         primary_profile_(primary_profile),
         additional_profile_(additional_profile) {}
 
@@ -81,12 +72,6 @@ class IASequenceHeaderObu : public ObuBase {
    */
   absl::Status Validate() const;
 
-  /*!\brief Gets the IA Code of the OBU.
-   *
-   * \return IA Code of the OBU.
-   */
-  uint32_t GetIaCode() const { return ia_code_; }
-
   /*!\brief Gets the primary profile of the OBU.
    *
    * \return primary profile of the OBU.
@@ -100,14 +85,13 @@ class IASequenceHeaderObu : public ObuBase {
   ProfileVersion GetAdditionalProfile() const { return additional_profile_; }
 
  private:
-  uint32_t ia_code_;
+  // `ia_code` is inserted automatically.
   ProfileVersion primary_profile_;
   ProfileVersion additional_profile_;
 
   // Used only by the factory create function.
   explicit IASequenceHeaderObu(const ObuHeader& header)
       : ObuBase(header, kObuIaSequenceHeader),
-        ia_code_(kIaCode),
         primary_profile_(ProfileVersion::kIamfBaseProfile),
         additional_profile_(ProfileVersion::kIamfBaseProfile) {}
 

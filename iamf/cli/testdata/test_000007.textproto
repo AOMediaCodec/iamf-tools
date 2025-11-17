@@ -33,8 +33,28 @@ encoder_control_metadata {
   output_rendered_file_format: OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC
 }
 
+# Insert a buggy IA Sequence header beforee the descriptors.
+arbitrary_obu_metadata {
+  invalidates_bitstream: true
+  insertion_hook: INSERTION_HOOK_BEFORE_DESCRIPTORS
+  obu_type: OBU_IA_SEQUENCE_HEADER
+  obu_header {
+    obu_redundant_copy: false
+    obu_trimming_status_flag: false
+    obu_extension_flag: false
+  }
+  payload:
+    "IAMF"  # Invalid because `ia_code` is case-sensitive.
+    "\x00"  # `primary_profile`.
+    "\x00"  # `additional_profile`.
+}
+
+# Usually the encoder needs a real IA Sequence header, insert a valid one with 
+# `obu_redundant_copy` set to true.
 ia_sequence_header_metadata {
-  ia_code: 0x49414d46  # "IAMF"
+  obu_header {
+    obu_redundant_copy: true
+  }
   primary_profile: PROFILE_VERSION_SIMPLE
   additional_profile: PROFILE_VERSION_SIMPLE
 }

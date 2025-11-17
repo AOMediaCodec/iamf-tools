@@ -25,9 +25,7 @@ enum ProfileVersion {
 }
 
 message IASequenceHeaderObuMetadata {
-  uint32 ia_code = 1 [
-    default = 0x69616d66 /* "iamf" */
-  ];
+  uint32 ia_code = 1 [default = 0x69616d66 /* "iamf" */, deprecated = true];
 
   ProfileVersion primary_profile = 2;
   ProfileVersion additional_profile = 3;

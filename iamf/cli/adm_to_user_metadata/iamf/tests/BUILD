@@ -7,7 +7,6 @@ cc_test(
     deps = [
         "//iamf/cli/adm_to_user_metadata/iamf:ia_sequence_header_obu_metadata_handler",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "//iamf/obu:ia_sequence_header",
         "@com_google_googletest//:gtest_main",
     ],
 )

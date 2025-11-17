@@ -58,8 +58,8 @@ constexpr std::array<uint8_t, 16> kEightSampleAudioFrame2 = {
 
 std::vector<uint8_t> GenerateBasicDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
                      kSampleRate, codec_configs);
@@ -79,8 +79,7 @@ std::vector<uint8_t> GenerateBasicDescriptorObus() {
 
 std::vector<uint8_t> GenerateBaseEnhancedDescriptorObus() {
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseEnhancedProfile,
+      ObuHeader(), ProfileVersion::kIamfBaseEnhancedProfile,
       ProfileVersion::kIamfBaseEnhancedProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
   AddLpcmCodecConfig(kFirstCodecConfigId, kNumSamplesPerFrame, kBitDepth,
@@ -191,8 +190,8 @@ TEST(GetOutputMix,
 TEST(GetOutputMix, CanAcceptMixPresentationIdToSpecifyMix) {
   // Add a mix presentation with a non-stereo layout.
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
   AddLpcmCodecConfigWithIdAndSampleRate(kFirstCodecConfigId, kSampleRate,
                                         codec_configs);
@@ -592,8 +591,8 @@ TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   const std::list<ParameterBlockWithData> empty_parameter_blocks_with_data = {};
 
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<const ObuBase*> input_ia_sequence(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,
@@ -734,8 +733,8 @@ TEST(
       mix_presentation_obus);
 
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<const ObuBase*> input_ia_sequence(
       {&codec_config_obus.at(kFirstCodecConfigId),
        &audio_elements_with_data.at(kFirstAudioElementId).obu,

@@ -35,120 +35,86 @@ using ::absl_testing::IsOk;
 constexpr uint32_t kInvalidIACode = 0xff;
 
 TEST(IaSequenceHeaderConstructor, SetsObuType) {
-  IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
-                          ProfileVersion::kIamfSimpleProfile,
+  IASequenceHeaderObu obu({}, ProfileVersion::kIamfSimpleProfile,
                           ProfileVersion::kIamfSimpleProfile);
   EXPECT_EQ(obu.header_.obu_type, kObuIaSequenceHeader);
 }
 
-TEST(IaSequenceHeaderConstructor, SetsIaCode) {
-  IASequenceHeaderObu obu({}, IASequenceHeaderObu::kIaCode,
-                          ProfileVersion::kIamfSimpleProfile,
-                          ProfileVersion::kIamfSimpleProfile);
-
-  EXPECT_EQ(obu.GetIaCode(), IASequenceHeaderObu::kIaCode);
-}
-
-TEST(IaSequenceHeaderConstructor, SetsInvalidIaCode) {
-  IASequenceHeaderObu obu({}, kInvalidIACode,
-                          ProfileVersion::kIamfSimpleProfile,
-                          ProfileVersion::kIamfSimpleProfile);
-
-  EXPECT_EQ(obu.GetIaCode(), kInvalidIACode);
-}
-
 TEST(Validate, SucceedsWithSimpleProfile) {
   const IASequenceHeaderObu simple_profile_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_THAT(simple_profile_obu.Validate(), IsOk());
 }
 
 TEST(Validate, SucceedsWithBaseProfile) {
-  const IASequenceHeaderObu base_profile_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseProfile, ProfileVersion::kIamfBaseProfile);
+  const IASequenceHeaderObu base_profile_obu(ObuHeader(),
+                                             ProfileVersion::kIamfBaseProfile,
+                                             ProfileVersion::kIamfBaseProfile);
 
   EXPECT_THAT(base_profile_obu.Validate(), IsOk());
 }
 
 TEST(Validate, SucceedsWithDifferentProfiles) {
   const IASequenceHeaderObu obu_with_different_profiles(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
 
   EXPECT_THAT(obu_with_different_profiles.Validate(), IsOk());
 }
 
 TEST(Validate, SucceedsWithBaseEnhancedProfile) {
   const IASequenceHeaderObu base_enhanced_profile_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfBaseEnhancedProfile,
+      ObuHeader(), ProfileVersion::kIamfBaseEnhancedProfile,
       ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_THAT(base_enhanced_profile_obu.Validate(), IsOk());
 }
 
 TEST(Validate, FailsWithUnsupportedPrimaryProfile3) {
-  const IASequenceHeaderObu profile_3_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode, static_cast<ProfileVersion>(3),
-      ProfileVersion::kIamfSimpleProfile);
+  const IASequenceHeaderObu profile_3_obu(ObuHeader(),
+                                          static_cast<ProfileVersion>(3),
+                                          ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_FALSE(profile_3_obu.Validate().ok());
 }
 
 TEST(Validate, FailsWithUnsupportedPrimaryProfileReserved255) {
   const IASequenceHeaderObu reserved_profile_255_obu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfReserved255Profile,
+      ObuHeader(), ProfileVersion::kIamfReserved255Profile,
       ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_FALSE(reserved_profile_255_obu.Validate().ok());
 }
 
-TEST(Validate, FailsWithInvalidIaCode) {
-  const IASequenceHeaderObu obu_with_invalid_ia_code(
-      ObuHeader(), IASequenceHeaderObu::kIaCode + 1,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
-
-  EXPECT_FALSE(obu_with_invalid_ia_code.Validate().ok());
-}
-
-TEST(Validate, FailsWithInvalidIaCodeUppercase) {
-  constexpr uint32_t kInvalidIaCodeUppercase = 0x49414d46u;
-  const IASequenceHeaderObu obu_with_invalid_ia_code(
-      ObuHeader(), kInvalidIaCodeUppercase, ProfileVersion::kIamfSimpleProfile,
-      ProfileVersion::kIamfSimpleProfile);
-
-  EXPECT_FALSE(obu_with_invalid_ia_code.Validate().ok());
-}
-
 TEST(ValidateAndWrite, FailsWhenObuIsInvalid) {
   const IASequenceHeaderObu obu_with_invalid_ia_code(
-      ObuHeader(), IASequenceHeaderObu::kIaCode + 1,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader(), ProfileVersion::kIamfReserved255Profile,
+      ProfileVersion::kIamfSimpleProfile);
 
   WriteBitBuffer unused_wb(0);
   EXPECT_FALSE(obu_with_invalid_ia_code.ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown2) {
-  const IASequenceHeaderObu obu_with_invalid_ia_code(
-      ObuHeader(), IASequenceHeaderObu::kIaCode + 1,
-      static_cast<ProfileVersion>(2), ProfileVersion::kIamfSimpleProfile);
+TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown3) {
+  const IASequenceHeaderObu obu_with_invalid_primary_profile(
+      ObuHeader(), static_cast<ProfileVersion>(3),
+      ProfileVersion::kIamfSimpleProfile);
 
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_with_invalid_ia_code.ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_FALSE(
+      obu_with_invalid_primary_profile.ValidateAndWriteObu(unused_wb).ok());
 }
 
-TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown3s) {
-  const IASequenceHeaderObu obu_with_invalid_ia_code(
-      ObuHeader(), IASequenceHeaderObu::kIaCode + 1,
-      static_cast<ProfileVersion>(2), ProfileVersion::kIamfSimpleProfile);
+TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown255) {
+  const IASequenceHeaderObu obu_with_invalid_primary_profile(
+      ObuHeader(), static_cast<ProfileVersion>(255),
+      ProfileVersion::kIamfSimpleProfile);
 
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_with_invalid_ia_code.ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_FALSE(
+      obu_with_invalid_primary_profile.ValidateAndWriteObu(unused_wb).ok());
 }
 
 TEST(CreateFromBuffer, SimpleAndBaseProfile) {
@@ -230,12 +196,6 @@ TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs255) {
           .ok());
 }
 
-struct IASequenceHeaderInitArgs {
-  uint32_t ia_code;
-  ProfileVersion primary_profile;
-  ProfileVersion additional_profile;
-};
-
 class IaSequenceHeaderObuTestBase : public ObuTestBase {
  public:
   IaSequenceHeaderObuTestBase()
@@ -247,27 +207,22 @@ class IaSequenceHeaderObuTestBase : public ObuTestBase {
              // `primary_profile`.
              static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile),
              // `additional_profile`.
-             static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile)}),
-        init_args_({
-            .ia_code = IASequenceHeaderObu::kIaCode,
-            .primary_profile = ProfileVersion::kIamfSimpleProfile,
-            .additional_profile = ProfileVersion::kIamfSimpleProfile,
-        }) {}
+             static_cast<uint8_t>(ProfileVersion::kIamfSimpleProfile)}) {}
 
   ~IaSequenceHeaderObuTestBase() override = default;
 
  protected:
   void InitExpectOk() override {
-    obu_ = std::make_unique<IASequenceHeaderObu>(header_, init_args_.ia_code,
-                                                 init_args_.primary_profile,
-                                                 init_args_.additional_profile);
+    obu_ = std::make_unique<IASequenceHeaderObu>(header_, primary_profile_,
+                                                 additional_profile_);
   }
 
   void WriteObuExpectOk(WriteBitBuffer& wb) override {
     EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
   }
 
-  IASequenceHeaderInitArgs init_args_;
+  ProfileVersion primary_profile_ = ProfileVersion::kIamfSimpleProfile;
+  ProfileVersion additional_profile_ = ProfileVersion::kIamfSimpleProfile;
 
   std::unique_ptr<IASequenceHeaderObu> obu_;
 };
@@ -278,8 +233,8 @@ class IaSequenceHeaderObuTest : public IaSequenceHeaderObuTestBase,
 TEST_F(IaSequenceHeaderObuTest, DefaultSimpleProfile) { InitAndTestWrite(); }
 
 TEST_F(IaSequenceHeaderObuTest, BaseProfile) {
-  init_args_.primary_profile = ProfileVersion::kIamfBaseProfile;
-  init_args_.additional_profile = ProfileVersion::kIamfBaseProfile;
+  primary_profile_ = ProfileVersion::kIamfBaseProfile;
+  additional_profile_ = ProfileVersion::kIamfBaseProfile;
   expected_payload_ = {// `ia_code`.
                        0x69, 0x61, 0x6d, 0x66,
                        // `primary_profile`.
@@ -317,7 +272,7 @@ TEST_F(IaSequenceHeaderObuTest,
 }
 
 TEST_F(IaSequenceHeaderObuTest, BaseProfileBackwardsCompatible) {
-  init_args_.additional_profile = ProfileVersion::kIamfBaseProfile;
+  additional_profile_ = ProfileVersion::kIamfBaseProfile;
   expected_payload_ = {// `ia_code`.
                        0x69, 0x61, 0x6d, 0x66,
                        // `primary_profile`.
@@ -328,8 +283,8 @@ TEST_F(IaSequenceHeaderObuTest, BaseProfileBackwardsCompatible) {
 }
 
 TEST_F(IaSequenceHeaderObuTest, BaseEnhancedForBothProfiles) {
-  init_args_.primary_profile = ProfileVersion::kIamfBaseEnhancedProfile;
-  init_args_.additional_profile = ProfileVersion::kIamfBaseEnhancedProfile;
+  primary_profile_ = ProfileVersion::kIamfBaseEnhancedProfile;
+  additional_profile_ = ProfileVersion::kIamfBaseEnhancedProfile;
   expected_payload_ = {
       // `ia_code`.
       0x69,
@@ -345,7 +300,7 @@ TEST_F(IaSequenceHeaderObuTest, BaseEnhancedForBothProfiles) {
 }
 
 TEST_F(IaSequenceHeaderObuTest, BaseEnhancedProfileBackwardsCompatible2) {
-  init_args_.additional_profile = ProfileVersion::kIamfBaseEnhancedProfile;
+  additional_profile_ = ProfileVersion::kIamfBaseEnhancedProfile;
   expected_payload_ = {
       // `ia_code`.
       0x69, 0x61, 0x6d, 0x66,
@@ -357,7 +312,7 @@ TEST_F(IaSequenceHeaderObuTest, BaseEnhancedProfileBackwardsCompatible2) {
 }
 
 TEST_F(IaSequenceHeaderObuTest, UnknownProfileBackwardsCompatibleReserved255) {
-  init_args_.additional_profile = ProfileVersion::kIamfReserved255Profile;
+  additional_profile_ = ProfileVersion::kIamfReserved255Profile;
   expected_payload_ = {
       // `ia_code`.
       0x69, 0x61, 0x6d, 0x66,

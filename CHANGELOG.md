@@ -22,6 +22,10 @@ and this project adheres to
 -   Drop support of `element_mix_config` and `output_mix_config` in favor of
     `element_mix_gain` and `output_mix_gain`.
 
+### Deprecated
+
+ - Drop support of `ia_code`, in favor of always inserting the correct one.
+
 ## [2.1.0] - 2025-11-06
 
 ### Added

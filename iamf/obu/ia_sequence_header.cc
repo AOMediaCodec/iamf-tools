@@ -15,6 +15,7 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
@@ -25,6 +26,13 @@
 namespace iamf_tools {
 
 namespace {
+
+/*!\brief The spec requires the `ia_code` field to be: "iamf".
+ *
+ * This four-character code (4CC) is used to determine the start of an IA
+ * Sequence.
+ */
+constexpr uint32_t kIaCode = 0x69616d66;  // "iamf".
 
 absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
   switch (profile_version) {
@@ -41,10 +49,6 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
 }  // namespace
 
 absl::Status IASequenceHeaderObu::Validate() const {
-  // If the IA Code is any other value then the data may not actually be an IA
-  // Sequence, or it may mean the data is corrupt / misaligned.
-  MAYBE_RETURN_IF_NOT_OK(
-      ValidateEqual(ia_code_, IASequenceHeaderObu::kIaCode, "ia_code"));
   MAYBE_RETURN_IF_NOT_OK(ValidateProfileVersion(primary_profile_));
   return absl::OkStatus();
 }
@@ -59,7 +63,7 @@ absl::StatusOr<IASequenceHeaderObu> IASequenceHeaderObu::CreateFromBuffer(
 
 void IASequenceHeaderObu::PrintObu() const {
   ABSL_LOG(INFO) << "IA Sequence Header OBU:";
-  ABSL_LOG(INFO) << "  ia_code= " << ia_code_;
+  ABSL_LOG(INFO) << "  ia_code= " << absl::StrCat(kIaCode);
   ABSL_LOG(INFO) << "  primary_profile= " << absl::StrCat(primary_profile_);
   ABSL_LOG(INFO) << "  additional_profile= "
                  << absl::StrCat(additional_profile_);
@@ -68,7 +72,7 @@ void IASequenceHeaderObu::PrintObu() const {
 absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(Validate());
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(ia_code_, 32));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(kIaCode, 32));
   RETURN_IF_NOT_OK(
       wb.WriteUnsignedLiteral(static_cast<uint32_t>(primary_profile_), 8));
   RETURN_IF_NOT_OK(
@@ -79,7 +83,11 @@ absl::Status IASequenceHeaderObu::ValidateAndWritePayload(
 
 absl::Status IASequenceHeaderObu::ReadAndValidatePayloadDerived(
     int64_t /*payload_size*/, ReadBitBuffer& rb) {
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, ia_code_));
+  uint32_t ia_code;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(32, ia_code));
+  // If the IA Code is any other value then the data may not actually be an IA
+  // Sequence, or it may mean the data is corrupt / misaligned.
+  RETURN_IF_NOT_OK(ValidateEqual(ia_code, kIaCode, "ia_code"));
   uint8_t primary_profile;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, primary_profile));
   primary_profile_ = static_cast<ProfileVersion>(primary_profile);

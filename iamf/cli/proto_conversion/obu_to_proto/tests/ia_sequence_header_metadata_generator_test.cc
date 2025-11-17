@@ -28,22 +28,10 @@ namespace {
 
 using ::absl_testing::IsOk;
 
-TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsIaCode) {
-  const IASequenceHeaderObu kIaSequenceHeaderObu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
-
-  const auto result =
-      IaSequenceHeaderMetadataGenerator::Generate(kIaSequenceHeaderObu);
-  ASSERT_THAT(result, IsOk());
-
-  EXPECT_EQ(result->ia_code(), IASequenceHeaderObu::kIaCode);
-}
-
 TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsPrimaryProfile) {
   const IASequenceHeaderObu kSimpleProfileIaSequenceHeaderObu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
 
   const auto result = IaSequenceHeaderMetadataGenerator::Generate(
       kSimpleProfileIaSequenceHeaderObu);
@@ -55,8 +43,7 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsPrimaryProfile) {
 
 TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsAdditionalProfile) {
   const IASequenceHeaderObu kBaseEnhancedProfileIiaSequenceHeaderObu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile,
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfBaseEnhancedProfile);
 
   const auto result = IaSequenceHeaderMetadataGenerator::Generate(
@@ -71,8 +58,7 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsAdditionalProfile) {
 TEST(IaSequenceHeaderMetadataGeneratorGenerate,
      InvalidWhenPrimaryProfileIsUnknown) {
   const IASequenceHeaderObu kBaseEnhancedProfileIiaSequenceHeaderObu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfReserved255Profile,
+      ObuHeader(), ProfileVersion::kIamfReserved255Profile,
       ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_FALSE(IaSequenceHeaderMetadataGenerator::Generate(
@@ -83,8 +69,7 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate,
 TEST(IaSequenceHeaderMetadataGeneratorGenerate,
      InvalidWhenAdditionalProfileIsUnknown) {
   const IASequenceHeaderObu kBaseEnhancedProfileIiaSequenceHeaderObu(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile,
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
       ProfileVersion::kIamfReserved255Profile);
 
   EXPECT_FALSE(IaSequenceHeaderMetadataGenerator::Generate(
@@ -94,8 +79,8 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate,
 
 TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsObuHeader) {
   const IASequenceHeaderObu kRedundantCopyIaSequenceHeaderObu(
-      ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
 
   const auto result = IaSequenceHeaderMetadataGenerator::Generate(
       kRedundantCopyIaSequenceHeaderObu);
@@ -118,8 +103,8 @@ void ExpectIsSymmetricWithGenerator(
 TEST(IaSequenceHeaderMetadataGeneratorGenerate,
      IsSymmetricWithGetHeaderFromMetadata) {
   const IASequenceHeaderObu kIaSequenceHeaderObu(
-      ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfSimpleProfile);
+      ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfSimpleProfile);
 
   ExpectIsSymmetricWithGenerator(kIaSequenceHeaderObu);
 }

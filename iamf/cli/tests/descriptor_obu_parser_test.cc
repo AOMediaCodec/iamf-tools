@@ -54,8 +54,8 @@ constexpr int kObuTypeBitShift = 3;
 std::vector<uint8_t> AddSequenceHeaderAndSerializeObusExpectOk(
     const std::list<const ObuBase*>& input_ia_sequence_without_header) {
   const IASequenceHeaderObu ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   std::list<const ObuBase*> input_ia_sequence(input_ia_sequence_without_header);
   input_ia_sequence.push_front(&ia_sequence_header);
   return SerializeObusExpectOk(input_ia_sequence);
@@ -213,8 +213,8 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithoutOtherObus) {
 TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
   DescriptorObuParser parser;
   const IASequenceHeaderObu input_ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
 
@@ -252,8 +252,8 @@ TEST(ProcessDescriptorObus, DescriptorObusMustStartWithIaSequenceHeader) {
 TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
   DescriptorObuParser parser;
   const IASequenceHeaderObu input_redundant_ia_sequence_header(
-      ObuHeader{.obu_redundant_copy = true}, IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader{.obu_redundant_copy = true}, ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   const auto bitstream = AddSequenceHeaderAndSerializeObusExpectOk(
       {&input_redundant_ia_sequence_header});
 
@@ -270,8 +270,8 @@ TEST(ProcessDescriptorObus, SucceedsWithSuccessiveRedundantSequenceHeaders) {
 TEST(ProcessDescriptorObus, ConsumesUpToNextNonRedundantSequenceHeader) {
   DescriptorObuParser parser;
   const IASequenceHeaderObu input_non_redundant_ia_sequence_header(
-      ObuHeader(), IASequenceHeaderObu::kIaCode,
-      ProfileVersion::kIamfSimpleProfile, ProfileVersion::kIamfBaseProfile);
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
   auto buffer =
       SerializeObusExpectOk({&input_non_redundant_ia_sequence_header});
   const int64_t first_ia_sequence_size = buffer.size();
