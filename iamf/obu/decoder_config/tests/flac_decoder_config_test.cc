@@ -32,19 +32,29 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
+using ::testing::Not;
+
+FlacMetaBlockStreamInfo MakeFlacMetaBlockStreamInfo() {
+  return FlacMetaBlockStreamInfo{.minimum_block_size = 16,
+                                 .maximum_block_size = 16,
+                                 .sample_rate = 48000,
+                                 .bits_per_sample = 15,
+                                 .total_samples_in_stream = 0};
+}
+
+FlacDecoderConfig MakeFlacDecoderConfig(
+    const FlacMetaBlockStreamInfo& stream_info) {
+  return FlacDecoderConfig{{FlacMetadataBlock{
+      .header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
+      .payload = stream_info}}};
+}
 
 class FlacTest : public testing::Test {
  public:
   FlacTest()
       : num_samples_per_frame_(16),
-        flac_decoder_config_{
-            {{.header = {.block_type = FlacMetaBlockHeader::kFlacStreamInfo},
-              .payload =
-                  FlacMetaBlockStreamInfo{.minimum_block_size = 16,
-                                          .maximum_block_size = 16,
-                                          .sample_rate = 48000,
-                                          .bits_per_sample = 15,
-                                          .total_samples_in_stream = 0}}}} {
+        flac_decoder_config_(
+            MakeFlacDecoderConfig(MakeFlacMetaBlockStreamInfo())) {
     first_stream_info_payload_ = &std::get<FlacMetaBlockStreamInfo>(
         flac_decoder_config_.metadata_blocks_[0].payload);
   }
@@ -211,7 +221,7 @@ TEST_F(FlacTest, WriteBitsPerSampleMin) {
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
-      3 << 4 |
+      15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
       0x00, 0x00, 0x00, 0x00,
@@ -259,7 +269,7 @@ TEST_F(FlacTest, WriteVaryMostLegalFields) {
       FlacMetaBlockStreamInfo{.minimum_block_size = 64,
                               .maximum_block_size = 64,
                               .sample_rate = 48000,
-                              .bits_per_sample = 7,
+                              .bits_per_sample = 15,
                               .total_samples_in_stream = 100};
 
   expected_decoder_config_payload_ = {
@@ -280,7 +290,7 @@ TEST_F(FlacTest, WriteVaryMostLegalFields) {
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
-      7 << 4 |
+      15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
       0x00, 0x00, 0x00, 100,
@@ -308,8 +318,8 @@ TEST_F(FlacTest, WriteSampleRateMin) {
       // `maximum_frame_size`.
       0, 0, 0,
       // `sample_rate` (20 bits)
-      0x00, 0x00,
-      (0x1 << 4) |
+      0x01, 0xf4,
+      (0x0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
@@ -340,8 +350,8 @@ TEST_F(FlacTest, WriteSampleRateMax) {
       // `maximum_frame_size`.
       0, 0, 0,
       // `sample_rate` (20 bits)
-      0x9f, 0xff,
-      (0x6 << 4) |
+      0x2e, 0xe0,
+      (0x0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           (FlacStreamInfoStrictConstraints::kNumberOfChannels << 1),
       15 << 4 |
@@ -530,110 +540,136 @@ TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
             kAudioRollDistance);
 }
 
-TEST_F(FlacTest, GetOutputSampleRateMin) {
-  first_stream_info_payload_->sample_rate =
-      FlacStreamInfoStrictConstraints::kMinSampleRate;
+FlacDecoderConfig MakeFlacDecoderConfigWithSampleRate(uint32_t sample_rate) {
+  FlacMetaBlockStreamInfo stream_info = MakeFlacMetaBlockStreamInfo();
+  stream_info.sample_rate = sample_rate;
+  return MakeFlacDecoderConfig(stream_info);
+}
+
+TEST(GetOutputSampleRate, Min) {
+  FlacDecoderConfig flac_decoder_config = MakeFlacDecoderConfigWithSampleRate(
+      FlacStreamInfoStrictConstraints::kMinSampleRate);
 
   uint32_t output_sample_rate;
-  EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+  EXPECT_THAT(flac_decoder_config.GetOutputSampleRate(output_sample_rate),
               IsOk());
   EXPECT_EQ(output_sample_rate,
             FlacStreamInfoStrictConstraints::kMinSampleRate);
 }
 
-TEST_F(FlacTest, GetOutputSampleRateMax) {
-  first_stream_info_payload_->sample_rate =
-      FlacStreamInfoStrictConstraints::kMaxSampleRate;
+TEST(GetOutputSampleRate, Max) {
+  FlacDecoderConfig flac_decoder_config = MakeFlacDecoderConfigWithSampleRate(
+      FlacStreamInfoStrictConstraints::kMaxSampleRate);
 
   uint32_t output_sample_rate;
-  EXPECT_THAT(flac_decoder_config_.GetOutputSampleRate(output_sample_rate),
+  EXPECT_THAT(flac_decoder_config.GetOutputSampleRate(output_sample_rate),
               IsOk());
   EXPECT_EQ(output_sample_rate,
             FlacStreamInfoStrictConstraints::kMaxSampleRate);
 }
 
-TEST_F(FlacTest, InvalidGetOutputSampleRateTooLow) {
-  ASSERT_GT(FlacStreamInfoStrictConstraints::kMinSampleRate, 0);
-  first_stream_info_payload_->sample_rate =
-      FlacStreamInfoStrictConstraints::kMinSampleRate - 1;
+TEST(GetOutputSampleRate, InvalidTooLow) {
+  FlacDecoderConfig flac_decoder_config = MakeFlacDecoderConfigWithSampleRate(
+      FlacStreamInfoStrictConstraints::kMinSampleRate - 1);
 
   uint32_t output_sample_rate;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(flac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
+  EXPECT_EQ(output_sample_rate, 0);
 }
 
-TEST_F(FlacTest, InvalidGetOutputSampleRateTooHigh) {
-  ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxSampleRate,
-            std::numeric_limits<uint32_t>::max());
-  first_stream_info_payload_->sample_rate =
-      FlacStreamInfoStrictConstraints::kMaxSampleRate + 1;
+TEST(GetOutputSampleRate, InvalidTooHigh) {
+  FlacDecoderConfig flac_decoder_config = MakeFlacDecoderConfigWithSampleRate(
+      FlacStreamInfoStrictConstraints::kMaxSampleRate + 1);
 
   uint32_t output_sample_rate;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(flac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
+  EXPECT_EQ(output_sample_rate, 0);
 }
 
-TEST_F(FlacTest, InvalidGetOutputSampleRateWithNoStreamInfo) {
-  flac_decoder_config_.metadata_blocks_.clear();
+TEST(GetOutputSampleRate, InvalidWithNoStreamInfo) {
+  FlacDecoderConfig flac_decoder_config = MakeFlacDecoderConfigWithSampleRate(
+      FlacStreamInfoStrictConstraints::kMinSampleRate);
+  flac_decoder_config.metadata_blocks_.clear();
 
   uint32_t output_sample_rate;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetOutputSampleRate(output_sample_rate).ok());
+  EXPECT_THAT(flac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
+  EXPECT_EQ(output_sample_rate, 0);
 }
 
-TEST_F(FlacTest, GetBitsPerSampleMin) {
-  first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMinBitsPerSample;
+FlacDecoderConfig MakeFlacDecoderConfigWithBitsPerSample(
+    uint8_t bits_per_sample) {
+  FlacMetaBlockStreamInfo stream_info = MakeFlacMetaBlockStreamInfo();
+  stream_info.bits_per_sample = bits_per_sample;
+  return MakeFlacDecoderConfig(stream_info);
+}
+
+TEST(GetBitDepthToMeasureLoudness, Min) {
+  FlacDecoderConfig flac_decoder_config =
+      MakeFlacDecoderConfigWithBitsPerSample(
+          FlacStreamInfoStrictConstraints::kMinBitsPerSample);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
+      flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
   EXPECT_EQ(output_bit_depth,
             FlacStreamInfoStrictConstraints::kMinBitsPerSample + 1);
 }
 
-TEST_F(FlacTest, GetBitsPerSampleMax) {
-  first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMaxBitsPerSample;
+TEST(GetBitDepthToMeasureLoudness, Max) {
+  FlacDecoderConfig flac_decoder_config =
+      MakeFlacDecoderConfigWithBitsPerSample(
+          FlacStreamInfoStrictConstraints::kMaxBitsPerSample);
 
   uint8_t output_bit_depth;
   EXPECT_THAT(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(output_bit_depth),
+      flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
       IsOk());
   EXPECT_EQ(output_bit_depth,
             FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1);
 }
 
-TEST_F(FlacTest, GetBitsPerSampleMinTooLow) {
+TEST(GetBitDepthToMeasureLoudness, MinTooLow) {
   ASSERT_GT(FlacStreamInfoStrictConstraints::kMinBitsPerSample, 0);
-  first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMinBitsPerSample - 1;
-  uint8_t unused_output_bit_depth;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(unused_output_bit_depth)
-          .ok());
+  FlacDecoderConfig flac_decoder_config =
+      MakeFlacDecoderConfigWithBitsPerSample(
+          FlacStreamInfoStrictConstraints::kMinBitsPerSample - 1);
+
+  uint8_t output_bit_depth;
+  EXPECT_THAT(
+      flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
+      Not(IsOk()));
+  EXPECT_EQ(output_bit_depth, 0);
 }
 
-TEST_F(FlacTest, GetBitsPerSampleMaxTooHigh) {
+TEST(GetBitDepthToMeasureLoudness, MaxTooHigh) {
   ASSERT_LT(FlacStreamInfoStrictConstraints::kMaxBitsPerSample,
             std::numeric_limits<uint32_t>::max());
-  first_stream_info_payload_->bits_per_sample =
-      FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1;
+  FlacDecoderConfig flac_decoder_config =
+      MakeFlacDecoderConfigWithBitsPerSample(
+          FlacStreamInfoStrictConstraints::kMaxBitsPerSample + 1);
 
-  uint8_t unused_output_bit_depth;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(unused_output_bit_depth)
-          .ok());
+  uint8_t output_bit_depth;
+  EXPECT_THAT(
+      flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
+      Not(IsOk()));
+  EXPECT_EQ(output_bit_depth, 0);
 }
 
-TEST_F(FlacTest, InvalidGetBitsPerSampleWithNoStreamInfo) {
-  flac_decoder_config_.metadata_blocks_.clear();
+TEST(GetBitDepthToMeasureLoudness, InvalidWithNoStreamInfo) {
+  FlacDecoderConfig flac_decoder_config =
+      MakeFlacDecoderConfigWithBitsPerSample(
+          FlacStreamInfoStrictConstraints::kMinBitsPerSample);
+  flac_decoder_config.metadata_blocks_.clear();
 
-  uint8_t unused_output_bit_depth;
-  EXPECT_FALSE(
-      flac_decoder_config_.GetBitDepthToMeasureLoudness(unused_output_bit_depth)
-          .ok());
+  uint8_t output_bit_depth;
+  EXPECT_THAT(
+      flac_decoder_config.GetBitDepthToMeasureLoudness(output_bit_depth),
+      Not(IsOk()));
+  EXPECT_EQ(output_bit_depth, 0);
 }
 
 TEST_F(FlacTest, GetTotalNumSamplesInStreamMin) {
@@ -704,7 +740,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
-      7 << 4 |
+      15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
       0x00, 0x00, 0x00, 100,
@@ -730,7 +766,7 @@ TEST(ReadAndValidateTest, ReadAndValidateStreamInfoSuccess) {
   EXPECT_EQ(stream_info.sample_rate, 48000);
   EXPECT_EQ(stream_info.number_of_channels,
             FlacStreamInfoStrictConstraints::kNumberOfChannels);
-  EXPECT_EQ(stream_info.bits_per_sample, 7);
+  EXPECT_EQ(stream_info.bits_per_sample, 15);
   EXPECT_EQ(stream_info.total_samples_in_stream, 100);
   EXPECT_EQ(stream_info.md5_signature,
             FlacStreamInfoLooseConstraints::kMd5Signature);
@@ -830,7 +866,7 @@ TEST(ReadAndValidate, ReadsInvalidMd5Signature) {
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
-      7 << 4 |
+      15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
       0x00, 0x00, 0x00, 100,
@@ -878,7 +914,7 @@ TEST(ReadAndValidateTest, ReadsInvalidFrameSizes) {
       (0 << 4) |
           // `number_of_channels` (3 bits) and `bits_per_sample` (5 bits).
           FlacStreamInfoStrictConstraints::kNumberOfChannels << 1,
-      7 << 4 |
+      15 << 4 |
           // `total_samples_in_stream` (36 bits).
           0,
       0x00, 0x00, 0x00, 100,

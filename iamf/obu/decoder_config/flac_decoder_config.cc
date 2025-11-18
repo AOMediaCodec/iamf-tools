@@ -16,6 +16,8 @@
 #include <variant>
 #include <vector>
 
+#include "absl/base/no_destructor.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
@@ -50,17 +52,30 @@ absl::Status GetStreamInfo(const FlacDecoderConfig& decoder_config,
 using StrictCons = FlacStreamInfoStrictConstraints;
 
 absl::Status ValidateSampleRate(uint32_t sample_rate) {
-  return ValidateInRange(
-      sample_rate, {StrictCons::kMinSampleRate, StrictCons::kMaxSampleRate},
-      "sample_rate");
+  // SHALL be set to one of the common sample rates indicated by 0b0001 to
+  // 0b1011 in 9.1.2. Sample Rate Bits of [RFC-9639].
+  //
+  // Set is arranged in the order as listed in the related RFC.
+  static const absl::NoDestructor<absl::flat_hash_set<uint32_t>>
+      kAllowedSampleRates({88200, 176400, 192000, 8000, 16000, 22050, 24000,
+                           32000, 44100, 48000, 96000});
+  if (kAllowedSampleRates->contains(sample_rate)) {
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid sample rate: ", sample_rate));
 }
 
-absl::Status ValidateBitsPerSample(uint8_t bits_per_sample) {
-  // Validate restrictions from the FLAC specification.
-  return ValidateInRange(
-      bits_per_sample,
-      {StrictCons::kMinBitsPerSample, StrictCons::kMaxBitsPerSample},
-      "bits_per_sample");
+absl::Status ValidateBitsPerSample(uint8_t raw_bits_per_sample) {
+  // SHALL be set to one of 15, 23 or 31, corresponding to 16, 24 or 32 bits
+  // respectively.
+  static const absl::NoDestructor<absl::flat_hash_set<uint8_t>>
+      kAllowedBitsPerSample({15, 23, 31});
+  if (kAllowedBitsPerSample->contains(raw_bits_per_sample)) {
+    return absl::OkStatus();
+  }
+  return absl::InvalidArgumentError(
+      absl::StrCat("Invalid bits per sample: ", raw_bits_per_sample));
 }
 
 absl::Status ValidateTotalSamplesInStream(uint64_t total_samples_in_stream) {
@@ -266,21 +281,25 @@ absl::Status FlacDecoderConfig::ReadAndValidate(uint32_t num_samples_per_frame,
 
 absl::Status FlacDecoderConfig::GetOutputSampleRate(
     uint32_t& output_sample_rate) const {
+  output_sample_rate = 0;
   const FlacMetaBlockStreamInfo* stream_info;
   RETURN_IF_NOT_OK(GetStreamInfo(*this, &stream_info));
+  RETURN_IF_NOT_OK(ValidateSampleRate(stream_info->sample_rate));
 
   output_sample_rate = stream_info->sample_rate;
-  return ValidateSampleRate(output_sample_rate);
+  return absl::OkStatus();
 }
 
 absl::Status FlacDecoderConfig::GetBitDepthToMeasureLoudness(
     uint8_t& bit_depth_to_measure_loudness) const {
+  bit_depth_to_measure_loudness = 0;
   const FlacMetaBlockStreamInfo* stream_info;
   RETURN_IF_NOT_OK(GetStreamInfo(*this, &stream_info));
+  RETURN_IF_NOT_OK(ValidateBitsPerSample(stream_info->bits_per_sample));
 
   // The raw bit-depth field for FLAC represents bit-depth - 1.
   bit_depth_to_measure_loudness = stream_info->bits_per_sample + 1;
-  return ValidateBitsPerSample(stream_info->bits_per_sample);
+  return absl::OkStatus();
 }
 
 absl::Status FlacDecoderConfig::GetTotalSamplesInStream(

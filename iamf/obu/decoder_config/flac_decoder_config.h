@@ -44,12 +44,14 @@ struct FlacStreamInfoStrictConstraints {
   // per-substream basis based on the audio element.
   static constexpr uint8_t kNumberOfChannels = 1;
 
-  // Acceptable ranges for sample_rate, bits_per_sample, and
-  // totals_samples_in_stream from the FLAC documentation.
-  static constexpr uint32_t kMinSampleRate = 1;
-  static constexpr uint32_t kMaxSampleRate = 655350;
-  static constexpr uint8_t kMinBitsPerSample = 3;
+  // Acceptable minimum and maximum values for sample_rate, bits_per_sample. In
+  // reality IAMF restricts these to discrete values.
+  static constexpr uint32_t kMinSampleRate = 8000;
+  static constexpr uint32_t kMaxSampleRate = 192000;
+  static constexpr uint8_t kMinBitsPerSample = 15;
   static constexpr uint8_t kMaxBitsPerSample = 31;
+
+  // Acceptable ranges for totals_samples_in_stream from the FLAC documentation.
   // FLAC allows a value of 0 to represent an unknown total number of samples.
   static constexpr uint64_t kMinTotalSamplesInStream = 0;
   static constexpr uint64_t kMaxTotalSamplesInStream = 0xfffffffff;
