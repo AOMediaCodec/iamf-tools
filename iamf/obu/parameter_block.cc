@@ -391,6 +391,12 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
   }
 
   const auto num_subblocks = GetNumSubblocks();
+  if (num_subblocks > GetDuration()) {
+    // As a worst case, each subblock could have a duration of 1 sample.
+    return absl::InvalidArgumentError(
+        absl::StrCat("Implausible number of subblocks = ", num_subblocks,
+                     "is greater than the total duration = ", GetDuration()));
+  }
   subblocks_.resize(num_subblocks);
 
   // `subblock_duration` is conditionally included based on

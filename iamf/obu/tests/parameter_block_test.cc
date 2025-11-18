@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/parameter_block.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -42,6 +43,8 @@ using absl_testing::IsOk;
 using absl_testing::IsOkAndHolds;
 using ::testing::Not;
 using ::testing::NotNull;
+
+using absl::MakeConstSpan;
 using enum MixGainParameterData::AnimationType;
 using enum DemixingInfoParameterData::DMixPMode;
 using enum DemixingInfoParameterData::WIdxUpdateRule;
@@ -268,6 +271,38 @@ TEST(CreateFromBuffer, ParamDefinitionMode1) {
 
   // Parameter blocks are open intervals.
   EXPECT_FALSE((*parameter_block)->GetLinearMixGain(10, linear_mix_gain).ok());
+}
+
+TEST(CreateFromBuffer, ReturnsErrorWhenNumSubblocksIsGreaterThanTotalDuration) {
+  const DecodedUleb128 kParameterId = 0x07;
+  constexpr auto kParameterBlockWithImplausibleNumSubblocks =
+      std::to_array<uint8_t>({
+          // Parameter ID.
+          kParameterId,
+          // Duration.
+          0x01,
+          // Constant subblock duration.
+          0x00,
+          // Number of subblocks (leb128).
+          0x80,
+          0x80,
+          0x80,
+          0x80,
+          0x0f,
+      });
+  const int64_t payload_size =
+      kParameterBlockWithImplausibleNumSubblocks.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kParameterBlockWithImplausibleNumSubblocks));
+  MixGainParamDefinition param_definition;
+  param_definition.parameter_id_ = kParameterId;
+  param_definition.parameter_rate_ = 1;
+  param_definition.param_definition_mode_ = 1;
+
+  EXPECT_THAT(ParameterBlockObu::CreateFromBuffer(
+                  ObuHeader{.obu_type = kObuIaParameterBlock}, payload_size,
+                  param_definition, *buffer),
+              Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, ParamDefinitionMode0) {
