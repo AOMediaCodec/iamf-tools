@@ -53,6 +53,9 @@ class LookupTables {
         {PROFILE_VERSION_SIMPLE, kIamfSimpleProfile},
         {PROFILE_VERSION_BASE, kIamfBaseProfile},
         {PROFILE_VERSION_BASE_ENHANCED, kIamfBaseEnhancedProfile},
+        {PROFILE_VERSION_BASE_ADVANCED, kIamfBaseAdvancedProfile},
+        {PROFILE_VERSION_ADVANCED1, kIamfAdvanced1Profile},
+        {PROFILE_VERSION_ADVANCED2, kIamfAdvanced2Profile},
         {PROFILE_VERSION_RESERVED_255, kIamfReserved255Profile},
     });
   }();

@@ -117,22 +117,19 @@ TEST(Generate, IgnoredDeprecatedInvalidIaCode) {
   EXPECT_THAT(output_obu->Validate(), IsOk());
 }
 
-TEST(Generate, SetsPrimaryProfileBase) {
+struct ProfileVersionTestCase {
+  iamf_tools_cli_proto::ProfileVersion input_profile_version;
+  ProfileVersion expected_profile_version;
+};
+
+class ProfileVersionTest
+    : public testing::TestWithParam<ProfileVersionTestCase> {};
+
+TEST_P(ProfileVersionTest, SetsPrimaryAndAdditionalProfiles) {
+  const ProfileVersionTestCase& test_case = GetParam();
   auto metadata = GetSimpleProfileMetadata();
-  metadata.set_primary_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
-
-  std::optional<IASequenceHeaderObu> output_obu;
-  const IaSequenceHeaderGenerator generator(metadata);
-  EXPECT_THAT(generator.Generate(output_obu), IsOk());
-  ASSERT_TRUE(output_obu.has_value());
-
-  EXPECT_EQ(output_obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseProfile);
-}
-
-TEST(Generate, SetsPrimaryProfileBaseEnhanced) {
-  auto metadata = GetSimpleProfileMetadata();
-  metadata.set_primary_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE_ENHANCED);
+  metadata.set_primary_profile(test_case.input_profile_version);
+  metadata.set_additional_profile(test_case.input_profile_version);
 
   std::optional<IASequenceHeaderObu> output_obu;
   const IaSequenceHeaderGenerator generator(metadata);
@@ -140,8 +137,34 @@ TEST(Generate, SetsPrimaryProfileBaseEnhanced) {
   ASSERT_TRUE(output_obu.has_value());
 
   EXPECT_EQ(output_obu->GetPrimaryProfile(),
-            ProfileVersion::kIamfBaseEnhancedProfile);
+            test_case.expected_profile_version);
+  EXPECT_EQ(output_obu->GetAdditionalProfile(),
+            test_case.expected_profile_version);
 }
+
+INSTANTIATE_TEST_SUITE_P(SetsIamfV1_0_0_ErrataProfiles, ProfileVersionTest,
+                         testing::ValuesIn<ProfileVersionTestCase>(
+                             {{iamf_tools_cli_proto::PROFILE_VERSION_SIMPLE,
+                               ProfileVersion::kIamfSimpleProfile},
+                              {iamf_tools_cli_proto::PROFILE_VERSION_BASE,
+                               ProfileVersion::kIamfBaseProfile}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SetsIamfV1_1_0Profiles, ProfileVersionTest,
+    testing::Values<ProfileVersionTestCase>(
+        {iamf_tools_cli_proto::PROFILE_VERSION_BASE_ENHANCED,
+         ProfileVersion::kIamfBaseEnhancedProfile}));
+
+INSTANTIATE_TEST_SUITE_P(
+    SetsIamfv2_0_0DraftProfiles, ProfileVersionTest,
+    testing::ValuesIn<ProfileVersionTestCase>({
+        {iamf_tools_cli_proto::PROFILE_VERSION_BASE_ADVANCED,
+         ProfileVersion::kIamfBaseAdvancedProfile},
+        {iamf_tools_cli_proto::PROFILE_VERSION_ADVANCED1,
+         ProfileVersion::kIamfAdvanced1Profile},
+        {iamf_tools_cli_proto::PROFILE_VERSION_ADVANCED2,
+         ProfileVersion::kIamfAdvanced2Profile},
+    }));
 
 TEST(Generate, InvalidWhenPrimaryProfileReserved255) {
   auto metadata = GetSimpleProfileMetadata();
@@ -152,33 +175,6 @@ TEST(Generate, InvalidWhenPrimaryProfileReserved255) {
   const IaSequenceHeaderGenerator generator(metadata);
 
   EXPECT_FALSE(generator.Generate(output_obu).ok());
-}
-
-TEST(Generate, SetsAdditionalProfileBase) {
-  auto metadata = GetSimpleProfileMetadata();
-  metadata.set_additional_profile(iamf_tools_cli_proto::PROFILE_VERSION_BASE);
-
-  std::optional<IASequenceHeaderObu> output_obu;
-  const IaSequenceHeaderGenerator generator(metadata);
-  EXPECT_THAT(generator.Generate(output_obu), IsOk());
-  ASSERT_TRUE(output_obu.has_value());
-
-  EXPECT_EQ(output_obu->GetAdditionalProfile(),
-            ProfileVersion::kIamfBaseProfile);
-}
-
-TEST(Generate, SetsAdditionalProfileBaseEnhanced) {
-  auto metadata = GetSimpleProfileMetadata();
-  metadata.set_additional_profile(
-      iamf_tools_cli_proto::PROFILE_VERSION_BASE_ENHANCED);
-
-  std::optional<IASequenceHeaderObu> output_obu;
-  const IaSequenceHeaderGenerator generator(metadata);
-  EXPECT_THAT(generator.Generate(output_obu), IsOk());
-  ASSERT_TRUE(output_obu.has_value());
-
-  EXPECT_EQ(output_obu->GetAdditionalProfile(),
-            ProfileVersion::kIamfBaseEnhancedProfile);
 }
 
 TEST(Generate, SetsAdditionalProfileReserved255) {

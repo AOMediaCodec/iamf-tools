@@ -28,6 +28,9 @@ enum class ProfileVersion : uint8_t {
   kIamfSimpleProfile = 0,
   kIamfBaseProfile = 1,
   kIamfBaseEnhancedProfile = 2,
+  kIamfBaseAdvancedProfile = 3,
+  kIamfAdvanced1Profile = 4,
+  kIamfAdvanced2Profile = 5,
   kIamfReserved255Profile = 255
 };
 

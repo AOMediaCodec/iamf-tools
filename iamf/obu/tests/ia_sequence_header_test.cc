@@ -77,6 +77,42 @@ constexpr auto kBaseEnhancedProfilePayload = std::to_array<uint8_t>({
     static_cast<uint8_t>(ProfileVersion::kIamfBaseEnhancedProfile),
 });
 
+constexpr auto kBaseAdvancedProfilePayload = std::to_array<uint8_t>({
+    // `ia_code`.
+    0x69,
+    0x61,
+    0x6d,
+    0x66,
+    // `primary_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfBaseAdvancedProfile),
+    // `additional_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfBaseAdvancedProfile),
+});
+
+constexpr auto kAdvanced1ProfilePayload = std::to_array<uint8_t>({
+    // `ia_code`.
+    0x69,
+    0x61,
+    0x6d,
+    0x66,
+    // `primary_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfAdvanced1Profile),
+    // `additional_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfAdvanced1Profile),
+});
+
+constexpr auto kAdvanced2ProfilePayload = std::to_array<uint8_t>({
+    // `ia_code`.
+    0x69,
+    0x61,
+    0x6d,
+    0x66,
+    // `primary_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfAdvanced2Profile),
+    // `additional_profile`.
+    static_cast<uint8_t>(ProfileVersion::kIamfAdvanced2Profile),
+});
+
 TEST(IaSequenceHeaderConstructor, SetsObuType) {
   IASequenceHeaderObu obu({}, ProfileVersion::kIamfSimpleProfile,
                           ProfileVersion::kIamfSimpleProfile);
@@ -99,6 +135,30 @@ TEST(Validate, SucceedsWithBaseProfile) {
   EXPECT_THAT(base_profile_obu.Validate(), IsOk());
 }
 
+TEST(Validate, SucceedsWithBaseAdvancedProfile) {
+  const IASequenceHeaderObu base_advanced_profile_obu(
+      ObuHeader(), ProfileVersion::kIamfBaseAdvancedProfile,
+      ProfileVersion::kIamfBaseAdvancedProfile);
+
+  EXPECT_THAT(base_advanced_profile_obu.Validate(), IsOk());
+}
+
+TEST(Validate, SucceedsWithAdvanced1Profile) {
+  const IASequenceHeaderObu advanced1_profile_obu(
+      ObuHeader(), ProfileVersion::kIamfAdvanced1Profile,
+      ProfileVersion::kIamfAdvanced1Profile);
+
+  EXPECT_THAT(advanced1_profile_obu.Validate(), IsOk());
+}
+
+TEST(Validate, SucceedsWithAdvanced2Profile) {
+  const IASequenceHeaderObu advanced2_profile_obu(
+      ObuHeader(), ProfileVersion::kIamfAdvanced2Profile,
+      ProfileVersion::kIamfAdvanced2Profile);
+
+  EXPECT_THAT(advanced2_profile_obu.Validate(), IsOk());
+}
+
 TEST(Validate, SucceedsWithDifferentProfiles) {
   const IASequenceHeaderObu obu_with_different_profiles(
       ObuHeader(), ProfileVersion::kIamfSimpleProfile,
@@ -115,9 +175,9 @@ TEST(Validate, SucceedsWithBaseEnhancedProfile) {
   EXPECT_THAT(base_enhanced_profile_obu.Validate(), IsOk());
 }
 
-TEST(Validate, FailsWithUnsupportedPrimaryProfile3) {
+TEST(Validate, FailsWithUnsupportedPrimaryProfile6) {
   const IASequenceHeaderObu profile_3_obu(ObuHeader(),
-                                          static_cast<ProfileVersion>(3),
+                                          static_cast<ProfileVersion>(6),
                                           ProfileVersion::kIamfSimpleProfile);
 
   EXPECT_THAT(profile_3_obu.Validate(), Not(IsOk()));
@@ -176,12 +236,55 @@ TEST(CreateFromBuffer, BaseEnhancedProfile) {
             ProfileVersion::kIamfBaseEnhancedProfile);
 }
 
-TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs3) {
+TEST(CreateFromBuffer, BaseAdvancedProfile) {
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kBaseAdvancedProfilePayload));
+  ObuHeader header;
+
+  absl::StatusOr<IASequenceHeaderObu> obu =
+      IASequenceHeaderObu::CreateFromBuffer(
+          header, kBaseAdvancedProfilePayload.size(), *buffer);
+
+  EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfBaseAdvancedProfile);
+  EXPECT_EQ(obu->GetAdditionalProfile(),
+            ProfileVersion::kIamfBaseAdvancedProfile);
+}
+
+TEST(CreateFromBuffer, Advanced1Profile) {
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kAdvanced1ProfilePayload));
+  ObuHeader header;
+
+  absl::StatusOr<IASequenceHeaderObu> obu =
+      IASequenceHeaderObu::CreateFromBuffer(
+          header, kAdvanced1ProfilePayload.size(), *buffer);
+
+  EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfAdvanced1Profile);
+  EXPECT_EQ(obu->GetAdditionalProfile(), ProfileVersion::kIamfAdvanced1Profile);
+}
+
+TEST(CreateFromBuffer, Advanced2Profile) {
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kAdvanced2ProfilePayload));
+  ObuHeader header;
+
+  absl::StatusOr<IASequenceHeaderObu> obu =
+      IASequenceHeaderObu::CreateFromBuffer(
+          header, kAdvanced2ProfilePayload.size(), *buffer);
+
+  EXPECT_THAT(obu, IsOk());
+  EXPECT_EQ(obu->GetPrimaryProfile(), ProfileVersion::kIamfAdvanced2Profile);
+  EXPECT_EQ(obu->GetAdditionalProfile(), ProfileVersion::kIamfAdvanced2Profile);
+}
+
+TEST(CreateFromBuffer, InvalidWhenPrimaryProfileIs6) {
   std::vector<uint8_t> source = {
       // `ia_code`.
       0x69, 0x61, 0x6d, 0x66,
       // `primary_profile`.
-      3,
+      6,
       // `additional_profile`.
       static_cast<uint8_t>(ProfileVersion::kIamfBaseProfile)};
   const int64_t payload_size = source.size();
@@ -326,6 +429,39 @@ TEST(ValidateAndWrite, BaseEnhancedProfileBackwardsCompatibleWithSimple) {
                           MakeConstSpan(kExpectedPayload));
 }
 
+TEST(ValidateAndWrite, BaseAdvancedProfile) {
+  IASequenceHeaderObu obu(ObuHeader(), ProfileVersion::kIamfBaseAdvancedProfile,
+                          ProfileVersion::kIamfBaseAdvancedProfile);
+  WriteBitBuffer wb(kInitialBufferSize);
+
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, MakeConstSpan(kObuHeader),
+                          MakeConstSpan(kBaseAdvancedProfilePayload));
+}
+
+TEST(ValidateAndWrite, Advanced1Profile) {
+  IASequenceHeaderObu obu(ObuHeader(), ProfileVersion::kIamfAdvanced1Profile,
+                          ProfileVersion::kIamfAdvanced1Profile);
+  WriteBitBuffer wb(kInitialBufferSize);
+
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, MakeConstSpan(kObuHeader),
+                          MakeConstSpan(kAdvanced1ProfilePayload));
+}
+
+TEST(ValidateAndWrite, Advanced2Profile) {
+  IASequenceHeaderObu obu(ObuHeader(), ProfileVersion::kIamfAdvanced2Profile,
+                          ProfileVersion::kIamfAdvanced2Profile);
+  WriteBitBuffer wb(kInitialBufferSize);
+
+  EXPECT_THAT(obu.ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, MakeConstSpan(kObuHeader),
+                          MakeConstSpan(kAdvanced2ProfilePayload));
+}
+
 TEST(ValidateAndWrite, UnknownProfileBackwardsCompatibleReserved255) {
   IASequenceHeaderObu obu(ObuHeader(), ProfileVersion::kIamfSimpleProfile,
                           ProfileVersion::kIamfReserved255Profile);
@@ -373,9 +509,9 @@ TEST(ValidateAndWrite, NonMinimalLebGeneratorAffectsObuHeader) {
                           MakeConstSpan(kSimpleProfilePayload));
 }
 
-TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown3) {
+TEST(ValidateAndWrite, FailsWhenPrimaryProfileIsUnknown6) {
   const IASequenceHeaderObu obu_with_invalid_primary_profile(
-      ObuHeader(), static_cast<ProfileVersion>(3),
+      ObuHeader(), static_cast<ProfileVersion>(6),
       ProfileVersion::kIamfSimpleProfile);
 
   WriteBitBuffer unused_wb(0);

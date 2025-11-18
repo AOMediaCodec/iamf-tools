@@ -64,8 +64,11 @@ constexpr std::array<uint8_t, 0> kEmptyExtensionConfig{};
 
 using enum ProfileVersion;
 
+// TODO(b/461488730): Diverge behavior of the IAMF v2.0.0 profiles as features
+//                    are added.
 const absl::flat_hash_set<ProfileVersion> kAllKnownProfileVersions = {
-    kIamfSimpleProfile, kIamfBaseProfile, kIamfBaseEnhancedProfile};
+    kIamfSimpleProfile,       kIamfBaseProfile,      kIamfBaseEnhancedProfile,
+    kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
 
 const ScalableChannelLayoutConfig kOneLayerStereoConfig = {
     .channel_audio_layer_configs = {
@@ -848,6 +851,66 @@ TEST(FilterProfilesForMixPresentation,
       IsOk());
 
   EXPECT_TRUE(profiles_to_filter.contains(kIamfBaseEnhancedProfile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     KeepsBaseAdvancedProfileWhenThereAreEighteenOrFewerAudioElements) {
+  const int kNumAudioElements = 18;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      kNumAudioElements, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> base_advanced_profile = {
+      kIamfBaseAdvancedProfile};
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), base_advanced_profile),
+      IsOk());
+
+  EXPECT_TRUE(base_advanced_profile.contains(kIamfBaseAdvancedProfile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     KeepsAdvanced1ProfileWhenThereAreEighteenOrFewerAudioElements) {
+  const int kNumAudioElements = 18;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      kNumAudioElements, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> advanced1_profile = {
+      kIamfAdvanced1Profile};
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), advanced1_profile),
+      IsOk());
+
+  EXPECT_TRUE(advanced1_profile.contains(kIamfAdvanced1Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     KeepsAdvanced2ProfileWhenThereAreTwentyEightOrFewerAudioElements) {
+  const int kNumAudioElements = 28;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
+      kNumAudioElements, codec_config_obus, audio_elements,
+      mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> advanced2_profile = {
+      kIamfAdvanced2Profile};
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), advanced2_profile),
+      IsOk());
+
+  EXPECT_TRUE(advanced2_profile.contains(kIamfAdvanced2Profile));
 }
 
 TEST(FilterProfilesForMixPresentation,

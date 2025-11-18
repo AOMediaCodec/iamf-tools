@@ -39,6 +39,9 @@ absl::Status ValidateProfileVersion(ProfileVersion profile_version) {
     case ProfileVersion::kIamfSimpleProfile:
     case ProfileVersion::kIamfBaseProfile:
     case ProfileVersion::kIamfBaseEnhancedProfile:
+    case ProfileVersion::kIamfBaseAdvancedProfile:
+    case ProfileVersion::kIamfAdvanced1Profile:
+    case ProfileVersion::kIamfAdvanced2Profile:
       return absl::OkStatus();
     default:
       return absl::InvalidArgumentError(

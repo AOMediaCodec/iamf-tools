@@ -11,9 +11,11 @@
  */
 #include "iamf/cli/profile_filter.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 
 #include "absl/container/flat_hash_map.h"
@@ -31,14 +33,6 @@
 namespace iamf_tools {
 
 namespace {
-
-constexpr int kSimpleProfileMaxAudioElements = 1;
-constexpr int kBaseProfileMaxAudioElements = 2;
-constexpr int kBaseEnhancedProfileMaxAudioElements = 28;
-
-constexpr int kSimpleProfileMaxChannels = 16;
-constexpr int kBaseProfileMaxChannels = 18;
-constexpr int kBaseEnhancedProfileMaxChannels = 28;
 
 absl::Status ClearAndReturnError(
     absl::string_view context,
@@ -60,6 +54,11 @@ absl::Status FilterAudioElementType(
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+      profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
+      break;
   }
 
   if (profile_versions.empty()) {
@@ -106,6 +105,10 @@ absl::Status FilterExpandedLoudspeakerLayout(
     default:
       // Other layouts are reserved and not supported by base-enhanced profile.
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+      profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
   }
   if (profile_versions.empty()) {
     return absl::InvalidArgumentError(absl::StrCat(
@@ -161,6 +164,10 @@ absl::Status FilterChannelBasedConfig(
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+      profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
       break;
     case kLayoutExpanded:
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
@@ -206,6 +213,9 @@ absl::Status FilterAmbisonicsConfig(
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+      profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
       break;
   }
 
@@ -225,6 +235,10 @@ absl::Status FilterProfileForNumSubmixes(
     profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+    // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+    profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+    profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+    profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
   }
 
   if (profile_versions.empty()) {
@@ -251,6 +265,10 @@ absl::Status FilterProfileForHeadphonesRenderingMode(
           profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
           profile_versions.erase(ProfileVersion::kIamfBaseProfile);
           profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+          // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+          profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
+          profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
+          profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
           break;
         default:
           break;
@@ -314,15 +332,22 @@ absl::Status FilterProfilesForNumAudioElements(
     absl::string_view mix_presentation_id_for_debugging,
     int num_audio_elements_in_mix_presentation,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
-  if (num_audio_elements_in_mix_presentation > kSimpleProfileMaxAudioElements) {
-    profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
-  }
-  if (num_audio_elements_in_mix_presentation > kBaseProfileMaxAudioElements) {
-    profile_versions.erase(ProfileVersion::kIamfBaseProfile);
-  }
-  if (num_audio_elements_in_mix_presentation >
-      kBaseEnhancedProfileMaxAudioElements) {
-    profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+  // TODO(b/461488730): Ensure these agree with final v2.0.0 limits.
+  using enum ProfileVersion;
+  constexpr auto kProfileVersionAndMaxAudioElements =
+      std::to_array<std::pair<ProfileVersion, int>>({
+          {kIamfSimpleProfile, 1},
+          {kIamfBaseProfile, 2},
+          {kIamfBaseEnhancedProfile, 28},
+          {kIamfBaseAdvancedProfile, 18},
+          {kIamfAdvanced1Profile, 18},
+          {kIamfAdvanced2Profile, 28},
+      });
+  for (const auto& [profile_version, max_audio_elements] :
+       kProfileVersionAndMaxAudioElements) {
+    if (num_audio_elements_in_mix_presentation > max_audio_elements) {
+      profile_versions.erase(profile_version);
+    }
   }
 
   if (profile_versions.empty()) {
@@ -340,14 +365,22 @@ absl::Status FilterProfilesForNumChannels(
     absl::string_view mix_presentation_id_for_debugging,
     int num_channels_in_mix_presentation,
     absl::flat_hash_set<ProfileVersion>& profile_versions) {
-  if (num_channels_in_mix_presentation > kSimpleProfileMaxChannels) {
-    profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
-  }
-  if (num_channels_in_mix_presentation > kBaseProfileMaxChannels) {
-    profile_versions.erase(ProfileVersion::kIamfBaseProfile);
-  }
-  if (num_channels_in_mix_presentation > kBaseEnhancedProfileMaxChannels) {
-    profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+  // TODO(b/461488730): Ensure these agree with final v2.0.0 limits.
+  using enum ProfileVersion;
+  constexpr auto kProfileVersionAndMaxChannels =
+      std::to_array<std::pair<ProfileVersion, int>>({
+          {kIamfSimpleProfile, 16},
+          {kIamfBaseProfile, 18},
+          {kIamfBaseEnhancedProfile, 28},
+          {kIamfBaseAdvancedProfile, 18},
+          {kIamfAdvanced1Profile, 18},
+          {kIamfAdvanced2Profile, 28},
+      });
+  for (const auto& [profile_version, max_channels] :
+       kProfileVersionAndMaxChannels) {
+    if (num_channels_in_mix_presentation > max_channels) {
+      profile_versions.erase(profile_version);
+    }
   }
 
   if (profile_versions.empty()) {
