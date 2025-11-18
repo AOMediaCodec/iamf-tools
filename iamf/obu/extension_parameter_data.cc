@@ -19,29 +19,26 @@
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 absl::Status ExtensionParameterData::ReadAndValidate(ReadBitBuffer& rb) {
+  DecodedUleb128 parameter_data_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(parameter_data_size));
   parameter_data_bytes.resize(parameter_data_size);
   return rb.ReadUint8Span(absl::MakeSpan(parameter_data_bytes));
 }
 
 absl::Status ExtensionParameterData::Write(WriteBitBuffer& wb) const {
-  RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_data_size));
-  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
-      "parameter_data_bytes", parameter_data_bytes, parameter_data_size));
-  RETURN_IF_NOT_OK(
-      wb.WriteUint8Span(absl::MakeConstSpan(parameter_data_bytes)));
-  return absl::OkStatus();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_data_bytes.size()));
+  return wb.WriteUint8Span(absl::MakeConstSpan(parameter_data_bytes));
 }
 
 void ExtensionParameterData::Print() const {
   ABSL_LOG(INFO) << "    parameter_data_size= "
-                 << absl::StrCat(parameter_data_size);
+                 << absl::StrCat(parameter_data_bytes.size());
   ABSL_LOG(INFO) << "    // parameter_data_bytes.size()= "
                  << absl::StrCat(parameter_data_bytes.size());
 }

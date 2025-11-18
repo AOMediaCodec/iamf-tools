@@ -158,8 +158,6 @@ absl::StatusOr<ParameterSubblockMetadata> ParamDataToMetadata(
     const ExtensionParameterData& extension_parameter_data) {
   ParameterSubblockMetadata result;
 
-  result.mutable_parameter_data_extension()->set_parameter_data_size(
-      extension_parameter_data.parameter_data_size);
   result.mutable_parameter_data_extension()
       ->mutable_parameter_data_bytes()
       ->assign(extension_parameter_data.parameter_data_bytes.begin(),

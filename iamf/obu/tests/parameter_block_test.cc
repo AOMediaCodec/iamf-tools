@@ -56,6 +56,13 @@ constexpr DecodedUleb128 kDuration = 1024;
 constexpr DecodedUleb128 kConstantSubblockDuration = 1024;
 constexpr DecodedUleb128 kNumSubblocks = 1;
 
+constexpr std::array<uint8_t, 5> kExtraParameterDataBytes = {'e', 'x', 't', 'r',
+                                                             'a'};
+constexpr std::array<uint8_t, 5> kFirstParameterDataBytes = {'f', 'i', 'r', 's',
+                                                             't'};
+constexpr std::array<uint8_t, 6> kSecondParameterDataBytes = {'s', 'e', 'c',
+                                                              'o', 'n', 'd'};
+
 // TODO(b/273545873): Add more "expected failure" tests. Add more "successful"
 //                    test cases to existing tests.
 
@@ -1141,7 +1148,8 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
                                     public testing::Test {
  public:
   ExtensionParameterBlockTest()
-      : ParameterBlockObuTestBase(), parameter_block_extensions_({{0, {}}}) {}
+      : ParameterBlockObuTestBase(),
+        parameter_block_extensions_({ExtensionParameterData()}) {}
 
  protected:
   void CreateParamDefinition() override {
@@ -1152,8 +1160,6 @@ class ExtensionParameterBlockTest : public ParameterBlockObuTestBase,
   void InitParameterBlockTypeSpecificFields() override {
     ASSERT_EQ(parameter_block_extensions_.size(), obu_->subblocks_.size());
     for (int i = 0; i < parameter_block_extensions_.size(); i++) {
-      ASSERT_EQ(parameter_block_extensions_[i].parameter_data_size,
-                parameter_block_extensions_[i].parameter_data_bytes.size());
       obu_->subblocks_[i].param_data = std::make_unique<ExtensionParameterData>(
           parameter_block_extensions_[i]);
     }
@@ -1181,10 +1187,15 @@ TEST_F(ExtensionParameterBlockTest, MaxParamDefinitionType) {
 
 TEST_F(ExtensionParameterBlockTest,
        OneSubblockNonzeroSizeParamDefinitionMode0) {
-  parameter_block_extensions_ = {{5, {'e', 'x', 't', 'r', 'a'}}};
+  parameter_block_extensions_ = {
+      ExtensionParameterData(kExtraParameterDataBytes)};
 
   expected_header_ = {kObuIaParameterBlock << 3, 7};
-  expected_payload_ = {3, 5, 'e', 'x', 't', 'r', 'a'};
+  expected_payload_ = {3,
+                       // `parameter_data_size`.
+                       5,
+                       // `parameter_data_bytes`.
+                       'e', 'x', 't', 'r', 'a'};
 
   InitAndTestWrite();
 }
@@ -1192,12 +1203,20 @@ TEST_F(ExtensionParameterBlockTest,
 TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode0) {
   duration_args_ = {.duration = 64, .constant_subblock_duration = 32};
 
-  parameter_block_extensions_ = {{5, {'f', 'i', 'r', 's', 't'}},
-                                 {6, {'s', 'e', 'c', 'o', 'n', 'd'}}};
+  parameter_block_extensions_ = {
+      ExtensionParameterData(kFirstParameterDataBytes),
+      ExtensionParameterData(kSecondParameterDataBytes)};
 
   expected_header_ = {kObuIaParameterBlock << 3, 14};
-  expected_payload_ = {3, 5,   'f', 'i', 'r', 's', 't',
-                       6, 's', 'e', 'c', 'o', 'n', 'd'};
+  expected_payload_ = {3,
+                       // `parameter_data_size`.
+                       5,
+                       // `parameter_data_bytes`.
+                       'f', 'i', 'r', 's', 't',
+                       // `parameter_data_size`.
+                       6,
+                       // `parameter_data_bytes`.
+                       's', 'e', 'c', 'o', 'n', 'd'};
 
   InitAndTestWrite();
 }
@@ -1207,12 +1226,20 @@ TEST_F(ExtensionParameterBlockTest, TwoSubblocksParamDefinitionMode1) {
 
   duration_args_ = {.duration = 64, .constant_subblock_duration = 32};
 
-  parameter_block_extensions_ = {{5, {'f', 'i', 'r', 's', 't'}},
-                                 {6, {'s', 'e', 'c', 'o', 'n', 'd'}}};
+  parameter_block_extensions_ = {
+      ExtensionParameterData(kFirstParameterDataBytes),
+      ExtensionParameterData(kSecondParameterDataBytes)};
 
   expected_header_ = {kObuIaParameterBlock << 3, 16};
-  expected_payload_ = {3,   64, 32,  5,   'f', 'i', 'r', 's',
-                       't', 6,  's', 'e', 'c', 'o', 'n', 'd'};
+  expected_payload_ = {3, 64, 32,
+                       // `parameter_data_size`.
+                       5,
+                       // `parameter_data_bytes`.
+                       'f', 'i', 'r', 's', 't',
+                       // `parameter_data_size`.
+                       6,
+                       // `parameter_data_bytes`.
+                       's', 'e', 'c', 'o', 'n', 'd'};
 
   InitAndTestWrite();
 }

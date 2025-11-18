@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/status/status_matchers.h"
-#include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
@@ -36,6 +35,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::ElementsAreArray;
 
 constexpr DecodedUleb128 kSubblockDuration = 99;
 constexpr int16_t kStartPointValue = 100;
@@ -179,13 +179,11 @@ TEST(GenerateParameterSubblockMetadata,
 TEST(GenerateParameterSubblockMetadata, GeneratesExtensionParameterSubblocks) {
   const std::vector<uint8_t> kParameterDataBytes = {0x01, 0x02, 0x03, 0x04,
                                                     0x05};
-  constexpr absl::string_view kExpectedParameterData = "\x01\x02\x03\x04\x05";
-  const DecodedUleb128 kParameterDataSize = kParameterDataBytes.size();
 
   const ParameterSubblock kExtensionSubblock{
       .subblock_duration = kSubblockDuration,
-      .param_data = std::make_unique<ExtensionParameterData>(
-          kParameterDataSize, kParameterDataBytes)};
+      .param_data =
+          std::make_unique<ExtensionParameterData>(kParameterDataBytes)};
 
   const auto subblock_metadata =
       ParameterBlockMetadataGenerator::GenerateParameterSubblockMetadata(
@@ -193,11 +191,9 @@ TEST(GenerateParameterSubblockMetadata, GeneratesExtensionParameterSubblocks) {
   ASSERT_THAT(subblock_metadata, IsOk());
 
   ASSERT_TRUE(subblock_metadata->has_parameter_data_extension());
-  EXPECT_EQ(subblock_metadata->parameter_data_extension().parameter_data_size(),
-            kParameterDataSize);
   EXPECT_THAT(
       subblock_metadata->parameter_data_extension().parameter_data_bytes(),
-      kExpectedParameterData);
+      ElementsAreArray(kParameterDataBytes));
 }
 
 TEST(GenerateParameterSubblockMetadata, GenerateReconGainParameterSubblocks) {

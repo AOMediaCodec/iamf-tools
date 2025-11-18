@@ -16,24 +16,23 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/parameter_data.h"
-#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 struct ExtensionParameterData : public ParameterData {
   /*!\brief Constructor.
    *
-   * \param input_parameter_data_size Input size of the parameter data.
    * \param input_parameter_data_bytes Input bytes of the parameter data.
    */
-  ExtensionParameterData(DecodedUleb128 input_parameter_data_size,
-                         const std::vector<uint8_t>& input_parameter_data_bytes)
+  explicit ExtensionParameterData(
+      absl::Span<const uint8_t> input_parameter_data_bytes)
       : ParameterData(),
-        parameter_data_size(input_parameter_data_size),
-        parameter_data_bytes(input_parameter_data_bytes) {}
+        parameter_data_bytes(input_parameter_data_bytes.begin(),
+                             input_parameter_data_bytes.end()) {}
   ExtensionParameterData() = default;
 
   /*!\brief Overridden destructor.*/
@@ -57,7 +56,7 @@ struct ExtensionParameterData : public ParameterData {
    */
   void Print() const override;
 
-  DecodedUleb128 parameter_data_size;
+  // `parameter_data_size` is inferred from the size of this vector.
   std::vector<uint8_t> parameter_data_bytes;
 };
 
