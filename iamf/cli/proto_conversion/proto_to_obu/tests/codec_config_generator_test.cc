@@ -782,30 +782,53 @@ TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithImplicitSamplingFrequency) {
             AudioSpecificConfig::SampleFrequencyIndex::k24000);
 }
 
-TEST_F(CodecConfigGeneratorTest, ConfiguresAacWithExplicitSamplingFrequency) {
-  InitMetadataForAac(codec_config_metadata_);
-  codec_config_metadata_.at(0)
+TEST(Generate, InvalidForUnexpectedSamplingFrequency) {
+  CodecConfigMetadatas codec_config_metadatas;
+  InitMetadataForAac(codec_config_metadatas);
+  codec_config_metadatas.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_aac()
       ->mutable_decoder_specific_info()
       ->set_sample_frequency_index(
           iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE);
-  codec_config_metadata_.at(0)
+  codec_config_metadatas.at(0)
       .mutable_codec_config()
       ->mutable_decoder_config_aac()
       ->mutable_decoder_specific_info()
       ->set_sampling_frequency(9876);
 
-  const auto output_obus = InitAndGenerate();
-  ASSERT_THAT(output_obus, IsOk());
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), Not(IsOk()));
+}
+
+TEST(Generate,
+     InfersSamplingFrequencyForDeprecatedSamplingFrequencyEscapeValue) {
+  CodecConfigMetadatas codec_config_metadatas;
+  InitMetadataForAac(codec_config_metadatas);
+  codec_config_metadatas.at(0)
+      .mutable_codec_config()
+      ->mutable_decoder_config_aac()
+      ->mutable_decoder_specific_info()
+      ->set_sample_frequency_index(
+          iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE);
+  codec_config_metadatas.at(0)
+      .mutable_codec_config()
+      ->mutable_decoder_config_aac()
+      ->mutable_decoder_specific_info()
+      ->set_sampling_frequency(48000);
+
+  CodecConfigGenerator codec_config_generator(codec_config_metadatas);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> output_obus;
+  EXPECT_THAT(codec_config_generator.Generate(output_obus), IsOk());
 
   const auto& audio_specific_config =
       std::get<AacDecoderConfig>(
-          output_obus->at(kCodecConfigId).GetCodecConfig().decoder_config)
+          output_obus.at(kCodecConfigId).GetCodecConfig().decoder_config)
           .decoder_specific_info_.audio_specific_config;
   EXPECT_EQ(audio_specific_config.sample_frequency_index_,
-            AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue);
-  EXPECT_EQ(audio_specific_config.sampling_frequency_, 9876);
+            AudioSpecificConfig::SampleFrequencyIndex::k48000);
 }
 
 TEST_F(CodecConfigGeneratorTest, InvalidAacDecoderConfigIsMissing) {

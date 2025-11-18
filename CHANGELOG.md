@@ -24,7 +24,9 @@ and this project adheres to
 
 ### Deprecated
 
- - Drop support of `ia_code`, in favor of always inserting the correct one.
+ -   Drop support of `ia_code`, in favor of always inserting the correct one.
+ -   Deprecate `AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE` and explicit
+    `sampling_frequency`, these are usually forbidden by the IAMF spec.
 
 ## [2.1.0] - 2025-11-06
 

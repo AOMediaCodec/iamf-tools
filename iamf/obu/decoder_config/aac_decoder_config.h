@@ -12,7 +12,9 @@
 #ifndef OBU_DECODER_CONFIG_AAC_DECODER_CONFIG_H_
 #define OBU_DECODER_CONFIG_AAC_DECODER_CONFIG_H_
 
+#include <array>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -109,6 +111,24 @@ class AacDecoderConfig {
   static constexpr uint8_t kStreamType = 0x05;
   static constexpr bool kUpstream = false;
   static constexpr bool kReserved = true;
+  static constexpr auto kSampleFrequencyIndexAndSampleFrequency = []() {
+    using enum AudioSpecificConfig::SampleFrequencyIndex;
+    return std::to_array<
+        std::pair<AudioSpecificConfig::SampleFrequencyIndex, uint32_t>>(
+        {{k96000, 96000},
+         {k88200, 88200},
+         {k64000, 64000},
+         {k48000, 48000},
+         {k44100, 44100},
+         {k32000, 32000},
+         {k24000, 24000},
+         {k22050, 22050},
+         {k16000, 16000},
+         {k12000, 12000},
+         {k11025, 11025},
+         {k8000, 8000},
+         {k7350, 7350}});
+  }();
 
   friend bool operator==(const AacDecoderConfig& lhs,
                          const AacDecoderConfig& rhs) = default;

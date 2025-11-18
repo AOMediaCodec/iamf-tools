@@ -91,7 +91,7 @@ enum SampleFrequencyIndex {
   AAC_SAMPLE_FREQUENCY_INDEX_7350 = 13;
   AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_A = 14;
   AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B = 15;
-  AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE = 16;
+  AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE = 16 [deprecated = true];
 }
 
 // Settings to configure `fdk_aac`.
@@ -108,7 +108,7 @@ message AacDecoderSpecificInfo {
   uint32 audio_object_type = 1 [default = 2];
 
   SampleFrequencyIndex sample_frequency_index = 2;
-  uint32 sampling_frequency = 3;
+  uint32 sampling_frequency = 3 [deprecated = true];
   uint32 channel_configuration = 4 [default = 2];
 
   // Next ID: 6

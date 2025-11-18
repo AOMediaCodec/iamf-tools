@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "absl/base/no_destructor.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
@@ -283,23 +282,8 @@ absl::Status AacDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
 
 absl::Status AacDecoderConfig::GetOutputSampleRate(
     uint32_t& output_sample_rate) const {
-  using enum AudioSpecificConfig::SampleFrequencyIndex;
-  static const absl::NoDestructor<
-      absl::flat_hash_map<AudioSpecificConfig::SampleFrequencyIndex, uint32_t>>
-      kSampleFrequencyIndexToSampleFrequency({{k96000, 96000},
-                                              {k88200, 88200},
-                                              {k64000, 64000},
-                                              {k48000, 48000},
-                                              {k44100, 44100},
-                                              {k32000, 32000},
-                                              {k24000, 24000},
-                                              {k22050, 22050},
-                                              {k16000, 16000},
-                                              {k12000, 12000},
-                                              {k11025, 11025},
-                                              {k8000, 8000},
-                                              {k7350, 7350}});
-
+  static const auto kSampleFrequencyIndexToSampleFrequency(
+      BuildStaticMapFromPairs(kSampleFrequencyIndexAndSampleFrequency));
   const auto sample_frequency_index =
       decoder_specific_info_.audio_specific_config.sample_frequency_index_;
 

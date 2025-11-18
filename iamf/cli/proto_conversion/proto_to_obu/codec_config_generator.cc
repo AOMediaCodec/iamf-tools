@@ -284,9 +284,19 @@ absl::Status GenerateAacDecoderConfig(
       audio_specific_config.sample_frequency_index_));
   if (audio_specific_config.sample_frequency_index_ ==
       AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue) {
-    // The `sampling_frequency` is directly included in the stream.
-    audio_specific_config.sampling_frequency_ =
-        aac_metadata.decoder_specific_info().sampling_frequency();
+    ABSL_LOG(WARNING) << "`sampling_frequency` is deprecated and will be "
+                         "automatically upgraded to "
+                         "`sample_frequency_index`.";
+    // The escape value is forbidden to be used in IAMF, but we can upgrade it
+    // to the explicit sampling frequency index.
+    static const auto kSampleFrequencyIndexToSampleFrequency =
+        BuildStaticMapFromInvertedPairs(
+            AacDecoderConfig::kSampleFrequencyIndexAndSampleFrequency);
+    RETURN_IF_NOT_OK(
+        CopyFromMap(*kSampleFrequencyIndexToSampleFrequency,
+                    aac_metadata.decoder_specific_info().sampling_frequency(),
+                    "Sample frequency index for `sampling_frequency`",
+                    audio_specific_config.sample_frequency_index_));
   }
 
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
