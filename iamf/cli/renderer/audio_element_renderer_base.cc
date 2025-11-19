@@ -17,12 +17,23 @@
 #include "absl/status/statusor.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/renderer/renderer_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+AudioElementRendererBase::AudioElementRendererBase(
+    absl::Span<const ChannelLabel::Label> ordered_labels,
+    const size_t num_samples_per_frame, const size_t num_output_channels)
+    : ordered_labels_(ordered_labels.begin(), ordered_labels.end()),
+      num_samples_per_frame_(num_samples_per_frame),
+      num_output_channels_(num_output_channels),
+      samples_to_render_(ordered_labels_.size()),
+      rendered_samples_(num_output_channels),
+      kEmptyChannel(num_samples_per_frame_, 0.0) {}
 
 AudioElementRendererBase::~AudioElementRendererBase() {}
 

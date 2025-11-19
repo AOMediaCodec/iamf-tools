@@ -277,6 +277,30 @@ void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
                                  DecodedUleb128 duration,
                                  AudioElementObu& audio_element_obu);
 
+/*!\brief Gets arguments for creating renderers for ambisonics mono input.
+ *
+ * \param order Ambisonics order.
+ * \param ambisonics_config Output ambisonics config.
+ * \param audio_substream_ids Output audio susbtream IDs.
+ * \param substream_id_to_labels Output mapping of substream IDs to labels.
+ */
+void GetFullOrderAmbisonicsMonoArguments(
+    int order, AmbisonicsConfig& ambisonics_config,
+    std::vector<DecodedUleb128>& audio_substream_ids,
+    SubstreamIdLabelsMap& substream_id_to_labels);
+
+/*!\brief Gets arguments for creating renderers for ambisonics projection input.
+ *
+ * \param order Ambisonics order.
+ * \param ambisonics_config Output ambisonics config.
+ * \param audio_substream_ids Output audio susbtream IDs.
+ * \param substream_id_to_labels Output mapping of substream IDs to labels.
+ */
+void GetFullOrderAmbisonicsProjectionArguments(
+    int order, AmbisonicsConfig& ambisonics_config,
+    std::vector<DecodedUleb128>& audio_substream_ids,
+    SubstreamIdLabelsMap& substream_id_to_labels);
+
 /*!\brief Calls `CreateWavReader` and unwraps the `StatusOr`.
  *
  * \param filename Filename to forward to `CreateWavReader`.

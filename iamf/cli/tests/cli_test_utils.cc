@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <limits>
 #include <list>
 #include <memory>
 #include <numbers>
@@ -41,6 +42,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/audio_frame_with_data.h"
+#include "iamf/cli/channel_label.h"
 #include "iamf/cli/demixing_module.h"
 #include "iamf/cli/descriptor_obu_parser.h"
 #include "iamf/cli/obu_processor.h"
@@ -104,6 +106,20 @@ void AddParamDefinition(DecodedUleb128 parameter_id,
   // Add to the Audio Element OBU.
   audio_element_obu.audio_element_params_.emplace_back(
       AudioElementParam{param_definition});
+}
+
+void GetAudioSubstreamIdsAndLabelsMap(
+    const int max_channel_number,
+    std::vector<DecodedUleb128>& audio_substream_ids,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  for (int i = 0; i < max_channel_number; i++) {
+    const auto substream_id = static_cast<DecodedUleb128>(100 + i);
+    audio_substream_ids.push_back(substream_id);
+
+    const auto label = ChannelLabel::AmbisonicsChannelNumberToLabel(i);
+    ASSERT_TRUE(label.ok());
+    substream_id_to_labels[substream_id].push_back(*label);
+  }
 }
 
 }  // namespace
@@ -449,6 +465,50 @@ void AddReconGainParamDefinition(DecodedUleb128 parameter_id,
 
   AddParamDefinition(parameter_id, parameter_rate, duration, audio_element_obu,
                      param_definition);
+}
+
+void GetFullOrderAmbisonicsMonoArguments(
+    const int order, AmbisonicsConfig& ambisonics_config,
+    std::vector<DecodedUleb128>& audio_substream_ids,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  const int max_channel_number = (order + 1) * (order + 1);
+  std::vector<uint8_t> channel_mapping;
+  for (int i = 0; i < max_channel_number; i++) {
+    channel_mapping.push_back(static_cast<uint8_t>(i));
+  }
+  ambisonics_config = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+      .ambisonics_config = AmbisonicsMonoConfig{
+          .output_channel_count = static_cast<uint8_t>(max_channel_number),
+          .substream_count = static_cast<uint8_t>(max_channel_number),
+          .channel_mapping = channel_mapping}};
+  GetAudioSubstreamIdsAndLabelsMap(max_channel_number, audio_substream_ids,
+                                   substream_id_to_labels);
+}
+
+void GetFullOrderAmbisonicsProjectionArguments(
+    const int order, AmbisonicsConfig& ambisonics_config,
+    std::vector<DecodedUleb128>& audio_substream_ids,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  constexpr int16_t kMaxGain = std::numeric_limits<int16_t>::max();
+  const int max_channel_number = (order + 1) * (order + 1);
+  std::vector<int16_t> demxing_matrix(max_channel_number * max_channel_number);
+  for (int i = 0; i < max_channel_number; i++) {
+    // Create a near-identity demixing matrix.
+    for (int j = 0; j < max_channel_number; j++) {
+      int index = i * max_channel_number + j;
+      demxing_matrix[index] = (i == j) ? kMaxGain : 0;
+    }
+  }
+  ambisonics_config = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+      .ambisonics_config = AmbisonicsProjectionConfig{
+          .output_channel_count = static_cast<uint8_t>(max_channel_number),
+          .substream_count = static_cast<uint8_t>(max_channel_number),
+          .coupled_substream_count = 0,
+          .demixing_matrix = demxing_matrix}};
+  GetAudioSubstreamIdsAndLabelsMap(max_channel_number, audio_substream_ids,
+                                   substream_id_to_labels);
 }
 
 WavReader CreateWavReaderExpectOk(const std::string& filename,

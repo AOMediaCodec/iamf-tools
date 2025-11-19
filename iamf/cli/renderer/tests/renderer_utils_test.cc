@@ -599,6 +599,64 @@ TEST(GetChannelLabelsForAmbisonicsTest, InvalidProjectionModeWithMonoConfig) {
                    .ok());
 }
 
+TEST(GetDemixingMatrix, ReturnsNullPointerForMonoConfig) {
+  const AmbisonicsConfig kFullFirstOrderAmbisonicsConfig = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+      .ambisonics_config =
+          AmbisonicsMonoConfig{.output_channel_count = 4,
+                               .substream_count = 4,
+                               .channel_mapping = {0, 1, 2, 3}}};
+
+  auto demixing_matrix = GetDemixingMatrix(kFullFirstOrderAmbisonicsConfig);
+  ASSERT_TRUE(demixing_matrix.ok());
+  EXPECT_EQ(*demixing_matrix, nullptr);
+}
+
+TEST(GetDemixingMatrix, ReturnsNonNullDemixingMatrixForMonoConfig) {
+  const std::vector<int16_t> kExpectedDemixingMatrix{
+      15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+  const AmbisonicsConfig kAmbisonicsProjectionConfig = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+      .ambisonics_config = AmbisonicsProjectionConfig{
+          .output_channel_count = 4,
+          .substream_count = 4,
+          .coupled_substream_count = 0,
+          .demixing_matrix = kExpectedDemixingMatrix}};
+
+  auto demixing_matrix = GetDemixingMatrix(kAmbisonicsProjectionConfig);
+  ASSERT_TRUE(demixing_matrix.ok());
+  ASSERT_NE(*demixing_matrix, nullptr);
+  EXPECT_EQ(**demixing_matrix, kExpectedDemixingMatrix);
+}
+
+TEST(GetDemixingMatrix, InvalidMonoModeWithProjectionConfig) {
+  // Values in the demixing matrix doesn't matter here.
+  const std::vector<int16_t> kAllZeroDemixingMatrix(16, 0);
+
+  // Construct an invalid ambisonics config, where the mode is mono but the
+  // field `.ambisonics_config` contains an `AmbisonicsProjectionConfig`.
+  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeMono,
+      .ambisonics_config = AmbisonicsProjectionConfig{
+          .output_channel_count = 4,
+          .substream_count = 4,
+          .coupled_substream_count = 0,
+          .demixing_matrix = kAllZeroDemixingMatrix}};
+  EXPECT_FALSE(GetDemixingMatrix(kInvalidAmbisonicsConfig).ok());
+}
+
+TEST(GetDemixingMatrix, InvalidProjectionModeWithMonoConfig) {
+  // Construct an invalid ambisonics config, where the mode is projection but
+  // the field `.ambisonics_config` contains an `AmbisonicsMonoConfig`.
+  const AmbisonicsConfig kInvalidAmbisonicsConfig = {
+      .ambisonics_mode = AmbisonicsConfig::kAmbisonicsModeProjection,
+      .ambisonics_config =
+          AmbisonicsMonoConfig{.output_channel_count = 4,
+                               .substream_count = 4,
+                               .channel_mapping = {0, 1, 2, 3}}};
+  EXPECT_FALSE(GetDemixingMatrix(kInvalidAmbisonicsConfig).ok());
+}
+
 TEST(ProjectSamplesToRender, ProjectionReordersChannelsAndHalvesValues) {
   // Create a demixing matrix that reorders channels to indices {3, 2, 1, 0},
   // with a gain values corresponding to 0.5.

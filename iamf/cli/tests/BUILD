@@ -23,6 +23,7 @@ cc_library(
         "@abseil-cpp//absl/types:span",
         "//iamf/cli:audio_element_with_data",
         "//iamf/cli:audio_frame_with_data",
+        "//iamf/cli:channel_label",
         "//iamf/cli:demixing_module",
         "//iamf/cli:descriptor_obu_parser",
         "//iamf/cli:loudness_calculator_base",

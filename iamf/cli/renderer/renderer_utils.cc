@@ -164,6 +164,33 @@ struct GetChannelLabelsFromAmbisonicsProjectionConfig {
   }
 };
 
+struct GetNullDemixingMatrixFromAmbisonicsMonoConfig {
+  AmbisonicsConfig::AmbisonicsMode mode_;
+  absl::StatusOr<const std::vector<int16_t>*> operator()(
+      const AmbisonicsMonoConfig& config) {
+    if (mode_ != AmbisonicsConfig::kAmbisonicsModeMono) {
+      return absl::InvalidArgumentError(
+          "Expected mode == `kAmbisonicsModeMono` for AmbisonicsMonoConfig");
+    }
+    return nullptr;
+  }
+};
+
+struct GetDemixingMatrixFromAmbisonicsProjectionConfig {
+  AmbisonicsConfig::AmbisonicsMode mode_;
+  absl::StatusOr<const std::vector<int16_t>*> operator()(
+      const AmbisonicsProjectionConfig& config) {
+    if (mode_ != AmbisonicsConfig::kAmbisonicsModeProjection) {
+      return absl::InvalidArgumentError(
+          "Expected mode == `kAmbisonicsModeProjection` for "
+          "AmbisonicsProjectionConfig");
+    }
+
+    return &config.demixing_matrix;
+    ;
+  }
+};
+
 double Q15ToSignedDouble(const int16_t input) {
   return static_cast<double>(input) / 32768.0;
 }
@@ -296,6 +323,15 @@ absl::Status GetChannelLabelsForAmbisonics(
                      ambisonics_config.ambisonics_mode, audio_substream_ids,
                      substream_id_to_labels, channel_labels}},
       ambisonics_config.ambisonics_config);
+}
+
+absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
+    const AmbisonicsConfig& ambisonics_config) {
+  return std::visit(overloaded{GetNullDemixingMatrixFromAmbisonicsMonoConfig{
+                                   ambisonics_config.ambisonics_mode},
+                               GetDemixingMatrixFromAmbisonicsProjectionConfig{
+                                   ambisonics_config.ambisonics_mode}},
+                    ambisonics_config.ambisonics_config);
 }
 
 absl::Status ProjectSamplesToRender(

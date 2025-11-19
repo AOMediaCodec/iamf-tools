@@ -83,10 +83,20 @@ absl::Status GetChannelLabelsForAmbisonics(
     const SubstreamIdLabelsMap& substream_id_to_labels,
     std::vector<ChannelLabel::Label>& channel_labels);
 
+/*!\brief Gets a demixing matrix from an ambisonics-based config.
+ *
+ * \param ambisonics_config Config for the ambisonics layout.
+ * \return Pointer to a demixing matrix stored in a 1D array in column-major
+ *         order for ambisonics projection mode. `nullptr` for ambisonics
+ *         mono mode. Specific status on failure.
+ */
+absl::StatusOr<const std::vector<int16_t>*> GetDemixingMatrix(
+    const AmbisonicsConfig& ambisonics_config);
+
 /*!\brief Projects samples using the demixing matrix.
  *
  * \param input_samples Input samples arranged in (channel, time).
- * \param demixing_matrix Demixing matrix to projec the input samples. The
+ * \param demixing_matrix Demixing matrix to project the input samples. The
  *        shape is exptected to be (# input channels) x (# output channels),
  *        stored in a 1D array in column-major order.
  * \param projected_samples Output projected samples.
