@@ -50,10 +50,12 @@ constexpr uint8_t kUpperByteSerializedSamplingFrequencyIndex24000 =
 constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndex24000 =
     (static_cast<uint8_t>(SampleFrequencyIndex::k24000) & 0x01) << 7;
 
+// The ISOBMFF spec has an escape value for arbitrary sample rates. IAMF
+// forbids the use of this escape value.
 constexpr uint8_t kUpperByteSerializedSamplingFrequencyIndexEscape =
-    (static_cast<uint8_t>(SampleFrequencyIndex::kEscapeValue) & 0x0e) >> 1;
+    (static_cast<uint8_t>(15) & 0x0e) >> 1;
 constexpr uint8_t kLowerByteSerializedSamplingFrequencyIndexEscape =
-    (static_cast<uint8_t>(SampleFrequencyIndex::kEscapeValue) & 0x01) << 7;
+    (static_cast<uint8_t>(15) & 0x01) << 7;
 
 // A 7-bit mask representing `channel_configuration`, and all three fields in
 // the GA specific config.
@@ -120,39 +122,6 @@ constexpr auto kDefaultAudioDecoderConfigPayload = std::to_array<uint8_t>(
      kLowerByteSerializedSamplingFrequencyIndex64000 |
          kChannelConfigurationAndGaSpecificConfigMask});
 
-constexpr auto kExplicitSampleRate48000AudioDecoderConfigPayload =
-    std::to_array<uint8_t>(
-        {// `decoder_config_descriptor_tag`
-         AacDecoderConfig::kDecoderConfigDescriptorTag,
-         // ISO 14496:1 expandable size field.
-         20,
-         // `object_type_indication`.
-         AacDecoderConfig::kObjectTypeIndication,
-         // `stream_type`, `upstream`, `reserved`.
-         kStreamTypeUpstreamReserved,
-         // `buffer_size_db`.
-         0, 0, 0,
-         // `max_bitrate`.
-         0, 0, 0, 0,
-         // `average_bit_rate`.
-         0, 0, 0, 0,
-         // `decoder_specific_info_tag`
-         AacDecoderConfig::DecoderSpecificInfo::kDecoderSpecificInfoTag,
-         // ISO 14496:1 expandable size field.
-         5,
-         // `audio_object_type`, upper 3 bits of `sample_frequency_index`.
-         AudioSpecificConfig::kAudioObjectType << 3 |
-             kUpperByteSerializedSamplingFrequencyIndexEscape,
-         // lower bit of `sample_frequency_index`, upper 7 bits of
-         // `sampling_rate`.
-         kLowerByteSerializedSamplingFrequencyIndexEscape |
-             ((48000 & 0xe00000) >> 17),
-         // Next 16 bits of `sampling_rate`.
-         ((48000 & 0x1fe00) >> 9), ((48000 & 0x1fe) >> 1),
-         // Upper bit of `sampling_rate`, `channel_configuration`,
-         // `frame_length_flag`, `depends_on_core_coder`, `extension_flag`.
-         (48000 & 1) | kChannelConfigurationAndGaSpecificConfigMask});
-
 TEST(GetRequiredAudioRollDistance, ReturnsFixedValue) {
   EXPECT_EQ(AacDecoderConfig::GetRequiredAudioRollDistance(),
             kAudioRollDistance);
@@ -179,9 +148,7 @@ TEST(AacDecoderConfig, ValidateWithManyVaryingValues) {
   aac_decoder_config.max_bitrate_ = 1;
   aac_decoder_config.average_bit_rate_ = 1;
   aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 48;
+      .sample_frequency_index_ = SampleFrequencyIndex::k11025;
 
   EXPECT_THAT(aac_decoder_config.Validate(), IsOk());
 }
@@ -285,18 +252,6 @@ TEST(Validate, ValidatesSampleRateIsNotReserved) {
   auto aac_decoder_config = GetAacDecoderConfig();
   aac_decoder_config.decoder_specific_info_.audio_specific_config
       .sample_frequency_index_ = SampleFrequencyIndex::kReservedA;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 0;
-
-  EXPECT_THAT(aac_decoder_config.Validate(), Not(IsOk()));
-}
-
-TEST(Validate, ValidatesSampleRateIsNotZero) {
-  auto aac_decoder_config = GetAacDecoderConfig();
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 0;
 
   EXPECT_THAT(aac_decoder_config.Validate(), Not(IsOk()));
 }
@@ -341,17 +296,12 @@ TEST(AudioSpecificConfig, ReadsWithImplicitSampleFrequency24000) {
             SampleFrequencyIndex::k24000);
 }
 
-TEST(AudioSpecificConfig, ReadsWithExplicitSampleFrequency) {
-  constexpr uint32_t kSampleFrequency = 48000;
+TEST(AudioSpecificConfig, ReadFailsWithExplicitSampleFrequency) {
   AudioSpecificConfig audio_specific_config;
   auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
       kExplicitSampleRate48000AudioSpecificConfigPayload);
 
-  EXPECT_THAT(audio_specific_config.Read(*rb), IsOk());
-
-  EXPECT_EQ(audio_specific_config.sample_frequency_index_,
-            SampleFrequencyIndex::kEscapeValue);
-  EXPECT_EQ(audio_specific_config.sampling_frequency_, kSampleFrequency);
+  EXPECT_THAT(audio_specific_config.Read(*rb), Not(IsOk()));
 }
 
 TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
@@ -378,18 +328,6 @@ TEST(AacDecoderConfig, ReadAndValidateReadsAllFields) {
   uint32_t sample_frequency;
   EXPECT_THAT(decoder_config.GetOutputSampleRate(sample_frequency), IsOk());
   EXPECT_EQ(sample_frequency, 64000);
-}
-
-TEST(AacDecoderConfig, ReadAndValidateWithExplicitSampleFrequency) {
-  AacDecoderConfig decoder_config;
-  auto rb = MemoryBasedReadBitBuffer::CreateFromSpan(
-      kExplicitSampleRate48000AudioDecoderConfigPayload);
-
-  EXPECT_THAT(decoder_config.ReadAndValidate(kAudioRollDistance, *rb), IsOk());
-
-  uint32_t sample_frequency;
-  EXPECT_THAT(decoder_config.GetOutputSampleRate(sample_frequency), IsOk());
-  EXPECT_EQ(sample_frequency, 48000);
 }
 
 TEST(AacDecoderConfig, FailsIfDecoderConfigDescriptorExpandableSizeIsTooSmall) {
@@ -540,33 +478,6 @@ TEST(AudioSpecificConfigValidateAndWrite, DefaultValuesAreExpected) {
   ValidateWriteResults(wb, kDefaultAudioSpecificConfigPayload);
 }
 
-TEST(ValidateAndWrite, WritesExplicitSampleRate) {
-  auto aac_decoder_config = GetAacDecoderConfig();
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 48000;
-
-  WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(aac_decoder_config.ValidateAndWrite(kAudioRollDistance, wb),
-              IsOk());
-
-  ValidateWriteResults(wb, kExplicitSampleRate48000AudioDecoderConfigPayload);
-}
-
-TEST(ValidateAndWrite, WritesExplicitSampleRateAudioSpecificConfig) {
-  auto audio_specific_config =
-      GetAacDecoderConfig().decoder_specific_info_.audio_specific_config;
-  audio_specific_config.sample_frequency_index_ =
-      SampleFrequencyIndex::kEscapeValue;
-  audio_specific_config.sampling_frequency_ = 48000;
-
-  WriteBitBuffer wb(kInitialBufferSize);
-  EXPECT_THAT(audio_specific_config.ValidateAndWrite(wb), IsOk());
-
-  ValidateWriteResults(wb, kExplicitSampleRate48000AudioSpecificConfigPayload);
-}
-
 TEST(ValidateAndWrite, IllegalAudioRollDistanceMustBeNegativeOne) {
   auto aac_decoder_config = GetAacDecoderConfig();
 
@@ -652,41 +563,26 @@ TEST(GetOutputSampleRate, GetImplicitSampleRate24000) {
   EXPECT_EQ(output_sample_rate, 24000);
 }
 
-TEST(GetOutputSampleRate, GetExplicitSampleRate) {
-  auto aac_decoder_config = GetAacDecoderConfig();
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 1234;
-
-  uint32_t output_sample_rate;
-  EXPECT_THAT(aac_decoder_config.GetOutputSampleRate(output_sample_rate),
-              IsOk());
-
-  EXPECT_EQ(output_sample_rate, 1234);
-}
-
-TEST(GetOutputSampleRate, InvalidWhenExplicitSampleRateIsZero) {
-  auto aac_decoder_config = GetAacDecoderConfig();
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sample_frequency_index_ = SampleFrequencyIndex::kEscapeValue;
-  aac_decoder_config.decoder_specific_info_.audio_specific_config
-      .sampling_frequency_ = 0;
-
-  uint32_t output_sample_rate;
-  EXPECT_THAT(aac_decoder_config.GetOutputSampleRate(output_sample_rate),
-              Not(IsOk()));
-}
-
-TEST(GetOutputSampleRate, InvalidReservedSampleRate) {
+TEST(GetOutputSampleRate, InvalidReservedSampleRateA) {
   auto aac_decoder_config = GetAacDecoderConfig();
   aac_decoder_config.decoder_specific_info_.audio_specific_config
       .sample_frequency_index_ = SampleFrequencyIndex::kReservedA;
 
-  uint32_t undetermined_output_sample_rate;
-  EXPECT_THAT(
-      aac_decoder_config.GetOutputSampleRate(undetermined_output_sample_rate),
-      Not(IsOk()));
+  uint32_t output_sample_rate;
+  EXPECT_THAT(aac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
+  EXPECT_EQ(output_sample_rate, 0);
+}
+
+TEST(GetOutputSampleRate, InvalidReservedSampleRateB) {
+  auto aac_decoder_config = GetAacDecoderConfig();
+  aac_decoder_config.decoder_specific_info_.audio_specific_config
+      .sample_frequency_index_ = SampleFrequencyIndex::kReservedB;
+
+  uint32_t output_sample_rate;
+  EXPECT_THAT(aac_decoder_config.GetOutputSampleRate(output_sample_rate),
+              Not(IsOk()));
+  EXPECT_EQ(output_sample_rate, 0);
 }
 
 }  // namespace

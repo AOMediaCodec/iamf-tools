@@ -47,6 +47,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/param_definitions.h"
@@ -159,16 +160,7 @@ void AddFlacCodecConfigWithId(
  */
 void AddAacCodecConfig(
     uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint32_t sample_rate,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
-
-/*!\brief Adds a configurable AAC `CodecConfigObu` to the output argument.
- *
- * \param codec_config_id `codec_config_id` of the OBU to create.
- * \param codec_config_obus Map to add the OBU to keyed by `codec_config_id`.
- */
-void AddAacCodecConfigWithId(
-    uint32_t codec_config_id,
+    AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus);
 
 /*!\brief Adds a configurable ambisonics `AudioElementObu` to the output.

@@ -43,6 +43,7 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definition_variant.h"
@@ -240,7 +241,9 @@ TEST(GetNumberOfSamplesToDelayAtStart, ReturnsNonZeroForAac) {
       )pb",
       &codec_config_metadata));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddAacCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  AddAacCodecConfig(kCodecConfigId, kAacNumSamplesPerFrame,
+                    AudioSpecificConfig::SampleFrequencyIndex::k48000,
+                    codec_config_obus);
 
   const auto result = AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
       codec_config_metadata, codec_config_obus.at(kCodecConfigId));

@@ -33,6 +33,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
+#include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/types.h"
 #include "include/opus_defines.h"
 
@@ -41,6 +42,8 @@ namespace {
 
 constexpr DecodedUleb128 kCodecConfigId = 57;
 constexpr uint32_t kSampleRate = 48000;
+constexpr AudioSpecificConfig::SampleFrequencyIndex kSampleFrequencyIndex =
+    AudioSpecificConfig::SampleFrequencyIndex::k48000;
 constexpr uint8_t kSampleSize = 16;
 constexpr int kOneChannel = 1;
 constexpr bool kValidateCodecDelay = true;
@@ -87,8 +90,8 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
     CodecConfig::CodecId codec_id_type) {
   std::unique_ptr<EncoderBase> encoder;
   if (codec_id_type == CodecConfig::kCodecIdAacLc) {
-    AddAacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,
-                      codec_config_obus);
+    AddAacCodecConfig(kCodecConfigId, num_samples_per_frame,
+                      kSampleFrequencyIndex, codec_config_obus);
     encoder = CreateAacEncoder(codec_config_obus.at(kCodecConfigId));
   } else if (codec_id_type == CodecConfig::kCodecIdFlac) {
     AddFlacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,

@@ -279,11 +279,9 @@ absl::Status GenerateAacDecoderConfig(
       "AacDecoderConfig.audio_object_type",
       aac_metadata.decoder_specific_info().audio_object_type(),
       audio_specific_config.audio_object_type_));
-  RETURN_IF_NOT_OK(CopySampleFrequencyIndex(
-      aac_metadata.decoder_specific_info().sample_frequency_index(),
-      audio_specific_config.sample_frequency_index_));
-  if (audio_specific_config.sample_frequency_index_ ==
-      AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue) {
+
+  if (aac_metadata.decoder_specific_info().sample_frequency_index() ==
+      iamf_tools_cli_proto::AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE) {
     ABSL_LOG(WARNING) << "`sampling_frequency` is deprecated and will be "
                          "automatically upgraded to "
                          "`sample_frequency_index`.";
@@ -297,6 +295,10 @@ absl::Status GenerateAacDecoderConfig(
                     aac_metadata.decoder_specific_info().sampling_frequency(),
                     "Sample frequency index for `sampling_frequency`",
                     audio_specific_config.sample_frequency_index_));
+  } else {
+    RETURN_IF_NOT_OK(CopySampleFrequencyIndex(
+        aac_metadata.decoder_specific_info().sample_frequency_index(),
+        audio_specific_config.sample_frequency_index_));
   }
 
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(

@@ -46,7 +46,7 @@ class AudioSpecificConfig {
     k7350 = 12,
     kReservedA = 13,
     kReservedB = 14,
-    kEscapeValue = 15
+    // IAMF forbids the use of the escape value (15).
   };
 
   static constexpr uint8_t kAudioObjectType = 2;
@@ -75,9 +75,8 @@ class AudioSpecificConfig {
 
   uint8_t audio_object_type_ = kAudioObjectType;  // 5 bits.
   SampleFrequencyIndex sample_frequency_index_;   // 4 bits.
-  // if(sample_frequency_index == kSampleFrequencyIndexEscapeValue) {
-  uint32_t sampling_frequency_ = 0;  // 24 bits.
-  // }
+  // IAMF forbids the use of the escape value (15) for
+  // `sample_frequency_index_`.
   uint8_t channel_configuration_ = kChannelConfiguration;  // 4 bits.
 
   // The ISO spec allows several different types of configs to follow depending

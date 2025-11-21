@@ -97,6 +97,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
+        "//iamf/obu/decoder_config:aac_decoder_config",
         "//iamf/obu/decoder_config:opus_decoder_config",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",

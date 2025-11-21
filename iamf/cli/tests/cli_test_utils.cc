@@ -265,7 +265,7 @@ void AddFlacCodecConfigWithId(
 
 void AddAacCodecConfig(
     uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint32_t sample_rate,
+    AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
@@ -276,22 +276,11 @@ void AddAacCodecConfig(
        .num_samples_per_frame = num_samples_per_frame,
        .decoder_config = AacDecoderConfig{
            .decoder_specific_info_ = {
-               .audio_specific_config = {
-                   .sample_frequency_index_ =
-                       AudioSpecificConfig::SampleFrequencyIndex::kEscapeValue,
-                   .sampling_frequency_ = sample_rate}}}});
+               .audio_specific_config = {.sample_frequency_index_ =
+                                             sample_frequency_index}}}});
   ASSERT_THAT(obu, IsOk());
 
   codec_config_obus.emplace(codec_config_id, *std::move(obu));
-}
-
-void AddAacCodecConfigWithId(
-    uint32_t codec_config_id,
-    absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
-  constexpr uint32_t kNumSamplesPerFrame = 1024;
-  constexpr uint32_t kSampleRate = 48000;
-  AddAacCodecConfig(codec_config_id, kNumSamplesPerFrame, kSampleRate,
-                    codec_config_obus);
 }
 
 void AddAmbisonicsMonoAudioElementWithSubstreamIds(

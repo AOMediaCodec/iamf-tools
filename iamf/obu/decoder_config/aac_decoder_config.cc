@@ -124,6 +124,26 @@ absl::Status AdvanceBufferToPosition(absl::string_view debugging_context,
   }
 }
 
+absl::Status GetSampleFrequency(
+    AudioSpecificConfig::SampleFrequencyIndex sample_frequency_index,
+    uint32_t& output_sample_frequency) {
+  output_sample_frequency = 0;
+  static const auto kSampleFrequencyIndexToSampleFrequency =
+      BuildStaticMapFromPairs(
+          AacDecoderConfig::kSampleFrequencyIndexAndSampleFrequency);
+
+  if (sample_frequency_index == SampleFrequencyIndex::kReservedA ||
+      sample_frequency_index == SampleFrequencyIndex::kReservedB) {
+    // Reject values reserved by the AAC spec.
+    return absl::UnimplementedError(absl::StrCat(
+        "Reserved sample_frequency_index= ", sample_frequency_index));
+  }
+
+  return CopyFromMap(
+      *kSampleFrequencyIndexToSampleFrequency, sample_frequency_index,
+      "Sample rate for AAC Sampling Frequency Index", output_sample_frequency);
+}
+
 }  // namespace
 
 absl::Status AacDecoderConfig::Validate() const {
@@ -177,9 +197,6 @@ absl::Status AudioSpecificConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(audio_object_type_, 5));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint32_t>(sample_frequency_index_), 4));
-  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
-    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sampling_frequency_, 24));
-  }
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(channel_configuration_, 4));
 
   // Write nested `ga_specific_config`.
@@ -196,9 +213,11 @@ absl::Status AudioSpecificConfig::Read(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, sample_frequency_index_uint8));
   sample_frequency_index_ =
       static_cast<SampleFrequencyIndex>(sample_frequency_index_uint8);
-  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
-    RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(24, sampling_frequency_));
-  }
+  // Check that we understand the sample rate. If it is reserved or the escape
+  // value, we won't be able to work with it.
+  uint32_t ignored_sample_rate;
+  RETURN_IF_NOT_OK(
+      GetSampleFrequency(sample_frequency_index_, ignored_sample_rate));
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(4, channel_configuration_));
 
   // Write nested `ga_specific_config`.
@@ -282,33 +301,9 @@ absl::Status AacDecoderConfig::ReadAndValidate(int16_t audio_roll_distance,
 
 absl::Status AacDecoderConfig::GetOutputSampleRate(
     uint32_t& output_sample_rate) const {
-  static const auto kSampleFrequencyIndexToSampleFrequency(
-      BuildStaticMapFromPairs(kSampleFrequencyIndexAndSampleFrequency));
-  const auto sample_frequency_index =
-      decoder_specific_info_.audio_specific_config.sample_frequency_index_;
-
-  if (sample_frequency_index == SampleFrequencyIndex::kEscapeValue) {
-    RETURN_IF_NOT_OK(ValidateNotEqual(
-        decoder_specific_info_.audio_specific_config.sampling_frequency_,
-        uint32_t{0}, "sampling_frequency"));
-    // Accept the value directly from the bitstream, defer to encoding/decoding
-    // library to check if it is reasonable. We just know that it is never valid
-    // to be zero.
-    output_sample_rate =
-        decoder_specific_info_.audio_specific_config.sampling_frequency_;
-    return absl::OkStatus();
-  }
-
-  if (sample_frequency_index == SampleFrequencyIndex::kReservedA ||
-      sample_frequency_index == SampleFrequencyIndex::kReservedB) {
-    // Reject values reserved by the AAC spec.
-    return absl::UnimplementedError(absl::StrCat(
-        "Reserved sample_frequency_index= ", sample_frequency_index));
-  }
-
-  return CopyFromMap(
-      *kSampleFrequencyIndexToSampleFrequency, sample_frequency_index,
-      "Sample rate for AAC Sampling Frequency Index", output_sample_rate);
+  return GetSampleFrequency(
+      decoder_specific_info_.audio_specific_config.sample_frequency_index_,
+      output_sample_rate);
 }
 
 uint8_t AacDecoderConfig::GetBitDepthToMeasureLoudness() {
@@ -322,9 +317,6 @@ void AudioSpecificConfig::Print() const {
                << absl::StrCat(audio_object_type_);
   ABSL_VLOG(1) << "        sample_frequency_index= "
                << absl::StrCat(sample_frequency_index_);
-  if (sample_frequency_index_ == SampleFrequencyIndex::kEscapeValue) {
-    ABSL_VLOG(1) << "        sampling_frequency= " << sampling_frequency_;
-  }
   ABSL_VLOG(1) << "        channel_configuration= "
                << absl::StrCat(channel_configuration_);
   ABSL_VLOG(1) << "      ga_specific_info(aac):";

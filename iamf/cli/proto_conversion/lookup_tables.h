@@ -120,8 +120,7 @@ class LookupTables {
          {AAC_SAMPLE_FREQUENCY_INDEX_8000, k8000},
          {AAC_SAMPLE_FREQUENCY_INDEX_7350, k7350},
          {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_A, kReservedA},
-         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B, kReservedB},
-         {AAC_SAMPLE_FREQUENCY_INDEX_ESCAPE_VALUE, kEscapeValue}});
+         {AAC_SAMPLE_FREQUENCY_INDEX_RESERVED_B, kReservedB}});
   }();
 
   inline static constexpr auto kProtoAndInternalLoudspeakerLayouts = []() {
