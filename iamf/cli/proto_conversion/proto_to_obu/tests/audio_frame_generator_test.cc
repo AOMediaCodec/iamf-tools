@@ -792,6 +792,49 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveSameCodecDelay) {
   EXPECT_FALSE(audio_frame_generator->GeneratingFrames());
 }
 
+TEST(AudioFrameGenerator, OutputFramesWaitsForAllEncoders) {
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  // Add a second audio element.
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
+  // Add samples for the first audio element.
+  const auto kEightSamples = MakeConstSpan(kFrame0R2EightSamples);
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kFirstAudioElementId, ChannelLabel::kL2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kFirstAudioElementId, ChannelLabel::kR2, kEightSamples),
+              IsOk());
+  // The second audio element has no samples, its encoder should not have
+  // any frames available. `OutputFrames` should not output anything.
+  std::list<AudioFrameWithData> audio_frames;
+  EXPECT_THAT(audio_frame_generator->OutputFrames(audio_frames), IsOk());
+  EXPECT_TRUE(audio_frames.empty());
+  // Add samples to the second audio element.
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kSecondAudioElementId, ChannelLabel::kL2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kSecondAudioElementId, ChannelLabel::kR2, kEightSamples),
+              IsOk());
+
+  // Now both encoders should have frames available, `OutputFrames` should
+  // return two frames.
+  EXPECT_THAT(audio_frame_generator->OutputFrames(audio_frames), IsOk());
+
+  EXPECT_EQ(audio_frames.size(), 2);
+}
+
 TEST(AudioFrameGenerator,
      ErrorAudioElementsMustHaveSameTrimmingInformationAtEnd) {
   iamf_tools_cli_proto::UserMetadata user_metadata = {};

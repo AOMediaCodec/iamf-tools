@@ -81,6 +81,7 @@ cc_library(
         "//iamf/obu:codec_config",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
+        "@abseil-cpp//absl/algorithm:container",
         "@abseil-cpp//absl/base:core_headers",
         "@abseil-cpp//absl/base:nullability",
         "@abseil-cpp//absl/container:flat_hash_map",

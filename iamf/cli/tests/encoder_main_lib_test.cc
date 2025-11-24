@@ -1001,6 +1001,9 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedTwoLpcmCodecConfigs, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedOpusAndLpcmCodecConfig, TestVector,
                          testing::Values("test_000846.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedFlacAndLpcmCodecConfig, TestVector,
+                         testing::Values("test_000847.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
                          testing::Values("test_000848.textproto"));
 

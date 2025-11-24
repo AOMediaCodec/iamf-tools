@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/algorithm/container.h"
 #include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -873,13 +874,10 @@ absl::Status AudioFrameGenerator::OutputFrames(
   }
 
   // Pop encoded audio frames from encoders.
-  for (auto substream_id_to_encoder_iter = substream_id_to_encoder_.begin();
-       substream_id_to_encoder_iter != substream_id_to_encoder_.end();) {
-    auto& [substream_id, encoder] = *substream_id_to_encoder_iter;
-
-    // Remove the substream data when the generator is in the
-    // `kFlushingRemaining` state and the encoder can be finalized.
-    if (state_ == kFlushingRemaining) {
+  if (state_ == kFlushingRemaining) {
+    for (auto& [substream_id, encoder] : substream_id_to_encoder_) {
+      // When the generator is in the `kFlushingRemaining` state and there are
+      // no more samples to encode, finalize the encoder.
       auto substream_data_iter =
           substream_id_to_substream_data_.find(substream_id);
       if (substream_data_iter != substream_id_to_substream_data_.end() &&
@@ -888,22 +886,25 @@ absl::Status AudioFrameGenerator::OutputFrames(
         substream_id_to_substream_data_.erase(substream_data_iter);
       }
     }
+  }
 
-    if (encoder->FramesAvailable()) {
+  // Only pop frames if all encoders have frames available.
+  const bool can_pop_frames = absl::c_all_of(
+      substream_id_to_encoder_,
+      [](const auto& pair) { return pair.second->FramesAvailable(); });
+  if (can_pop_frames) {
+    for (const auto& [substream_id, encoder] : substream_id_to_encoder_) {
       RETURN_IF_NOT_OK(encoder->Pop(audio_frames));
       RETURN_IF_NOT_OK(ValidateAndApplyUserTrimming(
           /*is_last_frame=*/encoder->Finished(),
           substream_id_to_trimming_state_.at(substream_id),
           audio_frames.back()));
     }
-
-    // Remove finished encoder or advance the iterator.
-    if (encoder->Finished()) {
-      substream_id_to_encoder_.erase(substream_id_to_encoder_iter++);
-    } else {
-      ++substream_id_to_encoder_iter;
-    }
   }
+
+  // Clean up any finished encoders.
+  absl::erase_if(substream_id_to_encoder_,
+                 [](const auto& pair) { return pair.second->Finished(); });
 
   return absl::OkStatus();
 }
