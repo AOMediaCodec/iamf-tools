@@ -184,9 +184,8 @@ absl::Status GetNumSamplesToPadAtEndAndValidate(
 }
 
 absl::Status InitializeSubstreamData(
+    uint32_t required_samples_to_delay,
     const SubstreamIdLabelsMap& substream_id_to_labels,
-    const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
-        substream_id_to_encoder,
     const size_t num_samples_per_frame,
     bool user_samples_to_trim_at_start_includes_codec_delay,
     const uint32_t user_samples_to_trim_at_start,
@@ -198,17 +197,9 @@ absl::Status InitializeSubstreamData(
   // samples will occur later to keep trimming logic in one place as much as
   // possible.
   for (const auto& [substream_id, labels] : substream_id_to_labels) {
-    const auto encoder_iter = substream_id_to_encoder.find(substream_id);
-    if (encoder_iter == substream_id_to_encoder.end()) {
-      return absl::InvalidArgumentError(absl::StrCat(
-          "Failed to find encoder for substream ID= ", substream_id));
-    }
-
-    uint32_t encoder_required_samples_to_delay =
-        encoder_iter->second->GetNumberOfSamplesToDelayAtStart();
     if (user_samples_to_trim_at_start_includes_codec_delay) {
       MAYBE_RETURN_IF_NOT_OK(ValidateUserStartTrimIncludesCodecDelay(
-          user_samples_to_trim_at_start, encoder_required_samples_to_delay));
+          user_samples_to_trim_at_start, required_samples_to_delay));
     }
 
     // Initialize a `SubstreamData` with virtual samples for any delay
@@ -217,17 +208,17 @@ absl::Status InitializeSubstreamData(
     const auto& [substream_data_iter, inserted] =
         substream_id_to_substream_data.emplace(
             substream_id,
-            SubstreamData{.substream_id = substream_id,
-                          .frames_in_obu = SubstreamFrames<InternalSampleType>(
-                              num_channels, num_samples_per_frame),
-                          .frames_to_encode = SubstreamFrames<int32_t>(
-                              num_channels, num_samples_per_frame),
-                          .output_gains_linear = {},
-                          .num_samples_to_trim_at_end = 0,
-                          .num_samples_to_trim_at_start =
-                              encoder_required_samples_to_delay});
+            SubstreamData{
+                .substream_id = substream_id,
+                .frames_in_obu = SubstreamFrames<InternalSampleType>(
+                    num_channels, num_samples_per_frame),
+                .frames_to_encode = SubstreamFrames<int32_t>(
+                    num_channels, num_samples_per_frame),
+                .output_gains_linear = {},
+                .num_samples_to_trim_at_end = 0,
+                .num_samples_to_trim_at_start = required_samples_to_delay});
     substream_data_iter->second.frames_in_obu.PadZeros(
-        encoder_required_samples_to_delay);
+        required_samples_to_delay);
   }
 
   return absl::OkStatus();
@@ -571,7 +562,7 @@ absl::Status ApplyUserTrimForFrame(const bool from_start,
   if (num_samples_trimmed_in_obu > frame_samples_to_trim) {
     return absl::InvalidArgumentError(
         absl::StrCat("More samples were trimmed from the ", start_or_end_string,
-                     "than expected: (", num_samples_trimmed_in_obu, " vs ",
+                     " than expected: (", num_samples_trimmed_in_obu, " vs ",
                      frame_samples_to_trim, ")"));
   }
 
@@ -654,6 +645,34 @@ AudioFrameGenerator::Create(
         codec_config_obu_metadata.codec_config();
   }
 
+  // Initialize all of the encoders.
+  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
+      substream_id_to_encoder;
+  for (const auto& audio_frame_metadata : audio_frame_metadatas) {
+    const DecodedUleb128 audio_element_id =
+        audio_frame_metadata.audio_element_id();
+    const auto audio_elements_iter = audio_elements.find(audio_element_id);
+    if (audio_elements_iter == audio_elements.end()) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Audio Element with ID= ", audio_element_id, " not found"));
+    }
+
+    // Create an encoder for each substream.
+    RETURN_IF_NOT_OK(GetEncodingDataAndInitializeEncoders(
+        codec_config_metadata, audio_elements_iter->second,
+        substream_id_to_encoder));
+  }
+
+  // Get the global maximum delay among all encoders. IAMF requires that all
+  // substreams have the same number of samples trimmed at the start. When
+  // mixing multiple codec config OBUs, codecs that do not traditionally have
+  // delay may need delay added for alignment.
+  uint32_t max_codec_delay = 0;
+  for (const auto& [substream_id, encoder] : substream_id_to_encoder) {
+    max_codec_delay =
+        std::max(max_codec_delay, encoder->GetNumberOfSamplesToDelayAtStart());
+  }
+
   const auto& first_audio_frame_metadata = *audio_frame_metadatas.begin();
   const int64_t common_samples_to_trim_at_start = static_cast<int64_t>(
       first_audio_frame_metadata.samples_to_trim_at_start());
@@ -664,11 +683,8 @@ AudioFrameGenerator::Create(
   const bool common_samples_to_trim_at_start_includes_codec_delay =
       first_audio_frame_metadata
           .samples_to_trim_at_start_includes_codec_delay();
-
   absl::flat_hash_map<DecodedUleb128, absl::flat_hash_set<ChannelLabel::Label>>
       audio_element_id_to_labels;
-  absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>
-      substream_id_to_encoder;
   absl::flat_hash_map<uint32_t, SubstreamData> substream_id_to_substream_data;
   absl::flat_hash_map<uint32_t, TrimmingState> substream_id_to_trimming_state;
   for (const auto& audio_frame_metadata : audio_frame_metadatas) {
@@ -687,7 +703,6 @@ AudioFrameGenerator::Create(
           "Audio Element with ID= ", audio_element_id, " not found"));
     }
 
-    // Create an encoder for each substream.
     const AudioElementWithData& audio_element_with_data =
         audio_elements_iter->second;
     const auto num_samples_per_frame =
@@ -696,13 +711,9 @@ AudioFrameGenerator::Create(
       return absl::InvalidArgumentError(
           "The spec disallows trimming multiple frames from the end.");
     }
-    RETURN_IF_NOT_OK(GetEncodingDataAndInitializeEncoders(
-        codec_config_metadata, audio_element_with_data,
-        substream_id_to_encoder));
-
     // Intermediate data for all substreams belonging to an Audio Element.
     RETURN_IF_NOT_OK(InitializeSubstreamData(
-        audio_element_with_data.substream_id_to_labels, substream_id_to_encoder,
+        max_codec_delay, audio_element_with_data.substream_id_to_labels,
         num_samples_per_frame,
         audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay(),
         audio_frame_metadata.samples_to_trim_at_start(),
@@ -736,8 +747,7 @@ AudioFrameGenerator::Create(
       const int64_t additional_samples_to_trim_at_start =
           common_samples_to_trim_at_start_includes_codec_delay
               ? 0
-              : substream_id_to_encoder[substream_id]
-                    ->GetNumberOfSamplesToDelayAtStart();
+              : max_codec_delay;
       substream_id_to_trimming_state[substream_id] = {
           .increment_samples_to_trim_at_end_by_padding =
               !audio_frame_metadata.samples_to_trim_at_end_includes_padding(),

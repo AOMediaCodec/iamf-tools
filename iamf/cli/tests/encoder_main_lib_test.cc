@@ -998,6 +998,12 @@ INSTANTIATE_TEST_SUITE_P(BaseEnhancedProfileWithTemporalUnitObus, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedTwoLpcmCodecConfigs, TestVector,
                          testing::Values("test_000845.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedOpusAndLpcmCodecConfig, TestVector,
+                         testing::Values("test_000846.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
+                         testing::Values("test_000848.textproto"));
+
 // TODO(b/308385831): Add more tests.
 
 }  // namespace

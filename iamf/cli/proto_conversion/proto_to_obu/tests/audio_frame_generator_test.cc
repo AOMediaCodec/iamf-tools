@@ -55,9 +55,13 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::AllOf;
+using ::testing::Each;
 using ::testing::ElementsAre;
 using ::testing::Not;
 using ::testing::NotNull;
+
+using absl::MakeConstSpan;
 
 constexpr DecodedUleb128 kCodecConfigId = 99;
 constexpr uint32_t kSampleRate = 48000;
@@ -91,6 +95,11 @@ constexpr auto kFrame0R2EightSamples = []() -> auto {
 MATCHER_P(NumSamplesToTrimAtStartIs, expected_samples_to_trim_at_start, "") {
   return arg.obu.header_.num_samples_to_trim_at_start ==
          expected_samples_to_trim_at_start;
+}
+
+MATCHER_P(NumSamplesToTrimAtEndIs, expected_samples_to_trim_at_end, "") {
+  return arg.obu.header_.num_samples_to_trim_at_end ==
+         expected_samples_to_trim_at_end;
 }
 
 constexpr std::array<InternalSampleType, 0> kEmptyFrame = {};
@@ -708,6 +717,79 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveMatchingTrimmingInformation) {
     EXPECT_EQ(audio_frame.obu.header_.num_samples_to_trim_at_end,
               kCommonNumSamplesToTrimAtEnd);
   }
+}
+
+TEST(AudioFrameGenerator, AllAudioElementsHaveSameCodecDelay) {
+  // Configure two audio elements: one with LPCM (0 delay) and one with AAC
+  // (2048 delay). Typically, the frame size and sample rate still must agree.
+  iamf_tools_cli_proto::UserMetadata user_metadata;
+  ConfigureOneStereoSubstreamLittleEndian(user_metadata);
+  user_metadata.mutable_codec_config_metadata(0)
+      ->mutable_codec_config()
+      ->set_num_samples_per_frame(kAacNumSamplesPerFrame);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+  user_metadata.mutable_audio_frame_metadata(0)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+  // Add AAC codec config and associated audio element.
+  const DecodedUleb128 kSecondCodecConfigId = 100;
+  auto* aac_codec_config_metadata = user_metadata.add_codec_config_metadata();
+  ConfigureAacCodecConfigMetadata(*aac_codec_config_metadata);
+  aac_codec_config_metadata->set_codec_config_id(kSecondCodecConfigId);
+  AddStereoAudioElementAndAudioFrameMetadata(
+      user_metadata, kSecondAudioElementId, kSecondSubstreamId);
+  user_metadata.mutable_audio_element_metadata(1)->set_codec_config_id(
+      kSecondCodecConfigId);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_start_includes_codec_delay(false);
+  user_metadata.mutable_audio_frame_metadata(1)
+      ->set_samples_to_trim_at_end_includes_padding(false);
+  const absl::flat_hash_map<uint32_t, ParamDefinitionVariant> param_definitions;
+  absl::flat_hash_map<uint32_t, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::unique_ptr<GlobalTimingModule> global_timing_module;
+  std::unique_ptr<ParametersManager> parameters_manager;
+  std::unique_ptr<AudioFrameGenerator> audio_frame_generator;
+  InitializeAudioFrameGenerator(
+      user_metadata, param_definitions, codec_config_obus, audio_elements,
+      global_timing_module, parameters_manager, audio_frame_generator);
+
+  // Encode the same eight samples for each channel.
+  const auto kEightSamples = MakeConstSpan(kFrame0R2EightSamples);
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kFirstAudioElementId, ChannelLabel::kL2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kFirstAudioElementId, ChannelLabel::kR2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kSecondAudioElementId, ChannelLabel::kL2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->AddSamples(
+                  kSecondAudioElementId, ChannelLabel::kR2, kEightSamples),
+              IsOk());
+  EXPECT_THAT(audio_frame_generator->Finalize(), IsOk());
+  EXPECT_FALSE(audio_frame_generator->TakingSamples());
+
+  // AAC has a delay of 2048 samples, with 1024 samples per frame. Only eight
+  // real samples were encoded. The first two frames are fully trimmed, the
+  // third frame is partially trimmed from the end.
+  std::list<AudioFrameWithData> first_temporal_unit;
+  EXPECT_THAT(audio_frame_generator->OutputFrames(first_temporal_unit), IsOk());
+  EXPECT_THAT(first_temporal_unit, Each(AllOf(NumSamplesToTrimAtStartIs(1024),
+                                              NumSamplesToTrimAtEndIs(0))));
+
+  std::list<AudioFrameWithData> second_temporal_unit;
+  EXPECT_THAT(audio_frame_generator->OutputFrames(second_temporal_unit),
+              IsOk());
+  EXPECT_THAT(second_temporal_unit, Each(AllOf(NumSamplesToTrimAtStartIs(1024),
+                                               NumSamplesToTrimAtEndIs(0))));
+
+  std::list<AudioFrameWithData> third_temporal_unit;
+  EXPECT_THAT(audio_frame_generator->OutputFrames(third_temporal_unit), IsOk());
+  EXPECT_THAT(third_temporal_unit, Each(AllOf(NumSamplesToTrimAtStartIs(0),
+                                              NumSamplesToTrimAtEndIs(1016))));
+  EXPECT_FALSE(audio_frame_generator->GeneratingFrames());
 }
 
 TEST(AudioFrameGenerator,
