@@ -167,20 +167,17 @@ class ObuProcessor {
    *        the input OBUs actually belong to the same temporal unit.
    * \param parameter_blocks_with_data Parameter Blocks with the requisite data.
    * \param audio_frames_with_data Audio Frames to decode in place.
-   * \param output_rendered_samples Output rendered samples. These
-   *        should be used immediately after this function is called; they will
-   *        be invalidated after the next call to
-   *        `RenderTemporalUnitAndMeasureLoudness()`, as well as after the
-   *        `ObuProcessor` is destroyed.
-   * \return `absl::OkStatus()` if the process is successful. A specific status
-   *         on failure.
+   * \return Output rendered samples, or a specific status on failure. These
+   *         should be used immediately after this function is called; they will
+   *         be invalidated after the next call to
+   *         `RenderTemporalUnitAndMeasureLoudness()`, as well as after the
+   *         `ObuProcessor` is destroyed. A specific status on failure.
    */
-  absl::Status RenderTemporalUnitAndMeasureLoudness(
+  absl::StatusOr<absl::Span<const absl::Span<const InternalSampleType>>>
+  RenderTemporalUnitAndMeasureLoudness(
       InternalTimestamp timestamp,
       const std::list<ParameterBlockWithData>& parameter_blocks,
-      std::list<AudioFrameWithData>& audio_frames,
-      absl::Span<const absl::Span<const InternalSampleType>>&
-          output_rendered_samples);
+      std::list<AudioFrameWithData>& audio_frames);
 
   IASequenceHeaderObu ia_sequence_header_;
   std::unique_ptr<

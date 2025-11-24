@@ -207,18 +207,17 @@ IamfStatus DecodeOneTemporalUnit(
   }
   // We may have processed bytes but not a full temporal unit.
   if (output_temporal_unit.has_value()) {
-    absl::Span<const absl::Span<const InternalSampleType>>
-        rendered_samples_for_temporal_unit;
-    absl_status = obu_processor->RenderTemporalUnitAndMeasureLoudness(
-        output_temporal_unit->output_timestamp,
-        output_temporal_unit->output_parameter_blocks,
-        output_temporal_unit->output_audio_frames,
-        rendered_samples_for_temporal_unit);
-    if (!absl_status.ok()) {
-      return AbslToIamfStatus(absl_status);
+    absl::StatusOr<absl::Span<const absl::Span<const InternalSampleType>>>
+        rendered_samples_for_temporal_unit =
+            obu_processor->RenderTemporalUnitAndMeasureLoudness(
+                output_temporal_unit->output_timestamp,
+                output_temporal_unit->output_parameter_blocks,
+                output_temporal_unit->output_audio_frames);
+    if (!rendered_samples_for_temporal_unit.ok()) {
+      return AbslToIamfStatus(rendered_samples_for_temporal_unit.status());
     }
-    rendered_samples = std::vector(rendered_samples_for_temporal_unit.begin(),
-                                   rendered_samples_for_temporal_unit.end());
+    rendered_samples = std::vector(rendered_samples_for_temporal_unit->begin(),
+                                   rendered_samples_for_temporal_unit->end());
     if (channel_reorderer.has_value()) {
       channel_reorderer->Reorder(rendered_samples);
     }

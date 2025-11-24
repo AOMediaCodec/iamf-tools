@@ -33,6 +33,10 @@ and this project adheres to
 -   Forbid encoding or decoding with multiple Codec Config OBUs under Simple
     Base, and Base-Enhanced profiles.
 
+### Security
+
+-   Fix potential invalid memory access for certain bitstreams.
+
 ## [2.1.0] - 2025-11-06
 
 ### Added

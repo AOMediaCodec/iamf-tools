@@ -645,15 +645,15 @@ absl::Status ObuProcessor::ProcessTemporalUnit(
   return absl::OkStatus();
 }
 
-absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
+absl::StatusOr<absl::Span<const absl::Span<const InternalSampleType>>>
+ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     InternalTimestamp start_timestamp,
     const std::list<ParameterBlockWithData>& parameter_blocks,
-    std::list<AudioFrameWithData>& audio_frames,
-    absl::Span<const absl::Span<const InternalSampleType>>&
-        output_rendered_samples) {
+    std::list<AudioFrameWithData>& audio_frames) {
   if (audio_frames.empty()) {
-    // Nothing to decode, render, or measure loudness of.
-    return absl::OkStatus();
+    // Nothing to decode, render, or measure loudness of. Consider this
+    // trivially OK.
+    return absl::Span<const absl::Span<const InternalSampleType>>();
   }
   if (!rendering_models_.has_value()) {
     return absl::FailedPreconditionError(
@@ -684,6 +684,10 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
     RETURN_IF_NOT_OK(
         rendering_models_->audio_frame_decoder.Decode(audio_frame));
   }
+  if (!end_timestamp.has_value()) {
+    return absl::InvalidArgumentError(
+        "No relevant audio frames in the temporal unit.");
+  }
 
   // Reconstruct the temporal unit and store the result in the output map.
   const auto& decoded_labeled_frames_for_temporal_unit =
@@ -708,15 +712,13 @@ absl::Status ObuProcessor::RenderTemporalUnitAndMeasureLoudness(
   if (!rendered_samples.ok()) {
     return rendered_samples.status();
   }
-  output_rendered_samples = *rendered_samples;
 
   // TODO(b/379122580): Add a call to `FinalizePushingTemporalUnits`, then a
   //                    final call to `GetPostProcessedSamplesAsSpan` when there
   //                    are no more temporal units to push. Those calls may
   //                    belong elsewhere in the class depending on the
   //                    interface.
-
-  return absl::OkStatus();
+  return *rendered_samples;
 }
 
 absl::StatusOr<ObuProcessor::RenderingModels>

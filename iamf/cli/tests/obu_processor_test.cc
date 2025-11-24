@@ -56,6 +56,7 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::AllOf;
+using ::testing::Contains;
 using ::testing::Each;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -1388,13 +1389,10 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RenderingNothingReturnsOk) {
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
-  absl::Span<const absl::Span<const InternalSampleType>>
-      output_rendered_samples;
-  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, empty_parameter_blocks_with_data,
-                  empty_audio_frames_with_data, output_rendered_samples),
-              IsOk());
-  EXPECT_TRUE(output_rendered_samples.empty());
+  auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      /*timestamp=*/0, empty_parameter_blocks_with_data,
+      empty_audio_frames_with_data);
+  EXPECT_THAT(rendered_samples, IsOkAndHolds(IsEmpty()));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
@@ -1459,15 +1457,12 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness, RendersFoaToStereoWav) {
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
-  absl::Span<const absl::Span<const InternalSampleType>>
-      output_rendered_samples;
-  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data,
-                  output_rendered_samples),
-              IsOk());
+  auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data);
   constexpr int kExpectedNumSamplesPerFrame = 1;
-  EXPECT_THAT(output_rendered_samples,
-              HasShape(kTwoChannels, kExpectedNumSamplesPerFrame));
+  EXPECT_THAT(
+      rendered_samples,
+      IsOkAndHolds(HasShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -1527,15 +1522,12 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
-  absl::Span<const absl::Span<const InternalSampleType>>
-      output_rendered_samples;
-  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, parameter_blocks_with_data,
-                  audio_frames_with_data, output_rendered_samples),
-              IsOk());
+  auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      /*timestamp=*/0, parameter_blocks_with_data, audio_frames_with_data);
   constexpr int kExpectedNumSamplesPerFrame = 1;
-  EXPECT_THAT(output_rendered_samples,
-              HasShape(kTwoChannels, kExpectedNumSamplesPerFrame));
+  EXPECT_THAT(
+      rendered_samples,
+      IsOkAndHolds(HasShape(kTwoChannels, kExpectedNumSamplesPerFrame)));
 }
 
 void AddOneLayerStereoAudioElement(
@@ -1600,21 +1592,18 @@ TEST(RenderTemporalUnitAndMeasureLoudness, RendersPassthroughStereo) {
       insufficient_data);
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
-  absl::Span<const absl::Span<const InternalSampleType>>
-      output_rendered_samples;
-  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data,
-                  output_rendered_samples),
-              IsOk());
+
+  auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data);
 
   // Outer vector is for each channel, inner vector is for each tick.
   const auto kLeftChannel =
       Int32ToInternalSampleType({0x33110000, 0x77550000, 0x0a990000});
   const auto kRightChannel =
       Int32ToInternalSampleType({0x44220000, 0x08660000, 0x0dbb0000});
-  EXPECT_THAT(output_rendered_samples,
-              ElementsAre(Pointwise(Eq(), kLeftChannel),
-                          Pointwise(Eq(), kRightChannel)));
+  EXPECT_THAT(rendered_samples,
+              IsOkAndHolds(ElementsAre(Pointwise(Eq(), kLeftChannel),
+                                       Pointwise(Eq(), kRightChannel))));
 }
 
 TEST(RenderAudioFramesWithDataAndMeasureLoudness,
@@ -1662,20 +1651,18 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
           .audio_element_with_data =
               &audio_elements_with_data.at(kFirstAudioElementId),
       });
-      absl::Span<const absl::Span<const InternalSampleType>>
-          output_rendered_samples;
-      EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                      /*timestamp=*/i, kNoParameterBlocks,
-                      audio_frames_with_data, output_rendered_samples),
-                  IsOk());
+      auto rendered_samples =
+          obu_processor->RenderTemporalUnitAndMeasureLoudness(
+              /*timestamp=*/i, kNoParameterBlocks, audio_frames_with_data);
+
       const auto kExpectedSample =
           Int32ToNormalizedFloatingPoint<InternalSampleType>(i << 16 |
                                                              (i << 24));
       const std::vector<InternalSampleType> expected_channel(kTwoChannels,
                                                              kExpectedSample);
-      EXPECT_THAT(output_rendered_samples,
-                  ElementsAre(Pointwise(Eq(), expected_channel),
-                              Pointwise(Eq(), expected_channel)));
+      EXPECT_THAT(rendered_samples,
+                  IsOkAndHolds(ElementsAre(Pointwise(Eq(), expected_channel),
+                                           Pointwise(Eq(), expected_channel))));
     }
   }
 }
@@ -1737,15 +1724,44 @@ TEST(RenderAudioFramesWithDataAndMeasureLoudness,
   ASSERT_THAT(obu_processor, NotNull());
   EXPECT_FALSE(insufficient_data);
 
-  absl::Span<const absl::Span<const InternalSampleType>>
-      output_rendered_samples;
-  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
-                  /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data,
-                  output_rendered_samples),
-              IsOk());
-  EXPECT_THAT(output_rendered_samples, HasShape(2, 1));
-  EXPECT_EQ(output_rendered_samples[0][0],
+  auto rendered_samples = obu_processor->RenderTemporalUnitAndMeasureLoudness(
+      /*timestamp=*/0, kNoParameterBlocks, audio_frames_with_data);
+  ASSERT_THAT(rendered_samples, IsOk());
+  EXPECT_THAT(*rendered_samples, HasShape(2, 1));
+  EXPECT_EQ((*rendered_samples)[0][0],
             kExpectedFirstSampleForFirstMixPresentation);
+}
+
+TEST(RenderTemporalUnitAndMeasureLoudness,
+     FailsWhenTemporalUnitHasNoRelevantAudioFrames) {
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      InitAllDescriptorsForZerothOrderAmbisonics());
+  bool insufficient_data;
+  auto obu_processor = ObuProcessor::CreateForRendering(
+      kIamfV1_0_0ErrataProfiles, kNoDesiredMixPresentationId, kStereoLayout,
+      /*is_exhaustive_and_exact=*/true, read_bit_buffer.get(),
+      insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  EXPECT_FALSE(insufficient_data);
+  // Configure a stray audio frame.
+  constexpr DecodedUleb128 kStrayAudioFrameId = 123456789;
+  ASSERT_THAT(obu_processor->audio_elements_->at(kFirstAudioElementId)
+                  .obu.audio_substream_ids_,
+              Not(Contains(kStrayAudioFrameId)));
+  constexpr InternalTimestamp kEndTimestamp = 1;
+  const std::list<ParameterBlockWithData> kNoParameterBlocks = {};
+  std::list<AudioFrameWithData> audio_frames_with_data = {AudioFrameWithData{
+      .obu = AudioFrameObu(ObuHeader(), kStrayAudioFrameId,
+                           /*audio_frame=*/{1, 0, 0, 0}),
+      .start_timestamp = 0,
+      .end_timestamp = kEndTimestamp,
+      .audio_element_with_data =
+          &obu_processor->audio_elements_->at(kFirstAudioElementId),
+  }};
+
+  EXPECT_THAT(obu_processor->RenderTemporalUnitAndMeasureLoudness(
+                  kEndTimestamp, kNoParameterBlocks, audio_frames_with_data),
+              Not(IsOk()));
 }
 
 TEST(GetOutputMixPresentationId, FailsWhenNotCreatedForRendering) {
