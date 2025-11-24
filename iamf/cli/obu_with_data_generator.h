@@ -37,21 +37,17 @@ namespace iamf_tools {
  */
 class ObuWithDataGenerator {
  public:
-  /*!\brief Creates a map of `AudioElementWithData` instances.
+  /*!\brief Creates an `AudioElementWithData` from the given audio element OBU.
    *
    * \param codec_config_obus Map of Codec Config OBUs.
-   * \param audio_element_obus Map of Audio Element OBUs used to generate the
-   *        result. OBU ownership is transferred to the returned map and
-   *        `audio_element_obus` is cleared upon success.
-   * \return `absl::OkStatus()` if the process is successful. A specific status
-   *         on failure.
+   * \param Audio Element OBUs to process.
+   * \return Audio Element with data if the process is successful, or a specific
+   *         status on failure.
    */
-  static absl::StatusOr<
-      absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-  GenerateAudioElementsWithData(
+  static absl::StatusOr<AudioElementWithData> GenerateAudioElementWithData(
       const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
           codec_config_obus,
-      absl::flat_hash_map<DecodedUleb128, AudioElementObu>& audio_element_obus);
+      const AudioElementObu& audio_element_obu);
 
   /*!\brief Creates an `AudioFrameWithData` instance.
    *

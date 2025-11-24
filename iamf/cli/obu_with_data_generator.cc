@@ -557,54 +557,45 @@ absl::Status CollectChannelLayersAndLabelsForLoudspeakerLayout(
 
 }  // namespace
 
-absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-ObuWithDataGenerator::GenerateAudioElementsWithData(
+absl::StatusOr<AudioElementWithData>
+ObuWithDataGenerator::GenerateAudioElementWithData(
     const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
         codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementObu>& audio_element_obus) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      audio_element_with_data;
-  for (auto& [audio_element_id, audio_element_obu] : audio_element_obus) {
-    SubstreamIdLabelsMap substream_id_to_labels;
-    LabelGainMap label_to_output_gain;
-    std::vector<ChannelNumbers> channel_numbers_for_layers;
-    if (audio_element_obu.GetAudioElementType() ==
-        AudioElementObu::AudioElementType::kAudioElementChannelBased) {
-      if (!std::holds_alternative<ScalableChannelLayoutConfig>(
-              audio_element_obu.config_)) {
-        return absl::InvalidArgumentError(
-            "Audio Element OBU signals it holds a scalable channel layout "
-            "config, but one is not present.");
-      }
-
-      RETURN_IF_NOT_OK(
-          ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
-              audio_element_obu.audio_substream_ids_,
-              std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_),
-              substream_id_to_labels, label_to_output_gain,
-              channel_numbers_for_layers));
-    }
-    if (audio_element_obu.GetAudioElementType() ==
-        AudioElementObu::AudioElementType::kAudioElementSceneBased) {
-      RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
-          audio_element_obu, substream_id_to_labels));
-    }
-    auto iter = codec_config_obus.find(audio_element_obu.GetCodecConfigId());
-    if (iter == codec_config_obus.end()) {
+    const AudioElementObu& audio_element_obu) {
+  SubstreamIdLabelsMap substream_id_to_labels;
+  LabelGainMap label_to_output_gain;
+  std::vector<ChannelNumbers> channel_numbers_for_layers;
+  if (audio_element_obu.GetAudioElementType() ==
+      AudioElementObu::AudioElementType::kAudioElementChannelBased) {
+    if (!std::holds_alternative<ScalableChannelLayoutConfig>(
+            audio_element_obu.config_)) {
       return absl::InvalidArgumentError(
-          "codec_config_obus does not contain codec_config_id");
+          "Audio Element OBU signals it holds a scalable channel layout "
+          "config, but one is not present.");
     }
-    audio_element_with_data.emplace(
-        audio_element_id,
-        AudioElementWithData{
-            .obu = std::move(audio_element_obu),
-            .codec_config = &iter->second,
-            .substream_id_to_labels = substream_id_to_labels,
-            .label_to_output_gain = label_to_output_gain,
-            .channel_numbers_for_layers = channel_numbers_for_layers});
+
+    RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
+        audio_element_obu.audio_substream_ids_,
+        std::get<ScalableChannelLayoutConfig>(audio_element_obu.config_),
+        substream_id_to_labels, label_to_output_gain,
+        channel_numbers_for_layers));
   }
-  audio_element_obus.clear();
-  return audio_element_with_data;
+  if (audio_element_obu.GetAudioElementType() ==
+      AudioElementObu::AudioElementType::kAudioElementSceneBased) {
+    RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeAmbisonicsConfig(
+        audio_element_obu, substream_id_to_labels));
+  }
+  auto iter = codec_config_obus.find(audio_element_obu.GetCodecConfigId());
+  if (iter == codec_config_obus.end()) {
+    return absl::InvalidArgumentError(
+        "codec_config_obus does not contain codec_config_id");
+  }
+  return AudioElementWithData{
+      .obu = std::move(audio_element_obu),
+      .codec_config = &iter->second,
+      .substream_id_to_labels = substream_id_to_labels,
+      .label_to_output_gain = label_to_output_gain,
+      .channel_numbers_for_layers = channel_numbers_for_layers};
 }
 
 absl::StatusOr<AudioFrameWithData>

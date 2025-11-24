@@ -69,9 +69,12 @@ absl::Status GetAndStoreCodecConfigObu(
   return absl::OkStatus();
 }
 
-absl::Status GetAndStoreAudioElementObu(
+absl::Status GetAndStoreAudioElement(
+    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+        codec_config_obus,
     const ObuHeader& header, int64_t payload_size,
-    absl::flat_hash_map<DecodedUleb128, AudioElementObu>& audio_element_obu_map,
+    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements_with_data,
     ReadBitBuffer& read_bit_buffer) {
   absl::StatusOr<AudioElementObu> audio_element_obu =
       AudioElementObu::CreateFromBuffer(header, payload_size, read_bit_buffer);
@@ -79,8 +82,23 @@ absl::Status GetAndStoreAudioElementObu(
     return audio_element_obu.status();
   }
   audio_element_obu->PrintObu();
-  audio_element_obu_map.insert(
-      {audio_element_obu->GetAudioElementId(), *std::move(audio_element_obu)});
+
+  // Gather additional information about the audio element.
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *audio_element_obu);
+  if (!audio_element_with_data.ok()) {
+    return audio_element_with_data.status();
+  }
+
+  auto [unused_iter, inserted] = audio_elements_with_data.emplace(
+      audio_element_with_data->obu.GetAudioElementId(),
+      *std::move(audio_element_with_data));
+  if (!inserted) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Duplicate audio element ID: ",
+                     audio_element_with_data->obu.GetAudioElementId()));
+  }
   return absl::OkStatus();
 }
 
@@ -134,8 +152,6 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
   output_insufficient_data = false;
 
   ParsedDescriptorObus parsed_obus;
-  auto audio_element_obu_map =
-      absl::flat_hash_map<DecodedUleb128, AudioElementObu>();
   const int64_t global_position_before_all_obus = read_bit_buffer.Tell();
   bool processed_ia_header = false;
   bool continue_processing = true;
@@ -221,8 +237,9 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
         break;
       }
       case kObuIaAudioElement: {
-        RETURN_IF_NOT_OK(GetAndStoreAudioElementObu(
-            header, payload_size, audio_element_obu_map, read_bit_buffer));
+        RETURN_IF_NOT_OK(GetAndStoreAudioElement(
+            *parsed_obus.codec_config_obus, header, payload_size,
+            *parsed_obus.audio_elements, read_bit_buffer));
         break;
       }
       case kObuIaMixPresentation: {
@@ -268,17 +285,6 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
       // descriptor OBUs.
       break;
     }
-  }
-  if (!audio_element_obu_map.empty()) {
-    auto audio_elements_with_data =
-        ObuWithDataGenerator::GenerateAudioElementsWithData(
-            *parsed_obus.codec_config_obus, audio_element_obu_map);
-    if (!audio_elements_with_data.ok()) {
-      return audio_elements_with_data.status();
-    }
-    parsed_obus.audio_elements = std::make_unique<
-        absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>(
-        *std::move(audio_elements_with_data));
   }
   return parsed_obus;
 }

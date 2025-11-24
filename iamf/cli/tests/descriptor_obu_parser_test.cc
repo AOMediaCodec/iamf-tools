@@ -38,8 +38,11 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Key;
+using ::testing::Not;
 using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
+
+using absl::MakeConstSpan;
 
 constexpr DecodedUleb128 kFirstCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
@@ -460,6 +463,30 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
   // Expect the reader position to be right next to the end of the descriptors.
   // sequence.
   EXPECT_EQ(read_bit_buffer->Tell(), descriptors_size * 8);
+}
+
+TEST(ProcessDescriptorObus, RejectsDuplicateAudioElementId) {
+  DescriptorObuParser parser;
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+      audio_elements_with_data;
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kFirstCodecConfigId, {kFirstSubstreamId},
+      input_codec_configs, audio_elements_with_data);
+  auto bitstream_with_duplicate_audio_element_id =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &audio_elements_with_data.at(kFirstAudioElementId).obu,
+           &audio_elements_with_data.at(kFirstAudioElementId).obu});
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(bitstream_with_duplicate_audio_element_id));
+
+  bool insufficient_data;
+  EXPECT_THAT(parser.ProcessDescriptorObus(
+                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
+                  insufficient_data),
+              Not(IsOk()));
 }
 
 // Descriptor obus + non_temporal_unit_header following but not enough data to

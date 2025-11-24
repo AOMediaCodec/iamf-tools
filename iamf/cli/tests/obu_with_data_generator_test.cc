@@ -51,9 +51,12 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
+using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pair;
+using ::testing::UnorderedElementsAre;
 
 using enum ChannelLabel::Label;
 
@@ -86,108 +89,46 @@ constexpr InternalTimestamp kEndTimestamp = 8;
 constexpr InternalTimestamp kDuration = 8;
 
 TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementObu> audio_element_obus;
   auto obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
       {kFirstSubstreamId}, kOneLayerStereoConfig);
   ASSERT_THAT(obu, IsOk());
-  audio_element_obus.emplace(kFirstAudioElementId, *std::move(obu));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
-  absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-      audio_element_with_data_map =
-          ObuWithDataGenerator::GenerateAudioElementsWithData(
-              codec_config_obus, audio_element_obus);
-  EXPECT_THAT(audio_element_with_data_map, IsOk());
-  EXPECT_EQ((*audio_element_with_data_map).size(), 1);
+  auto audio_element_with_data =
+      ObuWithDataGenerator::GenerateAudioElementWithData(codec_config_obus,
+                                                         *obu);
+  EXPECT_THAT(audio_element_with_data, IsOk());
 
   auto iter = codec_config_obus.find(kFirstCodecConfigId);
   const CodecConfigObu* expected_codec_config_obu = &iter->second;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      expected_audio_element_with_data_map;
+
   auto expected_obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
       {kFirstSubstreamId}, kOneLayerStereoConfig);
   ASSERT_THAT(expected_obu, IsOk());
-  expected_audio_element_with_data_map.emplace(
-      kFirstAudioElementId,
-      AudioElementWithData{
-          .obu = *std::move(expected_obu),
-          .codec_config = expected_codec_config_obu,
-          .substream_id_to_labels = {{kFirstSubstreamId, {kL2, kR2}}},
-          .label_to_output_gain = {},
-          .channel_numbers_for_layers = {{2, 0, 0}}});
-  EXPECT_EQ(expected_audio_element_with_data_map, *audio_element_with_data_map);
-}
-
-TEST(GenerateAudioElementWithData, MultipleAudioElementsWithOneCodecConfig) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementObu> audio_element_obus;
-  auto obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerStereoConfig);
-  ASSERT_THAT(obu, IsOk());
-  audio_element_obus.emplace(kFirstAudioElementId, *std::move(obu));
-  auto second_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kSecondAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerStereoConfig);
-  ASSERT_THAT(second_obu, IsOk());
-  audio_element_obus.emplace(kSecondAudioElementId, *std::move(second_obu));
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
-  absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-      audio_element_with_data_map =
-          ObuWithDataGenerator::GenerateAudioElementsWithData(
-              codec_config_obus, audio_element_obus);
-  EXPECT_THAT(audio_element_with_data_map, IsOk());
-  EXPECT_EQ((*audio_element_with_data_map).size(), 2);
-
-  auto iter = codec_config_obus.find(kFirstCodecConfigId);
-  const CodecConfigObu* expected_codec_config_obu = &iter->second;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
-      expected_audio_element_with_data_map;
-  auto expected_first_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerStereoConfig);
-  ASSERT_THAT(expected_first_obu, IsOk());
-  expected_audio_element_with_data_map.emplace(
-      kFirstAudioElementId,
-      AudioElementWithData{
-          .obu = *std::move(expected_first_obu),
-          .codec_config = expected_codec_config_obu,
-          .substream_id_to_labels{{kFirstSubstreamId, {kL2, kR2}}},
-          .label_to_output_gain{},
-          .channel_numbers_for_layers{{2, 0, 0}}});
-  auto expected_second_obu = AudioElementObu::CreateForScalableChannelLayout(
-      ObuHeader(), kSecondAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerStereoConfig);
-  ASSERT_THAT(expected_second_obu, IsOk());
-  expected_audio_element_with_data_map.emplace(
-      kSecondAudioElementId,
-      AudioElementWithData{
-          .obu = *std::move(expected_second_obu),
-          .codec_config = expected_codec_config_obu,
-          .substream_id_to_labels = {{kFirstSubstreamId, {kL2, kR2}}},
-          .label_to_output_gain = {},
-          .channel_numbers_for_layers = {{2, 0, 0}}});
-  EXPECT_EQ(expected_audio_element_with_data_map, *audio_element_with_data_map);
+  EXPECT_EQ(*expected_obu, audio_element_with_data->obu);
+  EXPECT_EQ(audio_element_with_data->codec_config, expected_codec_config_obu);
+  EXPECT_THAT(audio_element_with_data->substream_id_to_labels,
+              UnorderedElementsAre(
+                  Pair(kFirstSubstreamId, ElementsAreArray({kL2, kR2}))));
+  EXPECT_TRUE(audio_element_with_data->label_to_output_gain.empty());
+  EXPECT_THAT(
+      audio_element_with_data->channel_numbers_for_layers,
+      ElementsAre(ChannelNumbers{.surround = 2, .lfe = 0, .height = 0}));
 }
 
 TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
-  absl::flat_hash_map<DecodedUleb128, AudioElementObu> audio_element_obus;
   auto obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kSecondCodecConfigId,
       {kFirstSubstreamId}, kOneLayerStereoConfig);
   ASSERT_THAT(obu, IsOk());
-  audio_element_obus.emplace(kFirstAudioElementId, *std::move(obu));
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_config_obus);
 
-  absl::StatusOr<absl::flat_hash_map<DecodedUleb128, AudioElementWithData>>
-      audio_element_with_data_map =
-          ObuWithDataGenerator::GenerateAudioElementsWithData(
-              codec_config_obus, audio_element_obus);
-
-  EXPECT_THAT(audio_element_with_data_map, Not(IsOk()));
+  EXPECT_THAT(ObuWithDataGenerator::GenerateAudioElementWithData(
+                  codec_config_obus, *obu),
+              Not(IsOk()));
 }
 
 // TODO(b/377772983): `ObuWithDataGenerator::GenerateAudioFrameWithData()` works
