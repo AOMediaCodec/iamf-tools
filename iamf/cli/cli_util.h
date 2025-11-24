@@ -84,8 +84,8 @@ absl::Status WritePcmFrameToBuffer(
  *        48000 if no common output sample rate is found.
  * \param common_bit_depth The output bit-depth rate of the Codec Config OBUs or
  *        16 if no common output bit depth is found.
- * \param requires_resampling False if all output sample rates and bit-depths
- *        were the same. True otherwise.
+ * \param requires_resampling False if all output sample rates were the same.
+ *        True otherwise.
  * \return `absl::OkStatus()` on success. `absl::InvalidArgumentError()` if
  *         either of the input hash sets are empty.
  */

@@ -172,10 +172,12 @@ TEST_F(GetCommonSampleRateAndBitDepthTest,
   Test();
 }
 
-TEST_F(GetCommonSampleRateAndBitDepthTest, DifferentBitDepthResampleTo16Bits) {
+TEST_F(GetCommonSampleRateAndBitDepthTest,
+       DifferentBitDepthResultsInCommonBitDepth16) {
   bit_depths_ = {24, 32};
   expected_bit_depth_ = 16;
-  expected_requires_resampling_ = true;
+  // The resampling flag is only set when the sample rate needs to change.
+  expected_requires_resampling_ = false;
 
   Test();
 }

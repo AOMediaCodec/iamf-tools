@@ -632,12 +632,22 @@ TEST_F(ObuSequencerTest,
 }
 
 TEST_F(ObuSequencerTest, CodecConfigAreAscendingOrderByDefault) {
-  InitializeDescriptorObus();
-
+  ia_sequence_header_obu_.emplace(ObuHeader(),
+                                  ProfileVersion::kIamfSimpleProfile,
+                                  ProfileVersion::kIamfSimpleProfile);
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus_);
   // Initialize a second Codec Config OBU.
   const DecodedUleb128 kSecondCodecConfigId = 101;
   AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
                                         codec_config_obus_);
+  AddAmbisonicsMonoAudioElementWithSubstreamIds(
+      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
+      codec_config_obus_, audio_elements_);
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonMixGainParameterRate,
+      mix_presentation_obus_);
 
   // IAMF makes no recommendation for the ordering between multiple descriptor
   // OBUs of the same type. By default `WriteDescriptorObus` orders them in

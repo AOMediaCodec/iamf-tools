@@ -215,7 +215,6 @@ absl::Status GetCommonSampleRateAndBitDepth(
     // No common bit-depth. The spec recommends the rendering output to be
     // resampled to 16-bits.
     common_bit_depth = 16;
-    requires_resampling = true;
   }
 
   return absl::OkStatus();

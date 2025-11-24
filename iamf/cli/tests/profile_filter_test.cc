@@ -42,8 +42,12 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
+using ::testing::UnorderedElementsAre;
 
 constexpr DecodedUleb128 kCodecConfigId = 1;
+constexpr DecodedUleb128 kSecondCodecConfigId = 2;
+
 const uint32_t kSampleRate = 48000;
 constexpr DecodedUleb128 kFirstAudioElementId = 1;
 constexpr DecodedUleb128 kSecondAudioElementId = 2;
@@ -422,60 +426,88 @@ void InitializeDescriptorObusForNMonoAmbisonicsAudioElements(
       mix_presentation_obus);
 }
 
-void InitializeDescriptorObusWithTwoSubmixes(
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
-    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
-    std::list<MixPresentationObu>& mix_presentation_obus) {
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus);
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kFirstAudioElementId, kCodecConfigId, {kFirstSubstreamId},
-      codec_config_obus, audio_elements);
-  AddAmbisonicsMonoAudioElementWithSubstreamIds(
-      kSecondAudioElementId, kCodecConfigId, {kSecondSubstreamId},
-      codec_config_obus, audio_elements);
+absl::flat_hash_map<DecodedUleb128, AudioElementWithData>
+MakeAudioElementsWithCodecConfigIds(
+    const absl::flat_hash_map<DecodedUleb128, DecodedUleb128>&
+        audio_element_id_to_codec_config_id,
+    const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
+        codec_config_obus) {
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  for (const auto& [audio_element_id, codec_config_id] :
+       audio_element_id_to_codec_config_id) {
+    const DecodedUleb128 substream_id = audio_elements.size();
+    AddAmbisonicsMonoAudioElementWithSubstreamIds(
+        audio_element_id, codec_config_id, {substream_id}, codec_config_obus,
+        audio_elements);
+  }
+  return audio_elements;
+}
+
+MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+    const std::vector<std::vector<DecodedUleb128>>& audio_element_ids_in_submix,
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
   MixGainParamDefinition common_mix_gain_param_definition;
   common_mix_gain_param_definition.parameter_id_ = kCommonMixGainParameterId;
   common_mix_gain_param_definition.parameter_rate_ =
       kCommonMixGainParameterRate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
   common_mix_gain_param_definition.default_mix_gain_ = 0;
-  const RenderingConfig kRenderingConfig = {
-      .headphones_rendering_mode =
-          RenderingConfig::kHeadphonesRenderingModeStereo,
-      .reserved = 0,
-      .rendering_config_extension_bytes = {}};
-  const MixPresentationLayout kStereoLayout = {
-      .loudness_layout =
-          {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-           .specific_layout =
-               LoudspeakersSsConventionLayout{
-                   .sound_system =
-                       LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-                   .reserved = 0}},
-      .loudness = {
-          .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}};
-  std::vector<MixPresentationSubMix> sub_mixes;
-  sub_mixes.push_back({.audio_elements = {{
-                           .audio_element_id = kFirstAudioElementId,
-                           .localized_element_annotations = {},
-                           .rendering_config = kRenderingConfig,
-                           .element_mix_gain = common_mix_gain_param_definition,
-                       }},
-                       .output_mix_gain = common_mix_gain_param_definition,
-                       .layouts = {kStereoLayout}});
-  sub_mixes.push_back({.audio_elements = {{
-                           .audio_element_id = kSecondAudioElementId,
-                           .localized_element_annotations = {},
-                           .rendering_config = kRenderingConfig,
-                           .element_mix_gain = common_mix_gain_param_definition,
-                       }},
-                       .output_mix_gain = common_mix_gain_param_definition,
-                       .layouts = {kStereoLayout}});
+  const std::vector<MixPresentationLayout> layouts = {
+      {.loudness_layout =
+           {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+            .specific_layout =
+                LoudspeakersSsConventionLayout{
+                    .sound_system =
+                        LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+                    .reserved = 0}},
+       .loudness = {
+           .info_type = 0, .integrated_loudness = 0, .digital_peak = 0}}};
 
+  std::vector<MixPresentationSubMix> sub_mixes;
+  for (const auto& audio_element_ids : audio_element_ids_in_submix) {
+    std::vector<SubMixAudioElement> sub_mix_audio_elements;
+    for (const auto& audio_element_id : audio_element_ids) {
+      sub_mix_audio_elements.push_back(SubMixAudioElement{
+          .audio_element_id = audio_element_id,
+          .localized_element_annotations = {},
+          .rendering_config =
+              {.headphones_rendering_mode =
+                   RenderingConfig::kHeadphonesRenderingModeStereo,
+               .reserved = 0,
+               .rendering_config_extension_bytes = {}},
+          .element_mix_gain = common_mix_gain_param_definition,
+      });
+    }
+    sub_mixes.emplace_back(MixPresentationSubMix{
+        .audio_elements = sub_mix_audio_elements,
+        .output_mix_gain = common_mix_gain_param_definition,
+        .layouts = layouts});
+  }
+
+  return MixPresentationObu(ObuHeader(), kFirstMixPresentationId,
+                            /*count_label=*/0, {}, {}, sub_mixes);
+}
+
+void InitializeDescriptorObusWithNSubmixes(
+    int num_submixes,
+    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obus,
+    absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    std::list<MixPresentationObu>& mix_presentation_obus) {
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  std::vector<std::vector<DecodedUleb128>> audio_element_ids_in_submix;
+  for (int i = 0; i < num_submixes; ++i) {
+    const DecodedUleb128 kAudioElementId = i;
+    const DecodedUleb128 kSubstreamId = i;
+    AddAmbisonicsMonoAudioElementWithSubstreamIds(
+        kAudioElementId, kCodecConfigId, {kSubstreamId}, codec_config_obus,
+        audio_elements);
+    audio_element_ids_in_submix.push_back({kAudioElementId});
+  }
   mix_presentation_obus.push_back(
-      MixPresentationObu(ObuHeader(), kFirstMixPresentationId,
-                         /*count_label=*/0, {}, {}, sub_mixes));
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          audio_element_ids_in_submix, audio_elements));
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -483,8 +515,8 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
-                                          mix_presentation_obus);
+  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
   EXPECT_FALSE(
@@ -493,6 +525,236 @@ TEST(FilterProfilesForMixPresentation,
           .ok());
 
   EXPECT_TRUE(simple_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     AllKnownProfilesDoNotSupportMultipleCodecConfigsInTheFirstSubmix) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  const auto audio_elements_with_different_codec_configs =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const std::vector<DecodedUleb128> kTwoAudioElementsInFirstSubmix = {
+      kFirstAudioElementId, kSecondAudioElementId};
+  const auto mix_presentation_with_different_codec_configs_in_first_submix =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {kTwoAudioElementsInFirstSubmix},
+          audio_elements_with_different_codec_configs);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements_with_different_codec_configs,
+                  mix_presentation_with_different_codec_configs_in_first_submix,
+                  all_known_profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     SomeProfilesSupportMultipleCodecConfigsInDifferentSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  const auto audio_elements_with_different_codec_configs =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const auto
+      mix_presentation_with_different_codec_configs_in_different_submixes =
+          MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+              {{kFirstAudioElementId}, {kSecondAudioElementId}},
+              audio_elements_with_different_codec_configs);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements_with_different_codec_configs,
+          mix_presentation_with_different_codec_configs_in_different_submixes,
+          all_known_profiles),
+      IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     SomeProfilesSupportMultipleCodecConfigsWithDifferentBitDepths) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  constexpr uint32_t kSecondCodecConfigBitDepth = 32;
+  AddLpcmCodecConfig(
+      kSecondCodecConfigId,
+      codec_config_obus.at(kCodecConfigId).GetNumSamplesPerFrame(),
+      kSecondCodecConfigBitDepth,
+      codec_config_obus.at(kCodecConfigId).GetOutputSampleRate(),
+      codec_config_obus);
+
+  const auto audio_elements_with_different_bit_depths =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const auto mix_presentation_with_different_bit_depths =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {{kFirstAudioElementId}, {kSecondAudioElementId}},
+          audio_elements_with_different_bit_depths);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements_with_different_bit_depths,
+          mix_presentation_with_different_bit_depths, all_known_profiles),
+      IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllProfilesWhenCodecConfigsHaveDifferentSampleRates) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  constexpr uint32_t kSecondCodecConfigSampleRate = 96000;
+  AddLpcmCodecConfig(
+      kSecondCodecConfigId,
+      codec_config_obus.at(kCodecConfigId).GetNumSamplesPerFrame(),
+      codec_config_obus.at(kCodecConfigId).GetBitDepthToMeasureLoudness(),
+      kSecondCodecConfigSampleRate, codec_config_obus);
+
+  const auto audio_elements_with_different_sample_rates =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const auto mix_presentation_with_different_sample_rates =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {{kFirstAudioElementId}, {kSecondAudioElementId}},
+          audio_elements_with_different_sample_rates);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements_with_different_sample_rates,
+          mix_presentation_with_different_sample_rates, all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllProfilesWhenCodecConfigsHaveDifferentSamplesPerFrame) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  constexpr uint32_t kSecondCodecConfigNumSamplesPerFrame = 1024;
+  AddLpcmCodecConfig(
+      kSecondCodecConfigId, kSecondCodecConfigNumSamplesPerFrame,
+      codec_config_obus.at(kCodecConfigId).GetBitDepthToMeasureLoudness(),
+      codec_config_obus.at(kCodecConfigId).GetOutputSampleRate(),
+      codec_config_obus);
+
+  const auto audio_elements_with_different_samples_per_frame =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const auto mix_presentation_with_different_samples_per_frame =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {{kFirstAudioElementId}, {kSecondAudioElementId}},
+          audio_elements_with_different_samples_per_frame);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements_with_different_samples_per_frame,
+                  mix_presentation_with_different_samples_per_frame,
+                  all_known_profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllProfilesWhenThereAreTwoNonLpcmCodecConfigs) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
+  AddFlacCodecConfig(
+      kSecondCodecConfigId,
+      codec_config_obus.at(kCodecConfigId).GetNumSamplesPerFrame(),
+      codec_config_obus.at(kCodecConfigId).GetBitDepthToMeasureLoudness(),
+      codec_config_obus.at(kCodecConfigId).GetOutputSampleRate(),
+      codec_config_obus);
+
+  const auto audio_elements_with_two_non_lpcm_codec_configs =
+      MakeAudioElementsWithCodecConfigIds(
+          {{kFirstAudioElementId, kCodecConfigId},
+           {kSecondAudioElementId, kSecondCodecConfigId}},
+          codec_config_obus);
+  const auto mix_presentation_with_two_non_lpcm_codec_configs =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {{kFirstAudioElementId}, {kSecondAudioElementId}},
+          audio_elements_with_two_non_lpcm_codec_configs);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements_with_two_non_lpcm_codec_configs,
+          mix_presentation_with_two_non_lpcm_codec_configs, all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllProfilesWhenThereAreThreeCodecConfigs) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AddLpcmCodecConfigWithIdAndSampleRate(kSecondCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  constexpr DecodedUleb128 kThirdCodecConfigId = 1024;
+  AddLpcmCodecConfigWithIdAndSampleRate(kThirdCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+
+  constexpr DecodedUleb128 kThirdAudioElementId = 1025;
+  const auto audio_elements_with_three_different_codec_configs =
+      MakeAudioElementsWithCodecConfigIds(
+          {
+              {kFirstAudioElementId, kCodecConfigId},
+              {kSecondAudioElementId, kSecondCodecConfigId},
+              {kThirdAudioElementId, kThirdCodecConfigId},
+          },
+          codec_config_obus);
+  const auto mix_presentation_with_three_different_codec_configs =
+      MakeMixPresentationObuWithAudioElementIdsInSubmixes(
+          {{kFirstAudioElementId},
+           {kSecondAudioElementId, kThirdAudioElementId}},
+          audio_elements_with_three_different_codec_configs);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForMixPresentation(
+                  audio_elements_with_three_different_codec_configs,
+                  mix_presentation_with_three_different_codec_configs,
+                  all_known_profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
 }
 
 TEST(FilterProfilesForMixPresentation,
@@ -593,8 +855,8 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
-                                          mix_presentation_obus);
+  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
@@ -682,8 +944,8 @@ TEST(FilterProfilesForMixPresentation,
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
-  InitializeDescriptorObusWithTwoSubmixes(codec_config_obus, audio_elements,
-                                          mix_presentation_obus);
+  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 
@@ -693,6 +955,43 @@ TEST(FilterProfilesForMixPresentation,
           .ok());
 
   EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForMixPresentation, SomeProfilesSupportTwoSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusWithNSubmixes(2, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
+     RemovesAllKnownProfilesForThreeSubmixes) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusWithNSubmixes(3, codec_config_obus, audio_elements,
+                                        mix_presentation_obus);
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      Not(IsOk()));
+
+  EXPECT_TRUE(all_known_profiles.empty());
 }
 
 TEST(FilterProfilesForMixPresentation,

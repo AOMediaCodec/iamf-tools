@@ -559,13 +559,14 @@ absl::Status GenerateRenderingMetadataForSubmixes(
         rendering_bit_depth, common_num_samples_per_frame,
         requires_resampling));
     if (requires_resampling) {
-      // Detected multiple Codec Config OBUs with different sample rates or
-      // bit-depths. As of IAMF v1.1.0, multiple Codec  Config OBUs in the same
-      // IA sequence are never permitted. The spec implies we would have to
-      // resample to a common sample rate and/or bit-depth.
+      // Detected multiple Codec Config OBUs with different sample rates. The
+      // IAMF spec forbids this in all known profiles.
+      //
+      // The spec implies this could be valid in the future, return an error
+      // instead of trying to implement it.
       return absl::UnimplementedError(
           "This implementation does not support mixing Codec Config OBUs with "
-          "different sample rates or bit-depths.");
+          "different sample rates.");
     }
     RETURN_IF_NOT_OK(GenerateRenderingMetadataForLayouts(
         renderer_factory, loudness_calculator_factory, sample_processor_factory,

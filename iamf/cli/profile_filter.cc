@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
@@ -27,8 +28,10 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
+#include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
@@ -235,10 +238,14 @@ absl::Status FilterProfileForNumSubmixes(
     profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseProfile);
     profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
-    // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
-    profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
-    profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
-    profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
+  }
+  if (num_sub_mixes_in_mix_presentation > 2) {
+    return ClearAndReturnError(
+        absl::StrCat(mix_presentation_id_for_debugging, " has ",
+                     num_sub_mixes_in_mix_presentation,
+                     " sub mixes, but the requested profiles "
+                     "do not support this number of sub-mixes."),
+        profile_versions);
   }
 
   if (profile_versions.empty()) {
@@ -282,6 +289,134 @@ absl::Status FilterProfileForHeadphonesRenderingMode(
             " sub mixes, but the requested profiles do support not this "
             "mode."));
       }
+    }
+  }
+
+  return absl::OkStatus();
+}
+
+// Validates several conditions as described of the IAMF spec.
+//
+// Various rules are described in section 4 of the IAMF Spec:
+//
+// Condition A: Every Audio Substreams used in the first sub-mix of all Mix
+//              Presentation OBUs SHALL be coded using the same Codec Config
+//              OBU.
+// Redundant with A: If num_sub_mixes = 1 in all Mix Presentation OBUs, there
+//                   SHALL be only one unique Codec Config OBU.
+//
+// Condition B: Each profile has a maximum number of Codec Config OBUs per
+//              Mix Presentation.
+//
+// Condition C: If there are two unique Codec Config OBUs, then at least one
+//              of the two codec_ids SHALL be ipcm.
+//
+// Condition D: The frame sizes and the output sample rates identified
+//              (implicitly or explicitly) by the two Codec Config OBUs SHALL
+//              be the same.
+absl::Status FilterProfilesForCodecConfigRules(
+    absl::string_view mix_presentation_id_for_debugging,
+    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
+    const MixPresentationObu& mix_presentation_obu,
+    absl::flat_hash_set<ProfileVersion>& profile_versions) {
+  struct CodecConfigInfo {
+    uint32_t num_samples_per_frame;
+    uint32_t output_sample_rate;
+  };
+  // Gather information from each Codec Config OBU.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigInfo> codec_config_id_to_info;
+  bool found_lpcm = false;
+  for (int i = 0; i < mix_presentation_obu.sub_mixes_.size(); ++i) {
+    const auto& sub_mix = mix_presentation_obu.sub_mixes_[i];
+    for (const auto& audio_element : sub_mix.audio_elements) {
+      auto it = audio_elements.find(audio_element.audio_element_id);
+      if (it == audio_elements.end() || it->second.codec_config == nullptr) {
+        return ClearAndReturnError(
+            absl::StrCat("Failed to find Codec Config for Audio Element: ",
+                         audio_element.audio_element_id),
+            profile_versions);
+      }
+      if (it->second.codec_config->GetCodecConfig().codec_id ==
+          CodecConfig::CodecId::kCodecIdLpcm) {
+        found_lpcm = true;
+      }
+      codec_config_id_to_info.emplace(
+          it->second.codec_config->GetCodecConfigId(),
+          CodecConfigInfo{
+              .num_samples_per_frame =
+                  it->second.codec_config->GetNumSamplesPerFrame(),
+              .output_sample_rate =
+                  it->second.codec_config->GetOutputSampleRate(),
+          });
+    }
+
+    if (i == 0 && codec_config_id_to_info.size() > 1) {
+      // Condition A was violated. The first sub-mix has a special rule that it
+      // must only use one codec config.
+      return ClearAndReturnError(
+          absl::StrCat(
+              mix_presentation_id_for_debugging, " references ",
+              codec_config_id_to_info.size(),
+              " Codec Config OBUs in the first sub-mix, but no profile "
+              "supports this."),
+          profile_versions);
+    }
+  }
+
+  // Validate the various combinations and conditions and filter out those
+  // profiles.
+  constexpr std::array<std::pair<ProfileVersion, int>, 6>
+      kProfileVersionAndMaxCodecConfigs = {
+          {{ProfileVersion::kIamfSimpleProfile, 1},
+           {ProfileVersion::kIamfBaseProfile, 1},
+           {ProfileVersion::kIamfBaseEnhancedProfile, 1},
+           {ProfileVersion::kIamfBaseAdvancedProfile, 2},
+           {ProfileVersion::kIamfAdvanced1Profile, 2},
+           {ProfileVersion::kIamfAdvanced2Profile, 2}}};
+  for (const auto& [profile_version, max_codec_configs] :
+       kProfileVersionAndMaxCodecConfigs) {
+    if (codec_config_id_to_info.size() > max_codec_configs) {
+      // Condition B was violated. We found multiple unique codec configs, which
+      // are forbidden under the older v1.1.0 profiles.
+      profile_versions.erase(profile_version);
+    }
+  }
+
+  if (codec_config_id_to_info.size() > 1 && !found_lpcm) {
+    if (!found_lpcm) {
+      // Condition C was violated. We found multiple codec configs, but none
+      // were LPCM.
+      return ClearAndReturnError(
+          absl::StrCat(
+              mix_presentation_id_for_debugging,
+              " has multiple unique codec configs, but no lpcm codec config."),
+          profile_versions);
+    }
+  }
+
+  if (codec_config_id_to_info.empty()) {
+    return ClearAndReturnError(absl::StrCat(mix_presentation_id_for_debugging,
+                                            " has no codec configs."),
+                               profile_versions);
+  }
+  const CodecConfigInfo& common_codec_config_info =
+      codec_config_id_to_info.begin()->second;
+  for (const auto& [codec_config_id, codec_config_info] :
+       codec_config_id_to_info) {
+    if (codec_config_info.num_samples_per_frame !=
+            common_codec_config_info.num_samples_per_frame ||
+        common_codec_config_info.output_sample_rate !=
+            codec_config_info.output_sample_rate) {
+      // Condition D was violated. We found multiple unique codec configs with
+      // different frame sizes or output sample rates.
+      return ClearAndReturnError(
+          absl::StrCat(
+              mix_presentation_id_for_debugging,
+              " has codec config with different properties, "
+              "num_samples_per_frame= ",
+              common_codec_config_info.num_samples_per_frame,
+              " sample_rate= ", common_codec_config_info.output_sample_rate),
+          profile_versions);
     }
   }
 
@@ -440,6 +575,10 @@ absl::Status ProfileFilter::FilterProfilesForMixPresentation(
 
   MAYBE_RETURN_IF_NOT_OK(FilterProfileForHeadphonesRenderingMode(
       mix_presentation_id_for_debugging, mix_presentation_obu,
+      profile_versions));
+
+  RETURN_IF_NOT_OK(FilterProfilesForCodecConfigRules(
+      mix_presentation_id_for_debugging, audio_elements, mix_presentation_obu,
       profile_versions));
 
   int num_audio_elements_in_mix_presentation;

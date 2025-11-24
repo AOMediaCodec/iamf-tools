@@ -229,7 +229,7 @@ void AddOpusCodecConfigWithId(
 
 void AddFlacCodecConfig(
     uint32_t codec_config_id, uint32_t num_samples_per_frame,
-    uint32_t sample_rate, uint8_t sample_size,
+    uint8_t sample_size, uint32_t sample_rate,
     absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus) {
   // Initialize the Codec Config OBU.
   ASSERT_EQ(codec_config_obus.find(codec_config_id), codec_config_obus.end());
@@ -259,8 +259,8 @@ void AddFlacCodecConfigWithId(
   const uint32_t kNumSamplesPerFrame = 16;
   const uint32_t kSampleRate = 48000;
   const uint8_t kSampleSize = 16;
-  AddFlacCodecConfig(codec_config_id, kNumSamplesPerFrame, kSampleRate,
-                     kSampleSize, codec_config_obus);
+  AddFlacCodecConfig(codec_config_id, kNumSamplesPerFrame, kSampleSize,
+                     kSampleRate, codec_config_obus);
 }
 
 void AddAacCodecConfig(

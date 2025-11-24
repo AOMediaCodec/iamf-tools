@@ -94,8 +94,8 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
                       kSampleFrequencyIndex, codec_config_obus);
     encoder = CreateAacEncoder(codec_config_obus.at(kCodecConfigId));
   } else if (codec_id_type == CodecConfig::kCodecIdFlac) {
-    AddFlacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleRate,
-                       kSampleSize, codec_config_obus);
+    AddFlacCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleSize,
+                       kSampleRate, codec_config_obus);
     encoder = CreateFlacEncoder(codec_config_obus.at(kCodecConfigId));
   } else if (codec_id_type == CodecConfig::kCodecIdLpcm) {
     AddLpcmCodecConfig(kCodecConfigId, num_samples_per_frame, kSampleSize,
