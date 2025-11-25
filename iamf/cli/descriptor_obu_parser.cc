@@ -22,6 +22,7 @@
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -91,13 +92,13 @@ absl::Status GetAndStoreAudioElement(
     return audio_element_with_data.status();
   }
 
+  const DecodedUleb128 audio_element_id =
+      audio_element_with_data->obu.GetAudioElementId();
   auto [unused_iter, inserted] = audio_elements_with_data.emplace(
-      audio_element_with_data->obu.GetAudioElementId(),
-      *std::move(audio_element_with_data));
+      audio_element_id, *std::move(audio_element_with_data));
   if (!inserted) {
     return absl::InvalidArgumentError(
-        absl::StrCat("Duplicate audio element ID: ",
-                     audio_element_with_data->obu.GetAudioElementId()));
+        absl::StrCat("Duplicate audio element ID: ", audio_element_id));
   }
   return absl::OkStatus();
 }
