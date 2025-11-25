@@ -104,6 +104,8 @@ absl::Status GetAndStoreAudioElement(
 }
 
 absl::Status GetAndStoreMixPresentationObu(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements_with_data,
     const ObuHeader& header, int64_t payload_size,
     std::list<MixPresentationObu>& mix_presentation_obus,
     ReadBitBuffer& read_bit_buffer) {
@@ -113,6 +115,17 @@ absl::Status GetAndStoreMixPresentationObu(
   if (!mix_presentation_obu.ok()) {
     return mix_presentation_obu.status();
   }
+  for (const auto& submix : mix_presentation_obu->sub_mixes_) {
+    for (const auto& sub_mix_audio_element : submix.audio_elements) {
+      if (!audio_elements_with_data.contains(
+              sub_mix_audio_element.audio_element_id)) {
+        return absl::InvalidArgumentError(
+            "Mix Presentation OBU references an audio element ID which is "
+            "not found in the audio element map.");
+      }
+    }
+  }
+
   ABSL_LOG(INFO) << "Mix Presentation OBU successfully parsed.";
   mix_presentation_obu->PrintObu();
   mix_presentation_obus.push_back(*std::move(mix_presentation_obu));
@@ -213,6 +226,7 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
     // by `PeekObuTypeAndTotalObuSize`.
     int64_t payload_size;
     RETURN_IF_NOT_OK(header.ReadAndValidate(read_bit_buffer, payload_size));
+    absl::Status parsed_obu_status = absl::OkStatus();
     switch (header.obu_type) {
       case kObuIaSequenceHeader: {
         if (processed_ia_header && !header.obu_redundant_copy) {
@@ -231,46 +245,50 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
         processed_ia_header = true;
         break;
       }
-      case kObuIaCodecConfig: {
-        RETURN_IF_NOT_OK(GetAndStoreCodecConfigObu(
+      case kObuIaCodecConfig:
+        parsed_obu_status = GetAndStoreCodecConfigObu(
             header, payload_size, *parsed_obus.codec_config_obus,
-            read_bit_buffer));
+            read_bit_buffer);
         break;
-      }
-      case kObuIaAudioElement: {
-        RETURN_IF_NOT_OK(GetAndStoreAudioElement(
+      case kObuIaAudioElement:
+        parsed_obu_status = GetAndStoreAudioElement(
             *parsed_obus.codec_config_obus, header, payload_size,
-            *parsed_obus.audio_elements, read_bit_buffer));
+            *parsed_obus.audio_elements, read_bit_buffer);
         break;
-      }
-      case kObuIaMixPresentation: {
-        RETURN_IF_NOT_OK(GetAndStoreMixPresentationObu(
-            header, payload_size, parsed_obus.mix_presentation_obus,
-            read_bit_buffer));
+      case kObuIaMixPresentation:
+        parsed_obu_status = GetAndStoreMixPresentationObu(
+            *parsed_obus.audio_elements, header, payload_size,
+            parsed_obus.mix_presentation_obus, read_bit_buffer);
         break;
-      }
       case kObuIaReserved24:
       case kObuIaReserved25:
       case kObuIaReserved26:
       case kObuIaReserved27:
       case kObuIaReserved28:
       case kObuIaReserved29:
-      case kObuIaReserved30: {
-        // Reserved OBUs may occur in the sequence of Descriptor OBUs. For
-        // now, ignore any reserved OBUs by skipping over their bits in the
-        // buffer.
-        continue_processing = true;
-        ABSL_LOG(INFO)
-            << "Detected a reserved OBU while parsing Descriptor OBUs. "
-            << "Safely ignoring it.";
-        RETURN_IF_NOT_OK(read_bit_buffer.IgnoreBytes(payload_size));
+      case kObuIaReserved30:
+        // Reserved OBUs may occur in the sequence of Descriptor OBUs. Bypass
+        // it.
+        parsed_obu_status = absl::UnimplementedError(
+            "Found a reserved OBU while parsing Descriptor OBUs.");
         break;
-      }
       default:
         /// TODO(b/387550488): Handle reserved OBUs.
         continue_processing = false;
         break;
     }
+    if (!parsed_obu_status.ok()) {
+      // The spec is permissive in bypassing OBUs that we don't yet understand.
+      // These may signal some future features. Ignore the OBU, downstream OBUs
+      // that reference it will be ignored.
+      ABSL_LOG(WARNING) << "Bypassing OBU: " << header.obu_type
+                        << " with status: " << parsed_obu_status
+                        << " and seeking past it.";
+      RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
+      RETURN_IF_NOT_OK(
+          read_bit_buffer.IgnoreBytes(header_metadata->total_obu_size));
+    }
+
     if (!continue_processing) {
       // Rewind the position to before the last header was read.
       ABSL_LOG(INFO) << "position_before_header: " << position_before_header;
@@ -287,6 +305,7 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
       break;
     }
   }
+
   return parsed_obus;
 }
 

@@ -25,6 +25,8 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/read_bit_buffer.h"
+#include "iamf/obu/arbitrary_obu.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -37,6 +39,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::IsEmpty;
 using ::testing::Key;
 using ::testing::Not;
 using ::testing::Pointee;
@@ -326,6 +329,146 @@ TEST(ProcessDescriptorObus, CollectsIaSequenceHeaderWithCodecConfigs) {
                                            Key(kSecondCodecConfigId))));
 }
 
+TEST(ProcessDescriptorObus, DropsUnknownCodecIds) {
+  // Configure a Codec Config OBU with an unknown codec ID, this implies some
+  // future codec which we do not yet handle.
+  ArbitraryObu codec_config_obu(
+      kObuIaCodecConfig, ObuHeader(),
+      {// `codec_config_id`.
+       0x22,
+       // `codec_id`.
+       'f', 'a', 'k', 'e',
+       // `num_samples_per_frame`.
+       0x08,
+       // `audio_roll_distance`.
+       0x00, 0x00,
+       // Begin an imaginary `decoder_config`. For
+       // convenience it has the same
+       // syntax as LPCM.
+       // `sample_format_flags`.
+       0x01,
+       // `sample_size`.
+       0x10,
+       // `sample_rate`.
+       0x00, 0x00, 0xbb, 0x80},
+      ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
+  auto audio_element = AudioElementObu::CreateForMonoAmbisonics(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      {kFirstSubstreamId}, /*channel_mapping=*/{0});
+  ASSERT_THAT(audio_element, IsOk());
+
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&codec_config_obu, &*audio_element}));
+
+  bool insufficient_data;
+  DescriptorObuParser parser;
+  auto parsed_obus = parser.ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  // We only find the valid Codec Config OBU. The audio element is ignored
+  // because its Codec Config ID was transitively unknown.
+  EXPECT_THAT(parsed_obus->codec_config_obus, Pointee(IsEmpty()));
+  EXPECT_THAT(parsed_obus->audio_elements, Pointee(IsEmpty()));
+  // The buffer advanced past the audio element OBU.
+  EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
+}
+
+TEST(ProcessDescriptorObus, IgnoresAudioElementWithUnknownAmbisonicsMode) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
+  constexpr DecodedUleb128 kFirstCodecConfigId = 3;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
+  // Configure an audio element with an unknown ambisonics mode, this implies
+  // some future coding mode which we do not yet handle.
+  ArbitraryObu audio_element_with_unknown_ambisonics_mode(
+      kObuIaAudioElement, ObuHeader(),
+      {
+          // `audio_element_id=1`.
+          0x01,
+          // `extension_type == 7` (upper 3 bits).
+          7 << 5,
+          // `codec_config_id=3`.
+          0x03,
+          // `num_substreams=1`.
+          0x01,
+          // `audio_substream_id[0]`.
+          0x00,
+          // `num_parameters`.
+          0x00,
+          // `ambisonics_mode`.
+          7,
+          // Unknown `extension_type` value.
+          'f',
+          'a',
+          'k',
+          'e',
+      },
+      ArbitraryObu::kInsertionHookAfterAudioElements);
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&input_codec_configs.at(kFirstCodecConfigId),
+           &audio_element_with_unknown_ambisonics_mode}));
+
+  bool insufficient_data;
+  DescriptorObuParser parser;
+  auto parsed_obus = parser.ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  // We only find the valid Codec Config OBU. The audio element is ignored
+  // because its ambisonics mode is unknown.
+  EXPECT_THAT(parsed_obus->codec_config_obus,
+              Pointee(UnorderedElementsAre(Key(kFirstCodecConfigId))));
+  EXPECT_THAT(parsed_obus->audio_elements, Pointee(IsEmpty()));
+  EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
+}
+
+TEST(ProcessDescriptorObus, IgnoresReservedObu) {
+  DescriptorObuParser parser;
+  ArbitraryObu reserved_obu(kObuIaReserved30, ObuHeader(), /*payload=*/{},
+                            ArbitraryObu::kInsertionHookAfterIaSequenceHeader);
+  const std::vector<uint8_t> bitstream =
+      AddSequenceHeaderAndSerializeObusExpectOk({&reserved_obu});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+
+  auto parsed_obus = parser.ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+
+  // Check that parsing succeeding and consumed everything.
+  EXPECT_THAT(parsed_obus, IsOk());
+  EXPECT_FALSE(read_bit_buffer->IsDataAvailable());
+  // TODO(b/387550488): Check collected reserved OBUs, once they are no longer
+  //                    ignored.
+}
+
+TEST(ProcessDescriptorObus, DropsMixPresentationWithZeroSubMixes) {
+  DescriptorObuParser parser;
+  // Configure a mix presentation with zero submixes, this is degenerate, but
+  // the official test suite allows it to be ignored.
+  ArbitraryObu mix_presentation_obu(
+      kObuIaMixPresentation, ObuHeader(),
+      {// `mix_presentation_id=1`.
+       0x01,
+       // `count_label`
+       0x00,
+       // `num_submixes=0`.
+       0x00},
+      ArbitraryObu::kInsertionHookAfterMixPresentations);
+
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      AddSequenceHeaderAndSerializeObusExpectOk({&mix_presentation_obu}));
+  bool insufficient_data;
+  auto parsed_obus = parser.ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+  EXPECT_FALSE(insufficient_data);
+
+  EXPECT_TRUE(parsed_obus->mix_presentation_obus.empty());
+}
+
 // Returns a bitstream with all the descriptor obus for a zeroth order
 // ambisonics stream.
 std::vector<uint8_t> InitAllDescriptorsForZerothOrderAmbisonics() {
@@ -465,7 +608,7 @@ TEST(ProcessDescriptorObusTest, SucceedsWithTemporalUnitFollowing) {
   EXPECT_EQ(read_bit_buffer->Tell(), descriptors_size * 8);
 }
 
-TEST(ProcessDescriptorObus, RejectsDuplicateAudioElementId) {
+TEST(ProcessDescriptorObus, BypassesDuplicateAudioElementId) {
   DescriptorObuParser parser;
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> input_codec_configs;
   AddOpusCodecConfigWithId(kFirstCodecConfigId, input_codec_configs);
@@ -483,10 +626,12 @@ TEST(ProcessDescriptorObus, RejectsDuplicateAudioElementId) {
       MakeConstSpan(bitstream_with_duplicate_audio_element_id));
 
   bool insufficient_data;
-  EXPECT_THAT(parser.ProcessDescriptorObus(
-                  /*is_exhaustive_and_exact=*/true, *read_bit_buffer,
-                  insufficient_data),
-              Not(IsOk()));
+  auto parsed_obus = parser.ProcessDescriptorObus(
+      /*is_exhaustive_and_exact=*/true, *read_bit_buffer, insufficient_data);
+  ASSERT_THAT(parsed_obus, IsOk());
+
+  EXPECT_THAT(parsed_obus->audio_elements,
+              Pointee(UnorderedElementsAre(Key(kFirstAudioElementId))));
 }
 
 // Descriptor obus + non_temporal_unit_header following but not enough data to

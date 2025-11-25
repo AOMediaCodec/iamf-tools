@@ -32,6 +32,7 @@ and this project adheres to
 
 -   Forbid encoding or decoding with multiple Codec Config OBUs under Simple
     Base, and Base-Enhanced profiles.
+-   Improve spec compliance, when decoding streams with unknown Descriptor OBUs.
 
 ### Security
 

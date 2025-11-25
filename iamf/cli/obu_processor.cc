@@ -160,11 +160,9 @@ absl::Status GetAndStoreParameterBlockWithData(
       PeekParameterIdAndLookupParamDefinition(param_definition_variants,
                                               read_bit_buffer);
   if (parameter_definition == nullptr) {
-    ABSL_LOG(WARNING)
-        << "Found a stray parameter block OBU (no matching parameter "
-           "definition).";
-    // The spec prefers skipping over unknown parameter blocks.
-    return read_bit_buffer.IgnoreBytes(payload_size);
+    return absl::InvalidArgumentError(
+        "Found a stray parameter block OBU (no matching parameter "
+        "definition).");
   }
 
   auto parameter_block_obu = ParameterBlockObu::CreateFromBuffer(
@@ -214,7 +212,9 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
     }
     absl::StrAppend(&cumulative_error_message, status.message(), "\n");
   }
-  ABSL_LOG(INFO) << "Filtered mix presentations: " << cumulative_error_message;
+  ABSL_LOG(INFO) << "Filtered mix presentations: " << cumulative_error_message
+                 << ". Number of supported mix presentations: "
+                 << supported_mix_presentations.size();
   return supported_mix_presentations;
 }
 
@@ -307,6 +307,7 @@ absl::Status ProcessTemporalUnitObu(
   // `kObuIaTemporalDelimiter`}. We also want to detect an `kIaSequenceHeader`
   // which would signal the start of a new IA Sequence, and to gracefully
   // handle "reserved" OBUs.
+  absl::Status parsed_obu_status = absl::OkStatus();
   switch (header.obu_type) {
     case kObuIaAudioFrame:
     case kObuIaAudioFrameId0:
@@ -326,26 +327,26 @@ absl::Status ProcessTemporalUnitObu(
     case kObuIaAudioFrameId14:
     case kObuIaAudioFrameId15:
     case kObuIaAudioFrameId16:
-    case kObuIaAudioFrameId17: {
-      RETURN_IF_NOT_OK(GetAndStoreAudioFrameWithData(
+    case kObuIaAudioFrameId17:
+      parsed_obu_status = GetAndStoreAudioFrameWithData(
           header, payload_size, audio_elements_with_data,
           substream_id_to_audio_element, read_bit_buffer, global_timing_module,
-          parameters_manager, output_audio_frame_with_data));
+          parameters_manager, output_audio_frame_with_data);
       break;
-    }
-    case kObuIaParameterBlock: {
-      RETURN_IF_NOT_OK(GetAndStoreParameterBlockWithData(
+
+    case kObuIaParameterBlock:
+      parsed_obu_status = GetAndStoreParameterBlockWithData(
           header, payload_size, param_definition_variants, read_bit_buffer,
-          global_timing_module, output_parameter_block_with_data));
+          global_timing_module, output_parameter_block_with_data);
       break;
-    }
     case kObuIaTemporalDelimiter: {
       // This implementation does not process by temporal unit. Safely ignore
       // it.
       const auto& temporal_delimiter = TemporalDelimiterObu::CreateFromBuffer(
           header, payload_size, read_bit_buffer);
       if (!temporal_delimiter.ok()) {
-        return temporal_delimiter.status();
+        parsed_obu_status = temporal_delimiter.status();
+        break;
       }
       output_temporal_delimiter = *temporal_delimiter;
       break;
@@ -379,6 +380,17 @@ absl::Status ProcessTemporalUnitObu(
       ABSL_LOG(INFO) << "Detected a reserved OBU. Safely ignoring it.";
       RETURN_IF_NOT_OK(read_bit_buffer.IgnoreBytes(payload_size));
       break;
+  }
+  if (!parsed_obu_status.ok()) {
+    // The spec is permissive in bypassing OBUs that we don't yet understand.
+    // These may signal some future features. Ignore the OBU, downstream OBUs
+    // that reference it will be ignored.
+    ABSL_LOG(WARNING) << "Bypassing OBU: " << header.obu_type
+                      << " with status: " << parsed_obu_status
+                      << " and seeking past it.";
+    RETURN_IF_NOT_OK(read_bit_buffer.Seek(position_before_header));
+    RETURN_IF_NOT_OK(
+        read_bit_buffer.IgnoreBytes(header_metadata->total_obu_size));
   }
 
   if (!continue_processing) {

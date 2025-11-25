@@ -37,6 +37,7 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/numeric_utils.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
@@ -706,6 +707,71 @@ TEST(ProcessTemporalUnit, SkipsStrayParameterBlocks) {
   EXPECT_FALSE(continue_processing);
   EXPECT_TRUE(output_temporal_unit->output_parameter_blocks.empty());
   EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+}
+
+TEST(ProcessTemporalUnit, SkipsStrayAudioFrames) {
+  // Configure an IA Sequence with two mixes. One of them uses a future audio
+  // element and the audio frames associated will be dropped.
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_configs;
+  AddOpusCodecConfigWithId(kFirstCodecConfigId, codec_configs);
+  auto audio_element = AudioElementObu::CreateForMonoAmbisonics(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      {kFirstSubstreamId}, /*channel_mapping=*/{0});
+  ASSERT_THAT(audio_element, IsOk());
+  auto stray_audio_element = AudioElementObu::CreateForExtension(
+      ObuHeader(), kSecondAudioElementId,
+      AudioElementObu::kAudioElementEndReserved, /*reserved=*/0,
+      kFirstCodecConfigId,
+      /*audio_substream_ids=*/{kSecondSubstreamId},
+      /*audio_element_config_bytes=*/{});
+  ASSERT_THAT(stray_audio_element, IsOk());
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kFirstMixPresentationId, {kFirstAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  const auto* first_mix_presentation_obu = &mix_presentation_obus.back();
+  AddMixPresentationObuWithAudioElementIds(
+      kSecondMixPresentationId, {kSecondAudioElementId},
+      kCommonMixGainParameterId, kCommonParameterRate, mix_presentation_obus);
+  const auto* second_mix_presentation_obu = &mix_presentation_obus.back();
+  AudioFrameObu audio_frame_obu(ObuHeader(), kFirstSubstreamId,
+                                kArbitraryAudioFrame);
+  // This audio frame is stray because it is associated with a future audio
+  // element.
+  AudioFrameObu stray_audio_frame_obu(ObuHeader(), kSecondSubstreamId,
+                                      kArbitraryAudioFrame);
+  const std::vector<uint8_t> bitstream =
+      AddSequenceHeaderAndSerializeObusExpectOk(
+          {&codec_configs.at(kFirstCodecConfigId), &*audio_element,
+           &*stray_audio_element, first_mix_presentation_obu,
+           second_mix_presentation_obu, &audio_frame_obu,
+           &stray_audio_frame_obu});
+  auto read_bit_buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(bitstream));
+  bool insufficient_data;
+  auto obu_processor =
+      ObuProcessor::Create(/*is_exhaustive_and_exact=*/false,
+                           read_bit_buffer.get(), insufficient_data);
+  ASSERT_THAT(obu_processor, NotNull());
+  ASSERT_FALSE(insufficient_data);
+
+  // Call `ProcessTemporalUnit()` with `eos_is_end_of_sequence` set to true.
+  // This means that we can assume that the end of the stream implies the end of
+  // the temporal unit.
+  std::optional<OutputTemporalUnit> output_temporal_unit;
+  bool continue_processing = true;
+  EXPECT_THAT(obu_processor->ProcessTemporalUnit(
+                  /*eos_is_end_of_sequence=*/true, output_temporal_unit,
+                  continue_processing),
+              IsOk());
+
+  // The temporal unit is consumed, but the stray audio frame is gracefully
+  // ignored.
+  ASSERT_TRUE(output_temporal_unit.has_value());
+  EXPECT_EQ(output_temporal_unit->output_audio_frames.size(), 1);
+  EXPECT_EQ(
+      output_temporal_unit->output_audio_frames.front().obu.GetSubstreamId(),
+      kFirstSubstreamId);
 }
 
 TEST(ProcessTemporalUnit, DoesNotConsumeOneAudioFrameAsTemporalUnit) {
