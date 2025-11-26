@@ -576,6 +576,7 @@ cc_library(
         ":audio_element_with_data",
         "//iamf/cli/renderer:audio_element_renderer_ambisonics_to_channel",
         "//iamf/cli/renderer:audio_element_renderer_base",
+        "//iamf/cli/renderer:audio_element_renderer_binaural",
         "//iamf/cli/renderer:audio_element_renderer_channel_to_channel",
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/obu:audio_element",

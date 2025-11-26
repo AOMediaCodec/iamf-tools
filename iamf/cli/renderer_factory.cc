@@ -26,6 +26,12 @@
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
+// These directives are not part of an official API and are likely to change or
+// be removed. Please do not depend on them.
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
+#include "iamf/cli/renderer/audio_element_renderer_binaural.h"
+#endif
+
 namespace iamf_tools {
 
 namespace {
@@ -54,14 +60,18 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
   }
 
   if (use_binaural) {
-    // TODO(b/450473100): Render ambisonics to binaural using OBR here.
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
+    return AudioElementRendererBinaural::CreateFromAmbisonicsConfig(
+        *ambisonics_config, audio_substream_ids, substream_id_to_labels,
+        num_samples_per_frame, sample_rate);
+#else
     ABSL_LOG(WARNING)
         << "Skipping creating an Ambisonics to binaural-based "
            "renderer. Binaural rendering is not yet supported for "
            "ambisonics.";
     return nullptr;
+#endif
   }
-
   return AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
       *ambisonics_config, audio_substream_ids, substream_id_to_labels,
       loudness_layout, num_samples_per_frame);
@@ -87,10 +97,14 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
   }
 
   if (use_binaural) {
-    // TODO(b/450472803): Render channel layouts to binaural using OBR here.
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
+    return AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+        *channel_config, num_samples_per_frame, sample_rate);
+#else
     ABSL_LOG(WARNING)
         << "Skipping creating a channel to binaural-based renderer.";
     return nullptr;
+#endif
   }
   return AudioElementRendererChannelToChannel::
       CreateFromScalableChannelLayoutConfig(*channel_config, loudness_layout,

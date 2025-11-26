@@ -36,6 +36,21 @@ cc_test(
 )
 
 cc_test(
+    name = "audio_element_renderer_binaural_test",
+    srcs = ["audio_element_renderer_binaural_test.cc"],
+    deps = [
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/cli/renderer:audio_element_renderer_binaural",
+        "//iamf/cli/tests:cli_test_utils",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "audio_element_renderer_channel_to_channel_test",
     srcs = ["audio_element_renderer_channel_to_channel_test.cc"],
     deps = [

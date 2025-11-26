@@ -45,6 +45,36 @@ cc_library(
 )
 
 cc_library(
+    name = "audio_element_renderer_binaural",
+    srcs = ["audio_element_renderer_binaural.cc"],
+    hdrs = ["audio_element_renderer_binaural.h"],
+    deps = [
+        ":audio_element_renderer_base",
+        ":renderer_utils",
+        "//iamf/cli:audio_element_with_data",
+        "//iamf/cli:channel_label",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:map_utils",
+        "//iamf/common/utils:validation_utils",
+        "//iamf/obu:audio_element",
+        "//iamf/obu:types",
+        "@abseil-cpp//absl/base:core_headers",
+        "@abseil-cpp//absl/base:no_destructor",
+        "@abseil-cpp//absl/container:flat_hash_map",
+        "@abseil-cpp//absl/log:absl_check",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/memory",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings:string_view",
+        "@abseil-cpp//absl/types:span",
+        "@com_google_obr//obr/audio_buffer",
+        "@com_google_obr//obr/renderer:audio_element_type",
+        "@com_google_obr//obr/renderer:obr_impl",
+    ],
+)
+
+cc_library(
     name = "audio_element_renderer_channel_to_channel",
     srcs = ["audio_element_renderer_channel_to_channel.cc"],
     hdrs = ["audio_element_renderer_channel_to_channel.h"],

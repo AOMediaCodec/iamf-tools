@@ -55,6 +55,12 @@ git_repository(
     remote = "https://github.com/google/loudness_ebur128.git",
 )
 
+git_repository(
+    name = "com_google_obr",
+    commit = "2e1f19abbd4280182a90488261d526757bd56cc8",
+    remote = "https://github.com/google/obr.git",
+)
+
 # Expat.
 git_repository(
     name = "libexpat",
