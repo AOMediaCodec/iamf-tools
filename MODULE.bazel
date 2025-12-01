@@ -39,6 +39,14 @@ bazel_dep(
 )
 bazel_dep(name = "platforms", version = "1.0.0")
 
+# Android NDK dependencies for Andoid builds.
+# Note that this does not fetch the Android NDK itself.  If building Android builds, an environment
+# variable ANDROID_NDK_HOME needs to be set to the directory containing the Android NDK.
+bazel_dep(name = "rules_android_ndk", version = "0.1.3")
+
+android_ndk_repository_extension = use_extension("@rules_android_ndk//:extension.bzl", "android_ndk_repository_extension")
+use_repo(android_ndk_repository_extension, "androidndk")
+
 # Some modules are not yet available in the bazel central registry. We use git_repository for all of
 # them, and provide custom BUILD files for projects that are not bazel-native.
 git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")

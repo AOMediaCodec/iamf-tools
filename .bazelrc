@@ -7,6 +7,12 @@ build --enable_runfiles
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_platform_specific_config
 
+# Configs for all Android CPUs.
+common:android_arm64 --extra_toolchains=@androidndk//:all --platforms=//:android_arm64 --platform_suffix=android_arm64
+common:android_armv7 --extra_toolchains=@androidndk//:all --platforms=//:android_armv7 --platform_suffix=android_armv7
+common:android_x86_32 --extra_toolchains=@androidndk//:all --platforms=//:android_x86_32 --platform_suffix=android_x86_32
+common:android_x86_64 --extra_toolchains=@androidndk//:all --platforms=//:android_x86_64 --platform_suffix=android_x86_64
+
 # Platform specific configuration.
 build:linux --linkopt=-lm
 build:linux --cxxopt=-std=c++20
