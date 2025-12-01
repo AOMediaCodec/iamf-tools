@@ -93,4 +93,10 @@ cc_library(
     ],
 )
 
+# This target can be used to bundle the decoder into one static lib.
+cc_static_library(
+    name = "iamf_decoder_static",
+    deps = [":iamf_decoder_factory"],
+)
+
 # keep-sorted end
