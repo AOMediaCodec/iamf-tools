@@ -58,7 +58,7 @@ codec_config_metadata {
     audio_roll_distance: 0
     decoder_config_lpcm {
       sample_format_flags: LPCM_LITTLE_ENDIAN
-      sample_size: 32
+      sample_size: 24
       sample_rate: 48000
     }
   }
@@ -208,7 +208,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "Mechanism_5s_32bit.wav"
+  wav_filename: "Mechanism_5s_24bit.wav"
   audio_element_id: 301
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },

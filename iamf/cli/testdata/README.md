@@ -34,7 +34,7 @@ Theses file describe metadata about the test vector to encode an
 -   `base_test`: The recommended textproto to diff against.
 -   Other fields refer to the OBUs and data within the test vector.
 
-# Input WAV files
+## Input WAV files
 
 Test vectors may have multiple substreams with several input .wav files. These
 .wav files may be shared with other test vectors. The .textproto file has a
@@ -49,6 +49,7 @@ Title                                                | Summary                  
 `audiolab-acoustic-guitar_2OA_470_ALLRAD_concat.wav` | Clip of a guitar playing which which is repeated once using 7.1.4.                                                  | 12       | 48kHz       | pcm_s16le | 22.77s
 `dialog_clip_stereo.wav`                             | English dialog.                                                                                                     | 2        | 48kHz       | pcm_s16le | 5s
 `Mechanism_5s_32bit.wav`                             | Mechanical noises using 7.1.4.                                                                                      | 12       | 48kHz       | pcm_s32le | 5s
+`Mechanism_5s_24bit.wav`                             | Mechanical noises using 7.1.4.                                                                                      | 12       | 48kHz       | pcm_s24le | 5s
 `Mechanism_5s.wav`                                   | Mechanical noises using 7.1.4.                                                                                      | 12       | 48kHz       | pcm_s16le | 5s
 `Mechanism_5s_44100hz_s16le.wav`                     | Mechanical noises using 7.1.4.                                                                                      | 12       | 44.1k       | pcm_s16le | 5s
 `sample1_48kHz_stereo.wav`                           | Sawtooth wave.                                                                                                      | 2        | 48kHz       | pcm_s16le | 5s
@@ -69,7 +70,7 @@ Title                                                | Summary                  
 `Transport_TOA_5s.wav`                               | Short clip of vehicles driving by using third-order ambisonics.                                                     | 16       | 48kHz       | pcm_s16le | 5s
 `Transport_9.1.6_5s.wav`                             | Short clip of vehicles driving by using 9.1.6.                                                                      | 16       | 48kHz       | pcm_s16le | 5s
 
-# Output WAV files
+## Output WAV files
 
 Output wav files are based on the
 [layout](https://aomediacodec.github.io/iamf/#syntax-layout) in the mix
