@@ -41,6 +41,7 @@ cc_library(
         "libFDK/include/*.h",
     ]) + select({
         "@platforms//cpu:arm": ARM_LIB_FDK_HEADERS,
+        "@platforms//cpu:armv7": ARM_LIB_FDK_HEADERS,
         "@platforms//cpu:arm64": ARM_LIB_FDK_HEADERS,
         "@platforms//cpu:x86_32": X86_LIB_FDK_HEADERS,
         "@platforms//cpu:x86_64": X86_LIB_FDK_HEADERS,
@@ -50,6 +51,7 @@ cc_library(
         "libSYS/include",
     ] + select({
         "@platforms//cpu:arm": ARM_LIB_FDK_INCLUDES,
+        "@platforms//cpu:armv7": ARM_LIB_FDK_INCLUDES,
         "@platforms//cpu:arm64": ARM_LIB_FDK_INCLUDES,
         "//conditions:default": [],
     }),
@@ -254,6 +256,7 @@ cc_library(
         "libAACdec/include/*.h",
     ]) + select({
         "@platforms//cpu:arm": ARM_LIB_AAC_DEC_HEADERS,
+        "@platforms//cpu:armv7": ARM_LIB_AAC_DEC_HEADERS,
         "@platforms//cpu:arm64": ARM_LIB_AAC_DEC_HEADERS,
         "//conditions:default": [],
     }),
@@ -275,6 +278,7 @@ cc_library(
         "libSBRdec/include",
     ] + select({
         "@platforms//cpu:arm": ARM_LIB_AAC_DEC_INCLUDES,
+        "@platforms//cpu:armv7": ARM_LIB_AAC_DEC_INCLUDES,
         "@platforms//cpu:arm64": ARM_LIB_AAC_DEC_INCLUDES,
         "//conditions:default": [],
     }),
