@@ -73,7 +73,7 @@ git_repository(
 git_repository(
     name = "fdk_aac",
     build_file = "@//external:fdk_aac.BUILD",
-    commit = "38c27d428ee223bf32f0a2a07cae9fcb99cf3cae",
+    commit = "ee76460efbdb147e26d804c798949c23f174460b",
     remote = "https://android.googlesource.com/platform/external/aac",
 )
 
