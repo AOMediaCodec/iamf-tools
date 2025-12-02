@@ -65,8 +65,16 @@ git_repository(
 
 git_repository(
     name = "com_google_obr",
-    commit = "2e1f19abbd4280182a90488261d526757bd56cc8",
+    commit = "478dc7c752d5eccae534635139ff0253eee3a14a",
     remote = "https://github.com/google/obr.git",
+)
+
+# PFFFT, transitive dependency needed by OBR.
+git_repository(
+    name = "pffft",
+    build_file = "@//external:pffft.BUILD",
+    commit = "d7a4c0206a29423478776d6b23a37bbb308f21d5",
+    remote = "https://bitbucket.org/jpommier/pffft.git",
 )
 
 # Expat.

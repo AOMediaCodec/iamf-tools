@@ -7,6 +7,9 @@ build --enable_runfiles
 build --host_crosstool_top=@bazel_tools//tools/cpp:toolchain
 build --enable_platform_specific_config
 
+# To enable the `cc_static_library` rule for bazel.
+build --experimental_cc_static_library
+
 # Configs for all Android CPUs.
 common:android_arm64 --extra_toolchains=@androidndk//:all --platforms=//:android_arm64 --platform_suffix=android_arm64
 common:android_armv7 --extra_toolchains=@androidndk//:all --platforms=//:android_armv7 --platform_suffix=android_armv7
