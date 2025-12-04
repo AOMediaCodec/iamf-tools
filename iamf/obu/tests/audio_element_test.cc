@@ -2113,23 +2113,73 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
             expected_ambisonics_config);
 }
 
-TEST(CreateFromBuffer, UnsupportedObjectConfig) {
+TEST(CreateFromBuffer, InvalidObjectConfigSizeZero) {
   std::vector<uint8_t> source = {
       // `audio_element_id`.
-      1,  // Arbitrary.  Doesn't matter for this test.
+      1,
       // `audio_element_type (3), reserved (5).
       AudioElementObu::kAudioElementObjectBased << 5,
       // `codec_config_id`.
-      2,  // Arbitrary.  Doesn't matter for this test.
+      2,
       // `num_substreams`.
-      4,
+      1,
       // `audio_substream_ids`
       3,
+      // `num_parameters`.
+      1,
+      // `audio_element_params[0]`.
+      kParameterDefinitionDemixingAsUint8,
       4,
       5,
-      6,  // Arbitrary IDs, need one per substream.
+      0x00,
+      64,
+      64,
+      0,
+      0,
+      // `objects_config`
+      // `objects_config_size`.
+      0,
+  };
+  const int64_t payload_size = source.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+  ObuHeader header;
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
+
+  EXPECT_THAT(obu, Not(IsOk()));
+}
+
+TEST(CreateFromBuffer, OneObjectConfigWithExtensionBytes) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementObjectBased << 5,
+      // `codec_config_id`.
+      2,
+      // `num_substreams`.
+      1,
+      // `audio_substream_ids`
+      3,
       // `num_parameters`.
-      0,  // Skip parameters
+      1,
+      // `audio_element_params[0]`.
+      kParameterDefinitionDemixingAsUint8,
+      4,
+      5,
+      0x00,
+      64,
+      64,
+      0,
+      0,
+      // `objects_config`
+      // `objects_config_size`.
+      4,
+      // `num_objects`.
+      1,
+      // `objects_config_extension_bytes`.
+      0x01,
+      0x02,
+      0x03,
   };
   const int64_t payload_size = source.size();
   auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
@@ -2137,7 +2187,16 @@ TEST(CreateFromBuffer, UnsupportedObjectConfig) {
   auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
 
   // Validate
-  EXPECT_THAT(obu, Not(IsOk()));
+  EXPECT_THAT(obu, IsOk());
+
+  EXPECT_EQ(obu.value().GetAudioElementType(),
+            AudioElementObu::kAudioElementObjectBased);
+  EXPECT_EQ(obu.value().GetNumSubstreams(), 1);
+
+  ObjectsConfig expected_objects_config = {
+      .num_objects = 1, .objects_config_extension_bytes = {1, 2, 3}};
+  EXPECT_EQ(std::get<ObjectsConfig>(obu.value().config_),
+            expected_objects_config);
 }
 
 TEST(CreateFromBuffer, InvalidTooManyParameters) {

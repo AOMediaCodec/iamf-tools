@@ -270,6 +270,23 @@ absl::Status ValidateAndWriteObjectsConfig(const ObjectsConfig& objects_config,
   return absl::OkStatus();
 }
 
+absl::Status ReadAndValidateObjectsConfig(ObjectsConfig& objects_config,
+                                          ReadBitBuffer& rb) {
+  // Read the main portion of the `ObjectsConfig`.
+  uint8_t object_config_size;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_config_size));
+  if (object_config_size == 0) {
+    return absl::InvalidArgumentError(
+        "Invalid object_config_size = 0. This should be at least 1.");
+  }
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, objects_config.num_objects));
+  objects_config.objects_config_extension_bytes.resize(object_config_size - 1);
+  RETURN_IF_NOT_OK(rb.ReadUint8Span(
+      absl::MakeSpan(objects_config.objects_config_extension_bytes)));
+  RETURN_IF_NOT_OK(objects_config.Validate());
+  return absl::OkStatus();
+}
+
 // Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
 absl::Status ValidateAndWriteAmbisonicsMono(
     const AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
@@ -847,8 +864,8 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       return ReadAndValidateAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), rb);
     case kAudioElementObjectBased:
-      return absl::UnimplementedError(
-          "Object-based audio elements are not supported.");
+      config_ = ObjectsConfig();
+      return ReadAndValidateObjectsConfig(std::get<ObjectsConfig>(config_), rb);
     default: {
       ExtensionConfig extension_config;
       DecodedUleb128 audio_element_config_size;
