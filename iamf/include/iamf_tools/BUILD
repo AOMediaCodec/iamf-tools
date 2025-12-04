@@ -1,4 +1,5 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_static_library.bzl", "cc_static_library")
 
 # keep-sorted start block=yes prefix_order=cc_library newline_separated=yes
 cc_library(
