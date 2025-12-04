@@ -503,6 +503,14 @@ absl::Status ScalableChannelLayoutConfig::Validate(
   return absl::OkStatus();
 }
 
+absl::Status ObjectsConfig::Validate() const {
+  if (num_objects == 0 || num_objects > 2) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected `num_objects` in [1, 2]; got ", num_objects));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status AmbisonicsMonoConfig::Validate(
     DecodedUleb128 num_substreams_in_audio_element) const {
   MAYBE_RETURN_IF_NOT_OK(ValidateOutputChannelCount(output_channel_count));

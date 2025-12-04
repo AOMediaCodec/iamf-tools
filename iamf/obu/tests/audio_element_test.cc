@@ -895,6 +895,28 @@ TEST(ScalableChannelLayoutConfigValidate,
   EXPECT_FALSE(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2).ok());
 }
 
+const ObjectsConfig kOneObjectConfig = {
+    .num_objects = 1,
+};
+
+const ObjectsConfig kTwoObjectConfig = {
+    .num_objects = 2,
+};
+
+const ObjectsConfig kNoObjectConfig = {
+    .num_objects = 0,
+};
+
+TEST(ObjectsConfigValidate, IsOkWithOneObject) {
+  EXPECT_THAT(kOneObjectConfig.Validate(), IsOk());
+}
+TEST(ObjectsConfigValidate, IsOkWithTwoObject) {
+  EXPECT_THAT(kTwoObjectConfig.Validate(), IsOk());
+}
+TEST(ObjectsConfigValidate, IsNotOkWithNoObject) {
+  EXPECT_THAT(kNoObjectConfig.Validate(), Not(IsOk()));
+}
+
 TEST(ValidateAndWriteObu, WritesWithTwoSubstreams) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   common_args.substream_ids = {1, 2};

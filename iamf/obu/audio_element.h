@@ -179,6 +179,22 @@ struct ScalableChannelLayoutConfig {
   std::vector<ChannelAudioLayerConfig> channel_audio_layer_configs;
 };
 
+/*!\brief Configuration for object-based audio elements. */
+struct ObjectsConfig {
+  friend bool operator==(const ObjectsConfig& lhs,
+                         const ObjectsConfig& rhs) = default;
+
+  /*!\brief Validates the configuration.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  absl::Status Validate() const;
+
+  uint8_t num_objects;  // 8 bits.
+
+  std::vector<uint8_t> objects_config_extension_bytes;
+};
+
 /*!\brief Configuration for mono-coded Ambisonics. */
 struct AmbisonicsMonoConfig {
   // RFC 8486 reserves 255 to signal an inactive ACN (ambisonics channel
