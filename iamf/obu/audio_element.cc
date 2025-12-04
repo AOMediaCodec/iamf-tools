@@ -754,6 +754,9 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
     case kAudioElementSceneBased:
       return ValidateAndWriteAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), wb);
+    case kAudioElementObjectBased:
+      return absl::UnimplementedError(
+          "Object-based audio elements are not supported.");
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
       RETURN_IF_NOT_OK(
@@ -810,6 +813,9 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       config_ = AmbisonicsConfig();
       return ReadAndValidateAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), rb);
+    case kAudioElementObjectBased:
+      return absl::UnimplementedError(
+          "Object-based audio elements are not supported.");
     default: {
       ExtensionConfig extension_config;
       DecodedUleb128 audio_element_config_size;

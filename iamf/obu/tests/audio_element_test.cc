@@ -1982,6 +1982,33 @@ TEST(CreateFromBuffer, ValidAmbisonicsMonoConfig) {
             expected_ambisonics_config);
 }
 
+TEST(CreateFromBuffer, UnsupportedObjectConfig) {
+  std::vector<uint8_t> source = {
+      // `audio_element_id`.
+      1,  // Arbitrary.  Doesn't matter for this test.
+      // `audio_element_type (3), reserved (5).
+      AudioElementObu::kAudioElementObjectBased << 5,
+      // `codec_config_id`.
+      2,  // Arbitrary.  Doesn't matter for this test.
+      // `num_substreams`.
+      4,
+      // `audio_substream_ids`
+      3,
+      4,
+      5,
+      6,  // Arbitrary IDs, need one per substream.
+      // `num_parameters`.
+      0,  // Skip parameters
+  };
+  const int64_t payload_size = source.size();
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source));
+  ObuHeader header;
+  auto obu = AudioElementObu::CreateFromBuffer(header, payload_size, *buffer);
+
+  // Validate
+  EXPECT_THAT(obu, Not(IsOk()));
+}
+
 TEST(CreateFromBuffer, InvalidTooManyParameters) {
   std::vector<uint8_t> source = {
       // `audio_element_id`.

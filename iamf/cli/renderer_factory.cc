@@ -136,6 +136,9 @@ RendererFactory::CreateRendererForLayout(
       return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
                                         loudness_layout, num_samples_per_frame,
                                         sample_rate);
+    case AudioElementObu::kAudioElementObjectBased:
+      ABSL_LOG(WARNING) << "Object-based audio elements are not supported.";
+      return nullptr;
     case AudioElementObu::kAudioElementBeginReserved:
     case AudioElementObu::kAudioElementEndReserved:
       ABSL_LOG(WARNING) << "Unsupported audio_element_type_= "

@@ -285,8 +285,9 @@ class AudioElementObu : public ObuBase {
   enum AudioElementType : uint8_t {
     kAudioElementChannelBased = 0,
     kAudioElementSceneBased = 1,
-    // Values in the range of [2 - 7] are reserved.
-    kAudioElementBeginReserved = 2,
+    kAudioElementObjectBased = 2,
+    // Values in the range of [3 - 7] are reserved.
+    kAudioElementBeginReserved = 3,
     kAudioElementEndReserved = 7,
   };
 
