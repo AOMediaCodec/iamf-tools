@@ -18,6 +18,7 @@
 #include <optional>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -215,11 +216,13 @@ struct ChannelNumbers {
   friend bool operator==(const ChannelNumbers& lhs,
                          const ChannelNumbers& rhs) = default;
   // Number of surround channels.
-  int surround;
+  int surround ABSL_REQUIRE_EXPLICIT_INIT;
   // Number of low-frequency effects channels.
-  int lfe;
+  int lfe ABSL_REQUIRE_EXPLICIT_INIT;
   // Number of height channels.
-  int height;
+  int height ABSL_REQUIRE_EXPLICIT_INIT;
+  // Number of bottom channels.
+  int bottom ABSL_REQUIRE_EXPLICIT_INIT;
 };
 
 /* !\brief Parameter definition for recon gain.

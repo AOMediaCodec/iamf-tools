@@ -372,8 +372,10 @@ TEST(CollectAndValidateParamDefinitions, ReconGainParamDefinition) {
   EXPECT_EQ(
       recon_gain_param_definition->aux_data_[1].recon_gain_is_present_flag,
       true);
-  constexpr ChannelNumbers kExpectedChannelNumbersMonoLayer = {.surround = 1};
-  constexpr ChannelNumbers kExpectedChannelNumbersStereoLayer = {.surround = 2};
+  constexpr ChannelNumbers kExpectedChannelNumbersMonoLayer = {
+      .surround = 1, .lfe = 0, .height = 0, .bottom = 0};
+  constexpr ChannelNumbers kExpectedChannelNumbersStereoLayer = {
+      .surround = 2, .lfe = 0, .height = 0, .bottom = 0};
   EXPECT_EQ(recon_gain_param_definition->aux_data_[0].channel_numbers_for_layer,
             kExpectedChannelNumbersMonoLayer);
   EXPECT_EQ(recon_gain_param_definition->aux_data_[1].channel_numbers_for_layer,

@@ -906,12 +906,15 @@ class ReconGainBlockTest : public ParameterBlockObuTestBase,
         std::make_unique<ReconGainParamDefinition>(kAudioElementId);
 
     // Copy additional recon gain-related data over.
-    recon_gain_param_definition->aux_data_.resize(metadata_args_.num_layers);
+    recon_gain_param_definition->aux_data_.reserve(metadata_args_.num_layers);
     for (int i = 0; i < metadata_args_.num_layers; i++) {
-      auto& aux_data = recon_gain_param_definition->aux_data_[i];
-      aux_data.recon_gain_is_present_flag =
-          metadata_args_.recon_gain_is_present_flags[i];
-      // `aux_data.channel_number_for_layer` not used in these tests.
+      recon_gain_param_definition->aux_data_.emplace_back(
+          ReconGainParamDefinition::ReconGainAuxiliaryData{
+              .recon_gain_is_present_flag =
+                  metadata_args_.recon_gain_is_present_flags[i],
+              // `channel_number_for_layer` is not used in these tests.
+              .channel_numbers_for_layer = {0, 0, 0, 0},
+          });
     }
 
     param_definition_ = std::move(recon_gain_param_definition);

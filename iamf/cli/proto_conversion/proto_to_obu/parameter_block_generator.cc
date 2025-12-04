@@ -375,7 +375,7 @@ absl::Status GenerateReconGainSubblock(
     const auto accumulated_channels =
         (layer_index > 0 ? param_definition->aux_data_[layer_index - 1]
                                .channel_numbers_for_layer
-                         : ChannelNumbers{0, 0, 0});
+                         : ChannelNumbers{0, 0, 0, 0});
     RETURN_IF_NOT_OK(
         ComputeReconGains(layer_index, layer_channels, accumulated_channels,
                           additional_recon_gains_logging,

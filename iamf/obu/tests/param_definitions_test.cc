@@ -711,11 +711,13 @@ TEST(ReconGainParamDefinitionValidateAndWrite, AuxiliaryDataNotWritten) {
   recon_gain_param_definition.aux_data_ = {
       {
           .recon_gain_is_present_flag = false,
-          .channel_numbers_for_layer = {2, 0, 0},
+          .channel_numbers_for_layer =
+              {.surround = 2, .lfe = 0, .height = 0, .bottom = 0},
       },
       {
           .recon_gain_is_present_flag = true,
-          .channel_numbers_for_layer = {5, 1, 2},
+          .channel_numbers_for_layer =
+              {.surround = 5, .lfe = 1, .height = 2, .bottom = 0},
       },
   };
   EXPECT_THAT(recon_gain_param_definition.ValidateAndWrite(wb), IsOk());

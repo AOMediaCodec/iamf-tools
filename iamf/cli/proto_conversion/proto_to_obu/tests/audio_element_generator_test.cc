@@ -502,8 +502,8 @@ TEST(Generate, FillsAudioElementWithDataFields) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {kMonoSubstreamId, {kMono}}, {kL2SubstreamId, {kL2}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 1, .lfe = 0, .height = 0},
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 1, .lfe = 0, .height = 0, .bottom = 0},
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   FillTwoLayerStereoMetadata(*audio_element_metadatas.Add());
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,

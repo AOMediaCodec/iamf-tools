@@ -60,34 +60,34 @@ absl::Status LoudspeakerLayoutToChannels(
   switch (loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::LoudspeakerLayout;
     case kLayoutMono:
-      channels = {1, 0, 0};
+      channels = {.surround = 1, .lfe = 0, .height = 0, .bottom = 0};
       break;
     case kLayoutStereo:
-      channels = {2, 0, 0};
+      channels = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       break;
     case kLayout5_1_ch:
-      channels = {5, 1, 0};
+      channels = {.surround = 5, .lfe = 1, .height = 0, .bottom = 0};
       break;
     case kLayout5_1_2_ch:
-      channels = {5, 1, 2};
+      channels = {.surround = 5, .lfe = 1, .height = 2, .bottom = 0};
       break;
     case kLayout5_1_4_ch:
-      channels = {5, 1, 4};
+      channels = {.surround = 5, .lfe = 1, .height = 4, .bottom = 0};
       break;
     case kLayout7_1_ch:
-      channels = {7, 1, 0};
+      channels = {.surround = 7, .lfe = 1, .height = 0, .bottom = 0};
       break;
     case kLayout7_1_2_ch:
-      channels = {7, 1, 2};
+      channels = {.surround = 7, .lfe = 1, .height = 2, .bottom = 0};
       break;
     case kLayout7_1_4_ch:
-      channels = {7, 1, 4};
+      channels = {.surround = 7, .lfe = 1, .height = 4, .bottom = 0};
       break;
     case kLayout3_1_2_ch:
-      channels = {3, 1, 2};
+      channels = {.surround = 3, .lfe = 1, .height = 2, .bottom = 0};
       break;
     case kLayoutBinaural:
-      channels = {2, 0, 0};
+      channels = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       break;
     default:
       return InvalidArgumentError(
@@ -196,59 +196,59 @@ absl::Status CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
   switch (*expanded_loudspeaker_layout) {
     using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
     case kExpandedLayoutLFE:
-      channel_numbers = {0, 1, 0};
+      channel_numbers = {.surround = 0, .lfe = 1, .height = 0, .bottom = 0};
       non_coupled_substream_labels = {kLFE};
       break;
     case kExpandedLayoutStereoS:
-      channel_numbers = {2, 0, 0};
+      channel_numbers = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kLs5, kRs5};
       break;
     case kExpandedLayoutStereoSS:
-      channel_numbers = {2, 0, 0};
+      channel_numbers = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kLss7, kRss7};
       break;
     case kExpandedLayoutStereoRS:
-      channel_numbers = {2, 0, 0};
+      channel_numbers = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kLrs7, kRrs7};
       break;
     case kExpandedLayoutStereoTF:
-      channel_numbers = {0, 0, 2};
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 2, .bottom = 0};
       coupled_substream_labels = {kLtf4, kRtf4};
       break;
     case kExpandedLayoutStereoTB:
-      channel_numbers = {0, 0, 2};
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 2, .bottom = 0};
       coupled_substream_labels = {kLtb4, kRtb4};
       break;
     case kExpandedLayoutTop4Ch:
-      channel_numbers = {0, 0, 4};
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 4, .bottom = 0};
       coupled_substream_labels = {kLtf4, kRtf4, kLtb4, kRtb4};
       break;
     case kExpandedLayout3_0_ch:
-      channel_numbers = {3, 0, 0};
+      channel_numbers = {.surround = 3, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kL7, kR7};
       non_coupled_substream_labels = {kCentre};
       break;
     case kExpandedLayout9_1_6_ch:
-      channel_numbers = {9, 1, 6};
+      channel_numbers = {.surround = 9, .lfe = 1, .height = 6, .bottom = 0};
       coupled_substream_labels = {kFLc,   kFRc,   kFL,   kFR,   kSiL,
                                   kSiR,   kBL,    kBR,   kTpFL, kTpFR,
                                   kTpSiL, kTpSiR, kTpBL, kTpBR};
       non_coupled_substream_labels = {kFC, kLFE};
       break;
     case kExpandedLayoutStereoF:
-      channel_numbers = {2, 0, 0};
+      channel_numbers = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kFL, kFR};
       break;
     case kExpandedLayoutStereoSi:
-      channel_numbers = {2, 0, 0};
+      channel_numbers = {.surround = 2, .lfe = 0, .height = 0, .bottom = 0};
       coupled_substream_labels = {kSiL, kSiR};
       break;
     case kExpandedLayoutStereoTpSi:
-      channel_numbers = {0, 0, 2};
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 2, .bottom = 0};
       coupled_substream_labels = {kTpSiL, kTpSiR};
       break;
     case kExpandedLayoutTop6Ch:
-      channel_numbers = {0, 0, 6};
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 6, .bottom = 0};
       coupled_substream_labels = {kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR};
       break;
     default:
@@ -669,13 +669,13 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
                                   audio_substream_ids.end(),
                                   "audio_substream_ids"));
   // Starting from no channel at all.
-  ChannelNumbers accumulated_channels = {0, 0, 0};
+  ChannelNumbers accumulated_channels = {0, 0, 0, 0};
   int substream_index = 0;
   channel_numbers_for_layers.reserve(config.GetNumLayers());
   for (int i = 0; i < config.GetNumLayers(); ++i) {
     const int previous_layer_substream_index = substream_index;
 
-    ChannelNumbers layer_channels;
+    ChannelNumbers layer_channels = {0, 0, 0, 0};
     std::list<ChannelLabel::Label> coupled_substream_labels;
     std::list<ChannelLabel::Label> non_coupled_substream_labels;
     const auto& layer_config = config.channel_audio_layer_configs[i];
@@ -705,8 +705,8 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
     // Handle output gains.
     if (layer_config.output_gain_is_present_flag) {
       // Loop through all substream IDs added in this layer.
-      for (int i = previous_layer_substream_index; i < substream_index; i++) {
-        const auto substream_id = audio_substream_ids[i];
+      for (int j = previous_layer_substream_index; j < substream_index; j++) {
+        const auto substream_id = audio_substream_ids[j];
 
         ABSL_LOG(INFO) << "Output gain for substream ID: " << substream_id
                        << ":";

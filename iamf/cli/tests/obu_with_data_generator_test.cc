@@ -113,9 +113,9 @@ TEST(GenerateAudioElementWithData, ValidAudioElementWithCodecConfig) {
               UnorderedElementsAre(
                   Pair(kFirstSubstreamId, ElementsAreArray({kL2, kR2}))));
   EXPECT_TRUE(audio_element_with_data->label_to_output_gain.empty());
-  EXPECT_THAT(
-      audio_element_with_data->channel_numbers_for_layers,
-      ElementsAre(ChannelNumbers{.surround = 2, .lfe = 0, .height = 0}));
+  EXPECT_THAT(audio_element_with_data->channel_numbers_for_layers,
+              ElementsAre(ChannelNumbers{
+                  .surround = 2, .lfe = 0, .height = 0, .bottom = 0}));
 }
 
 TEST(GenerateAudioElementWithData, InvalidCodecConfigId) {
@@ -794,7 +794,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {kSubstreamIds[0], {kL2, kR2}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
 
   SubstreamIdLabelsMap output_substream_id_to_labels;
   LabelGainMap output_label_to_output_gain;
@@ -915,8 +915,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kMono}},
                                                              {1, {kL2}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 1, .lfe = 0, .height = 0},
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 1, .lfe = 0, .height = 0, .bottom = 0},
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayerMonoStereoConfig{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
@@ -973,8 +973,8 @@ TEST(FinalizeScalableChannelLayoutConfig, FillsOutputGainMap) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kMono}},
                                                              {1, {kL2}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 1, .lfe = 0, .height = 0},
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 1, .lfe = 0, .height = 0, .bottom = 0},
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayerStereoConfig{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutMono,
@@ -1015,8 +1015,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {3, {kLFE}},
   };
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 2, .lfe = 0, .height = 0},
-      {.surround = 3, .lfe = 1, .height = 2}};
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0},
+      {.surround = 3, .lfe = 1, .height = 2, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayerStereo3_1_2Config{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutStereo,
@@ -1051,8 +1051,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {303, {kLFE}},     {514, {kL5, kR5}},
   };
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 3, .lfe = 1, .height = 2},
-      {.surround = 5, .lfe = 1, .height = 2}};
+      {.surround = 3, .lfe = 1, .height = 2, .bottom = 0},
+      {.surround = 5, .lfe = 1, .height = 2, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayer3_1_2_and_5_1_2Config{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout3_1_2_ch,
@@ -1087,8 +1087,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {503, {kLFE}},     {704, {kLss7, kRss7}},
   };
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 5, .lfe = 1, .height = 0},
-      {.surround = 7, .lfe = 1, .height = 0}};
+      {.surround = 5, .lfe = 1, .height = 0, .bottom = 0},
+      {.surround = 7, .lfe = 1, .height = 0, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayer5_1_0_and_7_1_0Config{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_ch,
@@ -1124,7 +1124,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
 
   const LabelGainMap kExpectedLabelToOutputGain = {};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 5, .lfe = 1, .height = 4}};
+      {.surround = 5, .lfe = 1, .height = 4, .bottom = 0}};
   const std::vector<DecodedUleb128> kAudioSubstreamIds = kSubstreamIds;
   const ScalableChannelLayoutConfig kOneLayer5_1_4Config{
       .channel_audio_layer_configs = {
@@ -1156,8 +1156,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {523, {kCentre}},  {524, {kLFE}},       {540, {kLtf4, kRtf4}},
   };
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 5, .lfe = 1, .height = 2},
-      {.surround = 5, .lfe = 1, .height = 4}};
+      {.surround = 5, .lfe = 1, .height = 2, .bottom = 0},
+      {.surround = 5, .lfe = 1, .height = 4, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayer5_1_2_and_5_1_4Config{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout5_1_2_ch,
@@ -1194,8 +1194,8 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {741, {kLtb4, kRtb4}},
   };
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 7, .lfe = 1, .height = 0},
-      {.surround = 7, .lfe = 1, .height = 4}};
+      {.surround = 7, .lfe = 1, .height = 0, .bottom = 0},
+      {.surround = 7, .lfe = 1, .height = 4, .bottom = 0}};
   const ScalableChannelLayoutConfig kTwoLayer7_1_0_and_7_1_4Config{
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout7_1_ch,
@@ -1204,7 +1204,6 @@ TEST(FinalizeScalableChannelLayoutConfig,
            .coupled_substream_count = 3},
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayout7_1_4_ch,
            .output_gain_is_present_flag = false,
-
            .substream_count = 2,
            .coupled_substream_count = 2},
       }};
@@ -1231,7 +1230,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {3, {kLtf4, kRtf4}}, {2, {kLtb4, kRtb4}}, {1, {kCentre}},
       {0, {kLFE}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 7, .lfe = 1, .height = 4}};
+      {.surround = 7, .lfe = 1, .height = 4, .bottom = 0}};
   const std::vector<DecodedUleb128> kAudioSubstreamIds = kSubstreamIds;
   const ScalableChannelLayoutConfig kOneLayer7_1_4Config{
       .channel_audio_layer_configs = {
@@ -1277,7 +1276,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
      FillsExpectedOutputForExpandedLoudspeakerLayoutLFE) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kLFE}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 1, .height = 0}};
+      {.surround = 0, .lfe = 1, .height = 0, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kLFELayout{
       .channel_audio_layer_configs = {
@@ -1306,7 +1305,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
      FillsExpectedOutputForExpandedLoudspeakerLayoutStereoS) {
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kLs5, kRs5}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoSSLayout{
       .channel_audio_layer_configs = {
@@ -1336,7 +1335,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kLss7, kRss7}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 2, .lfe = 0, .height = 0}};
+      {.surround = 2, .lfe = 0, .height = 0, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoSSLayout{
       .channel_audio_layer_configs = {
@@ -1366,7 +1365,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kLtf4, kRtf4}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 0, .height = 2}};
+      {.surround = 0, .lfe = 0, .height = 2, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoTfLayout{
       .channel_audio_layer_configs = {
@@ -1396,7 +1395,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kLtb4, kRtb4}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 0, .height = 2}};
+      {.surround = 0, .lfe = 0, .height = 2, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kStereoTBLayout{
       .channel_audio_layer_configs = {
@@ -1426,7 +1425,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kLtf4, kRtf4}}, {1, {kLtb4, kRtb4}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 0, .height = 4}};
+      {.surround = 0, .lfe = 0, .height = 4, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig kTop4ChLayout{
       .channel_audio_layer_configs = {
@@ -1456,7 +1455,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {{0, {kL7, kR7}},
                                                              {1, {kCentre}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 3, .lfe = 0, .height = 0}};
+      {.surround = 3, .lfe = 0, .height = 0, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
   const ScalableChannelLayoutConfig k3_0_ChLayout{
       .channel_audio_layer_configs = {
@@ -1488,7 +1487,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
       {3, {kBL, kBR}},     {4, {kTpFL, kTpFR}}, {5, {kTpSiL, kTpSiR}},
       {6, {kTpBL, kTpBR}}, {7, {kFC}},          {8, {kLFE}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 9, .lfe = 1, .height = 6}};
+      {.surround = 9, .lfe = 1, .height = 6, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2, 3, 4, 5, 6, 7, 8};
   const ScalableChannelLayoutConfig k9_1_6Layout{
       .channel_audio_layer_configs = {
@@ -1518,7 +1517,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kTpSiL, kTpSiR}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 0, .height = 2}};
+      {.surround = 0, .lfe = 0, .height = 2, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0};
   const ScalableChannelLayoutConfig kTpSiLayout{
       .channel_audio_layer_configs = {
@@ -1548,7 +1547,7 @@ TEST(FinalizeScalableChannelLayoutConfig,
   const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
       {0, {kTpFL, kTpFR}}, {1, {kTpSiL, kTpSiR}}, {2, {kTpBL, kTpBR}}};
   const std::vector<ChannelNumbers> kExpectedChannelNumbersForLayer = {
-      {.surround = 0, .lfe = 0, .height = 6}};
+      {.surround = 0, .lfe = 0, .height = 6, .bottom = 0}};
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1, 2};
   const ScalableChannelLayoutConfig kTop6ChLayout{
       .channel_audio_layer_configs = {
