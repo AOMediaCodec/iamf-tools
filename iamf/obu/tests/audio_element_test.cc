@@ -899,6 +899,11 @@ const ObjectsConfig kOneObjectConfig = {
     .num_objects = 1,
 };
 
+const ObjectsConfig kOneObjectConfigWithExtension = {
+    .num_objects = 1,
+    .objects_config_extension_bytes = {0x01, 0x02, 0x03},
+};
+
 const ObjectsConfig kTwoObjectConfig = {
     .num_objects = 2,
 };
@@ -953,6 +958,72 @@ TEST(CreateObjectsAudioElementObu, FailsWithInvalidNumObjects) {
       kNoObjectConfig);
 
   EXPECT_THAT(obu, Not(IsOk()));
+}
+
+absl::StatusOr<AudioElementObu> CreateObjectsAudioElementObu(
+    const CommonAudioElementArgs& common_args,
+    const ObjectsConfig& objects_config) {
+  auto obu = AudioElementObu::CreateForObjects(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids[0],
+      objects_config);
+  if (!obu.ok()) {
+    return obu.status();
+  }
+  obu->InitializeParams(common_args.audio_element_params.size());
+  for (const auto& param : common_args.audio_element_params) {
+    obu->audio_element_params_.push_back(param);
+  }
+  return obu;
+}
+
+// Payload agreeing with `CreateObjectsAudioElementObu`,
+// `kOneObjectConfigWithExtension`.
+constexpr auto kExpectedOneObjectPayload = std::to_array<uint8_t>({
+    // `audio_element_id`.
+    1,
+    // `audio_element_type (3), reserved (5).
+    AudioElementObu::kAudioElementObjectBased << 5,
+    // `codec_config_id`.
+    2,
+    // `num_substreams`.
+    1,
+    // `audio_substream_ids`
+    3,
+    // `num_parameters`.
+    1,
+    // `audio_element_params[0]`.
+    kParameterDefinitionDemixingAsUint8,
+    4,
+    5,
+    0x00,
+    64,
+    64,
+    0,
+    0,
+    // `objects_config`
+    // `objects_config_size`.
+    4,
+    // `num_objects`.
+    1,
+    // `objects_config_extension_bytes`.
+    0x01,
+    0x02,
+    0x03,
+});
+
+TEST(ValidateAndWriteObu, SerializesOneObjectAudioElementObu) {
+  auto obu = CreateObjectsAudioElementObu(CreateObjectsAudioElementArgs(),
+                                          kOneObjectConfigWithExtension);
+  ASSERT_THAT(obu, IsOk());
+  // Shift is based on obu size.
+  constexpr auto kExpectedHeader =
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 19});
+
+  WriteBitBuffer wb(kInitialBufferCapacity);
+  ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, kExpectedHeader, kExpectedOneObjectPayload);
 }
 
 TEST(ValidateAndWriteObu, WritesWithTwoSubstreams) {

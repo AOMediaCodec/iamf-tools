@@ -255,6 +255,21 @@ absl::Status ReadAndValidateScalableChannelLayout(
   return absl::OkStatus();
 }
 
+// Writes the `ObjectsConfig` of an `AudioElementObu`.
+absl::Status ValidateAndWriteObjectsConfig(const ObjectsConfig& objects_config,
+                                           WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(objects_config.Validate());
+
+  // `object_config_size` is the number of bytes in the extension, plus one for
+  // the num_objects field.
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      objects_config.objects_config_extension_bytes.size() + 1, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(objects_config.num_objects, 8));
+  RETURN_IF_NOT_OK(wb.WriteUint8Span(
+      absl::MakeConstSpan(objects_config.objects_config_extension_bytes)));
+  return absl::OkStatus();
+}
+
 // Writes the `AmbisonicsMonoConfig` of an ambisonics mono `AudioElementObu`.
 absl::Status ValidateAndWriteAmbisonicsMono(
     const AmbisonicsMonoConfig& mono_config, DecodedUleb128 num_substreams,
@@ -773,8 +788,8 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
       return ValidateAndWriteAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), wb);
     case kAudioElementObjectBased:
-      return absl::UnimplementedError(
-          "Object-based audio elements are not supported.");
+      return ValidateAndWriteObjectsConfig(std::get<ObjectsConfig>(config_),
+                                           wb);
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
       RETURN_IF_NOT_OK(
