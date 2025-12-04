@@ -680,6 +680,16 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
           .ambisonics_config = projection_config});
 }
 
+absl::StatusOr<AudioElementObu> AudioElementObu::CreateForObjects(
+    const ObuHeader& header, DecodedUleb128 audio_element_id, uint8_t reserved,
+    DecodedUleb128 codec_config_id, const DecodedUleb128 audio_substream_id,
+    const ObjectsConfig& objects_config) {
+  RETURN_IF_NOT_OK(objects_config.Validate());
+  return AudioElementObu(header, audio_element_id, kAudioElementObjectBased,
+                         reserved, codec_config_id, {audio_substream_id},
+                         objects_config);
+}
+
 absl::StatusOr<AudioElementObu> AudioElementObu::CreateForExtension(
     const ObuHeader& header, DecodedUleb128 audio_element_id,
     AudioElementType audio_element_type, uint8_t reserved,

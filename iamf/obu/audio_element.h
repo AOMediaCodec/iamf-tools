@@ -308,7 +308,7 @@ class AudioElementObu : public ObuBase {
   };
 
   typedef std::variant<ScalableChannelLayoutConfig, AmbisonicsConfig,
-                       ExtensionConfig>
+                       ObjectsConfig, ExtensionConfig>
       AudioElementConfig;
 
   /*!brief Creates a `AudioElementObu` for a scalable channel layout.
@@ -361,6 +361,21 @@ class AudioElementObu : public ObuBase {
       absl::Span<const DecodedUleb128> audio_substream_ids,
       uint8_t output_channel_count, uint8_t coupled_substream_count,
       absl::Span<const int16_t> demixing_matrix);
+
+  /*!brief Creates a `AudioElementObu` for objects.
+   *
+   * \param header `ObuHeader` of the OBU.
+   * \param audio_element_id ID of the audio element.
+   * \param reserved Reserved field.
+   * \param codec_config_id ID of the associated codec config.
+   * \param audio_substream_id IDs of the substream in the audio element.
+   * \param objects_config Configuration of the audio element.
+   * \return `AudioElementObu` on success. A specific status on failure.
+   */
+  static absl::StatusOr<AudioElementObu> CreateForObjects(
+      const ObuHeader& header, DecodedUleb128 audio_element_id,
+      uint8_t reserved, DecodedUleb128 codec_config_id,
+      DecodedUleb128 audio_substream_id, const ObjectsConfig& objects_config);
 
   /*!brief Creates a `AudioElementObu` for an extension.
    *

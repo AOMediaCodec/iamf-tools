@@ -917,6 +917,44 @@ TEST(ObjectsConfigValidate, IsNotOkWithNoObject) {
   EXPECT_THAT(kNoObjectConfig.Validate(), Not(IsOk()));
 }
 
+// Returns suitable common arguments for an object-based `AudioElementObu`.
+CommonAudioElementArgs CreateObjectsAudioElementArgs() {
+  return {
+      .header = ObuHeader(),
+      .audio_element_id = 1,
+      .audio_element_type = AudioElementObu::kAudioElementObjectBased,
+      .reserved = 0,
+      .codec_config_id = 2,
+      .substream_ids = {3},
+      .audio_element_params = {AudioElementParam{
+          CreateDemixingInfoParamDefinition(
+              DemixingInfoParameterData::kDMixPMode1)}},
+  };
+}
+
+TEST(CreateObjectsAudioElementObu, SetsObuType) {
+  auto args = CreateObjectsAudioElementArgs();
+  auto obu = AudioElementObu::CreateForObjects(
+      args.header, args.audio_element_id, args.reserved, args.codec_config_id,
+      args.substream_ids[0], kOneObjectConfig);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_EQ(obu->header_.obu_type, kObuIaAudioElement);
+  EXPECT_EQ(obu->GetAudioElementType(),
+            AudioElementObu::kAudioElementObjectBased);
+}
+
+TEST(CreateObjectsAudioElementObu, FailsWithInvalidNumObjects) {
+  CommonAudioElementArgs common_args = CreateObjectsAudioElementArgs();
+
+  auto obu = AudioElementObu::CreateForObjects(
+      common_args.header, common_args.audio_element_id, common_args.reserved,
+      common_args.codec_config_id, common_args.substream_ids[0],
+      kNoObjectConfig);
+
+  EXPECT_THAT(obu, Not(IsOk()));
+}
+
 TEST(ValidateAndWriteObu, WritesWithTwoSubstreams) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
   common_args.substream_ids = {1, 2};
