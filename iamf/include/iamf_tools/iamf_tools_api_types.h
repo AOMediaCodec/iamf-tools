@@ -123,6 +123,10 @@ enum class OutputLayout {
   // Ordered as [FL, FR, FC, LFE, BL, BR, FLc, FRc, SiL, SiR, TpFL, TpFR, TpBL,
   // TpBR, TpSiL, TpSiR].
   kIAMF_SoundSystemExtension_6_9_0 = 13,
+
+  // Binaural.
+  // Ordered as [L, R].
+  kIAMF_Binaural = 14,
 };
 
 /*!\brief Request a particular ID and/or layout for the output.

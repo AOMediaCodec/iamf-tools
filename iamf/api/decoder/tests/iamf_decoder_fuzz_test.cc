@@ -145,6 +145,7 @@ auto AnyOutputLayout() {
       api::OutputLayout::kIAMF_SoundSystemExtension_2_3_0,
       api::OutputLayout::kIAMF_SoundSystemExtension_0_1_0,
       api::OutputLayout::kIAMF_SoundSystemExtension_6_9_0,
+      api::OutputLayout::kIAMF_Binaural,
   });
 }
 

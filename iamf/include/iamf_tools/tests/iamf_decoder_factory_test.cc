@@ -82,6 +82,22 @@ TEST(Create, SucceedsWithSimpleSettings) {
   EXPECT_NE(decoder, nullptr);
 }
 
+TEST(Create, SucceedsWithBinauralOutput) {
+  IamfDecoderFactory::Settings settings = {
+      .requested_mix = {.output_layout =
+                            iamf_tools::api::OutputLayout::kIAMF_Binaural},
+      .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
+      .requested_profile_versions =
+          {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,
+           iamf_tools::api::ProfileVersion::kIamfBaseProfile,
+           iamf_tools::api::ProfileVersion::kIamfBaseEnhancedProfile},
+      .requested_output_sample_type =
+          iamf_tools::api::OutputSampleType::kInt32LittleEndian,
+  };
+  auto decoder = IamfDecoderFactory::Create(settings);
+  EXPECT_NE(decoder, nullptr);
+}
+
 TEST(Create, SucceedsWithEmptySettings) {
   auto decoder = IamfDecoderFactory::Create({});
   EXPECT_NE(decoder, nullptr);
@@ -92,6 +108,24 @@ TEST(CreateFromDescriptors, SucceedsWithSimpleSettings) {
       .requested_mix =
           {.output_layout =
                iamf_tools::api::OutputLayout::kItu2051_SoundSystemA_0_2_0},
+      .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
+      .requested_profile_versions =
+          {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,
+           iamf_tools::api::ProfileVersion::kIamfBaseProfile,
+           iamf_tools::api::ProfileVersion::kIamfBaseEnhancedProfile},
+      .requested_output_sample_type =
+          iamf_tools::api::OutputSampleType::kInt32LittleEndian,
+  };
+  auto descriptors = GenerateBasicDescriptorObus();
+  auto decoder = IamfDecoderFactory::CreateFromDescriptors(
+      settings, descriptors.data(), descriptors.size());
+  EXPECT_NE(decoder, nullptr);
+}
+
+TEST(CreateFromDescriptors, SucceedsWithBinauralOutput) {
+  IamfDecoderFactory::Settings settings = {
+      .requested_mix = {.output_layout =
+                            iamf_tools::api::OutputLayout::kIAMF_Binaural},
       .channel_ordering = iamf_tools::api::ChannelOrdering::kIamfOrdering,
       .requested_profile_versions =
           {iamf_tools::api::ProfileVersion::kIamfSimpleProfile,

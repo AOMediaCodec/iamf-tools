@@ -26,6 +26,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 using ::testing::TestWithParam;
 
 TEST(ApiToInternalType_OutputLayout, NulloptIsNullopt) {
@@ -67,7 +68,8 @@ auto kApiOutputToInternalSoundSystemPairs = ::testing::Values(
     LayoutPair(api::OutputLayout::kIAMF_SoundSystemExtension_6_9_0,
                LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0));
 
-TEST_P(ApiToInternalType_OutputLayout, ConvertsOutputStereoToInternalLayout) {
+TEST_P(ApiToInternalType_OutputLayout,
+       ConvertsOutputLayoutToInternalSoundSystem) {
   const auto& [api_output_layout, expected_specific_layout] = GetParam();
 
   std::optional<Layout> resulting_layout = ApiToInternalType(api_output_layout);
@@ -87,18 +89,25 @@ INSTANTIATE_TEST_SUITE_P(ApiToInternalType_OutputLayout_Instantiation,
                          ApiToInternalType_OutputLayout,
                          kApiOutputToInternalSoundSystemPairs);
 
-Layout MakeLayout(LoudspeakersSsConventionLayout::SoundSystem sound_system) {
-  return {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-          .specific_layout =
-              LoudspeakersSsConventionLayout{.sound_system = sound_system}};
-};
+TEST(ApiToInternalType_OutputLayout, ConvertsOutputLayoutToInternalBinaural) {
+  std::optional<Layout> resulting_layout =
+      ApiToInternalType(api::OutputLayout::kIAMF_Binaural);
+
+  ASSERT_TRUE(resulting_layout.has_value());
+  EXPECT_EQ(resulting_layout->layout_type, Layout::kLayoutTypeBinaural);
+  EXPECT_TRUE(std::holds_alternative<LoudspeakersReservedOrBinauralLayout>(
+      resulting_layout->specific_layout));
+}
 
 using InternalTypeToApi_OutputLayout = TestWithParam<LayoutPair>;
 
-TEST_P(InternalTypeToApi_OutputLayout, ConvertsInternalStereoToOutputLayout) {
+TEST_P(InternalTypeToApi_OutputLayout,
+       ConvertsInternalSoundSystemToOutputLayout) {
   const auto& [expected_api_output_layout, internal_sound_system] = GetParam();
-  Layout internal_layout = MakeLayout(internal_sound_system);
-
+  Layout internal_layout = {
+      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+      .specific_layout = LoudspeakersSsConventionLayout{
+          .sound_system = internal_sound_system}};
   auto api_output_layout = InternalToApiType(internal_layout);
 
   EXPECT_THAT(api_output_layout, IsOk());
@@ -108,5 +117,50 @@ TEST_P(InternalTypeToApi_OutputLayout, ConvertsInternalStereoToOutputLayout) {
 INSTANTIATE_TEST_SUITE_P(InternalTypeToApi_OutputLayout_Instantiation,
                          InternalTypeToApi_OutputLayout,
                          kApiOutputToInternalSoundSystemPairs);
+
+TEST(InternalTypeToApi_OutputLayout, ConvertsInternalBinauralToOutputLayout) {
+  Layout internal_layout = {
+      .layout_type = Layout::kLayoutTypeBinaural,
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
+  auto api_output_layout = InternalToApiType(internal_layout);
+
+  EXPECT_THAT(api_output_layout, IsOk());
+  EXPECT_EQ(*api_output_layout, api::OutputLayout::kIAMF_Binaural);
+}
+
+TEST(InternalTypeToApi_OutputLayout,
+     MismatchingBinauralTypeAndSoundSystemLayout) {
+  Layout internal_layout = {
+      .layout_type = Layout::kLayoutTypeBinaural,
+      // The type above indicates binaural, but the actual specific layout
+      // stores a sound system layout.
+      .specific_layout = LoudspeakersSsConventionLayout{
+          .sound_system = LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
+  auto api_output_layout = InternalToApiType(internal_layout);
+
+  EXPECT_THAT(api_output_layout, Not(IsOk()));
+}
+
+TEST(InternalTypeToApi_OutputLayout,
+     MismatchingSoundSystemTypeAndBinauralLayout) {
+  Layout internal_layout = {
+      .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+      // The type above indicates sound system, but the actual specific layout
+      // stores a binaural layout.
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
+  auto api_output_layout = InternalToApiType(internal_layout);
+
+  EXPECT_THAT(api_output_layout, Not(IsOk()));
+}
+
+TEST(InternalTypeToApi_OutputLayout, UnsupportedReservedLayouts) {
+  for (const auto layout_type :
+       {Layout::kLayoutTypeReserved0, Layout::kLayoutTypeReserved1}) {
+    Layout internal_layout = {.layout_type = layout_type};
+    auto api_output_layout = InternalToApiType(internal_layout);
+    EXPECT_THAT(api_output_layout, Not(IsOk()));
+  }
+}
+
 }  // namespace
 }  // namespace iamf_tools

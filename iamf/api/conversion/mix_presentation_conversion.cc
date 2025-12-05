@@ -17,6 +17,7 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 #include "iamf/obu/mix_presentation.h"
@@ -25,12 +26,35 @@ namespace iamf_tools {
 namespace {
 
 absl::StatusOr<api::OutputLayout> InternalLayoutToApiLayout(
-    const LoudspeakersReservedOrBinauralLayout& specific_layout) {
-  return absl::InvalidArgumentError("Invalid layout type.");
+    const LoudspeakersReservedOrBinauralLayout& specific_layout,
+    const Layout::LayoutType layout_type) {
+  switch (layout_type) {
+    using enum Layout::LayoutType;
+    case kLayoutTypeBinaural:
+      return api::OutputLayout::kIAMF_Binaural;
+    case kLayoutTypeLoudspeakersSsConvention:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Mismatching specific layout and layout type; expecting "
+                       "layout_type in {",
+                       kLayoutTypeReserved0, ", ", kLayoutTypeReserved1, ", ",
+                       kLayoutTypeBinaural, "} but got ", layout_type));
+    case kLayoutTypeReserved0:
+    case kLayoutTypeReserved1:
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unsupported layout type: ", layout_type));
+  }
 }
 
 absl::StatusOr<api::OutputLayout> InternalLayoutToApiLayout(
-    const LoudspeakersSsConventionLayout& specific_layout) {
+    const LoudspeakersSsConventionLayout& specific_layout,
+    const Layout::LayoutType layout_type) {
+  if (layout_type != Layout::kLayoutTypeLoudspeakersSsConvention) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Mismatching specific layout and layout type; expecting layout_type = ",
+        Layout::kLayoutTypeLoudspeakersSsConvention, " but got ", layout_type));
+  }
+
   switch (specific_layout.sound_system) {
     case LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0:
       return api::OutputLayout::kItu2051_SoundSystemA_0_2_0;
@@ -66,13 +90,19 @@ absl::StatusOr<api::OutputLayout> InternalLayoutToApiLayout(
   };
 }
 
-}  // namespace
-
 Layout MakeLayout(LoudspeakersSsConventionLayout::SoundSystem sound_system) {
   return {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
           .specific_layout =
               LoudspeakersSsConventionLayout{.sound_system = sound_system}};
 };
+
+Layout MakeBinauralLayout() {
+  return {
+      .layout_type = Layout::kLayoutTypeBinaural,
+      .specific_layout = LoudspeakersReservedOrBinauralLayout{.reserved = 0}};
+};
+
+}  // namespace
 
 std::optional<Layout> ApiToInternalType(
     std::optional<api::OutputLayout> api_output_layout) {
@@ -108,6 +138,8 @@ std::optional<Layout> ApiToInternalType(
       return MakeLayout(LoudspeakersSsConventionLayout::kSoundSystem12_0_1_0);
     case api::OutputLayout::kIAMF_SoundSystemExtension_6_9_0:
       return MakeLayout(LoudspeakersSsConventionLayout::kSoundSystem13_6_9_0);
+    case api::OutputLayout::kIAMF_Binaural:
+      return MakeBinauralLayout();
   };
   // Switch above is exhaustive.
   ABSL_LOG(FATAL) << "Invalid output layout.";
@@ -115,8 +147,9 @@ std::optional<Layout> ApiToInternalType(
 
 absl::StatusOr<api::OutputLayout> InternalToApiType(Layout internal_layout) {
   return std::visit(
-      [](const auto& specific_layout) {
-        return InternalLayoutToApiLayout(specific_layout);
+      [=](const auto& specific_layout) {
+        return InternalLayoutToApiLayout(specific_layout,
+                                         internal_layout.layout_type);
       },
       internal_layout.specific_layout);
 }
