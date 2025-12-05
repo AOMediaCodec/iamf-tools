@@ -895,31 +895,20 @@ TEST(ScalableChannelLayoutConfigValidate,
   EXPECT_FALSE(kInvalidBinauralConfigWithSecondLayerStereo.Validate(2).ok());
 }
 
-const ObjectsConfig kOneObjectConfig = {
-    .num_objects = 1,
-};
-
-const ObjectsConfig kOneObjectConfigWithExtension = {
-    .num_objects = 1,
-    .objects_config_extension_bytes = {0x01, 0x02, 0x03},
-};
-
-const ObjectsConfig kTwoObjectConfig = {
-    .num_objects = 2,
-};
-
-const ObjectsConfig kNoObjectConfig = {
-    .num_objects = 0,
-};
-
-TEST(ObjectsConfigValidate, IsOkWithOneObject) {
-  EXPECT_THAT(kOneObjectConfig.Validate(), IsOk());
+TEST(ObjectsConfigCreate, IsOkWithOneObject) {
+  EXPECT_THAT(ObjectsConfig::Create(/*num_objects=*/1,
+                                    /*objects_config_extension_bytes=*/{}),
+              IsOk());
 }
-TEST(ObjectsConfigValidate, IsOkWithTwoObject) {
-  EXPECT_THAT(kTwoObjectConfig.Validate(), IsOk());
+TEST(ObjectsConfigCreate, IsOkWithTwoObject) {
+  EXPECT_THAT(ObjectsConfig::Create(/*num_objects=*/2,
+                                    /*objects_config_extension_bytes=*/{}),
+              IsOk());
 }
-TEST(ObjectsConfigValidate, IsNotOkWithNoObject) {
-  EXPECT_THAT(kNoObjectConfig.Validate(), Not(IsOk()));
+TEST(ObjectsConfigCreate, IsNotOkWithNoObject) {
+  EXPECT_THAT(ObjectsConfig::Create(/*num_objects=*/0,
+                                    /*objects_config_extension_bytes=*/{}),
+              Not(IsOk()));
 }
 
 // Returns suitable common arguments for an object-based `AudioElementObu`.
@@ -937,27 +926,25 @@ CommonAudioElementArgs CreateObjectsAudioElementArgs() {
   };
 }
 
+ObjectsConfig GetObjectsConfigExpectOk(
+    uint32_t num_objects,
+    absl::Span<const uint8_t> objects_config_extension_bytes) {
+  auto objects_config =
+      ObjectsConfig::Create(num_objects, objects_config_extension_bytes);
+  EXPECT_THAT(objects_config, IsOk());
+  return *objects_config;
+}
+
 TEST(CreateObjectsAudioElementObu, SetsObuType) {
   auto args = CreateObjectsAudioElementArgs();
   auto obu = AudioElementObu::CreateForObjects(
       args.header, args.audio_element_id, args.reserved, args.codec_config_id,
-      args.substream_ids[0], kOneObjectConfig);
+      args.substream_ids[0], GetObjectsConfigExpectOk(1, {}));
   ASSERT_THAT(obu, IsOk());
 
   EXPECT_EQ(obu->header_.obu_type, kObuIaAudioElement);
   EXPECT_EQ(obu->GetAudioElementType(),
             AudioElementObu::kAudioElementObjectBased);
-}
-
-TEST(CreateObjectsAudioElementObu, FailsWithInvalidNumObjects) {
-  CommonAudioElementArgs common_args = CreateObjectsAudioElementArgs();
-
-  auto obu = AudioElementObu::CreateForObjects(
-      common_args.header, common_args.audio_element_id, common_args.reserved,
-      common_args.codec_config_id, common_args.substream_ids[0],
-      kNoObjectConfig);
-
-  EXPECT_THAT(obu, Not(IsOk()));
 }
 
 absl::StatusOr<AudioElementObu> CreateObjectsAudioElementObu(
@@ -1013,8 +1000,9 @@ constexpr auto kExpectedOneObjectPayload = std::to_array<uint8_t>({
 });
 
 TEST(ValidateAndWriteObu, SerializesOneObjectAudioElementObu) {
-  auto obu = CreateObjectsAudioElementObu(CreateObjectsAudioElementArgs(),
-                                          kOneObjectConfigWithExtension);
+  auto obu = CreateObjectsAudioElementObu(
+      CreateObjectsAudioElementArgs(),
+      GetObjectsConfigExpectOk(1, {0x01, 0x02, 0x03}));
   ASSERT_THAT(obu, IsOk());
   // Shift is based on obu size.
   constexpr auto kExpectedHeader =
@@ -2193,8 +2181,8 @@ TEST(CreateFromBuffer, OneObjectConfigWithExtensionBytes) {
             AudioElementObu::kAudioElementObjectBased);
   EXPECT_EQ(obu.value().GetNumSubstreams(), 1);
 
-  ObjectsConfig expected_objects_config = {
-      .num_objects = 1, .objects_config_extension_bytes = {1, 2, 3}};
+  ObjectsConfig expected_objects_config =
+      ObjectsConfig::Create(1, {0x01, 0x02, 0x03}).value();
   EXPECT_EQ(std::get<ObjectsConfig>(obu.value().config_),
             expected_objects_config);
 }

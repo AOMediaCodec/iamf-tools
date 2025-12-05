@@ -256,9 +256,10 @@ absl::Status ReadAndValidateScalableChannelLayout(
 }
 
 // Writes the `ObjectsConfig` of an `AudioElementObu`.
-absl::Status ValidateAndWriteObjectsConfig(const ObjectsConfig& objects_config,
-                                           WriteBitBuffer& wb) {
-  RETURN_IF_NOT_OK(objects_config.Validate());
+absl::Status WriteObjectsConfig(const ObjectsConfig& objects_config,
+                                WriteBitBuffer& wb) {
+  // Validation is not necessary here because the `ObjectsConfig` struct is
+  // already validated when it is created.
 
   // `object_config_size` is the number of bytes in the extension, plus one for
   // the num_objects field.
@@ -267,23 +268,6 @@ absl::Status ValidateAndWriteObjectsConfig(const ObjectsConfig& objects_config,
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(objects_config.num_objects, 8));
   RETURN_IF_NOT_OK(wb.WriteUint8Span(
       absl::MakeConstSpan(objects_config.objects_config_extension_bytes)));
-  return absl::OkStatus();
-}
-
-absl::Status ReadAndValidateObjectsConfig(ObjectsConfig& objects_config,
-                                          ReadBitBuffer& rb) {
-  // Read the main portion of the `ObjectsConfig`.
-  uint8_t object_config_size;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_config_size));
-  if (object_config_size == 0) {
-    return absl::InvalidArgumentError(
-        "Invalid object_config_size = 0. This should be at least 1.");
-  }
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, objects_config.num_objects));
-  objects_config.objects_config_extension_bytes.resize(object_config_size - 1);
-  RETURN_IF_NOT_OK(rb.ReadUint8Span(
-      absl::MakeSpan(objects_config.objects_config_extension_bytes)));
-  RETURN_IF_NOT_OK(objects_config.Validate());
   return absl::OkStatus();
 }
 
@@ -412,6 +396,42 @@ absl::Status ReadAndValidateAmbisonicsConfig(AmbisonicsConfig& config,
 
 }  // namespace
 
+absl::StatusOr<ObjectsConfig> ObjectsConfig::Create(
+    uint8_t num_objects,
+    absl::Span<const uint8_t> objects_config_extension_bytes) {
+  if (num_objects > 2 || num_objects == 0) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected `num_objects` in [1, 2]; got ", num_objects));
+  }
+  return ObjectsConfig(
+      num_objects, std::vector<uint8_t>(objects_config_extension_bytes.begin(),
+                                        objects_config_extension_bytes.end()));
+}
+
+absl::StatusOr<ObjectsConfig> ObjectsConfig::CreateFromBuffer(
+    ReadBitBuffer& rb) {
+  uint8_t object_config_size;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, object_config_size));
+  if (object_config_size == 0) {
+    return absl::InvalidArgumentError(
+        "Invalid object_config_size = 0. This should be at least 1.");
+  }
+  uint8_t num_objects;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_objects));
+  std::vector<uint8_t> objects_config_extension_bytes;
+  objects_config_extension_bytes.resize(object_config_size - 1);
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Span(absl::MakeSpan(objects_config_extension_bytes)));
+  return Create(num_objects,
+                absl::MakeConstSpan(objects_config_extension_bytes));
+}
+
+ObjectsConfig::ObjectsConfig(
+    uint8_t num_objects, std::vector<uint8_t> objects_config_extension_bytes)
+    : num_objects(num_objects),
+      objects_config_extension_bytes(
+          std::move(objects_config_extension_bytes)) {}
+
 absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
                                                 ReadBitBuffer& rb) {
   // Reads the main portion of the `AudioElementParam`.
@@ -532,14 +552,6 @@ absl::Status ScalableChannelLayoutConfig::Validate(
         "There must be exactly 1 layer if there is a binaural layout.");
   }
 
-  return absl::OkStatus();
-}
-
-absl::Status ObjectsConfig::Validate() const {
-  if (num_objects == 0 || num_objects > 2) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("Expected `num_objects` in [1, 2]; got ", num_objects));
-  }
   return absl::OkStatus();
 }
 
@@ -716,7 +728,6 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForObjects(
     const ObuHeader& header, DecodedUleb128 audio_element_id, uint8_t reserved,
     DecodedUleb128 codec_config_id, const DecodedUleb128 audio_substream_id,
     const ObjectsConfig& objects_config) {
-  RETURN_IF_NOT_OK(objects_config.Validate());
   return AudioElementObu(header, audio_element_id, kAudioElementObjectBased,
                          reserved, codec_config_id, {audio_substream_id},
                          objects_config);
@@ -805,8 +816,7 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
       return ValidateAndWriteAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), wb);
     case kAudioElementObjectBased:
-      return ValidateAndWriteObjectsConfig(std::get<ObjectsConfig>(config_),
-                                           wb);
+      return WriteObjectsConfig(std::get<ObjectsConfig>(config_), wb);
     default: {
       const auto& extension_config = std::get<ExtensionConfig>(config_);
       RETURN_IF_NOT_OK(
@@ -863,9 +873,14 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       config_ = AmbisonicsConfig();
       return ReadAndValidateAmbisonicsConfig(
           std::get<AmbisonicsConfig>(config_), GetNumSubstreams(), rb);
-    case kAudioElementObjectBased:
-      config_ = ObjectsConfig();
-      return ReadAndValidateObjectsConfig(std::get<ObjectsConfig>(config_), rb);
+    case kAudioElementObjectBased: {
+      auto objects_config = ObjectsConfig::CreateFromBuffer(rb);
+      if (!objects_config.ok()) {
+        return objects_config.status();
+      }
+      config_.emplace<ObjectsConfig>(std::move(*objects_config));
+      return absl::OkStatus();
+    }
     default: {
       ExtensionConfig extension_config;
       DecodedUleb128 audio_element_config_size;

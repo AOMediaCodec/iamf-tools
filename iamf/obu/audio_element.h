@@ -184,15 +184,42 @@ struct ObjectsConfig {
   friend bool operator==(const ObjectsConfig& lhs,
                          const ObjectsConfig& rhs) = default;
 
-  /*!\brief Validates the configuration.
+  /*!\brief Move constructor. */
+  ObjectsConfig(ObjectsConfig&& other) = default;
+
+  /*!\brief Copy constructor. */
+  ObjectsConfig(const ObjectsConfig& other) = default;
+
+  /*!\brief Copy assignment operator. */
+  ObjectsConfig& operator=(const ObjectsConfig& other) = default;
+
+  /*!\brief Creates an `ObjectsConfig` from a buffer.
+   *
+   * \param rb Buffer to read from.
    *
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  absl::Status Validate() const;
+  static absl::StatusOr<ObjectsConfig> CreateFromBuffer(ReadBitBuffer& rb);
 
-  uint8_t num_objects;  // 8 bits.
+  /*!\brief Creates an `ObjectsConfig` from the given parameters.
+   *
+   * \param num_objects Number of objects.
+   * \param objects_config_extension_bytes Objects config extension bytes.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  static absl::StatusOr<ObjectsConfig> Create(
+      uint8_t num_objects,
+      absl::Span<const uint8_t> objects_config_extension_bytes);
 
-  std::vector<uint8_t> objects_config_extension_bytes;
+  const uint8_t num_objects;  // 8 bits.
+
+  const std::vector<uint8_t> objects_config_extension_bytes;
+
+ private:
+  // Private constructor. Use `Create` or `CreateFromBuffer` instead.
+  ObjectsConfig(uint8_t num_objects,
+                std::vector<uint8_t> objects_config_extension_bytes);
 };
 
 /*!\brief Configuration for mono-coded Ambisonics. */
