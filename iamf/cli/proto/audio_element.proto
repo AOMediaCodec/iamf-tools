@@ -21,6 +21,7 @@ enum AudioElementType {
   AUDIO_ELEMENT_INVALID = 0;
   AUDIO_ELEMENT_CHANNEL_BASED = 1;
   AUDIO_ELEMENT_SCENE_BASED = 2;
+  AUDIO_ELEMENT_OBJECT_BASED = 3;
 }
 
 message ParamDefinitionExtension {
@@ -133,6 +134,11 @@ message AmbisonicsConfig {
   }
 }
 
+message ObjectsConfig {
+  uint32 num_objects = 1;
+  bytes objects_config_extension_bytes = 2;
+}
+
 message AudioElementConfigExtension {
   // `audio_element_config_size` is ignored. The value in the bitstream is
   // inferred based on the size of `audio_element_config_bytes`.
@@ -158,6 +164,7 @@ message AudioElementObuMetadata {
     ScalableChannelLayoutConfig scalable_channel_layout_config = 9;
     AmbisonicsConfig ambisonics_config = 10;
     AudioElementConfigExtension audio_element_config_extension = 11;
+    ObjectsConfig objects_config = 13;
   }
 
   ObuHeaderMetadata obu_header = 12;
