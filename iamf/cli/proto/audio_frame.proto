@@ -28,6 +28,10 @@ enum ChannelLabel {
   CHANNEL_LABEL_L_2 = 3;
   CHANNEL_LABEL_R_2 = 4;
 
+  // Channels for objects.
+  CHANNEL_LABEL_OBJECT_CHANNEL0 = 67;
+  CHANNEL_LABEL_OBJECT_CHANNEL1 = 68;
+
   // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
   CHANNEL_LABEL_CENTRE = 6;
 
@@ -85,7 +89,7 @@ enum ChannelLabel {
   reserved 5, 12, 13, 18 to 21, 24, 25, 30, 31, 38 to 41;
 
   // Reserved for channel-based labels.
-  reserved 57 to 999;
+  reserved 69 to 999;
 
   CHANNEL_LABEL_A_0 = 1000;
   CHANNEL_LABEL_A_1 = 1001;
