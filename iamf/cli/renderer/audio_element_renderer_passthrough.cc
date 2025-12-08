@@ -95,10 +95,9 @@ absl::StatusOr<bool> IsExpandedLoudspeakerLayoutBasedOnSoundSystem(
     case kExpandedLayout10_2_9_3:
     case kExpandedLayoutLfePair:
     case kExpandedLayoutBottom3Ch:
-      // TODO(b/462726936): Support "10.2.9.3".
-      return absl::UnimplementedError(
-          "Expanded layout based on 10.2.9.3 is not fully supported.");
+      return layout == kSoundSystemH_9_10_3;
     case kExpandedLayoutReserved16:
+    // TODO(b/462726936): Support layouts 16 through 19.
     case kExpandedLayoutReserved255:
     default:
       return absl::InvalidArgumentError(absl::StrCat(
@@ -107,7 +106,7 @@ absl::StatusOr<bool> IsExpandedLoudspeakerLayoutBasedOnSoundSystem(
   }
 }
 
-absl::StatusOr<bool> CanChannelAudioLayerConfigPassThroguhToLayout(
+absl::StatusOr<bool> CanChannelAudioLayerConfigPassThroughToLayout(
     const ChannelAudioLayerConfig& channel_config, const Layout& layout) {
   switch (layout.layout_type) {
     case Layout::kLayoutTypeLoudspeakersSsConvention:
@@ -141,7 +140,7 @@ absl::StatusOr<ChannelAudioLayerConfig> FindEquivalentLayer(
     const Layout& layout) {
   for (const auto& channel_audio_layer_config :
        scalable_channel_layout_config.channel_audio_layer_configs) {
-    const auto can_pass_through = CanChannelAudioLayerConfigPassThroguhToLayout(
+    const auto can_pass_through = CanChannelAudioLayerConfigPassThroughToLayout(
         channel_audio_layer_config, layout);
     if (!can_pass_through.ok()) {
       return can_pass_through.status();

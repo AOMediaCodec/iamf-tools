@@ -218,9 +218,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayout10_2_9_3ToStereo) {
-  // TODO(b/462726936): Support "10.2.9.3".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsDownMixingExpanded10_2_9_3ToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayout10_2_9_3),
@@ -229,9 +228,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutLfePairToStereo) {
-  // TODO(b/462726936): Support "10.2.9.3".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayoutLfePairToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayoutLfePair),
@@ -240,9 +238,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutBottom3ChToStereo) {
-  // TODO(b/462726936): Support "10.2.9.3".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayoutBottom3ChToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch),
@@ -473,6 +470,22 @@ TEST(RenderLabeledFrame, PassThroughLFE) {
               Pointwise(DoubleEq(), {kArbitrarySample1}));
 }
 
+TEST(RenderLabeledFrame, DropsLFEPairToStereo) {
+  auto renderer = AudioElementRendererChannelToChannel::
+      CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              ChannelAudioLayerConfig::kExpandedLayoutLfePair),
+          kStereoLayout, kOneSamplePerFrame);
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  RenderAndFlushExpectOk({.label_to_samples = {{kLFE, {kArbitrarySample1}},
+                                               {kLFE2, {kArbitrarySample2}}}},
+                         renderer.get(), rendered_samples);
+
+  EXPECT_THAT(rendered_samples[0], Pointwise(DoubleEq(), {0}));
+  EXPECT_THAT(rendered_samples[1], Pointwise(DoubleEq(), {0}));
+}
+
 TEST(RenderLabeledFrame, LFEPassesThroughFrom9_1_6) {
   constexpr InternalSampleType kLFESample = 1234.0;
   auto renderer = AudioElementRendererChannelToChannel::
@@ -663,6 +676,87 @@ INSTANTIATE_TEST_SUITE_P(
                {kTpSiR, {kArbitrarySample4}},
                {kTpBL, {kArbitrarySample5}},
                {kTpBR, {kArbitrarySample6}}},
+          .output_layout = k3_1_2Layout}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpandedLayoutLfePairEquivalentTo10_2_9_3,
+    ExpandedLayoutAndRelatedLoudspeakerLayoutTest,
+    ::testing::ValuesIn<ExpandedLayoutAndRelatedLoudspeakerLayout>(
+        {{.expanded_layout = ChannelAudioLayerConfig::kExpandedLayoutLfePair,
+          .expanded_layout_labeled_frame = {{kLFE, {kArbitrarySample1}},
+                                            {kLFE2, {kArbitrarySample2}}},
+          .related_scalable_layout_config =
+              GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                  ChannelAudioLayerConfig::kExpandedLayout10_2_9_3),
+          .related_loudspeaker_layout_labeled_frame =
+              {
+                  {kFLc, {0}},
+                  {kFRc, {0}},
+                  {kFL, {0}},
+                  {kFR, {0}},
+                  {kSiL, {0}},
+                  {kSiR, {0}},
+                  {kBL, {0}},
+                  {kBR, {0}},
+                  {kTpFL, {0}},
+                  {kTpFR, {0}},
+                  {kTpSiL, {0}},
+                  {kTpSiR, {0}},
+                  {kTpBL, {0}},
+                  {kTpBR, {0}},
+                  {kTpFL, {0}},
+                  {kBtFL, {0}},
+                  {kBtFR, {0}},
+                  {kFC, {0}},
+                  {kBC, {0}},
+                  {kTpFC, {0}},
+                  {kTpC, {0}},
+                  {kTpBC, {0}},
+                  {kBtFC, {0}},
+                  {kLFE, {kArbitrarySample1}},
+                  {kLFE2, {kArbitrarySample2}},
+              },
+          .output_layout = k3_1_2Layout}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpandedLayoutBottom3ChEquivalentTo10_2_9_3,
+    ExpandedLayoutAndRelatedLoudspeakerLayoutTest,
+    ::testing::ValuesIn<ExpandedLayoutAndRelatedLoudspeakerLayout>(
+        {{.expanded_layout = ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch,
+          .expanded_layout_labeled_frame = {{kBtFL, {kArbitrarySample1}},
+                                            {kBtFR, {kArbitrarySample2}},
+                                            {kBtFC, {kArbitrarySample3}}},
+          .related_scalable_layout_config =
+              GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                  ChannelAudioLayerConfig::kExpandedLayout10_2_9_3),
+          .related_loudspeaker_layout_labeled_frame =
+              {
+                  {kFLc, {0}},
+                  {kFRc, {0}},
+                  {kFL, {0}},
+                  {kFR, {0}},
+                  {kSiL, {0}},
+                  {kSiR, {0}},
+                  {kBL, {0}},
+                  {kBR, {0}},
+                  {kTpFL, {0}},
+                  {kTpFR, {0}},
+                  {kTpSiL, {0}},
+                  {kTpSiR, {0}},
+                  {kTpBL, {0}},
+                  {kTpBR, {0}},
+                  {kTpFL, {0}},
+                  {kBtFL, {kArbitrarySample1}},
+                  {kBtFR, {kArbitrarySample2}},
+                  {kFC, {0}},
+                  {kBC, {0}},
+                  {kTpFC, {0}},
+                  {kTpC, {0}},
+                  {kTpBC, {0}},
+                  {kBtFC, {kArbitrarySample3}},
+                  {kLFE, {0}},
+                  {kLFE2, {0}},
+              },
           .output_layout = k3_1_2Layout}}));
 
 TEST(RenderLabeledFrame,
