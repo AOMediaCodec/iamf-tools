@@ -194,6 +194,42 @@ TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughFor9_1_6) {
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughFor10_2_9_3) {
+  // TODO(b/462726936): Support passthrough for 10.2.9.3-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayout10_2_9_3),
+          GetScalableLayoutForSoundSystem(kSoundSystemH_9_10_3),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughForLfePair) {
+  // TODO(b/462726936): Support passthrough for 10.2.9.3-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayoutLfePair),
+          GetScalableLayoutForSoundSystem(kSoundSystemH_9_10_3),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughForBottom3Ch) {
+  // TODO(b/462726936): Support passthrough for 10.2.9.3-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayoutBottom3Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystemH_9_10_3),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
      SupportsPassThroughFromTop6ChTo9_1_6) {
   EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(

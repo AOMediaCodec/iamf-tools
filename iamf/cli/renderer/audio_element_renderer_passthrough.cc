@@ -21,6 +21,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -91,7 +92,13 @@ absl::StatusOr<bool> IsExpandedLoudspeakerLayoutBasedOnSoundSystem(
     case kExpandedLayoutStereoTpSi:
     case kExpandedLayoutTop6Ch:
       return layout == kSoundSystem13_6_9_0;
-    case kExpandedLayoutReserved13:
+    case kExpandedLayout10_2_9_3:
+    case kExpandedLayoutLfePair:
+    case kExpandedLayoutBottom3Ch:
+      // TODO(b/462726936): Support "10.2.9.3".
+      return absl::UnimplementedError(
+          "Expanded layout based on 10.2.9.3 is not fully supported.");
+    case kExpandedLayoutReserved16:
     case kExpandedLayoutReserved255:
     default:
       return absl::InvalidArgumentError(absl::StrCat(

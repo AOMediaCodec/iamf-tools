@@ -218,11 +218,44 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutReserved13ToStereo) {
+     DoesNotSupportExpandedLayout10_2_9_3ToStereo) {
+  // TODO(b/462726936): Support "10.2.9.3".
   EXPECT_EQ(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
-                        ChannelAudioLayerConfig::kExpandedLayoutReserved13),
+                        ChannelAudioLayerConfig::kExpandedLayout10_2_9_3),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutLfePairToStereo) {
+  // TODO(b/462726936): Support "10.2.9.3".
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutLfePair),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutBottom3ChToStereo) {
+  // TODO(b/462726936): Support "10.2.9.3".
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutReserved16ToStereo) {
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutReserved16),
                     kStereoLayout, kOneSamplePerFrame),
             nullptr);
 }

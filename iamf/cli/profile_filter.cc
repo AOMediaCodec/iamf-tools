@@ -103,7 +103,12 @@ absl::Status FilterExpandedLoudspeakerLayout(
     case kExpandedLayoutStereoTpSi:
     case kExpandedLayoutTop6Ch:
       break;
-    case kExpandedLayoutReserved13:
+    case kExpandedLayout10_2_9_3:
+    case kExpandedLayoutLfePair:
+    case kExpandedLayoutBottom3Ch:
+      // TODO(b/462726936): Support "10.2.9.3", instead of falling through to
+      //                    the reserved case.
+    case kExpandedLayoutReserved16:
     case kExpandedLayoutReserved255:
     default:
       // Other layouts are reserved and not supported by base-enhanced profile.

@@ -110,7 +110,12 @@ struct ChannelAudioLayerConfig {
         11,  // Top surround subset (TpSiL/TpSiR) of 9.1.6.
     kExpandedLayoutTop6Ch =
         12,  // Top six channels (TpFL/TpFR/TpSiL/TpSiR/TpBL/TpBR) of 9.1.6.
-    kExpandedLayoutReserved13 = 13,
+    kExpandedLayout10_2_9_3 =
+        13,  // 10.2.9.3, Sound System H (9+10+3) [ITU-2051-3].
+    kExpandedLayoutLfePair = 14,  // LFE pairs (LFE1/LFE2) of 10.2.9.3.
+    kExpandedLayoutBottom3Ch =
+        15,  // Bottom three channels (BtFL/BtFC/BtFR) of 10.2.9.3.
+    kExpandedLayoutReserved16 = 16,
     kExpandedLayoutReserved255 = 255,
   };
 
