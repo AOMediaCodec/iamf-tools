@@ -70,6 +70,22 @@ class WriteBitBuffer {
    */
   absl::Status WriteSigned16(int16_t data);
 
+  /*!\brief Writes the signed 9 bit integer to the write buffer.
+   *
+   * \param data Data to write in standard two's complement form.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
+   */
+  absl::Status WriteSigned9(int16_t data);
+
+  /*!\brief Writes the signed 8 bit integer to the write buffer.
+   *
+   * \param data Data to write in standard two's complement form.
+   * \return `absl::OkStatus()` on success. `absl::UnknownError()` if the
+   *         `wb->bit_offset` is negative.
+   */
+  absl::Status WriteSigned8(int8_t data);
+
   /*!\brief Writes the boolean to the write buffer.
    *
    * \param data Data to write.

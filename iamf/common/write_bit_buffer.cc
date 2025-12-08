@@ -167,6 +167,22 @@ absl::Status WriteBitBuffer::WriteSigned16(int16_t data) {
   return WriteUnsignedLiteral(static_cast<uint32_t>(data) & 0xffff, 16);
 }
 
+// Writes a standard int16_t in two's complement form to the write buffer. No
+// special conversion needed as the raw value is in the correct format.
+absl::Status WriteBitBuffer::WriteSigned9(int16_t data) {
+  if (data < -256 || data > 255) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("Expected value in [-256, 255]; got ", data));
+  }
+  return WriteUnsignedLiteral(static_cast<uint32_t>(data) & 0x1ff, 9);
+}
+
+// Writes a standard int8_t in two's complement form to the write buffer. No
+// special conversion needed as the raw value is in the correct format.
+absl::Status WriteBitBuffer::WriteSigned8(int8_t data) {
+  return WriteUnsignedLiteral(static_cast<uint32_t>(data) & 0xff, 8);
+}
+
 absl::Status WriteBitBuffer::WriteBoolean(bool data) {
   return WriteUnsignedLiteral(static_cast<uint32_t>(data), 1);
 }

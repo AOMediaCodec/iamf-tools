@@ -38,6 +38,7 @@ namespace {
 using ::absl::StatusCode::kInvalidArgument;
 using ::absl_testing::IsOk;
 using ::absl_testing::StatusIs;
+using ::testing::Not;
 
 // The buffer is resizable; the initial capacity does not matter.
 constexpr int64_t kInitialCapacity = 0;
@@ -282,6 +283,98 @@ TEST(WriteSigned16, MaxNegative) {
   EXPECT_THAT(wb.WriteSigned16(-1), IsOk());
 
   ValidateWriteResults(wb, {0xff, 0xff});
+}
+
+TEST(WriteSigned8, Zero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned8(0), IsOk());
+
+  ValidateWriteResults(wb, {0x00});
+}
+
+TEST(WriteSigned8, MaxPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned8(127), IsOk());
+
+  ValidateWriteResults(wb, {0x7f});
+}
+
+TEST(WriteSigned8, MinPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned8(1), IsOk());
+
+  ValidateWriteResults(wb, {0x01});
+}
+
+TEST(WriteSigned8, MinNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned8(-128), IsOk());
+
+  ValidateWriteResults(wb, {0x80});
+}
+
+TEST(WriteSigned8, MaxNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned8(-1), IsOk());
+
+  ValidateWriteResults(wb, {0xff});
+}
+
+TEST(WriteSigned9, Zero) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(0), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 9, {0x00, 0x00});
+}
+
+TEST(WriteSigned9, MaxPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(255), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 9, {0b0111'1111, 0b1000'0000});
+}
+
+TEST(WriteSigned9, MinPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(1), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 9, {0b0000'0000, 0b1000'0000});
+}
+
+TEST(WriteSigned9, MaxNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(-1), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 9, {0b1111'1111, 0b1000'0000});
+}
+
+TEST(WriteSigned9, MinNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(-256), IsOk());
+
+  ValidateMaybeNotAlignedWriteBuffer(wb, 9, {0b1000'0000, 0b0000'0000});
+}
+
+TEST(WriteSigned9, OutOfBoundsNegative) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(-257), Not(IsOk()));
+}
+
+TEST(WriteSigned9, OutOfBoundsPositive) {
+  WriteBitBuffer wb(kInitialCapacity);
+
+  EXPECT_THAT(wb.WriteSigned9(256), Not(IsOk()));
 }
 
 TEST(WriteBoolean, WritesTrue) {
