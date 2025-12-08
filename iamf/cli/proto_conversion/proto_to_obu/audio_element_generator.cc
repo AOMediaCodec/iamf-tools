@@ -575,6 +575,43 @@ CreateAmbisonicsProjectionAudioElementWithData(
       .substream_id_to_labels = std::move(substream_id_to_labels)};
 }
 
+absl::StatusOr<AudioElementWithData> CreateObjectsAudioElementWithData(
+    const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
+    const CodecConfigObu& codec_config_obu) {
+  const auto& input_config = audio_element_metadata.objects_config();
+  std::vector<uint8_t> objects_config_extension_bytes = {
+      input_config.objects_config_extension_bytes().begin(),
+      input_config.objects_config_extension_bytes().end()};
+  auto objects_config = ObjectsConfig::Create(input_config.num_objects(),
+                                              objects_config_extension_bytes);
+  if (!objects_config.ok()) {
+    return objects_config.status();
+  }
+
+  if (audio_element_metadata.audio_substream_ids_size() != 1) {
+    return InvalidArgumentError(StrCat(
+        "Audio Element Metadata [", audio_element_metadata.audio_element_id(),
+        "] is type AUDIO_ELEMENT_OBJECT_BASED. Should have 1 substream, but "
+        "has ",
+        audio_element_metadata.audio_substream_ids_size(), " substreams."));
+  }
+
+  absl::StatusOr<AudioElementObu> obu = AudioElementObu::CreateForObjects(
+      GetHeaderFromMetadata(audio_element_metadata.obu_header()),
+      audio_element_metadata.audio_element_id(),
+      audio_element_metadata.reserved(),
+      audio_element_metadata.codec_config_id(),
+      audio_element_metadata.audio_substream_ids()[0], *objects_config);
+
+  if (!obu.ok()) {
+    return obu.status();
+  }
+  // TODO(b/466157802): Add parameter definitions.
+  // TODO(b/466433526): Fill substream_id_to_labels map.
+  return AudioElementWithData{.obu = *std::move(obu),
+                              .codec_config = &codec_config_obu};
+}
+
 absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     const CodecConfigObu& codec_config_obu) {
@@ -607,6 +644,9 @@ absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(
               StrCat(error_prefix, "has unknown `ambisonics_mode`"));
       }
     }
+    case AUDIO_ELEMENT_OBJECT_BASED:
+      return CreateObjectsAudioElementWithData(audio_element_metadata,
+                                               codec_config_obu);
     default:
       return InvalidArgumentError(
           StrCat("Unrecognized audio_element_type: ",
