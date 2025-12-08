@@ -251,6 +251,23 @@ absl::Status CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
       channel_numbers = {.surround = 0, .lfe = 0, .height = 6, .bottom = 0};
       coupled_substream_labels = {kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR};
       break;
+    case kExpandedLayout10_2_9_3:
+      channel_numbers = {.surround = 10, .lfe = 2, .height = 9, .bottom = 3};
+      coupled_substream_labels = {kFLc,  kFRc,  kFL,   kFR,   kSiL,   kSiR,
+                                  kBL,   kBR,   kTpFL, kTpFR, kTpSiL, kTpSiR,
+                                  kTpBL, kTpBR, kBtFL, kBtFR};
+      non_coupled_substream_labels = {kFC,   kBC,   kTpFC, kTpC,
+                                      kTpBC, kBtFC, kLFE,  kLFE2};
+      break;
+    case kExpandedLayoutLfePair:
+      channel_numbers = {.surround = 0, .lfe = 2, .height = 0, .bottom = 0};
+      non_coupled_substream_labels = {kLFE, kLFE2};
+      break;
+    case kExpandedLayoutBottom3Ch:
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 0, .bottom = 3};
+      coupled_substream_labels = {kBtFL, kBtFR};
+      non_coupled_substream_labels = {kBtFC};
+      break;
     default:
       return absl::InvalidArgumentError(
           StrCat("Unsupported expanded loudspeaker layout= ",
