@@ -16,7 +16,6 @@
 #include <utility>
 
 #include "absl/status/statusor.h"
-#include "absl/strings/string_view.h"
 #include "iamf/cli/channel_label.h"
 #include "iamf/cli/proto/audio_frame.pb.h"
 #include "iamf/common/utils/map_utils.h"
@@ -49,6 +48,10 @@ constexpr auto kProtoAndInternalLabel = std::to_array<
     {CHANNEL_LABEL_TP_FL, kTpFL},    {CHANNEL_LABEL_TP_FR, kTpFR},
     {CHANNEL_LABEL_TP_SI_L, kTpSiL}, {CHANNEL_LABEL_TP_SI_R, kTpSiR},
     {CHANNEL_LABEL_TP_BL, kTpBL},    {CHANNEL_LABEL_TP_BR, kTpBR},
+    {CHANNEL_LABEL_BC, kBC},         {CHANNEL_LABEL_LFE2, kLFE2},
+    {CHANNEL_LABEL_TP_FC, kTpFC},    {CHANNEL_LABEL_TP_C, kTpC},
+    {CHANNEL_LABEL_TP_BC, kTpBC},    {CHANNEL_LABEL_BT_FC, kBtFC},
+    {CHANNEL_LABEL_BT_FL, kBtFL},    {CHANNEL_LABEL_BT_FR, kBtFR},
     {CHANNEL_LABEL_A_0, kA0},        {CHANNEL_LABEL_A_1, kA1},
     {CHANNEL_LABEL_A_2, kA2},        {CHANNEL_LABEL_A_3, kA3},
     {CHANNEL_LABEL_A_4, kA4},        {CHANNEL_LABEL_A_5, kA5},

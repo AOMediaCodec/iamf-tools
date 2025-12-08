@@ -45,6 +45,8 @@ using ::absl_testing::IsOk;
 using ::testing::Not;
 using ::testing::UnorderedElementsAre;
 
+using ::absl::MakeConstSpan;
+
 constexpr DecodedUleb128 kCodecConfigId = 1;
 constexpr DecodedUleb128 kSecondCodecConfigId = 2;
 
@@ -655,6 +657,85 @@ TEST(FilterProfilesForMixPresentation,
           mix_presentation_with_different_codec_configs_in_different_submixes,
           all_known_profiles),
       IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForAudioElement, SomeProfilesSupport10_2_9_3ExpandedLayout) {
+  const ScalableChannelLayoutConfig kExpandedLayout10_2_9_3Config = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 16,
+           .coupled_substream_count = 8,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayout10_2_9_3}}};
+
+  std::vector<DecodedUleb128> substream_ids(16);
+  std::iota(substream_ids.begin(), substream_ids.end(), 0);
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      MakeConstSpan(substream_ids), kExpandedLayout10_2_9_3Config);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForAudioElement, SomeProfilesSupportLfePairExpandedLayout) {
+  const ScalableChannelLayoutConfig kExpandedLayoutLfePairConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 2,
+           .coupled_substream_count = 0,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutLfePair}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId}, kExpandedLayoutLfePairConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForAudioElement,
+     SomeProfilesSupportBottom3ChExpandedLayout) {
+  const ScalableChannelLayoutConfig kBottom3ChExpandedLayoutConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 2,
+           .coupled_substream_count = 1,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId, kSecondSubstreamId}, kBottom3ChExpandedLayoutConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, all_known_profiles),
+              IsOk());
 
   EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
                                                        kIamfAdvanced1Profile,

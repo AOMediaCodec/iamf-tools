@@ -166,6 +166,9 @@ class LookupTables {
             {EXPANDED_LOUDSPEAKER_LAYOUT_STEREO_TP_SI,
              kExpandedLayoutStereoTpSi},
             {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_6_CH, kExpandedLayoutTop6Ch},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_10_2_9_3_CH, kExpandedLayout10_2_9_3},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_LFE_PAIR, kExpandedLayoutLfePair},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_BOTTOM_3_CH, kExpandedLayoutBottom3Ch},
         });
       }();
 
