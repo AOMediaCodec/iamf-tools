@@ -84,7 +84,7 @@ class ChannelLabel {
     kDemixedR7,
     kDemixedLrs7,
     kDemixedRrs7,
-    // 9.1.6 surround channels.
+    // Common channels between 9.1.6 and 10.2.9.3.
     kFLc,
     kFC,
     kFRc,
@@ -100,6 +100,15 @@ class ChannelLabel {
     kTpSiR,
     kTpBL,
     kTpBR,
+    // Extra channels for 10.2.9.3.
+    kBC,
+    kLFE2,
+    kTpFC,
+    kTpC,
+    kTpBC,
+    kBtFC,
+    kBtFL,
+    kBtFR,
     // Ambisonics channels.
     kA0,
     kA1,

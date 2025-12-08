@@ -80,9 +80,13 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
         expanded_loudspeaker_layout) {
   using enum ChannelLabel::Label;
   static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
-      k9_1_6ChannelOrder(std::vector<ChannelLabel::Label>(
-          {kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR, kTpFL, kTpFR,
-           kTpBL, kTpBR, kTpSiL, kTpSiR}));
+      k9_1_6ChannelOrder({kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR,
+                          kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR});
+  static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
+      k10_2_9_3ChannelOrder({kFL,    kFR,    kFC,   kLFE,  kBL,   kBR,
+                             kFLc,   kFRc,   kBC,   kLFE2, kSiL,  kSiR,
+                             kTpFL,  kTpFR,  kTpFC, kTpC,  kTpBL, kTpBR,
+                             kTpSiL, kTpSiR, kTpBC, kBtFC, kBtFL, kBtFR});
   // Determine the related layout and then omit any irrelevant channels. This
   // ensures the permitted channels are in the same slot and allows downstream
   // processing to use the related layout's EAR matrix.
@@ -148,6 +152,16 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
     case kExpandedLayoutTop6Ch:
       related_labels = *k9_1_6ChannelOrder;
       labels_to_keep = {kTpFL, kTpFR, kTpSiL, kTpSiR, kTpBL, kTpBR};
+      break;
+    case kExpandedLayout10_2_9_3:
+      return *k10_2_9_3ChannelOrder;
+    case kExpandedLayoutLfePair:
+      related_labels = *k10_2_9_3ChannelOrder;
+      labels_to_keep = {kLFE, kLFE2};
+      break;
+    case kExpandedLayoutBottom3Ch:
+      related_labels = *k10_2_9_3ChannelOrder;
+      labels_to_keep = {kBtFC, kBtFL, kBtFR};
       break;
     default:
       return absl::InvalidArgumentError(
@@ -298,6 +312,22 @@ std::string ChannelLabel::LabelToStringForDebugging(Label label) {
       return "TpBL";
     case kTpBR:
       return "TpBR";
+    case kBC:
+      return "BC";
+    case kLFE2:
+      return "LFE2";
+    case kTpFC:
+      return "TpFC";
+    case kTpC:
+      return "TpC";
+    case kTpBC:
+      return "TpBC";
+    case kBtFC:
+      return "BtFC";
+    case kBtFL:
+      return "BtFL";
+    case kBtFR:
+      return "BtFR";
     case kA0:
       return "A0";
     case kA1:

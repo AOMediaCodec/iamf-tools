@@ -26,6 +26,8 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::IsEmpty;
+using ::testing::Not;
+using ::testing::Values;
 
 using enum ChannelLabel::Label;
 using enum ChannelAudioLayerConfig::ExpandedLoudspeakerLayout;
@@ -63,21 +65,29 @@ TEST(GetDemixedLabel, SucceedsForDemixed7_1_4) {
   EXPECT_THAT(ChannelLabel::GetDemixedLabel(kRtb4), IsOkAndHolds(kDemixedRtb4));
 }
 
-TEST(GetDemixedLabel, InvalidForL2) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedLabel(kL2).ok());
+using GetDemixedLabelInvalidTest =
+    ::testing::TestWithParam<ChannelLabel::Label>;
+
+TEST_P(GetDemixedLabelInvalidTest, InvalidLabelsReturnError) {
+  EXPECT_THAT(ChannelLabel::GetDemixedLabel(GetParam()), Not(IsOk()));
 }
 
-TEST(GetDemixedLabel, InvalidForCentre) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedLabel(kCentre).ok());
-}
+INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvaldForAmbisonicsChannels,
+                         GetDemixedLabelInvalidTest,
+                         Values(kA0, kA3, kA15, kA24));
 
-TEST(GetDemixedLabel, InvalidForLFE) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedLabel(kCentre).ok());
-}
+INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvalidForCertainChannel,
+                         GetDemixedLabelInvalidTest,
+                         Values(kL2, kCentre, kLFE));
 
-TEST(GetDemixedLabel, InvalidForAmbisonics) {
-  EXPECT_FALSE(ChannelLabel::GetDemixedLabel(kA0).ok());
-}
+INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvalidFor9_1_6Family,
+                         GetDemixedLabelInvalidTest,
+                         Values(kFLc, kFRc, kSiL, kSiR));
+
+INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvalidFor10_2_9_3Family,
+                         GetDemixedLabelInvalidTest,
+                         Values(kBC, kLFE2, kTpFC, kTpC, kTpBC, kBtFC, kBtFL,
+                                kBtFR));
 
 TEST(AmbisonicsChannelNumberToLabel, SucceedsForZerothOrderAmbisonics) {
   constexpr int kFirstZerothOrderAmbisonicsChannel = 0;
@@ -166,103 +176,132 @@ TEST_P(LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
               IsOkAndHolds(GetParam().ordered_labels));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutLFE, LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutLFE,
-          {kOmitted, kOmitted, kOmitted, kLFE, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted, kOmitted, kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutLFE,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutLFE,
+                              {kOmitted, kOmitted, kOmitted, kLFE, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    kExpandedLayoutStereoS,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoS,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kLs5, kRs5, kOmitted,
-           kOmitted, kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(kExpandedLayoutStereoS,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoS,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kLs5,
+                               kRs5, kOmitted, kOmitted, kOmitted, kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoSS,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoSS,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kLss7, kRss7, kOmitted,
-           kOmitted, kOmitted, kOmitted, kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoSS,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoSS,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kLss7,
+                               kRss7, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoRS,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoRS,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kLrs7,
-           kRrs7, kOmitted, kOmitted, kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoRS,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoRS,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kLrs7, kRrs7, kOmitted, kOmitted,
+                               kOmitted, kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoTF,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoTF,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kLtf4, kRtf4, kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoTF,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoTF,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kLtf4, kRtf4,
+                               kOmitted, kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoTB,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoTB,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted, kOmitted, kLtb4, kRtb4}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoTB,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoTB,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kLtb4, kRtb4}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoTop4Ch,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutTop4Ch,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kLtf4, kRtf4, kLtb4, kRtb4}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoTop4Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutTop4Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kLtf4, kRtf4,
+                               kLtb4, kRtb4}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereo9_1_6Ch,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayout9_1_6_ch,
-          {kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL, kSiR, kTpFL, kTpFR,
-           kTpBL, kTpBR, kTpSiL, kTpSiR}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereo9_1_6Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayout9_1_6_ch,
+                              {kFL, kFR, kFC, kLFE, kBL, kBR, kFLc, kFRc, kSiL,
+                               kSiR, kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL,
+                               kTpSiR}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoF,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoF,
-          {kFL, kFR, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoF,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoF,
+                              {kFL, kFR, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoSi,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoSi,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kSiL, kSiR, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoSi,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoSi,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kSiL, kSiR,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutStereoTpSi,
-    LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutStereoTpSi,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kTpSiL, kTpSiR}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutStereoTpSi,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutStereoTpSi,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kTpSiL,
+                               kTpSiR}}));
 
-INSTANTIATE_TEST_SUITE_P(
-    ExpandedLayoutTp6ch, LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
-    ::testing::ValuesIn<ExpandedLayoutAndChannelOrderTestCase>(
-        {{kExpandedLayoutTop6Ch,
-          {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
-           kOmitted, kOmitted, kOmitted, kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL,
-           kTpSiR}}}));
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutTp6ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutTop6Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kTpFL, kTpFR, kTpBL, kTpBR, kTpSiL, kTpSiR}}));
+
+INSTANTIATE_TEST_SUITE_P(ExpandedLayout10_2_9_3,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayout10_2_9_3,
+                              {kFL,    kFR,    kFC,   kLFE,  kBL,   kBR,
+                               kFLc,   kFRc,   kBC,   kLFE2, kSiL,  kSiR,
+                               kTpFL,  kTpFR,  kTpFC, kTpC,  kTpBL, kTpBR,
+                               kTpSiL, kTpSiR, kTpBC, kBtFC, kBtFL, kBtFR}}));
+
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutLfePair,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutLfePair,
+                              {kOmitted, kOmitted, kOmitted, kLFE,     kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kLFE2,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted}}));
+
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutBottom3Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutBottom3Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kBtFC,    kBtFL,    kBtFR}}));
 
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      SucceedsForChannelBasedLayout) {
@@ -318,13 +357,12 @@ TEST_P(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
 INSTANTIATE_TEST_SUITE_P(
     BaseEnhancedProfileExpandedLayoutsReturnEmptySet,
     LookupLabelsToReconstructFromScalableLoudspeakerLayout,
-    ::testing::ValuesIn<ChannelAudioLayerConfig::ExpandedLoudspeakerLayout>(
-        {kExpandedLayoutLFE, kExpandedLayoutStereoS, kExpandedLayoutStereoSS,
-         kExpandedLayoutStereoRS, kExpandedLayoutStereoTF,
-         kExpandedLayoutStereoTB, kExpandedLayoutTop4Ch, kExpandedLayout3_0_ch,
-         kExpandedLayout9_1_6_ch, kExpandedLayoutStereoF,
-         kExpandedLayoutStereoSi, kExpandedLayoutStereoTpSi,
-         kExpandedLayoutTop6Ch}));
+    Values(kExpandedLayoutLFE, kExpandedLayoutStereoS, kExpandedLayoutStereoSS,
+           kExpandedLayoutStereoRS, kExpandedLayoutStereoTF,
+           kExpandedLayoutStereoTB, kExpandedLayoutTop4Ch,
+           kExpandedLayout3_0_ch, kExpandedLayout9_1_6_ch,
+           kExpandedLayoutStereoF, kExpandedLayoutStereoSi,
+           kExpandedLayoutStereoTpSi, kExpandedLayoutTop6Ch));
 
 TEST(GetDemixedChannelLabelForReconGain, SucceedsForL3) {
   EXPECT_THAT(ChannelLabel::GetDemixedChannelLabelForReconGain(kLayout3_1_2_ch,
