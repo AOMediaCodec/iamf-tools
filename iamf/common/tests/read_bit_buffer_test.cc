@@ -683,6 +683,120 @@ TYPED_TEST(ReadBitBufferTest, Signed16MaxNegative) {
   EXPECT_EQ(this->rb_->Tell(), 16);
 }
 
+// --- ReadSigned8 tests ---
+
+TYPED_TEST(ReadBitBufferTest, Signed8Zero) {
+  this->source_data_ = {0x00};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int8_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned8(output), IsOk());
+  EXPECT_EQ(output, 0);
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed8MaxPositive) {
+  this->source_data_ = {0x7f};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int8_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned8(output), IsOk());
+  EXPECT_EQ(output, 127);
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed8MinPositive) {
+  this->source_data_ = {0x01};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int8_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned8(output), IsOk());
+  EXPECT_EQ(output, 1);
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed8MinNegative) {
+  this->source_data_ = {0x80};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int8_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned8(output), IsOk());
+  EXPECT_EQ(output, -128);
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed8MaxNegative) {
+  this->source_data_ = {0xff};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int8_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned8(output), IsOk());
+  EXPECT_EQ(output, -1);
+  EXPECT_EQ(this->rb_->Tell(), 8);
+}
+
+// --- ReadSigned9 tests ---
+
+TYPED_TEST(ReadBitBufferTest, Signed9Zero) {
+  this->source_data_ = {0b0000'0000, 0b0000'0000};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int16_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned9(output), IsOk());
+  EXPECT_EQ(output, 0);
+  EXPECT_EQ(this->rb_->Tell(), 9);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed9MaxPositive) {
+  this->source_data_ = {0b0111'1111, 0b1000'0000};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int16_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned9(output), IsOk());
+  EXPECT_EQ(output, 255);
+  EXPECT_EQ(this->rb_->Tell(), 9);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed9MinPositive) {
+  this->source_data_ = {0b0000'0000, 0b1000'0000};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int16_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned9(output), IsOk());
+  EXPECT_EQ(output, 1);
+  EXPECT_EQ(this->rb_->Tell(), 9);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed9MinNegative) {
+  this->source_data_ = {0b1000'0000, 0b0000'0000};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int16_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned9(output), IsOk());
+  EXPECT_EQ(output, -256);
+  EXPECT_EQ(this->rb_->Tell(), 9);
+}
+
+TYPED_TEST(ReadBitBufferTest, Signed9MaxNegative) {
+  this->source_data_ = {0b1111'1111, 0b1000'0000};
+  this->rb_capacity_ = 1024;
+  this->CreateReadBitBuffer();
+
+  int16_t output = 0;
+  EXPECT_THAT(this->rb_->ReadSigned9(output), IsOk());
+  EXPECT_EQ(output, -1);
+  EXPECT_EQ(this->rb_->Tell(), 9);
+}
+
 TYPED_TEST(ReadBitBufferTest, IsDataAvailable) {
   this->source_data_ = {0xff, 0xff};
   this->rb_capacity_ = 1024;

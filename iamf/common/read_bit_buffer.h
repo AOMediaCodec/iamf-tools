@@ -100,6 +100,28 @@ class ReadBitBuffer {
    */
   absl::Status ReadSigned16(int16_t& output);
 
+  /*!\brief Reads the signed 8 bit integer from the read buffer.
+   *
+   * \param output Signed 8 bit integer will be written here.
+   * \return `absl::OkStatus()` on success.  `absl::ResourceExhaustedError()` if
+   *         the buffer is exhausted before the signed 8 is fully read and
+   *         source does not have the requisite data to complete the signed 8.
+   *         `absl::InvalidArgumentError()` if the buffer's bit offset is
+   *         negative.
+   */
+  absl::Status ReadSigned8(int8_t& output);
+
+  /*!\brief Reads the signed 9 bit integer from the read buffer.
+   *
+   * \param output Signed 9 bit integer will be written here.
+   * \return `absl::OkStatus()` on success.  `absl::ResourceExhaustedError()` if
+   *         the buffer is exhausted before the signed 9 is fully read and
+   *         source does not have the requisite data to complete the signed 9.
+   *         `absl::InvalidArgumentError()` if the buffer's bit offset is
+   *         negative.
+   */
+  absl::Status ReadSigned9(int16_t& output);
+
   /*!\brief Reads a null terminated string from the read buffer.
    *
    * \param output String will be written here.

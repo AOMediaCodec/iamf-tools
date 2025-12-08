@@ -183,6 +183,27 @@ absl::Status ReadBitBuffer::ReadSigned16(int16_t& output) {
   return absl::OkStatus();
 }
 
+// Reads an 8-bit signed integer in two's complement form from the read buffer.
+absl::Status ReadBitBuffer::ReadSigned8(int8_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteral(8, value));
+  output = static_cast<int8_t>(value);
+  return absl::OkStatus();
+}
+
+// Reads a 9-bit signed integer in two's complement form from the read buffer.
+absl::Status ReadBitBuffer::ReadSigned9(int16_t& output) {
+  uint64_t value;
+  RETURN_IF_NOT_OK(ReadUnsignedLiteral(9, value));
+  // Sign extend from 9 bits to 16 bits.
+  if (value & 0x100) {
+    output = static_cast<int16_t>(value | 0xfe00);
+  } else {
+    output = static_cast<int16_t>(value);
+  }
+  return absl::OkStatus();
+}
+
 // Reads a null terminated C-style string from the buffer.
 absl::Status ReadBitBuffer::ReadString(std::string& output) {
   // Read up to the first `kIamfMaxStringSize` characters. Exit after seeing the
