@@ -89,6 +89,11 @@ const Layout k3_1_2Layout = {
     .specific_layout =
         LoudspeakersSsConventionLayout{.sound_system = kSoundSystem11_2_3_0}};
 
+const Layout kSoundSystemH_9_10_3Layout = {
+    .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+    .specific_layout =
+        LoudspeakersSsConventionLayout{.sound_system = kSoundSystemH_9_10_3}};
+
 const ScalableChannelLayoutConfig kBinauralScalableChannelLayoutConfig = {
     .channel_audio_layer_configs = {{.loudspeaker_layout = kLayoutBinaural}}};
 const ScalableChannelLayoutConfig kStereoScalableChannelLayoutConfig = {
@@ -248,9 +253,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayout7_1_5_4ChToStereo) {
-  // TODO(b/462726936): Support "7.1.5.4".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayout7_1_5_4ChToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch),
@@ -259,9 +263,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutBottom4ChToStereo) {
-  // TODO(b/462726936): Support "7.1.5.4".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayoutBottom4ChToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch),
@@ -270,9 +273,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutTop1ChToStereo) {
-  // TODO(b/462726936): Support "7.1.5.4".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayoutTop1ChToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayoutTop1Ch),
@@ -281,9 +283,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutTop5ChToStereo) {
-  // TODO(b/462726936): Support "7.1.5.4".
-  EXPECT_EQ(AudioElementRendererChannelToChannel::
+     SupportsExpandedLayoutTop5ChToStereo) {
+  EXPECT_NE(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
                         ChannelAudioLayerConfig::kExpandedLayoutTop5Ch),
@@ -802,6 +803,106 @@ INSTANTIATE_TEST_SUITE_P(
                   {kLFE2, {0}},
               },
           .output_layout = k3_1_2Layout}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpandedLayoutBottom4ChEquivalentTo7_1_5_4,
+    ExpandedLayoutAndRelatedLoudspeakerLayoutTest,
+    ::testing::ValuesIn<ExpandedLayoutAndRelatedLoudspeakerLayout>(
+        {{.expanded_layout = ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch,
+          .expanded_layout_labeled_frame = {{kBtFL, {kArbitrarySample1}},
+                                            {kBtFR, {kArbitrarySample2}},
+                                            {kBtBL, {kArbitrarySample3}},
+                                            {kBtBR, {kArbitrarySample4}}},
+          .related_scalable_layout_config =
+              GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                  ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch),
+          .related_loudspeaker_layout_labeled_frame =
+              {
+                  {kL7, {0}},
+                  {kR7, {0}},
+                  {kLss7, {0}},
+                  {kRss7, {0}},
+                  {kLrs7, {0}},
+                  {kRrs7, {0}},
+                  {kLtf4, {0}},
+                  {kRtf4, {0}},
+                  {kLtb4, {0}},
+                  {kRtb4, {0}},
+                  {kBtFL, {kArbitrarySample1}},
+                  {kBtFR, {kArbitrarySample2}},
+                  {kBtBL, {kArbitrarySample3}},
+                  {kBtBR, {kArbitrarySample4}},
+                  {kCentre, {0}},
+                  {kTpC, {0}},
+                  {kLFE, {0}},
+              },
+          .output_layout = k3_1_2Layout}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpandedLayoutTop1ChEquivalentTo7_1_5_4,
+    ExpandedLayoutAndRelatedLoudspeakerLayoutTest,
+    ::testing::ValuesIn<ExpandedLayoutAndRelatedLoudspeakerLayout>(
+        {{.expanded_layout = ChannelAudioLayerConfig::kExpandedLayoutTop1Ch,
+          .expanded_layout_labeled_frame = {{kTpC, {kArbitrarySample1}}},
+          .related_scalable_layout_config =
+              GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                  ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch),
+          .related_loudspeaker_layout_labeled_frame =
+              {
+                  {kL7, {0}},
+                  {kR7, {0}},
+                  {kLss7, {0}},
+                  {kRss7, {0}},
+                  {kLrs7, {0}},
+                  {kRrs7, {0}},
+                  {kLtf4, {0}},
+                  {kRtf4, {0}},
+                  {kLtb4, {0}},
+                  {kRtb4, {0}},
+                  {kBtFL, {0}},
+                  {kBtFR, {0}},
+                  {kBtBL, {0}},
+                  {kBtBR, {0}},
+                  {kCentre, {0}},
+                  {kTpC, {kArbitrarySample1}},
+                  {kLFE, {0}},
+              },
+          .output_layout = k3_1_2Layout}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    ExpandedLayoutTop5ChEquivalentTo7_1_5_4,
+    ExpandedLayoutAndRelatedLoudspeakerLayoutTest,
+    ::testing::ValuesIn<ExpandedLayoutAndRelatedLoudspeakerLayout>(
+        {{.expanded_layout = ChannelAudioLayerConfig::kExpandedLayoutTop5Ch,
+          .expanded_layout_labeled_frame = {{kLtf4, {kArbitrarySample1}},
+                                            {kRtf4, {kArbitrarySample2}},
+                                            {kLtb4, {kArbitrarySample3}},
+                                            {kRtb4, {kArbitrarySample4}},
+                                            {kTpC, {kArbitrarySample5}}},
+          .related_scalable_layout_config =
+              GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                  ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch),
+          .related_loudspeaker_layout_labeled_frame =
+              {
+                  {kL7, {0}},
+                  {kR7, {0}},
+                  {kLss7, {0}},
+                  {kRss7, {0}},
+                  {kLrs7, {0}},
+                  {kRrs7, {0}},
+                  {kLtf4, {kArbitrarySample1}},
+                  {kRtf4, {kArbitrarySample2}},
+                  {kLtb4, {kArbitrarySample3}},
+                  {kRtb4, {kArbitrarySample4}},
+                  {kBtFL, {0}},
+                  {kBtFR, {0}},
+                  {kBtBL, {0}},
+                  {kBtBR, {0}},
+                  {kCentre, {0}},
+                  {kTpC, {kArbitrarySample5}},
+                  {kLFE, {0}},
+              },
+          .output_layout = kSoundSystemH_9_10_3Layout}}));
 
 TEST(RenderLabeledFrame,
      StereoOutputIsSymmetricWhenInputIsLeftRightSymmetric9_1_6) {

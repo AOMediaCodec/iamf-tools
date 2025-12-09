@@ -223,10 +223,8 @@ TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughForBottom3Ch) {
       nullptr);
 }
 
-TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportPassThroughFor7_1_5_4Ch) {
-  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
-  EXPECT_EQ(
+TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughFor7_1_5_4Ch) {
+  EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayout7_1_5_4Ch),
@@ -235,10 +233,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       nullptr);
 }
 
-TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportPassThroughForBottom4Ch) {
-  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
-  EXPECT_EQ(
+TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughForBottom4Ch) {
+  EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutBottom4Ch),
@@ -247,10 +243,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       nullptr);
 }
 
-TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportPassThroughForTop1Ch) {
-  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
-  EXPECT_EQ(
+TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughForTop1Ch) {
+  EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutTop1Ch),
@@ -259,10 +253,8 @@ TEST(CreateFromScalableChannelLayoutConfig,
       nullptr);
 }
 
-TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportPassThroughForTop5Ch) {
-  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
-  EXPECT_EQ(
+TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughForTop5Ch) {
+  EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
           GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
               kExpandedLayoutTop5Ch),
@@ -523,6 +515,27 @@ TEST(RenderLabeledFrame, RendersPassThroughLfePair) {
   constexpr size_t kLfe2Index = 9;
   expected_samples[kLfeIndex] = {0.010, 0.110};
   expected_samples[kLfe2Index] = {0.011, 0.111};
+  EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
+}
+
+TEST(RenderLabeledFrame, RendersPassThroughTop1Ch) {
+  const LabeledFrame kTp1ChLabeledFrame = {
+      .label_to_samples = {{kTpC, {0.010, 0.110}}}};
+  auto pass_through_renderer =
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              ChannelAudioLayerConfig::kExpandedLayoutTop1Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystem14_5_7_4),
+          kFourSamplesPerFrame);
+
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  RenderAndFlushExpectOk(kTp1ChLabeledFrame, pass_through_renderer.get(),
+                         rendered_samples);
+
+  std::vector<std::vector<InternalSampleType>> expected_samples(
+      17, std::vector<InternalSampleType>(2));
+  constexpr size_t kTpCIndex = 15;
+  expected_samples[kTpCIndex] = {0.010, 0.110};
   EXPECT_THAT(rendered_samples, InternalSamples2DMatch(expected_samples));
 }
 

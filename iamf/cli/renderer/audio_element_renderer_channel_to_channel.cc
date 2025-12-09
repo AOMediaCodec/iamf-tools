@@ -55,6 +55,7 @@ constexpr absl::string_view k7_1_2InputKey = "7.1.2";
 constexpr absl::string_view k3_1_2InputKey = "3.1.2";
 constexpr absl::string_view k9_1_6InputKey = "9.1.6";
 constexpr absl::string_view k10_2_9_3InputKey = "9+10+3";
+constexpr absl::string_view k7_1_5_4InputKey = "7.1.5.4";
 
 // TODO(b/359180486): Unify with `IsExpandedLayoutEquivalentToSoundSystem` in
 //                    `audio_element_passthrough.cc`.
@@ -83,6 +84,11 @@ absl::StatusOr<absl::string_view> LookupInputKeyFromLoudspeakerLayout(
     case kExpandedLayoutLfePair:
     case kExpandedLayoutBottom3Ch:
       return k10_2_9_3InputKey;
+    case kExpandedLayout7_1_5_4Ch:
+    case kExpandedLayoutBottom4Ch:
+    case kExpandedLayoutTop1Ch:
+    case kExpandedLayoutTop5Ch:
+      return k7_1_5_4InputKey;
     default:
       return absl::InvalidArgumentError(absl::StrCat(
           "Channel order not found for layout= ", expanded_layout));
