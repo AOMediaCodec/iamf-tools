@@ -89,6 +89,10 @@ INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvalidFor10_2_9_3Family,
                          Values(kBC, kLFE2, kTpFC, kTpC, kTpBC, kBtFC, kBtFL,
                                 kBtFR));
 
+INSTANTIATE_TEST_SUITE_P(GetDemixedLabelInvalidFor7_1_5_4Family,
+                         GetDemixedLabelInvalidTest,
+                         Values(kTpC, kBtFL, kBtFR, kBtBL, kBtBR));
+
 TEST(AmbisonicsChannelNumberToLabel, SucceedsForZerothOrderAmbisonics) {
   constexpr int kFirstZerothOrderAmbisonicsChannel = 0;
   EXPECT_THAT(ChannelLabel::AmbisonicsChannelNumberToLabel(
@@ -302,6 +306,41 @@ INSTANTIATE_TEST_SUITE_P(ExpandedLayoutBottom3Ch,
                                kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
                                kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
                                kOmitted, kBtFC,    kBtFL,    kBtFR}}));
+
+INSTANTIATE_TEST_SUITE_P(ExpandedLayout7_1_5_4Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayout7_1_5_4Ch,
+                              {kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7,
+                               kRrs7, kLtf4, kRtf4, kLtb4, kRtb4, kTpC, kBtFL,
+                               kBtFR, kBtBL, kBtBR}}));
+
+INSTANTIATE_TEST_SUITE_P(kExpandedLayoutBottom4Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutBottom4Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kBtFL, kBtFR,
+                               kBtBL, kBtBR}}));
+
+INSTANTIATE_TEST_SUITE_P(kExpandedLayoutTop1Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutTop1Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kTpC, kOmitted, kOmitted,
+                               kOmitted, kOmitted}}));
+
+INSTANTIATE_TEST_SUITE_P(ExpandedLayoutTop5Ch,
+                         LookupEarChannelOrderFromScalableLoudspeakerLayoutTest,
+                         Values<ExpandedLayoutAndChannelOrderTestCase>(
+                             {kExpandedLayoutTop5Ch,
+                              {kOmitted, kOmitted, kOmitted, kOmitted, kOmitted,
+                               kOmitted, kOmitted, kOmitted, kLtf4, kRtf4,
+                               kLtb4, kRtb4, kTpC, kOmitted, kOmitted, kOmitted,
+                               kOmitted}}));
 
 TEST(LookupLabelsToReconstructFromScalableLoudspeakerLayout,
      SucceedsForChannelBasedLayout) {

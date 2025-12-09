@@ -87,6 +87,10 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
                              kFLc,   kFRc,   kBC,   kLFE2, kSiL,  kSiR,
                              kTpFL,  kTpFR,  kTpFC, kTpC,  kTpBL, kTpBR,
                              kTpSiL, kTpSiR, kTpBC, kBtFC, kBtFL, kBtFR});
+  static const absl::NoDestructor<std::vector<ChannelLabel::Label>>
+      k7_1_5_4ChannelOrder({kL7, kR7, kCentre, kLFE, kLss7, kRss7, kLrs7, kRrs7,
+                            kLtf4, kRtf4, kLtb4, kRtb4, kTpC, kBtFL, kBtFR,
+                            kBtBL, kBtBR});
   // Determine the related layout and then omit any irrelevant channels. This
   // ensures the permitted channels are in the same slot and allows downstream
   // processing to use the related layout's EAR matrix.
@@ -162,6 +166,20 @@ LookupEarChannelOrderFromExpandedLoudspeakerLayout(
     case kExpandedLayoutBottom3Ch:
       related_labels = *k10_2_9_3ChannelOrder;
       labels_to_keep = {kBtFC, kBtFL, kBtFR};
+      break;
+    case kExpandedLayout7_1_5_4Ch:
+      return *k7_1_5_4ChannelOrder;
+    case kExpandedLayoutBottom4Ch:
+      related_labels = *k7_1_5_4ChannelOrder;
+      labels_to_keep = {kBtFL, kBtFR, kBtBL, kBtBR};
+      break;
+    case kExpandedLayoutTop1Ch:
+      related_labels = *k7_1_5_4ChannelOrder;
+      labels_to_keep = {kTpC};
+      break;
+    case kExpandedLayoutTop5Ch:
+      related_labels = *k7_1_5_4ChannelOrder;
+      labels_to_keep = {kLtf4, kRtf4, kLtb4, kRtb4, kTpC};
       break;
     default:
       return absl::InvalidArgumentError(
@@ -328,6 +346,10 @@ std::string ChannelLabel::LabelToStringForDebugging(Label label) {
       return "BtFL";
     case kBtFR:
       return "BtFR";
+    case kBtBL:
+      return "BtBL";
+    case kBtBR:
+      return "BtBR";
     case kA0:
       return "A0";
     case kA1:

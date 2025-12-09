@@ -109,6 +109,9 @@ class ChannelLabel {
     kBtFC,
     kBtFL,
     kBtFR,
+    // Extra channels for 7.5.1.4.
+    kBtBL,
+    kBtBR,
     // Ambisonics channels.
     kA0,
     kA1,
