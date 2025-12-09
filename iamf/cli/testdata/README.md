@@ -93,4 +93,5 @@ Sound System 10         | IAMF                     | L7, R7, C, LFE, Lss7, Rss7,
 Sound System 11         | IAMF                     | L3, R3, C, LFE, Ltf3, Rtf3,
 Sound System 12         | IAMF                     | C
 Sound System 13         | IAMF                     | FL, FR, FC, LFE, BL, BR, FLc, FRc, SiL, SiR, TpFL, TpFR, TpBL, TpBR, TpSiL, TpSiR
+Sound System 14         | IAMF                     | L, R, C, LFE, Lss, Rss, Lrs, Rrs, Ltf, Rtf, Ltb, Rtb, TpC, BtFL, BtFR, BtBL, BtBR
 Binaural Layout         | IAMF                     | L2, R2

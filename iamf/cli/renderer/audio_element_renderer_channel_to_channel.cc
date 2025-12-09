@@ -181,9 +181,11 @@ AudioElementRendererChannelToChannel::CreateFromScalableChannelLayoutConfig(
   }
 
   int32_t num_output_channels = 0;
-  if (!MixPresentationObu::GetNumChannelsFromLayout(playback_layout,
-                                                    num_output_channels)
-           .ok()) {
+  const auto& num_output_channels_status =
+      MixPresentationObu::GetNumChannelsFromLayout(playback_layout,
+                                                   num_output_channels);
+  if (!num_output_channels_status.ok()) {
+    ABSL_LOG(ERROR) << num_output_channels_status;
     return nullptr;
   }
 

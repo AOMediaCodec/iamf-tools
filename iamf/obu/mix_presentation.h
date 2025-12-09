@@ -151,6 +151,10 @@ struct LoudspeakersSsConventionLayout {
   /*!\brief A 4-bit enum for loudspeaker layout.
    *
    * Sound systems A through J refer to ITU2051-3.
+   *
+   * Typically named in "A+B+C" convention, where A is the number of height
+   * speakers, B is the number of surround speakers, and C is the number of
+   * bottom speakers.
    */
   enum SoundSystem : uint8_t {
     kSoundSystemA_0_2_0 = 0,
@@ -163,11 +167,11 @@ struct LoudspeakersSsConventionLayout {
     kSoundSystemH_9_10_3 = 7,
     kSoundSystemI_0_7_0 = 8,
     kSoundSystemJ_4_7_0 = 9,
-    kSoundSystem10_2_7_0 = 10,
-    kSoundSystem11_2_3_0 = 11,
-    kSoundSystem12_0_1_0 = 12,
-    kSoundSystem13_6_9_0 = 13,
-    kSoundSystemBeginReserved = 14,
+    kSoundSystem10_2_7_0 = 10,  // IAMF's 7.1.2.
+    kSoundSystem11_2_3_0 = 11,  // IAMF's 3.1.2.
+    kSoundSystem12_0_1_0 = 12,  // IAMF's Mono.
+    kSoundSystem13_6_9_0 = 13,  // IAMF's 9.1.6.
+    kSoundSystem14_5_7_4 = 14,  // IAMF's 7.1.5.4.
     kSoundSystemEndReserved = 15,
   };
 

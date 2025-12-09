@@ -110,6 +110,13 @@ absl::StatusOr<std::vector<float>> GetItu1770_4ChannelWeights(
               {kSoundSystem13_6_9_0,
                {1.41f, 1.41f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.41f, 1.41,
                 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}},
+              {kSoundSystem14_5_7_4,
+               {1.0f, 1.0f, 1.0f, 0.0f, 1.41f, 1.41f, 1.0f, 1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f,
+                // TpC:
+                1.0f,
+                // BtFL, BtFR, BtBL, BtBR:
+                1.0f, 1.0f, 1.0f, 1.0f}},
           });
 
       auto it = kSsLayoutToItu1440_4Weights->find(ss_layout.sound_system);

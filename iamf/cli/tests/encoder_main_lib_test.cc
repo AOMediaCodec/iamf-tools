@@ -1010,6 +1010,9 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndTop4Ch,
                          TestVector, testing::Values("test_001016.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndFoa,
+                         TestVector, testing::Values("test_001018.textproto"));
+
 // TODO(b/308385831): Add more tests.
 
 }  // namespace

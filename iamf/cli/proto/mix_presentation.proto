@@ -46,6 +46,16 @@ message SubMixAudioElement {
   MixGainParamDefinition element_mix_gain = 7;
 }
 
+// See section 3.7.5 of the IAMF spec.
+//
+// IAMF pulls from various conventions.
+//
+// Sound systems A through J refer to ITU2051-3. Sound systems 10 through 14
+// refer to IAMF's own systems.
+//
+// Typically named in "A+B+C" convention, where A is the number of height
+// speakers, B is the number of surround speakers, and C is the number of
+// bottom speakers.
 enum SoundSystem {
   SOUND_SYSTEM_INVALID = 0;
   SOUND_SYSTEM_A_0_2_0 = 1;
@@ -58,10 +68,11 @@ enum SoundSystem {
   SOUND_SYSTEM_H_9_10_3 = 8;
   SOUND_SYSTEM_I_0_7_0 = 9;
   SOUND_SYSTEM_J_4_7_0 = 10;
-  SOUND_SYSTEM_10_2_7_0 = 11;
-  SOUND_SYSTEM_11_2_3_0 = 12;
-  SOUND_SYSTEM_12_0_1_0 = 13;
-  SOUND_SYSTEM_13_6_9_0 = 14;
+  SOUND_SYSTEM_10_2_7_0 = 11;  // IAMF's 7.1.2.
+  SOUND_SYSTEM_11_2_3_0 = 12;  // IAMF's 3.1.2.
+  SOUND_SYSTEM_12_0_1_0 = 13;  // Mono.
+  SOUND_SYSTEM_13_6_9_0 = 14;  // IAMF's 9.1.6.
+  SOUND_SYSTEM_14_5_7_4 = 15;  // IAMF's 7.1.5.4.
 }
 
 message LoudspeakersSsConventionLayout {

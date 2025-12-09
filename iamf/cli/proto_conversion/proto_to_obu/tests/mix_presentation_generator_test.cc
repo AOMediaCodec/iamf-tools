@@ -139,6 +139,34 @@ TEST(Generate, CopiesSoundSystem13_6_9_0) {
             kExpectedSoundSystem);
 }
 
+TEST(Generate, CopiesSoundSystem14_5_7_4) {
+  const auto kExpectedSoundSystem =
+      LoudspeakersSsConventionLayout::SoundSystem::kSoundSystem14_5_7_4;
+  MixPresentationObuMetadatas mix_presentation_metadata = {};
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_layouts(0)
+      ->mutable_loudness_layout()
+      ->mutable_ss_layout()
+      ->set_sound_system(iamf_tools_cli_proto::SOUND_SYSTEM_14_5_7_4);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_specific_layout = generated_obus.front()
+                                              .sub_mixes_[0]
+                                              .layouts[0]
+                                              .loudness_layout.specific_layout;
+  EXPECT_TRUE(std::holds_alternative<LoudspeakersSsConventionLayout>(
+      generated_specific_layout));
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(generated_specific_layout)
+                .sound_system,
+            kExpectedSoundSystem);
+}
+
 TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
   const auto kExpectedHeadphonesRenderingMode2 =
       RenderingConfig::kHeadphonesRenderingModeReserved2;

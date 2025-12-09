@@ -192,6 +192,7 @@ class LookupTables {
         {SOUND_SYSTEM_11_2_3_0, kSoundSystem11_2_3_0},
         {SOUND_SYSTEM_12_0_1_0, kSoundSystem12_0_1_0},
         {SOUND_SYSTEM_13_6_9_0, kSoundSystem13_6_9_0},
+        {SOUND_SYSTEM_14_5_7_4, kSoundSystem14_5_7_4},
     });
   }();
 

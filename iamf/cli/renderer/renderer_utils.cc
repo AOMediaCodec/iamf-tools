@@ -262,6 +262,7 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
               {kSoundSystem11_2_3_0, "3.1.2"},
               {kSoundSystem12_0_1_0, "0+1+0"},
               {kSoundSystem13_6_9_0, "9.1.6"},
+              {kSoundSystem14_5_7_4, "7.1.5.4"},
           });
 
       return LookupInMap(*kSoundSystemToOutputKey, sound_system,

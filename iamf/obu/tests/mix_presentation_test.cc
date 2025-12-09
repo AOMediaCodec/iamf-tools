@@ -36,6 +36,7 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
 
 // Bit shifts for the `layout_type` and `sound_system` fields which are stored
 // in the same byte.
@@ -875,6 +876,18 @@ TEST_F(GetNumChannelsFromLayoutTest, SoundSystem9_1_6) {
   EXPECT_EQ(num_channels, kExpected9_1_6Channels);
 }
 
+TEST_F(GetNumChannelsFromLayoutTest, SoundSystem14_5_7_4) {
+  std::get<LoudspeakersSsConventionLayout>(layout_.specific_layout)
+      .sound_system = LoudspeakersSsConventionLayout::kSoundSystem14_5_7_4;
+  const int32_t kExpected14_5_7_4Channels = 17;
+
+  int32_t num_channels;
+  EXPECT_THAT(
+      MixPresentationObu::GetNumChannelsFromLayout(layout_, num_channels),
+      IsOk());
+  EXPECT_EQ(num_channels, kExpected14_5_7_4Channels);
+}
+
 TEST_F(GetNumChannelsFromLayoutTest, LayoutTypeBinaural) {
   layout_ = {
       .layout_type = Layout::kLayoutTypeBinaural,
@@ -901,12 +914,12 @@ TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedLayoutType) {
 
 TEST_F(GetNumChannelsFromLayoutTest, UnsupportedReservedSoundSystem) {
   std::get<LoudspeakersSsConventionLayout>(layout_.specific_layout)
-      .sound_system = LoudspeakersSsConventionLayout::kSoundSystemBeginReserved;
+      .sound_system = LoudspeakersSsConventionLayout::kSoundSystemEndReserved;
 
   int32_t unused_num_channels;
-  EXPECT_FALSE(
-      MixPresentationObu::GetNumChannelsFromLayout(layout_, unused_num_channels)
-          .ok());
+  EXPECT_THAT(MixPresentationObu::GetNumChannelsFromLayout(layout_,
+                                                           unused_num_channels),
+              Not(IsOk()));
 }
 
 TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithErrorBeyondLayoutType) {
