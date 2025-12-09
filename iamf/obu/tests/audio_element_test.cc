@@ -1037,9 +1037,6 @@ CommonAudioElementArgs CreateObjectsAudioElementArgs() {
       .reserved = 0,
       .codec_config_id = 2,
       .substream_ids = {3},
-      .audio_element_params = {AudioElementParam{
-          CreateDemixingInfoParamDefinition(
-              DemixingInfoParameterData::kDMixPMode1)}},
   };
 }
 
@@ -1071,13 +1068,6 @@ absl::StatusOr<AudioElementObu> CreateObjectsAudioElementObu(
       common_args.header, common_args.audio_element_id, common_args.reserved,
       common_args.codec_config_id, common_args.substream_ids[0],
       objects_config);
-  if (!obu.ok()) {
-    return obu.status();
-  }
-  obu->InitializeParams(common_args.audio_element_params.size());
-  for (const auto& param : common_args.audio_element_params) {
-    obu->audio_element_params_.push_back(param);
-  }
   return obu;
 }
 
@@ -1095,15 +1085,6 @@ constexpr auto kExpectedOneObjectPayload = std::to_array<uint8_t>({
     // `audio_substream_ids`
     3,
     // `num_parameters`.
-    1,
-    // `audio_element_params[0]`.
-    kParameterDefinitionDemixingAsUint8,
-    4,
-    5,
-    0x00,
-    64,
-    64,
-    0,
     0,
     // `objects_config`
     // `objects_config_size`.
@@ -1123,7 +1104,7 @@ TEST(ValidateAndWriteObu, SerializesOneObjectAudioElementObu) {
   ASSERT_THAT(obu, IsOk());
   // Shift is based on obu size.
   constexpr auto kExpectedHeader =
-      std::to_array<uint8_t>({kObuIaAudioElement << 3, 19});
+      std::to_array<uint8_t>({kObuIaAudioElement << 3, 11});
 
   WriteBitBuffer wb(kInitialBufferCapacity);
   ASSERT_THAT(obu->ValidateAndWriteObu(wb), IsOk());
