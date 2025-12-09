@@ -268,6 +268,29 @@ absl::Status CollectChannelLayersAndLabelsForExpandedLoudspeakerLayout(
       coupled_substream_labels = {kBtFL, kBtFR};
       non_coupled_substream_labels = {kBtFC};
       break;
+    case kExpandedLayout7_1_5_4Ch:
+      channel_numbers = {.surround = 7, .lfe = 1, .height = 5, .bottom = 4};
+      coupled_substream_labels = {kL7,   kR7,   kLss7, kRss7, kLrs7,
+                                  kRrs7, kLtf4, kRtf4, kLtb4, kRtb4,
+                                  kBtFL, kBtFR, kBtBL, kBtBR};
+      non_coupled_substream_labels = {kCentre, kTpC, kLFE};
+      break;
+    case kExpandedLayoutBottom4Ch:
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 0, .bottom = 4};
+      coupled_substream_labels = {kBtFL, kBtFR, kBtBL, kBtBR};
+      break;
+    case kExpandedLayoutTop1Ch:
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 1, .bottom = 0};
+      non_coupled_substream_labels = {kTpC};
+      break;
+    case kExpandedLayoutTop5Ch:
+      channel_numbers = {.surround = 0, .lfe = 0, .height = 5, .bottom = 0};
+      coupled_substream_labels = {kLtf4, kRtf4, kLtb4, kRtb4};
+      non_coupled_substream_labels = {kTpC};
+      break;
+    case kExpandedLayoutReserved20:
+    case kExpandedLayoutReserved255:
+      break;
     default:
       return absl::InvalidArgumentError(
           StrCat("Unsupported expanded loudspeaker layout= ",

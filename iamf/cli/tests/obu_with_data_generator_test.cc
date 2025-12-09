@@ -1552,6 +1552,86 @@ INSTANTIATE_TEST_SUITE_P(
         .expected_channel_numbers_for_layer = {
             {.surround = 0, .lfe = 0, .height = 0, .bottom = 3}}}));
 
+INSTANTIATE_TEST_SUITE_P(
+    Layout7_1_5_4Ch, FinalizeScalableChannelLayoutConfigExpandedLayoutTest,
+    Values(ExpandedLayoutTestCase{
+        .substream_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+        .scalable_channel_layout_config =
+            {.channel_audio_layer_configs =
+                 {{.loudspeaker_layout =
+                       ChannelAudioLayerConfig::kLayoutExpanded,
+                   .output_gain_is_present_flag = false,
+                   .substream_count = 10,
+                   .coupled_substream_count = 7,
+                   .expanded_loudspeaker_layout =
+                       ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch}}},
+        .expected_substream_id_to_labels = {{0, {kL7, kR7}},
+                                            {1, {kLss7, kRss7}},
+                                            {2, {kLrs7, kRrs7}},
+                                            {3, {kLtf4, kRtf4}},
+                                            {4, {kLtb4, kRtb4}},
+                                            {5, {kBtFL, kBtFR}},
+                                            {6, {kBtBL, kBtBR}},
+                                            {7, {kCentre}},
+                                            {8, {kTpC}},
+                                            {9, {kLFE}}},
+        .expected_channel_numbers_for_layer = {
+            {.surround = 7, .lfe = 1, .height = 5, .bottom = 4}}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Bottom4Ch, FinalizeScalableChannelLayoutConfigExpandedLayoutTest,
+    Values(ExpandedLayoutTestCase{
+        .substream_ids = {0, 1},
+        .scalable_channel_layout_config =
+            {.channel_audio_layer_configs =
+                 {{.loudspeaker_layout =
+                       ChannelAudioLayerConfig::kLayoutExpanded,
+                   .output_gain_is_present_flag = false,
+                   .substream_count = 2,
+                   .coupled_substream_count = 2,
+                   .expanded_loudspeaker_layout =
+                       ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch}}},
+        .expected_substream_id_to_labels = {{0, {kBtFL, kBtFR}},
+                                            {1, {kBtBL, kBtBR}}},
+        .expected_channel_numbers_for_layer = {
+            {.surround = 0, .lfe = 0, .height = 0, .bottom = 4}}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Top1Ch, FinalizeScalableChannelLayoutConfigExpandedLayoutTest,
+    Values(ExpandedLayoutTestCase{
+        .substream_ids = {0},
+        .scalable_channel_layout_config =
+            {.channel_audio_layer_configs =
+                 {{.loudspeaker_layout =
+                       ChannelAudioLayerConfig::kLayoutExpanded,
+                   .output_gain_is_present_flag = false,
+                   .substream_count = 1,
+                   .coupled_substream_count = 0,
+                   .expanded_loudspeaker_layout =
+                       ChannelAudioLayerConfig::kExpandedLayoutTop1Ch}}},
+        .expected_substream_id_to_labels = {{0, {kTpC}}},
+        .expected_channel_numbers_for_layer = {
+            {.surround = 0, .lfe = 0, .height = 1, .bottom = 0}}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    Top5Ch, FinalizeScalableChannelLayoutConfigExpandedLayoutTest,
+    Values(ExpandedLayoutTestCase{
+        .substream_ids = {0, 1, 2},
+        .scalable_channel_layout_config =
+            {.channel_audio_layer_configs =
+                 {{.loudspeaker_layout =
+                       ChannelAudioLayerConfig::kLayoutExpanded,
+                   .output_gain_is_present_flag = false,
+                   .substream_count = 3,
+                   .coupled_substream_count = 2,
+                   .expanded_loudspeaker_layout =
+                       ChannelAudioLayerConfig::kExpandedLayoutTop5Ch}}},
+        .expected_substream_id_to_labels = {{0, {kLtf4, kRtf4}},
+                                            {1, {kLtb4, kRtb4}},
+                                            {2, {kTpC}}},
+        .expected_channel_numbers_for_layer = {
+            {.surround = 0, .lfe = 0, .height = 5, .bottom = 0}}}));
+
 TEST(FinalizeScalableChannelLayoutConfig,
      InvalidWhenThereAreTwoLayersWithExpandedLoudspeakerLayout) {
   const std::vector<DecodedUleb128> kSubstreamIds = {0, 1};
