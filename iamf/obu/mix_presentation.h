@@ -21,14 +21,72 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+struct RenderingConfigParamDefinition {
+  friend bool operator==(const RenderingConfigParamDefinition& lhs,
+                         const RenderingConfigParamDefinition& rhs) = default;
+
+  /*!\brief Default constructor. */
+  RenderingConfigParamDefinition() = default;
+
+  /*!\brief Move constructor. */
+  RenderingConfigParamDefinition(RenderingConfigParamDefinition&& other) =
+      default;
+
+  /*!\brief Copy constructor. */
+  RenderingConfigParamDefinition(const RenderingConfigParamDefinition& other) =
+      default;
+
+  /*!\brief Copy assignment operator. */
+  RenderingConfigParamDefinition& operator=(
+      const RenderingConfigParamDefinition& other) = default;
+
+  /*!\brief Creates an `RenderingConfigParamDefinition` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  static absl::StatusOr<RenderingConfigParamDefinition> CreateFromBuffer(
+      ReadBitBuffer& rb);
+
+  /*!\brief Creates an `RenderingConfigParamDefinition` from the given
+   * parameters.
+   *
+   * \param param_definition_type Type of the parameter definition.
+   * \param param_definition Param definition.
+   * \param param_definition_bytes Param definition bytes.
+   *
+   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   */
+  static absl::StatusOr<RenderingConfigParamDefinition> Create(
+      ParamDefinition::ParameterDefinitionType param_definition_type,
+      std::variant<PolarParamDefinition> param_definition,
+      const std::vector<uint8_t>& param_definition_bytes);
+
+  const ParamDefinition::ParameterDefinitionType param_definition_type;
+  const std::variant<PolarParamDefinition> param_definition;
+  // `param_definition_bytes_size` is inferred from the size of
+  // `param_definition_bytes`.
+  const std::vector<uint8_t> param_definition_bytes;
+
+ private:
+  // Private constructor. Use `Create` or `CreateFromBuffer` instead.
+  RenderingConfigParamDefinition(
+      ParamDefinition::ParameterDefinitionType param_definition_type,
+      std::variant<PolarParamDefinition> param_definition,
+      std::vector<uint8_t> param_definition_bytes);
+};
 
 struct RenderingConfig {
   /*!\brief A 2-bit enum describing how to render the content to headphones. */
@@ -43,6 +101,7 @@ struct RenderingConfig {
                          const RenderingConfig& rhs) = default;
   HeadphonesRenderingMode headphones_rendering_mode;  // 2 bits.
   uint8_t reserved;                                   // 6 bits.
+
   // `rendering_config_extension_size` is inferred from the length of
   // `rendering_config_extension_bytes`.
   std::vector<uint8_t> rendering_config_extension_bytes;

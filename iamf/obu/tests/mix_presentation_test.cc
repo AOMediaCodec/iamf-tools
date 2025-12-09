@@ -29,6 +29,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/tests/obu_test_base.h"
 #include "iamf/obu/types.h"
 
@@ -1188,6 +1189,80 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
 }
 
 // TODO(b/339855295): Add more tests.
+TEST(RenderingConfigParamDefinitionCreate, FailsWithNonPolarParamDefinition) {
+  EXPECT_FALSE(RenderingConfigParamDefinition::Create(
+                   ParamDefinition::kParameterDefinitionMixGain,
+                   PolarParamDefinition(), {})
+                   .ok());
+}
+
+TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
+  const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::Create(
+          ParamDefinition::kParameterDefinitionPolar, PolarParamDefinition(),
+          kParamDefinitionBytes);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionPolar);
+  EXPECT_TRUE(std::holds_alternative<PolarParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+              testing::ElementsAreArray(kParamDefinitionBytes));
+}
+
+TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
+     FailsWithNonPolarParamDefinition) {
+  std::vector<uint8_t> source = {// `param_definition_type`.
+                                 ParamDefinition::kParameterDefinitionMixGain};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  EXPECT_FALSE(RenderingConfigParamDefinition::CreateFromBuffer(*buffer).ok());
+}
+
+TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
+     SucceedsWithPolarParamDefinition) {
+  std::vector<uint8_t> source = {// `param_definition_type`.
+                                 ParamDefinition::kParameterDefinitionPolar,
+                                 1,   // parameter_id
+                                 1,   // parameter_rate
+                                 0,   // mode
+                                 10,  // duration
+                                 10,  // constant_subblock_duration
+                                      // default_azimuth = 2 (9 bits)
+                                      // default_elevation = 3 (8 bits)
+                                      // default_distance = 4 (7 bits)
+                                      // 00000001 00000001 10000100
+                                 0x01, 0x01, 0x84,
+                                 // `param_definition_bytes_size`.
+                                 1,
+                                 // `param_definition_bytes`.
+                                 123};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionPolar);
+  EXPECT_TRUE(std::holds_alternative<PolarParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+              testing::ElementsAre(123));
+  const auto& param_definition = std::get<PolarParamDefinition>(
+      rendering_config_param_definition->param_definition);
+  EXPECT_EQ(param_definition.parameter_id_, 1);
+  EXPECT_EQ(param_definition.parameter_rate_, 1);
+  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.default_azimuth_, 2);
+  EXPECT_EQ(param_definition.default_elevation_, 3);
+  EXPECT_EQ(param_definition.default_distance_, 4);
+}
+
 TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
   std::vector<uint8_t> source = {
       // Start Layout.

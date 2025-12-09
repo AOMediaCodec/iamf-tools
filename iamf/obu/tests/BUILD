@@ -146,6 +146,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
+        "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",

@@ -124,6 +124,7 @@ cc_library(
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_check",

@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "absl/base/no_destructor.h"
@@ -21,6 +22,7 @@
 #include "absl/log/absl_check.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
@@ -32,6 +34,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -199,6 +202,58 @@ absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
 }
 
 }  // namespace
+
+RenderingConfigParamDefinition::RenderingConfigParamDefinition(
+    ParamDefinition::ParameterDefinitionType param_definition_type,
+    std::variant<PolarParamDefinition> param_definition,
+    std::vector<uint8_t> param_definition_bytes)
+    : param_definition_type(param_definition_type),
+      param_definition(std::move(param_definition)),
+      param_definition_bytes(std::move(param_definition_bytes)) {}
+
+absl::StatusOr<RenderingConfigParamDefinition>
+RenderingConfigParamDefinition::Create(
+    ParamDefinition::ParameterDefinitionType param_definition_type,
+    std::variant<PolarParamDefinition> param_definition,
+    const std::vector<uint8_t>& param_definition_bytes) {
+  switch (param_definition_type) {
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+      break;
+    // TODO(b/467386344): Add support for other rendering config param
+    // definition types.
+    default:
+      return absl::InvalidArgumentError("Expected a PolarParamDefinition.");
+  }
+  return RenderingConfigParamDefinition(param_definition_type,
+                                        std::move(param_definition),
+                                        std::move(param_definition_bytes));
+}
+
+absl::StatusOr<RenderingConfigParamDefinition>
+RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
+  DecodedUleb128 param_definition_type;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type));
+  std::variant<PolarParamDefinition> param_definition;
+  switch (param_definition_type) {
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+      param_definition = PolarParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
+      break;
+    // TODO(b/467386344): Add support for other rendering config param
+    // definition types.
+    default:
+      return absl::InvalidArgumentError("Expected a PolarParamDefinition.");
+  }
+  DecodedUleb128 param_definition_bytes_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
+  std::vector<uint8_t> param_definition_bytes;
+  param_definition_bytes.resize(param_definition_bytes_size);
+  RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes)));
+  return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                    param_definition_type),
+                std::move(param_definition), std::move(param_definition_bytes));
+}
 
 absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {
   uint8_t layout_type_uint;
