@@ -61,6 +61,10 @@ const uint32_t kCommonMixGainParameterRate = kSampleRate;
 const uint8_t kAudioElementReserved = 0;
 const int kOneLayer = 1;
 
+const std::array<DecodedUleb128, 28> kSubstreamIds = {
+    0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
+    14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
+
 constexpr std::array<DecodedUleb128, 1> kZerothOrderAmbisonicsSubstreamId{100};
 constexpr std::array<DecodedUleb128, 25> kFourthOrderAmbisonicsSubstreamIds = {
     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
@@ -356,18 +360,120 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
-     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutReserved16) {
-  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutReserved16Config = {
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayout7_1_5_4Ch) {
+  constexpr DecodedUleb128 kNumSubstreams = 10;
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayout7_1_5_4ChConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = kNumSubstreams,
+           .coupled_substream_count = 7,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
+      kOneLayerExpandedLayout7_1_5_4ChConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", *audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutBottom4Ch) {
+  constexpr DecodedUleb128 kNumSubstreams = 2;
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutBottom4ChConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = kNumSubstreams,
+           .coupled_substream_count = 2,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
+      kOneLayerExpandedLayoutBottom4ChConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", *audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutTop1Ch) {
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutTop1ChConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = 1,
+           .coupled_substream_count = 0,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutTop1Ch}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      {kFirstSubstreamId}, kOneLayerExpandedLayoutTop1ChConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", *audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutTop5Ch) {
+  constexpr DecodedUleb128 kNumSubstreams = 3;
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutTop5ChConfig = {
+      .channel_audio_layer_configs = {
+          {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
+           .substream_count = kNumSubstreams,
+           .coupled_substream_count = 2,
+           .expanded_loudspeaker_layout =
+               ChannelAudioLayerConfig::kExpandedLayoutTop5Ch}}};
+
+  auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
+      kOneLayerExpandedLayoutTop5ChConfig);
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
+      kIamfBaseEnhancedProfile};
+
+  EXPECT_FALSE(ProfileFilter::FilterProfilesForAudioElement(
+                   "", *audio_element_obu, base_enhanced_profile)
+                   .ok());
+
+  EXPECT_TRUE(base_enhanced_profile.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesBaseEnhancedProfileWhenFirstLayerIsExpandedLayoutReserved20) {
+  const ScalableChannelLayoutConfig kOneLayerExpandedLayoutReserved20Config = {
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
            .substream_count = 1,
            .coupled_substream_count = 1,
            .expanded_loudspeaker_layout =
-               ChannelAudioLayerConfig::kExpandedLayoutReserved16}}};
+               ChannelAudioLayerConfig::kExpandedLayoutReserved20}}};
 
   auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      {kFirstSubstreamId}, kOneLayerExpandedLayoutReserved16Config);
+      {kFirstSubstreamId}, kOneLayerExpandedLayoutReserved20Config);
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
@@ -664,20 +770,19 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForAudioElement, SomeProfilesSupport10_2_9_3ExpandedLayout) {
+  constexpr uint8_t kNumSubstreams = 16;
   const ScalableChannelLayoutConfig kExpandedLayout10_2_9_3Config = {
       .channel_audio_layer_configs = {
           {.loudspeaker_layout = ChannelAudioLayerConfig::kLayoutExpanded,
-           .substream_count = 16,
+           .substream_count = kNumSubstreams,
            .coupled_substream_count = 8,
            .expanded_loudspeaker_layout =
                ChannelAudioLayerConfig::kExpandedLayout10_2_9_3}}};
 
-  std::vector<DecodedUleb128> substream_ids(16);
-  std::iota(substream_ids.begin(), substream_ids.end(), 0);
-
   auto audio_element_obu = AudioElementObu::CreateForScalableChannelLayout(
       ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
-      MakeConstSpan(substream_ids), kExpandedLayout10_2_9_3Config);
+      MakeConstSpan(kSubstreamIds).first(kNumSubstreams),
+      kExpandedLayout10_2_9_3Config);
   ASSERT_THAT(audio_element_obu, IsOk());
   absl::flat_hash_set<ProfileVersion> all_known_profiles =
       kAllKnownProfileVersions;

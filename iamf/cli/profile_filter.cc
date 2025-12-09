@@ -106,12 +106,16 @@ absl::Status FilterExpandedLoudspeakerLayout(
     case kExpandedLayout10_2_9_3:
     case kExpandedLayoutLfePair:
     case kExpandedLayoutBottom3Ch:
+    case kExpandedLayout7_1_5_4Ch:
+    case kExpandedLayoutBottom4Ch:
+    case kExpandedLayoutTop1Ch:
+    case kExpandedLayoutTop5Ch:
       // Simple and Base profiles never supported expanded layouts.
-      // Base-Enhanced does not support the 10.2.9.3-based layouts.
+      // Base-Enhanced does not support the 10.2.9.3-based or
+      // 7.1.5.4-based layouts.
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
       break;
-    case kExpandedLayoutReserved16:
-      // TODO(b/462726936): Support additional layouts.
+    case kExpandedLayoutReserved20:
     case kExpandedLayoutReserved255:
     default:
       // Other layouts are reserved and not supported by any profile.

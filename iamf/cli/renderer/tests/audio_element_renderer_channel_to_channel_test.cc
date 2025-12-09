@@ -248,11 +248,55 @@ TEST(CreateFromScalableChannelLayoutConfig,
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
-     DoesNotSupportExpandedLayoutReserved16ToStereo) {
+     DoesNotSupportExpandedLayout7_1_5_4ChToStereo) {
+  // TODO(b/462726936): Support "7.1.5.4".
   EXPECT_EQ(AudioElementRendererChannelToChannel::
                 CreateFromScalableChannelLayoutConfig(
                     GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
-                        ChannelAudioLayerConfig::kExpandedLayoutReserved16),
+                        ChannelAudioLayerConfig::kExpandedLayout7_1_5_4Ch),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutBottom4ChToStereo) {
+  // TODO(b/462726936): Support "7.1.5.4".
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutBottom4Ch),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutTop1ChToStereo) {
+  // TODO(b/462726936): Support "7.1.5.4".
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutTop1Ch),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutTop5ChToStereo) {
+  // TODO(b/462726936): Support "7.1.5.4".
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutTop5Ch),
+                    kStereoLayout, kOneSamplePerFrame),
+            nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportExpandedLayoutReserved20ToStereo) {
+  EXPECT_EQ(AudioElementRendererChannelToChannel::
+                CreateFromScalableChannelLayoutConfig(
+                    GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+                        ChannelAudioLayerConfig::kExpandedLayoutReserved20),
                     kStereoLayout, kOneSamplePerFrame),
             nullptr);
 }

@@ -115,7 +115,15 @@ struct ChannelAudioLayerConfig {
     kExpandedLayoutLfePair = 14,  // LFE pairs (LFE1/LFE2) of 10.2.9.3.
     kExpandedLayoutBottom3Ch =
         15,  // Bottom three channels (BtFL/BtFC/BtFR) of 10.2.9.3.
-    kExpandedLayoutReserved16 = 16,
+    kExpandedLayout7_1_5_4Ch =
+        16,  // 7.1.5.4, which is 7.1.4 with additional top (TpC) and bottom
+             // channels (BtFL, BtFR, BtBL, BtBR).
+    kExpandedLayoutBottom4Ch =
+        17,  // Bottom four channels (BtFL/BtFR/BtBL/BtBR) of 7.1.5.4.
+    kExpandedLayoutTop1Ch = 18,  // Top channel (TpC) of 7.1.5.4.
+    kExpandedLayoutTop5Ch =
+        19,  // Top five channel (Ltf/Rtf/Ltb/Rtb/TpC) of 7.1.5.4.
+    kExpandedLayoutReserved20 = 20,
     kExpandedLayoutReserved255 = 255,
   };
 

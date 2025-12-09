@@ -224,6 +224,54 @@ TEST(CreateFromScalableChannelLayoutConfig, SupportsPassThroughForBottom3Ch) {
 }
 
 TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughFor7_1_5_4Ch) {
+  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayout7_1_5_4Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystem14_5_7_4),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughForBottom4Ch) {
+  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayoutBottom4Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystem14_5_7_4),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughForTop1Ch) {
+  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayoutTop1Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystem14_5_7_4),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
+     DoesNotSupportPassThroughForTop5Ch) {
+  // TODO(b/462726936): Support passthrough for 7.1.5.4-based layouts.
+  EXPECT_EQ(
+      AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
+          GetScalableChannelLayoutConfigForExpandedLayoutSoundSystem(
+              kExpandedLayoutTop5Ch),
+          GetScalableLayoutForSoundSystem(kSoundSystem14_5_7_4),
+          kFourSamplesPerFrame),
+      nullptr);
+}
+
+TEST(CreateFromScalableChannelLayoutConfig,
      SupportsPassThroughFromTop6ChTo9_1_6) {
   EXPECT_NE(
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(

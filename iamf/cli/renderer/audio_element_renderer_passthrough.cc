@@ -96,8 +96,14 @@ absl::StatusOr<bool> IsExpandedLoudspeakerLayoutBasedOnSoundSystem(
     case kExpandedLayoutLfePair:
     case kExpandedLayoutBottom3Ch:
       return layout == kSoundSystemH_9_10_3;
-    case kExpandedLayoutReserved16:
-    // TODO(b/462726936): Support layouts 16 through 19.
+    case kExpandedLayout7_1_5_4Ch:
+    case kExpandedLayoutBottom4Ch:
+    case kExpandedLayoutTop1Ch:
+    case kExpandedLayoutTop5Ch:
+      // TODO(b/462726936): Support layouts 16 through 19.
+      return absl::UnimplementedError(
+          "7.1.5.4 is not supported for pass-through, yet.");
+    case kExpandedLayoutReserved20:
     case kExpandedLayoutReserved255:
     default:
       return absl::InvalidArgumentError(absl::StrCat(
