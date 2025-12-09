@@ -58,6 +58,8 @@ absl::Status ValidateSpecificParamDefinition(
           absl::StrCat("`constant_subblock_duration` for parameter_id= ",
                        param_definition.parameter_id_)));
       return absl::OkStatus();
+    case kParameterDefinitionPolar:
+      return absl::UnimplementedError("Polar parameter type is not supported.");
 
     // Mix gain does not have any specific validation. For backwards
     // compatibility we must assume extension param definitions are valid as

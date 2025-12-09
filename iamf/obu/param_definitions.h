@@ -41,8 +41,9 @@ class ParamDefinition {
     kParameterDefinitionMixGain = 0,
     kParameterDefinitionDemixing = 1,
     kParameterDefinitionReconGain = 2,
-    // Values in the range of [3, (1 << 32) - 1] are reserved.
-    kParameterDefinitionReservedStart = 3,
+    kParameterDefinitionPolar = 3,
+    // Values in the range of [4, (1 << 32) - 1] are reserved.
+    kParameterDefinitionReservedStart = 4,
     kParameterDefinitionReservedEnd = std::numeric_limits<DecodedUleb128>::max()
   };
 

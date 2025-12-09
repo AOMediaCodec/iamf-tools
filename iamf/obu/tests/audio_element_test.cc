@@ -257,7 +257,7 @@ TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionZero) {
        // `num_parameters`.
        1,
        // `audio_element_params[0]`.
-       3, 0,
+       4, 0,
        // `scalable_channel_layout_config`.
        // `num_layers` (3), reserved (5).
        1 << 5,
@@ -357,7 +357,7 @@ TEST(ValidateAndWriteObu, WritesParamDefinitionExtensionNonZero) {
        // `num_parameters`.
        1,
        // `audio_element_params[0]`.
-       3, 5, 'e', 'x', 't', 'r', 'a',
+       4, 5, 'e', 'x', 't', 'r', 'a',
        // `scalable_channel_layout_config`.
        // `num_layers` (3), reserved (5).
        1 << 5,
