@@ -255,6 +255,19 @@ cc_library(
 )
 
 cc_library(
+    name = "polar_parameter_data",
+    srcs = ["polar_parameter_data.cc"],
+    hdrs = ["polar_parameter_data.h"],
+    deps = [
+        ":parameter_data",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+    ],
+)
+
+cc_library(
     name = "temporal_delimiter",
     hdrs = ["temporal_delimiter.h"],
     deps = [
