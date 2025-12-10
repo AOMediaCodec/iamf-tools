@@ -41,6 +41,42 @@ namespace iamf_tools {
 
 namespace {
 
+absl::Status WriteRenderingConfigParamDefinition(
+    const RenderingConfigParamDefinition& rendering_config_param_definition,
+    WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(
+      wb.WriteUleb128(rendering_config_param_definition.param_definition_type));
+  switch (rendering_config_param_definition.param_definition_type) {
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+      RETURN_IF_NOT_OK(std::get<PolarParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    // TODO(b/467386344): Add support for other rendering config param
+    // definition types.
+    default:
+      RETURN_IF_NOT_OK(wb.WriteUleb128(
+          rendering_config_param_definition.param_definition_bytes.size()));
+      RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
+          rendering_config_param_definition.param_definition_bytes)));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status WriteRenderingConfigParamDefinitions(
+    const std::vector<RenderingConfigParamDefinition>&
+        rendering_config_param_definitions,
+    WriteBitBuffer& wb) {
+  // Write `num_parameters`.
+  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_param_definitions.size()));
+  for (const auto& rendering_config_param_definition :
+       rendering_config_param_definitions) {
+    RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinition(
+        rendering_config_param_definition, wb));
+  }
+  return absl::OkStatus();
+}
+
 absl::Status ValidateUniqueAudioElementIds(
     const std::vector<MixPresentationSubMix>& sub_mixes) {
   std::vector<DecodedUleb128> collected_audio_element_ids;
@@ -89,10 +125,29 @@ absl::Status ValidateAndWriteSubMixAudioElement(
       2));
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint8_t>(element.rendering_config.reserved), 6));
-  RETURN_IF_NOT_OK(wb.WriteUleb128(
-      element.rendering_config.rendering_config_extension_bytes.size()));
-  RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
+
+  // Allocate a temporary buffer to write the rendering config param definitions
+  // to.
+  static const int64_t kBufferSize = 1024;
+  WriteBitBuffer temp_wb(kBufferSize, wb.leb_generator_);
+
+  // Write the rendering config param definitions to the temporary buffer.
+  RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinitions(
+      element.rendering_config.rendering_config_param_definitions, temp_wb));
+  RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(absl::MakeConstSpan(
       element.rendering_config.rendering_config_extension_bytes)));
+  if (!temp_wb.IsByteAligned()) {
+    return absl::InvalidArgumentError(absl::StrCat(
+        "Expected payload to be byte-aligned: ", temp_wb.bit_offset()));
+  }
+
+  // Write the header now that the payload size is known.
+  const int64_t rendering_config_extension_size = temp_wb.bit_buffer().size();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_extension_size));
+
+  // Copy over rendering config param definitions into the actual write buffer.
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer())));
 
   RETURN_IF_NOT_OK(element.element_mix_gain.ValidateAndWrite(wb));
   return absl::OkStatus();
