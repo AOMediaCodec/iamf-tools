@@ -74,11 +74,11 @@ struct RenderingConfigParamDefinition {
       std::variant<PolarParamDefinition> param_definition,
       const std::vector<uint8_t>& param_definition_bytes);
 
-  const ParamDefinition::ParameterDefinitionType param_definition_type;
-  const std::variant<PolarParamDefinition> param_definition;
+  ParamDefinition::ParameterDefinitionType param_definition_type;
+  std::variant<PolarParamDefinition> param_definition;
   // `param_definition_bytes_size` is inferred from the size of
   // `param_definition_bytes`.
-  const std::vector<uint8_t> param_definition_bytes;
+  std::vector<uint8_t> param_definition_bytes;
 
  private:
   // Private constructor. Use `Create` or `CreateFromBuffer` instead.
@@ -101,6 +101,11 @@ struct RenderingConfig {
                          const RenderingConfig& rhs) = default;
   HeadphonesRenderingMode headphones_rendering_mode;  // 2 bits.
   uint8_t reserved;                                   // 6 bits.
+
+  // `num_parameters` is implicit based on the size of
+  // `rendering_config_param_definitions`.
+  std::vector<RenderingConfigParamDefinition>
+      rendering_config_param_definitions;
 
   // `rendering_config_extension_size` is inferred from the length of
   // `rendering_config_extension_bytes`.

@@ -201,6 +201,27 @@ absl::Status ValidateNumSubMixes(DecodedUleb128 num_sub_mixes) {
   return absl::OkStatus();
 }
 
+absl::Status ReadRenderingConfigParamDefinitions(
+    ReadBitBuffer& rb, std::vector<RenderingConfigParamDefinition>&
+                           output_rendering_config_param_definitions) {
+  DecodedUleb128 num_params;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_params));
+  if (num_params == 0) {
+    return absl::InvalidArgumentError(
+        "Expected at least one rendering config param definition, but got 0.");
+  }
+  for (int i = 0; i < num_params; ++i) {
+    auto rendering_config_param_definition =
+        RenderingConfigParamDefinition::CreateFromBuffer(rb);
+    if (!rendering_config_param_definition.ok()) {
+      return rendering_config_param_definition.status();
+    }
+    output_rendering_config_param_definitions.push_back(
+        std::move(*rendering_config_param_definition));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 RenderingConfigParamDefinition::RenderingConfigParamDefinition(
@@ -239,20 +260,24 @@ RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
       param_definition = PolarParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition), {});
       break;
     // TODO(b/467386344): Add support for other rendering config param
     // definition types.
     default:
-      return absl::InvalidArgumentError("Expected a PolarParamDefinition.");
+      DecodedUleb128 param_definition_bytes_size;
+      RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
+      std::vector<uint8_t> param_definition_bytes;
+      param_definition_bytes.resize(param_definition_bytes_size);
+      RETURN_IF_NOT_OK(
+          rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes)));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition),
+                    std::move(param_definition_bytes));
   }
-  DecodedUleb128 param_definition_bytes_size;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
-  std::vector<uint8_t> param_definition_bytes;
-  param_definition_bytes.resize(param_definition_bytes_size);
-  RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes)));
-  return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                    param_definition_type),
-                std::move(param_definition), std::move(param_definition_bytes));
 }
 
 absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {
@@ -346,11 +371,36 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
   rendering_config.reserved = reserved;
   DecodedUleb128 rendering_config_extension_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
-  rendering_config.rendering_config_extension_bytes.resize(
-      rendering_config_extension_size);
-  RETURN_IF_NOT_OK(rb.ReadUint8Span(
-      absl::MakeSpan(rendering_config.rendering_config_extension_bytes)));
-
+  auto position_before_reading_rendering_config_param_definitions = rb.Tell();
+  if (rendering_config_extension_size > 0) {
+    auto status = ReadRenderingConfigParamDefinitions(
+        rb, rendering_config.rendering_config_param_definitions);
+    int64_t extension_bytes_to_read = rendering_config_extension_size;
+    if (status.ok()) {
+      extension_bytes_to_read =
+          rendering_config_extension_size -
+          ((rb.Tell() -
+            position_before_reading_rendering_config_param_definitions) /
+           8);
+      if (extension_bytes_to_read < 0) {
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Expected `rendering_config_extension_size` to be greater than or "
+            "equal to the size of `rendering_config_param_definitions`., but "
+            "got: ",
+            extension_bytes_to_read));
+      }
+    } else {
+      // Failed to read param definitions, so seek back to the position before
+      // reading the param definitions so we can read these bytes as extension
+      // bytes instead.
+      RETURN_IF_NOT_OK(
+          rb.Seek(position_before_reading_rendering_config_param_definitions));
+    }
+    rendering_config.rendering_config_extension_bytes.resize(
+        extension_bytes_to_read);
+    RETURN_IF_NOT_OK(rb.ReadUint8Span(
+        absl::MakeSpan(rendering_config.rendering_config_extension_bytes)));
+  }
   RETURN_IF_NOT_OK(element_mix_gain.ReadAndValidate(rb));
   return absl::OkStatus();
 }

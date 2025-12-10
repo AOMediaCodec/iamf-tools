@@ -1009,7 +1009,8 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
@@ -1062,7 +1063,8 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
       // Start Submix.
       1, 21,
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
@@ -1114,7 +1116,8 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
       // Start Submix.
       1, 21,
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
@@ -1153,7 +1156,8 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       // Start ElementMixGain
       // Parameter ID.
@@ -1178,7 +1182,139 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       .localized_element_annotations = {"Submix 1"},
       .rendering_config =
           {.headphones_rendering_mode =
-               RenderingConfig::kHeadphonesRenderingModeBinaural},
+               RenderingConfig::kHeadphonesRenderingModeBinaural,
+           .rendering_config_extension_bytes = {0}},
+      .element_mix_gain = MixGainParamDefinition()};
+  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  EXPECT_EQ(audio_element, expected_submix_audio_element);
+}
+
+TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
+  std::vector<uint8_t> source = {
+      // Start SubMixAudioElement.
+      // audio_element_id
+      11,
+      // localized_element_annotations[0]
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/10,
+      // num_params
+      1,
+      // Start RenderingConfigParamDefinition.
+      // `param_definition_type`.
+      ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
+      // `param_definition`.
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+      // default_azimuth = 2 (9 bits)
+      // default_elevation = 3 (8 bits)
+      // default_distance = 4 (7 bits)
+      // 00000001 00000001 10000100
+      0x01, 0x01, 0x84,
+      // End RenderingConfig.
+      // Start ElementMixGain
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4
+      // End ElementMixGain
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  SubMixAudioElement audio_element;
+  EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, *buffer),
+              IsOk());
+
+  PolarParamDefinition polar_param_definition;
+  polar_param_definition.parameter_id_ = 1;
+  polar_param_definition.parameter_rate_ = 1;
+  polar_param_definition.param_definition_mode_ = false;
+  polar_param_definition.duration_ = 10;
+  polar_param_definition.constant_subblock_duration_ = 10;
+  polar_param_definition.default_azimuth_ = 2;
+  polar_param_definition.default_elevation_ = 3;
+  polar_param_definition.default_distance_ = 4;
+
+  // Set up expected values.
+  SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
+      .audio_element_id = 11,
+      .localized_element_annotations = {"Submix 1"},
+      .rendering_config =
+          {
+              .headphones_rendering_mode =
+                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+              .reserved = 0,
+              .rendering_config_param_definitions =
+                  {RenderingConfigParamDefinition::Create(
+                       ParamDefinition::kParameterDefinitionPolar,
+                       polar_param_definition, {})
+                       .value()},
+              .rendering_config_extension_bytes = {},
+          },
+      .element_mix_gain = MixGainParamDefinition()};
+  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  EXPECT_EQ(audio_element, expected_submix_audio_element);
+}
+
+TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
+  std::vector<uint8_t> source = {
+      // Start SubMixAudioElement.
+      // audio_element_id
+      11,
+      // localized_element_annotations[0]
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/15, 'e', 'x', 't', 'e', 'n', 's', 'i',
+      'o', 'n', 's', 'b', 'y', 't', 'e', 's',
+      // End RenderingConfig.
+      // Start ElementMixGain
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4
+      // End ElementMixGain
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  SubMixAudioElement audio_element;
+  EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, *buffer),
+              IsOk());
+
+  // Set up expected values.
+  // We expect the extension bytes to be parsed, but no param definitions.
+  SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
+      .audio_element_id = 11,
+      .localized_element_annotations = {"Submix 1"},
+      .rendering_config =
+          {
+              .headphones_rendering_mode =
+                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+              .reserved = 0,
+              .rendering_config_extension_bytes = {'e', 'x', 't', 'e', 'n', 's',
+                                                   'i', 'o', 'n', 's', 'b', 'y',
+                                                   't', 'e', 's'},
+          },
       .element_mix_gain = MixGainParamDefinition()};
   expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
   expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
@@ -1224,22 +1360,22 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
 
 TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
      SucceedsWithPolarParamDefinition) {
-  std::vector<uint8_t> source = {// `param_definition_type`.
-                                 ParamDefinition::kParameterDefinitionPolar,
-                                 1,   // parameter_id
-                                 1,   // parameter_rate
-                                 0,   // mode
-                                 10,  // duration
-                                 10,  // constant_subblock_duration
-                                      // default_azimuth = 2 (9 bits)
-                                      // default_elevation = 3 (8 bits)
-                                      // default_distance = 4 (7 bits)
-                                      // 00000001 00000001 10000100
-                                 0x01, 0x01, 0x84,
-                                 // `param_definition_bytes_size`.
-                                 1,
-                                 // `param_definition_bytes`.
-                                 123};
+  std::vector<uint8_t> source = {
+      // `param_definition_type`.
+      ParamDefinition::kParameterDefinitionPolar,
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+           // default_azimuth = 2 (9 bits)
+           // default_elevation = 3 (8 bits)
+           // default_distance = 4 (7 bits)
+           // 00000001 00000001 10000100
+      0x01,
+      0x01,
+      0x84,
+  };
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
 
@@ -1251,8 +1387,6 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
             ParamDefinition::kParameterDefinitionPolar);
   EXPECT_TRUE(std::holds_alternative<PolarParamDefinition>(
       rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
-              testing::ElementsAre(123));
   const auto& param_definition = std::get<PolarParamDefinition>(
       rendering_config_param_definition->param_definition);
   EXPECT_EQ(param_definition.parameter_id_, 1);
@@ -1404,7 +1538,8 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
       // Start Submix.
       1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
