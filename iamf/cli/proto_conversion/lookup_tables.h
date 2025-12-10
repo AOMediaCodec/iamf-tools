@@ -169,6 +169,10 @@ class LookupTables {
             {EXPANDED_LOUDSPEAKER_LAYOUT_10_2_9_3_CH, kExpandedLayout10_2_9_3},
             {EXPANDED_LOUDSPEAKER_LAYOUT_LFE_PAIR, kExpandedLayoutLfePair},
             {EXPANDED_LOUDSPEAKER_LAYOUT_BOTTOM_3_CH, kExpandedLayoutBottom3Ch},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_7_1_5_4_CH, kExpandedLayout7_1_5_4Ch},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_BOTTOM_4_CH, kExpandedLayoutBottom4Ch},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_1_CH, kExpandedLayoutTop1Ch},
+            {EXPANDED_LOUDSPEAKER_LAYOUT_TOP_5_CH, kExpandedLayoutTop5Ch},
         });
       }();
 

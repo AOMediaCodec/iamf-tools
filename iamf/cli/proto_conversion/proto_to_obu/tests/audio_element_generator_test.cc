@@ -219,6 +219,43 @@ TEST(Generate, PopulatesExpandedLayoutBottom3Ch) {
             ChannelAudioLayerConfig::kExpandedLayoutBottom3Ch);
 }
 
+TEST(Generate, PopulatesExpandedLayoutTop1Ch) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  ASSERT_TRUE(TextFormat::ParseFromString(
+      R"pb(
+        audio_element_id: 300
+        audio_element_type: AUDIO_ELEMENT_CHANNEL_BASED
+        codec_config_id: 200
+        audio_substream_ids: [ 99 ]
+        scalable_channel_layout_config {
+          channel_audio_layer_configs {
+            loudspeaker_layout: LOUDSPEAKER_LAYOUT_EXPANDED
+            substream_count: 1
+            coupled_substream_count: 0
+            expanded_loudspeaker_layout: EXPANDED_LOUDSPEAKER_LAYOUT_TOP_1_CH
+          }
+        }
+      )pb",
+      audio_element_metadatas.Add()));
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  const auto& output_first_layer =
+      GetConfigForAudioElementIdExpectOk<ScalableChannelLayoutConfig>(
+          kAudioElementId, output_obus)
+          .channel_audio_layer_configs[0];
+  EXPECT_EQ(output_first_layer.loudspeaker_layout,
+            ChannelAudioLayerConfig::kLayoutExpanded);
+  ASSERT_TRUE(output_first_layer.expanded_loudspeaker_layout.has_value());
+  EXPECT_EQ(*output_first_layer.expanded_loudspeaker_layout,
+            ChannelAudioLayerConfig::kExpandedLayoutTop1Ch);
+}
+
 TEST(Generate, InvalidWhenExpandedLoudspeakerLayoutIsSignalledButNotPresent) {
   AudioElementObuMetadatas audio_element_metadatas;
   ASSERT_TRUE(TextFormat::ParseFromString(

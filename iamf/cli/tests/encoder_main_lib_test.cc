@@ -995,6 +995,9 @@ INSTANTIATE_TEST_SUITE_P(InvalidWithMoreThanTwentyEightChannels, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseEnhancedProfileWithTemporalUnitObus, TestVector,
                          testing::Values("test_000712.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvanced7_1_5_4Ch, TestVector,
+                         testing::Values("test_000827.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedTwoLpcmCodecConfigs, TestVector,
                          testing::Values("test_000845.textproto"));
 

@@ -98,8 +98,9 @@ enum ChannelLabel {
   // Reserved for possible use of demixed labels.
   reserved 5, 12, 13, 18 to 21, 24, 25, 30, 31, 38 to 41;
 
-  // Reserved for 7.1.5.4 labels.
-  reserved 65 to 66;
+  // Additional channels for 7.1.5.4.
+  CHANNEL_LABEL_BT_BL = 65;
+  CHANNEL_LABEL_BT_BR = 66;
 
   // Reserved for channel-based labels.
   reserved 69 to 999;
@@ -132,7 +133,7 @@ enum ChannelLabel {
 
   reserved 1025 to 1224;  // Reserved for future ambisonics channels.
 
-  // Next ID: 65 (channel-based) or 1025 (ambisonics).
+  // Next ID: 69 (channel-based) or 1025 (ambisonics).
 }
 
 // Wrapper around the `ChannelLabel` enum to allow for serialization to the
