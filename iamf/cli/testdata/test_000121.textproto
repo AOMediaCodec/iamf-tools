@@ -59,7 +59,7 @@ audio_element_metadata {
   codec_config_id: 200
   audio_substream_ids: [0]
   audio_element_params: {
-    param_definition_type: PARAM_DEFINITION_TYPE_RESERVED_3
+    param_definition_type: PARAM_DEFINITION_TYPE_RESERVED_255
     param_definition_extension: {
       param_definition_size: 7
       param_definition_bytes: "ignored"

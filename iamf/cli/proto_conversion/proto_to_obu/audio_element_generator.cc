@@ -79,8 +79,8 @@ absl::Status CopyAudioElementParamDefinitionType(
     case PARAM_DEFINITION_TYPE_MIX_GAIN:
       return InvalidArgumentError(absl::StrCat(
           "Mix gain parameters are not permitted in audio elements"));
-    case PARAM_DEFINITION_TYPE_RESERVED_3:
-      output_param_definition_type = kParameterDefinitionReservedStart;
+    case PARAM_DEFINITION_TYPE_RESERVED_255:
+      output_param_definition_type = kParameterDefinitionReservedEnd;
       return absl::OkStatus();
     default:
       return InvalidArgumentError(

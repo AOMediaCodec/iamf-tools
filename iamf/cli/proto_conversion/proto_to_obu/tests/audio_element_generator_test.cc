@@ -945,7 +945,7 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   auto* audio_element_param =
       audio_element_metadata.mutable_audio_element_params()->Add();
   audio_element_param->set_param_definition_type(
-      iamf_tools_cli_proto::PARAM_DEFINITION_TYPE_RESERVED_3);
+      iamf_tools_cli_proto::PARAM_DEFINITION_TYPE_RESERVED_255);
   // Corrupt the `num_parameters` field.
   constexpr absl::string_view kParamDefinitionBytes = "abc";
   const auto kInconsistentParamDefinitionSize = 9999;
@@ -965,7 +965,7 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   // The field is deprecated and ignored, the actual number of parameters are
   // set based on the `param_definition_bytes` field.
   ExtendedParamDefinition expected_extended_param_definition(
-      ParamDefinition::kParameterDefinitionReservedStart);
+      ParamDefinition::kParameterDefinitionReservedEnd);
   expected_extended_param_definition.param_definition_bytes_ = {
       kParamDefinitionBytes.begin(), kParamDefinitionBytes.end()};
   EXPECT_THAT(
