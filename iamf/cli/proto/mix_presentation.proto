@@ -26,10 +26,20 @@ enum HeadPhonesRenderingMode {
   HEADPHONES_RENDERING_MODE_RESERVED_3 = 4;
 }
 
+message RenderingConfigParamDefinition {
+  ParamDefinitionType param_definition_type = 1;
+  oneof param_definition {
+    PolarParamDefinition polar_param_definition = 2;
+    bytes param_definition_bytes = 3;
+  }
+}
+
 message RenderingConfig {
   HeadPhonesRenderingMode headphones_rendering_mode = 1;
   uint32 reserved = 2;
   uint32 rendering_config_extension_size = 3 [deprecated = true];
+  repeated RenderingConfigParamDefinition rendering_config_param_definitions =
+      5;
   bytes rendering_config_extension_bytes = 4;
 }
 
