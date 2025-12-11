@@ -24,6 +24,8 @@ enum ParamDefinitionType {
   PARAM_DEFINITION_TYPE_DEMIXING = 2;
   PARAM_DEFINITION_TYPE_RECON_GAIN = 3;
   PARAM_DEFINITION_TYPE_POLAR = 4;
+  // [5, 6] are reserved for CART_8 and CART_16.
+  PARAM_DEFINITION_TYPE_DUAL_POLAR = 7;
   PARAM_DEFINITION_TYPE_RESERVED_255 = 256;
 }
 
@@ -72,4 +74,18 @@ message PolarParamDefinition {
   int32 default_elevation = 3;  // 8 bits.
   // `default_elevation` is clipped to [-90, 90].
   int32 default_distance = 4;  // 7 bits.
+}
+
+message DualPolarParamDefinition {
+  ParamDefinition param_definition = 1;
+  int32 default_first_azimuth = 2;  // 9 bits.
+  // `default_first_azimuth` is clipped to [-180, 180].
+  int32 default_first_elevation = 3;  // 8 bits.
+  // `default_first_elevation` is clipped to [-90, 90].
+  int32 default_first_distance = 4;  // 7 bits.
+  int32 default_second_azimuth = 5;  // 9 bits.
+  // `default_second_azimuth` is clipped to [-180, 180].
+  int32 default_second_elevation = 6;  // 8 bits.
+  // `default_second_elevation` is clipped to [-90, 90].
+  int32 default_second_distance = 7;  // 7 bits.
 }
