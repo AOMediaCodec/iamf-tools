@@ -29,6 +29,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/tests/obu_test_base.h"
 #include "iamf/obu/types.h"
@@ -676,7 +677,7 @@ TEST_F(MixPresentationObuTest, RenderingConfigExtension) {
 }
 
 // TODO(b/467748101): Update test once this bug is fixed.
-TEST_F(MixPresentationObuTest, RenderingConfigPolarParamDefinition) {
+TEST_F(MixPresentationObuTest, WritesRenderingConfigPolarParamDefinition) {
   PolarParamDefinition polar_param_definition_1;
   polar_param_definition_1.parameter_id_ = 1;
   polar_param_definition_1.parameter_rate_ = 1;
@@ -752,6 +753,75 @@ TEST_F(MixPresentationObuTest, RenderingConfigPolarParamDefinition) {
       // default_azimuth = 180 (9 bits)
       // default_elevation = 3 (8 bits)
       // default_distance = 4 (7 bits)
+      0b0101'1010, 0b0000'0001, 0b1000'0100,
+      // End RenderingConfigParamDefinitions.
+      // End RenderingConfig.
+      12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
+      // Start Layout 1 (of Submix 1).
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
+      // End Mix OBU.
+  };
+
+  InitAndTestWrite();
+}
+
+TEST_F(MixPresentationObuTest, WritesRenderingConfigDualPolarParamDefinition) {
+  DualPolarParamDefinition dual_polar_param_definition;
+  dual_polar_param_definition.parameter_id_ = 1;
+  dual_polar_param_definition.parameter_rate_ = 1;
+  dual_polar_param_definition.param_definition_mode_ = false;
+  dual_polar_param_definition.duration_ = 10;
+  dual_polar_param_definition.constant_subblock_duration_ = 10;
+  dual_polar_param_definition.default_first_azimuth_ = 2;
+  dual_polar_param_definition.default_first_elevation_ = 3;
+  dual_polar_param_definition.default_first_distance_ = 4;
+  dual_polar_param_definition.default_second_azimuth_ = 181;
+  dual_polar_param_definition.default_second_elevation_ = 3;
+  dual_polar_param_definition.default_second_distance_ = 4;
+
+  sub_mixes_[0].audio_elements[0].rendering_config = {
+      .headphones_rendering_mode =
+          RenderingConfig::kHeadphonesRenderingModeStereo,
+      .reserved = 0,
+      .rendering_config_param_definitions =
+          {RenderingConfigParamDefinition::Create(
+               ParamDefinition::ParameterDefinitionType::
+                   kParameterDefinitionDualPolar,
+               dual_polar_param_definition, {})
+               .value()},
+      .rendering_config_extension_bytes = {}};
+
+  expected_header_ = {kObuIaMixPresentation << 3, 60};
+  expected_payload_ = {
+      // Start Mix OBU.
+      10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
+      // Start Submix 1
+      1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      // `rendering_config_extension_bytes size`.
+      13,
+      // Start RenderingConfigParamDefinitions.
+      // `num_parameters`.
+      1,
+      // `param_definition_type`.
+      ParamDefinition::ParameterDefinitionType::kParameterDefinitionDualPolar,
+      // `param_definition`.
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+      // default_first_azimuth = 2 (9 bits)
+      // default_first_elevation = 3 (8 bits)
+      // default_first_distance = 4 (7 bits)
+      // 00000001 00000001 10000100
+      0x01, 0x01, 0x84,
+      // default_second_azimuth = 180 (9 bits)
+      // default_second_elevation = 3 (8 bits)
+      // default_second_distance = 4 (7 bits)
       0b0101'1010, 0b0000'0001, 0b1000'0100,
       // End RenderingConfigParamDefinitions.
       // End RenderingConfig.
@@ -1378,6 +1448,92 @@ TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
   EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 
+TEST(ReadSubMixAudioElementTest, DualPolarParamDefinitionRenderingConfig) {
+  std::vector<uint8_t> source = {
+      // Start SubMixAudioElement.
+      // audio_element_id
+      11,
+      // localized_element_annotations[0]
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/13,
+      // num_params
+      1,
+      // Start RenderingConfigParamDefinition.
+      // `param_definition_type`.
+      ParamDefinition::ParameterDefinitionType::kParameterDefinitionDualPolar,
+      // `param_definition`.
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+      // default_first_azimuth = 2 (9 bits)
+      // default_first_elevation = 3 (8 bits)
+      // default_first_distance = 4 (7 bits)
+      // 00000001 00000001 10000100
+      0x01, 0x01, 0x84,
+      // default_second_azimuth = 180 (9 bits)
+      // default_second_elevation = 3 (8 bits)
+      // default_second_distance = 4 (7 bits)
+      0b0101'1010, 0b0000'0001, 0b1000'0100,
+      // End RenderingConfig.
+      // Start ElementMixGain
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4
+      // End ElementMixGain
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  SubMixAudioElement audio_element;
+  EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, *buffer),
+              IsOk());
+
+  DualPolarParamDefinition dual_polar_param_definition;
+  dual_polar_param_definition.parameter_id_ = 1;
+  dual_polar_param_definition.parameter_rate_ = 1;
+  dual_polar_param_definition.param_definition_mode_ = false;
+  dual_polar_param_definition.duration_ = 10;
+  dual_polar_param_definition.constant_subblock_duration_ = 10;
+  dual_polar_param_definition.default_first_azimuth_ = 2;
+  dual_polar_param_definition.default_first_elevation_ = 3;
+  dual_polar_param_definition.default_first_distance_ = 4;
+  dual_polar_param_definition.default_second_azimuth_ = 180;
+  dual_polar_param_definition.default_second_elevation_ = 3;
+  dual_polar_param_definition.default_second_distance_ = 4;
+
+  // Set up expected values.
+  SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
+      .audio_element_id = 11,
+      .localized_element_annotations = {"Submix 1"},
+      .rendering_config =
+          {
+              .headphones_rendering_mode =
+                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+              .reserved = 0,
+              .rendering_config_param_definitions =
+                  {RenderingConfigParamDefinition::Create(
+                       ParamDefinition::kParameterDefinitionDualPolar,
+                       dual_polar_param_definition, {})
+                       .value()},
+              .rendering_config_extension_bytes = {},
+          },
+      .element_mix_gain = MixGainParamDefinition()};
+  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  EXPECT_EQ(audio_element, expected_submix_audio_element);
+}
+
 TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
   std::vector<uint8_t> source = {
       // Start SubMixAudioElement.
@@ -1431,7 +1587,8 @@ TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
 }
 
 // TODO(b/339855295): Add more tests.
-TEST(RenderingConfigParamDefinitionCreate, FailsWithNonPolarParamDefinition) {
+TEST(RenderingConfigParamDefinitionCreate,
+     FailsWithNonPositionParamDefinition) {
   EXPECT_FALSE(RenderingConfigParamDefinition::Create(
                    ParamDefinition::kParameterDefinitionMixGain,
                    PolarParamDefinition(), {})
@@ -1454,8 +1611,25 @@ TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
+TEST(RenderingConfigParamDefinitionCreate,
+     SucceedsWithDualPolarParamDefinition) {
+  const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::Create(
+          ParamDefinition::kParameterDefinitionDualPolar,
+          DualPolarParamDefinition(), kParamDefinitionBytes);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionDualPolar);
+  EXPECT_TRUE(std::holds_alternative<DualPolarParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+              testing::ElementsAreArray(kParamDefinitionBytes));
+}
+
 TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
-     FailsWithNonPolarParamDefinition) {
+     FailsWithNonPositionParamDefinition) {
   std::vector<uint8_t> source = {// `param_definition_type`.
                                  ParamDefinition::kParameterDefinitionMixGain};
   auto buffer =
@@ -1501,6 +1675,48 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
   EXPECT_EQ(param_definition.default_azimuth_, 2);
   EXPECT_EQ(param_definition.default_elevation_, 3);
   EXPECT_EQ(param_definition.default_distance_, 4);
+}
+
+TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
+     SucceedsWithDualPolarParamDefinition) {
+  std::vector<uint8_t> source = {// `param_definition_type`.
+                                 ParamDefinition::kParameterDefinitionDualPolar,
+                                 1,   // parameter_id
+                                 1,   // parameter_rate
+                                 0,   // mode
+                                 10,  // duration
+                                 10,  // constant_subblock_duration
+                                      // default_azimuth = 2 (9 bits)
+                                      // default_elevation = 3 (8 bits)
+                                      // default_distance = 4 (7 bits)
+                                      // 00000001 00000001 10000100
+                                 0x01, 0x01, 0x84,
+                                 // default_second_azimuth = 5 (9 bits)
+                                 // default_second_elevation = 6 (8 bits)
+                                 // default_second_distance = 7 (7 bits)
+                                 0b0000'0010, 0b1000'0011, 0b0000'0111};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionDualPolar);
+  EXPECT_TRUE(std::holds_alternative<DualPolarParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  const auto& param_definition = std::get<DualPolarParamDefinition>(
+      rendering_config_param_definition->param_definition);
+  EXPECT_EQ(param_definition.parameter_id_, 1);
+  EXPECT_EQ(param_definition.parameter_rate_, 1);
+  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.default_first_azimuth_, 2);
+  EXPECT_EQ(param_definition.default_first_elevation_, 3);
+  EXPECT_EQ(param_definition.default_first_distance_, 4);
+  EXPECT_EQ(param_definition.default_second_azimuth_, 5);
+  EXPECT_EQ(param_definition.default_second_elevation_, 6);
+  EXPECT_EQ(param_definition.default_second_distance_, 7);
 }
 
 TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {

@@ -27,10 +27,14 @@
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+using PositionParamVariant =
+    std::variant<PolarParamDefinition, DualPolarParamDefinition>;
 
 struct RenderingConfigParamDefinition {
   friend bool operator==(const RenderingConfigParamDefinition& lhs,
@@ -71,11 +75,11 @@ struct RenderingConfigParamDefinition {
    */
   static absl::StatusOr<RenderingConfigParamDefinition> Create(
       ParamDefinition::ParameterDefinitionType param_definition_type,
-      std::variant<PolarParamDefinition> param_definition,
+      PositionParamVariant param_definition,
       const std::vector<uint8_t>& param_definition_bytes);
 
   ParamDefinition::ParameterDefinitionType param_definition_type;
-  std::variant<PolarParamDefinition> param_definition;
+  PositionParamVariant param_definition;
   // `param_definition_bytes_size` is inferred from the size of
   // `param_definition_bytes`.
   std::vector<uint8_t> param_definition_bytes;
@@ -84,7 +88,7 @@ struct RenderingConfigParamDefinition {
   // Private constructor. Use `Create` or `CreateFromBuffer` instead.
   RenderingConfigParamDefinition(
       ParamDefinition::ParameterDefinitionType param_definition_type,
-      std::variant<PolarParamDefinition> param_definition,
+      PositionParamVariant param_definition,
       std::vector<uint8_t> param_definition_bytes);
 };
 

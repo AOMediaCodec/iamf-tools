@@ -34,6 +34,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 
@@ -49,6 +50,12 @@ absl::Status WriteRenderingConfigParamDefinition(
   switch (rendering_config_param_definition.param_definition_type) {
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
       RETURN_IF_NOT_OK(std::get<PolarParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualPolar:
+      RETURN_IF_NOT_OK(std::get<DualPolarParamDefinition>(
                            rendering_config_param_definition.param_definition)
                            .ValidateAndWrite(wb));
       break;
@@ -281,7 +288,7 @@ absl::Status ReadRenderingConfigParamDefinitions(
 
 RenderingConfigParamDefinition::RenderingConfigParamDefinition(
     ParamDefinition::ParameterDefinitionType param_definition_type,
-    std::variant<PolarParamDefinition> param_definition,
+    PositionParamVariant param_definition,
     std::vector<uint8_t> param_definition_bytes)
     : param_definition_type(param_definition_type),
       param_definition(std::move(param_definition)),
@@ -290,15 +297,18 @@ RenderingConfigParamDefinition::RenderingConfigParamDefinition(
 absl::StatusOr<RenderingConfigParamDefinition>
 RenderingConfigParamDefinition::Create(
     ParamDefinition::ParameterDefinitionType param_definition_type,
-    std::variant<PolarParamDefinition> param_definition,
+    PositionParamVariant param_definition,
     const std::vector<uint8_t>& param_definition_bytes) {
   switch (param_definition_type) {
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualPolar:
       break;
     // TODO(b/467386344): Add support for other rendering config param
     // definition types.
     default:
-      return absl::InvalidArgumentError("Expected a PolarParamDefinition.");
+      return absl::InvalidArgumentError(
+          "Expected a Position param definition type.");
   }
   return RenderingConfigParamDefinition(param_definition_type,
                                         std::move(param_definition),
@@ -309,12 +319,22 @@ absl::StatusOr<RenderingConfigParamDefinition>
 RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
   DecodedUleb128 param_definition_type;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type));
-  std::variant<PolarParamDefinition> param_definition;
+  PositionParamVariant param_definition;
   switch (param_definition_type) {
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
       param_definition = PolarParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition), {});
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualPolar:
+      param_definition = DualPolarParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualPolarParamDefinition>().ReadAndValidate(
+              rb));
       return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
                         param_definition_type),
                     std::move(param_definition), {});
