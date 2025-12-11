@@ -70,6 +70,7 @@ cc_library(
     visibility = [
         "//iamf/common/tests:__subpackages__",
         "//iamf/obu/decoder_config/tests:__subpackages__",
+        "//iamf/obu/param_definitions/tests:__subpackages__",
         "//iamf/obu/tests:__subpackages__",
     ],
     deps = [
