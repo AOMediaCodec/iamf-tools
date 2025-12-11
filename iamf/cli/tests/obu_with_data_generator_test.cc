@@ -1273,6 +1273,73 @@ TEST(FinalizeScalableChannelLayoutConfig, InvalidWithReservedLayout14) {
                    .ok());
 }
 
+TEST(FinalizeObjectsConfig, FillsLabelsForOneObject) {
+  DecodedUleb128 kSubstreamId = 100;
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {kSubstreamId, {kObjectChannel0}}};
+  auto objects_config = ObjectsConfig::Create(1, {});
+
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  const auto obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId,
+      /*reserved=*/0, kFirstCodecConfigId, kSubstreamId, *objects_config);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeObjectsConfig(
+                  *obu, output_substream_id_to_labels),
+              IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+}
+
+TEST(FinalizeObjectsConfig, FillsLabelsForTwoObjects) {
+  DecodedUleb128 kSubstreamId = 100;
+  const SubstreamIdLabelsMap kExpectedSubstreamIdToLabels = {
+      {kSubstreamId, {kObjectChannel0, kObjectChannel1}}};
+  auto objects_config = ObjectsConfig::Create(2, {});
+
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  const auto obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId,
+      /*reserved=*/0, kFirstCodecConfigId, kSubstreamId, *objects_config);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeObjectsConfig(
+                  *obu, output_substream_id_to_labels),
+              IsOk());
+
+  EXPECT_EQ(output_substream_id_to_labels, kExpectedSubstreamIdToLabels);
+}
+
+TEST(FinalizeObjectsConfig, FailsForInvalidNumberOfSubstreams) {
+  DecodedUleb128 kSubstreamId = 100;
+  auto objects_config = ObjectsConfig::Create(2, {});
+
+  auto obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId,
+      /*reserved=*/0, kFirstCodecConfigId, kSubstreamId, *objects_config);
+  ASSERT_THAT(obu, IsOk());
+  obu->audio_substream_ids_.push_back(kSubstreamId + 1);
+
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeObjectsConfig(
+                  *obu, output_substream_id_to_labels),
+              Not(IsOk()));
+}
+
+TEST(FinalizeObjectsConfig, NonObjectBasedAudioElementIsInvalid) {
+  const std::vector<DecodedUleb128> kSubstreamIds = {99};
+  SubstreamIdLabelsMap output_substream_id_to_labels;
+  auto obu = AudioElementObu::CreateForScalableChannelLayout(
+      ObuHeader(), kFirstAudioElementId, /*reserved=*/0, kFirstCodecConfigId,
+      kSubstreamIds, kOneLayerStereoConfig);
+  ASSERT_THAT(obu, IsOk());
+
+  EXPECT_THAT(ObuWithDataGenerator::FinalizeObjectsConfig(
+                  *obu, output_substream_id_to_labels),
+              Not(IsOk()));
+}
+
 struct ExpandedLayoutTestCase {
   std::vector<DecodedUleb128> substream_ids;
   ScalableChannelLayoutConfig scalable_channel_layout_config;

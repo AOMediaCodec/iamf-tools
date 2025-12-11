@@ -804,4 +804,35 @@ absl::Status ObuWithDataGenerator::FinalizeAmbisonicsConfig(
   }
 }
 
+absl::Status ObuWithDataGenerator::FinalizeObjectsConfig(
+    const AudioElementObu& audio_element_obu,
+    SubstreamIdLabelsMap& substream_id_to_labels) {
+  if (audio_element_obu.GetAudioElementType() !=
+      AudioElementObu::AudioElementType::kAudioElementObjectBased) {
+    return InvalidArgumentError(
+        "Cannot finalize ObjectsConfig for a non-object-based Audio "
+        "Element OBU.");
+  }
+  auto objects_config = std::get_if<ObjectsConfig>(&audio_element_obu.config_);
+  if (objects_config == nullptr) {
+    return InvalidArgumentError(
+        "Audio Element OBU for objects has no objects config.");
+  }
+  if (audio_element_obu.audio_substream_ids_.size() != 1) {
+    return InvalidArgumentError(
+        "Audio Element OBU for objects has incorrect number of substreams.");
+  }
+  if (objects_config->num_objects == 1) {
+    substream_id_to_labels[audio_element_obu.audio_substream_ids_[0]] = {
+        ChannelLabel::kObjectChannel0};
+  } else if (objects_config->num_objects == 2) {
+    substream_id_to_labels[audio_element_obu.audio_substream_ids_[0]] = {
+        ChannelLabel::kObjectChannel0, ChannelLabel::kObjectChannel1};
+  } else {
+    return InvalidArgumentError(
+        "Audio Element OBU for objects has incorrect number of objects.");
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace iamf_tools

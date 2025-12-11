@@ -109,6 +109,17 @@ class ObuWithDataGenerator {
   static absl::Status FinalizeAmbisonicsConfig(
       const AudioElementObu& audio_element_obu,
       SubstreamIdLabelsMap& substream_id_to_labels);
+
+  /*!\brief Populates substream_id_to_labels for the objects config.
+   *
+   * \param audio_element_obu Objects config OBU to process.
+   * \param substream_id_to_labels Output map of substream IDs to labels.
+   * \return `absl::OkStatus()` on success. An error if the input OBU is not an
+   *         objects config. A specific status on failure.
+   */
+  static absl::Status FinalizeObjectsConfig(
+      const AudioElementObu& audio_element_obu,
+      SubstreamIdLabelsMap& substream_id_to_labels);
 };
 }  // namespace iamf_tools
 
