@@ -612,10 +612,14 @@ absl::StatusOr<AudioElementWithData> CreateObjectsAudioElementWithData(
   if (!obu.ok()) {
     return obu.status();
   }
-  // TODO(b/466157802): Add parameter definitions.
-  // TODO(b/466433526): Fill substream_id_to_labels map.
-  return AudioElementWithData{.obu = *std::move(obu),
-                              .codec_config = &codec_config_obu};
+
+  SubstreamIdLabelsMap substream_id_to_labels;
+  RETURN_IF_NOT_OK(ObuWithDataGenerator::FinalizeObjectsConfig(
+      *obu, substream_id_to_labels));
+  return AudioElementWithData{
+      .obu = *std::move(obu),
+      .codec_config = &codec_config_obu,
+      .substream_id_to_labels = std::move(substream_id_to_labels)};
 }
 
 absl::StatusOr<AudioElementWithData> CreateAudioElementWithData(

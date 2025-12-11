@@ -375,12 +375,56 @@ TEST(Generate, GeneratesObjectsConfig) {
   EXPECT_THAT(audio_element_with_data.obu.GetAudioElementType(),
               AudioElementObu::kAudioElementObjectBased);
   EXPECT_THAT(audio_element_with_data.obu.audio_substream_ids_, ElementsAre(0));
+  EXPECT_EQ(audio_element_with_data.substream_id_to_labels,
+            SubstreamIdLabelsMap({{0, {kObjectChannel0}}}));
   const auto& objects_config =
       GetConfigForAudioElementIdExpectOk<ObjectsConfig>(kAudioElementId,
                                                         output_obus);
   EXPECT_EQ(objects_config.num_objects, 1);
   EXPECT_THAT(objects_config.objects_config_extension_bytes,
               ElementsAre('1', '2', '3', '4'));
+}
+
+TEST(Generate, GeneratesObjectsConfigWithTwoObjects) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  FillObjectsMetadata(*audio_element_metadatas.Add());
+  audio_element_metadatas.Mutable(0)->mutable_objects_config()->set_num_objects(
+      2);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
+
+  EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
+  const auto& audio_element_with_data = output_obus.at(kAudioElementId);
+  EXPECT_THAT(audio_element_with_data.obu.GetAudioElementType(),
+              AudioElementObu::kAudioElementObjectBased);
+  EXPECT_THAT(audio_element_with_data.obu.audio_substream_ids_, ElementsAre(0));
+  EXPECT_EQ(audio_element_with_data.substream_id_to_labels,
+            SubstreamIdLabelsMap({{0, {kObjectChannel0, kObjectChannel1}}}));
+  const auto& objects_config =
+      GetConfigForAudioElementIdExpectOk<ObjectsConfig>(kAudioElementId,
+                                                        output_obus);
+  EXPECT_EQ(objects_config.num_objects, 2);
+  EXPECT_THAT(objects_config.objects_config_extension_bytes,
+              ElementsAre('1', '2', '3', '4'));
+}
+
+TEST(Generate, InvalidObjectsConfigWithThreeObjects) {
+  AudioElementObuMetadatas audio_element_metadatas;
+  FillObjectsMetadata(*audio_element_metadatas.Add());
+  audio_element_metadatas.Mutable(0)->mutable_objects_config()->set_num_objects(
+      3);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
+                                        codec_config_obus);
+  AudioElementGenerator generator(audio_element_metadatas);
+
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
+  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), Not(IsOk()));
 }
 
 TEST(Generate, InvalidObjectsConfigWithMultipleSubstreams) {
