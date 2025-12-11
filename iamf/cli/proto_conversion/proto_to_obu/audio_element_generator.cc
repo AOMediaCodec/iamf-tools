@@ -79,6 +79,9 @@ absl::Status CopyAudioElementParamDefinitionType(
     case PARAM_DEFINITION_TYPE_MIX_GAIN:
       return InvalidArgumentError(absl::StrCat(
           "Mix gain parameters are not permitted in audio elements"));
+    case PARAM_DEFINITION_TYPE_POLAR:
+      return InvalidArgumentError(
+          absl::StrCat("Polar parameters are not permitted in audio elements"));
     case PARAM_DEFINITION_TYPE_RESERVED_255:
       output_param_definition_type = kParameterDefinitionReservedEnd;
       return absl::OkStatus();
@@ -164,6 +167,9 @@ absl::Status GenerateParameterDefinitions(
       case kParameterDefinitionMixGain:
         return InvalidArgumentError(
             "Mix gain parameters are not permitted in audio elements.");
+      case kParameterDefinitionPolar:
+        return InvalidArgumentError(
+            "Polar parameters are not permitted in audio elements.");
       default: {
         const auto& user_param_definition =
             user_data_parameter.param_definition_extension();
