@@ -995,6 +995,9 @@ INSTANTIATE_TEST_SUITE_P(InvalidWithMoreThanTwentyEightChannels, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseEnhancedProfileWithTemporalUnitObus, TestVector,
                          testing::Values("test_000712.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoObjectPolar, TestVector,
+                         testing::Values("test_000800.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvanced7_1_5_4Ch, TestVector,
                          testing::Values("test_000827.textproto"));
 
