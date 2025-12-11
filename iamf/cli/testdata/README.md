@@ -10,6 +10,40 @@ several files associated with it.
 -   Rendered WAV file (per `mix_presentation_id` x, sub mix index y, layout
     index z): `test_000012_rendered_id_x_sub_mix_y_layout_z.wav`
 
+## Generate Test Suite
+
+`generate_test_suite` is a script which runs the encoder to generate several
+test suite files.
+
+Prerequisites:
+
+-   The path to a built `encoder_main`, usually
+    `bazel-bin/iamf/cli/encoder_main`.
+
+Note that example commands below assume a working directory of `iamf_tools`.
+
+Run the test suite.
+
+Arguments:
+
+`encoder_bin`, full path to the built `encoder_main` tool. `test_data_dir`, full
+path to folder containing `.textproto` and reference `.wav` files. `output_dir`,
+full path to write IAMF files produced by `encoder_main`.
+
+For a simple configuration, this example will dump all files to the
+`output_dir`.
+
+```
+bazel run -c opt iamf/cli/testdata:generate_test_suite --  --encoder_bin=bazel-bin/iamf/cli/encoder_main  --test_data_dir=$PWD/iamf/cli/testdata/ --output_dir=/tmp/iamf_artifacts
+```
+
+Extra arguments:
+
+`regex_filter`, optionally included, regex to filter output files. For example
+`--regex_filter="000100"` will run a single file, or
+`--regex_filter="0001\d{2}"` will process files in the range [test_000100,
+test_000199].
+
 ## .textproto files
 
 Theses file describe metadata about the test vector to encode an

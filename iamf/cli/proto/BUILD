@@ -202,6 +202,11 @@ py_proto_library(
 )
 
 py_proto_library(
+    name = "test_vector_metadata_py_pb2",
+    deps = [":test_vector_metadata_proto"],
+)
+
+py_proto_library(
     name = "user_metadata_py_pb2",
     deps = [":user_metadata_proto"],
 )

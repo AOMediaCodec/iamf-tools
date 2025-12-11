@@ -39,6 +39,11 @@ bazel_dep(
 )
 bazel_dep(name = "platforms", version = "1.0.0")
 
+# Extra dependencies for python scripts.
+bazel_dep(name = "rules_python", version = "1.7.0")
+
+bazel_dep(name = "abseil-py", version = "2.1.0", dev_dependency = True)
+
 # Android NDK dependencies for Andoid builds.
 # Note that this does not fetch the Android NDK itself.  If building Android builds, an environment
 # variable ANDROID_NDK_HOME needs to be set to the directory containing the Android NDK.
