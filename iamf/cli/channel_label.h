@@ -41,6 +41,9 @@ class ChannelLabel {
     kL2,
     kR2,
     kDemixedR2,
+    // Object channels.
+    kObjectChannel0,
+    kObjectChannel1,
     // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
     kCentre,
     // LFE channel common to several layouts (e.g. 3.1.2, 5.1.y, 7.1.y, 9.1.6).

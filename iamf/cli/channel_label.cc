@@ -228,6 +228,10 @@ std::string ChannelLabel::LabelToStringForDebugging(Label label) {
       return "R2";
     case kDemixedR2:
       return "DemixedR2";
+    case kObjectChannel0:
+      return "ObjectChannel0";
+    case kObjectChannel1:
+      return "ObjectChannel1";
     case kCentre:
       return "C";
     case kLFE:

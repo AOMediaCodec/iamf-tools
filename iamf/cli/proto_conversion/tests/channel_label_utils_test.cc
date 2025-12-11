@@ -51,7 +51,9 @@ TEST_P(ProtoLabelTestCase, ProtoToLabelAndLabelToProtoAreSymmetric) {
 INSTANTIATE_TEST_SUITE_P(
     ProtoToLabelAndLabelToProtoAreSymmetric, ProtoLabelTestCase,
     ::testing::ValuesIn<iamf_tools_cli_proto::ChannelLabel>(
-        {CHANNEL_LABEL_MONO,
+        {// Object channels.
+         CHANNEL_LABEL_OBJECT_CHANNEL0, CHANNEL_LABEL_OBJECT_CHANNEL1,
+         CHANNEL_LABEL_MONO,
          // Stereo or binaural channels.
          CHANNEL_LABEL_L_2, CHANNEL_LABEL_R_2,
          // Centre channel common to several layouts (e.g. 3.1.2, 5.x.y, 7.x.y).
