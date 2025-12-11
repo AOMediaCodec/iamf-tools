@@ -16,3 +16,19 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "dual_polar_param_definition_test",
+    srcs = ["dual_polar_param_definition_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
+        "//iamf/obu:dual_polar_parameter_data",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu/param_definitions:dual_polar_param_definition",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
