@@ -112,6 +112,55 @@ TEST(FilterProfilesForAudioElement,
 }
 
 TEST(FilterProfilesForAudioElement,
+     KeepsObjectBasedAudioElementForSupportedProfiles) {
+  auto audio_element_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      kFirstSubstreamId, *ObjectsConfig::Create(1, {}));
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> supported_profiles = {
+      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, supported_profiles),
+              IsOk());
+
+  EXPECT_EQ(supported_profiles, supported_profiles);
+}
+
+TEST(FilterProfilesForAudioElement,
+     KeepsObjectBasedAudioElementForSubsetOfProfiles) {
+  auto audio_element_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      kFirstSubstreamId, *ObjectsConfig::Create(1, {}));
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> input_profiles = kAllKnownProfileVersions;
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, input_profiles),
+              IsOk());
+  absl::flat_hash_set<ProfileVersion> expected_supported_profiles = {
+      kIamfBaseAdvancedProfile, kIamfAdvanced1Profile, kIamfAdvanced2Profile};
+
+  EXPECT_EQ(input_profiles, expected_supported_profiles);
+}
+
+TEST(FilterProfilesForAudioElement,
+     RemovesObjectBasedAudioElementForUnsupportedProfiles) {
+  auto audio_element_obu = AudioElementObu::CreateForObjects(
+      ObuHeader(), kFirstAudioElementId, kAudioElementReserved, kCodecConfigId,
+      kFirstSubstreamId, *ObjectsConfig::Create(1, {}));
+  ASSERT_THAT(audio_element_obu, IsOk());
+  absl::flat_hash_set<ProfileVersion> input_profiles = {
+      kIamfSimpleProfile, kIamfBaseProfile, kIamfBaseEnhancedProfile};
+
+  EXPECT_THAT(ProfileFilter::FilterProfilesForAudioElement(
+                  "", *audio_element_obu, input_profiles),
+              Not(IsOk()));
+
+  EXPECT_TRUE(input_profiles.empty());
+}
+
+TEST(FilterProfilesForAudioElement,
      RemovesAllKnownProfilesWhenFirstLayerIsLoudspeakerLayout10) {
   const ScalableChannelLayoutConfig kOneLayerReserved10Config = {
       .channel_audio_layer_configs = {

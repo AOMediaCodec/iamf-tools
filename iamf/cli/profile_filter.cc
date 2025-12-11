@@ -53,11 +53,15 @@ absl::Status FilterAudioElementType(
     case AudioElementObu::kAudioElementChannelBased:
     case AudioElementObu::kAudioElementSceneBased:
       break;
+    case AudioElementObu::kAudioElementObjectBased:
+      profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+      profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
+      break;
     default:
       profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseProfile);
       profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
-      // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
       profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
       profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
       profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
