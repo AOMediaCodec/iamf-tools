@@ -231,17 +231,18 @@ absl::Status FillHeaderMetadata(ReadBitBuffer& rb,
 
 bool ObuHeader::IsTemporalUnitObuType(const ObuType obu_type) {
   static const absl::NoDestructor<absl::flat_hash_set<ObuType>>
-      kTemporalUnitObuTypes({kObuIaAudioFrame,       kObuIaAudioFrameId0,
-                             kObuIaAudioFrameId1,    kObuIaAudioFrameId2,
-                             kObuIaAudioFrameId3,    kObuIaAudioFrameId4,
-                             kObuIaAudioFrameId5,    kObuIaAudioFrameId6,
-                             kObuIaAudioFrameId7,    kObuIaAudioFrameId8,
-                             kObuIaAudioFrameId9,    kObuIaAudioFrameId10,
-                             kObuIaAudioFrameId11,   kObuIaAudioFrameId12,
-                             kObuIaAudioFrameId13,   kObuIaAudioFrameId14,
-                             kObuIaAudioFrameId15,   kObuIaAudioFrameId16,
-                             kObuIaAudioFrameId17,   kObuIaParameterBlock,
-                             kObuIaTemporalDelimiter});
+      kTemporalUnitObuTypes(absl::flat_hash_set<ObuType>(
+          {kObuIaAudioFrame,       kObuIaAudioFrameId0,
+           kObuIaAudioFrameId1,    kObuIaAudioFrameId2,
+           kObuIaAudioFrameId3,    kObuIaAudioFrameId4,
+           kObuIaAudioFrameId5,    kObuIaAudioFrameId6,
+           kObuIaAudioFrameId7,    kObuIaAudioFrameId8,
+           kObuIaAudioFrameId9,    kObuIaAudioFrameId10,
+           kObuIaAudioFrameId11,   kObuIaAudioFrameId12,
+           kObuIaAudioFrameId13,   kObuIaAudioFrameId14,
+           kObuIaAudioFrameId15,   kObuIaAudioFrameId16,
+           kObuIaAudioFrameId17,   kObuIaParameterBlock,
+           kObuIaTemporalDelimiter}));
   return kTemporalUnitObuTypes->contains(obu_type);
 }
 
