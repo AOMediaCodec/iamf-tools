@@ -998,6 +998,9 @@ INSTANTIATE_TEST_SUITE_P(BaseEnhancedProfileWithTemporalUnitObus, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarObject, TestVector,
                          testing::Values("test_000800.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8Object, TestVector,
+                         testing::Values("test_000801.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualPolarObject, TestVector,
                          testing::Values("test_000806.textproto"));
 
