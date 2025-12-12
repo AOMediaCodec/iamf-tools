@@ -1019,6 +1019,22 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedFlacAndLpcmCodecConfig, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
                          testing::Values("test_000848.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(Advanced29_1_6_AndFourObjects, TestVector,
+                         testing::Values("test_001000.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(Advanced27_1_5_4_AndThreeObjects, TestVector,
+                         testing::Values("test_001001.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(Advanced2_10_2_9_3AndObjects, TestVector,
+                         testing::Values("test_001002.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(AAdvanced2_ThirdOrderAmbisonicsAndObjects, TestVector,
+                         testing::Values("test_001003.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced2_TwentyEightChannelsWithFourthOrderAmbisonicsAndObjects,
+    TestVector, testing::Values("test_001004.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndTop4Ch,
                          TestVector, testing::Values("test_001016.textproto"));
 
