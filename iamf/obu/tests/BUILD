@@ -146,6 +146,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:param_definitions",
         "//iamf/obu:types",
+        "//iamf/obu/param_definitions:cart16_param_definition",
         "//iamf/obu/param_definitions:cart8_param_definition",
         "//iamf/obu/param_definitions:dual_polar_param_definition",
         "//iamf/obu/param_definitions:polar_param_definition",

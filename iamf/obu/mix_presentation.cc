@@ -34,6 +34,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -56,6 +57,11 @@ absl::Status WriteRenderingConfigParamDefinition(
       break;
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8:
       RETURN_IF_NOT_OK(std::get<Cart8ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
+      RETURN_IF_NOT_OK(std::get<Cart16ParamDefinition>(
                            rendering_config_param_definition.param_definition)
                            .ValidateAndWrite(wb));
       break;
@@ -322,6 +328,7 @@ RenderingConfigParamDefinition::Create(
   switch (param_definition_type) {
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8:
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
     case ParamDefinition::ParameterDefinitionType::
         kParameterDefinitionDualPolar:
       break;
@@ -354,6 +361,15 @@ RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
       param_definition = Cart8ParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<Cart8ParamDefinition>().ReadAndValidate(rb));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition), {});
+      break;
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
+      param_definition = Cart16ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<Cart16ParamDefinition>().ReadAndValidate(
+              rb));
       return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
                         param_definition_type),
                     std::move(param_definition), {});
