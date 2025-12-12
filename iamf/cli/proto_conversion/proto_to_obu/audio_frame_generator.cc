@@ -185,11 +185,13 @@ absl::Status GetNumSamplesToPadAtEndAndValidate(
 }
 
 absl::Status InitializeSubstreamData(
-    uint32_t required_samples_to_delay,
+    uint32_t global_samples_to_delay,
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const size_t num_samples_per_frame,
     bool user_samples_to_trim_at_start_includes_codec_delay,
     const uint32_t user_samples_to_trim_at_start,
+    const absl::flat_hash_map<uint32_t, std::unique_ptr<EncoderBase>>&
+        substream_id_to_encoder,
     absl::flat_hash_map<uint32_t, SubstreamData>&
         substream_id_to_substream_data) {
   // Validate user start trim is correct; it depends on the encoder. Insert
@@ -200,7 +202,7 @@ absl::Status InitializeSubstreamData(
   for (const auto& [substream_id, labels] : substream_id_to_labels) {
     if (user_samples_to_trim_at_start_includes_codec_delay) {
       MAYBE_RETURN_IF_NOT_OK(ValidateUserStartTrimIncludesCodecDelay(
-          user_samples_to_trim_at_start, required_samples_to_delay));
+          user_samples_to_trim_at_start, global_samples_to_delay));
     }
 
     // Initialize a `SubstreamData` with virtual samples for any delay
@@ -217,9 +219,22 @@ absl::Status InitializeSubstreamData(
                     num_channels, num_samples_per_frame),
                 .output_gains_linear = {},
                 .num_samples_to_trim_at_end = 0,
-                .num_samples_to_trim_at_start = required_samples_to_delay});
-    substream_data_iter->second.frames_in_obu.PadZeros(
-        required_samples_to_delay);
+                .num_samples_to_trim_at_start = global_samples_to_delay});
+    // Pad zeroes in the OBU domain for the worst-case codec delay.
+    substream_data_iter->second.frames_in_obu.PadZeros(global_samples_to_delay);
+
+    // In multi-codec streams, some codecs could have a smaller delay than the
+    // worst-case codec. In this insert additional padded zeroes in the encode
+    // domain, to keep them aligned.
+    const auto encoder_it = substream_id_to_encoder.find(substream_id);
+    if (encoder_it == substream_id_to_encoder.end()) {
+      return absl::InternalError("Encoder not found for substream_id");
+    }
+    const auto substream_codec_delay =
+        encoder_it->second->GetNumberOfSamplesToDelayAtStart();
+    ABSL_CHECK_GE(global_samples_to_delay, substream_codec_delay);
+    substream_data_iter->second.frames_to_encode.PadZeros(
+        global_samples_to_delay - substream_codec_delay);
   }
 
   return absl::OkStatus();
@@ -718,7 +733,7 @@ AudioFrameGenerator::Create(
         num_samples_per_frame,
         audio_frame_metadata.samples_to_trim_at_start_includes_codec_delay(),
         audio_frame_metadata.samples_to_trim_at_start(),
-        substream_id_to_substream_data));
+        substream_id_to_encoder, substream_id_to_substream_data));
 
     // Validate that a `DemixingParamDefinition` is available if down-mixing
     // is needed.

@@ -56,10 +56,14 @@ namespace {
 using ::absl_testing::IsOk;
 using ::absl_testing::IsOkAndHolds;
 using ::testing::AllOf;
+using ::testing::DoubleEq;
 using ::testing::Each;
 using ::testing::ElementsAre;
+using ::testing::ElementsAreArray;
 using ::testing::Not;
 using ::testing::NotNull;
+using ::testing::Pointwise;
+using ::testing::SizeIs;
 
 using absl::MakeConstSpan;
 
@@ -789,6 +793,36 @@ TEST(AudioFrameGenerator, AllAudioElementsHaveSameCodecDelay) {
   EXPECT_THAT(audio_frame_generator->OutputFrames(third_temporal_unit), IsOk());
   EXPECT_THAT(third_temporal_unit, Each(AllOf(NumSamplesToTrimAtStartIs(0),
                                               NumSamplesToTrimAtEndIs(1016))));
+
+  constexpr std::array<uint8_t, 8> kExpectedEncodedPcmSamples{
+      // First sample, first channel.
+      0xff, 0xff,
+      // First sample, second channel.
+      0xff, 0xff,
+      // Second sample, first channel.
+      0xfe, 0xff,
+      // Second sample, second channel.
+      0xfe, 0xff};
+  // Check the encoded samples are lined up correctly in the untrimmed region.
+  for (const auto& audio_frame : third_temporal_unit) {
+    ASSERT_TRUE(audio_frame.encoded_samples.has_value());
+    // The first eight samples of each channel are aligned with the original
+    // samples.
+    ASSERT_THAT(*audio_frame.encoded_samples,
+                AllOf(SizeIs(2), Each(SizeIs(kAacNumSamplesPerFrame))));
+    EXPECT_THAT(MakeConstSpan((*audio_frame.encoded_samples)[0])
+                    .first(kFrame0R2EightSamples.size()),
+                Pointwise(DoubleEq(), kFrame0R2EightSamples));
+    EXPECT_THAT(MakeConstSpan((*audio_frame.encoded_samples)[1])
+                    .first(kFrame0R2EightSamples.size()),
+                Pointwise(DoubleEq(), kFrame0R2EightSamples));
+    if (audio_frame.obu.GetSubstreamId() == kFirstSubstreamId) {
+      // Check the first few samples, in the encoded PCM, to make sure they are
+      // aligned.
+      EXPECT_THAT(MakeConstSpan(audio_frame.obu.audio_frame_).first(8),
+                  ElementsAreArray(kExpectedEncodedPcmSamples));
+    }
+  }
   EXPECT_FALSE(audio_frame_generator->GeneratingFrames());
 }
 
