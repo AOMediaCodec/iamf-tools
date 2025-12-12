@@ -69,6 +69,19 @@ cc_library(
 )
 
 cc_library(
+    name = "cart16_parameter_data",
+    srcs = ["cart16_parameter_data.cc"],
+    hdrs = ["cart16_parameter_data.h"],
+    deps = [
+        ":parameter_data",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+    ],
+)
+
+cc_library(
     name = "cart8_parameter_data",
     srcs = ["cart8_parameter_data.cc"],
     hdrs = ["cart8_parameter_data.h"],
