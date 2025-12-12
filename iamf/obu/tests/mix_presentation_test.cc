@@ -59,7 +59,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
 
   MixPresentationObuTest()
       : ObuTestBase(
-            /*expected_header=*/{kObuIaMixPresentation << 3, 48},
+            /*expected_header=*/{kObuIaMixPresentation << 3, 47},
             /*expected_payload=*/
             {
                 // Start Mix OBU.
@@ -69,7 +69,7 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                 1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
                 // Start RenderingConfig.
                 RenderingConfig::kHeadphonesRenderingModeStereo << 6,
-                /*rendering_config_extension_size=*/1, /*num_parameters=*/0,
+                /*rendering_config_extension_size=*/0,
                 // End RenderingConfig.
                 12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
                 // Start Layout 1 (of Submix 1).
@@ -220,7 +220,7 @@ TEST_F(MixPresentationObuTest, RedundantCopy) {
   header_.obu_redundant_copy = true;
 
   expected_header_ = {kObuIaMixPresentation << 3 | kObuRedundantCopyBitMask,
-                      48},
+                      47},
 
   InitAndTestWrite();
 }
@@ -239,7 +239,7 @@ TEST_F(MixPresentationObuTest, ExtensionHeader) {
 
   expected_header_ = {kObuIaMixPresentation << 3 | kObuExtensionFlagBitMask,
                       // `obu_size`.
-                      54,
+                      53,
                       // `extension_header_size`.
                       5,
                       // `extension_header_bytes`.
@@ -331,7 +331,7 @@ TEST_F(MixPresentationObuTest, TwoAnchorElements) {
        {.anchor_element = AnchoredLoudnessElement::kAnchorElementDialogue,
         .anchored_loudness = 21}}};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 53};
+  expected_header_ = {kObuIaMixPresentation << 3, 52};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
@@ -339,8 +339,7 @@ TEST_F(MixPresentationObuTest, TwoAnchorElements) {
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
       RenderingConfig::kHeadphonesRenderingModeStereo << 6,
-      /*rendering_config_extension_size=*/1,
-      /*num_parameters=*/0,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -367,15 +366,15 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
       {{.anchor_element = AnchoredLoudnessElement::kAnchorElementAlbum,
         .anchored_loudness = 20}}};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 52};
+  expected_header_ = {kObuIaMixPresentation << 3, 51};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1,
-      /*num_parameters=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -414,15 +413,15 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
   sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
   sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 47};
+  expected_header_ = {kObuIaMixPresentation << 3, 46};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1,
-      /*num_parameters=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -502,15 +501,15 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
   sub_mixes_[0].layouts[0].loudness.layout_extension = {
       .info_type_bytes{'e', 'x', 't', 'r', 'a'}};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 52};
+  expected_header_ = {kObuIaMixPresentation << 3, 51};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1,
-      /*num_parameters=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -541,7 +540,7 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
   sub_mixes_[0].audio_elements[0].localized_element_annotations = {
       "Submix 1", "GB Submix 1"};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 72};
+  expected_header_ = {kObuIaMixPresentation << 3, 71};
   expected_payload_ = {
       // Start Mix OBU.
       10, 2, 'e', 'n', '-', 'u', 's', '\0', 'e', 'n', '-', 'g', 'b', '\0', 'M',
@@ -550,8 +549,7 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0', 'G', 'B', ' ', 'S',
       'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1,
-      /*num_parameters=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
       // End RenderingConfig
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -602,15 +600,15 @@ TEST_F(MixPresentationObuTest, BinauralRenderingConfig) {
       .reserved = 0,
       .rendering_config_extension_bytes = {}};
 
-  expected_header_ = {kObuIaMixPresentation << 3, 48};
+  expected_header_ = {kObuIaMixPresentation << 3, 47};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
       // Start Submix 1.
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1,
-      /*num_parameters=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -898,14 +896,15 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   dynamic_sub_mix_args_.push_back(
       {.element_mix_gain_subblocks = {{}}, .output_mix_gain_subblocks = {}});
 
-  expected_header_ = {kObuIaMixPresentation << 3, 95};
+  expected_header_ = {kObuIaMixPresentation << 3, 93};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 2,
       // Start Submix 1.
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1, /*num_params=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
@@ -915,8 +914,8 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       // Start Submix 2.
       1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '2', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6, 1,
-      /*num_params=*/0,
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27, 3,
       // Start Layout1 (Submix 2).
@@ -946,14 +945,15 @@ TEST_F(MixPresentationObuTest, ValidateAndWriteFailsWithInvalidMissingStero) {
 }
 
 TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
-  expected_header_ = {kObuIaMixPresentation << 3, 59};
+  expected_header_ = {kObuIaMixPresentation << 3, 58};
   expected_payload_ = {
       // Start Mix OBU.
       10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 1, /*num_params=*/0,
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).

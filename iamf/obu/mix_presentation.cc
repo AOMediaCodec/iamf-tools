@@ -84,6 +84,29 @@ absl::Status WriteRenderingConfigParamDefinitions(
   return absl::OkStatus();
 }
 
+absl::Status WriteRenderingConfigExtension(
+    const std::vector<RenderingConfigParamDefinition>&
+        rendering_config_param_definitions,
+    const std::vector<uint8_t>& rendering_config_extension_bytes,
+    WriteBitBuffer& wb) {
+  // Allocate a temporary buffer to write the rendering config param
+  // definitions to.
+  static const int64_t kInitialBufferSize = 1024;
+  WriteBitBuffer temp_wb(kInitialBufferSize, wb.leb_generator_);
+  // Write the rendering config param definitions to the temporary buffer.
+  RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinitions(
+      rendering_config_param_definitions, temp_wb));
+  RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(
+      absl::MakeConstSpan(rendering_config_extension_bytes)));
+  ABSL_CHECK(temp_wb.IsByteAligned());
+  // Write the header now that the payload size is known.
+  const int64_t rendering_config_extension_size = temp_wb.bit_buffer().size();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_extension_size));
+  // Copy over rendering config param definitions into the actual write
+  // buffer.
+  return wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer()));
+}
+
 absl::Status ValidateUniqueAudioElementIds(
     const std::vector<MixPresentationSubMix>& sub_mixes) {
   std::vector<DecodedUleb128> collected_audio_element_ids;
@@ -133,28 +156,19 @@ absl::Status ValidateAndWriteSubMixAudioElement(
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint8_t>(element.rendering_config.reserved), 6));
 
-  // Allocate a temporary buffer to write the rendering config param definitions
-  // to.
-  static const int64_t kBufferSize = 1024;
-  WriteBitBuffer temp_wb(kBufferSize, wb.leb_generator_);
-
-  // Write the rendering config param definitions to the temporary buffer.
-  RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinitions(
-      element.rendering_config.rendering_config_param_definitions, temp_wb));
-  RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(absl::MakeConstSpan(
-      element.rendering_config.rendering_config_extension_bytes)));
-  if (!temp_wb.IsByteAligned()) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Expected payload to be byte-aligned: ", temp_wb.bit_offset()));
+  if (element.rendering_config.rendering_config_param_definitions.empty() &&
+      element.rendering_config.rendering_config_extension_bytes.empty()) {
+    // TODO(b/468358730): Check if we can remove this branch, without breaking
+    //                    compatibility.
+    // Older profiles had no rendering config param definitions. For maximum
+    // backwards compatibility, if both extensions are empty. Write an empty
+    // `rendering_config_extension_size`.
+    RETURN_IF_NOT_OK(wb.WriteUleb128(0));
+  } else {
+    RETURN_IF_NOT_OK(WriteRenderingConfigExtension(
+        element.rendering_config.rendering_config_param_definitions,
+        element.rendering_config.rendering_config_extension_bytes, wb));
   }
-
-  // Write the header now that the payload size is known.
-  const int64_t rendering_config_extension_size = temp_wb.bit_buffer().size();
-  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_extension_size));
-
-  // Copy over rendering config param definitions into the actual write buffer.
-  RETURN_IF_NOT_OK(
-      wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer())));
 
   RETURN_IF_NOT_OK(element.element_mix_gain.ValidateAndWrite(wb));
   return absl::OkStatus();
