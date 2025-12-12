@@ -30,6 +30,7 @@
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
@@ -268,6 +269,60 @@ TEST(Generate, CopiesRenderingConfigWithPolarParamDefinition) {
       RenderingConfigParamDefinition::Create(
           ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
           expected_polar_param_definition, {})
+          .value());
+}
+
+TEST(Generate, CopiesRenderingConfigWithCart8ParamDefinition) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& first_rendering_config = *mix_presentation_metadata.at(0)
+                                      .mutable_sub_mixes(0)
+                                      ->mutable_audio_elements(0)
+                                      ->mutable_rendering_config();
+  first_rendering_config.set_headphones_rendering_mode(
+      HEADPHONES_RENDERING_MODE_RESERVED_3);
+  using iamf_tools_cli_proto::PARAM_DEFINITION_TYPE_CART_8;
+  auto& cart8_param_definition =
+      *first_rendering_config.add_rendering_config_param_definitions();
+  cart8_param_definition.set_param_definition_type(
+      PARAM_DEFINITION_TYPE_CART_8);
+  auto& cart8_param_definition_proto =
+      *cart8_param_definition.mutable_cart8_param_definition();
+  cart8_param_definition_proto.mutable_param_definition()->set_parameter_id(1);
+  cart8_param_definition_proto.mutable_param_definition()->set_parameter_rate(
+      16000);
+  cart8_param_definition_proto.mutable_param_definition()
+      ->set_param_definition_mode(1);
+  cart8_param_definition_proto.mutable_param_definition()->set_duration(1);
+  cart8_param_definition_proto.mutable_param_definition()
+      ->set_constant_subblock_duration(true);
+  cart8_param_definition_proto.set_default_x(1);
+  cart8_param_definition_proto.set_default_y(2);
+  cart8_param_definition_proto.set_default_z(3);
+
+  Cart8ParamDefinition expected_cart8_param_definition;
+  expected_cart8_param_definition.parameter_id_ = 1;
+  expected_cart8_param_definition.parameter_rate_ = 16000;
+  expected_cart8_param_definition.param_definition_mode_ = 1;
+  expected_cart8_param_definition.duration_ = 1;
+  expected_cart8_param_definition.constant_subblock_duration_ = true;
+  expected_cart8_param_definition.default_x_ = 1;
+  expected_cart8_param_definition.default_y_ = 2;
+  expected_cart8_param_definition.default_z_ = 3;
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
+              testing::SizeIs(1));
+  EXPECT_THAT(
+      generated_rendering_config.rendering_config_param_definitions[0],
+      RenderingConfigParamDefinition::Create(
+          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
+          expected_cart8_param_definition, {})
           .value());
 }
 
