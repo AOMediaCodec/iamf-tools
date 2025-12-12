@@ -1007,6 +1007,21 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualPolarObject, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvanced7_1_5_4Ch, TestVector,
                          testing::Values("test_000827.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedLfePair, TestVector,
+                         testing::Values("test_000828.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedBottom3ch, TestVector,
+                         testing::Values("test_000829.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedBottom4ch, TestVector,
+                         testing::Values("test_000830.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedTop1ch, TestVector,
+                         testing::Values("test_000831.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedTop5ch, TestVector,
+                         testing::Values("test_000832.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedTwoLpcmCodecConfigs, TestVector,
                          testing::Values("test_000845.textproto"));
 
