@@ -29,6 +29,7 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/tests/obu_test_base.h"
@@ -765,6 +766,67 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigPolarParamDefinition) {
   InitAndTestWrite();
 }
 
+TEST_F(MixPresentationObuTest, WritesRenderingConfigCart8ParamDefinition) {
+  Cart8ParamDefinition cart8_param_definition;
+  cart8_param_definition.parameter_id_ = 1;
+  cart8_param_definition.parameter_rate_ = 1;
+  cart8_param_definition.param_definition_mode_ = false;
+  cart8_param_definition.duration_ = 10;
+  cart8_param_definition.constant_subblock_duration_ = 10;
+  cart8_param_definition.default_x_ = 1;
+  cart8_param_definition.default_y_ = 2;
+  cart8_param_definition.default_z_ = 3;
+
+  sub_mixes_[0].audio_elements[0].rendering_config = {
+      .headphones_rendering_mode =
+          RenderingConfig::kHeadphonesRenderingModeStereo,
+      .reserved = 0,
+      .rendering_config_param_definitions =
+          {RenderingConfigParamDefinition::Create(
+               ParamDefinition::ParameterDefinitionType::
+                   kParameterDefinitionCart8,
+               cart8_param_definition, {})
+               .value()},
+      .rendering_config_extension_bytes = {}};
+
+  expected_header_ = {kObuIaMixPresentation << 3, 57};
+  expected_payload_ = {
+      // Start Mix OBU.
+      10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
+      // Start Submix 1
+      1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      // `rendering_config_extension_bytes size`.
+      10,
+      // Start RenderingConfigParamDefinitions.
+      // `num_parameters`.
+      1,
+      // `param_definition_type`.
+      ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
+      // `param_definition`.
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+      // default_x = 1
+      // default_y = 2
+      // default_z = 3
+      0x01, 0x02, 0x03,
+      // End RenderingConfigParamDefinitions.
+      // End RenderingConfig.
+      12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
+      // Start Layout 1 (of Submix 1).
+      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
+      // End Mix OBU.
+  };
+
+  InitAndTestWrite();
+}
+
 TEST_F(MixPresentationObuTest, WritesRenderingConfigDualPolarParamDefinition) {
   DualPolarParamDefinition dual_polar_param_definition;
   dual_polar_param_definition.parameter_id_ = 1;
@@ -1448,6 +1510,84 @@ TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
   EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 
+TEST(ReadSubMixAudioElementTest, Cart8ParamDefinitionRenderingConfig) {
+  std::vector<uint8_t> source = {
+      // Start SubMixAudioElement.
+      // audio_element_id
+      11,
+      // localized_element_annotations[0]
+      'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      /*rendering_config_extension_size=*/10,
+      // num_params
+      1,
+      // Start RenderingConfigParamDefinition.
+      // `param_definition_type`.
+      ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
+      // `param_definition`.
+      1,   // parameter_id
+      1,   // parameter_rate
+      0,   // mode
+      10,  // duration
+      10,  // constant_subblock_duration
+      // default_x = 1
+      // default_y = 2
+      // default_z = 3
+      0x01, 0x02, 0x03,
+      // End RenderingConfig.
+      // Start ElementMixGain
+      // Parameter ID.
+      0x00,
+      // Parameter Rate.
+      1,
+      // Param Definition Mode (upper bit), next 7 bits reserved.
+      0x80,
+      // Default Mix Gain.
+      0, 4
+      // End ElementMixGain
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  SubMixAudioElement audio_element;
+  EXPECT_THAT(audio_element.ReadAndValidate(/*count_label=*/1, *buffer),
+              IsOk());
+
+  Cart8ParamDefinition cart8_param_definition;
+  cart8_param_definition.parameter_id_ = 1;
+  cart8_param_definition.parameter_rate_ = 1;
+  cart8_param_definition.param_definition_mode_ = false;
+  cart8_param_definition.duration_ = 10;
+  cart8_param_definition.constant_subblock_duration_ = 10;
+  cart8_param_definition.default_x_ = 1;
+  cart8_param_definition.default_y_ = 2;
+  cart8_param_definition.default_z_ = 3;
+
+  // Set up expected values.
+  SubMixAudioElement expected_submix_audio_element = SubMixAudioElement{
+      .audio_element_id = 11,
+      .localized_element_annotations = {"Submix 1"},
+      .rendering_config =
+          {
+              .headphones_rendering_mode =
+                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+              .reserved = 0,
+              .rendering_config_param_definitions =
+                  {RenderingConfigParamDefinition::Create(
+                       ParamDefinition::kParameterDefinitionCart8,
+                       cart8_param_definition, {})
+                       .value()},
+              .rendering_config_extension_bytes = {},
+          },
+      .element_mix_gain = MixGainParamDefinition()};
+  expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
+  expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
+  expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
+  expected_submix_audio_element.element_mix_gain.reserved_ = 0;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  EXPECT_EQ(audio_element, expected_submix_audio_element);
+}
+
 TEST(ReadSubMixAudioElementTest, DualPolarParamDefinitionRenderingConfig) {
   std::vector<uint8_t> source = {
       // Start SubMixAudioElement.
@@ -1611,6 +1751,22 @@ TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
+TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart8ParamDefinition) {
+  const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::Create(
+          ParamDefinition::kParameterDefinitionCart8, Cart8ParamDefinition(),
+          kParamDefinitionBytes);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionCart8);
+  EXPECT_TRUE(std::holds_alternative<Cart8ParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+              testing::ElementsAreArray(kParamDefinitionBytes));
+}
+
 TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualPolarParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
@@ -1675,6 +1831,40 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
   EXPECT_EQ(param_definition.default_azimuth_, 2);
   EXPECT_EQ(param_definition.default_elevation_, 3);
   EXPECT_EQ(param_definition.default_distance_, 4);
+}
+
+TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
+     SucceedsWithCart8ParamDefinition) {
+  std::vector<uint8_t> source = {// `param_definition_type`.
+                                 ParamDefinition::kParameterDefinitionCart8,
+                                 1,   // parameter_id
+                                 1,   // parameter_rate
+                                 0,   // mode
+                                 10,  // duration
+                                 10,  // constant_subblock_duration
+                                      // default_x = 1
+                                      // default_y = 2
+                                      // default_z = 3
+                                 0x01, 0x02, 0x03};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+
+  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+            ParamDefinition::kParameterDefinitionCart8);
+  EXPECT_TRUE(std::holds_alternative<Cart8ParamDefinition>(
+      rendering_config_param_definition->param_definition));
+  const auto& param_definition = std::get<Cart8ParamDefinition>(
+      rendering_config_param_definition->param_definition);
+  EXPECT_EQ(param_definition.parameter_id_, 1);
+  EXPECT_EQ(param_definition.parameter_rate_, 1);
+  EXPECT_FALSE(param_definition.param_definition_mode_);
+  EXPECT_EQ(param_definition.default_x_, 1);
+  EXPECT_EQ(param_definition.default_y_, 2);
+  EXPECT_EQ(param_definition.default_z_, 3);
 }
 
 TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
