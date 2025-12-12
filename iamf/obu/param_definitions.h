@@ -43,7 +43,10 @@ class ParamDefinition {
     kParameterDefinitionReconGain = 2,
     kParameterDefinitionPolar = 3,
     kParameterDefinitionCart8 = 4,
+    kParameterDefinitionCart16 = 5,
     kParameterDefinitionDualPolar = 6,
+    kParameterDefinitionDualCart8 = 7,
+    kParameterDefinitionDualCart16 = 8,
     // Values in the range of [9, (1 << 32) - 1] are reserved.
     kParameterDefinitionReservedStart = 9,
     kParameterDefinitionReservedEnd = std::numeric_limits<DecodedUleb128>::max()
