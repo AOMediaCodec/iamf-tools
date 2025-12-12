@@ -31,7 +31,7 @@ message RenderingConfigParamDefinition {
   oneof param_definition {
     PolarParamDefinition polar_param_definition = 2;
     Cart8ParamDefinition cart8_param_definition = 4;
-    // [5] is reserved for `CART16`.
+    Cart16ParamDefinition cart16_param_definition = 5;
     DualPolarParamDefinition dual_polar_param_definition = 6;
     // [7, 8] are reserved for `DUAL_CART8` and `DUAL_CART16`.
     bytes param_definition_bytes = 3;
