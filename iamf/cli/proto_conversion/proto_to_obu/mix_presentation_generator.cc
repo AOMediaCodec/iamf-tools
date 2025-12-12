@@ -37,6 +37,7 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -134,6 +135,25 @@ Cart8ParamDefinition CreateCart8ParamDefinition(
   return param_definition;
 }
 
+Cart16ParamDefinition CreateCart16ParamDefinition(
+    const iamf_tools_cli_proto::Cart16ParamDefinition& input_param_definition) {
+  Cart16ParamDefinition param_definition;
+  param_definition.parameter_id_ =
+      input_param_definition.param_definition().parameter_id();
+  param_definition.parameter_rate_ =
+      input_param_definition.param_definition().parameter_rate();
+  param_definition.param_definition_mode_ =
+      input_param_definition.param_definition().param_definition_mode();
+  param_definition.duration_ =
+      input_param_definition.param_definition().duration();
+  param_definition.constant_subblock_duration_ =
+      input_param_definition.param_definition().constant_subblock_duration();
+  param_definition.default_x_ = input_param_definition.default_x();
+  param_definition.default_y_ = input_param_definition.default_y();
+  param_definition.default_z_ = input_param_definition.default_z();
+  return param_definition;
+}
+
 DualPolarParamDefinition CreateDualPolarParamDefinition(
     const iamf_tools_cli_proto::DualPolarParamDefinition&
         input_param_definition) {
@@ -181,6 +201,12 @@ CreateRenderingConfigParamDefinition(
           ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
           CreateCart8ParamDefinition(
               input_rendering_config_param_definition.cart8_param_definition()),
+          /*param_definition_bytes=*/{});
+    case PARAM_DEFINITION_TYPE_CART_16:
+      return RenderingConfigParamDefinition::Create(
+          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16,
+          CreateCart16ParamDefinition(input_rendering_config_param_definition
+                                          .cart16_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_DUAL_POLAR:
       return RenderingConfigParamDefinition::Create(
