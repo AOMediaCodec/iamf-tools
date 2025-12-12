@@ -42,6 +42,7 @@ class ParamDefinition {
     kParameterDefinitionDemixing = 1,
     kParameterDefinitionReconGain = 2,
     kParameterDefinitionPolar = 3,
+    kParameterDefinitionCart8 = 4,
     kParameterDefinitionDualPolar = 6,
     // Values in the range of [9, (1 << 32) - 1] are reserved.
     kParameterDefinitionReservedStart = 9,
