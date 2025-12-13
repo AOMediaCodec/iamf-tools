@@ -1001,6 +1001,18 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarObject, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8Object, TestVector,
                          testing::Values("test_000801.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8ObjectWithLoudness3_1_2,
+                         TestVector, testing::Values("test_000802.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedPolarObjects, TestVector,
+                         testing::Values("test_000803.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedCart8Objects, TestVector,
+                         testing::Values("test_000804.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedCart16Objects, TestVector,
+                         testing::Values("test_000805.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualPolarObject, TestVector,
                          testing::Values("test_000806.textproto"));
 

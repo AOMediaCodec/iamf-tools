@@ -12,8 +12,8 @@
 # proto-message: UserMetadata
 
 test_vector_metadata {
-  human_readable_description: "A Base-Advanced Profile Stream with a Cartesian 8 Object"
-  file_name_prefix: "test_000801"
+  human_readable_description: "A Base-Advanced Profile Stream with a Cartesian 16 Object"
+  file_name_prefix: "test_000802"
   is_valid: true
   is_valid_to_decode: true
   validate_user_loudness: false
@@ -23,7 +23,7 @@ test_vector_metadata {
   ]
   primary_tested_spec_sections: [
     "3.6.4/objects_config",
-    "3.7.3.1/rendering_config_ with cartesian_8_param_definition"
+    "3.7.3.1/rendering_config_ with cartesian_16_param_definition"
   ]
   base_test: "test_000800"
   partition_mix_gain_parameter_blocks: false
@@ -75,8 +75,8 @@ mix_presentation_metadata {
       rendering_config {
         headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
         rendering_config_param_definitions {
-          param_definition_type: PARAM_DEFINITION_TYPE_CART_8
-          cart8_param_definition {
+          param_definition_type: PARAM_DEFINITION_TYPE_CART_16
+          cart16_param_definition {
             param_definition {
               parameter_id: 1
               parameter_rate: 48000
@@ -112,6 +112,18 @@ mix_presentation_metadata {
         layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
         ss_layout {
           sound_system: SOUND_SYSTEM_A_0_2_0
+          reserved: 0
+        }
+      }
+      loudness {
+        info_type_bit_masks: []
+      }
+    }
+    layouts {
+      loudness_layout {
+        layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
+        ss_layout {
+          sound_system: SOUND_SYSTEM_11_2_3_0
           reserved: 0
         }
       }
