@@ -36,6 +36,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
@@ -68,6 +69,12 @@ absl::Status WriteRenderingConfigParamDefinition(
     case ParamDefinition::ParameterDefinitionType::
         kParameterDefinitionDualPolar:
       RETURN_IF_NOT_OK(std::get<DualPolarParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart8:
+      RETURN_IF_NOT_OK(std::get<DualCart8ParamDefinition>(
                            rendering_config_param_definition.param_definition)
                            .ValidateAndWrite(wb));
       break;
@@ -331,6 +338,8 @@ RenderingConfigParamDefinition::Create(
     case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
     case ParamDefinition::ParameterDefinitionType::
         kParameterDefinitionDualPolar:
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart8:
       break;
     // TODO(b/467386344): Add support for other rendering config param
     // definition types.
@@ -379,6 +388,16 @@ RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
       param_definition = DualPolarParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<DualPolarParamDefinition>().ReadAndValidate(
+              rb));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition), {});
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart8:
+      param_definition = DualCart8ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualCart8ParamDefinition>().ReadAndValidate(
               rb));
       return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
                         param_definition_type),
