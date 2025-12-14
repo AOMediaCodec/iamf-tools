@@ -162,6 +162,7 @@ cc_test(
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:cart16_param_definition",
         "//iamf/obu/param_definitions:cart8_param_definition",
+        "//iamf/obu/param_definitions:dual_cart8_param_definition",
         "//iamf/obu/param_definitions:dual_polar_param_definition",
         "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/status:status_matchers",

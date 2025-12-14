@@ -39,6 +39,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
@@ -183,6 +184,32 @@ DualPolarParamDefinition CreateDualPolarParamDefinition(
   return param_definition;
 }
 
+DualCart8ParamDefinition CreateDualCart8ParamDefinition(
+    const iamf_tools_cli_proto::DualCart8ParamDefinition&
+        input_param_definition) {
+  DualCart8ParamDefinition param_definition;
+  param_definition.parameter_id_ =
+      input_param_definition.param_definition().parameter_id();
+  param_definition.parameter_rate_ =
+      input_param_definition.param_definition().parameter_rate();
+  param_definition.param_definition_mode_ =
+      input_param_definition.param_definition().param_definition_mode();
+  param_definition.duration_ =
+      input_param_definition.param_definition().duration();
+  param_definition.constant_subblock_duration_ =
+      input_param_definition.param_definition().constant_subblock_duration();
+  param_definition.default_first_x_ = input_param_definition.default_first_x();
+  param_definition.default_first_y_ = input_param_definition.default_first_y();
+  param_definition.default_first_z_ = input_param_definition.default_first_z();
+  param_definition.default_second_x_ =
+      input_param_definition.default_second_x();
+  param_definition.default_second_y_ =
+      input_param_definition.default_second_y();
+  param_definition.default_second_z_ =
+      input_param_definition.default_second_z();
+  return param_definition;
+}
+
 absl::StatusOr<RenderingConfigParamDefinition>
 CreateRenderingConfigParamDefinition(
     const iamf_tools_cli_proto::RenderingConfigParamDefinition&
@@ -214,6 +241,13 @@ CreateRenderingConfigParamDefinition(
               kParameterDefinitionDualPolar,
           CreateDualPolarParamDefinition(input_rendering_config_param_definition
                                              .dual_polar_param_definition()),
+          /*param_definition_bytes=*/{});
+    case PARAM_DEFINITION_TYPE_DUAL_CART_8:
+      return RenderingConfigParamDefinition::Create(
+          ParamDefinition::ParameterDefinitionType::
+              kParameterDefinitionDualCart8,
+          CreateDualCart8ParamDefinition(input_rendering_config_param_definition
+                                             .dual_cart8_param_definition()),
           /*param_definition_bytes=*/{});
     default:
       return absl::InvalidArgumentError(absl::StrCat(
