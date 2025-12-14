@@ -33,7 +33,8 @@ message RenderingConfigParamDefinition {
     Cart8ParamDefinition cart8_param_definition = 4;
     Cart16ParamDefinition cart16_param_definition = 5;
     DualPolarParamDefinition dual_polar_param_definition = 6;
-    // [7, 8] are reserved for `DUAL_CART8` and `DUAL_CART16`.
+    DualCart8ParamDefinition dual_cart8_param_definition = 7;
+    DualCart16ParamDefinition dual_cart16_param_definition = 8;
     bytes param_definition_bytes = 3;
   }
 }
