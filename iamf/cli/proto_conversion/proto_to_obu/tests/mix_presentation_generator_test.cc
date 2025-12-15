@@ -226,9 +226,9 @@ TEST(Generate,
             kExpectedHeadphonesRenderingModeBinauralWorldLocked);
 }
 
-TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
-  const auto kExpectedHeadphonesRenderingMode2 =
-      RenderingConfig::kHeadphonesRenderingModeReserved2;
+TEST(Generate, CopiesReservedHeadphonesRenderingModeBinauralHeadLocked) {
+  const auto kExpectedHeadphonesRenderingModeBinauralHeadLocked =
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   MixPresentationObuMetadatas mix_presentation_metadata = {};
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
   mix_presentation_metadata.at(0)
@@ -236,7 +236,7 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
       ->mutable_audio_elements(0)
       ->mutable_rendering_config()
       ->set_headphones_rendering_mode(
-          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_RESERVED_2);
+          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED);
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   std::list<MixPresentationObu> generated_obus;
@@ -247,7 +247,7 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
                 .sub_mixes_[0]
                 .audio_elements[0]
                 .rendering_config.headphones_rendering_mode,
-            kExpectedHeadphonesRenderingMode2);
+            kExpectedHeadphonesRenderingModeBinauralHeadLocked);
 }
 
 TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {

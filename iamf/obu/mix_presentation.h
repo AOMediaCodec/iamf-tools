@@ -102,7 +102,7 @@ struct RenderingConfig {
   enum HeadphonesRenderingMode : uint8_t {
     kHeadphonesRenderingModeStereo = 0,
     kHeadphonesRenderingModeBinauralWorldLocked = 1,
-    kHeadphonesRenderingModeReserved2 = 2,
+    kHeadphonesRenderingModeBinauralHeadLocked = 2,
     kHeadphonesRenderingModeReserved3 = 3,
   };
 

@@ -305,9 +305,9 @@ absl::Status FillRenderingConfig(
       rendering_config.headphones_rendering_mode =
           kHeadphonesRenderingModeBinauralWorldLocked;
       break;
-    case HEADPHONES_RENDERING_MODE_RESERVED_2:
+    case HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED:
       rendering_config.headphones_rendering_mode =
-          kHeadphonesRenderingModeReserved2;
+          kHeadphonesRenderingModeBinauralHeadLocked;
       break;
     case HEADPHONES_RENDERING_MODE_RESERVED_3:
       rendering_config.headphones_rendering_mode =

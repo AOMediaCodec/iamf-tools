@@ -1042,6 +1042,31 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
+     SomeProfilesSupportHeadphonesRenderingModeBinauralHeadLocked) {
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  mix_presentation_obus.front()
+      .sub_mixes_.front()
+      .audio_elements.front()
+      .rendering_config.headphones_rendering_mode =
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
+  absl::flat_hash_set<ProfileVersion> all_known_profiles =
+      kAllKnownProfileVersions;
+
+  EXPECT_THAT(
+      ProfileFilter::FilterProfilesForMixPresentation(
+          audio_elements, mix_presentation_obus.front(), all_known_profiles),
+      IsOk());
+
+  EXPECT_THAT(all_known_profiles, UnorderedElementsAre(kIamfBaseAdvancedProfile,
+                                                       kIamfAdvanced1Profile,
+                                                       kIamfAdvanced2Profile));
+}
+
+TEST(FilterProfilesForMixPresentation,
      RemovesAllProfilesWhenCodecConfigsHaveDifferentSampleRates) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   AddOpusCodecConfigWithId(kCodecConfigId, codec_config_obus);
@@ -1223,8 +1248,9 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_TRUE(simple_profile.empty());
 }
 
-TEST(FilterProfilesForMixPresentation,
-     RemovesSimpleProfileWithReservedHeadphonesRenderingMode2) {
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesSimpleProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1234,7 +1260,7 @@ TEST(FilterProfilesForMixPresentation,
       .sub_mixes_.front()
       .audio_elements.front()
       .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved2;
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   absl::flat_hash_set<ProfileVersion> simple_profile = {kIamfSimpleProfile};
 
   EXPECT_FALSE(
@@ -1315,7 +1341,7 @@ TEST(FilterProfilesForMixPresentation,
 }
 
 TEST(FilterProfilesForMixPresentation,
-     RemovesBaseProfileWithReservedHeadphonesRenderingMode2) {
+     RemovesBaseProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1325,7 +1351,7 @@ TEST(FilterProfilesForMixPresentation,
       .sub_mixes_.front()
       .audio_elements.front()
       .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved2;
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   absl::flat_hash_set<ProfileVersion> base_profile = {kIamfBaseProfile};
 
   EXPECT_FALSE(ProfileFilter::FilterProfilesForMixPresentation(
@@ -1503,8 +1529,9 @@ TEST(FilterProfilesForMixPresentation,
   EXPECT_FALSE(base_enhanced_profile.contains(kIamfBaseEnhancedProfile));
 }
 
-TEST(FilterProfilesForMixPresentation,
-     RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingMode2) {
+TEST(
+    FilterProfilesForMixPresentation,
+    RemovesBaseEnhancedProfileWithReservedHeadphonesRenderingModeBinauralHeadLocked) {
   absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
   absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
   std::list<MixPresentationObu> mix_presentation_obus;
@@ -1514,7 +1541,7 @@ TEST(FilterProfilesForMixPresentation,
       .sub_mixes_.front()
       .audio_elements.front()
       .rendering_config.headphones_rendering_mode =
-      RenderingConfig::kHeadphonesRenderingModeReserved2;
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   absl::flat_hash_set<ProfileVersion> base_enhanced_profile = {
       kIamfBaseEnhancedProfile};
 

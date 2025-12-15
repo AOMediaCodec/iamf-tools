@@ -29,6 +29,8 @@ and this project adheres to
     `sampling_frequency`, these are usually forbidden by the IAMF spec.
 -   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_BINAURAL` in favor of
     `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
+-   Deprecate the spelling of `HEADPHONES_RENDERING_MODE_RESERVED_2` in favor of
+    `HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED`.
 
 ### Fixed
 

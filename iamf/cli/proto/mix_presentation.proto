@@ -23,13 +23,19 @@ enum HeadPhonesRenderingMode {
 
   HEADPHONES_RENDERING_MODE_INVALID = 0;
   HEADPHONES_RENDERING_MODE_STEREO = 1;
-  // Spelling out `HEADPHONES_RENDERING_MODE_BINAURAL` is deprecated. Prefer the
-  // enums that explicitly state whether it is world-locked or head-locked.
-  // Historical uses will be automatically translated to
-  // `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
+  // Spelling out `HEADPHONES_RENDERING_MODE_BINAURAL` or
+  // `HEADPHONES_RENDERING_MODE_RESERVED_2` is deprecated. Prefer the enums that
+  // explicitly state whether it is world-locked or head-locked. Historical uses
+  // will be automatically translated accordingly:
+  //
+  // - `HEADPHONES_RENDERING_MODE_BINAURAL` to
+  //   `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
+  // - `HEADPHONES_RENDERING_MODE_RESERVED_2` to
+  //   `HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED`.
   HEADPHONES_RENDERING_MODE_BINAURAL = 2 [deprecated = true];
   HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED = 2;
-  HEADPHONES_RENDERING_MODE_RESERVED_2 = 3;
+  HEADPHONES_RENDERING_MODE_RESERVED_2 = 3 [deprecated = true];
+  HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED = 3;
   HEADPHONES_RENDERING_MODE_RESERVED_3 = 4;
 }
 

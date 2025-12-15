@@ -13,8 +13,9 @@
 
 test_vector_metadata {
   human_readable_description:
-    "An invalid IAMF stream because it is simple profile and contains a Mix "
-    "Presentation with a reserved headphones rendering mode."
+    "An invalid IAMF stream because it contains a single Mix Presentation with "
+    "HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED, which is not allowed in "
+    "Simple profile."
   file_name_prefix: "test_000125"
   is_valid: false
   is_valid_to_decode: false
@@ -89,7 +90,7 @@ mix_presentation_metadata {
       audio_element_id: 300
       localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
       rendering_config {
-        headphones_rendering_mode: HEADPHONES_RENDERING_MODE_RESERVED_2
+        headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED
       }
       element_mix_gain {
         param_definition {

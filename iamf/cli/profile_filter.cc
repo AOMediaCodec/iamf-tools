@@ -282,12 +282,16 @@ absl::Status FilterProfileForHeadphonesRenderingMode(
       switch (
           sub_mix_audio_element.rendering_config.headphones_rendering_mode) {
         using enum RenderingConfig::HeadphonesRenderingMode;
-        case kHeadphonesRenderingModeReserved2:
-        case kHeadphonesRenderingModeReserved3:
+        case kHeadphonesRenderingModeBinauralHeadLocked:
           profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
           profile_versions.erase(ProfileVersion::kIamfBaseProfile);
           profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
-          // TODO(b/461488730): Ensure these agree with v2.0.0 limits.
+          break;
+        case kHeadphonesRenderingModeReserved3:
+          // No profile supports this mode.
+          profile_versions.erase(ProfileVersion::kIamfSimpleProfile);
+          profile_versions.erase(ProfileVersion::kIamfBaseProfile);
+          profile_versions.erase(ProfileVersion::kIamfBaseEnhancedProfile);
           profile_versions.erase(ProfileVersion::kIamfBaseAdvancedProfile);
           profile_versions.erase(ProfileVersion::kIamfAdvanced1Profile);
           profile_versions.erase(ProfileVersion::kIamfAdvanced2Profile);
