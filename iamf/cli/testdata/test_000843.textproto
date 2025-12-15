@@ -10,6 +10,7 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
+# txtpbfmt: disable
 
 test_vector_metadata {
   human_readable_description:
@@ -122,7 +123,7 @@ mix_presentation_metadata {
         audio_element_id: 300
         localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         }
         element_mix_gain {
           param_definition {
@@ -138,7 +139,7 @@ mix_presentation_metadata {
         audio_element_id: 301
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         }
         element_mix_gain {
           param_definition {

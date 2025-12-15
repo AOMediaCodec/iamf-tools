@@ -12,8 +12,7 @@
 # proto-message: UserMetadata
 
 test_vector_metadata {
-  human_readable_description:
-    "A Base-Advanced Profile Stream using a Bottom-3ch Expanded Layout and 2OA."
+  human_readable_description: "A Base-Advanced Profile Stream using a Bottom-3ch Expanded Layout and 2OA."
   file_name_prefix: "test_000841"
   is_valid: true
   is_valid_to_decode: true
@@ -103,7 +102,7 @@ mix_presentation_metadata {
         audio_element_id: 300
         localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         }
         element_mix_gain {
           param_definition {
@@ -119,7 +118,7 @@ mix_presentation_metadata {
         audio_element_id: 301
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         }
         element_mix_gain {
           param_definition {

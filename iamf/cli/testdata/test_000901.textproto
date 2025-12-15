@@ -144,7 +144,7 @@ mix_presentation_metadata {
         audio_element_id: 301
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
           rendering_config_param_definitions {
             param_definition_type: PARAM_DEFINITION_TYPE_POLAR
             polar_param_definition {
@@ -173,7 +173,7 @@ mix_presentation_metadata {
         audio_element_id: 302
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
           rendering_config_param_definitions {
             param_definition_type: PARAM_DEFINITION_TYPE_POLAR
             polar_param_definition {
@@ -202,7 +202,7 @@ mix_presentation_metadata {
         audio_element_id: 303
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
           rendering_config_param_definitions {
             param_definition_type: PARAM_DEFINITION_TYPE_POLAR
             polar_param_definition {
@@ -231,7 +231,7 @@ mix_presentation_metadata {
         audio_element_id: 304
         localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
           rendering_config_param_definitions {
             param_definition_type: PARAM_DEFINITION_TYPE_POLAR
             polar_param_definition {

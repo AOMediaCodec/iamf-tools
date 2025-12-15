@@ -112,7 +112,7 @@ mix_presentation_metadata {
         audio_element_id: 300
         localized_element_annotations: ["First-order Ambisonics"]
         rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL
+          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         }
         element_mix_gain {
           param_definition {
