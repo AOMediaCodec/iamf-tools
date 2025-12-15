@@ -29,6 +29,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -39,7 +40,7 @@ namespace iamf_tools {
 using PositionParamVariant =
     std::variant<PolarParamDefinition, Cart8ParamDefinition,
                  Cart16ParamDefinition, DualPolarParamDefinition,
-                 DualCart8ParamDefinition>;
+                 DualCart8ParamDefinition, DualCart16ParamDefinition>;
 
 struct RenderingConfigParamDefinition {
   friend bool operator==(const RenderingConfigParamDefinition& lhs,

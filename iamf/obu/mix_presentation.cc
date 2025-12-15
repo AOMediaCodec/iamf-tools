@@ -36,6 +36,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -78,8 +79,12 @@ absl::Status WriteRenderingConfigParamDefinition(
                            rendering_config_param_definition.param_definition)
                            .ValidateAndWrite(wb));
       break;
-    // TODO(b/467386344): Add support for other rendering config param
-    // definition types.
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart16:
+      RETURN_IF_NOT_OK(std::get<DualCart16ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
     default:
       RETURN_IF_NOT_OK(wb.WriteUleb128(
           rendering_config_param_definition.param_definition_bytes.size()));
@@ -340,9 +345,9 @@ RenderingConfigParamDefinition::Create(
         kParameterDefinitionDualPolar:
     case ParamDefinition::ParameterDefinitionType::
         kParameterDefinitionDualCart8:
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart16:
       break;
-    // TODO(b/467386344): Add support for other rendering config param
-    // definition types.
     default:
       return absl::InvalidArgumentError(
           "Expected a Position param definition type.");
@@ -403,8 +408,16 @@ RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
                         param_definition_type),
                     std::move(param_definition), {});
       break;
-    // TODO(b/467386344): Add support for other rendering config param
-    // definition types.
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart16:
+      param_definition = DualCart16ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualCart16ParamDefinition>().ReadAndValidate(
+              rb));
+      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
+                        param_definition_type),
+                    std::move(param_definition), {});
+      break;
     default:
       DecodedUleb128 param_definition_bytes_size;
       RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
