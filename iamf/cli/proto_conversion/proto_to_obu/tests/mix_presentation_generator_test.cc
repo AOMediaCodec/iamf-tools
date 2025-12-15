@@ -32,6 +32,7 @@
 #include "iamf/obu/param_definitions.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
@@ -501,6 +502,68 @@ TEST(Generate, CopiesRenderingConfigWithDualCart8ParamDefinition) {
                   ParamDefinition::ParameterDefinitionType::
                       kParameterDefinitionDualCart8,
                   expected_dual_cart8_param_definition, {})
+                  .value());
+}
+
+TEST(Generate, CopiesRenderingConfigWithDualCart16ParamDefinition) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& first_rendering_config = *mix_presentation_metadata.at(0)
+                                      .mutable_sub_mixes(0)
+                                      ->mutable_audio_elements(0)
+                                      ->mutable_rendering_config();
+  first_rendering_config.set_headphones_rendering_mode(
+      HEADPHONES_RENDERING_MODE_RESERVED_3);
+  using iamf_tools_cli_proto::PARAM_DEFINITION_TYPE_DUAL_CART_16;
+  auto& dual_cart16_param_definition =
+      *first_rendering_config.add_rendering_config_param_definitions();
+  dual_cart16_param_definition.set_param_definition_type(
+      PARAM_DEFINITION_TYPE_DUAL_CART_16);
+  auto& dual_cart16_param_definition_proto =
+      *dual_cart16_param_definition.mutable_dual_cart16_param_definition();
+  dual_cart16_param_definition_proto.mutable_param_definition()
+      ->set_parameter_id(1);
+  dual_cart16_param_definition_proto.mutable_param_definition()
+      ->set_parameter_rate(16000);
+  dual_cart16_param_definition_proto.mutable_param_definition()
+      ->set_param_definition_mode(1);
+  dual_cart16_param_definition_proto.mutable_param_definition()->set_duration(
+      1);
+  dual_cart16_param_definition_proto.mutable_param_definition()
+      ->set_constant_subblock_duration(true);
+  dual_cart16_param_definition_proto.set_default_first_x(1);
+  dual_cart16_param_definition_proto.set_default_first_y(2);
+  dual_cart16_param_definition_proto.set_default_first_z(3);
+  dual_cart16_param_definition_proto.set_default_second_x(4);
+  dual_cart16_param_definition_proto.set_default_second_y(5);
+  dual_cart16_param_definition_proto.set_default_second_z(6);
+
+  DualCart16ParamDefinition expected_dual_cart16_param_definition;
+  expected_dual_cart16_param_definition.parameter_id_ = 1;
+  expected_dual_cart16_param_definition.parameter_rate_ = 16000;
+  expected_dual_cart16_param_definition.param_definition_mode_ = 1;
+  expected_dual_cart16_param_definition.duration_ = 1;
+  expected_dual_cart16_param_definition.constant_subblock_duration_ = true;
+  expected_dual_cart16_param_definition.default_first_x_ = 1;
+  expected_dual_cart16_param_definition.default_first_y_ = 2;
+  expected_dual_cart16_param_definition.default_first_z_ = 3;
+  expected_dual_cart16_param_definition.default_second_x_ = 4;
+  expected_dual_cart16_param_definition.default_second_y_ = 5;
+  expected_dual_cart16_param_definition.default_second_z_ = 6;
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
+              testing::SizeIs(1));
+  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions[0],
+              RenderingConfigParamDefinition::Create(
+                  ParamDefinition::ParameterDefinitionType::
+                      kParameterDefinitionDualCart16,
+                  expected_dual_cart16_param_definition, {})
                   .value());
 }
 
