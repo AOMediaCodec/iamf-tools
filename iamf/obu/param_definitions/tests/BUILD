@@ -80,3 +80,19 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "dual_cart16_param_definition_test",
+    srcs = ["dual_cart16_param_definition_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
+        "//iamf/obu:dual_cart16_parameter_data",
+        "//iamf/obu:param_definitions",
+        "//iamf/obu/param_definitions:dual_cart16_param_definition",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

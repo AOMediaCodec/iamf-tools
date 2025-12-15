@@ -77,3 +77,18 @@ cc_library(
         "@abseil-cpp//absl/status",
     ],
 )
+
+cc_library(
+    name = "dual_cart16_param_definition",
+    srcs = ["dual_cart16_param_definition.cc"],
+    hdrs = ["dual_cart16_param_definition.h"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/obu:dual_cart16_parameter_data",
+        "//iamf/obu:param_definitions",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+    ],
+)
