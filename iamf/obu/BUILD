@@ -118,6 +118,19 @@ cc_library(
 )
 
 cc_library(
+    name = "dual_cart16_parameter_data",
+    srcs = ["dual_cart16_parameter_data.cc"],
+    hdrs = ["dual_cart16_parameter_data.h"],
+    deps = [
+        ":parameter_data",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+    ],
+)
+
+cc_library(
     name = "dual_cart8_parameter_data",
     srcs = ["dual_cart8_parameter_data.cc"],
     hdrs = ["dual_cart8_parameter_data.h"],
