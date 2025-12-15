@@ -1046,6 +1046,27 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualPolarAndDualCart16Object, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualCart8AndDualCart16Object, TestVector,
                          testing::Values("test_000817.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarAndDualPolarObject, TestVector,
+                         testing::Values("test_000818.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarAndDualCart8Object, TestVector,
+                         testing::Values("test_000819.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarAndDualCart16Object, TestVector,
+                         testing::Values("test_000820.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8AndDualPolarObject, TestVector,
+                         testing::Values("test_000821.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8AndDualCart8Object, TestVector,
+                         testing::Values("test_000822.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8AndDualCart16Object, TestVector,
+                         testing::Values("test_000823.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart16AndDualPolarObject, TestVector,
+                         testing::Values("test_000824.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvanced7_1_5_4Ch, TestVector,
                          testing::Values("test_000827.textproto"));
 
