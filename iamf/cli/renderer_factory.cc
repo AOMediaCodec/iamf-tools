@@ -41,7 +41,7 @@ bool IsAudioElementRenderedBinaural(
     Layout::LayoutType layout_type) {
   {
     return headphones_rendering_mode ==
-               RenderingConfig::kHeadphonesRenderingModeBinaural &&
+               RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked &&
            layout_type == Layout::kLayoutTypeBinaural;
   }
 }

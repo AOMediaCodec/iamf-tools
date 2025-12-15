@@ -68,7 +68,7 @@ Optionally, modify other fields in the textproto template as necessary.
 
 -   `headphones_rendering_mode`
 
-    Choose one of `HEADPHONES_RENDERING_MODE_BINAURAL` or
+    Choose one of `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED` or
     `HEADPHONES_RENDERING_MODE_STEREO`.
 
     This informs the renderer if the audio element should be binauralized or

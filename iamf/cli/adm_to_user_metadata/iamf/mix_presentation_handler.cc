@@ -140,7 +140,7 @@ absl::Status SubMixAudioElementMetadataBuilder(
   }
 
   rendering_config->set_headphones_rendering_mode(
-      iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
+      iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
 
   auto* mix_gain_param_definition =
       sub_mix_audio_element.mutable_element_mix_gain();

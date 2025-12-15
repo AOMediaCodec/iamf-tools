@@ -21,7 +21,6 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
@@ -102,7 +101,7 @@ struct RenderingConfig {
   /*!\brief A 2-bit enum describing how to render the content to headphones. */
   enum HeadphonesRenderingMode : uint8_t {
     kHeadphonesRenderingModeStereo = 0,
-    kHeadphonesRenderingModeBinaural = 1,
+    kHeadphonesRenderingModeBinauralWorldLocked = 1,
     kHeadphonesRenderingModeReserved2 = 2,
     kHeadphonesRenderingModeReserved3 = 3,
   };

@@ -1099,12 +1099,11 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       {.audio_elements = {{
            .audio_element_id = 21,
            .localized_element_annotations = {"Submix 2"},
-           .rendering_config =
-               {.headphones_rendering_mode =
-                    RenderingConfig::kHeadphonesRenderingModeBinaural,
-                .reserved = 0,
-                .rendering_config_param_definitions = {},
-                .rendering_config_extension_bytes = {}},
+           .rendering_config = {.headphones_rendering_mode = RenderingConfig::
+                                    kHeadphonesRenderingModeBinauralWorldLocked,
+                                .reserved = 0,
+                                .rendering_config_param_definitions = {},
+                                .rendering_config_extension_bytes = {}},
        }},
        .layouts = {
            {.loudness_layout = {.layout_type = Layout::kLayoutTypeReserved0,
@@ -1174,7 +1173,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       // Start Submix 2.
       1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '2', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27, 3,
@@ -1592,7 +1591,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       // Start ElementMixGain
@@ -1618,7 +1617,7 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       .localized_element_annotations = {"Submix 1"},
       .rendering_config =
           {.headphones_rendering_mode =
-               RenderingConfig::kHeadphonesRenderingModeBinaural,
+               RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
            .rendering_config_extension_bytes = {0}},
       .element_mix_gain = MixGainParamDefinition()};
   expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
@@ -1637,7 +1636,7 @@ TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/10,
       // num_params
       1,
@@ -1690,7 +1689,7 @@ TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -1716,7 +1715,7 @@ TEST(ReadSubMixAudioElementTest, Cart8ParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/10,
       // num_params
       1,
@@ -1768,7 +1767,7 @@ TEST(ReadSubMixAudioElementTest, Cart8ParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -1794,7 +1793,7 @@ TEST(ReadSubMixAudioElementTest, Cart16ParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -1846,7 +1845,7 @@ TEST(ReadSubMixAudioElementTest, Cart16ParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -1872,7 +1871,7 @@ TEST(ReadSubMixAudioElementTest, DualPolarParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -1932,7 +1931,7 @@ TEST(ReadSubMixAudioElementTest, DualPolarParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -1958,7 +1957,7 @@ TEST(ReadSubMixAudioElementTest, DualCart8ParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -2016,7 +2015,7 @@ TEST(ReadSubMixAudioElementTest, DualCart8ParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -2042,7 +2041,7 @@ TEST(ReadSubMixAudioElementTest, DualCart16ParamDefinitionRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/19,
       // num_params
       1,
@@ -2100,7 +2099,7 @@ TEST(ReadSubMixAudioElementTest, DualCart16ParamDefinitionRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
@@ -2126,7 +2125,7 @@ TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinaural << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/15, 'e', 'x', 't', 'e', 'n', 's', 'i',
       'o', 'n', 's', 'b', 'y', 't', 'e', 's',
       // End RenderingConfig.
@@ -2155,7 +2154,7 @@ TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
       .rendering_config =
           {
               .headphones_rendering_mode =
-                  RenderingConfig::kHeadphonesRenderingModeBinaural,
+                  RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
               .reserved = 0,
               .rendering_config_extension_bytes = {'e', 'x', 't', 'e', 'n', 's',
                                                    'i', 'o', 'n', 's', 'b', 'y',

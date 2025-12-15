@@ -67,7 +67,7 @@ const RenderingConfig kHeadphonesAsStereoRenderingConfig = {
 
 const RenderingConfig kHeadphonesAsBinauralRenderingConfig = {
     .headphones_rendering_mode =
-        RenderingConfig::kHeadphonesRenderingModeBinaural};
+        RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked};
 
 TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
   const RendererFactory factory;

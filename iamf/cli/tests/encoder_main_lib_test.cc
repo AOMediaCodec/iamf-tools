@@ -515,8 +515,8 @@ INSTANTIATE_TEST_SUITE_P(AppliedDefaultWNonzero, TestVector,
 INSTANTIATE_TEST_SUITE_P(IgnoredDefaultWNonzero, TestVector,
                          testing::Values("test_000082.textproto"));
 
-INSTANTIATE_TEST_SUITE_P(FoaMonoLPCMHeadphonesRenderingMode1, TestVector,
-                         testing::Values("test_000083.textproto"));
+INSTANTIATE_TEST_SUITE_P(FoaMonoLPCMHeadphonesRenderingModeBinauralWorldLocked,
+                         TestVector, testing::Values("test_000083.textproto"));
 
 INSTANTIATE_TEST_SUITE_P(FLACInvalidRollDistance, TestVector,
                          testing::Values("test_000084.textproto"));
@@ -533,8 +533,9 @@ INSTANTIATE_TEST_SUITE_P(StereoAndTwoLayer_5_1, TestVector,
 INSTANTIATE_TEST_SUITE_P(ParamDefinitionMode0ExplicitSubblockDurations,
                          TestVector, testing::Values("test_000088.textproto"));
 
-INSTANTIATE_TEST_SUITE_P(Scalable7_1_4HeadphonesRenderingMode1, TestVector,
-                         testing::Values("test_000089.textproto"));
+INSTANTIATE_TEST_SUITE_P(
+    Scalable7_1_4HeadphonesRenderingModeBinauralWorldLocked, TestVector,
+    testing::Values("test_000089.textproto"));
 
 INSTANTIATE_TEST_SUITE_P(NonFrameAlignedAAC, TestVector,
                          testing::Values("test_000090.textproto"));

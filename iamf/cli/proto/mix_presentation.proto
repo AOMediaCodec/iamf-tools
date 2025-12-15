@@ -19,9 +19,16 @@ option features.enum_type = CLOSED;
 option features.utf8_validation = NONE;
 
 enum HeadPhonesRenderingMode {
+  option allow_alias = true;
+
   HEADPHONES_RENDERING_MODE_INVALID = 0;
   HEADPHONES_RENDERING_MODE_STEREO = 1;
-  HEADPHONES_RENDERING_MODE_BINAURAL = 2;
+  // Spelling out `HEADPHONES_RENDERING_MODE_BINAURAL` is deprecated. Prefer the
+  // enums that explicitly state whether it is world-locked or head-locked.
+  // Historical uses will be automatically translated to
+  // `HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED`.
+  HEADPHONES_RENDERING_MODE_BINAURAL = 2 [deprecated = true];
+  HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED = 2;
   HEADPHONES_RENDERING_MODE_RESERVED_2 = 3;
   HEADPHONES_RENDERING_MODE_RESERVED_3 = 4;
 }

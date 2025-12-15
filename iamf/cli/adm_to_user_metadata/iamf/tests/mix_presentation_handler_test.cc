@@ -123,26 +123,30 @@ TEST(PopulateMixPresentation, PopulatesStereoSubmix) {
   EXPECT_EQ(submix.output_mix_gain().default_mix_gain(), 0);
 }
 
-TEST(PopulateMixPresentation, SetsBinauralRenderingModeForStereoAudioObject) {
+TEST(PopulateMixPresentation,
+     SetsBinauralWorldLockedRenderingModeForStereoAudioObject) {
   const auto& mix_presentation_metadata =
       GetMixObuMetataExpectOk({GetStereoAudioObject()});
 
-  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0)
-                .audio_elements(0)
-                .rendering_config()
-                .headphones_rendering_mode(),
-            iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
+  EXPECT_EQ(
+      mix_presentation_metadata.sub_mixes(0)
+          .audio_elements(0)
+          .rendering_config()
+          .headphones_rendering_mode(),
+      iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
 }
 
-TEST(PopulateMixPresentation, SetsBinauralRenderingModeForBinauralAudioObject) {
+TEST(PopulateMixPresentation,
+     SetsBinauralWorldLockedRenderingModeForBinauralAudioObject) {
   const auto& mix_presentation_metadata =
       GetMixObuMetataExpectOk({GetBinauralAudioObject()});
 
-  EXPECT_EQ(mix_presentation_metadata.sub_mixes(0)
-                .audio_elements(0)
-                .rendering_config()
-                .headphones_rendering_mode(),
-            iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
+  EXPECT_EQ(
+      mix_presentation_metadata.sub_mixes(0)
+          .audio_elements(0)
+          .rendering_config()
+          .headphones_rendering_mode(),
+      iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
 }
 
 void ExpectSsLayout(const auto& layout) {

@@ -174,6 +174,58 @@ TEST(Generate, CopiesSoundSystem14_5_7_4) {
             kExpectedSoundSystem);
 }
 
+TEST(Generate, CopiesHeadphonesRenderingModeBinauralWorldLocked) {
+  const auto kExpectedHeadphonesRenderingModeBinauralWorldLocked =
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked;
+  MixPresentationObuMetadatas mix_presentation_metadata = {};
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(
+          iamf_tools_cli_proto::
+              HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .rendering_config.headphones_rendering_mode,
+            kExpectedHeadphonesRenderingModeBinauralWorldLocked);
+}
+
+TEST(Generate,
+     CopiesDeprecatedSpellingHeadphonesRenderingModeBinauralAsWorldLocked) {
+  // There is an older spelling of the enum value, which automatically gets
+  // treated as world-locked.
+  const auto kExpectedHeadphonesRenderingModeBinauralWorldLocked =
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked;
+  MixPresentationObuMetadatas mix_presentation_metadata = {};
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(
+          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  EXPECT_EQ(generated_obus.front()
+                .sub_mixes_[0]
+                .audio_elements[0]
+                .rendering_config.headphones_rendering_mode,
+            kExpectedHeadphonesRenderingModeBinauralWorldLocked);
+}
+
 TEST(Generate, CopiesReservedHeadphonesRenderingMode2) {
   const auto kExpectedHeadphonesRenderingMode2 =
       RenderingConfig::kHeadphonesRenderingModeReserved2;
