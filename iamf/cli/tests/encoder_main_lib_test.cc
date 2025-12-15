@@ -1031,6 +1031,12 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualCart8ObjectMultipleAudioElements,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedDualCart16ObjectMultipleAudioElements,
                          TestVector, testing::Values("test_000811.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoPolarAndMonoCart16Object, TestVector,
+                         testing::Values("test_000813.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMonoCart8AndMonoCart16Object, TestVector,
+                         testing::Values("test_000814.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvanced7_1_5_4Ch, TestVector,
                          testing::Values("test_000827.textproto"));
 
