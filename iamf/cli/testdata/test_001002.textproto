@@ -138,16 +138,19 @@ mix_presentation_metadata {
       rendering_config {
         headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
         rendering_config_param_definitions {
-          param_definition_type: PARAM_DEFINITION_TYPE_POLAR
-          polar_param_definition {
+          param_definition_type: PARAM_DEFINITION_TYPE_DUAL_POLAR
+          dual_polar_param_definition {
             param_definition {
               parameter_id: 1
               parameter_rate: 48000
               param_definition_mode: 1
             }
-            default_azimuth: 1
-            default_elevation: 2
-            default_distance: 127
+            default_first_azimuth: 1
+            default_first_elevation: 2
+            default_first_distance: 127
+            default_second_azimuth: 180
+            default_second_elevation: 3
+            default_second_distance: 127
           }
         }
       }
