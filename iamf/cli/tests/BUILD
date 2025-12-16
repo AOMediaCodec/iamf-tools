@@ -165,6 +165,7 @@ cc_test(
         "//iamf/obu/param_definitions:extended_param_definition",
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:param_definition_variant",
+        "//iamf/obu/param_definitions:polar_param_definition",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/container:flat_hash_set",

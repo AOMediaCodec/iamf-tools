@@ -14,9 +14,15 @@
 
 #include <variant>
 
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/extended_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 
 namespace iamf_tools {
@@ -24,7 +30,10 @@ namespace iamf_tools {
 /*!\brief Variants of parameter definition currently supported. */
 using ParamDefinitionVariant =
     std::variant<MixGainParamDefinition, DemixingParamDefinition,
-                 ReconGainParamDefinition, ExtendedParamDefinition>;
+                 ReconGainParamDefinition, PolarParamDefinition,
+                 Cart8ParamDefinition, Cart16ParamDefinition,
+                 DualPolarParamDefinition, DualCart8ParamDefinition,
+                 DualCart16ParamDefinition, ExtendedParamDefinition>;
 
 }  // namespace iamf_tools
 

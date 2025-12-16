@@ -163,7 +163,7 @@ mix_presentation_metadata {
           param_definition_type: PARAM_DEFINITION_TYPE_POLAR
           polar_param_definition {
             param_definition {
-              parameter_id: 1
+              parameter_id: 2
               parameter_rate: 48000
               param_definition_mode: 1
             }
@@ -192,7 +192,7 @@ mix_presentation_metadata {
           param_definition_type: PARAM_DEFINITION_TYPE_POLAR
           polar_param_definition {
             param_definition {
-              parameter_id: 1
+              parameter_id: 3
               parameter_rate: 48000
               param_definition_mode: 1
             }

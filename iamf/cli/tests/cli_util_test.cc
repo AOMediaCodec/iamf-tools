@@ -40,6 +40,7 @@
 #include "iamf/obu/param_definitions/extended_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
@@ -51,6 +52,7 @@ using ::testing::Not;
 
 constexpr DecodedUleb128 kCodecConfigId = 21;
 constexpr DecodedUleb128 kAudioElementId = 100;
+constexpr DecodedUleb128 kSecondAudioElementId = 101;
 constexpr DecodedUleb128 kMixPresentationId = 100;
 constexpr DecodedUleb128 kParameterId = 99999;
 constexpr DecodedUleb128 kParameterRate = 48000;
@@ -250,6 +252,50 @@ TEST(CollectAndValidateParamDefinitions,
               IsOk());
   // Validate there is one unique param definition.
   EXPECT_EQ(result.size(), 1);
+}
+
+RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinitionExpectOk(
+    DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate, int azimuth,
+    int elevation, int distance) {
+  PolarParamDefinition param_definition;
+  param_definition.parameter_id_ = parameter_id;
+  param_definition.parameter_rate_ = parameter_rate;
+  param_definition.param_definition_mode_ = 0;
+  param_definition.default_azimuth_ = azimuth;
+  param_definition.default_elevation_ = elevation;
+  param_definition.default_distance_ = distance;
+  auto rendering_config_param_definition =
+      RenderingConfigParamDefinition::Create(
+          ParamDefinition::kParameterDefinitionPolar, param_definition, {});
+  EXPECT_THAT(rendering_config_param_definition, IsOk());
+  return *rendering_config_param_definition;
+}
+
+TEST(CollectAndValidateParamDefinitions,
+     IsInvalidWhenPositionParamDefinitionsAreNotEquivalent) {
+  // Initialize prerequisites.
+  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements = {};
+  // Create a mix presentation OBU. It will have a `element_mix_gain` and
+  // `output_mix_gain` which common settings.
+  std::list<MixPresentationObu> mix_presentation_obus;
+  AddMixPresentationObuWithAudioElementIds(
+      kMixPresentationId, {kAudioElementId, kSecondAudioElementId},
+      kParameterId, kParameterRate, mix_presentation_obus);
+  auto& first_sub_mix = mix_presentation_obus.back().sub_mixes_[0];
+  // Add mismatching position param definitions to the audio element.
+  first_sub_mix.audio_elements[0]
+      .rendering_config.rendering_config_param_definitions.push_back(
+          MakePolarRenderingConfigParamDefinitionExpectOk(
+              kParameterId, kParameterRate, 1, 2, 3));
+  first_sub_mix.audio_elements[1]
+      .rendering_config.rendering_config_param_definitions.push_back(
+          MakePolarRenderingConfigParamDefinitionExpectOk(
+              kParameterId, kParameterRate, 4, 5, 6));
+
+  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
+  EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,
+                                                 mix_presentation_obus, result),
+              Not(IsOk()));
 }
 
 TEST(CollectAndValidateParamDefinitions,

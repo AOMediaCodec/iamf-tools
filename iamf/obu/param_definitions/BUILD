@@ -156,9 +156,15 @@ cc_library(
     name = "param_definition_variant",
     hdrs = ["param_definition_variant.h"],
     deps = [
+        ":cart16_param_definition",
+        ":cart8_param_definition",
         ":demixing_param_definition",
+        ":dual_cart16_param_definition",
+        ":dual_cart8_param_definition",
+        ":dual_polar_param_definition",
         ":extended_param_definition",
         ":mix_gain_param_definition",
+        ":polar_param_definition",
         ":recon_gain_param_definition",
     ],
 )

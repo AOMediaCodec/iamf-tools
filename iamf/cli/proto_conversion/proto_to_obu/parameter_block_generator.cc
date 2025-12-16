@@ -585,13 +585,27 @@ absl::Status ParameterBlockGenerator::Initialize(
         GetParameterDefinitionType(param_definition_variant);
     RETURN_IF_NOT_OK(
         ValidateHasValue(param_definition_type, "param_definition_type"));
-    if (param_definition_type !=
-            ParamDefinition::kParameterDefinitionDemixing &&
-        param_definition_type != ParamDefinition::kParameterDefinitionMixGain &&
-        param_definition_type !=
-            ParamDefinition::kParameterDefinitionReconGain) {
-      return absl::InvalidArgumentError(
-          absl::StrCat("Unsupported parameter type: ", *param_definition_type));
+    switch (*param_definition_type) {
+      using enum ParamDefinition::ParameterDefinitionType;
+      case kParameterDefinitionDemixing:
+      case kParameterDefinitionMixGain:
+      case kParameterDefinitionReconGain:
+        break;
+      case kParameterDefinitionPolar:
+      case kParameterDefinitionCart8:
+      case kParameterDefinitionCart16:
+      case kParameterDefinitionDualPolar:
+      case kParameterDefinitionDualCart8:
+      case kParameterDefinitionDualCart16:
+        // TODO(b/469407874): Support position parameter blocks fully in this
+        //                    class.
+        ABSL_LOG(WARNING) << "Ignoring parameter definition of type= "
+                          << *param_definition_type
+                          << " with parameter ID= " << parameter_id;
+        break;
+      default:
+        return absl::InvalidArgumentError(absl::StrCat(
+            "Unsupported parameter type: ", *param_definition_type));
     }
   }
 

@@ -142,6 +142,16 @@ absl::Status CollectAndValidateParamDefinitions(
   for (const auto& mix_presentation_obu : mix_presentation_obus) {
     for (const auto& sub_mix : mix_presentation_obu.sub_mixes_) {
       for (const auto& audio_element : sub_mix.audio_elements) {
+        for (const auto& rendering_param_definition :
+             audio_element.rendering_config
+                 .rendering_config_param_definitions) {
+          RETURN_IF_NOT_OK(std::visit(
+              [&](const auto& value) -> absl::Status {
+                return InsertParamDefinitionAndCheckEquivalence(
+                    value, param_definition_variants);
+              },
+              rendering_param_definition.param_definition));
+        }
         RETURN_IF_NOT_OK(InsertParamDefinitionAndCheckEquivalence(
             audio_element.element_mix_gain, param_definition_variants));
       }
