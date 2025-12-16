@@ -29,7 +29,7 @@
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/param_definition_variant.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

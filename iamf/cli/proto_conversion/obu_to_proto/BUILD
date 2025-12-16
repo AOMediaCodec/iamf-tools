@@ -48,10 +48,10 @@ cc_library(
         "//iamf/cli/proto_conversion:proto_utils",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
-        "//iamf/obu:param_definitions",
         "//iamf/obu:parameter_block",
         "//iamf/obu:parameter_data",
         "//iamf/obu:types",
+        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:statusor",
     ],
 )

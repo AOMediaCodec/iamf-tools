@@ -51,7 +51,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 

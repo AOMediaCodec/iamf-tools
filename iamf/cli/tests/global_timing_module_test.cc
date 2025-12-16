@@ -24,8 +24,8 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/param_definition_variant.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

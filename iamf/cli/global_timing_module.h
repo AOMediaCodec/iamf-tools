@@ -21,7 +21,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/obu/param_definition_variant.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

@@ -31,12 +31,15 @@ cc_library(
     deps = [
         ":obu_base",
         ":obu_header",
-        ":param_definitions",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:validation_utils",
+        "//iamf/obu/param_definitions:demixing_param_definition",
+        "//iamf/obu/param_definitions:extended_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
+        "//iamf/obu/param_definitions:recon_gain_param_definition",
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
@@ -181,7 +184,6 @@ cc_library(
     deps = [
         ":obu_base",
         ":obu_header",
-        ":param_definitions",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
@@ -194,6 +196,8 @@ cc_library(
         "//iamf/obu/param_definitions:dual_cart16_param_definition",
         "//iamf/obu/param_definitions:dual_cart8_param_definition",
         "//iamf/obu/param_definitions:dual_polar_param_definition",
+        "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/container:flat_hash_map",
@@ -246,46 +250,19 @@ cc_library(
 )
 
 cc_library(
-    name = "param_definitions",
-    srcs = [
-        "demixing_param_definition.cc",
-        "param_definitions.cc",
-    ],
-    hdrs = [
-        "demixing_param_definition.h",
-        "param_definition_variant.h",
-        "param_definitions.h",
-    ],
-    deps = [
-        ":parameter_data",
-        ":types",
-        "//iamf/common:read_bit_buffer",
-        "//iamf/common:write_bit_buffer",
-        "//iamf/common/utils:macros",
-        "//iamf/common/utils:numeric_utils",
-        "//iamf/common/utils:validation_utils",
-        "@abseil-cpp//absl/base:core_headers",
-        "@abseil-cpp//absl/log:absl_log",
-        "@abseil-cpp//absl/status",
-        "@abseil-cpp//absl/strings",
-        "@abseil-cpp//absl/types:span",
-    ],
-)
-
-cc_library(
     name = "parameter_block",
     srcs = ["parameter_block.cc"],
     hdrs = ["parameter_block.h"],
     deps = [
         ":obu_base",
         ":obu_header",
-        ":param_definitions",
         ":parameter_data",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:obu_util",
+        "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/memory",

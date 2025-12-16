@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2023, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
  * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
@@ -9,12 +9,12 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-
-#ifndef OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
-#define OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
+#ifndef OBU_PARAM_DEFINITIONS_EXTENDED_PARAM_DEFINITION_H_
+#define OBU_PARAM_DEFINITIONS_EXTENDED_PARAM_DEFINITION_H_
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "iamf/common/read_bit_buffer.h"
@@ -24,21 +24,21 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition for polar info. */
-class Cart16ParamDefinition : public ParamDefinition {
+/* !\brief Parameter definition reserved for future use; should be ignored.
+ */
+class ExtendedParamDefinition : public ParamDefinition {
  public:
   /*!\brief Default constructor.
    */
-  Cart16ParamDefinition() : ParamDefinition(kParameterDefinitionCart16) {}
+  explicit ExtendedParamDefinition(
+      ParamDefinition::ParameterDefinitionType type)
+      : ParamDefinition(type) {}
 
   /*!\brief Default destructor.
    */
-  ~Cart16ParamDefinition() override = default;
+  ~ExtendedParamDefinition() override = default;
 
-  friend bool operator==(const Cart16ParamDefinition& lhs,
-                         const Cart16ParamDefinition& rhs) = default;
-
-  /*!\brief Validates and writes to a buffer.
+  /*!\brief Validates and writes a `ExtendedParamDefinition` to a buffer.
    *
    * \param wb Buffer to write to.
    * \return `absl::OkStatus()` if successful. A specific status on failure.
@@ -54,7 +54,7 @@ class Cart16ParamDefinition : public ParamDefinition {
 
   /*!\brief Creates a parameter data.
    *
-   * The created instance will be of type `Cart16ParameterData`.
+   * The created instance will be of type `ExtensionParameterData`.
    *
    * \return Unique pointer to the created parameter data.
    */
@@ -64,11 +64,15 @@ class Cart16ParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int16_t default_x_;
-  int16_t default_y_;
-  int16_t default_z_;
+  friend bool operator==(const ExtendedParamDefinition& lhs,
+                         const ExtendedParamDefinition& rhs) = default;
+
+  // `param_definition_size_` is inferred from  the size of
+  // `param_definition_bytes_`.
+  // Vector of the bytes the OBU parser should ignore.
+  std::vector<uint8_t> param_definition_bytes_ = {};
 };
 
 }  // namespace iamf_tools
 
-#endif  // OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
+#endif  // OBU_PARAM_DEFINITIONS_EXTENDED_PARAM_DEFINITION_H_

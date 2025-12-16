@@ -24,10 +24,12 @@
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

@@ -37,7 +37,7 @@
 #include "iamf/cli/user_metadata_builder/codec_config_obu_metadata_builder.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/param_definition_variant.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

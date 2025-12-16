@@ -21,8 +21,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/dual_cart8_parameter_data.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 
 namespace iamf_tools {
 namespace {

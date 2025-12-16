@@ -23,7 +23,7 @@
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "src/google/protobuf/text_format.h"
 
 namespace iamf_tools {

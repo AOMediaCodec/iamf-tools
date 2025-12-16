@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Alliance for Open Media. All rights reserved
+ * Copyright (c) 2023, Alliance for Open Media. All rights reserved
  *
  * This source code is subject to the terms of the BSD 3-Clause Clear License
  * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
@@ -9,9 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-
-#ifndef OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
-#define OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
+#ifndef OBU_PARAM_DEFINITIONS_MIX_GAIN_PARAM_DEFINITION_H_
+#define OBU_PARAM_DEFINITIONS_MIX_GAIN_PARAM_DEFINITION_H_
 
 #include <cstdint>
 #include <memory>
@@ -24,19 +23,17 @@
 
 namespace iamf_tools {
 
-/* !\brief Parameter definition for polar info. */
-class Cart16ParamDefinition : public ParamDefinition {
+/* !\brief Parameter definition of mix gains to be applied to a signal.
+ */
+class MixGainParamDefinition : public ParamDefinition {
  public:
   /*!\brief Default constructor.
    */
-  Cart16ParamDefinition() : ParamDefinition(kParameterDefinitionCart16) {}
+  MixGainParamDefinition() : ParamDefinition(kParameterDefinitionMixGain) {}
 
   /*!\brief Default destructor.
    */
-  ~Cart16ParamDefinition() override = default;
-
-  friend bool operator==(const Cart16ParamDefinition& lhs,
-                         const Cart16ParamDefinition& rhs) = default;
+  ~MixGainParamDefinition() override = default;
 
   /*!\brief Validates and writes to a buffer.
    *
@@ -51,10 +48,9 @@ class Cart16ParamDefinition : public ParamDefinition {
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
   absl::Status ReadAndValidate(ReadBitBuffer& rb) override;
-
   /*!\brief Creates a parameter data.
    *
-   * The created instance will be of type `Cart16ParameterData`.
+   * The created instance will be of type `MixGainParameterData`.
    *
    * \return Unique pointer to the created parameter data.
    */
@@ -64,11 +60,12 @@ class Cart16ParamDefinition : public ParamDefinition {
    */
   void Print() const override;
 
-  int16_t default_x_;
-  int16_t default_y_;
-  int16_t default_z_;
+  friend bool operator==(const MixGainParamDefinition& lhs,
+                         const MixGainParamDefinition& rhs) = default;
+
+  int16_t default_mix_gain_ = 0;
 };
 
 }  // namespace iamf_tools
 
-#endif  // OBU_PARAM_DEFINITIONS_CART16_PARAM_DEFINITION_H_
+#endif  // OBU_PARAM_DEFINITIONS_MIX_GAIN_PARAM_DEFINITION_H_

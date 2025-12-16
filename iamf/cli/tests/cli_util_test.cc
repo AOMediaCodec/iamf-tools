@@ -37,8 +37,10 @@
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definition_variant.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

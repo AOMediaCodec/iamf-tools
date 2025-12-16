@@ -9,13 +9,15 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef OBU_PARAM_DEFINITION_VARIANT_H_
-#define OBU_PARAM_DEFINITION_VARIANT_H_
+#ifndef OBU_PARAM_DEFINITIONS_PARAM_DEFINITION_VARIANT_H_
+#define OBU_PARAM_DEFINITIONS_PARAM_DEFINITION_VARIANT_H_
 
 #include <variant>
 
-#include "iamf/obu/demixing_param_definition.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 
 namespace iamf_tools {
 
@@ -26,4 +28,4 @@ using ParamDefinitionVariant =
 
 }  // namespace iamf_tools
 
-#endif  // OBU_PARAM_DEFINITION_VARIANT_H_
+#endif  // OBU_PARAM_DEFINITIONS_PARAM_DEFINITION_VARIANT_H_

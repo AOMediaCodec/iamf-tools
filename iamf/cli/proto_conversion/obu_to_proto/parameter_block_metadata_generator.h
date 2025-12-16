@@ -15,7 +15,7 @@
 
 #include "absl/status/statusor.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_block.h"
 
 namespace iamf_tools {

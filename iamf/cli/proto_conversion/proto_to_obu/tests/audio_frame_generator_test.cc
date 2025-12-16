@@ -46,7 +46,7 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/decoder_config/opus_decoder_config.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definition_variant.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/text_format.h"
 

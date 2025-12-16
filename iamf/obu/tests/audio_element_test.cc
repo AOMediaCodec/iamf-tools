@@ -30,9 +30,10 @@
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/tests/obu_test_base.h"
 #include "iamf/obu/types.h"
 

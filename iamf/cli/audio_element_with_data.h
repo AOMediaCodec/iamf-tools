@@ -20,7 +20,7 @@
 #include "iamf/cli/channel_label.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

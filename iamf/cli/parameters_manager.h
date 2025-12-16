@@ -23,8 +23,8 @@
 #include "iamf/cli/audio_element_with_data.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/demixing_param_definition.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 

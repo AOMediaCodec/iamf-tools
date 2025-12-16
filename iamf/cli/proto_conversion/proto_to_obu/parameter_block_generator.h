@@ -22,8 +22,8 @@
 #include "iamf/cli/global_timing_module.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
-#include "iamf/obu/param_definition_variant.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

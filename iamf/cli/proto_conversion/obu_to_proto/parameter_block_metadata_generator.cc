@@ -23,7 +23,7 @@
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/extension_parameter_data.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"

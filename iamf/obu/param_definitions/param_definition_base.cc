@@ -9,25 +9,19 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
-#include "iamf/obu/extension_parameter_data.h"
-#include "iamf/obu/mix_gain_parameter_data.h"
-#include "iamf/obu/parameter_data.h"
-#include "iamf/obu/recon_gain_info_parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -241,120 +235,6 @@ absl::Status ParamDefinition::Validate() const {
   RETURN_IF_NOT_OK(ValidateSpecificParamDefinition(*this));
 
   return status;
-}
-
-absl::Status MixGainParamDefinition::ValidateAndWrite(
-    WriteBitBuffer& wb) const {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
-
-  // The sub-class specific part.
-  RETURN_IF_NOT_OK(wb.WriteSigned16(default_mix_gain_));
-  return absl::OkStatus();
-}
-
-absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
-
-  // The sub-class specific part.
-  RETURN_IF_NOT_OK(rb.ReadSigned16(default_mix_gain_));
-  return absl::OkStatus();
-}
-
-std::unique_ptr<ParameterData> MixGainParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<MixGainParameterData>();
-}
-
-void MixGainParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "MixGainParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  default_mix_gain= " << default_mix_gain_;
-}
-
-absl::Status ReconGainParamDefinition::ValidateAndWrite(
-    WriteBitBuffer& wb) const {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
-
-  // No sub-class specific part for Recon Gain Parameter Definition.
-
-  return absl::OkStatus();
-}
-
-absl::Status ReconGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
-  // The common part.
-  RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
-
-  // No sub-class specific part for Recon Gain Parameter Definition.
-
-  return absl::OkStatus();
-}
-
-std::unique_ptr<ParameterData> ReconGainParamDefinition::CreateParameterData()
-    const {
-  auto recon_gain_parameter_data =
-      std::make_unique<ReconGainInfoParameterData>();
-  recon_gain_parameter_data->recon_gain_is_present_flags.resize(
-      aux_data_.size());
-  for (int i = 0; i < aux_data_.size(); i++) {
-    recon_gain_parameter_data->recon_gain_is_present_flags[i] =
-        aux_data_[i].recon_gain_is_present_flag;
-  }
-  recon_gain_parameter_data->recon_gain_elements.resize(aux_data_.size());
-  return recon_gain_parameter_data;
-}
-
-void ReconGainParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "ReconGainParamDefinition:";
-  ParamDefinition::Print();
-  ABSL_LOG(INFO) << "  audio_element_id= " << audio_element_id_;
-
-  for (int i = 0; i < aux_data_.size(); i++) {
-    ABSL_LOG(INFO) << "  // recon_gain_is_present_flags[" << i << "]= "
-                   << absl::StrCat(aux_data_[i].recon_gain_is_present_flag);
-    const auto& channel_numbers = aux_data_[i].channel_numbers_for_layer;
-    ABSL_LOG(INFO) << "  // channel_numbers_for_layer[" << i
-                   << "]= " << channel_numbers.surround << "."
-                   << channel_numbers.lfe << "." << channel_numbers.height;
-  }
-}
-
-absl::Status ExtendedParamDefinition::ValidateAndWrite(
-    WriteBitBuffer& wb) const {
-  // This class does not write the base class's data, i.e. it doesn't call
-  // `ParamDefinition::ValidateAndWrite(wb)`.
-  RETURN_IF_NOT_OK(wb.WriteUleb128(param_definition_bytes_.size()));
-  RETURN_IF_NOT_OK(
-      wb.WriteUint8Span(absl::MakeConstSpan(param_definition_bytes_)));
-
-  return absl::OkStatus();
-}
-
-absl::Status ExtendedParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
-  // This class does not read the base class's data, i.e. it doesn't call
-  // `ParamDefinition::ReadAndWrite(wb)`.
-  DecodedUleb128 param_definition_size;
-  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_size));
-  param_definition_bytes_.resize(param_definition_size);
-  RETURN_IF_NOT_OK(rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes_)));
-
-  return absl::OkStatus();
-}
-
-std::unique_ptr<ParameterData> ExtendedParamDefinition::CreateParameterData()
-    const {
-  return std::make_unique<ExtensionParameterData>();
-}
-
-void ExtendedParamDefinition::Print() const {
-  ABSL_LOG(INFO) << "ExtendedParamDefinition:";
-  // This class does not read the base class's data, i.e. it doesn't call
-  // `ParamDefinition::Print()`.
-  ABSL_LOG(INFO) << "  param_definition_size= "
-                 << param_definition_bytes_.size();
-  ABSL_LOG(INFO) << "  // Skipped printing param_definition_bytes";
 }
 
 }  // namespace iamf_tools

@@ -37,10 +37,10 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/demixing_param_definition.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
 #include "iamf/obu/parameter_block.h"
 #include "iamf/obu/types.h"
 

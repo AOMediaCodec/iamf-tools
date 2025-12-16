@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -35,8 +36,10 @@
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
-#include "iamf/obu/demixing_param_definition.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/demixing_param_definition.h"
+#include "iamf/obu/param_definitions/extended_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {

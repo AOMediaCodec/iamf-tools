@@ -9,8 +9,8 @@
  * source code in the PATENTS file, you can obtain it at
  * www.aomedia.org/license/patent.
  */
-#ifndef OBU_DEMIXING_PARAM_DEFINITION_H_
-#define OBU_DEMIXING_PARAM_DEFINITION_H_
+#ifndef OBU_PARAM_DEFINITIONS_DEMIXING_PARAM_DEFINITION_H_
+#define OBU_PARAM_DEFINITIONS_DEMIXING_PARAM_DEFINITION_H_
 
 #include <memory>
 
@@ -18,7 +18,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
@@ -69,4 +69,4 @@ class DemixingParamDefinition : public ParamDefinition {
 
 }  // namespace iamf_tools
 
-#endif  // OBU_DEMIXING_PARAM_DEFINITION_H_
+#endif  // OBU_PARAM_DEFINITIONS_DEMIXING_PARAM_DEFINITION_H_

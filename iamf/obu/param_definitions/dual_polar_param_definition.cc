@@ -21,7 +21,8 @@
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/dual_polar_parameter_data.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/parameter_data.h"
 
 namespace iamf_tools {
 namespace {

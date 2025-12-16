@@ -50,7 +50,7 @@
 #include "iamf/obu/decoder_config/aac_decoder_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_base.h"
-#include "iamf/obu/param_definitions.h"
+#include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
