@@ -39,3 +39,10 @@ jobs:
         uses: ./.github/actions/iamf-tools-builder
         with:
           platform: windows
+  generate-test-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Generate test vectors
+        uses: ./.github/actions/iamf-tools-test-suite-generator

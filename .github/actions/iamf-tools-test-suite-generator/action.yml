@@ -1,0 +1,17 @@
+name: iamf-tools-test-suite-generator
+description: Generate IAMF test suite.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        bazelisk build -c opt //iamf/cli:encoder_main
+        bazelisk run -c opt //iamf/cli/testdata:generate_test_suite -- \
+          --encoder_bin=${{ github.workspace }}/bazel-bin/iamf/cli/encoder_main \
+          --test_data_dir=${{ github.workspace }}/iamf/cli/testdata \
+          --output_dir=${{ github.workspace }}/iamf_test_vectors
+    - name: Upload generated ".iamf" files artifact.
+      uses: actions/upload-artifact@v6
+      with:
+        name: iamf-test-vectors-${{ github.sha }}
+        path: ${{ github.workspace }}/iamf_test_vectors/*.iamf
