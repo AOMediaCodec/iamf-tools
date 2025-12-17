@@ -10,8 +10,13 @@ runs:
           --encoder_bin=${{ github.workspace }}/bazel-bin/iamf/cli/encoder_main \
           --test_data_dir=${{ github.workspace }}/iamf/cli/testdata \
           --output_dir=${{ github.workspace }}/iamf_test_vectors
-    - name: Upload generated ".iamf" files artifact.
+        bazelisk run -c opt //iamf/cli/testdata:generate_test_summary -- \
+          --test_data_dir=${{ github.workspace }}/iamf/cli/testdata \
+          --output_dir=${{ github.workspace }}/iamf_test_summary
+    - name: Upload generated ".iamf" files and summary CSV files as one artifact.
       uses: actions/upload-artifact@v6
       with:
         name: iamf-test-vectors-${{ github.sha }}
-        path: ${{ github.workspace }}/iamf_test_vectors/*.iamf
+        path: |
+          ${{ github.workspace }}/iamf_test_vectors/*.iamf
+          ${{ github.workspace }}/iamf_test_summary/*.csv

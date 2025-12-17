@@ -35,4 +35,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "generate_test_summary",
+    srcs = ["generate_test_summary.py"],
+    deps = [
+        "//iamf/cli/proto:user_metadata_py_pb2",
+        "@abseil-py//absl:app",
+        "@abseil-py//absl/flags",
+        "@abseil-py//absl/logging",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
+
 # keep-sorted end
