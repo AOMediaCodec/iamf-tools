@@ -299,7 +299,7 @@ mix_presentation_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "Transport_9.1.6_5s.wav"
   audio_element_id: 300
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_FL },
@@ -310,15 +310,14 @@ audio_frame_metadata {
     { channel_id: 5 channel_label: CHANNEL_LABEL_BR },
     { channel_id: 6 channel_label: CHANNEL_LABEL_FLC },
     { channel_id: 7 channel_label: CHANNEL_LABEL_FRC },
-    { channel_id: 9 channel_label: CHANNEL_LABEL_LFE2 },
-    { channel_id: 10 channel_label: CHANNEL_LABEL_SI_L },
-    { channel_id: 11 channel_label: CHANNEL_LABEL_SI_R },
-    { channel_id: 12 channel_label: CHANNEL_LABEL_TP_FL },
-    { channel_id: 13 channel_label: CHANNEL_LABEL_TP_FR },
-    { channel_id: 16 channel_label: CHANNEL_LABEL_TP_BL },
-    { channel_id: 17 channel_label: CHANNEL_LABEL_TP_BR },
-    { channel_id: 18 channel_label: CHANNEL_LABEL_TP_SI_L },
-    { channel_id: 19 channel_label: CHANNEL_LABEL_TP_SI_R }
+    { channel_id: 8 channel_label: CHANNEL_LABEL_SI_L },
+    { channel_id: 9 channel_label: CHANNEL_LABEL_SI_R },
+    { channel_id: 10 channel_label: CHANNEL_LABEL_TP_FL },
+    { channel_id: 11 channel_label: CHANNEL_LABEL_TP_FR },
+    { channel_id: 12 channel_label: CHANNEL_LABEL_TP_BL },
+    { channel_id: 13 channel_label: CHANNEL_LABEL_TP_BR },
+    { channel_id: 14 channel_label: CHANNEL_LABEL_TP_SI_L },
+    { channel_id: 15 channel_label: CHANNEL_LABEL_TP_SI_R }
   ]
 }
 
