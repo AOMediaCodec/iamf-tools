@@ -63,11 +63,6 @@ namespace iamf_tools {
 
 namespace {
 
-// The size of a Codec Config OBU payload (after header) if all fields are
-// minimal size, and `DecoderConfig` is empty. Real Codec Config OBUs would have
-// a non-empty `DecoderConfig` and always be a few bytes larger.
-constexpr size_t kSmallestAcceptedCodecConfigSize = 8;
-
 absl::Status UpdateParameterStatesIfNeeded(
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
         audio_elements_with_data,
@@ -216,28 +211,6 @@ std::list<MixPresentationObu*> GetSupportedMixPresentations(
                  << ". Number of supported mix presentations: "
                  << supported_mix_presentations.size();
   return supported_mix_presentations;
-}
-
-// Resets the buffer to `start_position` and sets the `insufficient_data`
-// flag to `true`. Clears the output maps.
-absl::Status InsufficientDataReset(
-    ReadBitBuffer& read_bit_buffer, const int64_t start_position,
-    bool& insufficient_data,
-    absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
-        output_codec_config_obus,
-    absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        output_audio_elements_with_data,
-    std::list<MixPresentationObu>& output_mix_presentation_obus) {
-  ABSL_LOG(INFO) << "Insufficient data to process all descriptor OBUs.";
-  insufficient_data = true;
-  output_codec_config_obus.clear();
-  output_audio_elements_with_data.clear();
-  output_mix_presentation_obus.clear();
-  RETURN_IF_NOT_OK(read_bit_buffer.Seek(start_position));
-  ABSL_LOG(INFO) << "Reset the buffer to the beginning.";
-  return absl::ResourceExhaustedError(
-      "Insufficient data to process all descriptor OBUs. Please provide "
-      "more data and try again.");
 }
 
 void GetSampleRateAndFrameSize(
