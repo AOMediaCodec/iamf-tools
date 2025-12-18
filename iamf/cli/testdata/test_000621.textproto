@@ -10,7 +10,6 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
-# txtpbfmt: disable
 
 test_vector_metadata {
   human_readable_description:
@@ -71,6 +70,7 @@ audio_element_metadata: [
         output_channel_count: 25
         substream_count: 25
         coupled_substream_count: 0
+# txtpbfmt: off
         demixing_matrix: [
            32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 0
            0, 32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 1
@@ -98,6 +98,7 @@ audio_element_metadata: [
            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32767, 0,  # col 23
            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32767   # col 24
         ]
+# txtpbfmt: on
       }
     }
   },
@@ -137,13 +138,13 @@ mix_presentation_metadata {
           headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
         }
         element_mix_gain {
-            param_definition {
-              parameter_id: 999  # Non-existent; default will be used
-              parameter_rate: 48000
-              param_definition_mode: 1
-              reserved: 0
-            }
-            default_mix_gain: -768
+          param_definition {
+            parameter_id: 999  # Non-existent; default will be used
+            parameter_rate: 48000
+            param_definition_mode: 1
+            reserved: 0
+          }
+          default_mix_gain: -768
         }
       },
       {
@@ -209,7 +210,7 @@ audio_frame_metadata: [
     samples_to_trim_at_end: 640
     samples_to_trim_at_start: 0
     audio_element_id: 300
-        channel_metadatas: [
+    channel_metadatas: [
       { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 },
       { channel_id: 1 channel_label: CHANNEL_LABEL_A_1 },
       { channel_id: 2 channel_label: CHANNEL_LABEL_A_2 },

@@ -10,7 +10,6 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
-# txtpbfmt: disable
 
 test_vector_metadata {
   human_readable_description:
@@ -69,13 +68,14 @@ audio_element_metadata {
   audio_element_type: AUDIO_ELEMENT_SCENE_BASED
   reserved: 0
   codec_config_id: 200
-  audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8 ]
+  audio_substream_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8]
   ambisonics_config {
     ambisonics_mode: AMBISONICS_MODE_PROJECTION
     ambisonics_projection_config {
       output_channel_count: 9
       substream_count: 9
       coupled_substream_count: 0
+# txtpbfmt: off
       demixing_matrix: [
         32767, 0, 0, 0, 0, 0, 0, 0, 0,  # col 0
         0, 32767, 0, 0, 0, 0, 0, 0, 0,  # col 1
@@ -87,6 +87,7 @@ audio_element_metadata {
         0, 0, 0, 0, 0, 0, 0, 32767, 0,  # col 7
         0, 0, 0, 0, 0, 0, 0, 0, 32767  # col 8
       ]
+# txtpbfmt: on
     }
   }
 }
@@ -104,7 +105,7 @@ mix_presentation_metadata {
       }
       element_mix_gain {
         param_definition {
-          parameter_id: 999 # Non-existent; default will be used
+          parameter_id: 999  # Non-existent; default will be used
           parameter_rate: 48000
           param_definition_mode: 1
           reserved: 0
@@ -114,7 +115,7 @@ mix_presentation_metadata {
     }
     output_mix_gain {
       param_definition {
-        parameter_id: 998 # Non-existent; default will be used
+        parameter_id: 998  # Non-existent; default will be used
         parameter_rate: 48000
         param_definition_mode: 1
         reserved: 0
@@ -144,16 +145,16 @@ audio_frame_metadata {
   samples_to_trim_at_start: 312
   audio_element_id: 300
   channel_metadatas: [
-      { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 },
-      { channel_id: 1 channel_label: CHANNEL_LABEL_A_1 },
-      { channel_id: 2 channel_label: CHANNEL_LABEL_A_2 },
-      { channel_id: 3 channel_label: CHANNEL_LABEL_A_3 },
-      { channel_id: 4 channel_label: CHANNEL_LABEL_A_4 },
-      { channel_id: 5 channel_label: CHANNEL_LABEL_A_5 },
-      { channel_id: 6 channel_label: CHANNEL_LABEL_A_6 },
-      { channel_id: 7 channel_label: CHANNEL_LABEL_A_7 },
-      { channel_id: 8 channel_label: CHANNEL_LABEL_A_8 }
-    ]
+    { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_A_1 },
+    { channel_id: 2 channel_label: CHANNEL_LABEL_A_2 },
+    { channel_id: 3 channel_label: CHANNEL_LABEL_A_3 },
+    { channel_id: 4 channel_label: CHANNEL_LABEL_A_4 },
+    { channel_id: 5 channel_label: CHANNEL_LABEL_A_5 },
+    { channel_id: 6 channel_label: CHANNEL_LABEL_A_6 },
+    { channel_id: 7 channel_label: CHANNEL_LABEL_A_7 },
+    { channel_id: 8 channel_label: CHANNEL_LABEL_A_8 }
+  ]
 }
 
 temporal_delimiter_metadata {

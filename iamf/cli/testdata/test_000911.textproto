@@ -22,7 +22,7 @@ test_vector_metadata {
     "github/aomediacodec/libiamf/main"
   ]
   primary_tested_spec_sections: [
-    "3.6.1/expanded_loudspeaker_layout Top6ch"
+    "3.6.1/expanded_loudspeaker_layout Top6ch",
     "3.6.4/objects_config",
     "3.7.2.2/rendering_config_ with dual_polar_param_definition"
   ]
@@ -228,13 +228,13 @@ audio_frame_metadata {
   wav_filename: "sine_1000_4oa_48khz.wav"
   audio_element_id: 300
   channel_metadatas: [
-      { channel_id: 10 channel_label: CHANNEL_LABEL_TP_FL },
-      { channel_id: 11 channel_label: CHANNEL_LABEL_TP_FR },
-      { channel_id: 12 channel_label: CHANNEL_LABEL_TP_BL },
-      { channel_id: 13 channel_label: CHANNEL_LABEL_TP_BR },
-      { channel_id: 14 channel_label: CHANNEL_LABEL_TP_SI_L },
-      { channel_id: 15 channel_label: CHANNEL_LABEL_TP_SI_R }
-    ]
+    { channel_id: 10 channel_label: CHANNEL_LABEL_TP_FL },
+    { channel_id: 11 channel_label: CHANNEL_LABEL_TP_FR },
+    { channel_id: 12 channel_label: CHANNEL_LABEL_TP_BL },
+    { channel_id: 13 channel_label: CHANNEL_LABEL_TP_BR },
+    { channel_id: 14 channel_label: CHANNEL_LABEL_TP_SI_L },
+    { channel_id: 15 channel_label: CHANNEL_LABEL_TP_SI_R }
+  ]
 }
 
 audio_frame_metadata {

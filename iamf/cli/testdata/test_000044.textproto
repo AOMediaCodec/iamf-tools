@@ -10,14 +10,13 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
-# txtpbfmt: disable
 
 test_vector_metadata {
   human_readable_description:
-      "An IAMF stream encoded using `ambisonics_mode` = `PROJECTION`. This "
-      "test vector tests mixed-order ambisonics representation by using "
-      "third-order ambisonics to represent a lower order (first-order) "
-      "ambisonics by using a demixing matrix."
+    "An IAMF stream encoded using `ambisonics_mode` = `PROJECTION`. This "
+    "test vector tests mixed-order ambisonics representation by using "
+    "third-order ambisonics to represent a lower order (first-order) "
+    "ambisonics by using a demixing matrix."
   file_name_prefix: "test_000044"
   is_valid: true
   is_valid_to_decode: true
@@ -28,11 +27,11 @@ test_vector_metadata {
     "github/aomediacodec/libiamf/v1.0.0-errata"
   ]
   primary_tested_spec_sections: [
-   "3.6.3/ambisonics_projection_config",
-   "7/IAMF Processing",
-   "7.1/demixing_matrix",
-   "7.3.2/Rendering an Audio Element",
-   "7.3.2.2/Rendering a Scene-Based Audio Element to Loudspeakers"
+    "3.6.3/ambisonics_projection_config",
+    "7/IAMF Processing",
+    "7.1/demixing_matrix",
+    "7.3.2/Rendering an Audio Element",
+    "7.3.2.2/Rendering a Scene-Based Audio Element to Loudspeakers"
   ]
   base_test: "test_000043"
 }
@@ -73,12 +72,14 @@ audio_element_metadata {
       output_channel_count: 16
       substream_count: 4
       coupled_substream_count: 0
+# txtpbfmt: off
       demixing_matrix: [
         32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 0
         0, 32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 1
         0, 0, 32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 2
         0, 0, 0, 32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   # col 3
       ]
+# txtpbfmt: on
     }
   }
 }

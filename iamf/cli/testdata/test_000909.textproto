@@ -22,7 +22,7 @@ test_vector_metadata {
     "github/aomediacodec/libiamf/main"
   ]
   primary_tested_spec_sections: [
-    "3.6.1/expanded_loudspeaker_layout 3.0"
+    "3.6.1/expanded_loudspeaker_layout 3.0",
     "3.6.4/objects_config",
     "3.7.2.2/rendering_config_ with dual_polar_param_definition"
   ]

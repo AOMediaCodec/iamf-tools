@@ -10,11 +10,9 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
-# txtpbfmt: disable
 
 test_vector_metadata {
-  human_readable_description:
-    "A Base-Advanced Profile Stream using a Top-1ch Expanded Layout and 3OA."
+  human_readable_description: "A Base-Advanced Profile Stream using a Top-1ch Expanded Layout and 3OA."
   file_name_prefix: "test_000843"
   is_valid: true
   is_valid_to_decode: true
@@ -83,14 +81,31 @@ audio_element_metadata {
   audio_element_type: AUDIO_ELEMENT_SCENE_BASED
   reserved: 0
   codec_config_id: 200
-  audio_substream_ids: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 
-    110, 111, 112, 113, 114, 115]
+  audio_substream_ids: [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115
+  ]
   ambisonics_config {
     ambisonics_mode: AMBISONICS_MODE_PROJECTION
     ambisonics_projection_config {
       output_channel_count: 16
       substream_count: 16
       coupled_substream_count: 0
+# txtpbfmt: off
       demixing_matrix: [
         32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 0
         0, 32767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # col 1
@@ -109,6 +124,7 @@ audio_element_metadata {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32767, 0,  # col 14
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32767   # col 15
       ]
+# txtpbfmt: on
     }
   }
 }

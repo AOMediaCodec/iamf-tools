@@ -10,7 +10,6 @@
 
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
-# txtpbfmt: disable
 
 test_vector_metadata {
   human_readable_description:
@@ -72,12 +71,14 @@ audio_element_metadata {
       output_channel_count: 4
       substream_count: 4
       coupled_substream_count: 0
+# txtpbfmt: off
       demixing_matrix: [
         32767, 0, 0, 0,  # col 0
         0, 32767, 0, 0,  # col 1
         0, 0, 32767, 0,  # col 2
         0, 0, 0, 32767   # col 3
       ]
+# txtpbfmt: on
     }
   }
 }

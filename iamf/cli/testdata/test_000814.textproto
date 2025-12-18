@@ -23,7 +23,7 @@ test_vector_metadata {
   ]
   primary_tested_spec_sections: [
     "3.6.4/objects_config",
-    "3.7.3.1/rendering_config_ with cartesian_8_param_definition"
+    "3.7.3.1/rendering_config_ with cartesian_8_param_definition",
     "3.7.3.2/rendering_config_ with cartesian_16_param_definition"
   ]
   base_test: "test_000813"
@@ -110,35 +110,35 @@ mix_presentation_metadata {
         default_mix_gain: -768  # -3 dB.
       }
     }
-      audio_elements {
-        audio_element_id: 301
-        localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
-        rendering_config {
-          headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
-          rendering_config_param_definitions {
-            param_definition_type: PARAM_DEFINITION_TYPE_CART_16
-            cart16_param_definition {
-              param_definition {
-                parameter_id: 2
-                parameter_rate: 48000
-                param_definition_mode: 1
-              }
-              default_x: 1
-              default_y: 2
-              default_z: 3
+    audio_elements {
+      audio_element_id: 301
+      localized_element_annotations: ["test_sub_mix_0_audio_element_1"]
+      rendering_config {
+        headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
+        rendering_config_param_definitions {
+          param_definition_type: PARAM_DEFINITION_TYPE_CART_16
+          cart16_param_definition {
+            param_definition {
+              parameter_id: 2
+              parameter_rate: 48000
+              param_definition_mode: 1
             }
+            default_x: 1
+            default_y: 2
+            default_z: 3
           }
-        }
-        element_mix_gain {
-          param_definition {
-            parameter_id: 102
-            parameter_rate: 48000
-            param_definition_mode: 1
-            reserved: 0
-          }
-          default_mix_gain: -768  # -3 dB.
         }
       }
+      element_mix_gain {
+        param_definition {
+          parameter_id: 102
+          parameter_rate: 48000
+          param_definition_mode: 1
+          reserved: 0
+        }
+        default_mix_gain: -768  # -3 dB.
+      }
+    }
     output_mix_gain {
       param_definition {
         parameter_id: 101
