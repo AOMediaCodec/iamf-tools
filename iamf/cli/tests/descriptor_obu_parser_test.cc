@@ -41,7 +41,6 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::IsEmpty;
 using ::testing::Key;
-using ::testing::Not;
 using ::testing::Pointee;
 using ::testing::UnorderedElementsAre;
 
