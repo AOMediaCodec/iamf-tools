@@ -1212,6 +1212,13 @@ INSTANTIATE_TEST_SUITE_P(
     Advanced2_TwentyEightChannelsWithFourthOrderAmbisonicsAndObjects,
     TestVector, testing::Values("test_001004.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(Advanced2_ThirdOrderAmbisonicsAndTwoDualPolarObjects,
+                         TestVector, testing::Values("test_001005.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced2_FourthOrderAmbisonicsAndMonoAndDualPolarObjects, TestVector,
+    testing::Values("test_001006.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndTop4Ch,
                          TestVector, testing::Values("test_001016.textproto"));
 
