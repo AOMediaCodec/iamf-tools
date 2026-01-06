@@ -39,20 +39,6 @@ ia_sequence_header_metadata {
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
-    codec_id: CODEC_ID_LPCM
-    num_samples_per_frame: 960
-    audio_roll_distance: 0
-    decoder_config_lpcm {
-      sample_format_flags: LPCM_LITTLE_ENDIAN
-      sample_size: 16
-      sample_rate: 48000
-    }
-  }
-}
-
-codec_config_metadata {
-  codec_config_id: 201
-  codec_config {
     codec_id: CODEC_ID_OPUS
     num_samples_per_frame: 960
     decoder_config_opus {
@@ -63,6 +49,20 @@ codec_config_metadata {
         application: APPLICATION_AUDIO
         use_float_api: true
       }
+    }
+  }
+}
+
+codec_config_metadata {
+  codec_config_id: 201
+  codec_config {
+    codec_id: CODEC_ID_LPCM
+    num_samples_per_frame: 960
+    audio_roll_distance: 0
+    decoder_config_lpcm {
+      sample_format_flags: LPCM_LITTLE_ENDIAN
+      sample_size: 16
+      sample_rate: 48000
     }
   }
 }

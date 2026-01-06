@@ -39,20 +39,6 @@ ia_sequence_header_metadata {
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
-    codec_id: CODEC_ID_LPCM
-    num_samples_per_frame: 1024
-    audio_roll_distance: 0
-    decoder_config_lpcm {
-      sample_format_flags: LPCM_LITTLE_ENDIAN
-      sample_size: 16
-      sample_rate: 48000
-    }
-  }
-}
-
-codec_config_metadata {
-  codec_config_id: 201
-  codec_config {
     codec_id: CODEC_ID_FLAC
     num_samples_per_frame: 1024
     audio_roll_distance: 0
@@ -72,6 +58,20 @@ codec_config_metadata {
       flac_encoder_metadata {
         compression_level: 5
       }
+    }
+  }
+}
+
+codec_config_metadata {
+  codec_config_id: 201
+  codec_config {
+    codec_id: CODEC_ID_LPCM
+    num_samples_per_frame: 1024
+    audio_roll_distance: 0
+    decoder_config_lpcm {
+      sample_format_flags: LPCM_LITTLE_ENDIAN
+      sample_size: 16
+      sample_rate: 48000
     }
   }
 }
