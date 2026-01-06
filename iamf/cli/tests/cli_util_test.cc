@@ -254,7 +254,7 @@ TEST(CollectAndValidateParamDefinitions,
   EXPECT_EQ(result.size(), 1);
 }
 
-RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinitionExpectOk(
+RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinition(
     DecodedUleb128 parameter_id, DecodedUleb128 parameter_rate, int azimuth,
     int elevation, int distance) {
   PolarParamDefinition param_definition;
@@ -264,11 +264,7 @@ RenderingConfigParamDefinition MakePolarRenderingConfigParamDefinitionExpectOk(
   param_definition.default_azimuth_ = azimuth;
   param_definition.default_elevation_ = elevation;
   param_definition.default_distance_ = distance;
-  auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionPolar, param_definition, {});
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
-  return *rendering_config_param_definition;
+  return RenderingConfigParamDefinition::Create(param_definition, {});
 }
 
 TEST(CollectAndValidateParamDefinitions,
@@ -285,12 +281,12 @@ TEST(CollectAndValidateParamDefinitions,
   // Add mismatching position param definitions to the audio element.
   first_sub_mix.audio_elements[0]
       .rendering_config.rendering_config_param_definitions.push_back(
-          MakePolarRenderingConfigParamDefinitionExpectOk(
-              kParameterId, kParameterRate, 1, 2, 3));
+          MakePolarRenderingConfigParamDefinition(kParameterId, kParameterRate,
+                                                  1, 2, 3));
   first_sub_mix.audio_elements[1]
       .rendering_config.rendering_config_param_definitions.push_back(
-          MakePolarRenderingConfigParamDefinitionExpectOk(
-              kParameterId, kParameterRate, 4, 5, 6));
+          MakePolarRenderingConfigParamDefinition(kParameterId, kParameterRate,
+                                                  4, 5, 6));
 
   absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant> result;
   EXPECT_THAT(CollectAndValidateParamDefinitions(audio_elements,

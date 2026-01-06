@@ -12,6 +12,7 @@
 #include "iamf/obu/mix_presentation.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -332,27 +333,17 @@ RenderingConfigParamDefinition::RenderingConfigParamDefinition(
       param_definition(std::move(param_definition)),
       param_definition_bytes(std::move(param_definition_bytes)) {}
 
-absl::StatusOr<RenderingConfigParamDefinition>
-RenderingConfigParamDefinition::Create(
-    ParamDefinition::ParameterDefinitionType param_definition_type,
+RenderingConfigParamDefinition RenderingConfigParamDefinition::Create(
     PositionParamVariant param_definition,
     const std::vector<uint8_t>& param_definition_bytes) {
-  switch (param_definition_type) {
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8:
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualPolar:
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualCart8:
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualCart16:
-      break;
-    default:
-      return absl::InvalidArgumentError(
-          "Expected a Position param definition type.");
-  }
-  return RenderingConfigParamDefinition(param_definition_type,
+  std::optional<ParamDefinition::ParameterDefinitionType>
+      param_definition_type = std::visit(
+          [](auto&& param_definition) { return param_definition.GetType(); },
+          param_definition);
+  // `PositionParamVariants` are well-defined and always have a param definition
+  // type. The `nullopt` case is only for "extensions".
+  ABSL_CHECK(param_definition_type.has_value());
+  return RenderingConfigParamDefinition(*param_definition_type,
                                         std::move(param_definition),
                                         std::move(param_definition_bytes));
 }
@@ -362,74 +353,54 @@ RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
   DecodedUleb128 param_definition_type;
   RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type));
   PositionParamVariant param_definition;
-  switch (param_definition_type) {
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+  switch (static_cast<ParamDefinition::ParameterDefinitionType>(
+      param_definition_type)) {
+    using enum ParamDefinition::ParameterDefinitionType;
+    case kParameterDefinitionPolar:
       param_definition = PolarParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8:
+    case kParameterDefinitionCart8:
       param_definition = Cart8ParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<Cart8ParamDefinition>().ReadAndValidate(rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
-    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
+    case kParameterDefinitionCart16:
       param_definition = Cart16ParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<Cart16ParamDefinition>().ReadAndValidate(
               rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualPolar:
+    case kParameterDefinitionDualPolar:
       param_definition = DualPolarParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<DualPolarParamDefinition>().ReadAndValidate(
               rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualCart8:
+    case kParameterDefinitionDualCart8:
       param_definition = DualCart8ParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<DualCart8ParamDefinition>().ReadAndValidate(
               rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
-    case ParamDefinition::ParameterDefinitionType::
-        kParameterDefinitionDualCart16:
+    case kParameterDefinitionDualCart16:
       param_definition = DualCart16ParamDefinition();
       RETURN_IF_NOT_OK(
           param_definition.emplace<DualCart16ParamDefinition>().ReadAndValidate(
               rb));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition), {});
       break;
     default:
+      // Only positional parameters are defined and directly supported. Others
+      // are bypassed.
       DecodedUleb128 param_definition_bytes_size;
       RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
-      std::vector<uint8_t> param_definition_bytes;
-      param_definition_bytes.resize(param_definition_bytes_size);
-      RETURN_IF_NOT_OK(
-          rb.ReadUint8Span(absl::MakeSpan(param_definition_bytes)));
-      return Create(static_cast<ParamDefinition::ParameterDefinitionType>(
-                        param_definition_type),
-                    std::move(param_definition),
-                    std::move(param_definition_bytes));
+      RETURN_IF_NOT_OK(rb.IgnoreBytes(param_definition_bytes_size));
+      return absl::UnimplementedError(absl::StrCat(
+          "Unsupported param definition type: ", param_definition_type));
   }
+  return RenderingConfigParamDefinition::Create(std::move(param_definition),
+                                                {});
 }
 
 absl::Status Layout::ReadAndValidate(ReadBitBuffer& rb) {

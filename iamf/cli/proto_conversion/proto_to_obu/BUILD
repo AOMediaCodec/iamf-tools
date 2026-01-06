@@ -167,7 +167,6 @@ cc_library(
         "//iamf/obu/param_definitions:dual_cart8_param_definition",
         "//iamf/obu/param_definitions:dual_polar_param_definition",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
-        "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/log:absl_log",

@@ -42,7 +42,6 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -244,43 +243,33 @@ CreateRenderingConfigParamDefinition(
         input_rendering_config_param_definition) {
   switch (input_rendering_config_param_definition.param_definition_type()) {
     using enum iamf_tools_cli_proto::ParamDefinitionType;
-    using enum ParamDefinition::ParameterDefinitionType;
     case PARAM_DEFINITION_TYPE_POLAR:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
           CreatePolarParamDefinition(
               input_rendering_config_param_definition.polar_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_CART_8:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
           CreateCart8ParamDefinition(
               input_rendering_config_param_definition.cart8_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_CART_16:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16,
           CreateCart16ParamDefinition(input_rendering_config_param_definition
                                           .cart16_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_DUAL_POLAR:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::
-              kParameterDefinitionDualPolar,
           CreateDualPolarParamDefinition(input_rendering_config_param_definition
                                              .dual_polar_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_DUAL_CART_8:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::
-              kParameterDefinitionDualCart8,
           CreateDualCart8ParamDefinition(input_rendering_config_param_definition
                                              .dual_cart8_param_definition()),
           /*param_definition_bytes=*/{});
     case PARAM_DEFINITION_TYPE_DUAL_CART_16:
       return RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::
-              kParameterDefinitionDualCart16,
           CreateDualCart16ParamDefinition(
               input_rendering_config_param_definition
                   .dual_cart16_param_definition()),

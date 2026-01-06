@@ -706,16 +706,9 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigPolarParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionPolar,
-               polar_param_definition_1, {})
-               .value(),
-           RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionPolar,
-               polar_param_definition_2, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(polar_param_definition_1, {}),
+           RenderingConfigParamDefinition::Create(polar_param_definition_2,
+                                                  {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 66};
@@ -786,11 +779,7 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigCart8ParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionCart8,
-               cart8_param_definition, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(cart8_param_definition, {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 57};
@@ -847,11 +836,7 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigCart16ParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionCart16,
-               cart16_param_definition, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(cart16_param_definition, {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 60};
@@ -911,11 +896,8 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigDualPolarParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionDualPolar,
-               dual_polar_param_definition, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(dual_polar_param_definition,
+                                                  {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 60};
@@ -980,11 +962,8 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigDualCart8ParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionDualCart8,
-               dual_cart8_param_definition, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(dual_cart8_param_definition,
+                                                  {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 60};
@@ -1047,11 +1026,8 @@ TEST_F(MixPresentationObuTest, WritesRenderingConfigDualCart16ParamDefinition) {
           RenderingConfig::kHeadphonesRenderingModeStereo,
       .reserved = 0,
       .rendering_config_param_definitions =
-          {RenderingConfigParamDefinition::Create(
-               ParamDefinition::ParameterDefinitionType::
-                   kParameterDefinitionDualCart16,
-               dual_cart16_param_definition, {})
-               .value()},
+          {RenderingConfigParamDefinition::Create(dual_cart16_param_definition,
+                                                  {})},
       .rendering_config_extension_bytes = {}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 66};
@@ -1694,9 +1670,7 @@ TEST(ReadSubMixAudioElementTest, PolarParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionPolar,
-                       polar_param_definition, {})
-                       .value()},
+                      polar_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -1772,9 +1746,7 @@ TEST(ReadSubMixAudioElementTest, Cart8ParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionCart8,
-                       cart8_param_definition, {})
-                       .value()},
+                      cart8_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -1850,9 +1822,7 @@ TEST(ReadSubMixAudioElementTest, Cart16ParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionCart16,
-                       cart16_param_definition, {})
-                       .value()},
+                      cart16_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -1936,9 +1906,7 @@ TEST(ReadSubMixAudioElementTest, DualPolarParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionDualPolar,
-                       dual_polar_param_definition, {})
-                       .value()},
+                      dual_polar_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -2020,9 +1988,7 @@ TEST(ReadSubMixAudioElementTest, DualCart8ParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionDualCart8,
-                       dual_cart8_param_definition, {})
-                       .value()},
+                      dual_cart8_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -2104,9 +2070,7 @@ TEST(ReadSubMixAudioElementTest, DualCart16ParamDefinitionRenderingConfig) {
               .reserved = 0,
               .rendering_config_param_definitions =
                   {RenderingConfigParamDefinition::Create(
-                       ParamDefinition::kParameterDefinitionDualCart16,
-                       dual_cart16_param_definition, {})
-                       .value()},
+                      dual_cart16_param_definition, {})},
               .rendering_config_extension_bytes = {},
           },
       .element_mix_gain = MixGainParamDefinition()};
@@ -2171,59 +2135,45 @@ TEST(ReadSubMixAudioElementTest, ExtensionBytesRenderingConfig) {
 }
 
 // TODO(b/339855295): Add more tests.
-TEST(RenderingConfigParamDefinitionCreate,
-     FailsWithNonPositionParamDefinition) {
-  EXPECT_FALSE(RenderingConfigParamDefinition::Create(
-                   ParamDefinition::kParameterDefinitionMixGain,
-                   PolarParamDefinition(), {})
-                   .ok());
-}
-
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithPolarParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionPolar, PolarParamDefinition(),
-          kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(PolarParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionPolar);
   EXPECT_TRUE(std::holds_alternative<PolarParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart8ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionCart8, Cart8ParamDefinition(),
-          kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(Cart8ParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionCart8);
   EXPECT_TRUE(std::holds_alternative<Cart8ParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
 TEST(RenderingConfigParamDefinitionCreate, SucceedsWithCart16ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionCart16, Cart16ParamDefinition(),
-          kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(Cart16ParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionCart16);
   EXPECT_TRUE(std::holds_alternative<Cart16ParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
@@ -2231,16 +2181,14 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualPolarParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionDualPolar,
-          DualPolarParamDefinition(), kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(DualPolarParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualPolar);
   EXPECT_TRUE(std::holds_alternative<DualPolarParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
@@ -2248,16 +2196,14 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualCart8ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionDualCart8,
-          DualCart8ParamDefinition(), kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(DualCart8ParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualCart8);
   EXPECT_TRUE(std::holds_alternative<DualCart8ParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
@@ -2265,16 +2211,14 @@ TEST(RenderingConfigParamDefinitionCreate,
      SucceedsWithDualCart16ParamDefinition) {
   const auto kParamDefinitionBytes = std::vector<uint8_t>({1, 2, 3, 4, 5, 123});
   auto rendering_config_param_definition =
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::kParameterDefinitionDualCart16,
-          DualCart16ParamDefinition(), kParamDefinitionBytes);
-  EXPECT_THAT(rendering_config_param_definition, IsOk());
+      RenderingConfigParamDefinition::Create(DualCart16ParamDefinition(),
+                                             kParamDefinitionBytes);
 
-  EXPECT_EQ(rendering_config_param_definition->param_definition_type,
+  EXPECT_EQ(rendering_config_param_definition.param_definition_type,
             ParamDefinition::kParameterDefinitionDualCart16);
   EXPECT_TRUE(std::holds_alternative<DualCart16ParamDefinition>(
-      rendering_config_param_definition->param_definition));
-  EXPECT_THAT(rendering_config_param_definition->param_definition_bytes,
+      rendering_config_param_definition.param_definition));
+  EXPECT_THAT(rendering_config_param_definition.param_definition_bytes,
               testing::ElementsAreArray(kParamDefinitionBytes));
 }
 
@@ -2285,7 +2229,10 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
 
-  EXPECT_FALSE(RenderingConfigParamDefinition::CreateFromBuffer(*buffer).ok());
+  // Reading fails, but the buffer is still consumed.
+  EXPECT_THAT(RenderingConfigParamDefinition::CreateFromBuffer(*buffer),
+              Not(IsOk()));
+  EXPECT_FALSE(buffer->IsDataAvailable());
 }
 
 TEST(RenderingConfigParamDefinitionCreateFromBufferTest,

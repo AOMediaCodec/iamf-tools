@@ -73,14 +73,12 @@ struct RenderingConfigParamDefinition {
   /*!\brief Creates an `RenderingConfigParamDefinition` from the given
    * parameters.
    *
-   * \param param_definition_type Type of the parameter definition.
    * \param param_definition Param definition.
    * \param param_definition_bytes Param definition bytes.
    *
    * \return `absl::OkStatus()` if successful. A specific status on failure.
    */
-  static absl::StatusOr<RenderingConfigParamDefinition> Create(
-      ParamDefinition::ParameterDefinitionType param_definition_type,
+  static RenderingConfigParamDefinition Create(
       PositionParamVariant param_definition,
       const std::vector<uint8_t>& param_definition_bytes);
 

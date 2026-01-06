@@ -34,7 +34,6 @@
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -319,12 +318,9 @@ TEST(Generate, CopiesRenderingConfigWithPolarParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(
-      generated_rendering_config.rendering_config_param_definitions[0],
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
-          expected_polar_param_definition, {})
-          .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_polar_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithCart8ParamDefinition) {
@@ -373,12 +369,9 @@ TEST(Generate, CopiesRenderingConfigWithCart8ParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(
-      generated_rendering_config.rendering_config_param_definitions[0],
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8,
-          expected_cart8_param_definition, {})
-          .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_cart8_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithCart16ParamDefinition) {
@@ -427,12 +420,9 @@ TEST(Generate, CopiesRenderingConfigWithCart16ParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(
-      generated_rendering_config.rendering_config_param_definitions[0],
-      RenderingConfigParamDefinition::Create(
-          ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16,
-          expected_cart16_param_definition, {})
-          .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_cart16_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithDualPolarParamDefinition) {
@@ -488,12 +478,9 @@ TEST(Generate, CopiesRenderingConfigWithDualPolarParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions[0],
-              RenderingConfigParamDefinition::Create(
-                  ParamDefinition::ParameterDefinitionType::
-                      kParameterDefinitionDualPolar,
-                  expected_dual_polar_param_definition, {})
-                  .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_dual_polar_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithDualCart8ParamDefinition) {
@@ -549,12 +536,9 @@ TEST(Generate, CopiesRenderingConfigWithDualCart8ParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions[0],
-              RenderingConfigParamDefinition::Create(
-                  ParamDefinition::ParameterDefinitionType::
-                      kParameterDefinitionDualCart8,
-                  expected_dual_cart8_param_definition, {})
-                  .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_dual_cart8_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigWithDualCart16ParamDefinition) {
@@ -611,12 +595,9 @@ TEST(Generate, CopiesRenderingConfigWithDualCart16ParamDefinition) {
       generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
   EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions,
               testing::SizeIs(1));
-  EXPECT_THAT(generated_rendering_config.rendering_config_param_definitions[0],
-              RenderingConfigParamDefinition::Create(
-                  ParamDefinition::ParameterDefinitionType::
-                      kParameterDefinitionDualCart16,
-                  expected_dual_cart16_param_definition, {})
-                  .value());
+  EXPECT_EQ(generated_rendering_config.rendering_config_param_definitions[0],
+            RenderingConfigParamDefinition::Create(
+                expected_dual_cart16_param_definition, {}));
 }
 
 TEST(Generate, CopiesRenderingConfigExtension) {
