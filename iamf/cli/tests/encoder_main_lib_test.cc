@@ -1251,11 +1251,28 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightMonoPolarObjects, TestVector,
                          testing::Values("test_001012.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(Advanced210_2_9_3WithBinauralOutput, TestVector,
+                         testing::Values("test_001013.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(Advanced_10_2_9_3AndMono, TestVector,
+                         testing::Values("test_001014.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(Advanced_10_2_9_3AndStereo, TestVector,
+                         testing::Values("test_001015.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndTop4Ch,
                          TestVector, testing::Values("test_001016.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(
+    Advanced2TwentyEightChannelsWith10_2_9_3AndZerothOrderAmbisonics,
+    TestVector, testing::Values("test_001017.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndFoa,
                          TestVector, testing::Values("test_001018.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced2TwentyEightChannelsWith10_2_9_3AndFirstOrderAmbisonics, TestVector,
+    testing::Values("test_001019.textproto"));
 
 // TODO(b/308385831): Add more tests.
 
