@@ -15,7 +15,7 @@ test_vector_metadata {
   human_readable_description:
     "An Advanced-2 Profile Stream using a 10.2.9.3ch Expanded "
     "Layout mixed with a zeroth order Ambisonics."
-  file_name_prefix: "test_001014"
+  file_name_prefix: "test_001017"
   is_valid: true
   is_valid_to_decode: true
   validate_user_loudness: false

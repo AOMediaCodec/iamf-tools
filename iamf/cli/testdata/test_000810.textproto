@@ -141,6 +141,17 @@ audio_element_metadata {
   }
 }
 
+audio_element_metadata {
+  audio_element_id: 308
+  audio_element_type: AUDIO_ELEMENT_OBJECT_BASED
+  reserved: 0
+  codec_config_id: 200
+  audio_substream_ids: [8]
+  objects_config {
+    num_objects: 2
+  }
+}
+
 mix_presentation_metadata {
   mix_presentation_id: 42
   annotations_language: ["en-us"]
@@ -409,6 +420,39 @@ mix_presentation_metadata {
       }
     }
 
+    audio_elements {
+      audio_element_id: 308
+      localized_element_annotations: ["test_sub_mix_0_audio_element_8"]
+      rendering_config {
+        headphones_rendering_mode: HEADPHONES_RENDERING_MODE_STEREO
+        rendering_config_param_definitions {
+          param_definition_type: PARAM_DEFINITION_TYPE_DUAL_CART_8
+          dual_cart8_param_definition {
+            param_definition {
+              parameter_id: 8
+              parameter_rate: 48000
+              param_definition_mode: 1
+            }
+            default_first_x: 1
+            default_first_y: 2
+            default_first_z: 3
+            default_second_x: 4
+            default_second_y: 5
+            default_second_z: 6
+          }
+        }
+      }
+      element_mix_gain {
+        param_definition {
+          parameter_id: 109
+          parameter_rate: 48000
+          param_definition_mode: 1
+          reserved: 0
+        }
+        default_mix_gain: -768
+      }
+    }
+
     output_mix_gain {
       param_definition {
         parameter_id: 101
@@ -528,6 +572,17 @@ audio_frame_metadata {
   samples_to_trim_at_start_includes_codec_delay: false
   wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 307
+  channel_metadatas: [
+    { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 },
+    { channel_id: 1 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL1 }
+  ]
+}
+
+audio_frame_metadata {
+  samples_to_trim_at_end_includes_padding: false
+  samples_to_trim_at_start_includes_codec_delay: false
+  wav_filename: "dialog_clip_stereo.wav"
+  audio_element_id: 308
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 },
     { channel_id: 1 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL1 }

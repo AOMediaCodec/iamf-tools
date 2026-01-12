@@ -210,7 +210,7 @@ mix_presentation_metadata {
       loudness_layout {
         layout_type: LAYOUT_TYPE_LOUDSPEAKERS_SS_CONVENTION
         ss_layout {
-          sound_system: SOUND_SYSTEM_10_2_7_0
+          sound_system: SOUND_SYSTEM_13_6_9_0
           reserved: 0
         }
       }
