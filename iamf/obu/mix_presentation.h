@@ -25,100 +25,11 @@
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
-#include "iamf/obu/param_definitions/cart16_param_definition.h"
-#include "iamf/obu/param_definitions/cart8_param_definition.h"
-#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
-#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
-#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
-#include "iamf/obu/param_definitions/param_definition_base.h"
-#include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-using PositionParamVariant =
-    std::variant<PolarParamDefinition, Cart8ParamDefinition,
-                 Cart16ParamDefinition, DualPolarParamDefinition,
-                 DualCart8ParamDefinition, DualCart16ParamDefinition>;
-
-struct RenderingConfigParamDefinition {
-  friend bool operator==(const RenderingConfigParamDefinition& lhs,
-                         const RenderingConfigParamDefinition& rhs) = default;
-
-  /*!\brief Default constructor. */
-  RenderingConfigParamDefinition() = default;
-
-  /*!\brief Move constructor. */
-  RenderingConfigParamDefinition(RenderingConfigParamDefinition&& other) =
-      default;
-
-  /*!\brief Copy constructor. */
-  RenderingConfigParamDefinition(const RenderingConfigParamDefinition& other) =
-      default;
-
-  /*!\brief Copy assignment operator. */
-  RenderingConfigParamDefinition& operator=(
-      const RenderingConfigParamDefinition& other) = default;
-
-  /*!\brief Creates an `RenderingConfigParamDefinition` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  static absl::StatusOr<RenderingConfigParamDefinition> CreateFromBuffer(
-      ReadBitBuffer& rb);
-
-  /*!\brief Creates an `RenderingConfigParamDefinition` from the given
-   * parameters.
-   *
-   * \param param_definition Param definition.
-   * \param param_definition_bytes Param definition bytes.
-   *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  static RenderingConfigParamDefinition Create(
-      PositionParamVariant param_definition,
-      const std::vector<uint8_t>& param_definition_bytes);
-
-  ParamDefinition::ParameterDefinitionType param_definition_type;
-  PositionParamVariant param_definition;
-  // `param_definition_bytes_size` is inferred from the size of
-  // `param_definition_bytes`.
-  std::vector<uint8_t> param_definition_bytes;
-
- private:
-  // Private constructor. Use `Create` or `CreateFromBuffer` instead.
-  RenderingConfigParamDefinition(
-      ParamDefinition::ParameterDefinitionType param_definition_type,
-      PositionParamVariant param_definition,
-      std::vector<uint8_t> param_definition_bytes);
-};
-
-struct RenderingConfig {
-  /*!\brief A 2-bit enum describing how to render the content to headphones. */
-  enum HeadphonesRenderingMode : uint8_t {
-    kHeadphonesRenderingModeStereo = 0,
-    kHeadphonesRenderingModeBinauralWorldLocked = 1,
-    kHeadphonesRenderingModeBinauralHeadLocked = 2,
-    kHeadphonesRenderingModeReserved3 = 3,
-  };
-
-  friend bool operator==(const RenderingConfig& lhs,
-                         const RenderingConfig& rhs) = default;
-  HeadphonesRenderingMode headphones_rendering_mode;  // 2 bits.
-  uint8_t reserved;                                   // 6 bits.
-
-  // `num_parameters` is implicit based on the size of
-  // `rendering_config_param_definitions`.
-  std::vector<RenderingConfigParamDefinition>
-      rendering_config_param_definitions;
-
-  // `rendering_config_extension_size` is inferred from the length of
-  // `rendering_config_extension_bytes`.
-  std::vector<uint8_t> rendering_config_extension_bytes;
-};
 
 /*!\brief One of the audio elements within a sub-mix. */
 struct SubMixAudioElement {

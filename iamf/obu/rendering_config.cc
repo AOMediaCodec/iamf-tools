@@ -1,0 +1,316 @@
+/*
+ * Copyright (c) 2023, Alliance for Open Media. All rights reserved
+ *
+ * This source code is subject to the terms of the BSD 3-Clause Clear License
+ * and the Alliance for Open Media Patent License 1.0. If the BSD 3-Clause Clear
+ * License was not distributed with this source code in the LICENSE file, you
+ * can obtain it at www.aomedia.org/license/software-license/bsd-3-c-c. If the
+ * Alliance for Open Media Patent License 1.0 was not distributed with this
+ * source code in the PATENTS file, you can obtain it at
+ * www.aomedia.org/license/patent.
+ */
+#include "iamf/obu/rendering_config.h"
+
+#include <cstdint>
+#include <optional>
+#include <utility>
+#include <variant>
+#include <vector>
+
+#include "absl/log/absl_check.h"
+#include "absl/log/absl_log.h"
+#include "absl/status/status.h"
+#include "absl/status/statusor.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/span.h"
+#include "iamf/common/read_bit_buffer.h"
+#include "iamf/common/utils/macros.h"
+#include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/param_definitions/cart16_param_definition.h"
+#include "iamf/obu/param_definitions/cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
+#include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
+#include "iamf/obu/param_definitions/dual_polar_param_definition.h"
+#include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/types.h"
+
+namespace iamf_tools {
+
+namespace {
+
+absl::Status WriteRenderingConfigParamDefinition(
+    const RenderingConfigParamDefinition& rendering_config_param_definition,
+    WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(
+      wb.WriteUleb128(rendering_config_param_definition.param_definition_type));
+  switch (rendering_config_param_definition.param_definition_type) {
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar:
+      RETURN_IF_NOT_OK(std::get<PolarParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart8:
+      RETURN_IF_NOT_OK(std::get<Cart8ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::kParameterDefinitionCart16:
+      RETURN_IF_NOT_OK(std::get<Cart16ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualPolar:
+      RETURN_IF_NOT_OK(std::get<DualPolarParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart8:
+      RETURN_IF_NOT_OK(std::get<DualCart8ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    case ParamDefinition::ParameterDefinitionType::
+        kParameterDefinitionDualCart16:
+      RETURN_IF_NOT_OK(std::get<DualCart16ParamDefinition>(
+                           rendering_config_param_definition.param_definition)
+                           .ValidateAndWrite(wb));
+      break;
+    default:
+      RETURN_IF_NOT_OK(wb.WriteUleb128(
+          rendering_config_param_definition.param_definition_bytes.size()));
+      RETURN_IF_NOT_OK(wb.WriteUint8Span(absl::MakeConstSpan(
+          rendering_config_param_definition.param_definition_bytes)));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status WriteRenderingConfigParamDefinitions(
+    const std::vector<RenderingConfigParamDefinition>&
+        rendering_config_param_definitions,
+    WriteBitBuffer& wb) {
+  // Write `num_parameters`.
+  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_param_definitions.size()));
+  for (const auto& rendering_config_param_definition :
+       rendering_config_param_definitions) {
+    RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinition(
+        rendering_config_param_definition, wb));
+  }
+  return absl::OkStatus();
+}
+
+absl::Status WriteRenderingConfigExtension(
+    const std::vector<RenderingConfigParamDefinition>&
+        rendering_config_param_definitions,
+    const std::vector<uint8_t>& rendering_config_extension_bytes,
+    WriteBitBuffer& wb) {
+  // Allocate a temporary buffer to write the rendering config param
+  // definitions to.
+  static const int64_t kInitialBufferSize = 1024;
+  WriteBitBuffer temp_wb(kInitialBufferSize, wb.leb_generator_);
+  // Write the rendering config param definitions to the temporary buffer.
+  RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinitions(
+      rendering_config_param_definitions, temp_wb));
+  RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(
+      absl::MakeConstSpan(rendering_config_extension_bytes)));
+  ABSL_CHECK(temp_wb.IsByteAligned());
+  // Write the header now that the payload size is known.
+  const int64_t rendering_config_extension_size = temp_wb.bit_buffer().size();
+  RETURN_IF_NOT_OK(wb.WriteUleb128(rendering_config_extension_size));
+  // Copy over rendering config param definitions into the actual write
+  // buffer.
+  return wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer()));
+}
+
+absl::Status ReadRenderingConfigParamDefinitions(
+    ReadBitBuffer& rb, std::vector<RenderingConfigParamDefinition>&
+                           output_rendering_config_param_definitions) {
+  DecodedUleb128 num_params;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(num_params));
+  if (num_params == 0) {
+    return absl::InvalidArgumentError(
+        "Expected at least one rendering config param definition, but got 0.");
+  }
+  for (int i = 0; i < num_params; ++i) {
+    auto rendering_config_param_definition =
+        RenderingConfigParamDefinition::CreateFromBuffer(rb);
+    if (!rendering_config_param_definition.ok()) {
+      return rendering_config_param_definition.status();
+    }
+    output_rendering_config_param_definitions.push_back(
+        std::move(*rendering_config_param_definition));
+  }
+  return absl::OkStatus();
+}
+
+}  // namespace
+
+RenderingConfigParamDefinition::RenderingConfigParamDefinition(
+    ParamDefinition::ParameterDefinitionType param_definition_type,
+    PositionParamVariant param_definition,
+    std::vector<uint8_t> param_definition_bytes)
+    : param_definition_type(param_definition_type),
+      param_definition(std::move(param_definition)),
+      param_definition_bytes(std::move(param_definition_bytes)) {}
+
+RenderingConfigParamDefinition RenderingConfigParamDefinition::Create(
+    PositionParamVariant param_definition,
+    const std::vector<uint8_t>& param_definition_bytes) {
+  std::optional<ParamDefinition::ParameterDefinitionType>
+      param_definition_type = std::visit(
+          [](auto&& param_definition) { return param_definition.GetType(); },
+          param_definition);
+  // `PositionParamVariants` are well-defined and always have a param definition
+  // type. The `nullopt` case is only for "extensions".
+  ABSL_CHECK(param_definition_type.has_value());
+  return RenderingConfigParamDefinition(*param_definition_type,
+                                        std::move(param_definition),
+                                        std::move(param_definition_bytes));
+}
+
+absl::StatusOr<RenderingConfigParamDefinition>
+RenderingConfigParamDefinition::CreateFromBuffer(ReadBitBuffer& rb) {
+  DecodedUleb128 param_definition_type;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_type));
+  PositionParamVariant param_definition;
+  switch (static_cast<ParamDefinition::ParameterDefinitionType>(
+      param_definition_type)) {
+    using enum ParamDefinition::ParameterDefinitionType;
+    case kParameterDefinitionPolar:
+      param_definition = PolarParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<PolarParamDefinition>().ReadAndValidate(rb));
+      break;
+    case kParameterDefinitionCart8:
+      param_definition = Cart8ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<Cart8ParamDefinition>().ReadAndValidate(rb));
+      break;
+    case kParameterDefinitionCart16:
+      param_definition = Cart16ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<Cart16ParamDefinition>().ReadAndValidate(
+              rb));
+      break;
+    case kParameterDefinitionDualPolar:
+      param_definition = DualPolarParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualPolarParamDefinition>().ReadAndValidate(
+              rb));
+      break;
+    case kParameterDefinitionDualCart8:
+      param_definition = DualCart8ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualCart8ParamDefinition>().ReadAndValidate(
+              rb));
+      break;
+    case kParameterDefinitionDualCart16:
+      param_definition = DualCart16ParamDefinition();
+      RETURN_IF_NOT_OK(
+          param_definition.emplace<DualCart16ParamDefinition>().ReadAndValidate(
+              rb));
+      break;
+    default:
+      // Only positional parameters are defined and directly supported. Others
+      // are bypassed.
+      DecodedUleb128 param_definition_bytes_size;
+      RETURN_IF_NOT_OK(rb.ReadULeb128(param_definition_bytes_size));
+      RETURN_IF_NOT_OK(rb.IgnoreBytes(param_definition_bytes_size));
+      return absl::UnimplementedError(absl::StrCat(
+          "Unsupported param definition type: ", param_definition_type));
+  }
+  return RenderingConfigParamDefinition::Create(std::move(param_definition),
+                                                {});
+}
+
+absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
+    ReadBitBuffer& rb) {
+  uint8_t headphones_rendering_mode;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, headphones_rendering_mode));
+  HeadphonesRenderingMode headphones_rendering_mode_enum =
+      static_cast<HeadphonesRenderingMode>(headphones_rendering_mode);
+
+  uint8_t reserved;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, reserved));
+  DecodedUleb128 rendering_config_extension_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
+  if (rendering_config_extension_size == 0) {
+    return RenderingConfig{
+        .headphones_rendering_mode = headphones_rendering_mode_enum,
+        .reserved = reserved};
+  }
+
+  // Some fields are absent in older profiles..
+  const auto position_before_reading_rendering_config_param_definitions =
+      rb.Tell();
+  std::vector<RenderingConfigParamDefinition>
+      rendering_config_param_definitions;
+  auto status = ReadRenderingConfigParamDefinitions(
+      rb, rendering_config_param_definitions);
+  int64_t extension_bytes_to_read = rendering_config_extension_size;
+  if (status.ok()) {
+    extension_bytes_to_read =
+        rendering_config_extension_size -
+        ((rb.Tell() -
+          position_before_reading_rendering_config_param_definitions) /
+         8);
+    if (extension_bytes_to_read < 0) {
+      return absl::InvalidArgumentError(absl::StrCat(
+          "Expected `rendering_config_extension_size` to be greater than or "
+          "equal to the size of `rendering_config_param_definitions`., but "
+          "got: ",
+          extension_bytes_to_read));
+    }
+  } else {
+    // Failed to read param definitions, so seek back to the position before
+    // reading the param definitions so we can read these bytes as extension
+    // bytes instead.
+    RETURN_IF_NOT_OK(
+        rb.Seek(position_before_reading_rendering_config_param_definitions));
+  }
+  std::vector<uint8_t> rendering_config_extension_bytes(
+      extension_bytes_to_read);
+  RETURN_IF_NOT_OK(
+      rb.ReadUint8Span(absl::MakeSpan(rendering_config_extension_bytes)));
+  return RenderingConfig{
+      .headphones_rendering_mode = headphones_rendering_mode_enum,
+      .reserved = reserved,
+      .rendering_config_param_definitions =
+          std::move(rendering_config_param_definitions),
+      .rendering_config_extension_bytes =
+          std::move(rendering_config_extension_bytes)};
+}
+
+absl::Status RenderingConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      static_cast<uint8_t>(headphones_rendering_mode), 2));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(static_cast<uint8_t>(reserved), 6));
+
+  if (rendering_config_param_definitions.empty() &&
+      rendering_config_extension_bytes.empty()) {
+    // TODO(b/468358730): Check if we can remove this branch, without breaking
+    //                    compatibility.
+    // Older profiles had no rendering config param definitions. For maximum
+    // backwards compatibility, if both extensions are empty. Write an empty
+    // `rendering_config_extension_size`.
+    return wb.WriteUleb128(0);
+  } else {
+    return WriteRenderingConfigExtension(rendering_config_param_definitions,
+                                         rendering_config_extension_bytes, wb);
+  }
+}
+
+void RenderingConfig::Print() const {
+  ABSL_LOG(INFO) << "        rendering_config:";
+  ABSL_LOG(INFO) << "          headphones_rendering_mode= "
+                 << absl::StrCat(headphones_rendering_mode);
+  ABSL_LOG(INFO) << "          reserved= " << absl::StrCat(reserved);
+  ABSL_LOG(INFO) << "          rendering_config_extension_size= "
+                 << rendering_config_extension_bytes.size();
+  ABSL_LOG(INFO) << "          rendering_config_extension_bytes omitted.";
+}
+
+}  // namespace iamf_tools
