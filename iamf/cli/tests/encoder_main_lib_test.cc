@@ -1179,6 +1179,9 @@ INSTANTIATE_TEST_SUITE_P(Advanced1Top4ch_AndTwoDualPolarObjects, TestVector,
 INSTANTIATE_TEST_SUITE_P(Advanced1Top6ch_AndTwoDualPolarObjects, TestVector,
                          testing::Values("test_000911.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(Advanced1LFE_AndTwoDualPolarObjects, TestVector,
+                         testing::Values("test_000912.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced1StereoS_AndTwoDualPolarObjects, TestVector,
                          testing::Values("test_000913.textproto"));
 
@@ -1216,6 +1219,18 @@ INSTANTIATE_TEST_SUITE_P(Advanced1_ZerothOrderAmbisonicsAndTwoDualPolarObjects,
 
 INSTANTIATE_TEST_SUITE_P(Advanced1_FirstOrderAmbisonicsAndTwoDualPolarObjects,
                          TestVector, testing::Values("test_000923.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced1_TpSiAndZerothOrderAmbisonicsAndFourMonoPolarObjects, TestVector,
+    testing::Values("test_000924.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced1_LFEPairAndZerothOrderAmbisonicsAndFourMonoPolarObjects,
+    TestVector, testing::Values("test_000925.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    Advanced1_Bottom3ChAndZerothOrderAmbisonicsAndFourDualPolarObjects,
+    TestVector, testing::Values("test_000926.textproto"));
 
 INSTANTIATE_TEST_SUITE_P(Advanced29_1_6_AndFourObjects, TestVector,
                          testing::Values("test_001000.textproto"));
