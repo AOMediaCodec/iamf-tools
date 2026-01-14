@@ -32,6 +32,7 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
@@ -42,6 +43,7 @@
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -307,7 +309,7 @@ TEST(CollectAndValidateParamDefinitions,
       mix_presentation_obus);
   auto& output_mix_gain =
       mix_presentation_obus.back().sub_mixes_[0].output_mix_gain;
-  output_mix_gain.default_mix_gain_ = 1;
+  output_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(1);
   // Assert that the new mix presentation OBU has different param definitions.
   ASSERT_NE(mix_presentation_obus.back()
                 .sub_mixes_[0]

@@ -121,6 +121,7 @@ cc_library(
     hdrs = ["mix_gain_param_definition.h"],
     deps = [
         ":param_definition_base",
+        "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:macros",

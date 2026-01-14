@@ -59,6 +59,7 @@
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
 #include "iamf/cli/wav_reader.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -76,6 +77,7 @@
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/io/zero_copy_stream_impl.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
@@ -383,7 +385,8 @@ void AddMixPresentationObuWithConfigurableLayouts(
   common_mix_gain_param_definition.parameter_id_ = common_parameter_id;
   common_mix_gain_param_definition.parameter_rate_ = common_parameter_rate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
-  common_mix_gain_param_definition.default_mix_gain_ = 0;
+  common_mix_gain_param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(0);
   std::vector<MixPresentationLayout> layouts;
   for (const auto& sound_system : sound_system_layouts) {
     layouts.push_back(

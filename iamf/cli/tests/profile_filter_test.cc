@@ -30,12 +30,14 @@
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -680,7 +682,8 @@ MixPresentationObu MakeMixPresentationObuWithAudioElementIdsInSubmixes(
   common_mix_gain_param_definition.parameter_rate_ =
       kCommonMixGainParameterRate;
   common_mix_gain_param_definition.param_definition_mode_ = true;
-  common_mix_gain_param_definition.default_mix_gain_ = 0;
+  common_mix_gain_param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(0);
   const std::vector<MixPresentationLayout> layouts = {
       {.loudness_layout =
            {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,

@@ -21,6 +21,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -68,13 +69,14 @@ void InitSubblockDurations(
 TEST(MixGainParamDefinition, ConstructorSetsDefaultMixGainToZero) {
   MixGainParamDefinition mix_gain_param_definition;
 
-  EXPECT_EQ(mix_gain_param_definition.default_mix_gain_, 0);
+  EXPECT_EQ(mix_gain_param_definition.default_mix_gain_.GetQ7_8(), 0);
 }
 
 TEST(MixGainParamDefinition, CopyConstructible) {
   MixGainParamDefinition mix_gain_param_definition;
   PopulateParameterDefinitionMode1(mix_gain_param_definition);
-  mix_gain_param_definition.default_mix_gain_ = -16;
+  mix_gain_param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(-16);
 
   const auto other = mix_gain_param_definition;
 
@@ -91,7 +93,8 @@ TEST(MixGainParamDefinition, GetTypeHasCorrectValue) {
 TEST(MixGainParamDefinitionValidateAndWrite, DefaultParamDefinitionMode1) {
   MixGainParamDefinition mix_gain_param_definition;
   PopulateParameterDefinitionMode1(mix_gain_param_definition);
-  mix_gain_param_definition.default_mix_gain_ = 0;
+  mix_gain_param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(0);
   WriteBitBuffer wb(kDefaultBufferSize);
 
   EXPECT_THAT(mix_gain_param_definition.ValidateAndWrite(wb), IsOk());
@@ -157,7 +160,7 @@ TEST(MixGainParamDefinitionValidateAndWrite, WritesParameterRate) {
 
 TEST(MixGainParamDefinitionValidateAndWrite, WritesDefaultMixGain) {
   MixGainParamDefinition param_definition;
-  param_definition.default_mix_gain_ = 3;
+  param_definition.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(3);
   PopulateParameterDefinitionMode1(param_definition);
   WriteBitBuffer wb(kDefaultBufferSize);
 
@@ -253,7 +256,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainMode1) {
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
-  EXPECT_EQ(param_definition.default_mix_gain_, 4);
+  EXPECT_EQ(param_definition.default_mix_gain_.GetQ7_8(), 4);
 }
 
 TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
@@ -283,7 +286,7 @@ TEST(ReadMixGainParamDefinitionTest, DefaultMixGainWithSubblockArray) {
   EXPECT_THAT(param_definition.ReadAndValidate(*buffer), IsOk());
   EXPECT_EQ(*param_definition.GetType(),
             ParamDefinition::kParameterDefinitionMixGain);
-  EXPECT_EQ(param_definition.default_mix_gain_, 3);
+  EXPECT_EQ(param_definition.default_mix_gain_.GetQ7_8(), 3);
 }
 
 }  // namespace

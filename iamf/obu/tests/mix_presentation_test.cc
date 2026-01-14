@@ -24,6 +24,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -113,7 +114,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     element_mix_gain.parameter_rate_ = 13;
     element_mix_gain.param_definition_mode_ = true;
     element_mix_gain.reserved_ = 0;
-    element_mix_gain.default_mix_gain_ = 14;
+    element_mix_gain.default_mix_gain_ =
+        QFormatOrFloatingPoint::MakeFromQ7_8(14);
     sub_mixes_[0].audio_elements[0].element_mix_gain = element_mix_gain;
 
     MixGainParamDefinition output_mix_gain;
@@ -121,7 +123,8 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
     output_mix_gain.parameter_rate_ = 16;
     output_mix_gain.param_definition_mode_ = true;
     output_mix_gain.reserved_ = 0;
-    output_mix_gain.default_mix_gain_ = 17;
+    output_mix_gain.default_mix_gain_ =
+        QFormatOrFloatingPoint::MakeFromQ7_8(17);
     sub_mixes_[0].output_mix_gain = output_mix_gain;
   }
 
@@ -639,7 +642,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   element_mix_gain.parameter_rate_ = 23;
   element_mix_gain.param_definition_mode_ = true;
   element_mix_gain.reserved_ = 0;
-  element_mix_gain.default_mix_gain_ = 24;
+  element_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(24);
   sub_mixes_.back().audio_elements[0].element_mix_gain = element_mix_gain;
 
   MixGainParamDefinition output_mix_gain;
@@ -647,7 +650,7 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
   output_mix_gain.parameter_rate_ = 26;
   output_mix_gain.param_definition_mode_ = true;
   output_mix_gain.reserved_ = 0;
-  output_mix_gain.default_mix_gain_ = 27;
+  output_mix_gain.default_mix_gain_ = QFormatOrFloatingPoint::MakeFromQ7_8(27);
   sub_mixes_.back().output_mix_gain = output_mix_gain;
 
   dynamic_sub_mix_args_.push_back(
@@ -1122,13 +1125,15 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
   expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
   expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
   expected_submix_audio_element.element_mix_gain.reserved_ = 0;
-  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(4);
   EXPECT_EQ(audio_element, expected_submix_audio_element);
   expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
   expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
   expected_submix_audio_element.element_mix_gain.param_definition_mode_ = true;
   expected_submix_audio_element.element_mix_gain.reserved_ = 0;
-  expected_submix_audio_element.element_mix_gain.default_mix_gain_ = 4;
+  expected_submix_audio_element.element_mix_gain.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(4);
   EXPECT_EQ(audio_element, expected_submix_audio_element);
 }
 

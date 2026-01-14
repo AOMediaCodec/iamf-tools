@@ -116,6 +116,7 @@ cc_test(
     srcs = ["mix_gain_param_definition_test.cc"],
     deps = [
         "//iamf/common:leb_generator",
+        "//iamf/common:q_format_or_floating_point",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils/tests:test_utils",

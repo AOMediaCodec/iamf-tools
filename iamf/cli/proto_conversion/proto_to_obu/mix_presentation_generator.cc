@@ -31,6 +31,7 @@
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
@@ -43,6 +44,7 @@
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -345,9 +347,12 @@ absl::Status FillMixConfig(
     MixGainParamDefinition& mix_gain) {
   RETURN_IF_NOT_OK(
       CopyParamDefinition(input_mix_gain.param_definition(), mix_gain));
+  int16_t default_mix_gain_q78;
   RETURN_IF_NOT_OK(StaticCastIfInRange<int32_t, int16_t>(
       "MixGainParamDefinition.default_mix_gain",
-      input_mix_gain.default_mix_gain(), mix_gain.default_mix_gain_));
+      input_mix_gain.default_mix_gain(), default_mix_gain_q78));
+  mix_gain.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain_q78);
 
   return absl::OkStatus();
 }

@@ -17,6 +17,17 @@ cc_library(
 )
 
 cc_library(
+    name = "q_format_or_floating_point",
+    srcs = ["q_format_or_floating_point.cc"],
+    hdrs = ["q_format_or_floating_point.h"],
+    deps = [
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:numeric_utils",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "read_bit_buffer",
     srcs = ["read_bit_buffer.cc"],
     hdrs = ["read_bit_buffer.h"],

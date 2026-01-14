@@ -46,7 +46,6 @@
 #include "iamf/cli/renderer_factory.h"
 #include "iamf/cli/sample_processor_base.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
@@ -217,10 +216,10 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
         "Parameter blocks that require resampling are not supported yet.");
   }
 
-  const int16_t default_mix_gain = mix_gain.default_mix_gain_;
   // Initialize to the default gain value.
-  std::fill(linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
-            std::pow(10.0f, Q7_8ToFloat(default_mix_gain) / 20.0f));
+  std::fill(
+      linear_mix_gain_per_tick.begin(), linear_mix_gain_per_tick.end(),
+      std::pow(10.0f, mix_gain.default_mix_gain_.GetFloatingPoint() / 20.0f));
   auto parameter_block_iter =
       id_to_parameter_block.find(mix_gain.parameter_id_);
   if (parameter_block_iter == id_to_parameter_block.end()) {

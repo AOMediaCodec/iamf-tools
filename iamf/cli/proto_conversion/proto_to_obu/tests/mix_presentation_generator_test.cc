@@ -35,6 +35,7 @@
 #include "iamf/obu/param_definitions/dual_cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_polar_param_definition.h"
 #include "iamf/obu/param_definitions/polar_param_definition.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 #include "src/google/protobuf/text_format.h"
@@ -1030,7 +1031,7 @@ TEST(Generate, CopiesOutputMixGain) {
   EXPECT_EQ(first_output_mix_gain.parameter_rate_, kCommonParameterRate);
   EXPECT_EQ(first_output_mix_gain.param_definition_mode_, kParamDefinitionMode);
   EXPECT_EQ(first_output_mix_gain.reserved_, kParamDefinitionReserved);
-  EXPECT_EQ(first_output_mix_gain.default_mix_gain_, kNonZeroMixGain);
+  EXPECT_EQ(first_output_mix_gain.default_mix_gain_.GetQ7_8(), kNonZeroMixGain);
 }
 
 TEST(Generate, CopiesElementMixGain) {
@@ -1054,7 +1055,8 @@ TEST(Generate, CopiesElementMixGain) {
   EXPECT_EQ(first_element_mix_gain.param_definition_mode_,
             kParamDefinitionMode);
   EXPECT_EQ(first_element_mix_gain.reserved_, kParamDefinitionReserved);
-  EXPECT_EQ(first_element_mix_gain.default_mix_gain_, kNonZeroMixGain);
+  EXPECT_EQ(first_element_mix_gain.default_mix_gain_.GetQ7_8(),
+            kNonZeroMixGain);
 }
 
 TEST(Generate, EmptyUserMetadataGeneratesNoObus) {

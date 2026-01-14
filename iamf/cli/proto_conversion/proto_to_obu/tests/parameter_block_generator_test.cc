@@ -34,6 +34,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/cli/user_metadata_builder/iamf_input_layout.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -261,7 +262,8 @@ void AddMixGainParamDefinition(
     const int16_t default_mix_gain, MixGainParamDefinition& param_definition,
     absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>&
         param_definition_variants) {
-  param_definition.default_mix_gain_ = default_mix_gain;
+  param_definition.default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain);
   param_definition.parameter_id_ = kParameterId;
   param_definition.parameter_rate_ = 48000;
   param_definition.param_definition_mode_ = 1;

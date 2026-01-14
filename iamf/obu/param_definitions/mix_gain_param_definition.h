@@ -12,10 +12,10 @@
 #ifndef OBU_PARAM_DEFINITIONS_MIX_GAIN_PARAM_DEFINITION_H_
 #define OBU_PARAM_DEFINITIONS_MIX_GAIN_PARAM_DEFINITION_H_
 
-#include <cstdint>
 #include <memory>
 
 #include "absl/status/status.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
@@ -63,7 +63,8 @@ class MixGainParamDefinition : public ParamDefinition {
   friend bool operator==(const MixGainParamDefinition& lhs,
                          const MixGainParamDefinition& rhs) = default;
 
-  int16_t default_mix_gain_ = 0;
+  QFormatOrFloatingPoint default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(0);
 };
 
 }  // namespace iamf_tools

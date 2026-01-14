@@ -11,10 +11,12 @@
  */
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 
+#include <cstdint>
 #include <memory>
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
@@ -30,7 +32,7 @@ absl::Status MixGainParamDefinition::ValidateAndWrite(
   RETURN_IF_NOT_OK(ParamDefinition::ValidateAndWrite(wb));
 
   // The sub-class specific part.
-  RETURN_IF_NOT_OK(wb.WriteSigned16(default_mix_gain_));
+  RETURN_IF_NOT_OK(wb.WriteSigned16(default_mix_gain_.GetQ7_8()));
   return absl::OkStatus();
 }
 
@@ -39,7 +41,10 @@ absl::Status MixGainParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
   RETURN_IF_NOT_OK(ParamDefinition::ReadAndValidate(rb));
 
   // The sub-class specific part.
-  RETURN_IF_NOT_OK(rb.ReadSigned16(default_mix_gain_));
+  int16_t default_mix_gain_q78;
+  RETURN_IF_NOT_OK(rb.ReadSigned16(default_mix_gain_q78));
+  default_mix_gain_ =
+      QFormatOrFloatingPoint::MakeFromQ7_8(default_mix_gain_q78);
   return absl::OkStatus();
 }
 
