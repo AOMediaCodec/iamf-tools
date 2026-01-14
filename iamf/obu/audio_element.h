@@ -227,9 +227,9 @@ struct ObjectsConfig {
       uint8_t num_objects,
       absl::Span<const uint8_t> objects_config_extension_bytes);
 
-  const uint8_t num_objects;  // 8 bits.
+  uint8_t num_objects;  // 8 bits.
 
-  const std::vector<uint8_t> objects_config_extension_bytes;
+  std::vector<uint8_t> objects_config_extension_bytes;
 
  private:
   // Private constructor. Use `Create` or `CreateFromBuffer` instead.
