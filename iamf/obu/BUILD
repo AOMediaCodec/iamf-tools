@@ -160,6 +160,24 @@ cc_library(
 )
 
 cc_library(
+    name = "element_gain_offset_config",
+    srcs = ["element_gain_offset_config.cc"],
+    hdrs = ["element_gain_offset_config.h"],
+    deps = [
+        "//iamf/common:q_format_or_floating_point",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
+        "//iamf/common/utils:validation_utils",
+        "@abseil-cpp//absl/log:absl_log",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "ia_sequence_header",
     srcs = ["ia_sequence_header.cc"],
     hdrs = ["ia_sequence_header.h"],

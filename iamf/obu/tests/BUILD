@@ -116,6 +116,19 @@ cc_test(
 )
 
 cc_test(
+    name = "element_gain_offset_config_test",
+    srcs = ["element_gain_offset_config_test.cc"],
+    deps = [
+        "//iamf/common:q_format_or_floating_point",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu:element_gain_offset_config",
+        "@abseil-cpp//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "ia_sequence_header_test",
     size = "small",
     srcs = ["ia_sequence_header_test.cc"],
