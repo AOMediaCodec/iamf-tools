@@ -29,13 +29,13 @@ struct ChannelNumbers {
   friend bool operator==(const ChannelNumbers& lhs,
                          const ChannelNumbers& rhs) = default;
   // Number of surround channels.
-  int surround ABSL_REQUIRE_EXPLICIT_INIT;
+  int surround = 0;
   // Number of low-frequency effects channels.
-  int lfe ABSL_REQUIRE_EXPLICIT_INIT;
+  int lfe = 0;
   // Number of height channels.
-  int height ABSL_REQUIRE_EXPLICIT_INIT;
+  int height = 0;
   // Number of bottom channels.
-  int bottom ABSL_REQUIRE_EXPLICIT_INIT;
+  int bottom = 0;
 };
 
 /* !\brief Parameter definition for recon gain.
