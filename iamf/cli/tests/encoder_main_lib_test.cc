@@ -1146,6 +1146,12 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedFlacAndLpcmCodecConfig, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
                          testing::Values("test_000848.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedElementGainOffsetConfigValueType,
+                         TestVector, testing::Values("test_000853.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedElementGainOffsetConfigRangeType,
+                         TestVector, testing::Values("test_000854.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced1Mono_AndFourObjects, TestVector,
                          testing::Values("test_000900.textproto"));
 

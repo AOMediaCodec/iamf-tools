@@ -39,6 +39,12 @@ proto_library(
 )
 
 proto_library(
+    name = "element_gain_offset_config_proto",
+    srcs = ["element_gain_offset_config.proto"],
+    deps = [":types_proto"],
+)
+
+proto_library(
     name = "encoder_control_metadata_proto",
     srcs = ["encoder_control_metadata.proto"],
     deps = [":output_audio_format_proto"],
@@ -54,6 +60,7 @@ proto_library(
     name = "mix_presentation_proto",
     srcs = ["mix_presentation.proto"],
     deps = [
+        ":element_gain_offset_config_proto",
         ":obu_header_proto",
         ":param_definitions_proto",
     ],
@@ -139,6 +146,11 @@ cc_proto_library(
 cc_proto_library(
     name = "codec_config_cc_proto",
     deps = [":codec_config_proto"],
+)
+
+cc_proto_library(
+    name = "element_gain_offset_config_cc_proto",
+    deps = [":element_gain_offset_config_proto"],
 )
 
 cc_proto_library(

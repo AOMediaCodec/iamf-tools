@@ -26,9 +26,11 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
+#include "iamf/cli/proto/element_gain_offset_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/q_format_or_floating_point.h"
@@ -36,6 +38,7 @@
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/validation_utils.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
@@ -283,6 +286,46 @@ CreateRenderingConfigParamDefinition(
   }
 }
 
+absl::StatusOr<ElementGainOffsetConfig> CreateElementGainOffsetConfig(
+    const iamf_tools_cli_proto::ElementGainOffsetConfig&
+        input_element_gain_offset_config) {
+  if (input_element_gain_offset_config.has_value_type()) {
+    const auto element_gain_offset = ProtoToQFormatOrFloatingPoint(
+        input_element_gain_offset_config.value_type().element_gain_offset());
+    if (!element_gain_offset.ok()) {
+      return element_gain_offset.status();
+    }
+    return ElementGainOffsetConfig::MakeValueType(*element_gain_offset);
+  } else if (input_element_gain_offset_config.has_range_type()) {
+    const auto default_element_gain_offset = ProtoToQFormatOrFloatingPoint(
+        input_element_gain_offset_config.range_type()
+            .default_element_gain_offset());
+    if (!default_element_gain_offset.ok()) {
+      return default_element_gain_offset.status();
+    }
+    const auto min_element_gain_offset = ProtoToQFormatOrFloatingPoint(
+        input_element_gain_offset_config.range_type()
+            .min_element_gain_offset());
+    if (!min_element_gain_offset.ok()) {
+      return min_element_gain_offset.status();
+    }
+    const auto max_element_gain_offset = ProtoToQFormatOrFloatingPoint(
+        input_element_gain_offset_config.range_type()
+            .max_element_gain_offset());
+    if (!max_element_gain_offset.ok()) {
+      return max_element_gain_offset.status();
+    }
+
+    return ElementGainOffsetConfig::CreateRangeType(
+        *default_element_gain_offset, *min_element_gain_offset,
+        *max_element_gain_offset);
+  } else {
+    return absl::InvalidArgumentError(
+        "ElementGainOffsetConfig must have one of value_type or "
+        "range_type set.");
+  }
+}
+
 absl::Status FillRenderingConfig(
     const iamf_tools_cli_proto::RenderingConfig& input_rendering_config,
     RenderingConfig& rendering_config) {
@@ -331,6 +374,15 @@ absl::Status FillRenderingConfig(
     }
     rendering_config.rendering_config_param_definitions.push_back(
         *rendering_config_param_definition);
+  }
+
+  if (input_rendering_config.has_element_gain_offset_config()) {
+    auto element_gain_offset_config = CreateElementGainOffsetConfig(
+        input_rendering_config.element_gain_offset_config());
+    if (!element_gain_offset_config.ok()) {
+      return element_gain_offset_config.status();
+    }
+    rendering_config.element_gain_offset_config = *element_gain_offset_config;
   }
 
   rendering_config.rendering_config_extension_bytes.resize(

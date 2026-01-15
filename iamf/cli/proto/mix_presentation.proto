@@ -12,6 +12,7 @@ edition = "2023";
 
 package iamf_tools_cli_proto;
 
+import "iamf/cli/proto/element_gain_offset_config.proto";
 import "iamf/cli/proto/obu_header.proto";
 import "iamf/cli/proto/param_definitions.proto";
 
@@ -58,7 +59,10 @@ message RenderingConfig {
   uint32 rendering_config_extension_size = 3 [deprecated = true];
   repeated RenderingConfigParamDefinition rendering_config_param_definitions =
       5;
+  ElementGainOffsetConfig element_gain_offset_config = 6;
   bytes rendering_config_extension_bytes = 4;
+
+  // Next ID: 7
 }
 
 message SubMixAudioElement {

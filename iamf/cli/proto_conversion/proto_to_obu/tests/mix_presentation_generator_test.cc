@@ -25,9 +25,13 @@
 #include "absl/strings/string_view.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/proto/element_gain_offset_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
+#include "iamf/common/q_format_or_floating_point.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
@@ -1552,6 +1556,97 @@ TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
   // `info_type_bytes` field.
   EXPECT_EQ(output_loudness.layout_extension.info_type_bytes,
             std::vector<uint8_t>({'a', 'b', 'c'}));
+}
+
+TEST(Generate, CopiesRenderingConfigWithElementGainOffsetValueQ78) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* first_mix_presentation_metadata = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(first_mix_presentation_metadata);
+  first_mix_presentation_metadata->mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->mutable_element_gain_offset_config()
+      ->mutable_value_type()
+      ->mutable_element_gain_offset()
+      ->set_q7_dot8(256);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.element_gain_offset_config,
+            ElementGainOffsetConfig::MakeValueType(
+                QFormatOrFloatingPoint::MakeFromQ7_8(256)));
+}
+
+TEST(Generate, CopiesRenderingConfigWithElementGainOffsetValueFloat) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* first_mix_presentation_metadata = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(first_mix_presentation_metadata);
+  first_mix_presentation_metadata->mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->mutable_element_gain_offset_config()
+      ->mutable_value_type()
+      ->mutable_element_gain_offset()
+      ->set_floating_point(1.0);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.element_gain_offset_config,
+            ElementGainOffsetConfig::MakeValueType(
+                *QFormatOrFloatingPoint::CreateFromFloatingPoint(1.0)));
+}
+
+TEST(Generate, CopiesRenderingConfigWithElementGainOffsetRangeQ78) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* first_mix_presentation_metadata = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(first_mix_presentation_metadata);
+  auto& range_type = *first_mix_presentation_metadata->mutable_sub_mixes(0)
+                          ->mutable_audio_elements(0)
+                          ->mutable_rendering_config()
+                          ->mutable_element_gain_offset_config()
+                          ->mutable_range_type();
+  range_type.mutable_default_element_gain_offset()->set_q7_dot8(256);
+  range_type.mutable_min_element_gain_offset()->set_q7_dot8(0);
+  range_type.mutable_max_element_gain_offset()->set_q7_dot8(512);
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.element_gain_offset_config,
+            *ElementGainOffsetConfig::CreateRangeType(
+                QFormatOrFloatingPoint::MakeFromQ7_8(256),
+                QFormatOrFloatingPoint::MakeFromQ7_8(0),
+                QFormatOrFloatingPoint::MakeFromQ7_8(512)));
+}
+
+TEST(Generate, ElementGainOffsetConfigMustHaveValueOrRangeType) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* first_mix_presentation_metadata = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(first_mix_presentation_metadata);
+  // Create an `element_gain_offset_config` but do not fill in any fields.
+  first_mix_presentation_metadata->mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->mutable_element_gain_offset_config();
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
 }
 
 }  // namespace
