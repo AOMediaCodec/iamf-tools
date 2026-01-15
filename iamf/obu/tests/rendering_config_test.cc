@@ -13,6 +13,8 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -20,9 +22,11 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
@@ -35,12 +39,15 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
-using testing::ElementsAreArray;
+using ::testing::ElementsAreArray;
 using ::testing::Not;
 
 using absl::MakeConstSpan;
 
 using enum RenderingConfig::HeadphonesRenderingMode;
+
+const QFormatOrFloatingPoint kMaxQFormatOrFloatingPoint =
+    QFormatOrFloatingPoint::MakeFromQ7_8(std::numeric_limits<int16_t>::max());
 
 TEST(ValidateAndWrite, WritesStereoRenderingConfig) {
   RenderingConfig rendering_config{.headphones_rendering_mode =
@@ -458,6 +465,30 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart16ParamDefinition) {
       0x00,
       0x06,
   });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesElementGainOffsetConfig) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      .element_gain_offset_config =
+          ElementGainOffsetConfig::MakeValueType(kMaxQFormatOrFloatingPoint)};
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+       // reserved (5).
+       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // `rendering_config_extension_size`.
+       4,
+       // `num_parameters`.
+       0,
+       // ElementGainOffsetConfigType::kValueType.
+       0,
+       // `gain_offset_q78`.
+       0x7f, 0xff});
 
   WriteBitBuffer wb(0);
   EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
@@ -1157,6 +1188,146 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
   EXPECT_EQ(param_definition.default_second_x_, 4);
   EXPECT_EQ(param_definition.default_second_y_, 5);
   EXPECT_EQ(param_definition.default_second_z_, 6);
+}
+
+TEST(RenderingConfigCreateFromBuffer, ElementGainOffsetConfig) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+       // reserved (5).
+       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // `rendering_config_extension_size`.
+       4,
+       // `num_parameters`.
+       0,
+       // ElementGainOffsetConfigType::kValueType
+       0,
+       // `element_gain_offset`.
+       0x7f, 0xff});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_TRUE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_EQ(*rendering_config->element_gain_offset_config,
+            ElementGainOffsetConfig::MakeValueType(kMaxQFormatOrFloatingPoint));
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, ElementGainOffsetConfigInvalidRange) {
+  constexpr uint8_t kExtensionSizeBytes = 17;
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+       // reserved (5).
+       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // `rendering_config_extension_size`.
+       kExtensionSizeBytes,
+       // num_params
+       1,
+       // Start RenderingConfigParamDefinition.
+       // `param_definition_type`.
+       ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
+       // `param_definition`.
+       1,   // parameter_id
+       1,   // parameter_rate
+       0,   // mode
+       10,  // duration
+       10,  // constant_subblock_duration
+            // default_azimuth = 2 (9 bits)
+            // default_elevation = 3 (8 bits)
+            // default_distance = 4 (7 bits)
+            // 00000001 00000001 10000100
+       0x01, 0x01, 0x84,
+       // ElementGainOffsetConfigType::kRangeType
+       1,
+       // `default_element_gain_offset`.
+       0x00, 0x00,
+       // `min_element_gain_offset`.
+       0x00, 0x01,
+       // `max_element_gain_offset`.
+       0x00, 0x01});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  // The entire extension is unparsed and dumped into the extension bytes.
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_EQ(rendering_config->rendering_config_extension_bytes,
+            MakeConstSpan(kSource).last(kExtensionSizeBytes));
+}
+
+TEST(RenderingConfigCreateFromBuffer,
+     ElementGainOffsetConfigAndParamDefinition) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+       // reserved (5).
+       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       /*rendering_config_extension_size=*/13,
+       // num_params
+       1,
+       // Start RenderingConfigParamDefinition.
+       // `param_definition_type`.
+       ParamDefinition::ParameterDefinitionType::kParameterDefinitionPolar,
+       // `param_definition`.
+       1,   // parameter_id
+       1,   // parameter_rate
+       0,   // mode
+       10,  // duration
+       10,  // constant_subblock_duration
+            // default_azimuth = 2 (9 bits)
+            // default_elevation = 3 (8 bits)
+            // default_distance = 4 (7 bits)
+            // 00000001 00000001 10000100
+       0x01, 0x01, 0x84,
+       // ElementGainOffsetConfigType::kValueType.
+       0,
+       // `element_gain_offset`.
+       0x7f, 0xff});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_EQ(rendering_config->rendering_config_param_definitions.size(), 1);
+  EXPECT_TRUE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_EQ(*rendering_config->element_gain_offset_config,
+            ElementGainOffsetConfig::MakeValueType(kMaxQFormatOrFloatingPoint));
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, NoElementGainOffsetConfig) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (0),
+       // reserved (5).
+       RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+       // `rendering_config_extension_size`.
+       1,
+       // `num_parameters`.
+       0});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
 }
 
 }  // namespace

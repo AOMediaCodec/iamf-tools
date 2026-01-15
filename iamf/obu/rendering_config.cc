@@ -22,11 +22,11 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
@@ -105,6 +105,7 @@ absl::Status WriteRenderingConfigParamDefinitions(
 absl::Status WriteRenderingConfigExtension(
     const std::vector<RenderingConfigParamDefinition>&
         rendering_config_param_definitions,
+    const std::optional<ElementGainOffsetConfig>& element_gain_offset_config,
     const std::vector<uint8_t>& rendering_config_extension_bytes,
     WriteBitBuffer& wb) {
   // Allocate a temporary buffer to write the rendering config param
@@ -114,6 +115,9 @@ absl::Status WriteRenderingConfigExtension(
   // Write the rendering config param definitions to the temporary buffer.
   RETURN_IF_NOT_OK(WriteRenderingConfigParamDefinitions(
       rendering_config_param_definitions, temp_wb));
+  if (element_gain_offset_config.has_value()) {
+    RETURN_IF_NOT_OK(element_gain_offset_config->Write(temp_wb));
+  }
   RETURN_IF_NOT_OK(temp_wb.WriteUint8Span(
       absl::MakeConstSpan(rendering_config_extension_bytes)));
   ABSL_CHECK(temp_wb.IsByteAligned());
@@ -125,15 +129,13 @@ absl::Status WriteRenderingConfigExtension(
   return wb.WriteUint8Span(absl::MakeConstSpan(temp_wb.bit_buffer()));
 }
 
-absl::Status ReadRenderingConfigParamDefinitions(
-    ReadBitBuffer& rb, std::vector<RenderingConfigParamDefinition>&
-                           output_rendering_config_param_definitions) {
+absl::Status ReadRenderingConfigExtension(
+    bool element_gain_offset_flag, ReadBitBuffer& rb,
+    std::vector<RenderingConfigParamDefinition>&
+        output_rendering_config_param_definitions,
+    std::optional<ElementGainOffsetConfig>& output_element_gain_offset_config) {
   DecodedUleb128 num_params;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_params));
-  if (num_params == 0) {
-    return absl::InvalidArgumentError(
-        "Expected at least one rendering config param definition, but got 0.");
-  }
   for (int i = 0; i < num_params; ++i) {
     auto rendering_config_param_definition =
         RenderingConfigParamDefinition::CreateFromBuffer(rb);
@@ -143,6 +145,17 @@ absl::Status ReadRenderingConfigParamDefinitions(
     output_rendering_config_param_definitions.push_back(
         std::move(*rendering_config_param_definition));
   }
+
+  if (element_gain_offset_flag) {
+    auto read_element_gain_offset_config =
+        ElementGainOffsetConfig::CreateFromBuffer(rb);
+    if (!read_element_gain_offset_config.ok()) {
+      return read_element_gain_offset_config.status();
+    }
+    output_element_gain_offset_config =
+        *std::move(read_element_gain_offset_config);
+  }
+
   return absl::OkStatus();
 }
 
@@ -233,8 +246,11 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
   HeadphonesRenderingMode headphones_rendering_mode_enum =
       static_cast<HeadphonesRenderingMode>(headphones_rendering_mode);
 
+  bool element_gain_offset_flag;
+  RETURN_IF_NOT_OK(rb.ReadBoolean(element_gain_offset_flag));
+
   uint8_t reserved;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(6, reserved));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved));
   DecodedUleb128 rendering_config_extension_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
   if (rendering_config_extension_size == 0) {
@@ -243,20 +259,21 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
         .reserved = reserved};
   }
 
-  // Some fields are absent in older profiles..
-  const auto position_before_reading_rendering_config_param_definitions =
-      rb.Tell();
+  const auto position_after_rendering_config_extension_size = rb.Tell();
+  // Read in the well-defined fields. These are related to parameters, and
+  // (optionally), the element gain offset config.
   std::vector<RenderingConfigParamDefinition>
       rendering_config_param_definitions;
-  auto status = ReadRenderingConfigParamDefinitions(
-      rb, rendering_config_param_definitions);
+  std::optional<ElementGainOffsetConfig> element_gain_offset_config;
+  auto status = ReadRenderingConfigExtension(element_gain_offset_flag, rb,
+                                             rendering_config_param_definitions,
+                                             element_gain_offset_config);
+
   int64_t extension_bytes_to_read = rendering_config_extension_size;
   if (status.ok()) {
     extension_bytes_to_read =
         rendering_config_extension_size -
-        ((rb.Tell() -
-          position_before_reading_rendering_config_param_definitions) /
-         8);
+        ((rb.Tell() - position_after_rendering_config_extension_size) / 8);
     if (extension_bytes_to_read < 0) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Expected `rendering_config_extension_size` to be greater than or "
@@ -265,11 +282,12 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
           extension_bytes_to_read));
     }
   } else {
-    // Failed to read param definitions, so seek back to the position before
-    // reading the param definitions so we can read these bytes as extension
-    // bytes instead.
-    RETURN_IF_NOT_OK(
-        rb.Seek(position_before_reading_rendering_config_param_definitions));
+    rendering_config_param_definitions.clear();
+    element_gain_offset_config = std::nullopt;
+    // Failed to read extension, so seek back to the position before reading the
+    // extension size so we can read these bytes as generic extension bytes
+    // instead.
+    RETURN_IF_NOT_OK(rb.Seek(position_after_rendering_config_extension_size));
   }
   std::vector<uint8_t> rendering_config_extension_bytes(
       extension_bytes_to_read);
@@ -280,6 +298,7 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
       .reserved = reserved,
       .rendering_config_param_definitions =
           std::move(rendering_config_param_definitions),
+      .element_gain_offset_config = element_gain_offset_config,
       .rendering_config_extension_bytes =
           std::move(rendering_config_extension_bytes)};
 }
@@ -287,18 +306,22 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
 absl::Status RenderingConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
       static_cast<uint8_t>(headphones_rendering_mode), 2));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(static_cast<uint8_t>(reserved), 6));
+  const bool element_gain_offset_flag = element_gain_offset_config.has_value();
+  RETURN_IF_NOT_OK(wb.WriteBoolean(element_gain_offset_flag));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(static_cast<uint8_t>(reserved), 5));
 
   if (rendering_config_param_definitions.empty() &&
+      !element_gain_offset_config.has_value() &&
       rendering_config_extension_bytes.empty()) {
     // TODO(b/468358730): Check if we can remove this branch, without breaking
     //                    compatibility.
-    // Older profiles had no rendering config param definitions. For maximum
+    // Older profiles had nothing in the rendering config extension. For maximum
     // backwards compatibility, if both extensions are empty. Write an empty
     // `rendering_config_extension_size`.
     return wb.WriteUleb128(0);
   } else {
     return WriteRenderingConfigExtension(rendering_config_param_definitions,
+                                         element_gain_offset_config,
                                          rendering_config_extension_bytes, wb);
   }
 }

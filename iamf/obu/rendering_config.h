@@ -13,6 +13,7 @@
 #define OBU_RENDERING_CONFIG_H_
 
 #include <cstdint>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -20,6 +21,7 @@
 #include "absl/status/statusor.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/param_definitions/cart16_param_definition.h"
 #include "iamf/obu/param_definitions/cart8_param_definition.h"
 #include "iamf/obu/param_definitions/dual_cart16_param_definition.h"
@@ -124,12 +126,17 @@ struct RenderingConfig {
   HeadphonesRenderingMode headphones_rendering_mode =
       kHeadphonesRenderingModeStereo;  // 2 bits.
 
-  uint8_t reserved = 0;  // 6 bits.
+  // `element_gain_offset_flag` is implicit based on the presence of
+  // `element_gain_offset_config`.
+
+  uint8_t reserved = 0;  // 5 bits.
 
   // `num_parameters` is implicit based on the size of
   // `rendering_config_param_definitions`.
   std::vector<RenderingConfigParamDefinition>
       rendering_config_param_definitions;
+
+  std::optional<ElementGainOffsetConfig> element_gain_offset_config;
 
   // `rendering_config_extension_size` is inferred from the length of
   // `rendering_config_extension_bytes`.

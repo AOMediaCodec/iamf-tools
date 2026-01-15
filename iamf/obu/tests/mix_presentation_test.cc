@@ -12,6 +12,7 @@
 #include "iamf/obu/mix_presentation.h"
 
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,6 +29,7 @@
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/tests/test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
+#include "iamf/obu/element_gain_offset_config.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/mix_gain_param_definition.h"
 #include "iamf/obu/rendering_config.h"
@@ -44,6 +46,8 @@ using ::testing::Not;
 // in the same byte.
 constexpr int kLayoutTypeBitShift = 6;
 constexpr int kSoundSystemBitShift = 2;
+constexpr int kHeadphonesRenderingModeBitShift = 6;
+constexpr int kElementGainOffsetFlagBitShift = 5;
 
 class MixPresentationObuTest : public ObuTestBase, public testing::Test {
  public:
@@ -68,12 +72,14 @@ class MixPresentationObuTest : public ObuTestBase, public testing::Test {
                 // Start Submix 1
                 1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
                 // Start RenderingConfig.
-                RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+                RenderingConfig::kHeadphonesRenderingModeStereo
+                    << kHeadphonesRenderingModeBitShift,
                 /*rendering_config_extension_size=*/0,
                 // End RenderingConfig.
                 12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
                 // Start Layout 1 (of Submix 1).
-                (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+                (Layout::kLayoutTypeLoudspeakersSsConvention
+                 << kHeadphonesRenderingModeBitShift) |
                     LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
                 LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
                 // End Mix OBU.
@@ -340,12 +346,14 @@ TEST_F(MixPresentationObuTest, TwoAnchorElements) {
       // Start Submix 1.
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       LoudnessInfo::kAnchoredLoudness, 0, 18, 0, 19,
       // Start anchored loudness.
@@ -375,12 +383,14 @@ TEST_F(MixPresentationObuTest, AnchoredAndTruePeak) {
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       LoudnessInfo::kAnchoredLoudness | LoudnessInfo::kTruePeak, 0, 18, 0, 19,
       // Start true peak.
@@ -422,12 +432,14 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       0x04, 0, 18, 0, 19, 0
       // End Mix OBU.
@@ -470,7 +482,8 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       // `audio_element_id` is affected by the `LebGenerator`.
       0x80 | 11, 0x00, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       // `rendering_config_extension_size` is affected by the `LebGenerator`.
       0x80 | 4, 0x00,
       // `num_parameters` is affected by the `LebGenerator`.
@@ -487,7 +500,8 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       // `num_layouts` is affected by the `LebGenerator`.
       0x80 | 1, 0x00,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       0x04, 0, 18, 0, 19,
       // `info_type_size` is affected by the `LebGenerator`.
@@ -510,12 +524,14 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       0x04, 0, 18, 0, 19, 5, 'e', 'x', 't', 'r', 'a'
       // End Mix OBU.
@@ -551,11 +567,14 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0', 'G', 'B', ' ', 'S',
       'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6, 0,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      0,
       // End RenderingConfig
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20
       // End Mix OBU.
@@ -566,9 +585,9 @@ TEST_F(MixPresentationObuTest, MultipleLabels) {
 
 TEST_F(MixPresentationObuTest,
        ValidateAndWriteSucceedsWhenAnnotationsLanguagesAreUnique) {
-  const std::vector<std::string> kAnnotationsLanaguesWithDifferentRegions = {
+  const std::vector<std::string> kAnnotationsLanguagesWithDifferentRegions = {
       {"en-us"}, {"en-gb"}};
-  annotations_language_ = kAnnotationsLanaguesWithDifferentRegions;
+  annotations_language_ = kAnnotationsLanguagesWithDifferentRegions;
 
   count_label_ = 2;
   localized_presentation_annotations_ = {"0", "1"};
@@ -663,31 +682,35 @@ TEST_F(MixPresentationObuTest, MultipleSubmixesAndLayouts) {
       // Start Submix 1.
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
       // Start Submix 2.
       1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '2', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27, 3,
       // Start Layout1 (Submix 2).
-      Layout::kLayoutTypeReserved0 << 6, LoudnessInfo::kTruePeak, 0, 28, 0, 29,
-      0, 30,
+      Layout::kLayoutTypeReserved0 << kHeadphonesRenderingModeBitShift,
+      LoudnessInfo::kTruePeak, 0, 28, 0, 29, 0, 30,
       // Start Layout2 (Submix 2).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       0, 0, 31, 0, 32,
       // Start Layout3 (Submix 2).
-      (Layout::kLayoutTypeBinaural << 6), LoudnessInfo::kTruePeak, 0, 34, 0, 35,
-      0, 36
+      (Layout::kLayoutTypeBinaural << kHeadphonesRenderingModeBitShift),
+      LoudnessInfo::kTruePeak, 0, 34, 0, 35, 0, 36
       // End Mix OBU.
   };
 
@@ -712,12 +735,14 @@ TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
       // Start Submix 1
       1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/0,
       // End RenderingConfig.
       12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
       // Start Layout 1 (of Submix 1).
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       LoudnessInfo::kTruePeak, 0, 18, 0, 19, 0, 20,
       // Start Mix Presentation Tags.
@@ -945,18 +970,21 @@ TEST(CreateFromBuffer, ReadsOneSubMix) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
       2,
       // Start Layout1.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0 << 2),
       0, 0, 31, 0, 32,
       // Start Layout2.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       0, 0, 31, 0, 32
       // End SubMix.
@@ -999,14 +1027,16 @@ TEST(CreateFromBufferTest, ReadsMixPresentationTags) {
       // Start Submix.
       1, 21,
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
       1,
       // Start Layout0.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       0, 0, 31, 0, 32
       // End SubMix.
@@ -1052,14 +1082,16 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
       // Start Submix.
       1, 21,
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
       1,
       // Start Layout0.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       0, 0, 31, 0, 32
       // End SubMix.
@@ -1092,8 +1124,14 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       // localized_element_annotations[0]
       'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
-      /*rendering_config_extension_size=*/1, /*num_params=*/0,
+      (RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked
+       << kHeadphonesRenderingModeBitShift) |
+          (true << kElementGainOffsetFlagBitShift),
+      /*rendering_config_extension_size=*/4, /*num_params=*/0,
+      // ElementGainOffsetConfigType::kValueType.
+      0,
+      // `element_gain_offset`.
+      0x7f, 0xff,
       // End RenderingConfig.
       // Start ElementMixGain
       // Parameter ID.
@@ -1119,7 +1157,9 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
       .rendering_config =
           {.headphones_rendering_mode =
                RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked,
-           .rendering_config_extension_bytes = {0}},
+           .element_gain_offset_config = ElementGainOffsetConfig::MakeValueType(
+               QFormatOrFloatingPoint::MakeFromQ7_8(
+                   std::numeric_limits<int16_t>::max()))},
       .element_mix_gain = MixGainParamDefinition()};
   expected_submix_audio_element.element_mix_gain.parameter_id_ = 0;
   expected_submix_audio_element.element_mix_gain.parameter_rate_ = 1;
@@ -1141,7 +1181,8 @@ TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
 TEST(ReadMixPresentationLayoutTest, LoudSpeakerWithAnchoredLoudness) {
   std::vector<uint8_t> source = {
       // Start Layout.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
       LoudnessInfo::kAnchoredLoudness, 0, 18, 0, 19,
       // Start anchored loudness.
@@ -1279,18 +1320,21 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
       // Start Submix.
       1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
       // Start RenderingConfig.
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
       /*rendering_config_extension_size=*/1, /*num_params=*/0,
       // End RenderingConfig.
       22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
       // num_layouts
       2,
       // Start Layout1.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemB_0_5_0 << 2),
       0, 0, 31, 0, 32,
       // Start Layout2.
-      (Layout::kLayoutTypeLoudspeakersSsConvention << 6) |
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
           (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
       0, 0, 31, 0, 32
       // End SubMix.

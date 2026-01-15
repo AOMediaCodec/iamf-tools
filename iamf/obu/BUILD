@@ -332,6 +332,7 @@ cc_library(
     srcs = ["rendering_config.cc"],
     hdrs = ["rendering_config.h"],
     deps = [
+        ":element_gain_offset_config",
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
