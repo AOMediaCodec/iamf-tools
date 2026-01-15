@@ -12,7 +12,7 @@
 # proto-message: UserMetadata
 
 test_vector_metadata {
-  human_readable_description: "An IA Sequence with an LPCM and AAC Codec Config ."
+  human_readable_description: "An IA Sequence with an LPCM and AAC Codec Config."
   file_name_prefix: "test_000848"
   is_valid: true
   is_valid_to_decode: true
@@ -39,6 +39,8 @@ ia_sequence_header_metadata {
 codec_config_metadata {
   codec_config_id: 200
   codec_config {
+  automatically_override_codec_delay: false
+  automatically_override_audio_roll_distance: false
     codec_id: CODEC_ID_AAC_LC
     num_samples_per_frame: 1024
     audio_roll_distance: -1
