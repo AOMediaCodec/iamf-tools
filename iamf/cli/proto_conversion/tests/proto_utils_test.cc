@@ -15,10 +15,10 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"
+#include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/common/leb_generator.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
@@ -30,6 +30,51 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::FloatNear;
+using ::testing::Not;
+
+TEST(GetQ7_8FromProto, Q7_8) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+  q_format_or_floating_point.set_q7_dot8(256);
+  auto converted = ProtoToQFormatOrFloatingPoint(q_format_or_floating_point);
+
+  ASSERT_THAT(converted, IsOk());
+  EXPECT_EQ(converted->GetQ7_8(), 256);
+}
+
+TEST(GetQ7_8FromProto, Float) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+  q_format_or_floating_point.set_floating_point(1.5);
+  auto converted = ProtoToQFormatOrFloatingPoint(q_format_or_floating_point);
+
+  ASSERT_THAT(converted, IsOk());
+  EXPECT_THAT(converted->GetFloatingPoint(), FloatNear(1.5, 1e-6));
+}
+
+TEST(GetQ7_8FromProto, NeitherSetDefaultsToZero) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+
+  auto converted = ProtoToQFormatOrFloatingPoint(q_format_or_floating_point);
+
+  ASSERT_THAT(converted, IsOk());
+  EXPECT_EQ(converted->GetQ7_8(), 0);
+}
+
+TEST(GetQ7_8FromProto, Q7_8OutOfRangeReturnsError) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+  q_format_or_floating_point.set_q7_dot8(65536);
+
+  EXPECT_THAT(ProtoToQFormatOrFloatingPoint(q_format_or_floating_point),
+              Not(IsOk()));
+}
+
+TEST(GetQ7_8FromProto, FloatOutOfRangeReturnsError) {
+  iamf_tools_cli_proto::QFormatOrFloatingPoint q_format_or_floating_point;
+  q_format_or_floating_point.set_floating_point(1000.0);
+
+  EXPECT_THAT(ProtoToQFormatOrFloatingPoint(q_format_or_floating_point),
+              Not(IsOk()));
+}
 
 TEST(CopyDemixingInfoParameterData, Basic) {
   iamf_tools_cli_proto::DemixingInfoParameterData

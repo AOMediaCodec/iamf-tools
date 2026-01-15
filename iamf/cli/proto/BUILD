@@ -100,6 +100,11 @@ proto_library(
 )
 
 proto_library(
+    name = "types_proto",
+    srcs = ["types.proto"],
+)
+
+proto_library(
     name = "user_metadata_proto",
     srcs = ["user_metadata.proto"],
     deps = [
@@ -184,6 +189,11 @@ cc_proto_library(
 cc_proto_library(
     name = "test_vector_metadata_cc_proto",
     deps = [":test_vector_metadata_proto"],
+)
+
+cc_proto_library(
+    name = "types_cc_proto",
+    deps = [":types_proto"],
 )
 
 cc_proto_library(

@@ -20,12 +20,15 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/proto_conversion/lookup_tables.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/map_utils.h"
 #include "iamf/common/utils/numeric_utils.h"
@@ -35,6 +38,24 @@
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
+
+absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
+    const iamf_tools_cli_proto::QFormatOrFloatingPoint&
+        input_q_format_or_floating_point) {
+  if (input_q_format_or_floating_point.has_q7_dot8()) {
+    int16_t q7_8_int16;
+    RETURN_IF_NOT_OK(StaticCastIfInRange(
+        "QFormatOrFloatingPoint.q7_dot8",
+        input_q_format_or_floating_point.q7_dot8(), q7_8_int16));
+    return QFormatOrFloatingPoint::MakeFromQ7_8(q7_8_int16);
+  } else if (input_q_format_or_floating_point.has_floating_point()) {
+    return QFormatOrFloatingPoint::CreateFromFloatingPoint(
+        input_q_format_or_floating_point.floating_point());
+  } else {
+    // By default, return a safe 0.
+    return QFormatOrFloatingPoint::MakeFromQ7_8(0);
+  }
+}
 
 absl::Status CopyParamDefinition(
     const iamf_tools_cli_proto::ParamDefinition& input_param_definition,

@@ -31,8 +31,8 @@ QFormatOrFloatingPoint::CreateFromFloatingPoint(float value) {
   return QFormatOrFloatingPoint(q7_8);
 }
 
-QFormatOrFloatingPoint QFormatOrFloatingPoint::MakeFromQ7_8(int16_t q78) {
-  return QFormatOrFloatingPoint(q78);
+QFormatOrFloatingPoint QFormatOrFloatingPoint::MakeFromQ7_8(int16_t q7_8) {
+  return QFormatOrFloatingPoint(q7_8);
 }
 
 QFormatOrFloatingPoint::QFormatOrFloatingPoint(int16_t q7_8)

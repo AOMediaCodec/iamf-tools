@@ -16,16 +16,29 @@
 #include <memory>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
+#include "iamf/cli/proto/types.pb.h"
 #include "iamf/common/leb_generator.h"
+#include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/demixing_info_parameter_data.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
 
 namespace iamf_tools {
+
+/*!\brief Converts to the internal representation of the input protocol buffer.
+ *
+ * \param q_format_or_floating_point Input protocol buffer.
+ * \return Internal representation of a `QFormatOrFloatingPoint` on success. A
+ *     specific status on failure.
+ */
+absl::StatusOr<QFormatOrFloatingPoint> ProtoToQFormatOrFloatingPoint(
+    const iamf_tools_cli_proto::QFormatOrFloatingPoint&
+        input_q_format_or_floating_point);
 
 /*!\brief Copies param definitions from the corresponding protocol buffer.
  *

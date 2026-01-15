@@ -130,7 +130,9 @@ cc_library(
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:parameter_data_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
+        "//iamf/cli/proto:types_cc_proto",
         "//iamf/common:leb_generator",
+        "//iamf/common:q_format_or_floating_point",
         "//iamf/common/utils:macros",
         "//iamf/common/utils:map_utils",
         "//iamf/common/utils:numeric_utils",
@@ -140,6 +142,7 @@ cc_library(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings:string_view",
     ],
 )

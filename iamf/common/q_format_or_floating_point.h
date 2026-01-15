@@ -32,10 +32,10 @@ class QFormatOrFloatingPoint {
  public:
   /*!\brief Creates an instance from a Q7.8 value.
    *
-   * \param q78 Q7.8 value to initialize from.
-   * \return `QFormatOrFloatingPoint` created from `q78`.
+   * \param q7_8 Q7.8 value to initialize from.
+   * \return `QFormatOrFloatingPoint` created from `q7_8`.
    */
-  static QFormatOrFloatingPoint MakeFromQ7_8(int16_t q78);
+  static QFormatOrFloatingPoint MakeFromQ7_8(int16_t q7_8);
 
   /*!\brief Creates an instance from a floating point value.
    *
