@@ -123,6 +123,7 @@ cc_test(
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:element_gain_offset_config",
+        "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],

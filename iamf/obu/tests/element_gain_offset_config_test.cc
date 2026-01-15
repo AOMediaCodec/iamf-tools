@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
