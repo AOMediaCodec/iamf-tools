@@ -822,10 +822,10 @@ absl::Status ObuWithDataGenerator::FinalizeObjectsConfig(
     return InvalidArgumentError(
         "Audio Element OBU for objects has incorrect number of substreams.");
   }
-  if (objects_config->num_objects == 1) {
+  if (objects_config->GetNumObjects() == 1) {
     substream_id_to_labels[audio_element_obu.audio_substream_ids_[0]] = {
         ChannelLabel::kObjectChannel0};
-  } else if (objects_config->num_objects == 2) {
+  } else if (objects_config->GetNumObjects() == 2) {
     substream_id_to_labels[audio_element_obu.audio_substream_ids_[0]] = {
         ChannelLabel::kObjectChannel0, ChannelLabel::kObjectChannel1};
   } else {

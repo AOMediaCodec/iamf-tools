@@ -382,8 +382,8 @@ TEST(Generate, GeneratesObjectsConfig) {
   const auto& objects_config =
       GetConfigForAudioElementIdExpectOk<ObjectsConfig>(kAudioElementId,
                                                         output_obus);
-  EXPECT_EQ(objects_config.num_objects, 1);
-  EXPECT_THAT(objects_config.objects_config_extension_bytes,
+  EXPECT_EQ(objects_config.GetNumObjects(), 1);
+  EXPECT_THAT(objects_config.GetObjectsConfigExtensionBytesView(),
               ElementsAre('1', '2', '3', '4'));
 }
 
@@ -410,8 +410,8 @@ TEST(Generate, GeneratesObjectsConfigWithTwoObjects) {
   const auto& objects_config =
       GetConfigForAudioElementIdExpectOk<ObjectsConfig>(kAudioElementId,
                                                         output_obus);
-  EXPECT_EQ(objects_config.num_objects, 2);
-  EXPECT_THAT(objects_config.objects_config_extension_bytes,
+  EXPECT_EQ(objects_config.GetNumObjects(), 2);
+  EXPECT_THAT(objects_config.GetObjectsConfigExtensionBytesView(),
               ElementsAre('1', '2', '3', '4'));
 }
 

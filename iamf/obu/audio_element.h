@@ -199,15 +199,6 @@ struct ObjectsConfig {
   friend bool operator==(const ObjectsConfig& lhs,
                          const ObjectsConfig& rhs) = default;
 
-  /*!\brief Move constructor. */
-  ObjectsConfig(ObjectsConfig&& other) = default;
-
-  /*!\brief Copy constructor. */
-  ObjectsConfig(const ObjectsConfig& other) = default;
-
-  /*!\brief Copy assignment operator. */
-  ObjectsConfig& operator=(const ObjectsConfig& other) = default;
-
   /*!\brief Creates an `ObjectsConfig` from a buffer.
    *
    * \param rb Buffer to read from.
@@ -227,14 +218,18 @@ struct ObjectsConfig {
       uint8_t num_objects,
       absl::Span<const uint8_t> objects_config_extension_bytes);
 
-  uint8_t num_objects;  // 8 bits.
+  uint8_t GetNumObjects() const;
 
-  std::vector<uint8_t> objects_config_extension_bytes;
+  absl::Span<const uint8_t> GetObjectsConfigExtensionBytesView() const;
 
  private:
   // Private constructor. Use `Create` or `CreateFromBuffer` instead.
   ObjectsConfig(uint8_t num_objects,
                 std::vector<uint8_t> objects_config_extension_bytes);
+
+  uint8_t num_objects;  // 8 bits.
+
+  std::vector<uint8_t> objects_config_extension_bytes;
 };
 
 /*!\brief Configuration for mono-coded Ambisonics. */

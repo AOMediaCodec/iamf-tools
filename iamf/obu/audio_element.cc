@@ -266,10 +266,10 @@ absl::Status WriteObjectsConfig(const ObjectsConfig& objects_config,
   // `object_config_size` is the number of bytes in the extension, plus one for
   // the num_objects field.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
-      objects_config.objects_config_extension_bytes.size() + 1, 8));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(objects_config.num_objects, 8));
-  RETURN_IF_NOT_OK(wb.WriteUint8Span(
-      absl::MakeConstSpan(objects_config.objects_config_extension_bytes)));
+      objects_config.GetObjectsConfigExtensionBytesView().size() + 1, 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(objects_config.GetNumObjects(), 8));
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(objects_config.GetObjectsConfigExtensionBytesView()));
   return absl::OkStatus();
 }
 
@@ -426,6 +426,13 @@ absl::StatusOr<ObjectsConfig> ObjectsConfig::CreateFromBuffer(
       rb.ReadUint8Span(absl::MakeSpan(objects_config_extension_bytes)));
   return Create(num_objects,
                 absl::MakeConstSpan(objects_config_extension_bytes));
+}
+
+uint8_t ObjectsConfig::GetNumObjects() const { return num_objects; }
+
+absl::Span<const uint8_t> ObjectsConfig::GetObjectsConfigExtensionBytesView()
+    const {
+  return objects_config_extension_bytes;
 }
 
 ObjectsConfig::ObjectsConfig(
