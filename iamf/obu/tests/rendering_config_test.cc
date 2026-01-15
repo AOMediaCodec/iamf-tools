@@ -58,6 +58,54 @@ TEST(ValidateAndWrite, WritesStereoRenderingConfig) {
   ValidateWriteResults(wb, kExpectedPayload);
 }
 
+TEST(ValidateAndWrite, WritesBinauralWorldLockedRenderingConfig) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeBinauralWorldLocked};
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), reserved (6).
+      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesBinauralHeadLockedRenderingConfig) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeBinauralHeadLocked};
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), reserved (6).
+      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked << 6,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesReservedRenderingConfig) {
+  RenderingConfig rendering_config{.headphones_rendering_mode =
+                                       kHeadphonesRenderingModeReserved3};
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), reserved (6).
+      RenderingConfig::kHeadphonesRenderingModeReserved3 << 6,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
 TEST(ValidateAndWrite, CreateFailsWithOverflowReservedField) {
   RenderingConfig rendering_config{
       .headphones_rendering_mode = kHeadphonesRenderingModeBinauralWorldLocked,

@@ -303,6 +303,9 @@ TEST_P(TestVector, ValidateTestSuite) {
   // these change over time.
   user_metadata.mutable_test_vector_metadata()->set_validate_user_loudness(
       false);
+  // Skip wav writing entirely.
+  user_metadata.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(OUTPUT_FORMAT_NONE);
   ABSL_LOG(INFO) << "Testing with " << textproto_filename;
   const absl::Status result = iamf_tools::TestMain(
       user_metadata, wav_directory, std::string(kIgnoredOutputPath));
@@ -1317,6 +1320,9 @@ INSTANTIATE_TEST_SUITE_P(Advanced2TwentyEightChannelsWith10_2_9_3AndFoa,
 INSTANTIATE_TEST_SUITE_P(
     Advanced2TwentyEightChannelsWith10_2_9_3AndFirstOrderAmbisonics, TestVector,
     testing::Values("test_001019.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(RendererHeadLockedStereoToBinaural, TestVector,
+                         testing::Values("test_001100.textproto"));
 
 // TODO(b/308385831): Add more tests.
 
