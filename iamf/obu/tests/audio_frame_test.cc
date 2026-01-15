@@ -146,7 +146,7 @@ TEST_F(AudioFrameObuTest, AudioFrameEmpty) {
 TEST_F(AudioFrameObuTest, VaryMostLegalFields) {
   header_ =
       ObuHeader{.obu_redundant_copy = false,
-                .obu_trimming_status_flag = true,
+                .type_specific_flag = true,
                 .num_samples_to_trim_at_end = 128,
                 .num_samples_to_trim_at_start = 256,
                 .extension_header_bytes = std::vector<uint8_t>{'a', 'b', 'c'}};
@@ -196,7 +196,7 @@ TEST_F(AudioFrameObuTest, AudioFrameLarge) {
 }
 
 TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagAtEnd) {
-  header_.obu_trimming_status_flag = 1;
+  header_.type_specific_flag = 1;
   header_.num_samples_to_trim_at_end = 1;
   header_.num_samples_to_trim_at_start = 0;
 
@@ -214,7 +214,7 @@ TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagAtEnd) {
 }
 
 TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagNumSamplesMaximum) {
-  header_.obu_trimming_status_flag = 1;
+  header_.type_specific_flag = 1;
   header_.num_samples_to_trim_at_end = std::numeric_limits<uint32_t>::max();
   header_.num_samples_to_trim_at_start = std::numeric_limits<uint32_t>::max();
 
@@ -232,7 +232,7 @@ TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagNumSamplesMaximum) {
 }
 
 TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagAtStart) {
-  header_.obu_trimming_status_flag = 1;
+  header_.type_specific_flag = 1;
   header_.num_samples_to_trim_at_end = 0;
   header_.num_samples_to_trim_at_start = 1;
 
@@ -250,7 +250,7 @@ TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagAtStart) {
 }
 
 TEST_F(AudioFrameObuTest, ObuTrimmingStatusFlagBothStartAndEnd) {
-  header_.obu_trimming_status_flag = 1;
+  header_.type_specific_flag = 1;
   header_.num_samples_to_trim_at_end = 1;
   header_.num_samples_to_trim_at_start = 1;
 

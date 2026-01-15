@@ -77,7 +77,7 @@ absl::Status Validate(const ObuHeader& header) {
         header.obu_type));
   }
 
-  if (header.obu_trimming_status_flag &&
+  if (header.type_specific_flag &&
       !IsTrimmingStatusFlagAllowed(header.obu_type)) {
     return absl::InvalidArgumentError(absl::StrCat(
         "The trimming status flag flag is not allowed to be set for "
@@ -91,7 +91,7 @@ absl::Status Validate(const ObuHeader& header) {
 absl::Status WriteFieldsAfterObuSize(const ObuHeader& header,
                                      WriteBitBuffer& wb) {
   // These fields are conditionally in the OBU.
-  if (header.obu_trimming_status_flag) {
+  if (header.GetObuTrimmingStatusFlag()) {
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.num_samples_to_trim_at_end));
     RETURN_IF_NOT_OK(wb.WriteUleb128(header.num_samples_to_trim_at_start));
   }
@@ -267,7 +267,7 @@ absl::Status ObuHeader::ValidateAndWrite(int64_t payload_serialized_size,
   // Write the OBU Header to the buffer.
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(obu_type, 5));
   RETURN_IF_NOT_OK(wb.WriteBoolean(obu_redundant_copy));
-  RETURN_IF_NOT_OK(wb.WriteBoolean(obu_trimming_status_flag));
+  RETURN_IF_NOT_OK(wb.WriteBoolean(type_specific_flag));
   RETURN_IF_NOT_OK(wb.WriteBoolean(GetExtensionHeaderFlag()));
   RETURN_IF_NOT_OK(wb.WriteUleb128(obu_size));
 
@@ -289,7 +289,7 @@ absl::Status ObuHeader::ReadAndValidate(
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, obu_type_uint64_t));
   obu_type = static_cast<ObuType>(obu_type_uint64_t);
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_redundant_copy));
-  RETURN_IF_NOT_OK(rb.ReadBoolean(obu_trimming_status_flag));
+  RETURN_IF_NOT_OK(rb.ReadBoolean(type_specific_flag));
   bool obu_extension_flag;
   RETURN_IF_NOT_OK(rb.ReadBoolean(obu_extension_flag));
   DecodedUleb128 obu_size;
@@ -298,7 +298,9 @@ absl::Status ObuHeader::ReadAndValidate(
   RETURN_IF_NOT_OK(ValidateObuIsUnderTwoMegabytes(obu_size, size_of_obu_size));
   int8_t num_samples_to_trim_at_end_size = 0;
   int8_t num_samples_to_trim_at_start_size = 0;
-  if (obu_trimming_status_flag) {
+  if (GetObuTrimmingStatusFlag()) {
+    // Sometimes the type-specific flag is part of an audio frame, and it
+    // signals the trimming information.
     RETURN_IF_NOT_OK(rb.ReadULeb128(num_samples_to_trim_at_end,
                                     num_samples_to_trim_at_end_size));
     RETURN_IF_NOT_OK(rb.ReadULeb128(num_samples_to_trim_at_start,
@@ -326,6 +328,15 @@ absl::Status ObuHeader::ReadAndValidate(
   return absl::OkStatus();
 }
 
+bool ObuHeader::GetObuTrimmingStatusFlag() const {
+  if (IsTrimmingStatusFlagAllowed(obu_type)) {
+    return type_specific_flag;
+  } else {
+    // Under other types, this flag is named something else, or is reserved.
+    return false;
+  }
+}
+
 bool ObuHeader::GetExtensionHeaderFlag() const {
   return extension_header_bytes.has_value();
 }
@@ -351,17 +362,28 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
 
   ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   ABSL_LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
-  ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << obu_trimming_status_flag;
+  // TODO(b/474596784, b/474599045): Log the specific type of flag this is.
+  if (IsTrimmingStatusFlagAllowed(obu_type)) {
+    ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << type_specific_flag;
+  } else if (obu_type == kObuIaTemporalDelimiter) {
+    ABSL_LOG(INFO) << "  is_not_key_frame= " << type_specific_flag;
+  } else if (obu_type == kObuIaMixPresentation) {
+    ABSL_LOG(INFO) << "  optional_fields_flag= " << type_specific_flag;
+  } else {
+    ABSL_LOG(INFO) << "  reserved= " << type_specific_flag;
+  }
+
   ABSL_LOG(INFO) << "  obu_extension_flag= " << GetExtensionHeaderFlag();
 
   ABSL_LOG(INFO) << "  obu_size=" << obu_size;
 
-  if (obu_trimming_status_flag) {
+  if (GetObuTrimmingStatusFlag()) {
     ABSL_LOG(INFO) << "  num_samples_to_trim_at_end= "
                    << num_samples_to_trim_at_end;
     ABSL_LOG(INFO) << "  num_samples_to_trim_at_start= "
                    << num_samples_to_trim_at_start;
   }
+
   if (GetExtensionHeaderFlag()) {
     ABSL_LOG(INFO) << "  extension_header_size= " << GetExtensionHeaderSize();
     ABSL_LOG(INFO) << "  extension_header_bytes omitted.";

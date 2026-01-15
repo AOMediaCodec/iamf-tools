@@ -223,9 +223,9 @@ TEST(ValidateAndWriteObu, WritesRedundantCopyFlag) {
   ValidateObuWriteResults(wb, kExpectedHeader, kExpectedOneLayerStereoPayload);
 }
 
-TEST(ValidateAndWriteObu, FailsWithInvalidObuTrimmingStatusFlag) {
+TEST(ValidateAndWriteObu, FailsWithInvalidTypeSpecificFlag) {
   CommonAudioElementArgs common_args = CreateScalableAudioElementArgs();
-  common_args.header.obu_trimming_status_flag = true;
+  common_args.header.type_specific_flag = true;
 
   auto obu = CreateScalableAudioElementObu(
       common_args, GetOneLayerStereoScalableChannelLayout());

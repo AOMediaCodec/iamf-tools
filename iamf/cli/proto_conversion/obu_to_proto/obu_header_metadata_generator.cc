@@ -24,7 +24,9 @@ absl::StatusOr<iamf_tools_cli_proto::ObuHeaderMetadata>
 ObuHeaderMetadataGenerator::Generate(const ObuHeader& obu_header) {
   iamf_tools_cli_proto::ObuHeaderMetadata result;
   result.set_obu_redundant_copy(obu_header.obu_redundant_copy);
-  result.set_obu_trimming_status_flag(obu_header.obu_trimming_status_flag);
+  // TODO(b/475594651): The proto still calls this flag
+  //                    `obu_trimming_status_flag`.
+  result.set_obu_trimming_status_flag(obu_header.type_specific_flag);
   result.set_obu_extension_flag(obu_header.GetExtensionHeaderFlag());
   result.set_num_samples_to_trim_at_end(obu_header.num_samples_to_trim_at_end);
   result.set_num_samples_to_trim_at_start(

@@ -157,9 +157,9 @@ TEST_F(ArbitraryObuTest, ObuRedundantCopy) {
   InitAndTestWrite();
 }
 
-TEST_F(ArbitraryObuTest, ObuTrimmingStatusFlag) {
+TEST_F(ArbitraryObuTest, TypeSpecificFlag) {
   obu_type_ = kObuIaAudioFrame;
-  header_.obu_trimming_status_flag = true;
+  header_.type_specific_flag = true;
   expected_header_ = {kObuIaAudioFrame << 3 | kObuTrimmingStatusFlagBitMask, 2,
                       0, 0};
   InitAndTestWrite();

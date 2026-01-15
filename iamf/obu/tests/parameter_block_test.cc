@@ -646,8 +646,8 @@ TEST_F(MixGainParameterBlockTest,
 }
 
 TEST_F(MixGainParameterBlockTest,
-       ValidateAndWriteObuIllegalTrimmingStatusFlag) {
-  header_.obu_trimming_status_flag = true;
+       ValidateAndWriteObuWithReservedTypeSpecificFlag) {
+  header_.type_specific_flag = true;
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);

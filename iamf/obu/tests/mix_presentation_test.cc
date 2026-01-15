@@ -233,9 +233,33 @@ TEST_F(MixPresentationObuTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
+TEST(GetObuTrimmingStatusFlag,
+     ReturnsTrueForAudioFramesWithTypeSpecificFlagTrue) {
+  ObuHeader obu_header{.obu_type = kObuIaAudioFrame,
+                       .type_specific_flag = true};
+
+  EXPECT_TRUE(obu_header.GetObuTrimmingStatusFlag());
+}
+
+TEST(GetObuTrimmingStatusFlag,
+     ReturnsFalseForAudioFramesWithTypeSpecificFlagFalse) {
+  ObuHeader obu_header{.obu_type = kObuIaAudioFrame,
+                       .type_specific_flag = false};
+
+  EXPECT_FALSE(obu_header.GetObuTrimmingStatusFlag());
+}
+
+TEST(GetObuTrimmingStatusFlag, ReturnsFalseForNonAudioFrameTypes) {
+  ObuHeader obu_header{.obu_type = kObuIaMixPresentation,
+                       .type_specific_flag = true};
+
+  EXPECT_FALSE(obu_header.GetObuTrimmingStatusFlag());
+}
+
 TEST_F(MixPresentationObuTest,
-       ValidateAndWriteFailsWithIllegalTrimmingStatusFlag) {
-  header_.obu_trimming_status_flag = true;
+       ValidateAndWriteFailsWithInvalidTypeSpecificFlag) {
+  // TODO(b/474599045): Support `optional_fields_flag`.
+  header_.type_specific_flag = true;
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);

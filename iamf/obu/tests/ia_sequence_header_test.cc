@@ -349,8 +349,8 @@ TEST(ValidateAndWrite, RedundantCopy) {
                           MakeConstSpan(kSimpleProfilePayload));
 }
 
-TEST(ValidateAndWrite, TrimmingStatusFlag) {
-  IASequenceHeaderObu obu(ObuHeader{.obu_trimming_status_flag = true},
+TEST(ValidateAndWrite, FailsWithInvalidTypeSpecificFlag) {
+  IASequenceHeaderObu obu(ObuHeader{.type_specific_flag = true},
                           ProfileVersion::kIamfSimpleProfile,
                           ProfileVersion::kIamfSimpleProfile);
   WriteBitBuffer wb(kInitialBufferSize);

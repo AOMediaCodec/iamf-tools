@@ -31,6 +31,9 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Not;
+
+using ::absl::MakeConstSpan;
 
 TEST(TemporalDelimiterConstructor, SetsObuType) {
   TemporalDelimiterObu obu({});
@@ -100,22 +103,23 @@ TEST_F(TemporalDelimiterTest,
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST_F(TemporalDelimiterTest,
-       ValidateAndWriteObuFailsWithIllegalTrimmingStatus) {
-  header_.obu_trimming_status_flag = true;
+       ValidateAndWriteObuFailsWithReservedTypeSpecificFlag) {
+  // TODO(b/474596784): Support `is_not_key_frame`.
+  header_.type_specific_flag = true;
 
   InitExpectOk();
   WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
+  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
 }
 
 TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
-  std::vector<uint8_t> source_data = {};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      absl::MakeConstSpan(source_data));
+  const std::vector<uint8_t> source_data = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source_data));
 
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(
                   ObuHeader(), source_data.size(), *buffer),
@@ -123,9 +127,9 @@ TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {
 }
 
 TEST(CreateFromBuffer, SetsObuType) {
-  std::vector<uint8_t> source_data = {};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      absl::MakeConstSpan(source_data));
+  const std::vector<uint8_t> source_data = {};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source_data));
 
   absl::StatusOr<TemporalDelimiterObu> obu =
       TemporalDelimiterObu::CreateFromBuffer(ObuHeader(), source_data.size(),
@@ -136,9 +140,9 @@ TEST(CreateFromBuffer, SetsObuType) {
 
 TEST(CreateFromBuffer, DoesNotConsumeBufferWhenObuPayloadSizeIsZero) {
   const int64_t kObuPayloadSize = 0;
-  std::vector<uint8_t> source_data = {99};
-  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
-      absl::MakeConstSpan(source_data));
+  const std::vector<uint8_t> source_data = {99};
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(source_data));
   EXPECT_THAT(TemporalDelimiterObu::CreateFromBuffer(ObuHeader(),
                                                      kObuPayloadSize, *buffer),
               IsOk());

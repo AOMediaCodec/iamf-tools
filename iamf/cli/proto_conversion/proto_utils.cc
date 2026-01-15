@@ -91,9 +91,11 @@ ObuHeader GetHeaderFromMetadata(
                    [](char c) { return static_cast<uint8_t>(c); });
   }
 
+  // TODO(b/475594651): The proto still calls this flag
+  //                    `obu_trimming_status_flag`.
   return ObuHeader{
       .obu_redundant_copy = input_obu_header.obu_redundant_copy(),
-      .obu_trimming_status_flag = input_obu_header.obu_trimming_status_flag(),
+      .type_specific_flag = input_obu_header.obu_trimming_status_flag(),
       .num_samples_to_trim_at_end =
           input_obu_header.num_samples_to_trim_at_end(),
       .num_samples_to_trim_at_start =

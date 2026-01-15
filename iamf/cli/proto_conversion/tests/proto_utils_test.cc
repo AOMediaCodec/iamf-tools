@@ -66,7 +66,7 @@ TEST(GetHeaderFromMetadata, Default) {
   // `ObuHeader` is initialized with reasonable default values for typical use
   // cases.
   EXPECT_EQ(header_.obu_redundant_copy, false);
-  EXPECT_EQ(header_.obu_trimming_status_flag, false);
+  EXPECT_EQ(header_.type_specific_flag, false);
   EXPECT_EQ(header_.GetExtensionHeaderFlag(), false);
 }
 
@@ -85,7 +85,7 @@ TEST(GetHeaderFromMetadata, MostValuesModified) {
   ObuHeader header_ = GetHeaderFromMetadata(obu_header_metadata);
 
   EXPECT_EQ(header_.obu_redundant_copy, true);
-  EXPECT_EQ(header_.obu_trimming_status_flag, true);
+  EXPECT_EQ(header_.type_specific_flag, true);
   EXPECT_EQ(header_.GetExtensionHeaderFlag(), true);
   EXPECT_EQ(header_.num_samples_to_trim_at_end, 1);
   EXPECT_EQ(header_.num_samples_to_trim_at_start, 2);

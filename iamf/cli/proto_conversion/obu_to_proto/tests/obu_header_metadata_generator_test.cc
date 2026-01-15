@@ -37,9 +37,8 @@ TEST(IaSequenceHeaderMetadataGeneratorGenerate, SetsObuRedundantCopy) {
 }
 
 TEST(ObuHeaderMetadataGeneratorGenerate,
-     SetsObuTrimmingStatusFlagWithZeroTrim) {
-  const ObuHeader kObuHeaderWithTrimmingStatusFlag{.obu_trimming_status_flag =
-                                                       true};
+     SetsTypeSpecificFlagAsObuTrimmingStatusFlagWithZeroTrim) {
+  const ObuHeader kObuHeaderWithTrimmingStatusFlag{.type_specific_flag = true};
   auto result =
       ObuHeaderMetadataGenerator::Generate(kObuHeaderWithTrimmingStatusFlag);
   ASSERT_THAT(result, IsOk());
@@ -50,11 +49,11 @@ TEST(ObuHeaderMetadataGeneratorGenerate,
 }
 
 TEST(ObuHeaderMetadataGeneratorGenerate,
-     SetsObuTrimmingStatusFlagWithNonZeroTrim) {
+     SetsTypeSpecificFlagAsObuTrimmingStatusFlagWithNonZeroTrim) {
   constexpr uint32_t kNumSamplesToTrimAtEnd = 5;
   constexpr uint32_t kNumSamplesToTrimAtStart = 10;
   const ObuHeader kObuHeaderWithNonZeroTrim{
-      .obu_trimming_status_flag = true,
+      .type_specific_flag = true,
       .num_samples_to_trim_at_end = kNumSamplesToTrimAtEnd,
       .num_samples_to_trim_at_start = kNumSamplesToTrimAtStart};
   auto result = ObuHeaderMetadataGenerator::Generate(kObuHeaderWithNonZeroTrim);
@@ -104,7 +103,7 @@ void ExpectIsSymmetricWithGenerator(const ObuHeader& original_obu_header) {
 TEST(ObuHeaderMetadataGeneratorGenerate, IsSymmetricWithGetHeaderFromMetadata) {
   const ObuHeader kObuHeaderWithManyFieldsSet{
       .obu_redundant_copy = true,
-      .obu_trimming_status_flag = true,
+      .type_specific_flag = true,
       .num_samples_to_trim_at_end = 5,
       .num_samples_to_trim_at_start = 10,
       .extension_header_bytes =

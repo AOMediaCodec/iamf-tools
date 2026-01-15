@@ -944,8 +944,7 @@ TEST(AudioFrameGenerator, NumSamplesToTrimAtEndWithPaddedFrames) {
   std::list<AudioFrameWithData> expected_audio_frames = {};
   expected_audio_frames.push_back(
       {.obu = AudioFrameObu(
-           {.obu_trimming_status_flag = true, .num_samples_to_trim_at_end = 2},
-           0,
+           {.type_specific_flag = true, .num_samples_to_trim_at_end = 2}, 0,
            {1, 0, 255, 255, 2, 0, 254, 255, 3, 0, 253, 255, 4, 0, 252, 255, 5,
             0, 251, 255, 6, 0, 250, 255, 7, 0, 249, 255, 8, 0, 248, 255,
             // First tick (per channel) of padded samples.
@@ -1164,7 +1163,7 @@ TEST(AudioFrameGenerator, ValidWhenAFullFrameAtStartIsRequestedToBeTrimmed) {
   ASSERT_FALSE(audio_frames.empty());
 
   EXPECT_EQ(audio_frames.front().obu.header_.num_samples_to_trim_at_start, 4);
-  EXPECT_TRUE(audio_frames.front().obu.header_.obu_trimming_status_flag);
+  EXPECT_TRUE(audio_frames.front().obu.header_.type_specific_flag);
 }
 
 TEST(AudioFrameGenerator, EncodingSucceedsWithFullFramesTrimmedAtStart) {

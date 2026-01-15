@@ -150,6 +150,13 @@ struct ObuHeader {
   absl::Status ReadAndValidate(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
 
+  /*!\brief Returns true if the trimming status flag is present and set.
+   *
+   * \return true if the trimming status flag is present and set, false if it is
+   *     absent or if not relevant to the OBU type.
+   */
+  bool GetObuTrimmingStatusFlag() const;
+
   /*!\brief Returns true if the extension header is present.
    *
    * \return true if the extension header is present, false otherwise.
@@ -189,7 +196,7 @@ struct ObuHeader {
   ObuType obu_type;
   // `obu_size` is inserted automatically.
   bool obu_redundant_copy = false;
-  bool obu_trimming_status_flag = false;
+  bool type_specific_flag = false;
   /// `obu_extension_flag` is inserted automatically.
   DecodedUleb128 num_samples_to_trim_at_end = 0;
   DecodedUleb128 num_samples_to_trim_at_start = 0;

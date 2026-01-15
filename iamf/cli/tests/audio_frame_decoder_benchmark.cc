@@ -114,7 +114,7 @@ static AudioFrameWithData PrepareEncodedAudioFrame(
   auto partial_audio_frame_with_data = absl::WrapUnique(new AudioFrameWithData{
       .obu = AudioFrameObu(
           {
-              .obu_trimming_status_flag = false,
+              .type_specific_flag = false,
               .num_samples_to_trim_at_end = 0,
               .num_samples_to_trim_at_start = 0,
           },

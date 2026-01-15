@@ -499,7 +499,7 @@ absl::Status MaybeEncodeFramesForAudioElement(
           absl::WrapUnique(new AudioFrameWithData{
               .obu = AudioFrameObu(
                   {
-                      .obu_trimming_status_flag =
+                      .type_specific_flag =
                           (frame_samples_to_trim_at_end != 0 ||
                            frame_samples_to_trim_at_start != 0),
                       .num_samples_to_trim_at_end =
@@ -618,14 +618,14 @@ absl::Status ValidateAndApplyUserTrimming(
       /*from_start=*/true, num_samples_in_frame,
       trimming_state.user_samples_left_to_trim_at_start,
       audio_frame.obu.header_.num_samples_to_trim_at_start,
-      audio_frame.obu.header_.obu_trimming_status_flag));
+      audio_frame.obu.header_.type_specific_flag));
 
   if (is_last_frame) {
     RETURN_IF_NOT_OK(ApplyUserTrimForFrame(
         /*from_start=*/false, num_samples_in_frame,
         trimming_state.user_samples_left_to_trim_at_end,
         audio_frame.obu.header_.num_samples_to_trim_at_end,
-        audio_frame.obu.header_.obu_trimming_status_flag));
+        audio_frame.obu.header_.type_specific_flag));
   }
 
   return absl::OkStatus();
