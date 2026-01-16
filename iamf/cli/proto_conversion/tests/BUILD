@@ -76,6 +76,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_data",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],

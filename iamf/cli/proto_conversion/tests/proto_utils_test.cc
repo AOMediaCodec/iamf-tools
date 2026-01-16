@@ -15,6 +15,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/obu_header.pb.h"

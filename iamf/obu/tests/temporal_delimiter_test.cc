@@ -15,7 +15,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/status/status.h"
 #include "absl/status/status_matchers.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -107,13 +106,15 @@ TEST_F(TemporalDelimiterTest,
 }
 
 TEST_F(TemporalDelimiterTest,
-       ValidateAndWriteObuFailsWithReservedTypeSpecificFlag) {
-  // TODO(b/474596784): Support `is_not_key_frame`.
+       ValidateAndWriteObuSucceedsWithIsNotKeyFrameFlag) {
+  // In other contexts this flag represents trimming status.
+  constexpr auto kIsNotKeyFrameBitMask = kObuTrimmingStatusFlagBitMask;
   header_.type_specific_flag = true;
+  expected_header_ = {kObuIaTemporalDelimiter << 3 | kIsNotKeyFrameBitMask,
+                      // `obu_size`.
+                      0};
 
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_THAT(obu_->ValidateAndWriteObu(unused_wb), Not(IsOk()));
+  InitAndTestWrite();
 }
 
 TEST(CreateFromBuffer, SucceedsWithEmptyBuffer) {

@@ -36,37 +36,26 @@ namespace iamf_tools {
 
 namespace {
 
+bool IsAudioFrame(ObuType type) {
+  return (kObuIaAudioFrameId0 <= type && type <= kObuIaAudioFrameId17) ||
+         type == kObuIaAudioFrame;
+}
+
 // Returns `true` if this `ObuType` is allowed to have the `obu_redundant_copy`
 // flag set. `false` otherwise.
 bool IsRedundantCopyAllowed(ObuType type) {
-  if (kObuIaAudioFrameId0 <= type && type <= kObuIaAudioFrameId17) {
+  if (IsAudioFrame(type) || type == kObuIaTemporalDelimiter ||
+      type == kObuIaParameterBlock) {
     return false;
   }
-
-  switch (type) {
-    case kObuIaTemporalDelimiter:
-    case kObuIaAudioFrame:
-    case kObuIaParameterBlock:
-      return false;
-    default:
-      return true;
-  }
+  return true;
 }
 
-// Returns `true` if this `ObuType` is allowed to have the
-// `obu_trimming_status_flag` flag set. `false` otherwise.
-bool IsTrimmingStatusFlagAllowed(ObuType type) {
-  if (kObuIaAudioFrameId0 <= type && type <= kObuIaAudioFrameId17) {
-    return true;
-  }
-  switch (type) {
-    case kObuIaAudioFrame:
-      return true;
-    default:
-      return false;
-  }
+bool IsTypeSpecificFlagAllowed(ObuType type) {
+  // TODO(b/474599045): Support `optional_fields_flag` here when the type is a
+  //                    mix presentation.
+  return IsAudioFrame(type) || type == kObuIaTemporalDelimiter;
 }
-
 // Validates the OBU and returns an error if anything is non-comforming.
 // Requires that all fields including `obu_size_` are initialized.
 absl::Status Validate(const ObuHeader& header) {
@@ -78,11 +67,9 @@ absl::Status Validate(const ObuHeader& header) {
   }
 
   if (header.type_specific_flag &&
-      !IsTrimmingStatusFlagAllowed(header.obu_type)) {
+      !IsTypeSpecificFlagAllowed(header.obu_type)) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "The trimming status flag flag is not allowed to be set for "
-        "obu_type= ",
-        header.obu_type));
+        "The type-specific flag is reserved for obu_type= ", header.obu_type));
   }
 
   return absl::OkStatus();
@@ -329,7 +316,7 @@ absl::Status ObuHeader::ReadAndValidate(
 }
 
 bool ObuHeader::GetObuTrimmingStatusFlag() const {
-  if (IsTrimmingStatusFlagAllowed(obu_type)) {
+  if (IsAudioFrame(obu_type)) {
     return type_specific_flag;
   } else {
     // Under other types, this flag is named something else, or is reserved.
@@ -362,8 +349,7 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
 
   ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   ABSL_LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
-  // TODO(b/474596784, b/474599045): Log the specific type of flag this is.
-  if (IsTrimmingStatusFlagAllowed(obu_type)) {
+  if (IsAudioFrame(obu_type)) {
     ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << type_specific_flag;
   } else if (obu_type == kObuIaTemporalDelimiter) {
     ABSL_LOG(INFO) << "  is_not_key_frame= " << type_specific_flag;

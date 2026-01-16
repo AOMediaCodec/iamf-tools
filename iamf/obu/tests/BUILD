@@ -288,7 +288,6 @@ cc_test(
         "//iamf/common:write_bit_buffer",
         "//iamf/obu:obu_header",
         "//iamf/obu:temporal_delimiter",
-        "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",

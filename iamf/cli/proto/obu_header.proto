@@ -17,6 +17,11 @@ message ObuHeaderMetadata {
 
   bool obu_redundant_copy = 2 [default = false];
 
+  // TODO(b/475594651): Rename this flag to be more clear that it depends on the
+  //                    OBU type.
+  // Depending on the OBU type, this represents one of
+  // `obu_trimming_status_flag`, `is_not_key_frame`, `optional_fields_flag`, or
+  // `reserved`.
   bool obu_trimming_status_flag = 3 [default = false];
 
   bool obu_extension_flag = 4 [default = false];

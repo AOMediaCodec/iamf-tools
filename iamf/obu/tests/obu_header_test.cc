@@ -76,7 +76,10 @@ class ObuHeaderTest : public testing::Test {
 
 const int kObuTypeBitShift = 3;
 const int kObuRedundantCopyBitMask = 4;
+// This flag has multiple aliases depending on the OBU type.
 const int kObuTrimFlagBitMask = 2;
+const int kIsNotKeyFrameBitMask = kObuTrimFlagBitMask;
+
 const int kObuExtensionFlagBitMask = 1;
 
 TEST_F(ObuHeaderTest, DefaultTemporalDelimiter) {
@@ -127,6 +130,22 @@ TEST_F(ObuHeaderTest, RedundantCopy) {
       // `obu_size`.
       0};
   TestGenerateAndWrite();
+}
+
+TEST(ValidateAndWrite, WritesNonKeyFrameTemporalDelimiter) {
+  ObuHeader obu_header{.obu_type = kObuIaTemporalDelimiter,
+                       .type_specific_flag = true};
+  WriteBitBuffer wb(0);
+
+  EXPECT_THAT(obu_header.ValidateAndWrite(0, wb), IsOk());
+
+  ValidateWriteResults(
+      wb,
+      {// `obu_type`, `obu_redundant_copy`,
+       // `is_not_key_frame, `obu_extension_flag`.
+       kObuIaTemporalDelimiter << kObuTypeBitShift | kIsNotKeyFrameBitMask,
+       // `obu_size`.
+       0});
 }
 
 TEST_F(ObuHeaderTest, IllegalRedundantCopyFlagIaSequenceHeader) {
