@@ -196,6 +196,22 @@ cc_library(
 )
 
 cc_library(
+    name = "metadata_obu",
+    srcs = ["metadata_obu.cc"],
+    hdrs = ["metadata_obu.h"],
+    deps = [
+        ":obu_base",
+        ":obu_header",
+        ":types",
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "@abseil-cpp//absl/functional:overload",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+    ],
+)
+
+cc_library(
     name = "mix_presentation",
     srcs = ["mix_presentation.cc"],
     hdrs = ["mix_presentation.h"],

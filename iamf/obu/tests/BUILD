@@ -149,6 +149,20 @@ cc_test(
 )
 
 cc_test(
+    name = "metadata_obu_test",
+    size = "small",
+    srcs = ["metadata_obu_test.cc"],
+    deps = [
+        "//iamf/common:read_bit_buffer",
+        "//iamf/common:write_bit_buffer",
+        "//iamf/obu:metadata_obu",
+        "//iamf/obu:obu_header",
+        "@abseil-cpp//absl/status:status_matchers",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "mix_presentation_test",
     size = "small",
     srcs = ["mix_presentation_test.cc"],
