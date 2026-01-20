@@ -42,7 +42,7 @@ void FillArbitraryObu(
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         insertion_hook: INSERTION_HOOK_BEFORE_DESCRIPTORS
-        obu_type: OBU_IA_RESERVED_24
+        obu_type: OBU_IA_RESERVED_25
         obu_header {
           obu_redundant_copy: false
           obu_trimming_status_flag: false
@@ -235,7 +235,7 @@ TEST_F(ArbitraryObuGeneratorTest, ReservedObu) {
   ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
       R"pb(
         insertion_hook: INSERTION_HOOK_BEFORE_DESCRIPTORS
-        obu_type: OBU_IA_RESERVED_24
+        obu_type: OBU_IA_RESERVED_25
         obu_header {
           obu_redundant_copy: false
           obu_trimming_status_flag: false
@@ -245,7 +245,7 @@ TEST_F(ArbitraryObuGeneratorTest, ReservedObu) {
       )pb",
       arbitrary_obu_metadata_.Add()));
 
-  expected_obus_.emplace_back(kObuIaReserved24, ObuHeader(),
+  expected_obus_.emplace_back(kObuIaReserved25, ObuHeader(),
                               std::vector<uint8_t>({'a', 'b', 'c'}),
                               ArbitraryObu::kInsertionHookBeforeDescriptors);
   InitAndTestGenerateExpectOk();

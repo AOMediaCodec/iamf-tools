@@ -117,9 +117,9 @@ class ArbitraryObuTest : public ObuTestBase, public testing::Test {
  public:
   ArbitraryObuTest()
       : ObuTestBase(
-            /*expected_header=*/{kObuIaReserved24 << 3, 0},
+            /*expected_header=*/{kObuIaReserved25 << 3, 0},
             /*expected_payload=*/{}),
-        obu_type_(kObuIaReserved24),
+        obu_type_(kObuIaReserved25),
         payload_({}),
         insertion_hook_(ArbitraryObu::kInsertionHookBeforeDescriptors) {}
 
@@ -153,7 +153,7 @@ TEST_F(ArbitraryObuTest, ObuType) {
 
 TEST_F(ArbitraryObuTest, ObuRedundantCopy) {
   header_.obu_redundant_copy = true;
-  expected_header_ = {kObuIaReserved24 << 3 | kObuRedundantCopyBitMask, 0};
+  expected_header_ = {kObuIaReserved25 << 3 | kObuRedundantCopyBitMask, 0};
   InitAndTestWrite();
 }
 
@@ -167,7 +167,7 @@ TEST_F(ArbitraryObuTest, TypeSpecificFlag) {
 
 TEST_F(ArbitraryObuTest, ObuExtensionFlag) {
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
-  expected_header_ = {kObuIaReserved24 << 3 | kObuExtensionFlagBitMask,
+  expected_header_ = {kObuIaReserved25 << 3 | kObuExtensionFlagBitMask,
                       6,
                       5,
                       'e',
@@ -180,7 +180,7 @@ TEST_F(ArbitraryObuTest, ObuExtensionFlag) {
 
 TEST_F(ArbitraryObuTest, ObuPayload) {
   payload_ = {1, 2, 3, 4, 5};
-  expected_header_ = {kObuIaReserved24 << 3, 5};
+  expected_header_ = {kObuIaReserved25 << 3, 5};
   expected_payload_ = {1, 2, 3, 4, 5};
   InitAndTestWrite();
 }
@@ -196,19 +196,19 @@ TEST(WriteObusWithHook, NoObus) {
 TEST(WriteObusWithHook, MultipleObusWithDifferentHooks) {
   std::list<ArbitraryObu> arbitrary_obus;
   arbitrary_obus.emplace_back(
-      ArbitraryObu(kObuIaReserved24, ObuHeader(), {},
-                   ArbitraryObu::kInsertionHookBeforeDescriptors,
-                   kDoesNotInvalidateBitstream));
-  arbitrary_obus.emplace_back(
       ArbitraryObu(kObuIaReserved25, ObuHeader(), {},
-                   ArbitraryObu::kInsertionHookAfterDescriptors,
+                   ArbitraryObu::kInsertionHookBeforeDescriptors,
                    kDoesNotInvalidateBitstream));
   arbitrary_obus.emplace_back(
       ArbitraryObu(kObuIaReserved26, ObuHeader(), {},
+                   ArbitraryObu::kInsertionHookAfterDescriptors,
+                   kDoesNotInvalidateBitstream));
+  arbitrary_obus.emplace_back(
+      ArbitraryObu(kObuIaReserved27, ObuHeader(), {},
                    ArbitraryObu::kInsertionHookBeforeDescriptors,
                    kDoesNotInvalidateBitstream));
 
-  // Check that the OBUs with ID 24 and 26 are written when using the
+  // Check that the OBUs with ID 25 and 27 are written when using the
   // `ArbitraryObu::kInsertionHookBeforeDescriptors` hook.
   WriteBitBuffer wb(1024);
   EXPECT_THAT(
@@ -216,16 +216,16 @@ TEST(WriteObusWithHook, MultipleObusWithDifferentHooks) {
           ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb),
       IsOk());
   ValidateWriteResults(wb,
-                       {kObuIaReserved24 << 3, 0, kObuIaReserved26 << 3, 0});
+                       {kObuIaReserved25 << 3, 0, kObuIaReserved27 << 3, 0});
   wb.Reset();
 
-  // Check that only the OBU with ID 25 is written when using the
+  // Check that only the OBU with ID 26 is written when using the
   // `ArbitraryObu::kInsertionHookAfterDescriptors` hook.
   EXPECT_THAT(
       ArbitraryObu::WriteObusWithHook(
           ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb),
       IsOk());
-  ValidateWriteResults(wb, {kObuIaReserved25 << 3, 0});
+  ValidateWriteResults(wb, {kObuIaReserved26 << 3, 0});
 }
 
 }  // namespace

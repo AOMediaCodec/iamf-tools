@@ -260,7 +260,11 @@ DescriptorObuParser::ProcessDescriptorObus(bool is_exhaustive_and_exact,
             *parsed_obus.audio_elements, header, payload_size,
             parsed_obus.mix_presentation_obus, read_bit_buffer);
         break;
-      case kObuIaReserved24:
+      case kObuIaMetadata:
+        // TODO(b/474599807): Handle Metadata OBUs.
+        parsed_obu_status = absl::UnimplementedError(
+            "Found a Metadata OBU while parsing Descriptor OBUs.");
+        break;
       case kObuIaReserved25:
       case kObuIaReserved26:
       case kObuIaReserved27:
