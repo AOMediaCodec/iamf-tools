@@ -194,29 +194,34 @@ struct ScalableChannelLayoutConfig {
   std::vector<ChannelAudioLayerConfig> channel_audio_layer_configs;
 };
 
-/*!\brief Configuration for object-based audio elements. */
-struct ObjectsConfig {
-  friend bool operator==(const ObjectsConfig& lhs,
-                         const ObjectsConfig& rhs) = default;
-
-  /*!\brief Creates an `ObjectsConfig` from a buffer.
-   *
-   * \param rb Buffer to read from.
-   *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  static absl::StatusOr<ObjectsConfig> CreateFromBuffer(ReadBitBuffer& rb);
-
+/*!\brief Configuration for object-based audio elements.
+ *
+ * Represents the `ObjectsConfig` as defined in section 3.6.5 of the IAMF
+ * specification.
+ */
+class ObjectsConfig {
+ public:
   /*!\brief Creates an `ObjectsConfig` from the given parameters.
    *
    * \param num_objects Number of objects.
    * \param objects_config_extension_bytes Objects config extension bytes.
    *
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
+   * \return `ObjectsConfig` on  success. A specific status on failure.
    */
   static absl::StatusOr<ObjectsConfig> Create(
       uint8_t num_objects,
       absl::Span<const uint8_t> objects_config_extension_bytes);
+
+  /*!\brief Creates an `ObjectsConfig` from a buffer.
+   *
+   * \param rb Buffer to read from.
+   *
+   * \return `ObjectsConfig` on success. A specific status on failure.
+   */
+  static absl::StatusOr<ObjectsConfig> CreateFromBuffer(ReadBitBuffer& rb);
+
+  friend bool operator==(const ObjectsConfig& lhs,
+                         const ObjectsConfig& rhs) = default;
 
   uint8_t GetNumObjects() const;
 
@@ -227,9 +232,11 @@ struct ObjectsConfig {
   ObjectsConfig(uint8_t num_objects,
                 std::vector<uint8_t> objects_config_extension_bytes);
 
-  uint8_t num_objects;  // 8 bits.
+  // Invariant: always holds a value which is well-defined in the IAMF
+  // specification. I.e. 1 for singular objects or 2 for coupled objects.
+  uint8_t num_objects_;  // 8 bits.
 
-  std::vector<uint8_t> objects_config_extension_bytes;
+  std::vector<uint8_t> objects_config_extension_bytes_;
 };
 
 /*!\brief Configuration for mono-coded Ambisonics. */

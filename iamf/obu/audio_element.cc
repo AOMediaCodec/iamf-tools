@@ -428,17 +428,17 @@ absl::StatusOr<ObjectsConfig> ObjectsConfig::CreateFromBuffer(
                 absl::MakeConstSpan(objects_config_extension_bytes));
 }
 
-uint8_t ObjectsConfig::GetNumObjects() const { return num_objects; }
+uint8_t ObjectsConfig::GetNumObjects() const { return num_objects_; }
 
 absl::Span<const uint8_t> ObjectsConfig::GetObjectsConfigExtensionBytesView()
     const {
-  return objects_config_extension_bytes;
+  return objects_config_extension_bytes_;
 }
 
 ObjectsConfig::ObjectsConfig(
     uint8_t num_objects, std::vector<uint8_t> objects_config_extension_bytes)
-    : num_objects(num_objects),
-      objects_config_extension_bytes(
+    : num_objects_(num_objects),
+      objects_config_extension_bytes_(
           std::move(objects_config_extension_bytes)) {}
 
 absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
