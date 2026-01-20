@@ -155,9 +155,11 @@ cc_test(
     deps = [
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils/tests:test_utils",
         "//iamf/obu:metadata_obu",
         "//iamf/obu:obu_header",
         "@abseil-cpp//absl/status:status_matchers",
+        "@abseil-cpp//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

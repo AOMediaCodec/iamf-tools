@@ -65,6 +65,34 @@ absl::Status ReadAndValidateMetadataIamfTags(
   return absl::OkStatus();
 }
 
+absl::Status WriteMetadataITUTT35(const MetadataITUTT35& metadata_itu_t_t35,
+                                  WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(
+      wb.WriteUnsignedLiteral(metadata_itu_t_t35.itu_t_t35_country_code, 8));
+  if (metadata_itu_t_t35.itu_t_t35_country_code == 0xFF) {
+    if (!metadata_itu_t_t35.itu_t_t35_country_code_extension_byte.has_value()) {
+      return absl::InvalidArgumentError(
+          "ITU-T T35 country code is 0xFF but country code extension byte is "
+          "not present.");
+    }
+    RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+        metadata_itu_t_t35.itu_t_t35_country_code_extension_byte.value(), 8));
+  }
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(metadata_itu_t_t35.itu_t_t35_payload_bytes));
+  return absl::OkStatus();
+}
+
+absl::Status WriteMetadataIamfTags(const MetadataIamfTags& metadata_iamf_tags,
+                                   WriteBitBuffer& wb) {
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(metadata_iamf_tags.tags.size(), 8));
+  for (const auto& tag : metadata_iamf_tags.tags) {
+    RETURN_IF_NOT_OK(wb.WriteString(tag.tag_name));
+    RETURN_IF_NOT_OK(wb.WriteString(tag.tag_value));
+  }
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 MetadataObu MetadataObu::Create(const ObuHeader& header,
@@ -90,7 +118,15 @@ absl::StatusOr<MetadataObu> MetadataObu::CreateFromBuffer(
 void MetadataObu::PrintObu() const {}
 
 absl::Status MetadataObu::ValidateAndWritePayload(WriteBitBuffer& wb) const {
-  return absl::UnimplementedError("Not implemented");
+  RETURN_IF_NOT_OK(wb.WriteUleb128(metadata_type_));
+  if (metadata_type_ == kMetadataTypeITUT_T35) {
+    RETURN_IF_NOT_OK(
+        WriteMetadataITUTT35(std::get<MetadataITUTT35>(metadata_variant_), wb));
+  } else if (metadata_type_ == kMetadataTypeIamfTags) {
+    RETURN_IF_NOT_OK(WriteMetadataIamfTags(
+        std::get<MetadataIamfTags>(metadata_variant_), wb));
+  }
+  return absl::OkStatus();
 }
 
 absl::Status MetadataObu::ReadAndValidatePayloadDerived(int64_t payload_size,
