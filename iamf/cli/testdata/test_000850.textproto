@@ -11,6 +11,9 @@
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
 
+# TODO(b/477258421): Port the "Arbitrary OBU"s to normal parameter blocks when
+#                    this feature is implemented. Also, enable writing the
+#                    output wav file.
 test_vector_metadata {
   human_readable_description:
     "A Base-Advanced Profile Stream with parameter blocks spanning multiple "
@@ -37,7 +40,7 @@ test_vector_metadata {
 
 encoder_control_metadata {
   add_build_information_tag: false
-  output_rendered_file_format: OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC
+  output_rendered_file_format: OUTPUT_FORMAT_NONE
 }
 
 ia_sequence_header_metadata {
@@ -209,9 +212,9 @@ arbitrary_obu_metadata {
     # `parameter_id` (127)`.
     "\x7f"
     # `duration = six 1024-sample frames (leb128)`.
-    "\x8c\x00"
+    "\x80\x30"
     # `constant_subblock_duration == duration`.
-    "\x8c\x00"
+    "\x80\x30"
     # `animation_type` = `ANIMATE_STEP`.
     "\x00"
     "\xbb\xcc"
@@ -373,9 +376,9 @@ arbitrary_obu_metadata {
     # `parameter_id` (127)`.
     "\x7f"
     # `duration = six 1024-sample frames (leb128)`.
-    "\x8c\x00"
+    "\x80\x30"
     # `constant_subblock_duration == duration`.
-    "\x8c\x00"
+    "\x80\x30"
     # `animation_type` = `ANIMATE_STEP`.
     "\x00"
     "\xbb\xcc"
@@ -456,15 +459,15 @@ arbitrary_obu_metadata {
 arbitrary_obu_metadata {
   # A six-frame parameter block.
   insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
-  insertion_tick: 19456
+  insertion_tick: 18432
   obu_type: OBU_IA_PARAMETER_BLOCK
   payload:
     # `parameter_id` (127)`.
     "\x7f"
     # `duration = six 1024-sample frames (leb128)`.
-    "\x8c\x00"
+    "\x80\x30"
     # `constant_subblock_duration == duration`.
-    "\x8c\x00"
+    "\x80\x30"
     # `animation_type` = `ANIMATE_STEP`.
     "\x00"
     "\xbb\xcc"
