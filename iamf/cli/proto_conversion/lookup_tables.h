@@ -245,8 +245,7 @@ class LookupTables {
              {OBU_IA_AUDIO_FRAME_ID_15, kObuIaAudioFrameId15},
              {OBU_IA_AUDIO_FRAME_ID_16, kObuIaAudioFrameId16},
              {OBU_IA_AUDIO_FRAME_ID_17, kObuIaAudioFrameId17},
-             // TODO(b/474599807): Add Metadata OBU conversion here.
-             {OBU_IA_RESERVED_24, kObuIaMetadata},
+             {OBU_IA_METADATA, kObuIaMetadata},
              {OBU_IA_RESERVED_25, kObuIaReserved25},
              {OBU_IA_RESERVED_26, kObuIaReserved26},
              {OBU_IA_RESERVED_27, kObuIaReserved27},

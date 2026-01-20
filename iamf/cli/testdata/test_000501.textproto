@@ -126,7 +126,7 @@ mix_presentation_metadata {
 
 arbitrary_obu_metadata {
   insertion_hook: INSERTION_HOOK_AFTER_IA_SEQUENCE_HEADER
-  obu_type: OBU_IA_RESERVED_24
+  obu_type: OBU_IA_METADATA
   obu_header {
     obu_redundant_copy: false
     obu_trimming_status_flag: false

@@ -17,6 +17,8 @@ import "iamf/cli/proto/obu_header.proto";
 option features.enum_type = CLOSED;
 
 enum ArbitraryObuType {
+  option allow_alias = true;
+
   OBU_IA_INVALID = 0;
   OBU_IA_CODEC_CONFIG = 1;
   OBU_IA_AUDIO_ELEMENT = 2;
@@ -42,7 +44,8 @@ enum ArbitraryObuType {
   OBU_IA_AUDIO_FRAME_ID_15 = 22;
   OBU_IA_AUDIO_FRAME_ID_16 = 23;
   OBU_IA_AUDIO_FRAME_ID_17 = 24;
-  OBU_IA_RESERVED_24 = 25;
+  OBU_IA_RESERVED_24 = 25 [deprecated = true];
+  OBU_IA_METADATA = 25;
   OBU_IA_RESERVED_25 = 26;
   OBU_IA_RESERVED_26 = 27;
   OBU_IA_RESERVED_27 = 28;
