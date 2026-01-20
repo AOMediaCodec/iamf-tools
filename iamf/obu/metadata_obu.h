@@ -84,6 +84,10 @@ class MetadataObu : public ObuBase {
 
   MetadataType GetMetadataType() const { return metadata_type_; }
 
+  const MetadataVariant& GetMetadataVariant() const {
+    return metadata_variant_;
+  }
+
   /*!\brief Destructor. */
   ~MetadataObu() override = default;
 
@@ -98,11 +102,8 @@ class MetadataObu : public ObuBase {
   MetadataVariant metadata_variant_;
 
   // Used only by the factory create function.
-  explicit MetadataObu(const ObuHeader& header, MetadataType metadata_type,
-                       MetadataVariant metadata_variant)
-      : ObuBase(header, kObuIaMetadata),
-        metadata_type_(metadata_type),
-        metadata_variant_(std::move(metadata_variant)) {}
+  explicit MetadataObu(const ObuHeader& header)
+      : ObuBase(header, kObuIaMetadata) {}
 
   /*!\brief Writes the OBU payload to the buffer.
    *

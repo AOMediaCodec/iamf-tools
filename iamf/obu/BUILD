@@ -205,9 +205,11 @@ cc_library(
         ":types",
         "//iamf/common:read_bit_buffer",
         "//iamf/common:write_bit_buffer",
+        "//iamf/common/utils:macros",
         "@abseil-cpp//absl/functional:overload",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
