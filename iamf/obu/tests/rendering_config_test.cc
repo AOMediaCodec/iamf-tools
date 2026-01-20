@@ -45,6 +45,7 @@ using ::testing::Not;
 using absl::MakeConstSpan;
 
 using enum RenderingConfig::HeadphonesRenderingMode;
+using enum RenderingConfig::BinauralFilterProfile;
 
 const QFormatOrFloatingPoint kMaxQFormatOrFloatingPoint =
     QFormatOrFloatingPoint::MakeFromQ7_8(std::numeric_limits<int16_t>::max());
@@ -53,8 +54,8 @@ TEST(ValidateAndWrite, WritesStereoRenderingConfig) {
   RenderingConfig rendering_config{.headphones_rendering_mode =
                                        kHeadphonesRenderingModeStereo};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      // `headphones_rendering_mode` (2), reserved (6).
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      // `headphones_rendering_mode` (2), the rest (6).
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_size`.
       0,
   });
@@ -69,8 +70,8 @@ TEST(ValidateAndWrite, WritesBinauralWorldLockedRenderingConfig) {
   RenderingConfig rendering_config{
       .headphones_rendering_mode = kHeadphonesRenderingModeBinauralWorldLocked};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      // `headphones_rendering_mode` (2), reserved (6).
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      // `headphones_rendering_mode` (2), the rest (6).
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       // `rendering_config_extension_size`.
       0,
   });
@@ -85,8 +86,8 @@ TEST(ValidateAndWrite, WritesBinauralHeadLockedRenderingConfig) {
   RenderingConfig rendering_config{
       .headphones_rendering_mode = kHeadphonesRenderingModeBinauralHeadLocked};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      // `headphones_rendering_mode` (2), reserved (6).
-      RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked << 6,
+      // `headphones_rendering_mode` (2), the rest (6).
+      kHeadphonesRenderingModeBinauralHeadLocked << 6,
       // `rendering_config_extension_size`.
       0,
   });
@@ -101,8 +102,8 @@ TEST(ValidateAndWrite, WritesReservedRenderingConfig) {
   RenderingConfig rendering_config{.headphones_rendering_mode =
                                        kHeadphonesRenderingModeReserved3};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      // `headphones_rendering_mode` (2), reserved (6).
-      RenderingConfig::kHeadphonesRenderingModeReserved3 << 6,
+      // `headphones_rendering_mode` (2), the rest (6).
+      kHeadphonesRenderingModeReserved3 << 6,
       // `rendering_config_extension_size`.
       0,
   });
@@ -122,18 +123,102 @@ TEST(ValidateAndWrite, CreateFailsWithOverflowReservedField) {
   EXPECT_THAT(rendering_config.ValidateAndWrite(wb), Not(IsOk()));
 };
 
+TEST(ValidateAndWrite, WritesBinauralFilterProfileAmbient) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      // .element_gain_offset_flag is implicitly 0.
+      .binaural_filter_profile = kBinauralFilterProfileAmbient};
+
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+      // `binaural_filter_profile` (2), reserved (3).
+      kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+          kBinauralFilterProfileAmbient << 3,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesBinauralFilterProfileDirect) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      // .element_gain_offset_flag is implicitly 0.
+      .binaural_filter_profile = kBinauralFilterProfileDirect};
+
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+      // `binaural_filter_profile` (2), reserved (3).
+      kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+          kBinauralFilterProfileDirect << 3,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesBinauralFilterProfileReverberant) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      // .element_gain_offset_flag is implicitly 0.
+      .binaural_filter_profile = kBinauralFilterProfileReverberant};
+
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+      // `binaural_filter_profile` (2), reserved (3).
+      kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+          kBinauralFilterProfileReverberant << 3,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
+TEST(ValidateAndWrite, WritesBinauralFilterProfileReserved) {
+  RenderingConfig rendering_config{
+      .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      // .element_gain_offset_flag is implicitly 0.
+      .binaural_filter_profile = kBinauralFilterProfileReserved3};
+
+  constexpr auto kExpectedPayload = std::to_array<uint8_t>({
+      // `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
+      // `binaural_filter_profile` (2), reserved (3).
+      kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+          kBinauralFilterProfileReserved3 << 3,
+      // `rendering_config_extension_size`.
+      0,
+  });
+
+  WriteBitBuffer wb(0);
+  EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
+
+  ValidateWriteResults(wb, kExpectedPayload);
+}
+
 TEST(ValidateAndWrite, WritesRenderingConfigExtension) {
   RenderingConfig rendering_config{
       .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
       .rendering_config_extension_bytes = {'e', 'x'}};
-  constexpr auto kExpectedPayload = std::to_array<uint8_t>(
-      {RenderingConfig::kHeadphonesRenderingModeStereo << 6,
-       // `rendering_config_extension_size`.
-       3,
-       // `num_parameters`.
-       0,
-       // `rendering_config_extension_bytes`.
-       'e', 'x'});
+  constexpr auto kExpectedPayload =
+      std::to_array<uint8_t>({kHeadphonesRenderingModeStereo << 6,
+                              // `rendering_config_extension_size`.
+                              3,
+                              // `num_parameters`.
+                              0,
+                              // `rendering_config_extension_bytes`.
+                              'e', 'x'});
 
   WriteBitBuffer wb(0);
   EXPECT_THAT(rendering_config.ValidateAndWrite(wb), IsOk());
@@ -170,7 +255,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigPolarParamDefinition) {
                                                  {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       19,
       // `num_parameters`.
@@ -229,7 +314,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart8ParamDefinition) {
           RenderingConfigParamDefinition::Create(cart8_param_definition, {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       10,
       // `num_parameters`.
@@ -273,7 +358,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigCart16ParamDefinition) {
           RenderingConfigParamDefinition::Create(cart16_param_definition, {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       13,
       // `num_parameters`.
@@ -324,7 +409,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualPolarParamDefinition) {
                                                  {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       13,
       // `num_parameters`.
@@ -379,7 +464,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart8ParamDefinition) {
                                                  {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       13,
       // `num_parameters`.
@@ -433,7 +518,7 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart16ParamDefinition) {
                                                  {})}};
 
   constexpr auto kExpectedPayload = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+      kHeadphonesRenderingModeStereo << 6,
       // `rendering_config_extension_bytes size`.
       19,
       // `num_parameters`.
@@ -475,12 +560,14 @@ TEST(ValidateAndWrite, WritesRenderingConfigDualCart16ParamDefinition) {
 TEST(ValidateAndWrite, WritesElementGainOffsetConfig) {
   RenderingConfig rendering_config{
       .headphones_rendering_mode = kHeadphonesRenderingModeStereo,
+      .binaural_filter_profile = kBinauralFilterProfileAmbient,
       .element_gain_offset_config =
           ElementGainOffsetConfig::MakeValueType(kMaxQFormatOrFloatingPoint)};
   constexpr auto kExpectedPayload = std::to_array<uint8_t>(
       {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
-       // reserved (5).
-       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // `binaural_filter_profile` (2), reserved (3).
+       kHeadphonesRenderingModeStereo << 6 | 1 << 5 |
+           kBinauralFilterProfileAmbient << 3,
        // `rendering_config_extension_size`.
        4,
        // `num_parameters`.
@@ -498,7 +585,7 @@ TEST(ValidateAndWrite, WritesElementGainOffsetConfig) {
 
 TEST(RenderingConfigCreateFromBuffer, NoExtensionBytes) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/0,
   });
 
@@ -516,7 +603,7 @@ TEST(RenderingConfigCreateFromBuffer, NoExtensionBytes) {
 
 TEST(RenderingConfigCreateFromBuffer, PolarParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/10,
       // num_params
       1,
@@ -564,7 +651,7 @@ TEST(RenderingConfigCreateFromBuffer, PolarParamDefinitionRenderingConfig) {
 
 TEST(RenderingConfigCreateFromBuffer, Cart8ParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/10,
       // num_params
       1,
@@ -611,7 +698,7 @@ TEST(RenderingConfigCreateFromBuffer, Cart8ParamDefinitionRenderingConfig) {
 
 TEST(RenderingConfigCreateFromBuffer, Cart16ParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -660,7 +747,7 @@ TEST(RenderingConfigCreateFromBuffer, Cart16ParamDefinitionRenderingConfig) {
 
 TEST(RenderingConfigCreateFromBuffer, DualPolarParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -716,7 +803,7 @@ TEST(RenderingConfigCreateFromBuffer, DualPolarParamDefinitionRenderingConfig) {
 
 TEST(RenderingConfigCreateFromBuffer, DualCart8ParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/13,
       // num_params
       1,
@@ -772,7 +859,7 @@ TEST(RenderingConfigCreateFromBuffer, DualCart8ParamDefinitionRenderingConfig) {
 TEST(RenderingConfigCreateFromBuffer,
      DualCart16ParamDefinitionRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>({
-      RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      kHeadphonesRenderingModeBinauralWorldLocked << 6,
       /*rendering_config_extension_size=*/19,
       // num_params
       1,
@@ -833,7 +920,7 @@ TEST(RenderingConfigCreateFromBuffer,
 
 TEST(RenderingConfigCreateFromBuffer, ExtensionBytesRenderingConfig) {
   constexpr auto kSource = std::to_array<uint8_t>(
-      {RenderingConfig::kHeadphonesRenderingModeBinauralWorldLocked << 6,
+      {kHeadphonesRenderingModeBinauralWorldLocked << 6,
        /*rendering_config_extension_size=*/15, 'e', 'x', 't', 'e', 'n', 's',
        'i', 'o', 'n', 's', 'b', 'y', 't', 'e', 's'});
   auto buffer =
@@ -1191,18 +1278,18 @@ TEST(RenderingConfigParamDefinitionCreateFromBufferTest,
 }
 
 TEST(RenderingConfigCreateFromBuffer, ElementGainOffsetConfig) {
-  constexpr auto kSource = std::to_array<uint8_t>(
-      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
-       // reserved (5).
-       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
-       // `rendering_config_extension_size`.
-       4,
-       // `num_parameters`.
-       0,
-       // ElementGainOffsetConfigType::kValueType
-       0,
-       // `element_gain_offset`.
-       0x7f, 0xff});
+  constexpr auto kSource =
+      std::to_array<uint8_t>({// `headphones_rendering_mode` (2),
+                              // `element_gain_offset_flag` (1), the rest (5).
+                              kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+                              // `rendering_config_extension_size`.
+                              4,
+                              // `num_parameters`.
+                              0,
+                              // ElementGainOffsetConfigType::kValueType
+                              0,
+                              // `element_gain_offset`.
+                              0x7f, 0xff});
 
   auto buffer =
       MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
@@ -1223,8 +1310,8 @@ TEST(RenderingConfigCreateFromBuffer, ElementGainOffsetConfigInvalidRange) {
   constexpr uint8_t kExtensionSizeBytes = 17;
   constexpr auto kSource = std::to_array<uint8_t>(
       {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
-       // reserved (5).
-       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // the rest (5).
+       kHeadphonesRenderingModeStereo << 6 | 1 << 5,
        // `rendering_config_extension_size`.
        kExtensionSizeBytes,
        // num_params
@@ -1268,8 +1355,8 @@ TEST(RenderingConfigCreateFromBuffer,
      ElementGainOffsetConfigAndParamDefinition) {
   constexpr auto kSource = std::to_array<uint8_t>(
       {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (1),
-       // reserved (5).
-       RenderingConfig::kHeadphonesRenderingModeStereo << 6 | 1 << 5,
+       // the rest (5).
+       kHeadphonesRenderingModeStereo << 6 | 1 << 5,
        /*rendering_config_extension_size=*/13,
        // num_params
        1,
@@ -1308,10 +1395,34 @@ TEST(RenderingConfigCreateFromBuffer,
 }
 
 TEST(RenderingConfigCreateFromBuffer, NoElementGainOffsetConfig) {
+  constexpr auto kSource =
+      std::to_array<uint8_t>({// `headphones_rendering_mode` (2),
+                              // `element_gain_offset_flag` (0), the rest (5).
+                              kHeadphonesRenderingModeStereo << 6 | 0 << 5,
+                              // `rendering_config_extension_size`.
+                              1,
+                              // `num_parameters`.
+                              0});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, BinauralFilterProfileAmbient) {
   constexpr auto kSource = std::to_array<uint8_t>(
       {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (0),
-       // reserved (5).
-       RenderingConfig::kHeadphonesRenderingModeStereo << 6,
+       // `binaural_filter_profile` (2), reserved (3).
+       kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+           kBinauralFilterProfileAmbient << 3,
        // `rendering_config_extension_size`.
        1,
        // `num_parameters`.
@@ -1324,6 +1435,86 @@ TEST(RenderingConfigCreateFromBuffer, NoElementGainOffsetConfig) {
 
   EXPECT_EQ(rendering_config->headphones_rendering_mode,
             kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->binaural_filter_profile,
+            kBinauralFilterProfileAmbient);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, BinauralFilterProfileDirect) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (0),
+       // `binaural_filter_profile` (2), reserved (3).
+       kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+           kBinauralFilterProfileDirect << 3,
+       // `rendering_config_extension_size`.
+       1,
+       // `num_parameters`.
+       0});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->binaural_filter_profile,
+            kBinauralFilterProfileDirect);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, BinauralFilterProfileReverberant) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (0),
+       // `binaural_filter_profile` (2), reserved (3).
+       kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+           kBinauralFilterProfileReverberant << 3,
+       // `rendering_config_extension_size`.
+       1,
+       // `num_parameters`.
+       0});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->binaural_filter_profile,
+            kBinauralFilterProfileReverberant);
+  EXPECT_EQ(rendering_config->reserved, 0);
+  EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
+  EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());
+  EXPECT_TRUE(rendering_config->rendering_config_extension_bytes.empty());
+}
+
+TEST(RenderingConfigCreateFromBuffer, BinauralFilterProfileReserved) {
+  constexpr auto kSource = std::to_array<uint8_t>(
+      {// `headphones_rendering_mode` (2), `element_gain_offset_flag` (0),
+       // `binaural_filter_profile` (2), reserved (3).
+       kHeadphonesRenderingModeStereo << 6 | 0 << 5 |
+           kBinauralFilterProfileReserved3 << 3,
+       // `rendering_config_extension_size`.
+       1,
+       // `num_parameters`.
+       0});
+
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(MakeConstSpan(kSource));
+  auto rendering_config = RenderingConfig::CreateFromBuffer(*buffer);
+  EXPECT_THAT(rendering_config, IsOk());
+
+  EXPECT_EQ(rendering_config->headphones_rendering_mode,
+            kHeadphonesRenderingModeStereo);
+  EXPECT_EQ(rendering_config->binaural_filter_profile,
+            kBinauralFilterProfileReserved3);
   EXPECT_EQ(rendering_config->reserved, 0);
   EXPECT_TRUE(rendering_config->rendering_config_param_definitions.empty());
   EXPECT_FALSE(rendering_config->element_gain_offset_config.has_value());

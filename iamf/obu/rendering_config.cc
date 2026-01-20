@@ -249,13 +249,19 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
   bool element_gain_offset_flag;
   RETURN_IF_NOT_OK(rb.ReadBoolean(element_gain_offset_flag));
 
+  uint8_t binaural_filter_profile;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(2, binaural_filter_profile));
+  BinauralFilterProfile binaural_filter_profile_enum =
+      static_cast<BinauralFilterProfile>(binaural_filter_profile);
+
   uint8_t reserved;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(5, reserved));
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(3, reserved));
   DecodedUleb128 rendering_config_extension_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(rendering_config_extension_size));
   if (rendering_config_extension_size == 0) {
     return RenderingConfig{
         .headphones_rendering_mode = headphones_rendering_mode_enum,
+        .binaural_filter_profile = binaural_filter_profile_enum,
         .reserved = reserved};
   }
 
@@ -295,6 +301,7 @@ absl::StatusOr<RenderingConfig> RenderingConfig::CreateFromBuffer(
       rb.ReadUint8Span(absl::MakeSpan(rendering_config_extension_bytes)));
   return RenderingConfig{
       .headphones_rendering_mode = headphones_rendering_mode_enum,
+      .binaural_filter_profile = binaural_filter_profile_enum,
       .reserved = reserved,
       .rendering_config_param_definitions =
           std::move(rendering_config_param_definitions),
@@ -308,7 +315,9 @@ absl::Status RenderingConfig::ValidateAndWrite(WriteBitBuffer& wb) const {
       static_cast<uint8_t>(headphones_rendering_mode), 2));
   const bool element_gain_offset_flag = element_gain_offset_config.has_value();
   RETURN_IF_NOT_OK(wb.WriteBoolean(element_gain_offset_flag));
-  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(static_cast<uint8_t>(reserved), 5));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      static_cast<uint8_t>(binaural_filter_profile), 2));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(static_cast<uint8_t>(reserved), 3));
 
   if (rendering_config_param_definitions.empty() &&
       !element_gain_offset_config.has_value() &&
@@ -330,6 +339,10 @@ void RenderingConfig::Print() const {
   ABSL_LOG(INFO) << "        rendering_config:";
   ABSL_LOG(INFO) << "          headphones_rendering_mode= "
                  << absl::StrCat(headphones_rendering_mode);
+  ABSL_LOG(INFO) << "          element_gain_offset_flag= "
+                 << absl::StrCat(element_gain_offset_config.has_value());
+  ABSL_LOG(INFO) << "          binaural_filter_profile= "
+                 << absl::StrCat(binaural_filter_profile);
   ABSL_LOG(INFO) << "          reserved= " << absl::StrCat(reserved);
   ABSL_LOG(INFO) << "          rendering_config_extension_size= "
                  << rendering_config_extension_bytes.size();

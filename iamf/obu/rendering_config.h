@@ -101,6 +101,14 @@ struct RenderingConfig {
     kHeadphonesRenderingModeReserved3 = 3,
   };
 
+  /*!\brief A 2-bit enum indicating the binaural filter profile. */
+  enum BinauralFilterProfile : uint8_t {
+    kBinauralFilterProfileAmbient = 0,
+    kBinauralFilterProfileDirect = 1,
+    kBinauralFilterProfileReverberant = 2,
+    kBinauralFilterProfileReserved3 = 3,
+  };
+
   friend bool operator==(const RenderingConfig& lhs,
                          const RenderingConfig& rhs) = default;
 
@@ -126,10 +134,13 @@ struct RenderingConfig {
   HeadphonesRenderingMode headphones_rendering_mode =
       kHeadphonesRenderingModeStereo;  // 2 bits.
 
-  // `element_gain_offset_flag` is implicit based on the presence of
+  // `element_gain_offset_flag` (1 bit) is implicit based on the presence of
   // `element_gain_offset_config`.
 
-  uint8_t reserved = 0;  // 5 bits.
+  BinauralFilterProfile binaural_filter_profile =
+      kBinauralFilterProfileAmbient;  // 2 bits.
+
+  uint8_t reserved = 0;  // 3 bits.
 
   // `num_parameters` is implicit based on the size of
   // `rendering_config_param_definitions`.
