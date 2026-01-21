@@ -1334,6 +1334,18 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(RendererHeadLockedStereoToBinaural, TestVector,
                          testing::Values("test_001100.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(
+    RendererWorldLockedStereoToBinauralUsingAmbientFilterProfile, TestVector,
+    testing::Values("test_001101.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    RendererWorldLockedStereoToBinauralUsingDirectFilterProfile, TestVector,
+    testing::Values("test_001102.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(
+    RendererWorldLockedStereoToBinauralUsingReverberantFilterProfile,
+    TestVector, testing::Values("test_001103.textproto"));
+
 // TODO(b/308385831): Add more tests.
 
 }  // namespace

@@ -354,6 +354,29 @@ absl::Status FillRenderingConfig(
                        input_rendering_config.headphones_rendering_mode()));
   }
 
+  switch (input_rendering_config.binaural_filter_profile()) {
+    using enum iamf_tools_cli_proto::BinauralFilterProfile;
+    using enum RenderingConfig::BinauralFilterProfile;
+    case BINAURAL_FILTER_PROFILE_AMBIENT:
+      rendering_config.binaural_filter_profile = kBinauralFilterProfileAmbient;
+      break;
+    case BINAURAL_FILTER_PROFILE_DIRECT:
+      rendering_config.binaural_filter_profile = kBinauralFilterProfileDirect;
+      break;
+    case BINAURAL_FILTER_PROFILE_REVERBERANT:
+      rendering_config.binaural_filter_profile =
+          kBinauralFilterProfileReverberant;
+      break;
+    case BINAURAL_FILTER_PROFILE_RESERVED3:
+      rendering_config.binaural_filter_profile =
+          kBinauralFilterProfileReserved3;
+      break;
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown binaural_filter_profile= ",
+                       input_rendering_config.binaural_filter_profile()));
+  }
+
   RETURN_IF_NOT_OK(StaticCastIfInRange<uint32_t, uint8_t>(
       "RenderingConfig.reserved", input_rendering_config.reserved(),
       rendering_config.reserved));

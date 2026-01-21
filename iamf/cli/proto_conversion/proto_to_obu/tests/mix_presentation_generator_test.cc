@@ -56,6 +56,7 @@ typedef ::google::protobuf::RepeatedPtrField<
     iamf_tools_cli_proto::MixPresentationObuMetadata>
     MixPresentationObuMetadatas;
 using enum iamf_tools_cli_proto::HeadPhonesRenderingMode;
+using enum iamf_tools_cli_proto::BinauralFilterProfile;
 
 constexpr DecodedUleb128 kMixPresentationId = 42;
 constexpr DecodedUleb128 kAudioElementId = 300;
@@ -188,8 +189,7 @@ TEST(Generate, CopiesHeadphonesRenderingModeBinauralWorldLocked) {
       ->mutable_audio_elements(0)
       ->mutable_rendering_config()
       ->set_headphones_rendering_mode(
-          iamf_tools_cli_proto::
-              HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
+          HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED);
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   std::list<MixPresentationObu> generated_obus;
@@ -215,8 +215,7 @@ TEST(Generate,
       .mutable_sub_mixes(0)
       ->mutable_audio_elements(0)
       ->mutable_rendering_config()
-      ->set_headphones_rendering_mode(
-          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL);
+      ->set_headphones_rendering_mode(HEADPHONES_RENDERING_MODE_BINAURAL);
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   std::list<MixPresentationObu> generated_obus;
@@ -230,7 +229,7 @@ TEST(Generate,
             kExpectedHeadphonesRenderingModeBinauralWorldLocked);
 }
 
-TEST(Generate, CopiesReservedHeadphonesRenderingModeBinauralHeadLocked) {
+TEST(Generate, CopiesHeadphonesRenderingModeBinauralHeadLocked) {
   const auto kExpectedHeadphonesRenderingModeBinauralHeadLocked =
       RenderingConfig::kHeadphonesRenderingModeBinauralHeadLocked;
   MixPresentationObuMetadatas mix_presentation_metadata = {};
@@ -240,7 +239,7 @@ TEST(Generate, CopiesReservedHeadphonesRenderingModeBinauralHeadLocked) {
       ->mutable_audio_elements(0)
       ->mutable_rendering_config()
       ->set_headphones_rendering_mode(
-          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED);
+          HEADPHONES_RENDERING_MODE_BINAURAL_HEAD_LOCKED);
   MixPresentationGenerator generator(mix_presentation_metadata);
 
   std::list<MixPresentationObu> generated_obus;
@@ -276,6 +275,163 @@ TEST(Generate, CopiesReservedHeadphonesRenderingMode3) {
             kExpectedHeadphonesRenderingMode3);
   EXPECT_TRUE(
       generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, InvalidHeadphonesRenderingMode) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* mix_presentation = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(mix_presentation);
+  mix_presentation->mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_headphones_rendering_mode(HEADPHONES_RENDERING_MODE_INVALID);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
+}
+
+TEST(Generate, CopiesBinauralFilterProfileAmbient) {
+  const auto kExpectedBinauralFilterProfileAmbient =
+      RenderingConfig::kBinauralFilterProfileAmbient;
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_binaural_filter_profile(BINAURAL_FILTER_PROFILE_AMBIENT);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.binaural_filter_profile,
+            kExpectedBinauralFilterProfileAmbient);
+  EXPECT_TRUE(
+      generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, CopiesBinauralFilterProfileDirect) {
+  const auto kExpectedBinauralFilterProfileDirect =
+      RenderingConfig::kBinauralFilterProfileDirect;
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_binaural_filter_profile(BINAURAL_FILTER_PROFILE_DIRECT);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.binaural_filter_profile,
+            kExpectedBinauralFilterProfileDirect);
+  EXPECT_TRUE(
+      generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, CopiesBinauralFilterProfileReverberant) {
+  const auto kExpectedBinauralFilterProfileReverberant =
+      RenderingConfig::kBinauralFilterProfileReverberant;
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_binaural_filter_profile(BINAURAL_FILTER_PROFILE_REVERBERANT);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.binaural_filter_profile,
+            kExpectedBinauralFilterProfileReverberant);
+  EXPECT_TRUE(
+      generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, CopiesBinauralFilterProfileReserved3) {
+  const auto kExpectedBinauralFilterProfileReserved3 =
+      RenderingConfig::kBinauralFilterProfileReserved3;
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_binaural_filter_profile(BINAURAL_FILTER_PROFILE_RESERVED3);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+  EXPECT_EQ(generated_rendering_config.binaural_filter_profile,
+            kExpectedBinauralFilterProfileReserved3);
+  EXPECT_TRUE(
+      generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, DefaultsBinauralFilterProfileToAmbient) {
+  const auto kExpectedDefaultBinauralFilterProfile =
+      RenderingConfig::kBinauralFilterProfileAmbient;
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+
+  // Unset the `binaural_filter_profile`.
+  mix_presentation_metadata.at(0)
+      .mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->clear_binaural_filter_profile();
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& generated_rendering_config =
+      generated_obus.front().sub_mixes_[0].audio_elements[0].rendering_config;
+
+  // Even with the field in proto unset, expect the generated struct to
+  // have the default value for the field.
+  EXPECT_EQ(generated_rendering_config.binaural_filter_profile,
+            kExpectedDefaultBinauralFilterProfile);
+  EXPECT_TRUE(
+      generated_rendering_config.rendering_config_extension_bytes.empty());
+}
+
+TEST(Generate, InvalidBinauralFilterProfile) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  auto* mix_presentation = mix_presentation_metadata.Add();
+  FillMixPresentationMetadata(mix_presentation);
+  mix_presentation->mutable_sub_mixes(0)
+      ->mutable_audio_elements(0)
+      ->mutable_rendering_config()
+      ->set_binaural_filter_profile(BINAURAL_FILTER_PROFILE_INVALID);
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
 }
 
 TEST(Generate, CopiesRenderingConfigWithPolarParamDefinition) {
@@ -1106,23 +1262,6 @@ TEST(Generate, SupportsUtf8) {
 
   EXPECT_EQ(generated_obus.back().GetLocalizedPresentationAnnotations(),
             std::vector<std::string>{kUtf8FourByteSequenceCode});
-}
-
-TEST(Generate, InvalidHeadphonesRenderingMode) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  auto* mix_presentation = mix_presentation_metadata.Add();
-  FillMixPresentationMetadata(mix_presentation);
-  mix_presentation->mutable_sub_mixes(0)
-      ->mutable_audio_elements(0)
-      ->mutable_rendering_config()
-      ->set_headphones_rendering_mode(
-          iamf_tools_cli_proto::HEADPHONES_RENDERING_MODE_INVALID);
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              Not(IsOk()));
-  EXPECT_TRUE(generated_obus.empty());
 }
 
 TEST(Generate, IgnoresDeprecatedNumSubMixes) {

@@ -40,6 +40,14 @@ enum HeadPhonesRenderingMode {
   HEADPHONES_RENDERING_MODE_RESERVED_3 = 4;
 }
 
+enum BinauralFilterProfile {
+  BINAURAL_FILTER_PROFILE_INVALID = 0;
+  BINAURAL_FILTER_PROFILE_AMBIENT = 1;
+  BINAURAL_FILTER_PROFILE_DIRECT = 2;
+  BINAURAL_FILTER_PROFILE_REVERBERANT = 3;
+  BINAURAL_FILTER_PROFILE_RESERVED3 = 4;
+}
+
 message RenderingConfigParamDefinition {
   ParamDefinitionType param_definition_type = 1;
   oneof param_definition {
@@ -55,6 +63,8 @@ message RenderingConfigParamDefinition {
 
 message RenderingConfig {
   HeadPhonesRenderingMode headphones_rendering_mode = 1;
+  BinauralFilterProfile binaural_filter_profile = 7
+      [default = BINAURAL_FILTER_PROFILE_AMBIENT];
   uint32 reserved = 2;
   uint32 rendering_config_extension_size = 3 [deprecated = true];
   repeated RenderingConfigParamDefinition rendering_config_param_definitions =
@@ -62,7 +72,7 @@ message RenderingConfig {
   ElementGainOffsetConfig element_gain_offset_config = 6;
   bytes rendering_config_extension_bytes = 4;
 
-  // Next ID: 7
+  // Next ID: 8
 }
 
 message SubMixAudioElement {

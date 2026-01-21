@@ -137,6 +137,8 @@ struct RenderingConfig {
   // `element_gain_offset_flag` (1 bit) is implicit based on the presence of
   // `element_gain_offset_config`.
 
+  // TODO(b/476923149): Implement the logic to render binaurally using the
+  //                    specified filter profile.
   BinauralFilterProfile binaural_filter_profile =
       kBinauralFilterProfileAmbient;  // 2 bits.
 
