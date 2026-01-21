@@ -57,6 +57,11 @@ proto_library(
 )
 
 proto_library(
+    name = "metadata_obu_proto",
+    srcs = ["metadata_obu.proto"],
+)
+
+proto_library(
     name = "mix_presentation_proto",
     srcs = ["mix_presentation.proto"],
     deps = [
@@ -161,6 +166,11 @@ cc_proto_library(
 cc_proto_library(
     name = "ia_sequence_header_cc_proto",
     deps = [":ia_sequence_header_proto"],
+)
+
+cc_proto_library(
+    name = "metadata_obu_cc_proto",
+    deps = [":metadata_obu_proto"],
 )
 
 cc_proto_library(
