@@ -126,6 +126,7 @@ proto_library(
         ":codec_config_proto",
         ":encoder_control_metadata_proto",
         ":ia_sequence_header_proto",
+        ":metadata_obu_proto",
         ":mix_presentation_proto",
         ":parameter_block_proto",
         ":temporal_delimiter_proto",
