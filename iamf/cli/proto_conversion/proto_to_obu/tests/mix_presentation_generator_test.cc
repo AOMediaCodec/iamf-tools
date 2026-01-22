@@ -1647,6 +1647,20 @@ TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {
                    .ok());
 }
 
+TEST(CopyUserLayoutExtension, LiveLoudnessInfoType) {
+  // `info_type` must be configured as a prerequisite.
+  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kLive};
+
+  // Configure user data to copy in.
+  iamf_tools_cli_proto::LoudnessInfo user_loudness;
+  user_loudness.set_info_type_bytes("");
+
+  EXPECT_THAT(MixPresentationGenerator::CopyUserLayoutExtension(
+                  user_loudness, output_loudness),
+              IsOk());
+  EXPECT_TRUE(output_loudness.layout_extension.info_type_bytes.empty());
+}
+
 TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
   // `info_type` must be configured as a prerequisite.
   LoudnessInfo output_loudness = {.info_type =
@@ -1665,7 +1679,8 @@ TEST(CopyUserLayoutExtension, AllInfoTypeExtensions) {
 
 TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
   // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kInfoTypeBitMask4};
+  LoudnessInfo output_loudness = {.info_type =
+                                      LoudnessInfo::kInfoTypeBitMask128};
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;
@@ -1680,7 +1695,8 @@ TEST(CopyUserLayoutExtension, OneInfoTypeExtension) {
 
 TEST(CopyUserLayoutExtension, IgnoresDeprecatedInfoTypeSizeField) {
   // `info_type` must be configured as a prerequisite.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kInfoTypeBitMask4};
+  LoudnessInfo output_loudness = {.info_type =
+                                      LoudnessInfo::kInfoTypeBitMask128};
 
   // Configure user data to copy in.
   iamf_tools_cli_proto::LoudnessInfo user_loudness;

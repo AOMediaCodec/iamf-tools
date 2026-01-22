@@ -208,7 +208,7 @@ class LookupTables {
                   LoudnessInfo::InfoTypeBitmask>>(
         {{LOUDNESS_INFO_TYPE_TRUE_PEAK, kTruePeak},
          {LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS, kAnchoredLoudness},
-         {LOUDNESS_INFO_TYPE_RESERVED_4, kInfoTypeBitMask4},
+         {LOUDNESS_INFO_TYPE_LIVE, kLive},
          {LOUDNESS_INFO_TYPE_RESERVED_8, kInfoTypeBitMask8},
          {LOUDNESS_INFO_TYPE_RESERVED_16, kInfoTypeBitMask16},
          {LOUDNESS_INFO_TYPE_RESERVED_32, kInfoTypeBitMask32},

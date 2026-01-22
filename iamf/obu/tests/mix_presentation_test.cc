@@ -445,8 +445,37 @@ TEST_F(MixPresentationObuTest,
   EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
 }
 
+TEST_F(MixPresentationObuTest, LiveLoudnessInfo) {
+  sub_mixes_[0].layouts[0].loudness.info_type = LoudnessInfo::kLive;
+  sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
+
+  expected_header_ = {kObuIaMixPresentation << 3, 46};
+  expected_payload_ = {
+      // Start Mix OBU.
+      10, 1, 'e', 'n', '-', 'u', 's', '\0', 'M', 'i', 'x', ' ', '1', '\0', 1,
+      // Start Submix 1
+      1, 11, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/0,
+      // End RenderingConfig
+      12, 13, 0x80, 0, 14, 15, 16, 0x80, 0, 17, 1,
+      // Start Layout 1 (of Submix 1).
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kLive, 0, 18,  // integrated_loudness == 18 (16 bits).
+      0, 19,                       // digital_peak == 18 (16 bits).
+      0                            // info_type_size == 0.
+                                   // End Mix OBU.
+  };
+
+  InitAndTestWrite();
+}
+
 TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
-  sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
+  sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
   sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
 
   expected_header_ = {kObuIaMixPresentation << 3, 46};
@@ -465,7 +494,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
       (Layout::kLayoutTypeLoudspeakersSsConvention
        << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      0x04, 0, 18, 0, 19, 0
+      0x80, 0, 18, 0, 19, 0
       // End Mix OBU.
   };
 
@@ -474,7 +503,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutZero) {
 
 TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
   // Initialize a test has several `DecodedUleb128` explicitly in the bitstream.
-  sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
+  sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
   sub_mixes_[0].layouts[0].loudness.layout_extension = {.info_type_bytes{}};
 
   sub_mixes_[0].audio_elements[0].rendering_config = {
@@ -527,7 +556,7 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
       (Layout::kLayoutTypeLoudspeakersSsConvention
        << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      0x04, 0, 18, 0, 19,
+      0x80, 0, 18, 0, 19,
       // `info_type_size` is affected by the `LebGenerator`.
       0x80 | 0, 0x00
       // End Mix OBU.
@@ -537,7 +566,7 @@ TEST_F(MixPresentationObuTest, NonMinimalLebGeneratorAffectsAllLeb128s) {
 }
 
 TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
-  sub_mixes_[0].layouts[0].loudness.info_type = 0x04;
+  sub_mixes_[0].layouts[0].loudness.info_type = 0x80;
   sub_mixes_[0].layouts[0].loudness.layout_extension = {
       .info_type_bytes{'e', 'x', 't', 'r', 'a'}};
 
@@ -557,7 +586,7 @@ TEST_F(MixPresentationObuTest, ExtensionLayoutNonZero) {
       (Layout::kLayoutTypeLoudspeakersSsConvention
        << kHeadphonesRenderingModeBitShift) |
           LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
-      0x04, 0, 18, 0, 19, 5, 'e', 'x', 't', 'r', 'a'
+      0x80, 0, 18, 0, 19, 5, 'e', 'x', 't', 'r', 'a'
       // End Mix OBU.
   };
 

@@ -1156,6 +1156,9 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedElementGainOffsetConfigValueType,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedElementGainOffsetConfigRangeType,
                          TestVector, testing::Values("test_000854.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedLiveLoudnessInfoType, TestVector,
+                         testing::Values("test_000855.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(Advanced1Mono_AndFourObjects, TestVector,
                          testing::Values("test_000900.textproto"));
 

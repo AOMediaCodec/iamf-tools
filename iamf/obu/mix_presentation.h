@@ -95,7 +95,7 @@ struct LoudnessInfo {
   enum InfoTypeBitmask : uint8_t {
     kTruePeak = 0x01,
     kAnchoredLoudness = 0x02,
-    kInfoTypeBitMask4 = 0x04,
+    kLive = 0x04,
     kInfoTypeBitMask8 = 0x08,
     kInfoTypeBitMask16 = 0x10,
     kInfoTypeBitMask32 = 0x20,
