@@ -153,6 +153,18 @@ cc_test(
 )
 
 cc_test(
+    name = "metadata_obu_generator_test",
+    srcs = ["metadata_obu_generator_test.cc"],
+    deps = [
+        "//iamf/cli/proto:metadata_obu_cc_proto",
+        "//iamf/cli/proto_conversion/proto_to_obu:metadata_obu_generator",
+        "//iamf/obu:metadata_obu",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_test(
     name = "mix_presentation_generator_test",
     srcs = ["mix_presentation_generator_test.cc"],
     deps = [

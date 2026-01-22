@@ -145,6 +145,20 @@ cc_library(
 )
 
 cc_library(
+    name = "metadata_obu_generator",
+    srcs = ["metadata_obu_generator.cc"],
+    hdrs = ["metadata_obu_generator.h"],
+    deps = [
+        "//iamf/cli/proto:metadata_obu_cc_proto",
+        "//iamf/obu:metadata_obu",
+        "//iamf/obu:obu_header",
+        "@abseil-cpp//absl/status",
+        "@abseil-cpp//absl/status:statusor",
+        "@com_google_protobuf//:protobuf",
+    ],
+)
+
+cc_library(
     name = "mix_presentation_generator",
     srcs = ["mix_presentation_generator.cc"],
     hdrs = ["mix_presentation_generator.h"],
