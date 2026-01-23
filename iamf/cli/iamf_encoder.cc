@@ -225,12 +225,12 @@ absl::Status FinalizeObuSequencers(
   // Close all of the `ObuSequencer`s.
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->UpdateDescriptorObusAndClose(
-        ia_sequence_header_obu, codec_config_obus, audio_elements,
-        mix_presentation_obus, descriptor_arbitrary_obus));
+        ia_sequence_header_obu, /*metadata_obus=*/{}, codec_config_obus,
+        audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
   }
   RETURN_IF_NOT_OK(streaming_obu_sequencer.UpdateDescriptorObusAndClose(
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
-      mix_presentation_obus, descriptor_arbitrary_obus));
+      ia_sequence_header_obu, /*metadata_obus=*/{}, codec_config_obus,
+      audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
 
   obu_sequencers_finalized = true;
   return absl::OkStatus();
@@ -393,13 +393,13 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     // Sanitize the sequencers, because they are tagged as non-nullable.
     ABSL_CHECK_NE(obu_sequencer, nullptr);
     RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
-        *ia_sequence_header_obu, *codec_config_obus, *audio_elements,
-        mix_presentation_obus, descriptor_arbitrary_obus));
+        *ia_sequence_header_obu, /*metadata_obus=*/{}, *codec_config_obus,
+        *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
   }
 
   RETURN_IF_NOT_OK(streaming_obu_sequencer.PushDescriptorObus(
-      *ia_sequence_header_obu, *codec_config_obus, *audio_elements,
-      mix_presentation_obus, descriptor_arbitrary_obus));
+      *ia_sequence_header_obu, /*metadata_obus=*/{}, *codec_config_obus,
+      *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
 
   // Construct the `IamfEncoder`. Move various OBUs, models, etc. into it.
   return absl::WrapUnique(new IamfEncoder(

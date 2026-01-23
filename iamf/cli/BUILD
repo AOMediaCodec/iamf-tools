@@ -404,6 +404,7 @@ cc_library(
         "//iamf/obu:audio_frame",
         "//iamf/obu:codec_config",
         "//iamf/obu:ia_sequence_header",
+        "//iamf/obu:metadata_obu",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
         "//iamf/obu:parameter_block",

@@ -27,6 +27,7 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/types.h"
 
@@ -84,6 +85,7 @@ class ObuSequencerBase {
   /*!\brief Gathers statistics on and pushes the OBUs to some output.
    *
    * \param ia_sequence_header_obu IA Sequence Header OBU to write.
+   * \param metadata_obus Metadata OBUs to write.
    * \param codec_config_obus Codec Config OBUs to write.
    * \param audio_elements Audio Element OBUs with data to write.
    * \param mix_presentation_obus Mix Presentation OBUs to write.
@@ -92,6 +94,7 @@ class ObuSequencerBase {
    */
   absl::Status PushDescriptorObus(
       const IASequenceHeaderObu& ia_sequence_header_obu,
+      const std::list<MetadataObu>& metadata_obus,
       const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
       const std::list<MixPresentationObu>& mix_presentation_obus,
@@ -107,6 +110,7 @@ class ObuSequencerBase {
   /*!\brief Finalizes the descriptor OBUs and closes the output.
    *
    * \param ia_sequence_header_obu IA Sequence Header OBU to write.
+   * \param metadata_obus Metadata OBUs to write.
    * \param codec_config_obus Codec Config OBUs to write.
    * \param audio_elements Audio Element OBUs with data to write.
    * \param mix_presentation_obus Mix Presentation OBUs to write.
@@ -115,6 +119,7 @@ class ObuSequencerBase {
    */
   absl::Status UpdateDescriptorObusAndClose(
       const IASequenceHeaderObu& ia_sequence_header_obu,
+      const std::list<MetadataObu>& metadata_obus,
       const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
       const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
       const std::list<MixPresentationObu>& mix_presentation_obus,

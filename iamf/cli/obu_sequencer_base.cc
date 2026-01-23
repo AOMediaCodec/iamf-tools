@@ -38,6 +38,7 @@
 #include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/parameter_block.h"
@@ -261,9 +262,11 @@ absl::Status WriteTemporalUnit(bool include_temporal_delimiters,
 // hook.
 absl::Status WriteDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
+    const std::list<MetadataObu>& metadata_obus,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const std::list<MixPresentationObu>& mix_presentation_obus,
+
     const std::list<ArbitraryObu>& arbitrary_obus, WriteBitBuffer& wb) {
   // Write IA Sequence Header OBU.
   RETURN_IF_NOT_OK(ia_sequence_header_obu.ValidateAndWriteObu(wb));
@@ -272,6 +275,12 @@ absl::Status WriteDescriptorObus(
 
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterIaSequenceHeader, arbitrary_obus, wb));
+
+  // Write Metadata OBUs.
+  for (const auto& metadata_obu : metadata_obus) {
+    RETURN_IF_NOT_OK(metadata_obu.ValidateAndWriteObu(wb));
+    ABSL_LOG(INFO) << "wb.bit_offset= " << wb.bit_offset() << " after Metadata";
+  }
 
   // Write Codec Config OBUs in ascending order of Codec Config IDs.
   // TODO(b/332956880): Support customizing the ordering.
@@ -352,6 +361,7 @@ ObuSequencerBase::~ObuSequencerBase() {
 
 absl::Status ObuSequencerBase::PushDescriptorObus(
     const IASequenceHeaderObu& ia_sequence_header_obu,
+    const std::list<MetadataObu>& metadata_obus,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const std::list<MixPresentationObu>& mix_presentation_obus,
@@ -378,7 +388,7 @@ absl::Status ObuSequencerBase::PushDescriptorObus(
       ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
   // Write out the descriptor OBUs.
   RETURN_IF_NOT_OK(WriteDescriptorObus(
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
+      ia_sequence_header_obu, metadata_obus, codec_config_obus, audio_elements,
       mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb_));
@@ -458,6 +468,7 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
 
 absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
     const IASequenceHeaderObu& ia_sequence_header_obu,
+    const std::list<MetadataObu>& metadata_obus,
     const absl::flat_hash_map<uint32_t, CodecConfigObu>& codec_config_obus,
     const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements,
     const std::list<MixPresentationObu>& mix_presentation_obus,
@@ -484,7 +495,7 @@ absl::Status ObuSequencerBase::UpdateDescriptorObusAndClose(
       ArbitraryObu::kInsertionHookBeforeDescriptors, arbitrary_obus, wb_));
   // Write out the descriptor OBUs.
   RETURN_IF_NOT_OK(WriteDescriptorObus(
-      ia_sequence_header_obu, codec_config_obus, audio_elements,
+      ia_sequence_header_obu, metadata_obus, codec_config_obus, audio_elements,
       mix_presentation_obus, arbitrary_obus, wb_));
   RETURN_IF_NOT_OK(ArbitraryObu::WriteObusWithHook(
       ArbitraryObu::kInsertionHookAfterDescriptors, arbitrary_obus, wb_));

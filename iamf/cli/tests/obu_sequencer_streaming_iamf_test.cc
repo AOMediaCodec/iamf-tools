@@ -111,7 +111,8 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedPushedDescriptorObus) {
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(sequencer.PushDescriptorObus(
-                  ia_sequence_header_obu, /*codec_config_obus=*/{},
+                  ia_sequence_header_obu, /*metadata_obus=*/{},
+                  /*codec_config_obus=*/{},
                   /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
                   /*arbitrary_obus=*/{}),
               IsOk());
@@ -130,7 +131,8 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedUpdatedDescriptorObus) {
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(sequencer.PushDescriptorObus(
-                  ia_sequence_header_obu, /*codec_config_obus=*/{},
+                  ia_sequence_header_obu, /*metadata_obus=*/{},
+                  /*codec_config_obus=*/{},
                   /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
                   /*arbitrary_obus=*/{}),
               IsOk());
@@ -143,7 +145,8 @@ TEST(GetSerializedDescriptorObus, ReturnsSerializedUpdatedDescriptorObus) {
       SerializeObusExpectOk(
           std::list<const ObuBase*>({&updated_ia_sequence_header_obu}));
   EXPECT_THAT(sequencer.UpdateDescriptorObusAndClose(
-                  updated_ia_sequence_header_obu, /*codec_config_obus=*/{},
+                  updated_ia_sequence_header_obu, /*metadata_obus=*/{},
+                  /*codec_config_obus=*/{},
                   /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
                   /*arbitrary_obus=*/{}),
               IsOk());
@@ -166,8 +169,9 @@ TEST(GetPreviousSerializedTemporalUnit, GetsPreviousSerializedTemporalUnit) {
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(
-      sequencer.PushDescriptorObus(ia_sequence_header_obu, codec_config_obus,
-                                   audio_elements, /*mix_presentation_obus=*/{},
+      sequencer.PushDescriptorObus(ia_sequence_header_obu, /*metadata_obus=*/{},
+                                   codec_config_obus, audio_elements,
+                                   /*mix_presentation_obus=*/{},
                                    /*arbitrary_obus=*/{}),
       IsOk());
   std::list<AudioFrameWithData> audio_frames;
@@ -199,8 +203,9 @@ TEST(Close, ClearsSerializedTemporalUnitObus) {
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(
-      sequencer.PushDescriptorObus(ia_sequence_header_obu, codec_config_obus,
-                                   audio_elements, /*mix_presentation_obus=*/{},
+      sequencer.PushDescriptorObus(ia_sequence_header_obu, /*metadata_obus=*/{},
+                                   codec_config_obus, audio_elements,
+                                   /*mix_presentation_obus=*/{},
                                    /*arbitrary_obus=*/{}),
       IsOk());
   std::list<AudioFrameWithData> audio_frames;
@@ -230,7 +235,8 @@ TEST(Abort, ClearsSerializedDescriptorAndTemporalUnitObus) {
   ObuSequencerStreamingIamf sequencer(kDoNotIncludeTemporalDelimiters,
                                       *LebGenerator::Create());
   EXPECT_THAT(sequencer.PushDescriptorObus(
-                  ia_sequence_header_obu, /*codec_config_obus=*/{},
+                  ia_sequence_header_obu, /*metadata_obus=*/{},
+                  /*codec_config_obus=*/{},
                   /*audio_elements=*/{}, /*mix_presentation_obus=*/{},
                   /*arbitrary_obus=*/{}),
               IsOk());
