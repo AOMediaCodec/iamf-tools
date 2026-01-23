@@ -333,6 +333,7 @@ cc_test(
         "//iamf/cli/proto:audio_element_cc_proto",
         "//iamf/cli/proto:codec_config_cc_proto",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
+        "//iamf/cli/proto:metadata_obu_cc_proto",
         "//iamf/cli/proto:mix_presentation_cc_proto",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",

@@ -39,6 +39,7 @@
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
+#include "iamf/cli/proto/metadata_obu.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
@@ -114,6 +115,17 @@ void AddIaSequenceHeader(UserMetadata& user_metadata) {
         additional_profile: PROFILE_VERSION_BASE
       )pb",
       user_metadata.add_ia_sequence_header_metadata()));
+}
+
+void AddMetadataObu(UserMetadata& user_metadata) {
+  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
+      R"pb(
+        metadata_itu_t_t35: {
+          itu_t_t35_country_code: 0xFF
+          itu_t_t35_country_code_extension_byte: 1
+        }
+      )pb",
+      user_metadata.add_metadata_obu_metadata()));
 }
 
 void AddCodecConfig(UserMetadata& user_metadata) {
@@ -358,6 +370,7 @@ TEST_F(IamfEncoderTest, GetRedundatantDescriptorObusIsUnimplemented) {
 
 TEST_F(IamfEncoderTest, CreateGeneratesDescriptorObus) {
   SetupDescriptorObus();
+  AddMetadataObu(user_metadata_);
   auto iamf_encoder = CreateExpectOk();
   // Get the serialized descriptor OBUs.
   std::vector<uint8_t> output_obus;

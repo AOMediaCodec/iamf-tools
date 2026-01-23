@@ -52,6 +52,7 @@
 #include "iamf/cli/proto_conversion/proto_to_obu/audio_frame_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/ia_sequence_header_generator.h"
+#include "iamf/cli/proto_conversion/proto_to_obu/metadata_obu_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/mix_presentation_generator.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/parameter_block_generator.h"
 #include "iamf/cli/proto_conversion/proto_utils.h"
@@ -64,6 +65,7 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
@@ -207,6 +209,7 @@ absl::Status FinalizeDescriptors(
 // presentation OBUs, and sets the flag to indicate that the OBUs are finalized.
 absl::Status FinalizeObuSequencers(
     const IASequenceHeaderObu& ia_sequence_header_obu,
+    const std::list<MetadataObu>& metadata_obus,
     const absl::flat_hash_map<DecodedUleb128, CodecConfigObu>&
         codec_config_obus,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
@@ -225,12 +228,12 @@ absl::Status FinalizeObuSequencers(
   // Close all of the `ObuSequencer`s.
   for (auto& obu_sequencer : obu_sequencers) {
     RETURN_IF_NOT_OK(obu_sequencer->UpdateDescriptorObusAndClose(
-        ia_sequence_header_obu, /*metadata_obus=*/{}, codec_config_obus,
+        ia_sequence_header_obu, metadata_obus, codec_config_obus,
         audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
   }
   RETURN_IF_NOT_OK(streaming_obu_sequencer.UpdateDescriptorObusAndClose(
-      ia_sequence_header_obu, /*metadata_obus=*/{}, codec_config_obus,
-      audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
+      ia_sequence_header_obu, metadata_obus, codec_config_obus, audio_elements,
+      mix_presentation_obus, descriptor_arbitrary_obus));
 
   obu_sequencers_finalized = true;
   return absl::OkStatus();
@@ -264,6 +267,12 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
       ia_sequence_header_generator.Generate(ia_sequence_header_obu));
   RETURN_IF_NOT_OK(
       ValidateHasValue(ia_sequence_header_obu, "IA Sequence Header"));
+
+  // Metadata OBUs.
+  std::list<MetadataObu> metadata_obus;
+  MetadataObuGenerator metadata_obu_generator(
+      user_metadata.metadata_obu_metadata());
+  RETURN_IF_NOT_OK(metadata_obu_generator.Generate(metadata_obus));
 
   // Codec Config OBUs.
   // Held in a `unique_ptr`, so the underlying map can be moved without
@@ -393,20 +402,20 @@ absl::StatusOr<std::unique_ptr<IamfEncoder>> IamfEncoder::Create(
     // Sanitize the sequencers, because they are tagged as non-nullable.
     ABSL_CHECK_NE(obu_sequencer, nullptr);
     RETURN_IF_NOT_OK(obu_sequencer->PushDescriptorObus(
-        *ia_sequence_header_obu, /*metadata_obus=*/{}, *codec_config_obus,
+        *ia_sequence_header_obu, metadata_obus, *codec_config_obus,
         *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
   }
 
   RETURN_IF_NOT_OK(streaming_obu_sequencer.PushDescriptorObus(
-      *ia_sequence_header_obu, /*metadata_obus=*/{}, *codec_config_obus,
+      *ia_sequence_header_obu, metadata_obus, *codec_config_obus,
       *audio_elements, mix_presentation_obus, descriptor_arbitrary_obus));
 
   // Construct the `IamfEncoder`. Move various OBUs, models, etc. into it.
   return absl::WrapUnique(new IamfEncoder(
       user_metadata.test_vector_metadata().validate_user_loudness(),
-      *std::move(ia_sequence_header_obu), std::move(codec_config_obus),
-      std::move(audio_elements), std::move(mix_presentation_obus),
-      std::move(descriptor_arbitrary_obus),
+      *std::move(ia_sequence_header_obu), std::move(metadata_obus),
+      std::move(codec_config_obus), std::move(audio_elements),
+      std::move(mix_presentation_obus), std::move(descriptor_arbitrary_obus),
       std::move(timestamp_to_arbitrary_obus),
       std::move(param_definition_variants),
       std::move(parameter_block_generator), std::move(*parameters_manager),
@@ -584,8 +593,9 @@ absl::Status IamfEncoder::OutputTemporalUnit(
         // The final extraneous OBUs have been pushed out. Take this opportunity
         // to finalize the sequencers.
         return FinalizeObuSequencers(
-            ia_sequence_header_obu_, *codec_config_obus_, *audio_elements_,
-            mix_presentation_obus_, descriptor_arbitrary_obus_, obu_sequencers_,
+            ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
+            *audio_elements_, mix_presentation_obus_,
+            descriptor_arbitrary_obus_, obu_sequencers_,
             streaming_obu_sequencer_, sequencers_finalized_);
       }
     }
@@ -665,10 +675,10 @@ absl::Status IamfEncoder::OutputTemporalUnit(
   RETURN_IF_NOT_OK(FinalizeDescriptors(
       validate_user_loudness_, mix_presentation_finalizer_,
       mix_presentation_obus_, mix_presentation_obus_finalized_));
-  return FinalizeObuSequencers(ia_sequence_header_obu_, *codec_config_obus_,
-                               *audio_elements_, mix_presentation_obus_,
-                               descriptor_arbitrary_obus_, obu_sequencers_,
-                               streaming_obu_sequencer_, sequencers_finalized_);
+  return FinalizeObuSequencers(
+      ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
+      *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
+      obu_sequencers_, streaming_obu_sequencer_, sequencers_finalized_);
 }
 
 absl::Status IamfEncoder::FinalizeEncode() {
@@ -688,10 +698,10 @@ absl::Status IamfEncoder::FinalizeEncode() {
   RETURN_IF_NOT_OK(FinalizeDescriptors(
       validate_user_loudness_, mix_presentation_finalizer_,
       mix_presentation_obus_, mix_presentation_obus_finalized_));
-  return FinalizeObuSequencers(ia_sequence_header_obu_, *codec_config_obus_,
-                               *audio_elements_, mix_presentation_obus_,
-                               descriptor_arbitrary_obus_, obu_sequencers_,
-                               streaming_obu_sequencer_, sequencers_finalized_);
+  return FinalizeObuSequencers(
+      ia_sequence_header_obu_, metadata_obus_, *codec_config_obus_,
+      *audio_elements_, mix_presentation_obus_, descriptor_arbitrary_obus_,
+      obu_sequencers_, streaming_obu_sequencer_, sequencers_finalized_);
 }
 
 const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&

@@ -44,6 +44,7 @@
 #include "iamf/obu/arbitrary_obu.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/ia_sequence_header.h"
+#include "iamf/obu/metadata_obu.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/param_definitions/param_definition_variant.h"
 #include "iamf/obu/types.h"
@@ -257,6 +258,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
    */
   IamfEncoder(
       bool validate_user_loudness, IASequenceHeaderObu&& ia_sequence_header_obu,
+      std::list<MetadataObu>&& metadata_obus,
       std::unique_ptr<
           absl::flat_hash_map<uint32_t, CodecConfigObu>> absl_nonnull
       codec_config_obus,
@@ -280,6 +282,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
       ObuSequencerStreamingIamf&& streaming_obu_sequencer)
       : validate_user_loudness_(validate_user_loudness),
         ia_sequence_header_obu_(std::move(ia_sequence_header_obu)),
+        metadata_obus_(std::move(metadata_obus)),
         codec_config_obus_(std::move(codec_config_obus)),
         audio_elements_(std::move(audio_elements)),
         mix_presentation_obus_(std::move(mix_presentation_obus)),
@@ -300,6 +303,7 @@ class IamfEncoder : public api::IamfEncoderInterface {
 
   // Descriptor OBUs.
   IASequenceHeaderObu ia_sequence_header_obu_;
+  std::list<MetadataObu> metadata_obus_;
   // Held in a `unique_ptr`, so the underlying map can be moved without
   // invalidating pointers. At least `audio_elements_` depend on this.
   std::unique_ptr<absl::flat_hash_map<uint32_t, CodecConfigObu>> absl_nonnull
