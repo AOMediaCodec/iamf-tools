@@ -150,10 +150,17 @@ struct ObuHeader {
   absl::Status ReadAndValidate(ReadBitBuffer& rb,
                                int64_t& output_payload_serialized_size);
 
+  /*!\brief Returns true if the optional fields flag is present and set.
+   *
+   * \return true if the optional fields flag is present and set, false if it is
+   *         absent or if not relevant to the OBU type.
+   */
+  bool GetOptionalFieldsFlag() const;
+
   /*!\brief Returns true if the trimming status flag is present and set.
    *
    * \return true if the trimming status flag is present and set, false if it is
-   *     absent or if not relevant to the OBU type.
+   *         absent or if not relevant to the OBU type.
    */
   bool GetObuTrimmingStatusFlag() const;
 

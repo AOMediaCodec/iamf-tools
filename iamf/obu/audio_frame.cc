@@ -91,7 +91,6 @@ void AudioFrameObu::PrintObu() const {
   ABSL_LOG(INFO) << "  audio_substream_id= " << GetSubstreamId();
   ABSL_LOG(INFO) << "  // obu_trimming_status_flag= "
                  << header_.GetObuTrimmingStatusFlag();
-  // TODO(b/475594651): Log `is_not_key_frame` and `optional_fields_flag`.
   ABSL_LOG(INFO) << "  // samples_to_trim_at_end= "
                  << header_.num_samples_to_trim_at_end;
   ABSL_LOG(INFO) << "  // samples_to_trim_at_start= "

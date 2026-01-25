@@ -233,39 +233,6 @@ TEST_F(MixPresentationObuTest, RedundantCopy) {
   InitAndTestWrite();
 }
 
-TEST(GetObuTrimmingStatusFlag,
-     ReturnsTrueForAudioFramesWithTypeSpecificFlagTrue) {
-  ObuHeader obu_header{.obu_type = kObuIaAudioFrame,
-                       .type_specific_flag = true};
-
-  EXPECT_TRUE(obu_header.GetObuTrimmingStatusFlag());
-}
-
-TEST(GetObuTrimmingStatusFlag,
-     ReturnsFalseForAudioFramesWithTypeSpecificFlagFalse) {
-  ObuHeader obu_header{.obu_type = kObuIaAudioFrame,
-                       .type_specific_flag = false};
-
-  EXPECT_FALSE(obu_header.GetObuTrimmingStatusFlag());
-}
-
-TEST(GetObuTrimmingStatusFlag, ReturnsFalseForNonAudioFrameTypes) {
-  ObuHeader obu_header{.obu_type = kObuIaMixPresentation,
-                       .type_specific_flag = true};
-
-  EXPECT_FALSE(obu_header.GetObuTrimmingStatusFlag());
-}
-
-TEST_F(MixPresentationObuTest,
-       ValidateAndWriteFailsWithInvalidTypeSpecificFlag) {
-  // TODO(b/474599045): Support `optional_fields_flag`.
-  header_.type_specific_flag = true;
-
-  InitExpectOk();
-  WriteBitBuffer unused_wb(0);
-  EXPECT_FALSE(obu_->ValidateAndWriteObu(unused_wb).ok());
-}
-
 TEST_F(MixPresentationObuTest, ExtensionHeader) {
   header_.extension_header_bytes = {'e', 'x', 't', 'r', 'a'};
 
@@ -817,6 +784,145 @@ TEST_F(MixPresentationObuTest, WritesMixPresentionTags) {
   ValidateObuWriteResults(wb, expected_header_, expected_payload_);
 }
 
+TEST_F(MixPresentationObuTest, WritesOptionalFields) {
+  const int kOptionalFieldsFlagBitMask = kObuTrimmingStatusFlagBitMask;
+  expected_header_ = {kObuIaMixPresentation << 3 | kOptionalFieldsFlagBitMask,
+                      // `obu_size`.
+                      53};
+
+  const uint8_t kOptionalFieldsFourBytes = 4;
+  expected_payload_ = {
+      // Start Mix OBU.
+      10,
+      1,
+      'e',
+      'n',
+      '-',
+      'u',
+      's',
+      '\0',
+      'M',
+      'i',
+      'x',
+      ' ',
+      '1',
+      '\0',
+      1,
+      // Start Submix 1
+      1,
+      11,
+      'S',
+      'u',
+      'b',
+      'm',
+      'i',
+      'x',
+      ' ',
+      '1',
+      '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/0,
+      // End RenderingConfig.
+      12,
+      13,
+      0x80,
+      0,
+      14,
+      15,
+      16,
+      0x80,
+      0,
+      17,
+      1,
+      // Start Layout 1 (of Submix 1).
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0,
+      LoudnessInfo::kTruePeak,
+      0,
+      18,
+      0,
+      19,
+      0,
+      20,
+      // Start Mix Presentation Tags.
+      // `num_tags`.
+      0,
+      // End Mix Presentation Tags.
+      // `optional_fields_size`.
+      kOptionalFieldsFourBytes,
+      // `preferred_loudspeaker_renderer`.
+      0,
+      // `preferred_binaural_renderer`.
+      0,
+      // `optional_fields_remaining_bytes`.
+      21,
+      22,
+      // End Mix OBU.
+  };
+
+  // Here `type_specific_flag` is interpreted as `optional_fields_flag`.
+  header_.type_specific_flag = true;
+
+  InitExpectOk();
+  EXPECT_TRUE(obu_->header_.GetOptionalFieldsFlag());
+
+  obu_->mix_presentation_tags_ = MixPresentationTags{.tags = {}};
+  obu_->optional_fields_ = MixPresentationOptionalFields{
+      .optional_fields_size = kOptionalFieldsFourBytes,
+      .preferred_loudspeaker_renderer = PreferredLoudspeakerRenderer::kNone,
+      .preferred_binaural_renderer = PreferredBinauralRenderer::kNone,
+      .optional_fields_remaining_bytes = std::vector<uint8_t>({21, 22}),
+  };
+
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(obu_->ValidateAndWriteObu(wb), IsOk());
+
+  ValidateObuWriteResults(wb, expected_header_, expected_payload_);
+}
+
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithMissingExpectedMixPresentationTags) {
+  // Here `type_specific_flag` is interpreted as `optional_fields_flag`.
+  header_.type_specific_flag = true;
+
+  InitExpectOk();
+  EXPECT_TRUE(obu_->header_.GetOptionalFieldsFlag());
+
+  // Missing the tags.
+  obu_->mix_presentation_tags_ = std::nullopt;
+
+  const uint8_t kOptionalFieldsFourBytes = 4;
+  obu_->optional_fields_ = MixPresentationOptionalFields{
+      .optional_fields_size = kOptionalFieldsFourBytes,
+      .preferred_loudspeaker_renderer = PreferredLoudspeakerRenderer::kNone,
+      .preferred_binaural_renderer = PreferredBinauralRenderer::kNone,
+      .optional_fields_remaining_bytes = std::vector<uint8_t>({21, 22}),
+  };
+
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(obu_->ValidateAndWriteObu(wb), Not(IsOk()));
+}
+
+TEST_F(MixPresentationObuTest,
+       ValidateAndWriteFailsWithMissingExpectedOptionalFields) {
+  // Here `type_specific_flag` is interpreted as `optional_fields_flag`.
+  header_.type_specific_flag = true;
+
+  InitExpectOk();
+  EXPECT_TRUE(obu_->header_.GetOptionalFieldsFlag());
+
+  obu_->mix_presentation_tags_ = MixPresentationTags{.tags = {}};
+
+  // Missing the optional fields.
+  obu_->optional_fields_ = std::nullopt;
+
+  WriteBitBuffer wb(1024);
+  EXPECT_THAT(obu_->ValidateAndWriteObu(wb), Not(IsOk()));
+}
+
 class GetNumChannelsFromLayoutTest : public testing::Test {
  public:
   GetNumChannelsFromLayoutTest()
@@ -1169,6 +1275,173 @@ TEST(CreateFromBufferTest, SucceedsWithDuplicateContentLanguageTags) {
   EXPECT_EQ(obu->mix_presentation_tags_->tags[1].tag_value, "en-gb");
 }
 
+TEST(CreateFromBufferTest, ReadsOptionalFields) {
+  constexpr uint8_t kZeroNumTags = 0;
+  const std::vector<uint8_t> kMixPresentationTags = {
+      // `num_tags`.
+      kZeroNumTags,
+  };
+
+  constexpr uint8_t kFourBytes = 4;
+  const std::vector<uint8_t> kOptionalFields = {
+      // `optional_fields_size`.
+      kFourBytes,
+      // `preferred_loudspeaker_renderer`.
+      0,
+      // `preferred_binaural_renderer`.
+      0,
+      // `optional_fields_remaining_bytes'.
+      'A', 'B'};
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      0,
+      // num_sub_mixes
+      1,
+      // Start Submix.
+      1, 21,
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout0.
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32
+      // End SubMix.
+  };
+  source.insert(source.end(), kMixPresentationTags.begin(),
+                kMixPresentationTags.end());
+  source.insert(source.end(), kOptionalFields.begin(), kOptionalFields.end());
+  const int64_t payload_size = source.size();
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  ObuHeader header;
+  header.type_specific_flag = true;
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
+  ASSERT_THAT(obu, IsOk());
+
+  ASSERT_TRUE(obu->optional_fields_.has_value());
+  EXPECT_EQ(obu->optional_fields_->optional_fields_size, kFourBytes);
+  EXPECT_EQ(obu->optional_fields_->preferred_loudspeaker_renderer,
+            PreferredLoudspeakerRenderer::kNone);
+  EXPECT_EQ(obu->optional_fields_->preferred_binaural_renderer,
+            PreferredBinauralRenderer::kNone);
+  EXPECT_EQ(obu->optional_fields_->optional_fields_remaining_bytes,
+            std::vector<uint8_t>({'A', 'B'}));
+}
+
+TEST(CreateFromBufferTest, FailsWithMissingExpectedTagsAndOptionalFields) {
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      0,
+      // num_sub_mixes
+      1,
+      // Start Submix.
+      1, 21,
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout0.
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32
+      // End SubMix.
+  };
+
+  // The source bitstream ends here without bits for `mix_presentation_tags`
+  // and `optional_fields`, which leads to reading failure.
+  const int64_t payload_size = source.size();
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  ObuHeader header;
+
+  // Here `type_specific_flag` is interpreted as `optional_fields_flag`. It
+  // requires that the optional fields (as well as the mix presentation tags)
+  // be present.
+  header.type_specific_flag = true;
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
+  EXPECT_THAT(obu, Not(IsOk()));
+}
+
+TEST(CreateFromBufferTest, FailsWithOptionalFieldsSizeLessThanTwo) {
+  constexpr uint8_t kZeroNumTags = 0;
+  const std::vector<uint8_t> kMixPresentationTags = {
+      // `num_tags`.
+      kZeroNumTags,
+  };
+
+  constexpr uint8_t kOneByte = 1;
+  const std::vector<uint8_t> kOptionalFields = {
+      // `optional_fields_size`. This value of 1 will cause reading errors.
+      kOneByte,
+      // `preferred_loudspeaker_renderer`.
+      0,
+      // `preferred_binaural_renderer`.
+      0,
+      // `optional_fields_remaining_bytes'.
+      'A', 'B'};
+
+  std::vector<uint8_t> source = {
+      // Start Mix OBU.
+      // mix_presentation_id
+      10,
+      // count_label
+      0,
+      // num_sub_mixes
+      1,
+      // Start Submix.
+      1, 21,
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/1, /*num_params=*/0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout0.
+      (Layout::kLayoutTypeLoudspeakersSsConvention
+       << kHeadphonesRenderingModeBitShift) |
+          (LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0 << 2),
+      0, 0, 31, 0, 32
+      // End SubMix.
+  };
+  source.insert(source.end(), kMixPresentationTags.begin(),
+                kMixPresentationTags.end());
+  source.insert(source.end(), kOptionalFields.begin(), kOptionalFields.end());
+  const int64_t payload_size = source.size();
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  ObuHeader header;
+
+  // Here `type_specific_flag` is interpreted as `optional_fields_flag`. It
+  // requires that the optional fields (as well as the mix presentation tags)
+  // be present.
+  header.type_specific_flag = true;
+  auto obu =
+      MixPresentationObu::CreateFromBuffer(header, payload_size, *buffer);
+  EXPECT_THAT(obu, Not(IsOk()));
+}
+
 TEST(ReadSubMixAudioElementTest, AllFieldsPresent) {
   std::vector<uint8_t> source = {
       // Start SubMixAudioElement.
@@ -1510,5 +1783,48 @@ TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
           .ok());
 }
 
+TEST(MixPresentationOptionalFieldsWriteAndValidate,
+     WritesOptionalFieldsFiveBytes) {
+  constexpr uint8_t kFiveBytes = 5;
+  const MixPresentationOptionalFields optional_fields = {
+      .optional_fields_size = kFiveBytes,
+      .preferred_loudspeaker_renderer = PreferredLoudspeakerRenderer::kNone,
+      .preferred_binaural_renderer = PreferredBinauralRenderer::kNone,
+      .optional_fields_remaining_bytes = {1, 2, 3},
+  };
+  const std::vector<uint8_t> kExpectedBuffer = {
+      // `optional_fields_size`.
+      kFiveBytes,
+      // `preferred_loudspeaker_renderer`.
+      0,
+      // `preferred_binaural_renderer`.
+      0,
+      // `optional_fields_remaining_bytes'.
+      1, 2, 3};
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(optional_fields.ValidateAndWrite(wb), IsOk());
+
+  EXPECT_EQ(wb.bit_buffer(), kExpectedBuffer);
+}
+
+TEST(MixPresentationOptionalFieldsWriteAndValidate,
+     InvalidForMismatchingSizes) {
+  // When `optional_fields_size` is 5, minus the 2 bytes taken by
+  // `preferred_loudspeaker_renderer` and `preferred_binaural_renderer`,
+  // it means that there should be only 3 bytes in
+  // `optional_fields_remaining_bytes`. But we set
+  // `optional_fields_remaining_bytes` with 4 bytes, which leads to failure.
+  constexpr uint8_t kFiveBytes = 5;
+  const MixPresentationOptionalFields optional_fields = {
+      .optional_fields_size = kFiveBytes,
+      .preferred_loudspeaker_renderer = PreferredLoudspeakerRenderer::kNone,
+      .preferred_binaural_renderer = PreferredBinauralRenderer::kNone,
+      .optional_fields_remaining_bytes = {1, 2, 3, 4},
+  };
+  WriteBitBuffer wb(1024);
+
+  EXPECT_THAT(optional_fields.ValidateAndWrite(wb), Not(IsOk()));
+}
 }  // namespace
 }  // namespace iamf_tools

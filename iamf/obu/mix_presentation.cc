@@ -263,7 +263,7 @@ absl::Status MixPresentationLayout::ReadAndValidate(ReadBitBuffer& rb) {
   return absl::OkStatus();
 }
 
-absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
+absl::Status SubMixAudioElement::ReadAndValidate(const int32_t count_label,
                                                  ReadBitBuffer& rb) {
   // Read the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id));
@@ -284,7 +284,7 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t& count_label,
   return absl::OkStatus();
 }
 
-absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t& count_label,
+absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t count_label,
                                                     ReadBitBuffer& rb) {
   DecodedUleb128 num_audio_elements;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_audio_elements));
@@ -322,6 +322,26 @@ absl::Status ValidateCompliesWithIso639_2(absl::string_view string) {
   }
 }
 
+absl::StatusOr<MixPresentationTags> MixPresentationTags::CreateFromBuffer(
+    ReadBitBuffer& rb) {
+  // `num_tags` in the structure is implicit based on the size of `tags`.
+  uint8_t num_tags;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_tags));
+  std::vector<Tag> tags;
+  tags.reserve(num_tags);
+  for (int i = 0; i < num_tags; ++i) {
+    std::string tag_name;
+    RETURN_IF_NOT_OK(rb.ReadString(tag_name));
+    std::string tag_value;
+    RETURN_IF_NOT_OK(rb.ReadString(tag_value));
+    tags.push_back({.tag_name = tag_name, .tag_value = tag_value});
+  }
+
+  // For permissive decoding, we choose not to validate the `content_language`
+  // tags. The spec has language about how duplicate tags may be decoded.
+  return MixPresentationTags{.tags = tags};
+}
+
 absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
   uint8_t num_tags;
   RETURN_IF_NOT_OK(StaticCastIfInRange("num_tags", tags.size(), num_tags));
@@ -347,24 +367,54 @@ absl::Status MixPresentationTags::ValidateAndWrite(WriteBitBuffer& wb) const {
 
   return absl::OkStatus();
 }
-absl::StatusOr<MixPresentationTags> MixPresentationTags::CreateFromBuffer(
-    ReadBitBuffer& rb) {
-  // `num_tags` in the structure is implicit based on the size of `tags`.
-  uint8_t num_tags;
-  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, num_tags));
-  std::vector<Tag> tags;
-  tags.reserve(num_tags);
-  for (int i = 0; i < num_tags; ++i) {
-    std::string tag_name;
-    RETURN_IF_NOT_OK(rb.ReadString(tag_name));
-    std::string tag_value;
-    RETURN_IF_NOT_OK(rb.ReadString(tag_value));
-    tags.push_back({.tag_name = tag_name, .tag_value = tag_value});
+
+absl::StatusOr<MixPresentationOptionalFields>
+MixPresentationOptionalFields::CreateFromBuffer(ReadBitBuffer& rb) {
+  DecodedUleb128 optional_fields_size;
+  RETURN_IF_NOT_OK(rb.ReadULeb128(optional_fields_size));
+  if (optional_fields_size < 2) {
+    return absl::InvalidArgumentError(
+        absl::StrCat("`Invalid optional_fields_size= ", optional_fields_size,
+                     ". Expected >= 2; "));
   }
 
-  // For permissive decoding, we choose not to validate the `content_language`
-  // tags. The spec has language about how duplicate tags may be decoded.
-  return MixPresentationTags{.tags = tags};
+  uint8_t preferred_loudspeaker_renderer;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, preferred_loudspeaker_renderer));
+
+  uint8_t preferred_binaural_renderer;
+  RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, preferred_binaural_renderer));
+
+  const int num_remaining_bytes = optional_fields_size - 2;
+  std::vector<uint8_t> optional_fields_remaining_bytes(num_remaining_bytes);
+  for (int i = 0; i < num_remaining_bytes; ++i) {
+    RETURN_IF_NOT_OK(
+        rb.ReadUnsignedLiteral(8, optional_fields_remaining_bytes[i]));
+  }
+  return MixPresentationOptionalFields{
+      .optional_fields_size = optional_fields_size,
+      .preferred_loudspeaker_renderer =
+          static_cast<PreferredLoudspeakerRenderer>(
+              preferred_loudspeaker_renderer),
+      .preferred_binaural_renderer =
+          static_cast<PreferredBinauralRenderer>(preferred_binaural_renderer),
+      .optional_fields_remaining_bytes = optional_fields_remaining_bytes};
+}
+
+absl::Status MixPresentationOptionalFields::ValidateAndWrite(
+    WriteBitBuffer& wb) const {
+  RETURN_IF_NOT_OK(wb.WriteUleb128(optional_fields_size));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      static_cast<uint8_t>(preferred_loudspeaker_renderer), 8));
+  RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(
+      static_cast<uint8_t>(preferred_binaural_renderer), 8));
+
+  RETURN_IF_NOT_OK(ValidateContainerSizeEqual(
+      "optional_fields_remaining_bytes", optional_fields_remaining_bytes,
+      static_cast<int>(optional_fields_size) - 2));
+  RETURN_IF_NOT_OK(
+      wb.WriteUint8Span(absl::MakeConstSpan(optional_fields_remaining_bytes)));
+
+  return absl::OkStatus();
 }
 
 // Validates and writes a `LoudspeakersSsConventionLayout` and sets
@@ -487,6 +537,14 @@ absl::Status MixPresentationObu::ValidateAndWritePayload(
     RETURN_IF_NOT_OK(mix_presentation_tags_->ValidateAndWrite(wb));
   }
 
+  if (header_.GetOptionalFieldsFlag()) {
+    RETURN_IF_NOT_OK(ValidateEqual(mix_presentation_tags_.has_value(), true,
+                                   "mix_presentation_tags_.has_value()"));
+    RETURN_IF_NOT_OK(ValidateEqual(optional_fields_.has_value(), true,
+                                   "optional_fields_.has_value()"));
+    RETURN_IF_NOT_OK(optional_fields_->ValidateAndWrite(wb));
+  }
+
   return absl::OkStatus();
 }
 
@@ -543,18 +601,35 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
   ABSL_DCHECK_EQ(bits_read % 8, 0)
       << "Parsed syntax between `Tell` calls should "
          "have always been a multiple of 8.";
+  const bool optional_fields_flag = header_.GetOptionalFieldsFlag();
   if (bits_read / 8 == payload_size) {
-    // Ok. In IAMF v1.0.0, this was the end of the OBU. But in IAMF v1.1.0,
-    // there is an optional `MixPresentationTags` field that follows the
-    // `sub_mixes`.
+    // Reaching the end of the OBU.
+    // In IAMF v2.0.0, if `optional_fields_flag` is true, then we do not have
+    // enough bits to parse the optional fields.
+    if (optional_fields_flag) {
+      return absl::InvalidArgumentError(
+          "`optional_fields_flag` is true but reaching the end of the OBU.");
+    }
+
+    // In IAMF v1.0.0, this is ok.
     return absl::OkStatus();
   }
-  // There is some remaining data. Try to parse a `MixPresentationTags`.
+  // In IAMF v1.1.0 and beyond, there may be some remaining data that follows
+  // the `sub_mixes`.
+  // Try to parse a `MixPresentationTags`.
   auto mix_presentation_tags = MixPresentationTags::CreateFromBuffer(rb);
   if (!mix_presentation_tags.ok()) {
     return mix_presentation_tags.status();
   }
   mix_presentation_tags_ = *std::move(mix_presentation_tags);
+
+  if (optional_fields_flag) {
+    auto optional_fields = MixPresentationOptionalFields::CreateFromBuffer(rb);
+    if (!optional_fields.ok()) {
+      return optional_fields.status();
+    }
+    optional_fields_ = *std::move(optional_fields);
+  }
 
   return absl::OkStatus();
 }
@@ -686,6 +761,26 @@ void MixPresentationObu::PrintObu() const {
     }
   } else {
     ABSL_LOG(INFO) << "  No mix_presentation_tags detected.";
+  }
+
+  if (optional_fields_.has_value()) {
+    ABSL_LOG(INFO) << "  optional_fields:";
+    ABSL_LOG(INFO) << "    optional_fields_size= "
+                   << optional_fields_->optional_fields_size;
+    ABSL_LOG(INFO) << "    preferred_loudspeaker_renderer= "
+                   << absl::StrCat(
+                          optional_fields_->preferred_loudspeaker_renderer);
+    ABSL_LOG(INFO) << "    preferred_binaural_renderer="
+                   << absl::StrCat(
+                          optional_fields_->preferred_binaural_renderer);
+    for (int i = 0;
+         i < optional_fields_->optional_fields_remaining_bytes.size(); i++) {
+      ABSL_LOG(INFO)
+          << "    optional_fields_remaining_bytes[" << i << "]= "
+          << absl::StrCat(optional_fields_->optional_fields_remaining_bytes[i]);
+    }
+  } else {
+    ABSL_LOG(INFO) << "  No optional fields detected.";
   }
 }
 

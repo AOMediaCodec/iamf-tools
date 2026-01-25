@@ -38,7 +38,7 @@ using ::testing::Not;
 constexpr uint32_t kMaxUlebDecoded = UINT32_MAX;
 
 // The spec serializes several fields into the first byte of the OBU header.
-// `obu type` (5 bits), `obu_redundant_copy` (1 bit), `obu_trimming_status_flag`
+// `obu type` (5 bits), `obu_redundant_copy` (1 bit), `type_specific_flag`
 // (1 bit), `obu_extension_flag` (1 bit).
 constexpr uint8_t kUnimportantFirstByte = 0x00;
 constexpr uint8_t kAudioFrameId0WithTrim = 0b00110010;
@@ -79,6 +79,7 @@ const int kObuRedundantCopyBitMask = 4;
 // This flag has multiple aliases depending on the OBU type.
 const int kObuTrimFlagBitMask = 2;
 const int kIsNotKeyFrameBitMask = kObuTrimFlagBitMask;
+const int kOptionalFieldsFlagBitMask = kObuTrimFlagBitMask;
 
 const int kObuExtensionFlagBitMask = 1;
 
@@ -132,20 +133,28 @@ TEST_F(ObuHeaderTest, RedundantCopy) {
   TestGenerateAndWrite();
 }
 
-TEST(ValidateAndWrite, WritesNonKeyFrameTemporalDelimiter) {
-  ObuHeader obu_header{.obu_type = kObuIaTemporalDelimiter,
-                       .type_specific_flag = true};
-  WriteBitBuffer wb(0);
+TEST_F(ObuHeaderTest, WritesOptionalFieldsFlagMixPresentation) {
+  obu_header_.obu_type = kObuIaMixPresentation;
+  obu_header_.type_specific_flag = true;
+  expected_data_ = {
+      // `obu_type`, `obu_redundant_copy`,
+      // `optional_fields_flag, `obu_extension_flag`.
+      kObuIaMixPresentation << kObuTypeBitShift | kOptionalFieldsFlagBitMask,
+      // `obu_size`.
+      0};
+  TestGenerateAndWrite();
+}
 
-  EXPECT_THAT(obu_header.ValidateAndWrite(0, wb), IsOk());
-
-  ValidateWriteResults(
-      wb,
-      {// `obu_type`, `obu_redundant_copy`,
-       // `is_not_key_frame, `obu_extension_flag`.
-       kObuIaTemporalDelimiter << kObuTypeBitShift | kIsNotKeyFrameBitMask,
-       // `obu_size`.
-       0});
+TEST_F(ObuHeaderTest, WritesNonKeyFrameTemporalDelimiter) {
+  obu_header_.obu_type = kObuIaTemporalDelimiter;
+  obu_header_.type_specific_flag = true;
+  expected_data_ = {
+      // `obu_type`, `obu_redundant_copy`,
+      // `is_not_key_frame, `obu_extension_flag`.
+      kObuIaTemporalDelimiter << kObuTypeBitShift | kIsNotKeyFrameBitMask,
+      // `obu_size`.
+      0};
+  TestGenerateAndWrite();
 }
 
 TEST_F(ObuHeaderTest, IllegalRedundantCopyFlagIaSequenceHeader) {
@@ -303,12 +312,10 @@ TEST_F(ObuHeaderTest, PayloadSizeOverflow) {
 
 TEST_F(ObuHeaderTest,
        ValidateAndWriteFailsWhenTypeSpecificFlagIsSetForIaSequenceHeader) {
-  ObuHeader header(
-      {.obu_type = kObuIaSequenceHeader, .type_specific_flag = true});
-  WriteBitBuffer unused_wb(0);
+  obu_header_.obu_type = kObuIaSequenceHeader;
+  obu_header_.type_specific_flag = true;
 
-  EXPECT_FALSE(
-      header.ValidateAndWrite(payload_serialized_size_, unused_wb).ok());
+  TestGenerateAndWrite(absl::StatusCode::kInvalidArgument);
 }
 
 TEST_F(ObuHeaderTest, TrimmingStatusFlagZeroTrim) {
@@ -550,7 +557,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateIncludeAllConditionalFields) {
   EXPECT_EQ(payload_serialized_size_, 1016);
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.type_specific_flag, true);
+  EXPECT_EQ(obu_header_.GetObuTrimmingStatusFlag(), true);
   EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), true);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 128);
@@ -581,7 +588,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateImplicitAudioFrameId17) {
   EXPECT_EQ(payload_serialized_size_, 1024);
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.type_specific_flag, false);
+  EXPECT_EQ(obu_header_.GetObuTrimmingStatusFlag(), false);
   EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
@@ -800,6 +807,36 @@ TEST_F(ObuHeaderTest, InvalidEdgeOverMaxSizeWithFixedSizeLebEightBytes) {
           .ok());
 }
 
+TEST_F(ObuHeaderTest, ReadAndValidateOptionalFieldsFlag) {
+  std::vector<uint8_t> source_data = {
+      // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
+      // `obu_extension_flag`
+      0b00010010,
+      // `obu_size`
+      0};
+  auto read_bit_buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      absl::MakeConstSpan(source_data));
+  EXPECT_THAT(
+      obu_header_.ReadAndValidate(*read_bit_buffer, payload_serialized_size_),
+      IsOk());
+
+  // Validate all OBU Header fields.
+  EXPECT_EQ(obu_header_.obu_type, kObuIaMixPresentation);
+
+  // The obu header consumes till the end of the `source_data` bitstream.
+  EXPECT_EQ(payload_serialized_size_, 0);
+
+  EXPECT_EQ(obu_header_.obu_redundant_copy, false);
+  EXPECT_EQ(obu_header_.GetOptionalFieldsFlag(), true);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
+
+  // No trimming info or extension header present.
+  EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);
+  EXPECT_EQ(obu_header_.num_samples_to_trim_at_start, 0);
+  EXPECT_EQ(obu_header_.GetExtensionHeaderSize(), 0);
+  EXPECT_FALSE(obu_header_.extension_header_bytes.has_value());
+}
+
 TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
   std::vector<uint8_t> source_data = {
       // `obu type`, `obu_redundant_copy`, `obu_trimming_status_flag`,
@@ -824,7 +861,7 @@ TEST_F(ObuHeaderTest, ReadAndValidateMaxObuSizeWithMinimalTrim) {
   EXPECT_EQ(payload_serialized_size_, 0);
 
   EXPECT_EQ(obu_header_.obu_redundant_copy, false);
-  EXPECT_EQ(obu_header_.type_specific_flag, true);
+  EXPECT_EQ(obu_header_.GetObuTrimmingStatusFlag(), true);
   EXPECT_EQ(obu_header_.GetExtensionHeaderFlag(), false);
 
   EXPECT_EQ(obu_header_.num_samples_to_trim_at_end, 0);

@@ -52,10 +52,10 @@ bool IsRedundantCopyAllowed(ObuType type) {
 }
 
 bool IsTypeSpecificFlagAllowed(ObuType type) {
-  // TODO(b/474599045): Support `optional_fields_flag` here when the type is a
-  //                    mix presentation.
-  return IsAudioFrame(type) || type == kObuIaTemporalDelimiter;
+  return IsAudioFrame(type) || type == kObuIaTemporalDelimiter ||
+         type == kObuIaMixPresentation;
 }
+
 // Validates the OBU and returns an error if anything is non-comforming.
 // Requires that all fields including `obu_size_` are initialized.
 absl::Status Validate(const ObuHeader& header) {
@@ -69,7 +69,8 @@ absl::Status Validate(const ObuHeader& header) {
   if (header.type_specific_flag &&
       !IsTypeSpecificFlagAllowed(header.obu_type)) {
     return absl::InvalidArgumentError(absl::StrCat(
-        "The type-specific flag is reserved for obu_type= ", header.obu_type));
+        "The type-specific flag is reserved for obu_type= ", header.obu_type,
+        " and SHALL be set to 0"));
   }
 
   return absl::OkStatus();
@@ -317,6 +318,15 @@ absl::Status ObuHeader::ReadAndValidate(
 
 bool ObuHeader::GetObuTrimmingStatusFlag() const {
   if (IsAudioFrame(obu_type)) {
+    return type_specific_flag;
+  } else {
+    // Under other types, this flag is named something else, or is reserved.
+    return false;
+  }
+}
+
+bool ObuHeader::GetOptionalFieldsFlag() const {
+  if (obu_type == kObuIaMixPresentation) {
     return type_specific_flag;
   } else {
     // Under other types, this flag is named something else, or is reserved.

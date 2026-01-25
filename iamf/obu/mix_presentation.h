@@ -13,6 +13,7 @@
 #define OBU_MIX_PRESENTATION_H_
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -42,7 +43,7 @@ struct SubMixAudioElement {
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
    *         write fails.
    */
-  absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
+  absl::Status ReadAndValidate(const int32_t count_label, ReadBitBuffer& rb);
 
   // The ID of the associated Audio Element OBU.
   DecodedUleb128 audio_element_id;
@@ -277,7 +278,7 @@ struct MixPresentationSubMix {
    * \return `absl::OkStatus()` if the sub-mix is valid. A specific status if
    *         the read fails.
    */
-  absl::Status ReadAndValidate(const int32_t& count_label, ReadBitBuffer& rb);
+  absl::Status ReadAndValidate(const int32_t count_label, ReadBitBuffer& rb);
 
   // `num_audio_elements` is implicit based on the size of `audio_elements`.
   std::vector<SubMixAudioElement> audio_elements;
@@ -298,9 +299,6 @@ struct MixPresentationTags {
     std::string tag_value;
   };
 
-  friend bool operator==(const MixPresentationTags& lhs,
-                         const MixPresentationTags& rhs) = default;
-
   /*!\brief Creates `MixPresentationTags` from the buffer.
    *
    * \param rb Buffer to read from.
@@ -318,8 +316,57 @@ struct MixPresentationTags {
    */
   absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
 
+  friend bool operator==(const MixPresentationTags& lhs,
+                         const MixPresentationTags& rhs) = default;
+
   // `num_tags` is implicit based on the size of `tags`.
   std::vector<Tag> tags;
+};
+
+/*!\brief Enum for preferred loudspeaker renderer. */
+enum class PreferredLoudspeakerRenderer : uint8_t {
+  kNone = 0,
+
+  // Values in the range of [1, (1 << 8) - 1] are reserved.
+  kReservedStart = 1,
+  kReservedEnd = std::numeric_limits<uint8_t>::max(),
+};
+
+/*!\brief Enum for preferred binaural renderer. */
+enum class PreferredBinauralRenderer : uint8_t {
+  kNone = 0,
+
+  // Values in the range of [1, (1 << 8) - 1] are reserved.
+  kReservedStart = 1,
+  kReservedEnd = std::numeric_limits<uint8_t>::max(),
+};
+
+/*!\brief Optional fields in a Mix Presentation OBU. */
+struct MixPresentationOptionalFields {
+  /*!\brief Creates `MixPresentationOptionalFields` from the buffer.
+   *
+   * \param rb Buffer to read from.
+   * \return `absl::OkStatus()` if the `MixPresentationOptionalFields` is valid.
+   *         A specific status if the read fails.
+   */
+  static absl::StatusOr<MixPresentationOptionalFields> CreateFromBuffer(
+      ReadBitBuffer& rb);
+
+  /*!\brief Writes the `MixPresentationOptionalFields` to the buffer.
+   *
+   * \param wb Buffer to write to.
+   * \return `absl::OkStatus()` if the `MixPresentationOptionalFields` is valid.
+   *         A specific status if the write fails.
+   */
+  absl::Status ValidateAndWrite(WriteBitBuffer& wb) const;
+
+  friend bool operator==(const MixPresentationOptionalFields& lhs,
+                         const MixPresentationOptionalFields& rhs) = default;
+
+  DecodedUleb128 optional_fields_size;
+  PreferredLoudspeakerRenderer preferred_loudspeaker_renderer;
+  PreferredBinauralRenderer preferred_binaural_renderer;
+  std::vector<uint8_t> optional_fields_remaining_bytes;
 };
 
 /*!\brief Metadata required for post-processing the mixed audio signal.
@@ -422,19 +469,14 @@ class MixPresentationObu : public ObuBase {
   std::vector<MixPresentationSubMix> sub_mixes_;
 
   // Implicitly included based on `obu_size` after writing the IAMF v1.1.0
-  // payload.
+  // payload. Must be present if `optional_fields_flag` in the OBU header
+  // is true.
   std::optional<MixPresentationTags> mix_presentation_tags_;
 
+  // Included if `optional_fields_flag` is true.
+  std::optional<MixPresentationOptionalFields> optional_fields_;
+
  private:
-  DecodedUleb128 mix_presentation_id_;
-  DecodedUleb128 count_label_;
-  // Length `count_label`.
-  std::vector<std::string> annotations_language_;
-  // Length `count_label`.
-  std::vector<std::string> localized_presentation_annotations_;
-
-  // `num_sub_mixes_` is implicit based on the size of `sub_mixes_`.
-
   // Used only by the factory create function.
   explicit MixPresentationObu(const ObuHeader& header)
       : ObuBase(header, kObuIaMixPresentation),
@@ -459,6 +501,15 @@ class MixPresentationObu : public ObuBase {
    */
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;
+
+  DecodedUleb128 mix_presentation_id_;
+  DecodedUleb128 count_label_;
+  // Length `count_label`.
+  std::vector<std::string> annotations_language_;
+  // Length `count_label`.
+  std::vector<std::string> localized_presentation_annotations_;
+
+  // `num_sub_mixes_` is implicit based on the size of `sub_mixes_`.
 };
 
 }  // namespace iamf_tools
