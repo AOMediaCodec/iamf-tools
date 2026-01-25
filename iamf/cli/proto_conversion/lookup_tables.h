@@ -216,6 +216,28 @@ class LookupTables {
          {LOUDNESS_INFO_TYPE_RESERVED_128, kInfoTypeBitMask128}});
   }();
 
+  inline static constexpr auto kProtoAndInternalPreferredLoudspeakerRenderer =
+      []() {
+        using enum iamf_tools_cli_proto::PreferredLoudspeakerRenderer;
+        using enum PreferredLoudspeakerRenderer;
+        return std::to_array<
+            std::pair<iamf_tools_cli_proto::PreferredLoudspeakerRenderer,
+                      PreferredLoudspeakerRenderer>>(
+            {{PREFERRED_LOUDSPEAKER_RENDERER_NONE, kNone},
+             {PREFERRED_LOUDSPEAKER_RENDERER_RESERVED_255, kReservedEnd}});
+      }();
+
+  inline static constexpr auto kProtoAndInternalPreferredBinauralRenderer =
+      []() {
+        using enum iamf_tools_cli_proto::PreferredBinauralRenderer;
+        using enum PreferredBinauralRenderer;
+        return std::to_array<
+            std::pair<iamf_tools_cli_proto::PreferredBinauralRenderer,
+                      PreferredBinauralRenderer>>(
+            {{PREFERRED_BINAURAL_RENDERER_NONE, kNone},
+             {PREFERRED_BINAURAL_RENDERER_RESERVED_255, kReservedEnd}});
+      }();
+
   inline static constexpr auto kProtoArbitraryObuTypeAndInternalObuTypes =
       []() {
         using enum iamf_tools_cli_proto::ArbitraryObuType;

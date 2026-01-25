@@ -249,6 +249,26 @@ message MixPresentationTags {
   repeated MixPresentationTag tags = 2;
 }
 
+enum PreferredLoudspeakerRenderer {
+  PREFERRED_LOUDSPEAKER_RENDERER_INVALID = 0;
+  PREFERRED_LOUDSPEAKER_RENDERER_NONE = 1;
+  PREFERRED_LOUDSPEAKER_RENDERER_RESERVED_255 = 256;
+}
+
+enum PreferredBinauralRenderer {
+  PREFERRED_BINAURAL_RENDERER_INVALID = 0;
+  PREFERRED_BINAURAL_RENDERER_NONE = 1;
+  PREFERRED_BINAURAL_RENDERER_RESERVED_255 = 256;
+}
+
+message MixPresentationOptionalFields {
+  // `optional_fields_size` is ignored. The value in the bitstream is inferred
+  // based on the size of `optional_fields_remaining_bytes`.
+  PreferredLoudspeakerRenderer preferred_loudspeaker_renderer = 1;
+  PreferredBinauralRenderer preferred_binaural_renderer = 2;
+  bytes optional_fields_remaining_bytes = 3;
+}
+
 message MixPresentationObuMetadata {
   reserved 2, 6, 7;
   reserved language_labels, mix_presentation_annotations_array;
@@ -279,7 +299,8 @@ message MixPresentationObuMetadata {
   // When true: The encoder will use the `mix_presentation_tags` field.
   bool include_mix_presentation_tags = 11;
   MixPresentationTags mix_presentation_tags = 12;
+  MixPresentationOptionalFields optional_fields = 13;
   ObuHeaderMetadata obu_header = 8;
 
-  // Next ID: 13
+  // Next ID: 14
 }

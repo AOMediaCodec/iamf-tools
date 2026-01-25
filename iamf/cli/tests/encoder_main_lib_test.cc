@@ -1150,6 +1150,12 @@ INSTANTIATE_TEST_SUITE_P(
     BaseAdvancedKeyFramesParameterBlockSpansAndParameterBlockGaps, TestVector,
     testing::Values("test_000850.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedPreferredBinauralRenderer, TestVector,
+                         testing::Values("test_000851.textproto"));
+
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedPreferredLoudspeakerRenderer, TestVector,
+                         testing::Values("test_000852.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedElementGainOffsetConfigValueType,
                          TestVector, testing::Values("test_000853.textproto"));
 

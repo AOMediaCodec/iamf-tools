@@ -170,6 +170,7 @@ cc_test(
     deps = [
         "//iamf/cli/proto:element_gain_offset_config_cc_proto",
         "//iamf/cli/proto:mix_presentation_cc_proto",
+        "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/proto:param_definitions_cc_proto",
         "//iamf/cli/proto:types_cc_proto",
         "//iamf/cli/proto_conversion/proto_to_obu:mix_presentation_generator",

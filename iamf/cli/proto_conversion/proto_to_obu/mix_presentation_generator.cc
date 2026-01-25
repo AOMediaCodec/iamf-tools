@@ -557,6 +557,45 @@ absl::Status FillMixPresentationTags(
   return absl::OkStatus();
 }
 
+absl::Status FillOptionalFields(
+    const iamf_tools_cli_proto::MixPresentationOptionalFields& optional_fields,
+    std::optional<MixPresentationOptionalFields>& obu_optional_fields) {
+  obu_optional_fields = MixPresentationOptionalFields{};
+
+  static const auto kProtoToInternalPreferredLoudspeakerRenderer =
+      BuildStaticMapFromPairs(
+          LookupTables::kProtoAndInternalPreferredLoudspeakerRenderer);
+  RETURN_IF_NOT_OK(CopyFromMap(
+      *kProtoToInternalPreferredLoudspeakerRenderer,
+      optional_fields.preferred_loudspeaker_renderer(),
+      "Internal version of proto `preferred_loudspeaker_renderer`= ",
+      obu_optional_fields->preferred_loudspeaker_renderer));
+
+  static const auto kProtoToInternalPreferredBinauralRenderer =
+      BuildStaticMapFromPairs(
+          LookupTables::kProtoAndInternalPreferredBinauralRenderer);
+  RETURN_IF_NOT_OK(
+      CopyFromMap(*kProtoToInternalPreferredBinauralRenderer,
+                  optional_fields.preferred_binaural_renderer(),
+                  "Internal version of proto `preferred_binaural_renderer`= ",
+                  obu_optional_fields->preferred_binaural_renderer));
+
+  const auto remaining_bytes_size =
+      optional_fields.optional_fields_remaining_bytes().size();
+  obu_optional_fields->optional_fields_remaining_bytes.resize(
+      remaining_bytes_size);
+  RETURN_IF_NOT_OK(StaticCastSpanIfInRange(
+      "optional_fields_remaining_bytes",
+      absl::MakeConstSpan(optional_fields.optional_fields_remaining_bytes()),
+      absl::MakeSpan(obu_optional_fields->optional_fields_remaining_bytes)));
+
+  RETURN_IF_NOT_OK(
+      StaticCastIfInRange("optional_fields_size", remaining_bytes_size + 2,
+                          obu_optional_fields->optional_fields_size));
+
+  return absl::OkStatus();
+}
+
 }  // namespace
 
 absl::Status MixPresentationGenerator::CopySoundSystem(
@@ -714,6 +753,7 @@ absl::Status MixPresentationGenerator::Generate(
       std::vector<MixPresentationSubMix> sub_mixes;
 
       std::optional<MixPresentationTags> mix_presentation_tags;
+      std::optional<MixPresentationOptionalFields> optional_fields;
     } obu_args;
 
     obu_args.mix_presentation_id =
@@ -761,6 +801,7 @@ absl::Status MixPresentationGenerator::Generate(
       RETURN_IF_NOT_OK(FillLayouts(input_sub_mix, sub_mix));
       obu_args.sub_mixes.push_back(std::move(sub_mix));
     }
+
     if (mix_presentation_metadata.include_mix_presentation_tags() ||
         append_build_information_tag) {
       RETURN_IF_NOT_OK(FillMixPresentationTags(
@@ -777,6 +818,19 @@ absl::Status MixPresentationGenerator::Generate(
         obu_args.annotations_language,
         obu_args.localized_presentation_annotations, obu_args.sub_mixes);
     obu.mix_presentation_tags_ = obu_args.mix_presentation_tags;
+
+    if (obu.header_.GetOptionalFieldsFlag()) {
+      RETURN_IF_NOT_OK(ValidateEqual(obu_args.mix_presentation_tags.has_value(),
+                                     true,
+                                     "mix_presentation_tags.has_value()"));
+      RETURN_IF_NOT_OK(
+          FillOptionalFields(mix_presentation_metadata.optional_fields(),
+                             obu_args.optional_fields));
+    }
+    obu.optional_fields_ = obu_args.optional_fields;
+
+    obu.PrintObu();
+
     mix_presentation_obus.emplace_back(std::move(obu));
   }
   return absl::OkStatus();

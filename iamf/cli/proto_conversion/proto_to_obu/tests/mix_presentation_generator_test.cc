@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 #include "iamf/cli/proto/element_gain_offset_config.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
+#include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/param_definitions.pb.h"
 #include "iamf/cli/proto/types.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
@@ -1171,6 +1172,90 @@ INSTANTIATE_TEST_SUITE_P(
              .expected_num_tags = 1,
              .expect_build_information_tag_to_be_present = true,
          }}));
+
+TEST(Generate, CopiesOptionalFields) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+
+  // Set the flag in the header.
+  mix_presentation.mutable_obu_header()->set_obu_trimming_status_flag(true);
+  auto& optional_fields = *mix_presentation.mutable_optional_fields();
+  optional_fields.set_preferred_loudspeaker_renderer(
+      iamf_tools_cli_proto::PREFERRED_LOUDSPEAKER_RENDERER_NONE);
+  optional_fields.set_preferred_binaural_renderer(
+      iamf_tools_cli_proto::PREFERRED_BINAURAL_RENDERER_NONE);
+
+  // Three remaining bytes.
+  *optional_fields.mutable_optional_fields_remaining_bytes() = {'o', 'p', 't'};
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  // We must avoid appending the build information tag, to exercise the "zero
+  // tags" case.
+  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
+              IsOk());
+
+  const auto& first_obu = generated_obus.front();
+  ASSERT_TRUE(first_obu.optional_fields_.has_value());
+
+  // 3 remaining bytes + 2 preferred renderers = 5 bytes.
+  EXPECT_EQ(first_obu.optional_fields_->optional_fields_size, 5);
+}
+
+TEST(Generate, FailsWithMissingOptionalFields) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+  mix_presentation.set_include_mix_presentation_tags(true);
+
+  // The flag in the header indicates that there are optional fields but
+  // missing from the proto.
+  mix_presentation.mutable_obu_header()->set_obu_trimming_status_flag(true);
+  mix_presentation.clear_optional_fields();
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  // We must avoid appending the build information tag, to exercise the "zero
+  // tags" case.
+  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
+}
+
+TEST(Generate, FailsWithOptionalFieldsMissingMixPresentationTags) {
+  MixPresentationObuMetadatas mix_presentation_metadata;
+  FillMixPresentationMetadata(mix_presentation_metadata.Add());
+  auto& mix_presentation = mix_presentation_metadata.at(0);
+
+  // Do not include mix presentation tags, which leads to failure.
+  mix_presentation.set_include_mix_presentation_tags(false);
+
+  // The flag in the header indicates that there are optional fields. This
+  // requires that the mix presentation tags are present too. It fails even
+  // if the optional fields are set in the proto.
+  mix_presentation.mutable_obu_header()->set_obu_trimming_status_flag(true);
+  auto& optional_fields = *mix_presentation.mutable_optional_fields();
+  optional_fields.set_preferred_loudspeaker_renderer(
+      iamf_tools_cli_proto::PREFERRED_LOUDSPEAKER_RENDERER_NONE);
+  optional_fields.set_preferred_binaural_renderer(
+      iamf_tools_cli_proto::PREFERRED_BINAURAL_RENDERER_NONE);
+
+  // Three remaining bytes.
+  *optional_fields.mutable_optional_fields_remaining_bytes() = {'o', 'p', 't'};
+
+  MixPresentationGenerator generator(mix_presentation_metadata);
+
+  std::list<MixPresentationObu> generated_obus;
+  // We must avoid appending the build information tag, to exercise the "zero
+  // tags" case.
+  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
+              Not(IsOk()));
+  EXPECT_TRUE(generated_obus.empty());
+}
 
 TEST(Generate, CopiesOutputMixGain) {
   MixPresentationObuMetadatas mix_presentation_metadata;

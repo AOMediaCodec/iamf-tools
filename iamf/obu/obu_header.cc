@@ -354,10 +354,9 @@ void ObuHeader::Print(const LebGenerator& leb_generator,
     ABSL_LOG(ERROR) << "Error printing OBU header";
     return;
   }
-  ABSL_LOG(INFO) << "  obu_type= " << obu_type;
+  ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   ABSL_LOG(INFO) << "  size_of(payload_) " << payload_serialized_size;
 
-  ABSL_LOG(INFO) << "  obu_type= " << absl::StrCat(obu_type);
   ABSL_LOG(INFO) << "  obu_redundant_copy= " << obu_redundant_copy;
   if (IsAudioFrame(obu_type)) {
     ABSL_LOG(INFO) << "  obu_trimming_status_flag= " << type_specific_flag;
