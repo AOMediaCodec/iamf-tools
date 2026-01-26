@@ -505,6 +505,9 @@ INSTANTIATE_TEST_SUITE_P(ToaMonoFLAC, TestVector,
 INSTANTIATE_TEST_SUITE_P(FrameAlignedAAC, TestVector,
                          testing::Values("test_000076.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(ReservedObuAfterDescriptorObus, TestVector,
+                         testing::Values("test_000077.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(RedundantIASequenceHeaderAfter, TestVector,
                          testing::Values("test_000078.textproto"));
 
