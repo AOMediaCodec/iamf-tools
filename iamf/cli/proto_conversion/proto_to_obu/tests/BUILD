@@ -159,6 +159,7 @@ cc_test(
         "//iamf/cli/proto:metadata_obu_cc_proto",
         "//iamf/cli/proto_conversion/proto_to_obu:metadata_obu_generator",
         "//iamf/obu:metadata_obu",
+        "@abseil-cpp//absl/status:status_matchers",
         "@com_google_googletest//:gtest_main",
         "@com_google_protobuf//:protobuf",
     ],
