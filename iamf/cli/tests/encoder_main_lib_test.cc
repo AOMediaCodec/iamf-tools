@@ -1146,6 +1146,9 @@ INSTANTIATE_TEST_SUITE_P(BaseAdvancedFlacAndLpcmCodecConfig, TestVector,
 INSTANTIATE_TEST_SUITE_P(BaseAdvancedAacAndLpcmCodecConfig, TestVector,
                          testing::Values("test_000848.textproto"));
 
+INSTANTIATE_TEST_SUITE_P(BaseAdvancedMetadataObu, TestVector,
+                         testing::Values("test_000849.textproto"));
+
 INSTANTIATE_TEST_SUITE_P(
     BaseAdvancedKeyFramesParameterBlockSpansAndParameterBlockGaps, TestVector,
     testing::Values("test_000850.textproto"));

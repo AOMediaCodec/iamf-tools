@@ -206,7 +206,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "Mechanism_5s_24bit.wav"
+  wav_filename: "Mechanism_5s.wav"
   audio_element_id: 301
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
