@@ -38,7 +38,7 @@ MetadataObu CreateMetadataITUTT35(
   metadata_itu_t_t35_obu.itu_t_t35_payload_bytes = {
       metadata_itu_t_t35.itu_t_t35_payload_bytes().begin(),
       metadata_itu_t_t35.itu_t_t35_payload_bytes().end()};
-  return MetadataObu::Create(ObuHeader(kObuIaMetadata),
+  return MetadataObu::Create(ObuHeader{.obu_type = kObuIaMetadata},
                              std::move(metadata_itu_t_t35_obu));
 }
 
@@ -50,7 +50,7 @@ MetadataObu CreateMetadataIamfTags(
     metadata_iamf_tags_obu.tags.push_back(
         {.tag_name = tag.name(), .tag_value = tag.value()});
   }
-  return MetadataObu::Create(ObuHeader(kObuIaMetadata),
+  return MetadataObu::Create(ObuHeader{.obu_type = kObuIaMetadata},
                              std::move(metadata_iamf_tags_obu));
 }
 
