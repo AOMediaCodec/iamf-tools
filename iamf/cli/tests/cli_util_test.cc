@@ -27,14 +27,12 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "iamf/cli/audio_element_with_data.h"
-#include "iamf/cli/audio_frame_with_data.h"
 #include "iamf/cli/obu_with_data_generator.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/q_format_or_floating_point.h"
 #include "iamf/obu/audio_element.h"
-#include "iamf/obu/audio_frame.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
 #include "iamf/obu/obu_header.h"
@@ -207,27 +205,6 @@ TEST_F(GetCommonSampleRateAndBitDepthTest, LargeCommonSampleRatesAndBitDepths) {
   expected_bit_depth_ = 32;
 
   Test();
-}
-
-const DecodedUleb128 kFourSamplesPerFrame = 4;
-const uint32_t kZeroSamplesToTrimAtEnd = 0;
-const uint32_t kZeroSamplesToTrimAtStart = 0;
-void AddAudioFrameWithIdAndTrim(int32_t num_samples_per_frame,
-                                DecodedUleb128 audio_frame_id,
-                                uint32_t num_samples_to_trim_at_end,
-                                uint32_t num_samples_to_trim_at_start,
-                                std::list<AudioFrameWithData>& audio_frames) {
-  const std::vector<uint8_t> kEmptyAudioFrameData({});
-
-  audio_frames.emplace_back(AudioFrameWithData{
-      .obu = AudioFrameObu(
-          ObuHeader{
-              .num_samples_to_trim_at_end = num_samples_to_trim_at_end,
-              .num_samples_to_trim_at_start = num_samples_to_trim_at_start},
-          audio_frame_id, kEmptyAudioFrameData),
-      .start_timestamp = 0,
-      .end_timestamp = num_samples_per_frame,
-      .audio_element_with_data = nullptr});
 }
 
 TEST(CollectAndValidateParamDefinitions,

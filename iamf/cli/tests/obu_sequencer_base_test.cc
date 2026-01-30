@@ -652,8 +652,8 @@ TEST_F(ObuSequencerTest,
 TEST_F(ObuSequencerTest, MetadataObu) {
   InitializeDescriptorObus();
 
-  metadata_obus_.emplace_back(
-      MetadataObu::Create(ObuHeader(kObuIaMetadata), MetadataITUTT35()));
+  metadata_obus_.emplace_back(MetadataObu::Create(
+      ObuHeader{.obu_type = kObuIaMetadata}, MetadataITUTT35()));
 
   const std::list<const ObuBase*> expected_sequence = {
       &ia_sequence_header_obu_.value(),

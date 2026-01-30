@@ -28,6 +28,8 @@ namespace iamf_tools {
 namespace {
 
 using ::absl_testing::IsOk;
+using ::testing::Each;
+using ::testing::IsEmpty;
 
 constexpr size_t kFourSamplesPerFrame = 4;
 constexpr size_t kOneChannel = 1;
@@ -75,9 +77,7 @@ TEST(AudioElementRendererBase, FinalizeAndFlushWithOutRenderingSucceeds) {
   renderer.Flush(rendered_samples);
 
   EXPECT_EQ(rendered_samples.size(), kOneChannel);
-  for (const auto rendered_samples_for_channel : rendered_samples) {
-    EXPECT_TRUE(rendered_samples_for_channel.empty());
-  }
+  EXPECT_THAT(rendered_samples, Each(IsEmpty()));
 }
 
 TEST(AudioElementRendererBase, FlushingTwiceDoesNotAppendMore) {
