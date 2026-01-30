@@ -11,10 +11,13 @@
 # proto-file: iamf/cli/proto/user_metadata.proto
 # proto-message: UserMetadata
 
+# TODO(b/479171358): Update this to use syntax for momentary loudness and
+#                    loudness range once it is available in the implementation.
+
 test_vector_metadata {
   human_readable_description:
-    "A Base-Advanced Profile Stream with live loudness information"
-    "provided"
+    "A Base-Advanced Profile Stream with live, momentary, and range loudness "
+    "information provided."
   file_name_prefix: "test_000855"
   is_valid: true
   is_valid_to_decode: true
@@ -24,7 +27,9 @@ test_vector_metadata {
     "github/aomediacodec/libiamf/main"
   ]
   primary_tested_spec_sections: [
-    "3.7.6/info_type == LIVE"
+    "3.7.6/info_type == LIVE",
+    "3.7.6/info_type == MOMENTARY_LOUDNESS",
+    "3.7.6/info_type == LOUDNESS_RANGE"
   ]
   base_test: "test_000854"
   partition_mix_gain_parameter_blocks: false
@@ -151,18 +156,298 @@ mix_presentation_metadata {
         }
       }
       loudness {
-        info_type_bit_masks: [LOUDNESS_INFO_TYPE_LIVE]
-        integrated_loudness: -4940
-        digital_peak: -1018
+        info_type_bit_masks: [
+          LOUDNESS_INFO_TYPE_LIVE,
+          LOUDNESS_INFO_TYPE_RESERVED_8,  # Momentary Loudness.
+          LOUDNESS_INFO_TYPE_RESERVED_16  # Loudness Range.
+        ]
+        integrated_loudness: -4619
+        digital_peak: -4621
+        info_type_bytes:
+          # MomentaryLoudnessParamDefinition
+          "\x7f"  # `parameter_id`
+          "\x80\xf7\x02"  # `parameter_rate` = 48000
+          "\x00"  # `param_definition_mode` (1), reserved (7)
+          "\x80\x08"  # `duration` = 1024
+          "\x80\x08"  # `constant_subblock_duration` = 1024
+          "\x1f\xc0"  # `num_bin_pairs_minus_one` (3) = 0, bin_width_minus_one (6) = 63, first_bin_center (6) = 32, reserved_momentary_loudness (1)
+          "\x18"  # `bin[0]` = 24
+          "\x00"  # `bin[1]`
+          # Loudness range fields:
+          "\x00"  # `loudness_range` (6), `reserved_loudness_range` (2)
       }
     }
   }
 }
 
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 0
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 1024
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 2048
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 3072
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 4096
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 5120
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 6144
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 7168
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 8192
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 9216
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 10240
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 11264
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 12288
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 13312
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 14336
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 15360
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 16384
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 17408
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 18432
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 19456
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 20480
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 21504
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 22528
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
+arbitrary_obu_metadata {
+  # A momentary loudness parameter block.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 23552
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` = 127.
+    "\x7f"
+    "\x48"  # momentary loudness (6), reserved (2)
+}
+
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "dialog_clip_stereo.wav"
+  wav_filename: "sine_1000_48khz_512ms.wav"
   audio_element_id: 300
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
@@ -173,7 +458,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "dialog_clip_stereo.wav"
+  wav_filename: "sine_1000_48khz_512ms.wav"
   audio_element_id: 301
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_L_2 },
