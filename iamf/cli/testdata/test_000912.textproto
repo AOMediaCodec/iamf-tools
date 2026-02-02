@@ -133,12 +133,12 @@ mix_presentation_metadata {
                 parameter_rate: 48000
                 param_definition_mode: 1
               }
-              default_first_azimuth: 1
-              default_first_elevation: 2
-              default_first_distance: 3
-              default_second_azimuth: 4
-              default_second_elevation: 5
-              default_second_distance: 6
+              default_first_azimuth: 30
+              default_first_elevation: 45
+              default_first_distance: 127
+              default_second_azimuth: -30
+              default_second_elevation: 45
+              default_second_distance: 127
             }
           }
         }
@@ -161,16 +161,16 @@ mix_presentation_metadata {
             param_definition_type: PARAM_DEFINITION_TYPE_DUAL_POLAR
             dual_polar_param_definition {
               param_definition {
-                parameter_id: 1
+                parameter_id: 2
                 parameter_rate: 48000
                 param_definition_mode: 1
               }
-              default_first_azimuth: 1
-              default_first_elevation: 2
-              default_first_distance: 3
-              default_second_azimuth: 4
-              default_second_elevation: 5
-              default_second_distance: 6
+              default_first_azimuth: 15
+              default_first_elevation: 45
+              default_first_distance: 127
+              default_second_azimuth: -15
+              default_second_elevation: 45
+              default_second_distance: 127
             }
           }
         }
@@ -234,7 +234,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 301
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 },
@@ -245,7 +245,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 302
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 },

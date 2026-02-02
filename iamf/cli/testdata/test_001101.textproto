@@ -25,7 +25,7 @@ test_vector_metadata {
   ]
   primary_tested_spec_sections: [
     "3.7.1/headphones_rendering_mode == 1",
-    "3.7.1/binaural_filter_profile == AMBIENT",
+    "3.7.1/binaural_filter_profile == DIRECT",
     "3.7.5/layout_type == BINAURAL"
   ]
   base_test: "test_001100"
@@ -87,7 +87,7 @@ mix_presentation_metadata {
       localized_element_annotations: ["test_sub_mix_0_audio_element_0"]
       rendering_config {
         headphones_rendering_mode: HEADPHONES_RENDERING_MODE_BINAURAL_WORLD_LOCKED
-        binaural_filter_profile: BINAURAL_FILTER_PROFILE_AMBIENT
+        binaural_filter_profile: BINAURAL_FILTER_PROFILE_DIRECT
       }
       element_mix_gain {
         param_definition {

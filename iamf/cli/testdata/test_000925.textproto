@@ -342,7 +342,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "Transport_TOA_5s.wav"
   audio_element_id: 301
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_A_0 }
@@ -352,7 +352,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 302
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 }
@@ -362,7 +362,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 303
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 }
@@ -372,7 +372,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 304
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 }
@@ -382,7 +382,7 @@ audio_frame_metadata {
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
   samples_to_trim_at_start_includes_codec_delay: false
-  wav_filename: "sine_1000_4oa_48khz.wav"
+  wav_filename: "dialog_clip_stereo.wav"
   audio_element_id: 305
   channel_metadatas: [
     { channel_id: 0 channel_label: CHANNEL_LABEL_OBJECT_CHANNEL0 }
