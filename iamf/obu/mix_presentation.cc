@@ -372,11 +372,11 @@ absl::StatusOr<MixPresentationOptionalFields>
 MixPresentationOptionalFields::CreateFromBuffer(ReadBitBuffer& rb) {
   DecodedUleb128 optional_fields_size;
   RETURN_IF_NOT_OK(rb.ReadULeb128(optional_fields_size));
-  if (optional_fields_size < 2) {
-    return absl::InvalidArgumentError(
-        absl::StrCat("`Invalid optional_fields_size= ", optional_fields_size,
-                     ". Expected >= 2; "));
-  }
+  // When present, there must be at least two bytes for the preferred rendered
+  // and loudspeaker. Otherwise, default to the OBU upper limit.
+  RETURN_IF_NOT_OK(ValidateInRange(
+      optional_fields_size, {DecodedUleb128{2}, kEntireObuSizeMaxTwoMegabytes},
+      "optional_fields_size"));
 
   uint8_t preferred_loudspeaker_renderer;
   RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, preferred_loudspeaker_renderer));

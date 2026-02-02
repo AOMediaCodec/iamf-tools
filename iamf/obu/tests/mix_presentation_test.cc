@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/mix_presentation.h"
 
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -41,6 +42,8 @@ namespace {
 
 using ::absl_testing::IsOk;
 using ::testing::Not;
+
+using ::absl::MakeConstSpan;
 
 // Bit shifts for the `layout_type` and `sound_system` fields which are stored
 // in the same byte.
@@ -1781,6 +1784,38 @@ TEST(MixPresentationTagsWriteAndValidate, InvalidForDuplicateContentIdTag) {
   EXPECT_FALSE(
       kMixPresentationTagsWithDuplicateContentLanguageTag.ValidateAndWrite(wb)
           .ok());
+}
+
+TEST(MixPresentationOptionalFieldsCreateFromBufferTest,
+     ReturnsErrorForTooSmallSize) {
+  constexpr auto kOptionalFieldsWithExcessiveSize =
+      std::to_array<uint8_t>({// `optional_fields_size`.
+                              0x01,
+                              // `preferred_loudspeaker_renderer`.
+                              0});
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kOptionalFieldsWithExcessiveSize));
+
+  EXPECT_THAT(MixPresentationOptionalFields::CreateFromBuffer(*buffer),
+              Not(IsOk()));
+}
+
+TEST(MixPresentationOptionalFieldsCreateFromBufferTest,
+     ReturnsErrorForExcessiveSize) {
+  constexpr auto kOptionalFieldsWithExcessiveSize =
+      std::to_array<uint8_t>({// `optional_fields_size`.
+                              0xff, 0xff, 0xff, 0x0f,
+                              // `preferred_loudspeaker_renderer`.
+                              0,
+                              // `preferred_binaural_renderer`.
+                              0,
+                              // `optional_fields_remaining_bytes'.
+                              'A', 'B', 'C'});
+  auto buffer = MemoryBasedReadBitBuffer::CreateFromSpan(
+      MakeConstSpan(kOptionalFieldsWithExcessiveSize));
+
+  EXPECT_THAT(MixPresentationOptionalFields::CreateFromBuffer(*buffer),
+              Not(IsOk()));
 }
 
 TEST(MixPresentationOptionalFieldsWriteAndValidate,
