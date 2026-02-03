@@ -22,6 +22,7 @@ cc_test(
     name = "numeric_utils_test",
     srcs = ["numeric_utils_test.cc"],
     deps = [
+        "//iamf/cli/proto:obu_header_cc_proto",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/common:write_bit_buffer",
         "//iamf/common/utils:numeric_utils",

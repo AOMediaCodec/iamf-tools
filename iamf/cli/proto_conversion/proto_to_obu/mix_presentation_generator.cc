@@ -733,7 +733,7 @@ absl::Status MixPresentationGenerator::CopyUserLayoutExtension(
   output_loudness.layout_extension.info_type_bytes.resize(
       user_loudness.info_type_bytes().size());
   return StaticCastSpanIfInRange(
-      "layout_extension_bytes",
+      "LoudnessInfo.info_type_bytes",
       absl::MakeConstSpan(user_loudness.info_type_bytes()),
       absl::MakeSpan(output_loudness.layout_extension.info_type_bytes));
 }

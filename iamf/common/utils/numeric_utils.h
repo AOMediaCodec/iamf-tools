@@ -88,23 +88,32 @@ float Q0_8ToFloat(uint8_t value);
  * \return `absl::OkStatus()` if successful. `absl::InvalidArgumentError()` if
  *         the input is outside the expected range.
  */
-template <typename T, typename U>
-absl::Status StaticCastIfInRange(absl::string_view field_name, T input,
-                                 U& output) {
-  constexpr U kMinOutput = std::numeric_limits<U>::min();
-  constexpr U kMaxOutput = std::numeric_limits<U>::max();
-  if (input < kMinOutput || kMaxOutput < input) [[unlikely]] {
-    std::string message =
-        absl::StrCat(field_name, " is outside the expected range of ");
-    if constexpr (std::is_same_v<U, char> || std::is_same_v<U, unsigned char>) {
-      absl::StrAppend(&message, "[0, 255]");
-    } else {
-      absl::StrAppend(&message, "[", kMinOutput, ", ", kMaxOutput, "]");
-    }
-    return absl::InvalidArgumentError(message);
+template <typename InputType, typename OutputType>
+absl::Status StaticCastIfInRange(absl::string_view field_name, InputType input,
+                                 OutputType& output) {
+  // As a special case, we don't care if the `char` is signed or unsigned.
+  // Always cast it to the `uint8_t`, which is typically used in the codebase
+  // as the "raw bytes" type.
+  constexpr bool is_char_to_raw_bytes =
+      std::is_same_v<InputType, char> && std::is_same_v<OutputType, uint8_t>;
+  constexpr OutputType kMinOutput = std::numeric_limits<OutputType>::min();
+  constexpr OutputType kMaxOutput = std::numeric_limits<OutputType>::max();
+  bool is_in_range = kMinOutput <= input && input <= kMaxOutput;
+
+  if (is_in_range || is_char_to_raw_bytes) [[likely]] {
+    output = static_cast<OutputType>(input);
+    return absl::OkStatus();
   }
-  output = static_cast<U>(input);
-  return absl::OkStatus();
+
+  std::string message =
+      absl::StrCat(field_name, " is outside the expected range of ");
+  if constexpr (std::is_same_v<OutputType, char> ||
+                std::is_same_v<OutputType, unsigned char>) {
+    absl::StrAppend(&message, "[0, 255]");
+  } else {
+    absl::StrAppend(&message, "[", kMinOutput, ", ", kMaxOutput, "]");
+  }
+  return absl::InvalidArgumentError(message);
 }
 
 /*!\brief Creates a 32-bit signed integer from the [1, 4] input `bytes`.

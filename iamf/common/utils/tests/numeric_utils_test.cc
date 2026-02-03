@@ -19,6 +19,7 @@
 #include <ios>
 #include <limits>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "absl/functional/any_invocable.h"
@@ -28,6 +29,7 @@
 #include "absl/types/span.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/tests/cli_test_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/types.h"
@@ -38,6 +40,9 @@ namespace {
 using ::absl_testing::IsOk;
 using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
+
+using ::absl::MakeConstSpan;
+using ::absl::MakeSpan;
 
 constexpr absl::string_view kOmitContext = "";
 constexpr absl::string_view kCustomUserContext = "Custom User Context";
@@ -502,6 +507,16 @@ TEST(StaticCastIfInRange, MessageContainsContextOnError) {
       HasSubstr(kCustomUserContext));
 }
 
+TEST(StaticCastIfInRange, SucceedsForMinCharToUint8) {
+  constexpr char input = std::numeric_limits<char>::min();
+  uint8_t output;
+
+  EXPECT_THAT((StaticCastIfInRange<char, uint8_t>(kOmitContext, input, output)),
+              IsOk());
+
+  EXPECT_EQ(output, input);
+}
+
 struct StaticCastIfInRangeUint32ToUint8TestCase {
   uint32_t test_val;
   uint8_t expected_val;
@@ -849,6 +864,21 @@ TEST(StaticCastSpanIfInRange, MessageContainsContextOnError) {
                               absl::MakeSpan(result))
           .message(),
       HasSubstr(kFieldName));
+}
+
+TEST(StaticCastSpanIfInRange, SucceedsForProtoBytesSpanToUint8Span) {
+  iamf_tools_cli_proto::ObuHeaderMetadata obu_header;
+  obu_header.set_extension_header_bytes({'\x01', '\x02', '\x7e', '\x7f'});
+  constexpr std::array<uint8_t, 4> kExpectedResult = {0x01, 0x02, 0x7e, 0x7f};
+
+  std::vector<uint8_t> result(obu_header.extension_header_bytes().size());
+  EXPECT_THAT(
+      StaticCastSpanIfInRange(
+          kOmitContext, MakeConstSpan(obu_header.extension_header_bytes()),
+          MakeSpan(result)),
+      IsOk());
+
+  EXPECT_THAT(result, ElementsAreArray(kExpectedResult));
 }
 
 }  // namespace
