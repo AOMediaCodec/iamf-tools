@@ -507,14 +507,17 @@ TEST(StaticCastIfInRange, MessageContainsContextOnError) {
       HasSubstr(kCustomUserContext));
 }
 
-TEST(StaticCastIfInRange, SucceedsForMinCharToUint8) {
-  constexpr char input = std::numeric_limits<char>::min();
+TEST(StaticCastIfInRange, SucceedsForExtremeCharValues) {
+  // `char` can be either signed or unsigned, but this test ensures we don't
+  // care about the signedness.
+  constexpr char input = 0xff;
   uint8_t output;
+  constexpr uint8_t kExpectedOutput = 0xff;
 
   EXPECT_THAT((StaticCastIfInRange<char, uint8_t>(kOmitContext, input, output)),
               IsOk());
 
-  EXPECT_EQ(output, input);
+  EXPECT_EQ(output, kExpectedOutput);
 }
 
 struct StaticCastIfInRangeUint32ToUint8TestCase {

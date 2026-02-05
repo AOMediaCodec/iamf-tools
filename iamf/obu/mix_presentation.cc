@@ -745,8 +745,8 @@ void MixPresentationObu::PrintObu() const {
         ABSL_LOG(INFO) << "          info_type_size= "
                        << layout_extension.info_type_bytes.size();
         for (int i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
-          ABSL_LOG(INFO) << "          info_type_bytes[" << i
-                         << "]= " << layout_extension.info_type_bytes[i];
+          ABSL_LOG(INFO) << "          info_type_bytes[" << i << "]= "
+                         << absl::StrCat(layout_extension.info_type_bytes[i]);
         }
       }
     }
