@@ -167,12 +167,12 @@ mix_presentation_metadata {
         }
         element_mix_gain {
           param_definition {
-            parameter_id: 100
+            parameter_id: 101
             parameter_rate: 48000
             param_definition_mode: 1
             reserved: 0
           }
-          default_mix_gain: -768  # -3 dB.
+          default_mix_gain: -1536  # -6 dB.
         }
       },
       {
@@ -294,7 +294,7 @@ mix_presentation_metadata {
     ]
     output_mix_gain {
       param_definition {
-        parameter_id: 101
+        parameter_id: 102
         parameter_rate: 48000
         param_definition_mode: 1
         reserved: 0
