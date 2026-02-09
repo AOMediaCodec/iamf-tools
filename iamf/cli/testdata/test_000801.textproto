@@ -80,11 +80,13 @@ mix_presentation_metadata {
             param_definition {
               parameter_id: 1
               parameter_rate: 48000
-              param_definition_mode: 1
+              param_definition_mode: 0
+              duration: 1024
+              constant_subblock_duration: 1024
             }
-            default_x: 1
-            default_y: 2
-            default_z: 3
+            default_x: 0
+            default_y: 127
+            default_z: 0
           }
         }
       }
@@ -122,6 +124,70 @@ mix_presentation_metadata {
   }
 
 }
+
+arbitrary_obu_metadata {
+  # A step parameter block in front of the listener.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 0
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` (1)`.
+    "\x01"
+    # `animation_type` = `STEP`.
+    "\x00"
+    "\x00"  # x: 0
+    "\x7f"  # y: 127
+    "\x00"  # z: 0
+}
+
+arbitrary_obu_metadata {
+  # An inter-linear parameter block in to the left of the listener.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 1024
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` (1)`.
+    "\x01"
+    # `animation_type` = `INTER_LINEAR`.
+    "\x03"
+    "\x81"  # x: -127
+    "\x00"  # y: 0
+    "\x00"  # z: 0
+}
+
+arbitrary_obu_metadata {
+  # An inter-linear parameter block in to the rear of the listener.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 2048
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` (1)`.
+    "\x01"
+    # `animation_type` = `INTER_LINEAR`.
+    "\x03"
+    "\x00"  # x: 0
+    "\x81"  # y: -127
+    "\x00"  # z: 0
+}
+
+arbitrary_obu_metadata {
+  # An inter-linear parameter block in to the right of the listener.
+  insertion_hook: INSERTION_HOOK_AFTER_PARAMETER_BLOCKS_AT_TICK
+  insertion_tick: 3072
+  obu_type: OBU_IA_PARAMETER_BLOCK
+  payload:
+    # `parameter_id` (1)`.
+    "\x01"
+    # `animation_type` = `INTER_LINEAR`.
+    "\x03"
+    "\x7f"  # x: 127
+    "\x00"  # y: 0
+    "\x00"  # z: 0
+}
+
+# Note that remaining frames exercise "parameter block gaps". They default based
+# on the parameter definition. In this case, this is to the front of the
+# listener.
 
 audio_frame_metadata {
   samples_to_trim_at_end_includes_padding: false
