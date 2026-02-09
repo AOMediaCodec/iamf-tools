@@ -123,11 +123,11 @@ mix_presentation_metadata {
               parameter_rate: 48000
               param_definition_mode: 1
             }
-            default_first_x: -32768
+            default_first_x: -32767
             default_first_y: 0
             default_first_z: 0
             default_second_x: 0
-            default_second_y: -32768
+            default_second_y: -32767
             default_second_z: 0
           }
         }
