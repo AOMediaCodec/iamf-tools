@@ -66,12 +66,13 @@ class ObuSequencerIamf : public ObuSequencerBase {
    *
    * \param timestamp Ignored.
    * \param num_samples Ignored.
+   * \param is_key_frame Ignored.
    * \param temporal_unit Temporal unit to push.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status PushSerializedTemporalUnit(
       InternalTimestamp /*timestamp*/, int /*num_samples*/,
-      absl::Span<const uint8_t> temporal_unit) override;
+      bool /*is_key_frame*/, absl::Span<const uint8_t> temporal_unit) override;
 
   /*!\brief Pushes the finalized descriptor OBUs to the IAMF file.
    *

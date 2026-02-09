@@ -199,7 +199,7 @@ void ExpectPushedTemporalUnitMatchesExpectedSequence(
       SerializeObusExpectOk(expected_sequence);
   EXPECT_CALL(mock_obu_sequencer,
               PushSerializedTemporalUnit(
-                  _, _, MakeConstSpan(expected_serialized_temporal_unit)));
+                  _, _, _, MakeConstSpan(expected_serialized_temporal_unit)));
 
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(temporal_unit), IsOk());
 }
@@ -356,7 +356,7 @@ TEST(PushTemporalUnit, PassesZeroSamplesForFullyTrimmedAudioFrame) {
   ASSERT_THAT(temporal_unit, IsOk());
 
   EXPECT_CALL(mock_obu_sequencer,
-              PushSerializedTemporalUnit(_, kNumUntrimmedSamples, _));
+              PushSerializedTemporalUnit(_, kNumUntrimmedSamples, _, _));
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*temporal_unit), IsOk());
 }
 
@@ -389,7 +389,7 @@ TEST(PushTemporalUnit, PAssesNumberOfUntrimmedSamplesToNumSamples) {
   ASSERT_THAT(temporal_unit, IsOk());
 
   EXPECT_CALL(mock_obu_sequencer,
-              PushSerializedTemporalUnit(_, kNumUntrimmedSamples, _));
+              PushSerializedTemporalUnit(_, kNumUntrimmedSamples, _, _));
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*temporal_unit), IsOk());
 }
 
@@ -1075,11 +1075,72 @@ TEST(PushTemporalUnit, ForwardsPropertiesToPushAllTemporalUnits) {
                   audio_elements, mix_presentation_obus, kNoArbitraryObus),
               IsOk());
 
-  EXPECT_CALL(
-      mock_obu_sequencer,
-      PushSerializedTemporalUnit(kExpectedTimestamp, kExpectedNumSamples, _));
+  EXPECT_CALL(mock_obu_sequencer,
+              PushSerializedTemporalUnit(kExpectedTimestamp,
+                                         kExpectedNumSamples, _, _));
 
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*temporal_unit), IsOk());
+}
+
+TEST(PushTemporalUnit, ForwardsIsKeyFrame) {
+  const IASequenceHeaderObu kIaSequenceHeader(
+      ObuHeader(), ProfileVersion::kIamfSimpleProfile,
+      ProfileVersion::kIamfBaseProfile);
+  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
+  const std::list<MetadataObu> kNoMetadataObus;
+  absl::flat_hash_map<uint32_t, AudioElementWithData> audio_elements;
+  std::list<MixPresentationObu> mix_presentation_obus;
+  const std::list<ArbitraryObu> kNoDescriptorArbitraryObus;
+  InitializeDescriptorObusForOneMonoAmbisonicsAudioElement(
+      codec_config_obus, audio_elements, mix_presentation_obus);
+  MockObuSequencer mock_obu_sequencer(
+      *LebGenerator::Create(), kDoNotIncludeTemporalDelimiters,
+      kDoNotDelayDescriptorsUntilTrimAtStartIsKnown);
+  EXPECT_THAT(
+      mock_obu_sequencer.PushDescriptorObus(
+          kIaSequenceHeader, kNoMetadataObus, codec_config_obus, audio_elements,
+          mix_presentation_obus, kNoDescriptorArbitraryObus),
+      IsOk());
+  // Prepare the first temporal unit, which is a key frame.
+  std::list<ArbitraryObu> kKeyFrameArbitraryObus({ArbitraryObu(
+      kObuIaTemporalDelimiter, ObuHeader{.type_specific_flag = false},
+      /*payload=*/{}, ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick,
+      0)});
+  std::list<AudioFrameWithData> first_temporal_unit_audio_frames;
+  AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
+      kFirstAudioElementId, kFirstSubstreamId, 0, 8, audio_elements,
+      first_temporal_unit_audio_frames);
+  const auto key_frame_temporal_unit = TemporalUnitView::Create(
+      kNoParameterBlocks, first_temporal_unit_audio_frames,
+      kKeyFrameArbitraryObus);
+  ASSERT_THAT(key_frame_temporal_unit, IsOk());
+  // Prepare the second temporal unit, which is not a key frame.
+  std::list<AudioFrameWithData> second_temporal_unit_audio_frames;
+  std::list<ArbitraryObu> kNonKeyFrameArbitraryObus({ArbitraryObu(
+      kObuIaTemporalDelimiter, ObuHeader{.type_specific_flag = true},
+      /*payload=*/{}, ArbitraryObu::kInsertionHookBeforeParameterBlocksAtTick,
+      0)});
+  AddEmptyAudioFrameWithAudioElementIdSubstreamIdAndTimestamps(
+      kFirstAudioElementId, kFirstSubstreamId, 0, 8, audio_elements,
+      second_temporal_unit_audio_frames);
+  const auto non_key_frame_temporal_unit = TemporalUnitView::Create(
+      kNoParameterBlocks, second_temporal_unit_audio_frames,
+      kNonKeyFrameArbitraryObus);
+  ASSERT_THAT(non_key_frame_temporal_unit, IsOk());
+
+  constexpr bool kExpectFirstFrameIsKeyFrame = true;
+  EXPECT_CALL(mock_obu_sequencer,
+              PushSerializedTemporalUnit(kFirstTimestamp, _,
+                                         kExpectFirstFrameIsKeyFrame, _));
+  EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*key_frame_temporal_unit),
+              IsOk());
+
+  constexpr bool kExpectSecondFrameIsNotKeyFrame = false;
+  EXPECT_CALL(mock_obu_sequencer,
+              PushSerializedTemporalUnit(kFirstTimestamp, _,
+                                         kExpectSecondFrameIsNotKeyFrame, _));
+  EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*non_key_frame_temporal_unit),
+              IsOk());
 }
 
 TEST(PushTemporalUnit,
@@ -1241,7 +1302,7 @@ TEST(PushTemporalUnit, ForwardsObusToPushSerializedTemporalUnit) {
           parameter_blocks.front().obu.get(), &audio_frames.front().obu});
   EXPECT_CALL(mock_obu_sequencer,
               PushSerializedTemporalUnit(
-                  _, _, MakeConstSpan(serialized_temporal_unit)));
+                  _, _, _, MakeConstSpan(serialized_temporal_unit)));
 
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*temporal_unit), IsOk());
 }
@@ -1278,9 +1339,9 @@ TEST(PushTemporalUnit, ForwardsArbitraryObusToPushSerializedTemporalUnit) {
   const std::vector<uint8_t> serialized_audio_frame = SerializeObusExpectOk(
       std::list<const ObuBase*>{&audio_frames.front().obu,
                                 &kArbitraryObuBeforeFirstAudioFrame.front()});
-  EXPECT_CALL(
-      mock_obu_sequencer,
-      PushSerializedTemporalUnit(_, _, MakeConstSpan(serialized_audio_frame)));
+  EXPECT_CALL(mock_obu_sequencer,
+              PushSerializedTemporalUnit(
+                  _, _, _, MakeConstSpan(serialized_audio_frame)));
 
   EXPECT_THAT(mock_obu_sequencer.PushTemporalUnit(*first_temporal_unit),
               IsOk());
@@ -1374,7 +1435,7 @@ TEST(PushTemporalUnit, CallsAbortDerivedWhenPushAllTemporalUnitsFails) {
   // If `PushSerializedTemporalUnit` fails, `AbortDerived` is called. This
   // allows concrete implementation to clean up and remove the file in one
   // place.
-  EXPECT_CALL(mock_obu_sequencer, PushSerializedTemporalUnit(_, _, _))
+  EXPECT_CALL(mock_obu_sequencer, PushSerializedTemporalUnit(_, _, _, _))
       .WillOnce(Return(absl::InternalError("")));
   EXPECT_CALL(mock_obu_sequencer, AbortDerived()).Times(1);
 

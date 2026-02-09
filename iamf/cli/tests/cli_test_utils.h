@@ -708,7 +708,7 @@ class MockObuSequencer : public ObuSequencerBase {
               (override));
 
   MOCK_METHOD(absl::Status, PushSerializedTemporalUnit,
-              (InternalTimestamp timestamp, int num_samples,
+              (InternalTimestamp timestamp, int num_samples, bool is_key_frame,
                absl::Span<const uint8_t> temporal_unit),
               (override));
 

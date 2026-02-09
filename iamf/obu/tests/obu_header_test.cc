@@ -981,6 +981,31 @@ TEST_F(ObuHeaderTest, NegativePayloadSizeNotAcceptable) {
       Not(IsOk()));
 }
 
+TEST(GetIsKeyFrame, ReturnsTrueForKeyFrame) {
+  // The type specific flag represents `is_not_key_frame` for temporal delimiter
+  // OBUs.
+  const ObuHeader header{.obu_type = kObuIaTemporalDelimiter,
+                         .type_specific_flag = false};
+
+  EXPECT_TRUE(header.GetIsKeyFrame());
+}
+
+TEST(GetIsKeyFrame, ReturnsTrueForNonKeyFrame) {
+  // The type specific flag represents `is_not_key_frame` for temporal delimiter
+  // OBUs.
+  const ObuHeader header{.obu_type = kObuIaTemporalDelimiter,
+                         .type_specific_flag = true};
+
+  EXPECT_FALSE(header.GetIsKeyFrame());
+}
+
+TEST(GetIsKeyFrame, ReturnsFalseForNonTemporalDelimiter) {
+  ObuHeader header{.obu_type = kObuIaAudioFrameId0,
+                   .type_specific_flag = false};
+
+  EXPECT_FALSE(header.GetIsKeyFrame());
+}
+
 TEST(PeekObuTypeAndTotalObuSize, Success) {
   std::vector<uint8_t> source_data = {kAudioFrameId0WithTrim,
                                       // `obu_size`

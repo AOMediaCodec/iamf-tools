@@ -157,6 +157,17 @@ struct ObuHeader {
    */
   bool GetOptionalFieldsFlag() const;
 
+  /*!\brief Returns true if the OBU is a key frame.
+   *
+   * Note: The underlying field is called `is_not_key_frame` in the IAMF
+   * specification. This function returns the opposite of that field, for
+   * temporal delimiter OBUs.
+   *
+   * \return true if the OBU is a key frame, false if it is not a key frame, or
+   *         is not a temporal delimiter OBU.
+   */
+  bool GetIsKeyFrame() const;
+
   /*!\brief Returns true if the trimming status flag is present and set.
    *
    * \return true if the trimming status flag is present and set, false if it is

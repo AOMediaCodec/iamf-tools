@@ -334,6 +334,18 @@ bool ObuHeader::GetOptionalFieldsFlag() const {
   }
 }
 
+bool ObuHeader::GetIsKeyFrame() const {
+  if (obu_type == kObuIaTemporalDelimiter) {
+    // `type_specific_flag`  represents `is_not_key_frame` for temporal
+    // delimiter OBUs. Invert it to provide a cleaner function name without the
+    // negation.
+    return !type_specific_flag;
+  } else {
+    // Under other types, this flag is named something else, or is reserved.
+    return false;
+  }
+}
+
 bool ObuHeader::GetExtensionHeaderFlag() const {
   return extension_header_bytes.has_value();
 }

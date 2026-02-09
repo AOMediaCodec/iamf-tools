@@ -89,7 +89,7 @@ ComputeTemporalUnitStatisticsFromArbitraryObu(
     const ArbitraryObu* first_arbitrary_obu) {
   RETURN_IF_NOT_OK(ValidateNotNull(first_arbitrary_obu, "`arbitrary_obus`"));
   RETURN_IF_NOT_OK(ValidateHasValue(first_arbitrary_obu->insertion_tick_,
-                                    "`arbitrary_obus`"));
+                                    "`arbitrary_obu->insertion_tick_`"));
   return TemporalUnitStatistics{
       .num_samples_per_frame = 0,
       .num_samples_to_trim_at_end = 0,

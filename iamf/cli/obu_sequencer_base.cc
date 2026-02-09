@@ -445,11 +445,19 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
   cumulative_num_samples_for_logging_ += num_samples;
   num_temporal_units_for_logging_++;
 
+  // TODO(b/476091301): Check if this is a key frame based on parameter blocks.
+  const bool is_key_frame =
+      std::any_of(temporal_unit.arbitrary_obus_.begin(),
+                  temporal_unit.arbitrary_obus_.end(),
+                  [](const ArbitraryObu* arbitrary_obu) {
+                    return arbitrary_obu->header_.GetIsKeyFrame();
+                  });
+
   if (!descriptor_statistics_->first_untrimmed_timestamp.has_value()) {
     // Treat the initial temporal units as a special case, this helps gather
     // statistics about the first untrimmed sample.
     RETURN_IF_NOT_OK(HandleInitialTemporalUnits(
-        temporal_unit, absl::MakeConstSpan(wb_.bit_buffer())));
+        temporal_unit, absl::MakeConstSpan(wb_.bit_buffer()), is_key_frame));
 
   } else if (temporal_unit.num_samples_to_trim_at_start_ > 0) {
     return absl::InvalidArgumentError(
@@ -458,8 +466,9 @@ absl::Status ObuSequencerBase::PushTemporalUnit(
   } else [[likely]] {
     // This is by far the most common case, after we have seen the first real
     // frame of audio, we can handle this simply.
-    RETURN_IF_NOT_OK(PushSerializedTemporalUnit(
-        start_timestamp, num_samples, absl::MakeConstSpan(wb_.bit_buffer())));
+    RETURN_IF_NOT_OK(
+        PushSerializedTemporalUnit(start_timestamp, num_samples, is_key_frame,
+                                   absl::MakeConstSpan(wb_.bit_buffer())));
   }
 
   abort_on_destruct.CancelAbort();
@@ -577,7 +586,7 @@ void ObuSequencerBase::Abort() {
 
 absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
     const TemporalUnitView& temporal_unit,
-    absl::Span<const uint8_t> serialized_temporal_unit) {
+    absl::Span<const uint8_t> serialized_temporal_unit, bool is_key_frame) {
   const bool found_first_untrimmed_sample =
       temporal_unit.num_untrimmed_samples_ != 0;
   if (found_first_untrimmed_sample) {
@@ -592,7 +601,7 @@ absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
   if (!delay_descriptors_until_first_untrimmed_sample_) {
     return PushSerializedTemporalUnit(temporal_unit.start_timestamp_,
                                       temporal_unit.num_untrimmed_samples_,
-                                      serialized_temporal_unit);
+                                      is_key_frame, serialized_temporal_unit);
   }
 
   if (!found_first_untrimmed_sample) {
@@ -600,6 +609,7 @@ absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
     delayed_temporal_units_.push_back(SerializedTemporalUnit{
         .start_timestamp = temporal_unit.start_timestamp_,
         .num_untrimmed_samples = temporal_unit.num_untrimmed_samples_,
+        .is_key_frame = is_key_frame,
         .data = std::vector<uint8_t>(serialized_temporal_unit.begin(),
                                      serialized_temporal_unit.end())});
     return absl::OkStatus();
@@ -620,13 +630,14 @@ absl::Status ObuSequencerBase::HandleInitialTemporalUnits(
     RETURN_IF_NOT_OK(PushSerializedTemporalUnit(
         delayed_temporal_unit.start_timestamp,
         delayed_temporal_unit.num_untrimmed_samples,
+        delayed_temporal_unit.is_key_frame,
         absl::MakeConstSpan(delayed_temporal_unit.data)));
   }
   delayed_temporal_units_.clear();
   // Then finally, flush the current temporal unit.
   return PushSerializedTemporalUnit(temporal_unit.start_timestamp_,
                                     temporal_unit.num_untrimmed_samples_,
-                                    serialized_temporal_unit);
+                                    is_key_frame, serialized_temporal_unit);
 }
 
 }  // namespace iamf_tools

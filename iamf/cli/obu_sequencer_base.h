@@ -167,11 +167,12 @@ class ObuSequencerBase {
    *
    * \param timestamp Start timestamp of the temporal unit.
    * \param num_samples Number of samples in the temporal unit.
+   * \param is_key_frame Whether the temporal unit is a key frame.
    * \param temporal_unit Temporal unit to push.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status PushSerializedTemporalUnit(
-      InternalTimestamp timestamp, int num_samples,
+      InternalTimestamp timestamp, int num_samples, bool is_key_frame,
       absl::Span<const uint8_t> temporal_unit) = 0;
 
   /*!\brief Pushes the finalized descriptor OBUs to some output.
@@ -204,11 +205,12 @@ class ObuSequencerBase {
    *
    * \param temporal_unit Temporal unit to push.
    * \param serialized_temporal_unit Serialized temporla unit.
+   * \param is_key_frame Whether the temporal unit is a key frame.
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   absl::Status HandleInitialTemporalUnits(
       const TemporalUnitView& temporal_unit,
-      absl::Span<const uint8_t> serialized_temporal_unit);
+      absl::Span<const uint8_t> serialized_temporal_unit, bool is_key_frame);
 
   enum State {
     // Initial state.
@@ -252,6 +254,7 @@ class ObuSequencerBase {
   struct SerializedTemporalUnit {
     InternalTimestamp start_timestamp;
     uint32_t num_untrimmed_samples;
+    bool is_key_frame;
     std::vector<uint8_t> data;
   };
   std::list<SerializedTemporalUnit> delayed_temporal_units_;

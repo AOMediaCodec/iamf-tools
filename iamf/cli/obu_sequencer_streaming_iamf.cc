@@ -65,7 +65,7 @@ absl::Status ObuSequencerStreamingIamf::PushSerializedDescriptorObus(
 }
 
 absl::Status ObuSequencerStreamingIamf::PushSerializedTemporalUnit(
-    InternalTimestamp /*timestamp*/, int /*num_samples*/,
+    InternalTimestamp /*timestamp*/, int /*num_samples*/, bool /*is_key_frame*/,
     absl::Span<const uint8_t> temporal_unit) {
   CopySpanToVector(temporal_unit, previous_serialized_temporal_unit_);
   return absl::OkStatus();

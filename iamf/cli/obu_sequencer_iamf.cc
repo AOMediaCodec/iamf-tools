@@ -81,7 +81,7 @@ absl::Status ObuSequencerIamf::PushSerializedDescriptorObus(
 }
 
 absl::Status ObuSequencerIamf::PushSerializedTemporalUnit(
-    InternalTimestamp /*timestamp*/, int /*num_samples*/,
+    InternalTimestamp /*timestamp*/, int /*num_samples*/, bool /*is_key_frame*/,
     absl::Span<const uint8_t> temporal_unit) {
   RETURN_IF_NOT_OK(wb_.WriteUint8Span(temporal_unit));
   return wb_.FlushAndWriteToFile(output_iamf_);
