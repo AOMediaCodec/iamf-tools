@@ -33,6 +33,16 @@ _REGEX_FILTER = flags.DEFINE_string(
     ' each filename.',
     required=False,
 )
+# It's easy for the computed loudness and loudness provided in the test vector
+# to get out of sync. By default, suppress any discrepancies and generate the
+# file based on the measured loudness.
+_VALIDATE_LOUDNESS = flags.DEFINE_bool(
+    'validate_loudness',
+    False,
+    'If true, validate loudness for all test vectors. If false, skip loudness'
+    ' validation for all test vectors.',
+    required=False,
+)
 
 
 def _run_encoder(
@@ -47,9 +57,11 @@ def _run_encoder(
   with tempfile.NamedTemporaryFile(
       mode='w+b', suffix='.binpb'
   ) as temp_metadata_file:
-    # It's easy for loudness to get out of sync in the test vectors. Create a
-    # temp file with loudness validation disabled, and process it.
-    user_metadata.test_vector_metadata.validate_user_loudness = False
+    # Create a temp file. Force the loudness validation field to match the
+    # command-line flag.
+    user_metadata.test_vector_metadata.validate_user_loudness = (
+        _VALIDATE_LOUDNESS.value
+    )
     temp_metadata_file.write(user_metadata.SerializeToString())
     temp_metadata_file.flush()
     cmd = [
