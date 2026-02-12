@@ -619,6 +619,7 @@ cc_test(
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:rendering_config",
         "@com_google_googletest//:gtest_main",
     ],
 )

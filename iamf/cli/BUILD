@@ -590,6 +590,7 @@ cc_library(
         "//iamf/cli/renderer:audio_element_renderer_passthrough",
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "@abseil-cpp//absl/log:absl_log",
     ],

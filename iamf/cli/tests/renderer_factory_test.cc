@@ -21,6 +21,7 @@
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
 
 namespace iamf_tools {
 namespace {
@@ -80,6 +81,7 @@ TEST(CreateRendererForLayout, SupportsPassThroughRenderer) {
       nullptr);
 }
 
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
 TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
   const RendererFactory factory;
 
@@ -90,6 +92,22 @@ TEST(CreateRendererForLayout, SupportsPassThroughBinauralRenderer) {
           kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
       nullptr);
 }
+#endif
+
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
+TEST(CreateRendererForLayout,
+     SupportsPassThroughBinauralRendererWithStereoHeadphonesRenderingMode) {
+  const RendererFactory factory;
+
+  EXPECT_NE(
+      factory.CreateRendererForLayout(
+          {0}, {{0, {kL2, kR2}}}, AudioElementObu::kAudioElementChannelBased,
+          kStereoScalableChannelLayoutConfig,
+          kHeadphonesAsStereoRenderingConfig, kBinauralLayout,
+          kNumSamplesPerFrame, kSampleRate),
+      nullptr);
+}
+#endif
 
 TEST(CreateRendererForLayout,
      ReturnsNullPtrWhenTypeIsSceneBasedButConfigIsChannelBased) {
@@ -129,6 +147,7 @@ TEST(CreateRendererForLayout, SupportsChannelToBinauralRenderer) {
 }
 #endif
 
+#ifndef IAMF_TOOLS_DISABLE_BINAURAL_RENDERING
 TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
   const RendererFactory factory;
 
@@ -138,6 +157,7 @@ TEST(CreateRendererForLayout, ReturnsNullPtrForUnknownExtension) {
                 kBinauralLayout, kNumSamplesPerFrame, kSampleRate),
             nullptr);
 }
+#endif
 
 TEST(CreateRendererForLayout, SupportsChannelToChannelRenderer) {
   const RendererFactory factory;

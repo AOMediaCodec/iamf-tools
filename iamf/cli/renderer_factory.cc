@@ -24,6 +24,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_passthrough.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 // These directives are not part of an official API and are likely to change or
@@ -90,10 +91,24 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
         << "Channel config is inconsistent with audio element type.";
     return nullptr;
   }
+
+  Layout playback_layout = loudness_layout;
+  // If `!use_binaural` but the playback layout is binaural, this is because
+  // `headphones_rendering_mode` is set to stereo. In this case, fake the
+  // playback layout to be stereo.
+  if (!use_binaural &&
+      loudness_layout.layout_type == Layout::kLayoutTypeBinaural) {
+    playback_layout = {
+        .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+        .specific_layout = LoudspeakersSsConventionLayout{
+            .sound_system =
+                LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
+  }
+
   // Lazily try to make a pass-through renderer.
   auto pass_through_renderer =
       AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
-          *channel_config, loudness_layout, num_samples_per_frame);
+          *channel_config, playback_layout, num_samples_per_frame);
   if (pass_through_renderer != nullptr) {
     return pass_through_renderer;
   }
@@ -109,7 +124,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
 #endif
   }
   return AudioElementRendererChannelToChannel::
-      CreateFromScalableChannelLayoutConfig(*channel_config, loudness_layout,
+      CreateFromScalableChannelLayoutConfig(*channel_config, playback_layout,
                                             num_samples_per_frame);
 }
 

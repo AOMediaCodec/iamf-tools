@@ -75,6 +75,7 @@ inline static constexpr auto kApiOutputLayoutAndFlagString = []() {
       {kIAMF_SoundSystemExtension_2_3_0, "3.1.2"},
       {kIAMF_SoundSystemExtension_0_1_0, "1.0"},
       {kIAMF_SoundSystemExtension_6_9_0, "9.1.6"},
+      {kIAMF_Binaural, "Binaural"},
   });
 }();
 

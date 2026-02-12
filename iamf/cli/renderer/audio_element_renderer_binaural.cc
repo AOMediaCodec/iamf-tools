@@ -109,7 +109,19 @@ GetObrAudioElementTypeFromAmbisonicsConfig(
 template <bool ResizeDestinationChannels, class DestinationValueType,
           class SourceBufferType, class DestinationBufferType>
 void CopySamples(size_t num_channels, const SourceBufferType& source_buffer,
-                 DestinationBufferType& destination_buffer) {
+                 DestinationBufferType& destination_buffer,
+                 size_t num_destination_channels_samples = 0) {
+  if constexpr (ResizeDestinationChannels) {
+    if (num_destination_channels_samples > source_buffer[0].size()) {
+      ABSL_LOG(ERROR) << "Destination buffer size is too small. "
+                      << num_destination_channels_samples << " vs "
+                      << source_buffer[0].size();
+      return;
+    }
+  } else {
+    num_destination_channels_samples = source_buffer[0].size();
+  }
+
   for (int c = 0; c < num_channels; c++) {
     const auto& source_samples_for_channel = source_buffer[c];
     auto& destination_buffer_for_channel = destination_buffer[c];
@@ -117,9 +129,10 @@ void CopySamples(size_t num_channels, const SourceBufferType& source_buffer,
     // Resize destination channels. This step may be skipped if the
     // destination buffer is already pre-allocated.
     if constexpr (ResizeDestinationChannels) {
-      destination_buffer_for_channel.resize(source_samples_for_channel.size());
+      destination_buffer_for_channel.resize(num_destination_channels_samples);
     }
-    for (int t = 0; t < source_samples_for_channel.size(); t++) {
+
+    for (int t = 0; t < num_destination_channels_samples; t++) {
       destination_buffer_for_channel[t] =
           static_cast<DestinationValueType>(source_samples_for_channel[t]);
     }
@@ -271,7 +284,8 @@ absl::Status AudioElementRendererBinaural::RenderSamples(
 
   // Copy samples from the output audio buffer to `rendered_samples_`.
   CopySamples<true, InternalSampleType>(kNumBinauralChannels, output_buffer_,
-                                        rendered_samples_);
+                                        rendered_samples_,
+                                        samples_to_render[0].size());
 
   return absl::OkStatus();
 }

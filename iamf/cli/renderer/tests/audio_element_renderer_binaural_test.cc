@@ -484,6 +484,26 @@ TEST(RenderLabeledFrame, RendersMixedOrderFoaProjectionToBinaural) {
   EXPECT_THAT(rendered_samples, Each(SizeIs(kNumSamplesPerFrame)));
 }
 
+TEST(RenderLabeledFrame, RendersShorterLastFrameToBinaural) {
+  auto renderer =
+      AudioElementRendererBinaural::CreateFromScalableChannelLayoutConfig(
+          kStereoScalableChannelLayoutConfig, kNumSamplesPerFrame, kSampleRate);
+  ASSERT_NE(renderer, nullptr);
+
+  const size_t kShorterLastFrameSize = kNumSamplesPerFrame - 10;
+
+  // Render and check the output shape.
+  std::vector<std::vector<InternalSampleType>> rendered_samples;
+  RenderAndFlushExpectOk(
+      {.label_to_samples =
+           {{kL2, GetSampleVector(kArbitrarySample1, kShorterLastFrameSize)},
+            {kR2, GetSampleVector(kArbitrarySample2, kShorterLastFrameSize)}}},
+      renderer.get(), rendered_samples);
+
+  EXPECT_EQ(rendered_samples.size(), 2);
+  EXPECT_THAT(rendered_samples, Each(SizeIs(kShorterLastFrameSize)));
+}
+
 // TODO(b/450471766): Add tests when rendering from expanded layouts is
 //                    supported.
 
