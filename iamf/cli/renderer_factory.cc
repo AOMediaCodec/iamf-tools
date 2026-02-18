@@ -53,7 +53,7 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
     bool use_binaural, const std::vector<DecodedUleb128>& audio_substream_ids,
     const SubstreamIdLabelsMap& substream_id_to_labels,
     const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout, size_t num_samples_per_frame,
+    const Layout& playback_layout, size_t num_samples_per_frame,
     size_t sample_rate) {
   const auto* ambisonics_config = std::get_if<AmbisonicsConfig>(&config);
   if (ambisonics_config == nullptr) {
@@ -77,12 +77,12 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateAmbisonicsRenderer(
   }
   return AudioElementRendererAmbisonicsToChannel::CreateFromAmbisonicsConfig(
       *ambisonics_config, audio_substream_ids, substream_id_to_labels,
-      loudness_layout, num_samples_per_frame);
+      playback_layout, num_samples_per_frame);
 }
 
 std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
     bool use_binaural, const AudioElementObu::AudioElementConfig& config,
-    const Layout& loudness_layout, size_t num_samples_per_frame,
+    const Layout& playback_layout, size_t num_samples_per_frame,
     size_t sample_rate) {
   const auto* channel_config =
       std::get_if<ScalableChannelLayoutConfig>(&config);
@@ -90,19 +90,6 @@ std::unique_ptr<AudioElementRendererBase> MaybeCreateChannelRenderer(
     ABSL_LOG(ERROR)
         << "Channel config is inconsistent with audio element type.";
     return nullptr;
-  }
-
-  Layout playback_layout = loudness_layout;
-  // If `!use_binaural` but the playback layout is binaural, this is because
-  // `headphones_rendering_mode` is set to stereo. In this case, fake the
-  // playback layout to be stereo.
-  if (!use_binaural &&
-      loudness_layout.layout_type == Layout::kLayoutTypeBinaural) {
-    playback_layout = {
-        .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
-        .specific_layout = LoudspeakersSsConventionLayout{
-            .sound_system =
-                LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
   }
 
   // Lazily try to make a pass-through renderer.
@@ -140,18 +127,31 @@ RendererFactory::CreateRendererForLayout(
     const AudioElementObu::AudioElementConfig& audio_element_config,
     const RenderingConfig& rendering_config, const Layout& loudness_layout,
     size_t num_samples_per_frame, size_t sample_rate) const {
+  Layout playback_layout = loudness_layout;
   const bool use_binaural = IsAudioElementRenderedBinaural(
-      rendering_config.headphones_rendering_mode, loudness_layout.layout_type);
+      rendering_config.headphones_rendering_mode, playback_layout.layout_type);
+
+  // If `!use_binaural` but the playback layout is binaural, this is because
+  // `headphones_rendering_mode` is set to stereo. In this case, fake the
+  // playback layout to be stereo.
+  if (!use_binaural &&
+      playback_layout.layout_type == Layout::kLayoutTypeBinaural) {
+    playback_layout = {
+        .layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+        .specific_layout = LoudspeakersSsConventionLayout{
+            .sound_system =
+                LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}};
+  }
 
   switch (audio_element_type) {
     case AudioElementObu::kAudioElementSceneBased:
       return MaybeCreateAmbisonicsRenderer(
           use_binaural, audio_substream_ids, substream_id_to_labels,
-          audio_element_config, loudness_layout, num_samples_per_frame,
+          audio_element_config, playback_layout, num_samples_per_frame,
           sample_rate);
     case AudioElementObu::kAudioElementChannelBased:
       return MaybeCreateChannelRenderer(use_binaural, audio_element_config,
-                                        loudness_layout, num_samples_per_frame,
+                                        playback_layout, num_samples_per_frame,
                                         sample_rate);
     case AudioElementObu::kAudioElementObjectBased:
       ABSL_LOG(WARNING) << "Object-based audio elements are not supported.";
