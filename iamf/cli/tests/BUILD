@@ -13,7 +13,7 @@ cc_library(
         "//iamf:__subpackages__",
     ],
     deps = [
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
@@ -65,7 +65,7 @@ cc_library(
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "//iamf/obu/param_definitions:param_definition_base",
         "//iamf/obu/param_definitions:recon_gain_param_definition",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
         # [internal] Placeholder for fine-grained protobuf dependency: "io",
     ],
 )
@@ -91,7 +91,7 @@ cc_test(
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/memory",
         "@abseil-cpp//absl/types:span",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
         "@libopus",
     ],
 )
@@ -112,7 +112,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -124,7 +124,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:parameter_data",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -142,7 +142,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -174,7 +174,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -196,7 +196,7 @@ cc_test(
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -224,7 +224,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -248,7 +248,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -274,8 +274,8 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -295,7 +295,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -307,8 +307,8 @@ cc_test(
         "//iamf/cli:iamf_components",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -351,8 +351,8 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -387,7 +387,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -402,7 +402,7 @@ cc_test(
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -434,7 +434,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -464,7 +464,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -489,7 +489,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -519,7 +519,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -534,8 +534,8 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -560,7 +560,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -587,7 +587,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -603,7 +603,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -620,7 +620,7 @@ cc_test(
         "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:rendering_config",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -644,7 +644,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/types:span",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -678,8 +678,8 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -692,7 +692,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -716,7 +716,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -736,7 +736,7 @@ cc_test(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -751,7 +751,7 @@ cc_test(
         "//iamf/cli:wav_reader",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -776,8 +776,8 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -790,7 +790,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

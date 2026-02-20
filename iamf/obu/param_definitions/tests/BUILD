@@ -12,7 +12,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -27,7 +27,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -46,7 +46,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -61,7 +61,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -76,7 +76,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -91,7 +91,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -107,7 +107,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -125,7 +125,7 @@ cc_test(
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -141,7 +141,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -157,7 +157,7 @@ cc_test(
         "//iamf/obu/param_definitions:polar_param_definition",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -176,7 +176,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

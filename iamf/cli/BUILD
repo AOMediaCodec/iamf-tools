@@ -201,7 +201,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -709,7 +709,7 @@ cc_library(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -776,7 +776,7 @@ cc_binary(
         "@abseil-cpp//absl/log:flags",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 

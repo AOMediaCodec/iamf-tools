@@ -7,7 +7,7 @@ cc_test(
     deps = [
         "//iamf/cli/adm_to_user_metadata/iamf:ia_sequence_header_obu_metadata_handler",
         "//iamf/cli/proto:ia_sequence_header_cc_proto",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -21,7 +21,7 @@ cc_test(
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -36,7 +36,7 @@ cc_test(
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -47,7 +47,7 @@ cc_test(
         "//iamf/cli/adm_to_user_metadata/iamf:test_vector_metadata_handler",
         "//iamf/cli/proto:test_vector_metadata_cc_proto",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -67,7 +67,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -36,7 +36,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

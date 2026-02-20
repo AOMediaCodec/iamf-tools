@@ -8,7 +8,7 @@ cc_test(
         "//iamf/cli/adm_to_user_metadata/adm:bw64_reader",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -22,7 +22,7 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -33,7 +33,7 @@ cc_test(
         "//iamf/cli/adm_to_user_metadata/adm:xml_to_adm",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

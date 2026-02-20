@@ -31,7 +31,7 @@ py_binary(
         "//iamf/cli/proto:user_metadata_py_pb2",
         "@abseil-py//absl:app",
         "@abseil-py//absl/flags",
-        "@com_google_protobuf//:protobuf_python",
+        "@protobuf//:protobuf_python",
     ],
 )
 
@@ -43,7 +43,7 @@ py_binary(
         "@abseil-py//absl:app",
         "@abseil-py//absl/flags",
         "@abseil-py//absl/logging",
-        "@com_google_protobuf//:protobuf_python",
+        "@protobuf//:protobuf_python",
     ],
 )
 

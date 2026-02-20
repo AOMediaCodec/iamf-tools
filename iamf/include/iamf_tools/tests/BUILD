@@ -14,7 +14,7 @@ cc_test(
         "//iamf/obu:obu_header",
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -34,8 +34,8 @@ cc_test(
         "//iamf/include/iamf_tools:iamf_encoder_factory",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 
@@ -52,13 +52,13 @@ cc_test(
         "@platforms//os:linux",
     ],
     deps = [
-        "@com_google_googletest//:gtest_main",
-        "@com_google_fuzztest//fuzztest",
+        "@googletest//:gtest_main",
+        "@fuzztest//fuzztest",
         "@abseil-cpp//absl/strings:string_view",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/include/iamf_tools:iamf_encoder_factory",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
         # [internal] Placeholder for fine-grained protobuf dependency: "io",
     ],
 )

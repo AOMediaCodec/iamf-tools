@@ -13,7 +13,7 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "//iamf/obu:obu_header",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -26,7 +26,7 @@ cc_test(
         "//iamf/cli/proto_conversion/obu_to_proto:obu_header_metadata_generator",
         "//iamf/obu:obu_header",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_test(
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:param_definition_base",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

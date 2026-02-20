@@ -13,7 +13,7 @@ cc_test(
         "//iamf/obu:ia_sequence_header",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -11,7 +11,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -28,8 +28,8 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
-        "@com_google_fuzztest//fuzztest",
-        "@com_google_googletest//:gtest_main",
+        "@fuzztest//fuzztest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -43,7 +43,7 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -57,8 +57,8 @@ cc_test(
     deps = [
         "//iamf/common:write_bit_buffer",
         "@abseil-cpp//absl/types:span",
-        "@com_google_fuzztest//fuzztest",
-        "@com_google_googletest//:gtest_main",
+        "@fuzztest//fuzztest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -76,7 +76,7 @@ cc_test(
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -93,8 +93,8 @@ cc_test(
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/types:span",
-        "@com_google_fuzztest//fuzztest",
-        "@com_google_googletest//:gtest_main",
+        "@fuzztest//fuzztest",
+        "@googletest//:gtest_main",
     ],
 )
 

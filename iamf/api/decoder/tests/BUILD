@@ -19,8 +19,8 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_fuzztest//fuzztest",
-        "@com_google_googletest//:gtest_main",
+        "@fuzztest//fuzztest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -45,7 +45,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 # keep-sorted end

@@ -8,7 +8,7 @@ cc_test(
     srcs = ["ambisonic_encoder_benchmark.cc"],
     deps = [
         "//iamf/cli/ambisonic_encoder",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -18,7 +18,7 @@ cc_test(
     deps = [
         "//iamf/cli/ambisonic_encoder",
         "@abseil-cpp//absl/container:flat_hash_map",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -30,7 +30,7 @@ cc_test(
     deps = [
         "//iamf/cli/ambisonic_encoder:ambisonic_utils",
         "//iamf/cli/ambisonic_encoder:associated_legendre_polynomials_generator",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

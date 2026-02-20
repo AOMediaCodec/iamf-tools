@@ -11,7 +11,7 @@ cc_test(
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_test(
         "//iamf/obu:types",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -36,7 +36,7 @@ cc_test(
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:mix_presentation",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -48,7 +48,7 @@ cc_test(
         "//iamf/include/iamf_tools:iamf_tools_api_types",
         "//iamf/obu:ia_sequence_header",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 

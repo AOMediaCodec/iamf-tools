@@ -10,7 +10,7 @@ cc_test(
         "@abseil-cpp//absl/container:flat_hash_set",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/strings:string_view",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -22,7 +22,7 @@ cc_test(
         "//iamf/cli/proto_conversion:codec_config_utils",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
         "@libopus",
     ],
 )
@@ -45,7 +45,7 @@ cc_test(
         "@abseil-cpp//absl/log:check",
         "@abseil-cpp//absl/status:status_matchers",
         "@abseil-cpp//absl/status:statusor",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -60,7 +60,7 @@ cc_test(
         "//iamf/cli/tests:cli_test_utils",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -77,8 +77,8 @@ cc_test(
         "//iamf/obu:parameter_data",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
-        "@com_google_protobuf//:protobuf",
+        "@googletest//:gtest_main",
+        "@protobuf",
     ],
 )
 

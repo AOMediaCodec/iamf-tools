@@ -20,7 +20,7 @@ cc_library(
         "@abseil-cpp//absl/base:no_destructor",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -53,7 +53,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -98,7 +98,7 @@ cc_library(
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/synchronization",
         "@abseil-cpp//absl/types:span",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -124,7 +124,7 @@ cc_library(
         "@abseil-cpp//absl/log:absl_log",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/strings",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -154,7 +154,7 @@ cc_library(
         "//iamf/obu:obu_header",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 
@@ -193,7 +193,7 @@ cc_library(
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",
         "@abseil-cpp//absl/types:span",
-        "@com_google_protobuf//:protobuf",
+        "@protobuf",
     ],
 )
 

@@ -11,7 +11,7 @@ cc_test(
         "//iamf/cli/proto:temporal_delimiter_cc_proto",
         "//iamf/cli/proto:user_metadata_cc_proto",
         "//iamf/obu:mix_presentation",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -24,7 +24,7 @@ cc_test(
         "//iamf/obu:mix_presentation",
         "//iamf/obu:types",
         "@abseil-cpp//absl/status:status_matchers",
-        "@com_google_googletest//:gtest_main",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -39,7 +39,7 @@ cc_test(
         "@abseil-cpp//absl/log:absl_check",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/types:span",
-        "@com_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
