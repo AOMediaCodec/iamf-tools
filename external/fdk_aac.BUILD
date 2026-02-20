@@ -10,7 +10,6 @@ cc_library(
     name = "fdk_sys_lib",
     srcs = glob([
         "libSYS/src/*.cpp",
-        "libSYS/src/*.h",
     ]),
     hdrs = glob([
         "libSYS/include/*.h",
@@ -35,7 +34,6 @@ cc_library(
     name = "fdk_core_lib",
     srcs = glob([
         "libFDK/src/*.cpp",
-        "libFDK/src/*.h",
     ]),
     hdrs = glob([
         "libFDK/include/*.h",
@@ -223,7 +221,6 @@ cc_library(
     name = "arith_coding_lib",
     srcs = glob([
         "libArithCoding/src/*.cpp",
-        "libArithCoding/src/*.h",
     ]),
     hdrs = glob([
         "libArithCoding/include/*.h",

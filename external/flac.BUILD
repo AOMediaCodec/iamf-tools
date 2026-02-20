@@ -12,7 +12,7 @@ exports_files(["LICENSE"])
 
 platform_srcs = select({
     "@platforms//os:windows": glob(["src/share/win_utf8_io/*.c"]),
-    "//conditions:default": glob([]),
+    "//conditions:default": [],
 })
 
 flac_srcs = glob(
@@ -36,12 +36,10 @@ flac_textual_includes = glob([
 
 flac_hdrs = glob([
     # keep sorted
-    "*.h",
     "include/FLAC/*.h",
     "include/FLAC/**/*.h",
     "include/share/*.h",
     "include/share/**/*.h",
-    "src/libFLAC/*.h",
     "src/libFLAC/**/*.h",
 ])
 

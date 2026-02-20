@@ -77,7 +77,7 @@ git_repository(
 # PFFFT, transitive dependency needed by OBR.
 git_repository(
     name = "pffft",
-    build_file = "@//external:pffft.BUILD",
+    build_file = "//:external/pffft.BUILD",
     commit = "d7a4c0206a29423478776d6b23a37bbb308f21d5",
     remote = "https://bitbucket.org/jpommier/pffft.git",
 )
@@ -85,7 +85,7 @@ git_repository(
 # Expat.
 git_repository(
     name = "libexpat",
-    build_file = "@//external:libexpat.BUILD",
+    build_file = "//:external/libexpat.BUILD",
     commit = "fa75b96546c069d17b8f80d91e0f4ef0cde3790d",
     remote = "https://github.com/libexpat/libexpat.git",
 )
@@ -93,7 +93,7 @@ git_repository(
 # FDK AAC.
 git_repository(
     name = "fdk_aac",
-    build_file = "@//external:fdk_aac.BUILD",
+    build_file = "//:external/fdk_aac.BUILD",
     commit = "ee76460efbdb147e26d804c798949c23f174460b",
     remote = "https://android.googlesource.com/platform/external/aac",
 )
@@ -101,7 +101,7 @@ git_repository(
 # FLAC.
 git_repository(
     name = "flac",
-    build_file = "@//external:flac.BUILD",
+    build_file = "//:external/flac.BUILD",
     commit = "8d648456a2d7444d54a579e365bab4c815ac6873",
     remote = "https://github.com/xiph/flac.git",
 )
@@ -109,7 +109,7 @@ git_repository(
 # Opus.
 git_repository(
     name = "libopus",
-    build_file = "@//external:libopus.BUILD",
+    build_file = "//:external/libopus.BUILD",
     commit = "ddbe48383984d56acd9e1ab6a090c54ca6b735a6",
     remote = "https://gitlab.xiph.org/xiph/opus.git",
 )
