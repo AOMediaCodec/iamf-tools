@@ -970,27 +970,6 @@ TEST(Generate, CopiesMixPresentationTagsWithZeroTags) {
   EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
 }
 
-TEST(Generate, IgnoresDeprecatedNumTags) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  FillMixPresentationMetadata(mix_presentation_metadata.Add());
-  auto& mix_presentation = mix_presentation_metadata.at(0);
-  mix_presentation.set_include_mix_presentation_tags(true);
-  constexpr uint32_t kIncorrectIgnoredNumTags = 1;
-  mix_presentation.mutable_mix_presentation_tags()->set_num_tags(
-      kIncorrectIgnoredNumTags);
-
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kOmitBuildInformationTag, generated_obus),
-              IsOk());
-
-  // Ok safely ignore the deprecated `num_tags` field.
-  const auto& first_obu = generated_obus.front();
-  ASSERT_TRUE(first_obu.mix_presentation_tags_.has_value());
-  EXPECT_TRUE(first_obu.mix_presentation_tags_->tags.empty());
-}
-
 TEST(Generate, ReturnsErrorIfUserSpecifies256TagsWithoutBuildInformation) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   FillMixPresentationMetadata(mix_presentation_metadata.Add());
@@ -1349,76 +1328,6 @@ TEST(Generate, SupportsUtf8) {
             std::vector<std::string>{kUtf8FourByteSequenceCode});
 }
 
-TEST(Generate, IgnoresDeprecatedNumSubMixes) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  auto* mix_presentation = mix_presentation_metadata.Add();
-  FillMixPresentationMetadata(mix_presentation);
-  // This test assumes the default metadata has one sub mix.
-  constexpr uint32_t kExpectedNumSubMixes = 1;
-  ASSERT_EQ(mix_presentation->sub_mixes_size(), kExpectedNumSubMixes);
-  // Include a strange value for the deprecated `num_sub_mixes` field.
-  constexpr uint32_t kIncorrectIgnoredNumSubMixes = 2;
-  mix_presentation->set_num_sub_mixes(kIncorrectIgnoredNumSubMixes);
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
-
-  // Regardless of the deprecated `num_layouts` field, the number of layouts is
-  // inferred the `layouts` array.
-  EXPECT_EQ(generated_obus.back().GetNumSubMixes(), kExpectedNumSubMixes);
-  EXPECT_EQ(generated_obus.back().sub_mixes_.size(), kExpectedNumSubMixes);
-}
-
-TEST(Generate, IgnoresDeprecatedNumAudioElements) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  auto* mix_presentation = mix_presentation_metadata.Add();
-  FillMixPresentationMetadata(mix_presentation);
-  // This test assumes the default metadata has one audio element.
-  constexpr uint32_t kExpectedNumAudioElements = 1;
-  ASSERT_EQ(mix_presentation->sub_mixes(0).audio_elements_size(),
-            kExpectedNumAudioElements);
-  // Include a strange value for the deprecated `num_audio_elements`.
-  constexpr uint32_t kIncorrectIgnoredNumAudioElements = 2;
-  mix_presentation->mutable_sub_mixes(0)->set_num_audio_elements(
-      kIncorrectIgnoredNumAudioElements);
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
-
-  // Regardless of the deprecated `num_audio_elements` field, the number of
-  // audio elements the `audio_elements` array.
-  EXPECT_EQ(generated_obus.back().sub_mixes_[0].audio_elements.size(),
-            kExpectedNumAudioElements);
-}
-
-TEST(Generate, IgnoresDeprecatedNumLayouts) {
-  MixPresentationObuMetadatas mix_presentation_metadata;
-  auto* mix_presentation = mix_presentation_metadata.Add();
-  FillMixPresentationMetadata(mix_presentation);
-  // This test assumes the default metadata has one layout.
-  constexpr uint32_t kExpectedNumLayouts = 1;
-  ASSERT_EQ(mix_presentation->sub_mixes(0).layouts().size(),
-            kExpectedNumLayouts);
-  // Include a strange value for the deprecated `num_layouts`.
-  constexpr uint32_t kIncorrectIgnoredNumLayouts = 2;
-  mix_presentation->mutable_sub_mixes(0)->set_num_layouts(
-      kIncorrectIgnoredNumLayouts);
-  MixPresentationGenerator generator(mix_presentation_metadata);
-
-  std::list<MixPresentationObu> generated_obus;
-  EXPECT_THAT(generator.Generate(kAppendBuildInformationTag, generated_obus),
-              IsOk());
-
-  // Regardless of the deprecated `num_layouts` field, the number of layouts is
-  // inferred from the `layouts` array.
-  EXPECT_EQ(generated_obus.back().sub_mixes_[0].layouts.size(),
-            kExpectedNumLayouts);
-}
-
 TEST(Generate, CopiesUserLoudness) {
   MixPresentationObuMetadatas mix_presentation_metadata;
   auto* mix_presentation = mix_presentation_metadata.Add();
@@ -1556,21 +1465,6 @@ TEST(CopyInfoType, SeveralLoudnessTypes) {
                                   LoudnessInfo::kTruePeak);
 }
 
-TEST(CopyInfoType, DeprecatedInfoTypeIsNotSupported) {
-  iamf_tools_cli_proto::LoudnessInfo user_loudness_info;
-
-  ASSERT_TRUE(google::protobuf::TextFormat::ParseFromString(
-      R"pb(
-        deprecated_info_type: 2  # Anchored Loudness.
-      )pb",
-      &user_loudness_info));
-
-  uint8_t unused_output_info_type;
-  EXPECT_FALSE(MixPresentationGenerator::CopyInfoType(user_loudness_info,
-                                                      unused_output_info_type)
-                   .ok());
-}
-
 TEST(CopyUserIntegratedLoudnessAndPeaks, WithoutTruePeak) {
   // `info_type` must be configured as a prerequisite.
   LoudnessInfo output_loudness = {.info_type = 0};
@@ -1695,22 +1589,6 @@ TEST(CopyUserAnchoredLoudness, TwoAnchorElements) {
                   user_loudness, output_loudness),
               IsOk());
   EXPECT_EQ(output_loudness.anchored_loudness, expected_output_loudness);
-}
-
-TEST(CopyUserAnchoredLoudness, IgnoresDeprecatedNumAnchoredLoudnessField) {
-  // Set up an anchored loudness which no anchor elements, but incorrectly
-  // claims there is one.
-  LoudnessInfo output_loudness = {.info_type = LoudnessInfo::kAnchoredLoudness};
-  iamf_tools_cli_proto::LoudnessInfo user_loudness;
-  user_loudness.mutable_anchored_loudness()->set_num_anchored_loudness(1);
-
-  EXPECT_THAT(MixPresentationGenerator::CopyUserAnchoredLoudness(
-                  user_loudness, output_loudness),
-              IsOk());
-
-  // Regardless of the deprecated `num_anchored_loudness` field, the number of
-  // anchor elements is inferred from the `anchor_elements` array.
-  EXPECT_TRUE(output_loudness.anchored_loudness.anchor_elements.empty());
 }
 
 TEST(CopyUserAnchoredLoudness, IllegalUnknownAnchorElementEnum) {

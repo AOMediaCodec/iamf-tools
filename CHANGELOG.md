@@ -21,6 +21,10 @@ and this project adheres to
     `localized_element_annotations`.
 -   Drop support of `element_mix_config` and `output_mix_config` in favor of
     `element_mix_gain` and `output_mix_gain`.
+-   Drop support of `num_sub_mixes`, `num_audio_elements`, `num_layouts`,
+    `num_anchored_loudness`, and `num_tags` in `MixPresentationObuMetadata` and
+    related structures.
+-   Drop support of `deprecated_info_type` in favor of `info_type_bitmasks`.
 
 ### Deprecated
 

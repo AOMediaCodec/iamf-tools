@@ -165,9 +165,8 @@ message AnchorElement {
 }
 
 message AnchoredLoudness {
-  // `num_anchored_loudness` is ignored. The value in the bitstream is inferred
-  // based on the number of `anchor_elements`.
-  uint32 num_anchored_loudness = 1 [deprecated = true];
+  reserved 1;
+  reserved num_anchored_loudness;
 
   repeated AnchorElement anchor_elements = 2;
 }
@@ -197,7 +196,8 @@ enum LoudnessInfoTypeBitMask {
 //  - For -3 dB, set the proto value to 256 * -3 = -768.
 //  - For +6 dB, set the proto value to 256 * 6 = 1536.
 message LoudnessInfo {
-  uint32 deprecated_info_type = 1 [deprecated = true];
+  reserved 1;
+  reserved deprecated_info_type;
 
   repeated LoudnessInfoTypeBitMask info_type_bit_masks = 8;
   int32 integrated_loudness = 2;  // Q7.8.
@@ -216,20 +216,12 @@ message MixPresentationLayout {
 }
 
 message MixPresentationSubMix {
-  reserved 3;
-  reserved output_mix_config;
-
-  // `num_audio_elements` is ignored. The value in the bitstream is inferred
-  // based on the number of `audio_elements`.
-  uint32 num_audio_elements = 1 [deprecated = true];
+  reserved 1, 3, 4;
+  reserved num_audio_elements, output_mix_config, num_layouts;
 
   repeated SubMixAudioElement audio_elements = 2;
 
   MixGainParamDefinition output_mix_gain = 6;
-
-  // `num_layouts` is ignored. The value in the bitstream is inferred
-  // based on the number of `layouts`.
-  uint32 num_layouts = 4 [deprecated = true];
 
   repeated MixPresentationLayout layouts = 5;
 
@@ -242,9 +234,8 @@ message MixPresentationTag {
 }
 
 message MixPresentationTags {
-  // `num_tags` is ignored. The value in the bitstream is inferred based on the
-  // number of tags.
-  uint32 num_tags = 1 [deprecated = true];
+  reserved 1;
+  reserved num_tags;
 
   repeated MixPresentationTag tags = 2;
 }
@@ -270,8 +261,8 @@ message MixPresentationOptionalFields {
 }
 
 message MixPresentationObuMetadata {
-  reserved 2, 6, 7;
-  reserved language_labels, mix_presentation_annotations_array;
+  reserved 2, 3, 6, 7;
+  reserved language_labels, num_sub_mixes, mix_presentation_annotations_array;
 
   uint32 mix_presentation_id = 1;
   uint32 count_label = 5 [deprecated = true];
@@ -282,10 +273,6 @@ message MixPresentationObuMetadata {
 
   // Annotations, for this mix. The length should be `count_label`.
   repeated string localized_presentation_annotations = 10;
-
-  // `num_sub_mixes` is ignored. The value in the bitstream is inferred
-  // based on the number of `sub_mixes`.
-  uint32 num_sub_mixes = 3 [deprecated = true];
 
   repeated MixPresentationSubMix sub_mixes = 4;
 

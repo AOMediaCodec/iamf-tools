@@ -81,27 +81,6 @@ absl::Status FillAnnotationsLanguageAndAnnotations(
                                     count_label);
 }
 
-void ReserveNumSubMixes(const iamf_tools_cli_proto::MixPresentationObuMetadata&
-                            mix_presentation_metadata,
-                        std::vector<MixPresentationSubMix>& sub_mixes) {
-  if (mix_presentation_metadata.has_num_sub_mixes()) {
-    ABSL_LOG(WARNING) << "Ignoring deprecated `num_sub_mixes` field."
-                      << "Please remove it.";
-  }
-
-  sub_mixes.reserve(mix_presentation_metadata.sub_mixes_size());
-}
-
-void ReserveSubMixNumAudioElements(
-    const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
-    MixPresentationSubMix& sub_mix) {
-  if (input_sub_mix.has_num_audio_elements()) {
-    ABSL_LOG(WARNING) << "Ignoring deprecated `num_audio_elements` field."
-                      << "Please remove it.";
-  }
-  sub_mix.audio_elements.reserve(input_sub_mix.audio_elements_size());
-}
-
 PolarParamDefinition CreatePolarParamDefinition(
     const iamf_tools_cli_proto::PolarParamDefinition& input_param_definition) {
   PolarParamDefinition param_definition;
@@ -451,11 +430,6 @@ absl::Status CopyReservedOrBinauralLayout(
 absl::Status FillLayouts(
     const iamf_tools_cli_proto::MixPresentationSubMix& input_sub_mix,
     MixPresentationSubMix& sub_mix) {
-  if (input_sub_mix.has_num_layouts()) {
-    ABSL_LOG(WARNING) << "Ignoring deprecated `num_layouts` field."
-                      << "Please remove it.";
-  }
-
   // Reserve the layouts vector and copy in the layouts.
   sub_mix.layouts.reserve(input_sub_mix.layouts_size());
 
@@ -524,10 +498,6 @@ absl::Status FillMixPresentationTags(
     bool append_build_information_tag,
     const iamf_tools_cli_proto::MixPresentationTags& mix_presentation_tags,
     std::optional<MixPresentationTags>& obu_mix_presentation_tags) {
-  if (mix_presentation_tags.has_num_tags()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `num_tags` field. Please remove it.";
-  }
   obu_mix_presentation_tags = MixPresentationTags{};
 
   // Calculate the total number of tags, including automatically added ones.
@@ -612,21 +582,6 @@ absl::Status MixPresentationGenerator::CopySoundSystem(
 absl::Status MixPresentationGenerator::CopyInfoType(
     const iamf_tools_cli_proto::LoudnessInfo& input_loudness_info,
     uint8_t& loudness_info_type) {
-  if (input_loudness_info.has_deprecated_info_type()) {
-    return absl::InvalidArgumentError(
-        "Please upgrade the `deprecated_info_type` "
-        "field to the new `info_type_bit_masks` field."
-        "\nSuggested upgrades:\n"
-        "- `deprecated_info_type: 0` -> `info_type_bit_masks: []`\n"
-        "- `deprecated_info_type: 1` -> `info_type_bit_masks: "
-        "[LOUDNESS_INFO_TYPE_TRUE_PEAK]`\n"
-        "- `deprecated_info_type: 2` -> `info_type_bit_masks: "
-        "[LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS]`\n"
-        "- `deprecated_info_type: 3` -> `info_type_bit_masks: "
-        "[LOUDNESS_INFO_TYPE_TRUE_PEAK, "
-        "LOUDNESS_INFO_TYPE_ANCHORED_LOUDNESS]`\n");
-  }
-
   static const auto kProtoToInternalInfoTypeBitmask =
       BuildStaticMapFromPairs(LookupTables::kProtoAndInternalInfoTypeBitmasks);
 
@@ -673,11 +628,6 @@ absl::Status MixPresentationGenerator::CopyUserAnchoredLoudness(
   if ((output_loudness.info_type & LoudnessInfo::kAnchoredLoudness) == 0) {
     // Not using anchored loudness.
     return absl::OkStatus();
-  }
-  if (user_loudness.anchored_loudness().has_num_anchored_loudness()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `num_anchored_loudness` field. Please "
-           "remove it.";
   }
 
   uint8_t num_anchored_loudness;
@@ -764,11 +714,11 @@ absl::Status MixPresentationGenerator::Generate(
         obu_args.annotations_language,
         obu_args.localized_presentation_annotations));
 
-    ReserveNumSubMixes(mix_presentation_metadata, obu_args.sub_mixes);
+    obu_args.sub_mixes.reserve(mix_presentation_metadata.sub_mixes_size());
     for (const auto& input_sub_mix : mix_presentation_metadata.sub_mixes()) {
       MixPresentationSubMix sub_mix;
 
-      ReserveSubMixNumAudioElements(input_sub_mix, sub_mix);
+      sub_mix.audio_elements.reserve(input_sub_mix.audio_elements_size());
       for (const auto& input_sub_mix_audio_element :
            input_sub_mix.audio_elements()) {
         SubMixAudioElement sub_mix_audio_element;
