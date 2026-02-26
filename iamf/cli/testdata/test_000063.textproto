@@ -121,7 +121,6 @@ mix_presentation_metadata {
         integrated_loudness: -13733
         digital_peak: -12879
         anchored_loudness {
-          num_anchored_loudness: 2
           anchor_elements: [
             { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1000 },
             { anchor_element: ANCHOR_TYPE_DIALOGUE anchored_loudness: 1001 }

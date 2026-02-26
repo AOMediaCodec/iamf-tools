@@ -332,54 +332,6 @@ TEST(ParameterBlockGeneratorTest, GenerateMixGainParameterBlocks) {
   }
 }
 
-TEST(ParameterBlockGeneratorTest, IgnoresDeprecatedNumSubblocks) {
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ConfigureMixGainParameterBlocks(user_metadata);
-  constexpr auto kInconsistentNumSubblocks = 9999;
-  constexpr auto kExpectedNumSubblocks = 1;
-  user_metadata.mutable_parameter_block_metadata(0)->set_num_subblocks(
-      kInconsistentNumSubblocks);
-  // Initialize pre-requisite OBUs.
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> audio_elements;
-  InitializePrerequisiteObus(IamfInputLayout::kStereo, kOneSubstreamId,
-                             codec_config_obus, audio_elements);
-  // Add param definition. It would normally be owned by a Mix Presentation
-  // OBU.
-  MixGainParamDefinition param_definition;
-  const int16_t kDefaultMixGain = -123;
-  absl::flat_hash_map<DecodedUleb128, ParamDefinitionVariant>
-      param_definition_variants;
-  AddMixGainParamDefinition(kDefaultMixGain, param_definition,
-                            param_definition_variants);
-  // Construct and initialize.
-  ParameterBlockGenerator generator(kOverrideComputedReconGains,
-                                    param_definition_variants);
-  EXPECT_THAT(generator.Initialize(audio_elements), IsOk());
-  // Global timing Module; needed when calling `GenerateMixGain()`.
-  auto global_timing_module =
-      GlobalTimingModule::Create(audio_elements, param_definition_variants);
-  ASSERT_THAT(global_timing_module, NotNull());
-  // Configure the first tick.
-  std::list<ParameterBlockWithData> output_parameter_blocks;
-  // Add metadata.
-  EXPECT_THAT(generator.AddMetadata(user_metadata.parameter_block_metadata(0)),
-              IsOk());
-
-  // Generate parameter blocks.
-  std::list<ParameterBlockWithData> parameter_blocks_for_frame;
-  EXPECT_THAT(generator.GenerateMixGain(*global_timing_module,
-                                        parameter_blocks_for_frame),
-              IsOk());
-  ASSERT_EQ(parameter_blocks_for_frame.size(), 1);
-
-  // Regardless of the deprecated `num_subblocks` field, the number of
-  // subblocks is inferred based on the actual number of elements in the
-  // `subblocks` array.
-  EXPECT_EQ(parameter_blocks_for_frame.front().obu->GetNumSubblocks(),
-            kExpectedNumSubblocks);
-}
-
 // TODO(b/296815263): Add tests with the same parameter ID but different
 //                    parameter definitions, which should fail.
 

@@ -99,11 +99,6 @@ absl::Status GenerateParameterDefinitions(
     const iamf_tools_cli_proto::AudioElementObuMetadata& audio_element_metadata,
     const CodecConfigObu& codec_config_obu,
     AudioElementObu& audio_element_obu) {
-  if (audio_element_metadata.has_num_parameters()) {
-    ABSL_LOG(WARNING) << "Ignoring deprecated `num_parameters` field. "
-                         "Please remove it.";
-  }
-
   audio_element_obu.InitializeParams(
       audio_element_metadata.audio_element_params_size());
   for (int i = 0; i < audio_element_metadata.audio_element_params_size(); ++i) {
@@ -347,10 +342,6 @@ absl::StatusOr<AudioElementWithData> CreateChannelBasedAudioElementWithData(
 
   const auto& input_config =
       audio_element_metadata.scalable_channel_layout_config();
-  if (input_config.has_num_layers()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `num_layers` field. Please remove it.";
-  }
 
   auto config = ScalableChannelLayoutConfig();
   config.channel_audio_layer_configs.reserve(
@@ -699,10 +690,6 @@ absl::Status AudioElementGenerator::Generate(
       return InvalidArgumentError(
           StrCat("Failed to find matching codec_config_id=",
                  audio_element_metadata.codec_config_id()));
-    }
-    if (audio_element_metadata.has_num_substreams()) {
-      ABSL_LOG(WARNING) << "Ignoring deprecated `num_substreams` field. "
-                           "Please remove it.";
     }
 
     absl::StatusOr<AudioElementWithData> audio_element_with_data =

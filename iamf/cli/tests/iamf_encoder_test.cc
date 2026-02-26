@@ -38,9 +38,11 @@
 #include "iamf/cli/proto/arbitrary_obu.pb.h"
 #include "iamf/cli/proto/audio_element.pb.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto/encoder_control_metadata.pb.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/metadata_obu.pb.h"
 #include "iamf/cli/proto/mix_presentation.pb.h"
+#include "iamf/cli/proto/output_audio_format.pb.h"
 #include "iamf/cli/proto/test_vector_metadata.pb.h"
 #include "iamf/cli/proto/user_metadata.pb.h"
 #include "iamf/cli/renderer_factory.h"
@@ -827,9 +829,9 @@ TEST_F(IamfEncoderTest, OutputSampleProcessorFactoryIgnoresBitDepthOverride) {
   SetupDescriptorObus();
   constexpr uint32_t kExpectedSampleProcessorFactoryCalledBitDepth =
       kExpectedPcmBitDepth;
-  constexpr uint32_t kIgnoredBitDepthOverride = 255;
-  user_metadata_.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(kIgnoredBitDepthOverride);
+  user_metadata_.mutable_encoder_control_metadata()
+      ->set_output_rendered_file_format(
+          iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO);
   // Wav file writing is done only when the signal can be rendered, based on the
   // resultant wav writers.
   renderer_factory_ = std::make_unique<RendererFactory>();

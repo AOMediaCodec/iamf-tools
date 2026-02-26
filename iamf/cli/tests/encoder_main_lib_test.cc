@@ -11,7 +11,6 @@
  */
 #include "iamf/cli/encoder_main_lib.h"
 
-#include <cstdint>
 #include <filesystem>
 #include <string>
 
@@ -111,7 +110,7 @@ TEST(EncoderMainLibTest, IaSequenceHeaderAndCodecConfigSucceeds) {
               IsOk());
 }
 
-TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
+TEST(EncoderMainLibTest, ConfigureOutputRenderedFileFormatSucceeds) {
   // Initialize prerequisites.
   iamf_tools_cli_proto::UserMetadata user_metadata;
   AddIaSequenceHeader(user_metadata);
@@ -119,57 +118,11 @@ TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideSucceeds) {
       ->set_partition_mix_gain_parameter_blocks(false);
 
   // Configure a reasonable bit-depth to output to.
-  user_metadata.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(16);
-
-  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
-              IsOk());
-}
-
-TEST(EncoderMainLibTest, ConfigureOutputWavFileBitDepthOverrideHighSucceeds) {
-  // Initialize prerequisites.
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  AddIaSequenceHeader(user_metadata);
-  user_metadata.mutable_test_vector_metadata()
-      ->set_partition_mix_gain_parameter_blocks(false);
-
-  const uint32_t kBitDepthTooHigh = 256;
-  user_metadata.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(kBitDepthTooHigh);
-
-  // If wav writing was enabled then the configuration would be clamped to a
-  // 32-bit file.
-  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
-              IsOk());
-}
-
-TEST(EncoderMainLibTest,
-     OutputRenderedFileFormatTakesPrecedenceOverDeprecatedOverrideBitDepth) {
-  std::string wav_directory;
-  iamf_tools_cli_proto::UserMetadata user_metadata;
-  ParseTestVectorAssertSuccess("test_000005.textproto", wav_directory,
-                               user_metadata);
-  const auto output_iamf_directory = GetAndCreateOutputDirectory("");
-  // Update controls to override the bit-depth with the deprecated
-  // `output_wav_file_bit_depth_override`.
-  constexpr uint32_t kDeprecatedOverrideBitDepth = 32;
-  user_metadata.mutable_test_vector_metadata()
-      ->set_output_wav_file_bit_depth_override(kDeprecatedOverrideBitDepth);
-  // `output_rendered_file_format` should take precedence over the deprecated
-  // field.
-  const auto kExpectedBitDepth = 24;
   user_metadata.mutable_encoder_control_metadata()
-      ->set_output_rendered_file_format(
-          OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR);
+      ->set_output_rendered_file_format(OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN);
 
-  EXPECT_THAT(TestMain(user_metadata, wav_directory, output_iamf_directory),
+  EXPECT_THAT(TestMain(user_metadata, "", std::string(kIgnoredOutputPath)),
               IsOk());
-
-  const auto expected_wav_path = std::filesystem::path(output_iamf_directory) /
-                                 kTest000005ExpectedWavFilename;
-  EXPECT_TRUE(std::filesystem::exists(expected_wav_path));
-  const auto wav_reader = CreateWavReaderExpectOk(expected_wav_path.string());
-  EXPECT_EQ(wav_reader.bit_depth(), kExpectedBitDepth);
 }
 
 TEST(EncoderMainLibTest, OutputRenderedFileFormatCanUseAutomaticBitDepth) {
@@ -179,8 +132,6 @@ TEST(EncoderMainLibTest, OutputRenderedFileFormatCanUseAutomaticBitDepth) {
                                user_metadata);
   const auto output_iamf_directory = GetAndCreateOutputDirectory("");
   // Update controls to write out a wav file with automatic bit-depth.
-  user_metadata.mutable_test_vector_metadata()
-      ->clear_output_wav_file_bit_depth_override();
   user_metadata.mutable_encoder_control_metadata()
       ->set_output_rendered_file_format(OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC);
 
@@ -202,8 +153,6 @@ TEST(EncoderMainLibTest, OutputRenderedFileFormatCanOverrideBitDepth) {
                                user_metadata);
   const auto output_iamf_directory = GetAndCreateOutputDirectory("");
   // Update controls to write out a wav file with a specific bit-depth.
-  user_metadata.mutable_test_vector_metadata()
-      ->clear_output_wav_file_bit_depth_override();
   constexpr int kExpectedOverriddenBitDepth = 24;
   user_metadata.mutable_encoder_control_metadata()
       ->set_output_rendered_file_format(
@@ -227,8 +176,6 @@ TEST(EncoderMainLibTest, OutputRenderedFileFormatCanDisableWavFileOutput) {
                                user_metadata);
   const auto output_iamf_directory = GetAndCreateOutputDirectory("");
   // Update controls to disable writing a wav file.
-  user_metadata.mutable_test_vector_metadata()
-      ->clear_output_wav_file_bit_depth_override();
   user_metadata.mutable_encoder_control_metadata()
       ->set_output_rendered_file_format(
           iamf_tools_cli_proto::OUTPUT_FORMAT_NONE);

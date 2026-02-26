@@ -155,27 +155,6 @@ absl::Status LabeledSamplesToAudioElementData(
   return absl::OkStatus();
 }
 
-iamf_tools_cli_proto::OutputAudioFormat GetOutputAudioFormat(
-    const iamf_tools_cli_proto::OutputAudioFormat output_audio_format,
-    const iamf_tools_cli_proto::TestVectorMetadata& test_vector_metadata) {
-  if (test_vector_metadata.has_output_wav_file_bit_depth_override()) {
-    ABSL_LOG(WARNING)
-        << "`output_wav_file_bit_depth_override` takes no effect. Please "
-           "upgrade to `encoder_control_metadata.output_rendered_file_format` "
-           "instead."
-           "\nSuggested upgrades:\n"
-           "- `output_wav_file_bit_depth_override: 0 -> "
-           "OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC`\n"
-           "- `output_wav_file_bit_depth_override: 16 -> "
-           "OUTPUT_FORMAT_WAV_BIT_DEPTH_SIXTEEN`\n"
-           "- `output_wav_file_bit_depth_override: 24 -> "
-           "OUTPUT_FORMAT_WAV_BIT_DEPTH_TWENTY_FOUR`\n"
-           "- `output_wav_file_bit_depth_override: 32 -> "
-           "OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO`\n";
-  }
-  return output_audio_format;
-}
-
 absl::Status GenerateTemporalUnitObus(const UserMetadata& user_metadata,
                                       const std::string& input_wav_directory,
                                       IamfEncoder& iamf_encoder) {
@@ -303,11 +282,9 @@ absl::Status TestMain(const UserMetadata& input_user_metadata,
   };
 
   // Apply the bit depth override.
-  const auto output_audio_format = GetOutputAudioFormat(
+  ApplyOutputAudioFormatToSampleProcessorFactory(
       user_metadata.encoder_control_metadata().output_rendered_file_format(),
-      user_metadata.test_vector_metadata());
-  ApplyOutputAudioFormatToSampleProcessorFactory(output_audio_format,
-                                                 sample_processor_factory);
+      sample_processor_factory);
 
   // Adapt the "IAMF Components" sequencer to match the `IamfEncoder`. This
   // helps automatically create the output file(s).

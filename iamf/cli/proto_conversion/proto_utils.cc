@@ -77,12 +77,6 @@ absl::Status CopyParamDefinition(
     return absl::OkStatus();
   }
 
-  if (input_param_definition.has_num_subblocks()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `num_subblocks` field in Parameter "
-           "Definition. Please remove it.";
-  }
-
   // Infer the number of subblocks.
   const auto num_subblocks = input_param_definition.subblock_durations_size();
   param_definition.InitializeSubblockDurations(
@@ -97,11 +91,6 @@ absl::Status CopyParamDefinition(
 
 ObuHeader GetHeaderFromMetadata(
     const iamf_tools_cli_proto::ObuHeaderMetadata& input_obu_header) {
-  if (input_obu_header.has_extension_header_size()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `ObuHeaderMetadata.extension_header_size`. "
-           "Please remove it.";
-  }
   std::optional<std::vector<uint8_t>> extension_header_bytes;
   if (input_obu_header.obu_extension_flag()) {
     extension_header_bytes =

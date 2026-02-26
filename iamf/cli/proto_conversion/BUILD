@@ -103,6 +103,7 @@ cc_library(
     visibility = [
         "//iamf/cli:__pkg__",
         "//iamf/cli/proto_conversion:__subpackages__",
+        "//iamf/cli/tests:__pkg__",
     ],
     deps = [
         "//iamf/cli:rendering_mix_presentation_finalizer",

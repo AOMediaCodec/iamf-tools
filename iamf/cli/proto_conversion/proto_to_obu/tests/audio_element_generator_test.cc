@@ -932,58 +932,6 @@ TEST(Generate, GeneratesReconGainParameterDefinition) {
       ElementsAre(AudioElementParam{expected_recon_gain_param_definition}));
 }
 
-TEST(Generate, IgnoresDeprecatedNumSubstreamsField) {
-  AudioElementObuMetadatas audio_element_metadatas;
-  auto& audio_element_metadata = *audio_element_metadatas.Add();
-  FillFirstOrderAmbisonicsMetadata(audio_element_metadata);
-  // Normally first-order ambisonics has four substreams.
-  constexpr DecodedUleb128 kExpectedNumSubstreams = 4;
-  // Corrupt the `num_substreams` field.
-  const auto kIgnoredNumSubstreams = 9999;
-  audio_element_metadata.set_num_substreams(kIgnoredNumSubstreams);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus);
-
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
-  AudioElementGenerator generator(audio_element_metadatas);
-
-  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
-
-  EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
-  const auto& audio_element_obu = output_obus.at(kAudioElementId).obu;
-  // The field is deprecated and ignored, the actual number of substreams are
-  // set based on the `audio_substream_ids` field.
-  EXPECT_EQ(audio_element_obu.GetNumSubstreams(), kExpectedNumSubstreams);
-  EXPECT_EQ(audio_element_obu.audio_substream_ids_.size(),
-            kExpectedNumSubstreams);
-}
-
-TEST(Generate, IgnoresDeprecatedNumParametersField) {
-  AudioElementObuMetadatas audio_element_metadatas;
-  auto& audio_element_metadata = *audio_element_metadatas.Add();
-  FillFirstOrderAmbisonicsMetadata(audio_element_metadata);
-  constexpr DecodedUleb128 kExpectedNumParameters = 0;
-  // Corrupt the `num_parameters` field.
-  const auto kIgnoredNumParameters = 9999;
-  audio_element_metadata.set_num_parameters(kIgnoredNumParameters);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus);
-  AudioElementGenerator generator(audio_element_metadatas);
-
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
-  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
-
-  EXPECT_THAT(output_obus, UnorderedElementsAre(Key(kAudioElementId)));
-  const auto& audio_element_obu = output_obus.at(kAudioElementId).obu;
-  // The field is deprecated and ignored, the actual number of parameters are
-  // set based on the `audio_element_params` field.
-  EXPECT_EQ(audio_element_obu.GetNumParameters(), kExpectedNumParameters);
-  EXPECT_EQ(audio_element_obu.audio_element_params_.size(),
-            kExpectedNumParameters);
-}
-
 TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   AudioElementObuMetadatas audio_element_metadatas;
   auto& audio_element_metadata = *audio_element_metadatas.Add();
@@ -1017,34 +965,6 @@ TEST(Generate, IgnoresDeprecatedParamDefinitionSizeField) {
   EXPECT_THAT(
       output_obus.at(kAudioElementId).obu.audio_element_params_,
       ElementsAre(AudioElementParam{expected_extended_param_definition}));
-}
-
-TEST(Generate, IgnoresDeprecatedNumLayers) {
-  AudioElementObuMetadatas audio_element_metadatas;
-  auto& two_layer_stereo_metadata = *audio_element_metadatas.Add();
-  FillTwoLayerStereoMetadata(two_layer_stereo_metadata);
-  // Two layers are set in the metadata.
-  constexpr uint8_t kExpectedNumLayers = 2;
-  // Corrupt the `num_layers` field.
-  const auto kIgnoredNumLayers = 7;
-  two_layer_stereo_metadata.mutable_scalable_channel_layout_config()
-      ->set_num_layers(kIgnoredNumLayers);
-  absl::flat_hash_map<DecodedUleb128, CodecConfigObu> codec_config_obus;
-  AddLpcmCodecConfigWithIdAndSampleRate(kCodecConfigId, kSampleRate,
-                                        codec_config_obus);
-  AudioElementGenerator generator(audio_element_metadatas);
-
-  absl::flat_hash_map<DecodedUleb128, AudioElementWithData> output_obus;
-  EXPECT_THAT(generator.Generate(codec_config_obus, output_obus), IsOk());
-
-  // The corrupted value is ignored, and the actual number of parameters are set
-  // correctly.
-  const auto& scalable_channel_layout_config =
-      GetConfigForAudioElementIdExpectOk<ScalableChannelLayoutConfig>(
-          kAudioElementId, output_obus);
-  EXPECT_EQ(scalable_channel_layout_config.GetNumLayers(), kExpectedNumLayers);
-  EXPECT_EQ(scalable_channel_layout_config.channel_audio_layer_configs.size(),
-            kExpectedNumLayers);
 }
 
 }  // namespace

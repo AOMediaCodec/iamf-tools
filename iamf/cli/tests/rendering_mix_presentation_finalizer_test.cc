@@ -39,6 +39,8 @@
 #include "iamf/cli/loudness_calculator_factory_base.h"
 #include "iamf/cli/parameter_block_with_data.h"
 #include "iamf/cli/proto/codec_config.pb.h"
+#include "iamf/cli/proto/output_audio_format.pb.h"
+#include "iamf/cli/proto_conversion/output_audio_format_utils.h"
 #include "iamf/cli/proto_conversion/proto_to_obu/codec_config_generator.h"
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/cli/renderer_factory.h"
@@ -50,6 +52,7 @@
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/codec_config.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 #include "src/google/protobuf/repeated_ptr_field.h"
 
@@ -249,9 +252,7 @@ class FinalizerTest : public ::testing::Test {
 
   void ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout() {
     sample_processor_factory_ =
-        [output_directory = output_directory_,
-         output_wav_file_bit_depth_override =
-             output_wav_file_bit_depth_override_](
+        [output_directory = output_directory_](
             DecodedUleb128 mix_presentation_id, int sub_mix_index,
             int layout_index, const Layout&, int num_channels, int sample_rate,
             int bit_depth,
@@ -259,16 +260,14 @@ class FinalizerTest : public ::testing::Test {
       if (sub_mix_index != 0 || layout_index != 0) {
         return nullptr;
       }
-      // Obey the override bit depth. But if it is not set, just match the input
-      // audio.
-      const uint8_t wav_file_bit_depth =
-          output_wav_file_bit_depth_override.value_or(bit_depth);
       const auto wav_path =
           absl::StrCat(output_directory.string(), "_id_", mix_presentation_id,
                        kSuffixAfterMixPresentationId);
-      return WavWriter::Create(wav_path, num_channels, sample_rate,
-                               wav_file_bit_depth, num_samples_per_frame);
+      return WavWriter::Create(wav_path, num_channels, sample_rate, bit_depth,
+                               num_samples_per_frame);
     };
+    ApplyOutputAudioFormatToSampleProcessorFactory(output_audio_format_,
+                                                   sample_processor_factory_);
   }
 
   void IterativeRenderingExpectOk(
@@ -298,8 +297,8 @@ class FinalizerTest : public ::testing::Test {
   // Finalizer create settings. Default to simplistic inputs that disable
   // most features.
   std::filesystem::path output_directory_ = GetAndCreateOutputDirectory("");
-  std::optional<uint8_t> output_wav_file_bit_depth_override_ =
-      kNoOverrideBitDepth;
+  iamf_tools_cli_proto::OutputAudioFormat output_audio_format_ =
+      iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_AUTOMATIC;
   bool validate_loudness_ = kDontValidateLoudness;
   std::unique_ptr<RendererFactoryBase> renderer_factory_;
   std::unique_ptr<LoudnessCalculatorFactoryBase> loudness_calculator_factory_;
@@ -535,7 +534,8 @@ TEST_F(FinalizerTest, OverridesBitDepthWhenRequested) {
   const LabelSamplesMap kLabelToSamples = {{kMono, {0, 1}}};
   AddLabeledFrame(kAudioElementId, kLabelToSamples);
   renderer_factory_ = std::make_unique<RendererFactory>();
-  output_wav_file_bit_depth_override_ = 32;
+  output_audio_format_ =
+      iamf_tools_cli_proto::OUTPUT_FORMAT_WAV_BIT_DEPTH_THIRTY_TWO;
   ConfigureWavWriterFactoryToProduceFirstSubMixFirstLayout();
   std::list<ParameterBlockWithData> parameter_blocks;
   auto finalizer = CreateFinalizerExpectOk();

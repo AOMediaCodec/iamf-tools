@@ -105,9 +105,9 @@ message ChannelAudioLayerConfig {
 }
 
 message ScalableChannelLayoutConfig {
-  // `num_layers` is ignored. The value in the bitstream is inferred based on
-  // the number of `channel_audio_layer_configs`.
-  uint32 num_layers = 1 [deprecated = true];
+  reserved 1;
+  reserved num_layers;
+
   uint32 reserved = 2;
   repeated ChannelAudioLayerConfig channel_audio_layer_configs = 3;
 }
@@ -153,17 +153,14 @@ message AudioElementConfigExtension {
 }
 
 message AudioElementObuMetadata {
+  reserved 5, 7;
+  reserved num_substreams, num_parameters;
+
   uint32 audio_element_id = 1;
   AudioElementType audio_element_type = 2;
   uint32 reserved = 3;
   uint32 codec_config_id = 4;
-  // `num_substreams` is ignored. The value in the bitstream is inferred based
-  // on the number of `audio_substream_ids`.
-  uint32 num_substreams = 5 [deprecated = true];
   repeated uint32 audio_substream_ids = 6;
-  // `num_parameters` is ignored. The value in the bitstream is inferred based
-  // on the number of `audio_element_params`.
-  uint32 num_parameters = 7 [deprecated = true];
   repeated AudioElementParam audio_element_params = 8;
 
   oneof config {

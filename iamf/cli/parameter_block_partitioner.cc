@@ -187,12 +187,6 @@ absl::Status GetPartitionedSubblocks(
     InternalTimestamp partitioned_end_time,
     std::list<iamf_tools_cli_proto::ParameterSubblock>& partitioned_subblocks,
     uint32_t& constant_subblock_duration) {
-  if (full_parameter_block.has_num_subblocks()) {
-    ABSL_LOG(WARNING)
-        << "Ignoring deprecated `num_subblocks` field in Parameter "
-           "Block OBU. Please remove it.";
-  }
-
   ABSL_LOG_FIRST_N(INFO, 1) << "   full_parameter_block=\n"
                             << full_parameter_block;
 

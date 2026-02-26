@@ -33,15 +33,15 @@ enum ParamDefinitionType {
 }
 
 message ParamDefinition {
+  reserved 6;
+  reserved num_subblocks;
+
   uint32 parameter_id = 1;
   uint32 parameter_rate = 2;
   bool param_definition_mode = 3;
   uint32 reserved = 4;
   uint32 duration = 5;
   uint32 constant_subblock_duration = 7;
-  // `num_subblocks` is ignored. The value in the bitstream is inferred based on
-  // the number of `subblock_durations`.
-  uint32 num_subblocks = 6 [deprecated = true];
   repeated uint32 subblock_durations = 8;
 }
 

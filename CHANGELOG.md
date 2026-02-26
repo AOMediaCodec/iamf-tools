@@ -25,6 +25,16 @@ and this project adheres to
     `num_anchored_loudness`, and `num_tags` in `MixPresentationObuMetadata` and
     related structures.
 -   Drop support of `deprecated_info_type` in favor of `info_type_bitmasks`.
+-   Drop support of `num_substreams`, `num_parameters`, and `num_layers` in
+    `AudioElementObuMetadata` in favor of determining the count from related
+    elements.
+-   Drop support of `num_subblocks` in `ParamDefinition` and
+    `ParameterBlockMetadata` in favor of determining the count from related
+    elements.
+-   Drop support of `extension_header_size` in `ObuHeaderMetadata` in favor of
+    determining the size from related elements.
+-   Drop support of `output_wav_file_bit_depth_override` in `TestVectorMetadata`
+    in favor of `output_rendered_file_format` in `EncoderControlMetadata`.
 
 ### Deprecated
 
