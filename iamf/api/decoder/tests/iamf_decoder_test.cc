@@ -561,6 +561,80 @@ TEST(Decode, SucceedsWithMultipleTemporalUnits) {
   EXPECT_FALSE(decoder->IsTemporalUnitAvailable());
 }
 
+TEST(Decode, SucceedsWithMultipleTemporalUnitsChunkedArbitrarily) {
+  std::unique_ptr<api::IamfDecoder> decoder;
+  ASSERT_TRUE(
+      api::IamfDecoder::Create(GetStereoDecoderSettings(), decoder).ok());
+  std::vector<uint8_t> source_data = GenerateBasicDescriptorObus();
+  AudioFrameObu audio_frame(ObuHeader(), kFirstSubstreamId,
+                            kEightSampleAudioFrame);
+  // Add 4 temporal units to the source data.
+  auto temporal_units = SerializeObusExpectOk(
+      {&audio_frame, &audio_frame, &audio_frame, &audio_frame});
+  source_data.insert(source_data.end(), temporal_units.begin(),
+                     temporal_units.end());
+
+  // Split the source data into five arbitrary chunks.
+  const int64_t chunk_size = source_data.size() / 5;
+  std::vector<uint8_t> chunk_1(source_data.begin(),
+                               source_data.begin() + chunk_size);
+  std::vector<uint8_t> chunk_2(source_data.begin() + chunk_size,
+                               source_data.begin() + 2 * chunk_size);
+  std::vector<uint8_t> chunk_3(source_data.begin() + 2 * chunk_size,
+                               source_data.begin() + 3 * chunk_size);
+  std::vector<uint8_t> chunk_4(source_data.begin() + 3 * chunk_size,
+                               source_data.begin() + 4 * chunk_size);
+  std::vector<uint8_t> chunk_5(source_data.begin() + 4 * chunk_size,
+                               source_data.end());
+  std::vector<std::vector<uint8_t>> chunks = {chunk_1, chunk_2, chunk_3,
+                                              chunk_4, chunk_5};
+  const size_t expected_output_size =
+      8 * 4 * 2;  // 8 samples, 32-bit ints, stereo.
+  std::vector<uint8_t> output_data(expected_output_size);
+  std::vector<std::vector<uint8_t>> output_temporal_units;
+  for (const auto& chunk : chunks) {
+    // Decode should not return an error for each chunk.
+    EXPECT_TRUE(decoder->Decode(chunk.data(), chunk.size()).ok());
+    while (decoder->IsTemporalUnitAvailable()) {
+      size_t bytes_written;
+      EXPECT_TRUE(decoder
+                      ->GetOutputTemporalUnit(output_data.data(),
+                                              output_data.size(), bytes_written)
+                      .ok());
+      // Don't need to check if bytes_written > 0 because
+      // IsTemporalUnitAvailable() ensures that there is a temporal unit to be
+      // read.
+      output_temporal_units.push_back(output_data);
+      EXPECT_EQ(bytes_written, expected_output_size);
+      output_data.clear();
+      output_data.resize(expected_output_size);
+    }
+  }
+  // Expect 3 temporal units to be available after pushing all the data; the
+  // last temporal unit cannot be finalized until after SignalEndOfDecoding() is
+  // called.
+  EXPECT_EQ(output_temporal_units.size(), 3);
+
+  // End of stream; user must call SignalEndOfDecoding() and loop to pull out
+  // any remaining audio.
+  EXPECT_TRUE(decoder->SignalEndOfDecoding().ok());
+  while (decoder->IsTemporalUnitAvailable()) {
+    size_t bytes_written;
+    EXPECT_TRUE(decoder
+                    ->GetOutputTemporalUnit(output_data.data(),
+                                            output_data.size(), bytes_written)
+                    .ok());
+    // Don't need to check if bytes_written > 0 because
+    // IsTemporalUnitAvailable() ensures that there is a temporal unit to be
+    // read.
+    output_temporal_units.push_back(output_data);
+    EXPECT_EQ(bytes_written, expected_output_size);
+    output_data.clear();
+    output_data.resize(expected_output_size);
+  }
+  EXPECT_EQ(output_temporal_units.size(), 4);
+}
+
 TEST(Decode, SucceedsWithMultipleTemporalUnitsForNonStereoLayout) {
   std::unique_ptr<api::IamfDecoder> decoder;
   const api::IamfDecoder::Settings kMonoSettings = {
