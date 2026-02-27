@@ -145,7 +145,7 @@ mix_presentation_metadata {
       loudness {
         info_type_bit_masks: []
         integrated_loudness: -4013
-        digital_peak: 0
+        digital_peak: 198
       }
     }
     layouts {
@@ -173,7 +173,7 @@ mix_presentation_metadata {
       loudness {
         info_type_bit_masks: []
         integrated_loudness: -3974
-        digital_peak: 0
+        digital_peak: 287
       }
     }
     layouts {
