@@ -51,19 +51,15 @@ namespace api {
  *      status = decoder->GetSampleRate(output_sample_rate);
  *      status = decoder->GetFrameSize(output_frame_size);
  *    }
- * for chunk of data in iamf stream:
- *    decoder->Decode(chunk, chunk_size);
+ * if (end_of_stream) {
+ *    decoder->SignalEndOfDecoding();
+ *    // Get remaining audio
  *    while (decoder->IsTemporalUnitAvailable()) {
  *      decoder->GetOutputTemporalUnit(output_buffer, bytes_written)
  *      // Do something with the decoded audio like
  *      MyPlaybackFunction(output_buffer, bytes_written);
  *    }
- * if (end_of_stream):
- *    decoder->SignalEndOfDecoding()
- *    // Get remaining audio
- *    while (decoder->IsTemporalUnitAvailable()) {
- *      // Get and use the buffer like before.
- *    }
+ * }
  */
 class IamfDecoderInterface {
  public:
