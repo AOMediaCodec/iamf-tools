@@ -18,7 +18,6 @@ cc_library(
         "//iamf/cli/internal/transmuxer:__pkg__",
         "//iamf/cli/proto_conversion/proto_to_obu:__pkg__",
         "//iamf/cli/proto_conversion/tests:__pkg__",
-        "//iamf/cli/tests:__pkg__",
         "//iamf/cli/user_metadata_builder/tests:__pkg__",
     ],
     deps = [
@@ -55,7 +54,6 @@ cc_library(
     visibility = [
         "//iamf/cli:__pkg__",
         "//iamf/cli/proto_conversion/tests:__pkg__",
-        "//iamf/cli/tests:__pkg__",
     ],
     deps = [
         ":channel_label_utils",
