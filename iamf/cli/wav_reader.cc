@@ -101,10 +101,10 @@ size_t WavReader::ReadFrame() {
   size_t samples_read = 0;
   const auto num_channels = info_.num_channels;
   std::vector<int32_t> buffer_of_one_tick(num_channels, 0);
-  for (int t = 0; t < num_samples_per_frame_; t++) {
+  for (size_t t = 0; t < num_samples_per_frame_; t++) {
     samples_read +=
         ReadWavSamples(file_, &info_, buffer_of_one_tick.data(), num_channels);
-    if (samples_read < num_channels) {
+    if (samples_read < static_cast<size_t>(num_channels)) {
       break;
     }
     for (int c = 0; c < num_channels; c++) {

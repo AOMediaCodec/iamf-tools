@@ -193,8 +193,8 @@ absl::Status WavWriter::PushFrameDerived(
   }
 
   size_t write_position = 0;
-  for (int t = 0; t < num_ticks; t++) {
-    for (int c = 0; c < num_channels; c++) {
+  for (size_t t = 0; t < num_ticks; t++) {
+    for (size_t c = 0; c < num_channels; c++) {
       int32_t sample_int32;
       RETURN_IF_NOT_OK(NormalizedFloatingPointToInt32(
           channel_time_samples[c][t], sample_int32));

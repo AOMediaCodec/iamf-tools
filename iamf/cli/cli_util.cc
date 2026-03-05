@@ -190,8 +190,8 @@ absl::Status WritePcmFrameToBuffer(
   // The input frame is arranged in (channel, time) axes. Interlace these in
   // the output PCM.
   size_t write_position = 0;
-  for (int t = 0; t < frame[0].size(); ++t) {
-    for (int c = 0; c < frame.size(); c++) {
+  for (size_t t = 0; t < frame[0].size(); ++t) {
+    for (size_t c = 0; c < frame.size(); c++) {
       const uint32_t sample = static_cast<uint32_t>(frame[c][t]);
       RETURN_IF_NOT_OK(WritePcmSample(sample, bit_depth, big_endian,
                                       buffer.data(), write_position));

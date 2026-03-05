@@ -132,7 +132,7 @@ absl::Status InitializeRenderers(
     std::vector<std::unique_ptr<AudioElementRendererBase>>& renderers) {
   renderers.resize(audio_elements_in_sub_mix.size());
 
-  for (int i = 0; i < audio_elements_in_sub_mix.size(); i++) {
+  for (size_t i = 0; i < audio_elements_in_sub_mix.size(); i++) {
     const auto& sub_mix_audio_element = *audio_elements_in_sub_mix[i];
     renderers[i] = renderer_factory.CreateRendererForLayout(
         sub_mix_audio_element.obu.audio_substream_ids_,
@@ -267,7 +267,7 @@ absl::Status GetAndApplyMixGain(
   }
 
   for (auto& rendered_samples_for_channel : rendered_samples) {
-    for (int tick = 0; tick < num_ticks; tick++) {
+    for (size_t tick = 0; tick < num_ticks; tick++) {
       // Apply the mix gain per tick to all channels.
       rendered_samples_for_channel[tick] *= linear_mix_gain_per_tick[tick];
     }
@@ -307,13 +307,13 @@ absl::Status MixAudioElements(
     }
   }
 
-  for (int a = 0; a < num_audio_elements; a++) {
+  for (size_t a = 0; a < num_audio_elements; a++) {
     const auto& rendered_samples_for_audio_element = rendered_audio_elements[a];
-    for (int c = 0; c < num_channels; c++) {
+    for (size_t c = 0; c < num_channels; c++) {
       auto& rendered_samples_for_channel = rendered_samples[c];
       const auto& rendered_samples_for_audio_element_for_channel =
           rendered_samples_for_audio_element[c];
-      for (int t = 0; t < num_ticks; t++) {
+      for (size_t t = 0; t < num_ticks; t++) {
         // Sum all audio elements for this (channel, tick).
         rendered_samples_for_channel[t] +=
             rendered_samples_for_audio_element_for_channel[t];
@@ -344,7 +344,7 @@ absl::Status RenderAllFramesForLayout(
   std::vector<std::vector<std::vector<InternalSampleType>>>
       rendered_audio_elements(sub_mix_audio_elements.size());
   std::vector<float> linear_mix_gain_per_tick;
-  for (int i = 0; i < sub_mix_audio_elements.size(); i++) {
+  for (size_t i = 0; i < sub_mix_audio_elements.size(); i++) {
     const SubMixAudioElement& sub_mix_audio_element = sub_mix_audio_elements[i];
     const auto audio_element_id = sub_mix_audio_element.audio_element_id;
 
@@ -375,7 +375,7 @@ absl::Status RenderAllFramesForLayout(
       linear_mix_gain_per_tick, rendered_samples));
 
   valid_rendered_samples.resize(rendered_samples.size());
-  for (int c = 0; c < rendered_samples.size(); ++c) {
+  for (size_t c = 0; c < rendered_samples.size(); ++c) {
     valid_rendered_samples[c] = absl::MakeConstSpan(rendered_samples[c]);
   }
 
@@ -466,7 +466,7 @@ absl::Status GenerateRenderingMetadataForLayouts(
     uint32_t common_num_samples_per_frame,
     std::vector<LayoutRenderingMetadata>& output_layout_rendering_metadata) {
   output_layout_rendering_metadata.resize(sub_mix.layouts.size());
-  for (int layout_index = 0; layout_index < sub_mix.layouts.size();
+  for (size_t layout_index = 0; layout_index < sub_mix.layouts.size();
        layout_index++) {
     LayoutRenderingMetadata& layout_rendering_metadata =
         output_layout_rendering_metadata[layout_index];
@@ -526,7 +526,7 @@ absl::Status GenerateRenderingMetadataForSubmixes(
     std::vector<SubmixRenderingMetadata>& output_rendering_metadata) {
   const auto mix_presentation_id = mix_presentation_obu.GetMixPresentationId();
   output_rendering_metadata.resize(mix_presentation_obu.sub_mixes_.size());
-  for (int sub_mix_index = 0;
+  for (size_t sub_mix_index = 0;
        sub_mix_index < mix_presentation_obu.sub_mixes_.size();
        ++sub_mix_index) {
     SubmixRenderingMetadata& submix_rendering_metadata =

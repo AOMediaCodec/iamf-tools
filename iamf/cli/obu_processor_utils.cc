@@ -1,5 +1,6 @@
 #include "iamf/cli/obu_processor_utils.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <optional>
@@ -85,18 +86,18 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
   }
 
   // B. Desired layout specified: Search for it in the selected Mix.
-  for (int sub_mix_index = 0;
+  for (size_t sub_mix_index = 0;
        sub_mix_index < mix_presentation->sub_mixes_.size(); ++sub_mix_index) {
     const auto& sub_mix = mix_presentation->sub_mixes_[sub_mix_index];
-    for (int layout_index = 0; layout_index < sub_mix.layouts.size();
+    for (size_t layout_index = 0; layout_index < sub_mix.layouts.size();
          ++layout_index) {
       const auto& layout = sub_mix.layouts[layout_index];
       if (desired_layout == layout.loudness_layout) {
         return SelectedMixPresentation{
             mix_presentation,
             layout.loudness_layout,
-            sub_mix_index,
-            layout_index,
+            static_cast<int>(sub_mix_index),
+            static_cast<int>(layout_index),
         };
       }
     }
@@ -116,14 +117,15 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
 absl::StatusOr<MixPresentationObu> CreateSimplifiedMixPresentationForRendering(
     const MixPresentationObu& mix_presentation, int sub_mix_index,
     int layout_index) {
-  if (sub_mix_index < 0 ||
-      sub_mix_index >= mix_presentation.sub_mixes_.size()) {
+  if (sub_mix_index < 0 || static_cast<size_t>(sub_mix_index) >=
+                               mix_presentation.sub_mixes_.size()) {
     return absl::OutOfRangeError(absl::StrCat(
         "Sub-mix index is out of bounds for the given Mix Presentation: ",
         mix_presentation.sub_mixes_.size(), " sub_mix_index: ", sub_mix_index));
   }
   const auto& selected_sub_mix = mix_presentation.sub_mixes_[sub_mix_index];
-  if (layout_index < 0 || layout_index >= selected_sub_mix.layouts.size()) {
+  if (layout_index < 0 ||
+      static_cast<size_t>(layout_index) >= selected_sub_mix.layouts.size()) {
     return absl::OutOfRangeError(
         "Layout index is out of bounds for the given Mix Presentation.");
   }

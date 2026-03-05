@@ -12,6 +12,7 @@
 
 #include "iamf/cli/obu_with_data_generator.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -394,7 +395,7 @@ absl::Status AddSubstreamLabels(
     const std::list<ChannelLabel::Label>& non_coupled_substream_labels,
     const std::vector<DecodedUleb128>& substream_ids,
     SubstreamIdLabelsMap& substream_id_to_labels, int& substream_index) {
-  ABSL_CHECK_EQ(coupled_substream_labels.size() % 2, 0);
+  ABSL_CHECK_EQ(coupled_substream_labels.size() % 2, size_t{0});
   // Determine how many substream IDs will be used below. This helps prevent
   // indexing `substream_ids` out of bounds.
   const auto substreams_to_add =
@@ -409,7 +410,7 @@ absl::Status AddSubstreamLabels(
   // First add coupled substream labels, two at a time.
   for (auto iter = coupled_substream_labels.begin();
        iter != coupled_substream_labels.end() &&
-       substream_index < substream_ids.size();) {
+       static_cast<size_t>(substream_index) < substream_ids.size();) {
     const auto substream_id = substream_ids[substream_index++];
     auto& labels_for_substream_id = substream_id_to_labels[substream_id];
     const auto first_label = *iter++;
@@ -500,7 +501,7 @@ absl::Status FinalizeAmbisonicsMonoConfig(
     SubstreamIdLabelsMap& substream_id_to_labels) {
   // Fill `substream_id_to_labels`. `channel_mapping` encodes the mapping of
   // Ambisonics Channel Number (ACN) to substream index.
-  for (int ambisonics_channel_number = 0;
+  for (size_t ambisonics_channel_number = 0;
        ambisonics_channel_number < mono_config.channel_mapping.size();
        ++ambisonics_channel_number) {
     const uint8_t obu_substream_index =
@@ -539,7 +540,8 @@ absl::Status FinalizeAmbisonicsProjectionConfig(
 
   // For projection mode, assume coupled substreams (using 2 channels) come
   // first and are followed by non-coupled substreams (using 1 channel each).
-  for (int i = 0; i < audio_element_obu.GetNumSubstreams(); ++i) {
+  for (int i = 0; i < static_cast<int>(audio_element_obu.GetNumSubstreams());
+       ++i) {
     const std::list<int> ambisonic_channel_numbers =
         i < projection_config.coupled_substream_count
             ? std::list<int>{2 * i, 2 * i + 1}
@@ -712,7 +714,7 @@ absl::Status ObuWithDataGenerator::FinalizeScalableChannelLayoutConfig(
   ChannelNumbers accumulated_channels = {0, 0, 0, 0};
   int substream_index = 0;
   channel_numbers_for_layers.reserve(config.GetNumLayers());
-  for (int i = 0; i < config.GetNumLayers(); ++i) {
+  for (size_t i = 0; i < config.GetNumLayers(); ++i) {
     const int previous_layer_substream_index = substream_index;
 
     ChannelNumbers layer_channels = {0, 0, 0, 0};

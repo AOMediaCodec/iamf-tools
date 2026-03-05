@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/sample_processor_base.h"
 
+#include <cstddef>
 #include <vector>
 
 #include "absl/status/status.h"
@@ -35,7 +36,7 @@ absl::Status SampleProcessorBase::PushFrame(
   // Check the shape of the input data.
   RETURN_IF_NOT_OK(ValidateEqual(channel_time_samples.size(), num_channels_,
                                  "number of channels"));
-  for (int c = 0; c < num_channels_; c++) {
+  for (size_t c = 0; c < num_channels_; c++) {
     if (channel_time_samples[c].size() > max_input_samples_per_frame_) {
       return absl::InvalidArgumentError(
           absl::StrCat("Too many samples per frame. ",
@@ -57,7 +58,7 @@ absl::Status SampleProcessorBase::Flush() {
   }
 
   state_ = State::kFlushCalled;
-  for (int c = 0; c < num_channels_; c++) {
+  for (size_t c = 0; c < num_channels_; c++) {
     output_channel_time_samples_[c].resize(0);
   }
   return FlushDerived();
@@ -65,7 +66,7 @@ absl::Status SampleProcessorBase::Flush() {
 
 absl::Span<const absl::Span<const InternalSampleType>>
 SampleProcessorBase::GetOutputSamplesAsSpan() {
-  for (int c = 0; c < output_channel_time_samples_.size(); c++) {
+  for (size_t c = 0; c < output_channel_time_samples_.size(); c++) {
     output_span_buffer_[c] =
         absl::MakeConstSpan(output_channel_time_samples_[c]);
   }

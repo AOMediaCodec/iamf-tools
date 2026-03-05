@@ -12,6 +12,7 @@
 #include "iamf/cli/profile_filter.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -345,7 +346,7 @@ absl::Status FilterProfilesForCodecConfigRules(
   // Gather information from each Codec Config OBU.
   absl::flat_hash_map<DecodedUleb128, CodecConfigInfo> codec_config_id_to_info;
   bool found_lpcm = false;
-  for (int i = 0; i < mix_presentation_obu.sub_mixes_.size(); ++i) {
+  for (size_t i = 0; i < mix_presentation_obu.sub_mixes_.size(); ++i) {
     const auto& sub_mix = mix_presentation_obu.sub_mixes_[i];
     for (const auto& audio_element : sub_mix.audio_elements) {
       auto it = audio_elements.find(audio_element.audio_element_id);
@@ -394,7 +395,8 @@ absl::Status FilterProfilesForCodecConfigRules(
            {ProfileVersion::kIamfAdvanced2Profile, 2}}};
   for (const auto& [profile_version, max_codec_configs] :
        kProfileVersionAndMaxCodecConfigs) {
-    if (codec_config_id_to_info.size() > max_codec_configs) {
+    if (codec_config_id_to_info.size() >
+        static_cast<size_t>(max_codec_configs)) {
       // Condition B was violated. We found multiple unique codec configs, which
       // are forbidden under the older v1.1.0 profiles.
       profile_versions.erase(profile_version);

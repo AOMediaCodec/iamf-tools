@@ -91,8 +91,8 @@ class SubstreamFrames {
    * \param channel_index Index of the channel to push to.
    * \param sample Sample value to push
    */
-  void PushSample(const int channel_index, const SampleType sample) {
-    ABSL_CHECK_LT(channel_index, num_channels_);
+  void PushSample(int channel_index, const SampleType sample) {
+    ABSL_CHECK_LT(channel_index, static_cast<int>(num_channels_));
     auto& channel = GetChannelInNonFullFrame(channel_index);
     channel.push_back(sample);
   }
@@ -106,14 +106,14 @@ class SubstreamFrames {
     int padded_samples = 0;
     while (padded_samples < num_samples_to_pad) {
       int num_samples_to_pad_in_frame = 0;
-      for (int channel_index = 0; channel_index < num_channels_;
-           channel_index++) {
+      for (int channel_index = 0;
+           channel_index < static_cast<int>(num_channels_); channel_index++) {
         auto& channel = GetChannelInNonFullFrame(channel_index);
         num_samples_to_pad_in_frame =
             std::min(static_cast<int>(num_samples_per_frame_) -
                          static_cast<int>(channel.size()),
                      num_samples_to_pad - padded_samples);
-        ABSL_CHECK_GT(num_samples_to_pad, 0);
+        ABSL_CHECK_GT(num_samples_to_pad_in_frame, 0);
         channel.insert(channel.end(), num_samples_to_pad_in_frame, 0);
       }
       padded_samples += num_samples_to_pad_in_frame;

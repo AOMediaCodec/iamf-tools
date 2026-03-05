@@ -49,7 +49,7 @@ absl::Status GetAndStoreCodecConfigObu(
     const ObuHeader& header, int64_t payload_size,
     absl::flat_hash_map<DecodedUleb128, CodecConfigObu>& codec_config_obu_map,
     ReadBitBuffer& read_bit_buffer) {
-  if (payload_size < kSmallestAcceptedCodecConfigSize) {
+  if (static_cast<size_t>(payload_size) < kSmallestAcceptedCodecConfigSize) {
     // The OBU is implausibly small. It is likely the source file is corrupted.
     // For maximum compatibility, silently skip over the OBU.
     ABSL_LOG(WARNING)

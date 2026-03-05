@@ -55,7 +55,7 @@ class SampleProcessorBase {
         num_channels_(num_channels),
         output_channel_time_samples_(num_channels),
         output_span_buffer_(num_channels) {
-    for (int c = 0; c < num_channels; c++) {
+    for (size_t c = 0; c < num_channels; c++) {
       output_channel_time_samples_[c].reserve(max_input_samples_per_frame_);
       output_span_buffer_[c] = absl::MakeSpan(output_channel_time_samples_[c]);
     }

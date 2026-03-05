@@ -83,7 +83,7 @@ absl::Status S7ToS5DownMixer(const DownMixingParams& down_mixing_params,
   // Handle Ls5 and Rs5.
   ls5_samples.resize(lss7_samples.size());
   rs5_samples.resize(rss7_samples.size());
-  for (int i = 0; i < ls5_samples.size(); i++) {
+  for (size_t i = 0; i < ls5_samples.size(); i++) {
     ls5_samples[i] = down_mixing_params.alpha * lss7_samples[i] +
                      down_mixing_params.beta * lrs7_samples[i];
     rs5_samples[i] = down_mixing_params.alpha * rss7_samples[i] +
@@ -129,7 +129,7 @@ absl::Status S5ToS7Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = l5_samples.size();
   lrs7_samples.resize(num_ticks, 0.0);
   rrs7_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     lrs7_samples[i] =
         (ls5_samples[i] - down_mixing_params.alpha * lss7_samples[i]) /
         down_mixing_params.beta;
@@ -162,7 +162,7 @@ absl::Status S5ToS3DownMixer(const DownMixingParams& down_mixing_params,
   auto& r3_samples = label_to_samples[kR3];
   l3_samples.resize(l5_samples.size());
   r3_samples.resize(r5_samples.size());
-  for (int i = 0; i < l3_samples.size(); i++) {
+  for (size_t i = 0; i < l3_samples.size(); i++) {
     l3_samples[i] = l5_samples[i] + down_mixing_params.delta * ls5_samples[i];
     r3_samples[i] = r5_samples[i] + down_mixing_params.delta * rs5_samples[i];
   }
@@ -193,7 +193,7 @@ absl::Status S3ToS5Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = l3_samples.size();
   ls5_samples.resize(num_ticks, 0.0);
   rs5_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     ls5_samples[i] = (l3_samples[i] - l5_samples[i]) / down_mixing_params.delta;
     rs5_samples[i] = (r3_samples[i] - r5_samples[i]) / down_mixing_params.delta;
   }
@@ -220,7 +220,7 @@ absl::Status S3ToS2DownMixer(const DownMixingParams& /*down_mixing_params*/,
   auto& r2_samples = label_to_samples[kR2];
   l2_samples.resize(l3_samples.size());
   r2_samples.resize(r3_samples.size());
-  for (int i = 0; i < l2_samples.size(); i++) {
+  for (size_t i = 0; i < l2_samples.size(); i++) {
     l2_samples[i] = l3_samples[i] + 0.707 * c_samples[i];
     r2_samples[i] = r3_samples[i] + 0.707 * c_samples[i];
   }
@@ -248,7 +248,7 @@ absl::Status S2ToS3Demixer(const DownMixingParams& /*down_mixing_params*/,
   const size_t num_ticks = c_samples.size();
   l3_samples.resize(num_ticks, 0.0);
   r3_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     l3_samples[i] = (l2_samples[i] - 0.707 * c_samples[i]);
     r3_samples[i] = (r2_samples[i] - 0.707 * c_samples[i]);
   }
@@ -271,7 +271,7 @@ absl::Status S2ToS1DownMixer(const DownMixingParams& /*down_mixing_params*/,
 
   auto& mono_samples = label_to_samples[kMono];
   mono_samples.resize(l2_samples.size());
-  for (int i = 0; i < mono_samples.size(); i++) {
+  for (size_t i = 0; i < mono_samples.size(); i++) {
     mono_samples[i] = 0.5 * (l2_samples[i] + r2_samples[i]);
   }
 
@@ -292,7 +292,7 @@ absl::Status S1ToS2Demixer(const DownMixingParams& /*down_mixing_params*/,
   auto& r2_samples = label_to_samples[kDemixedR2];
   const size_t num_ticks = mono_samples.size();
   r2_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     r2_samples[i] = 2.0 * mono_samples[i] - l2_samples[i];
   }
 
@@ -320,7 +320,7 @@ absl::Status T4ToT2DownMixer(const DownMixingParams& down_mixing_params,
   auto& rtf2_samples = label_to_samples[kRtf2];
   ltf2_samples.resize(ltf4_samples.size());
   rtf2_samples.resize(rtf4_samples.size());
-  for (int i = 0; i < ltf2_samples.size(); i++) {
+  for (size_t i = 0; i < ltf2_samples.size(); i++) {
     ltf2_samples[i] =
         ltf4_samples[i] + down_mixing_params.gamma * ltb4_samples[i];
     rtf2_samples[i] =
@@ -352,7 +352,7 @@ absl::Status T2ToT4Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = ltf2_samples.size();
   ltb4_samples.resize(num_ticks, 0.0);
   rtb4_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     ltb4_samples[i] =
         (ltf2_samples[i] - ltf4_samples[i]) / down_mixing_params.gamma;
     rtb4_samples[i] =
@@ -383,7 +383,7 @@ absl::Status T2ToTf2DownMixer(const DownMixingParams& down_mixing_params,
   auto& rtf3_samples = label_to_samples[kRtf3];
   ltf3_samples.resize(ltf2_samples.size());
   rtf3_samples.resize(rtf2_samples.size());
-  for (int i = 0; i < ltf2_samples.size(); i++) {
+  for (size_t i = 0; i < ltf2_samples.size(); i++) {
     ltf3_samples[i] = ltf2_samples[i] + down_mixing_params.w *
                                             down_mixing_params.delta *
                                             ls5_samples[i];
@@ -423,7 +423,7 @@ absl::Status Tf2ToT2Demixer(const DownMixingParams& down_mixing_params,
   const size_t num_ticks = ltf3_samples.size();
   ltf2_samples.resize(num_ticks, 0.0);
   rtf2_samples.resize(num_ticks, 0.0);
-  for (int i = 0; i < num_ticks; i++) {
+  for (size_t i = 0; i < num_ticks; i++) {
     ltf2_samples[i] = ltf3_samples[i] -
                       down_mixing_params.w * (l3_samples[i] - l5_samples[i]);
     rtf2_samples[i] = rtf3_samples[i] -
