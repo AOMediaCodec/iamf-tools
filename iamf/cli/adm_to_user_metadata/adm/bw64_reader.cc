@@ -64,8 +64,8 @@ absl::Status ReadRiffChunk(std::istream& buffer) {
 
 // Reads the chunk data of the WAV file. It returns a vector containing the name
 // of WAV header such as "fmt " and the corresponding and data size.
-std::pair<std::vector<char>, size_t> ReadChunkHeader(std::istream& buffer) {
-  std::pair<std::vector<char>, size_t> chunk_header;
+std::pair<std::vector<char>, int64_t> ReadChunkHeader(std::istream& buffer) {
+  std::pair<std::vector<char>, int64_t> chunk_header;
   chunk_header.first.resize(Bw64Reader::kChunkNameSize);
   if (buffer.read(chunk_header.first.data(), Bw64Reader::kChunkNameSize) &&
       buffer.read(reinterpret_cast<char*>(&chunk_header.second),
@@ -89,7 +89,7 @@ Bw64Reader::ChunksOffsetMap CreateChunksOffsetMap(std::istream& buffer) {
     }
     size_t current_file_pointer = buffer.tellg();
     chunks_offset_map[std::string(chunk_id.begin(), chunk_id.end())] = {
-        chunk_size, current_file_pointer - kExtraOffset};
+        static_cast<size_t>(chunk_size), current_file_pointer - kExtraOffset};
     const std::streamoff chunk_realtive_offset = chunk_size + (chunk_size & 1);
     buffer.seekg(chunk_realtive_offset, std::ios::cur);
   }

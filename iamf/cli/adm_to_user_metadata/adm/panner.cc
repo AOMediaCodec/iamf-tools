@@ -155,7 +155,7 @@ absl::Status PanObjectsToAmbisonics(const std::string& input_filename,
 
     // Convert int32 interleaved to float planar.
     for (size_t smp = 0; smp < samples_per_frame; ++smp) {
-      for (size_t ch = 0; ch < ip_wav_nch; ++ch) {
+      for (size_t ch = 0; ch < static_cast<size_t>(ip_wav_nch); ++ch) {
         ip_buffer_float[ch * samples_per_frame + smp] =
             Int32ToNormalizedFloatingPoint<float>(
                 ip_buffer_int32[smp * ip_wav_nch + ch]);

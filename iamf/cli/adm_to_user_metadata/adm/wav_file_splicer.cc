@@ -108,7 +108,7 @@ absl::Status FlushToWavWriter(std::vector<uint8_t>& samples_to_flush,
 std::vector<std::pair<int, int>> GenerateSegmentLayout(
     const std::vector<int>& lfe_ids, const int num_channels) {
   std::vector<std::pair<int, int>> segment_layout;
-  for (int lfe_index = 0; lfe_index <= lfe_ids.size(); ++lfe_index) {
+  for (size_t lfe_index = 0; lfe_index <= lfe_ids.size(); ++lfe_index) {
     const int start_index = (lfe_index == 0) ? 0 : lfe_ids[lfe_index - 1];
     const int end_index =
         (lfe_index < lfe_ids.size()) ? lfe_ids[lfe_index] - 1 : num_channels;
@@ -157,7 +157,7 @@ absl::Status FlushLfeNonLfeWavs(
     // Occasionally flush the buffer to the corresponding wav writer.
     // To avoid intermittent padding, ensure that the samples to flush is always
     // even.
-    for (int index = 0; index < writers.size(); ++index) {
+    for (size_t index = 0; index < writers.size(); ++index) {
       auto buffer_size = nonlfe_lfe_buffer[index].size();
       if (buffer_size >= kSizeToFlush && buffer_size % 2 == 0) {
         RETURN_IF_NOT_OK(
@@ -167,7 +167,7 @@ absl::Status FlushLfeNonLfeWavs(
   }
 
   // Flush the remaining buffers.
-  for (int index = 0; index < writers.size(); ++index) {
+  for (size_t index = 0; index < writers.size(); ++index) {
     RETURN_IF_NOT_OK(
         FlushToWavWriter(nonlfe_lfe_buffer[index], *writers[index]));
   }
@@ -229,7 +229,7 @@ double ConvertTimeToSeconds(const BlockTime& time) {
 double CalculateBlockDuration(const std::vector<AudioBlockFormat>& audio_block,
                               const int& block_index) {
   double seg_duration = 0.0;
-  if (block_index < audio_block.size() - 1) {
+  if (static_cast<size_t>(block_index) < audio_block.size() - 1) {
     const auto block_rtime =
         ConvertTimeToSeconds(audio_block[block_index].rtime);
     const auto next_block_rtime =
@@ -246,7 +246,7 @@ double CalculateBlockDuration(const std::vector<AudioBlockFormat>& audio_block,
 std::vector<int> GetLfeChannelIDs(
     const std::vector<AudioChannelFormat>& audio_channels) {
   std::vector<int> lfe_ids;
-  for (int index = 0; index < audio_channels.size(); ++index) {
+  for (size_t index = 0; index < audio_channels.size(); ++index) {
     if (audio_channels[index].name == "RoomCentricLFE") {
       if (lfe_ids.size() < kMaxLfeChannelsAllowed) {
         lfe_ids.push_back(index + 1);
@@ -465,7 +465,7 @@ absl::Status SeparateLfeChannels(const std::filesystem::path& output_file_path,
   nonlfe_lfe_wav_writer.emplace_back(
       WavWriter::Create(non_lfe_file_path, non_lfe_count, samples_per_sec,
                         bits_per_sample, kMaxNumSamplesPerFrame));
-  for (int lfe_index = 1; lfe_index <= lfe_ids.size(); ++lfe_index) {
+  for (size_t lfe_index = 1; lfe_index <= lfe_ids.size(); ++lfe_index) {
     nonlfe_lfe_wav_writer.emplace_back(WavWriter::Create(
         (output_file_path /
          absl::StrCat(file_prefix, "_converted", lfe_index + 1, ".wav"))
@@ -613,7 +613,7 @@ absl::Status SpliceWavFilesFromAdm(
     audio_object_index_to_wav_writer.reserve(
         audio_tracks_for_audio_objects.size());
     const FormatInfoChunk& wav_file_fmt = reader.format_info_;
-    for (int audio_object_index = 0;
+    for (size_t audio_object_index = 0;
          audio_object_index < audio_tracks_for_audio_objects.size();
          ++audio_object_index) {
       audio_object_index_to_wav_writer.emplace_back(WavWriter::Create(
@@ -645,7 +645,7 @@ absl::Status SpliceWavFilesFromAdm(
     const int32_t channels = wav_file_fmt.num_channels;
     for (size_t data_chunk_pos = 0; data_chunk_pos < data_chunk_info->size;
          data_chunk_pos += static_cast<size_t>(bytes_per_sample) * channels) {
-      for (int audio_object_index = 0;
+      for (size_t audio_object_index = 0;
            audio_object_index < audio_tracks_for_audio_objects.size();
            ++audio_object_index) {
         // Read in the samples for the current audio object.
@@ -677,7 +677,7 @@ absl::Status SpliceWavFilesFromAdm(
     }
 
     // Flush the remaining buffers.
-    for (int audio_object_index = 0;
+    for (size_t audio_object_index = 0;
          audio_object_index < audio_tracks_for_audio_objects.size();
          ++audio_object_index) {
       RETURN_IF_NOT_OK(FlushToWavWriter(
