@@ -240,7 +240,7 @@ absl::Status ParameterBlockObu::SetSubblockDuration(int subblock_index,
       << "`param_definition_mode_ == 0`";
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
-  if (subblock_index > num_subblocks) {
+  if (static_cast<DecodedUleb128>(subblock_index) > num_subblocks) {
     return absl::InvalidArgumentError(absl::StrCat(
         "Setting subblock duration for subblock_index = ", subblock_index,
         " but there are only num_subblocks = ", num_subblocks));
@@ -269,7 +269,7 @@ absl::Status ParameterBlockObu::GetLinearMixGain(
   int target_subblock_index = -1;
   InternalTimestamp subblock_relative_start_time = 0;
   InternalTimestamp subblock_relative_end_time = 0;
-  for (int i = 0; i < num_subblocks; i++) {
+  for (DecodedUleb128 i = 0; i < num_subblocks; i++) {
     const auto subblock_duration = GetSubblockDuration(i);
     if (!subblock_duration.ok()) {
       return subblock_duration.status();
@@ -321,7 +321,7 @@ void ParameterBlockObu::PrintObu() const {
   }
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
-  for (int i = 0; i < num_subblocks; i++) {
+  for (DecodedUleb128 i = 0; i < num_subblocks; i++) {
     ABSL_LOG(INFO) << "  subblocks[" << i << "]";
     subblocks_[i].Print();
   }

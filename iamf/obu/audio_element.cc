@@ -647,7 +647,7 @@ absl::Status AmbisonicsConfig::GetNextValidOutputChannelCount(
   // Valid values are `(1+n)^2`, for integer `n` in the range [0, 14].
   static constexpr auto kValidAmbisonicChannelCounts = []() -> auto {
     std::array<uint8_t, 15> channel_count_i;
-    for (int i = 0; i < channel_count_i.size(); ++i) {
+    for (size_t i = 0; i < channel_count_i.size(); ++i) {
       channel_count_i[i] = (i + 1) * (i + 1);
     }
     return channel_count_i;
@@ -774,12 +774,12 @@ void AudioElementObu::PrintObu() const {
   ABSL_VLOG(1) << "  reserved= " << absl::StrCat(reserved_);
   ABSL_VLOG(1) << "  codec_config_id= " << codec_config_id_;
   ABSL_VLOG(1) << "  num_substreams= " << GetNumSubstreams();
-  for (int i = 0; i < GetNumSubstreams(); ++i) {
+  for (DecodedUleb128 i = 0; i < GetNumSubstreams(); ++i) {
     const auto& substream_id = audio_substream_ids_[i];
     ABSL_VLOG(1) << "  audio_substream_ids[" << i << "]= " << substream_id;
   }
   ABSL_VLOG(1) << "  num_parameters= " << GetNumParameters();
-  for (int i = 0; i < GetNumParameters(); ++i) {
+  for (DecodedUleb128 i = 0; i < GetNumParameters(); ++i) {
     ABSL_VLOG(1) << "  params[" << i << "]";
     std::visit([](const auto& param_definition) { param_definition.Print(); },
                audio_element_params_[i].param_definition);
@@ -852,7 +852,7 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_substreams));
 
   // Loop to read the audio substream IDs portion of the obu.
-  for (int i = 0; i < num_substreams; ++i) {
+  for (DecodedUleb128 i = 0; i < num_substreams; ++i) {
     DecodedUleb128 audio_substream_id;
     RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id));
     audio_substream_ids_.push_back(audio_substream_id);
@@ -864,7 +864,7 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
 
   // Loop to read the parameter portion of the obu.
   audio_element_params_.reserve(num_parameters);
-  for (int i = 0; i < num_parameters; ++i) {
+  for (DecodedUleb128 i = 0; i < num_parameters; ++i) {
     AudioElementParam audio_element_param;
     RETURN_IF_NOT_OK(
         audio_element_param.ReadAndValidate(audio_element_id_, rb));
@@ -894,7 +894,7 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
       ExtensionConfig extension_config;
       DecodedUleb128 audio_element_config_size;
       RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_config_size));
-      for (int i = 0; i < audio_element_config_size; ++i) {
+      for (DecodedUleb128 i = 0; i < audio_element_config_size; ++i) {
         uint8_t config_bytes;
         RETURN_IF_NOT_OK(rb.ReadUnsignedLiteral(8, config_bytes));
         extension_config.audio_element_config_bytes.push_back(config_bytes);

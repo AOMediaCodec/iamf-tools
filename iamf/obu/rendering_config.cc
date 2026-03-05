@@ -136,7 +136,7 @@ absl::Status ReadRenderingConfigExtension(
     std::optional<ElementGainOffsetConfig>& output_element_gain_offset_config) {
   DecodedUleb128 num_params;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_params));
-  for (int i = 0; i < num_params; ++i) {
+  for (DecodedUleb128 i = 0; i < num_params; ++i) {
     auto rendering_config_param_definition =
         RenderingConfigParamDefinition::CreateFromBuffer(rb);
     if (!rendering_config_param_definition.ok()) {

@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/param_definitions/param_definition_base.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -85,7 +86,8 @@ DecodedUleb128 ParamDefinition::GetSubblockDuration(int subblock_index) const {
 
 absl::Status ParamDefinition::SetSubblockDuration(int subblock_index,
                                                   DecodedUleb128 duration) {
-  if (subblock_index >= subblock_durations_.size() || subblock_index < 0) {
+  if (subblock_index < 0 ||
+      static_cast<size_t>(subblock_index) >= subblock_durations_.size()) {
     return absl::InvalidArgumentError(
         absl::StrCat("Subblock index ", subblock_index,
                      " is out of bounds. `subblock_durations_.size()`= ",
@@ -142,7 +144,7 @@ absl::Status ParamDefinition::ReadAndValidate(ReadBitBuffer& rb) {
 
   // Loop to read the `subblock_durations` array if it should be included.
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
-  for (int i = 0; i < num_subblocks_; i++) {
+  for (DecodedUleb128 i = 0; i < num_subblocks_; i++) {
     DecodedUleb128 subblock_duration;
     RETURN_IF_NOT_OK(rb.ReadULeb128(subblock_duration));
     subblock_durations_.push_back(subblock_duration);
@@ -168,7 +170,7 @@ void ParamDefinition::Print() const {
 
     // Subblock durations.
     if (constant_subblock_duration_ == 0) {
-      for (int k = 0; k < GetNumSubblocks(); k++) {
+      for (DecodedUleb128 k = 0; k < GetNumSubblocks(); k++) {
         ABSL_LOG(INFO) << "  subblock_durations[" << k
                        << "]= " << GetSubblockDuration(k);
       }
@@ -211,7 +213,7 @@ absl::Status ParamDefinition::Validate() const {
 
       // Loop to add cumulative durations.
       uint32_t total_subblock_durations = 0;
-      for (int i = 0; i < num_subblocks_; i++) {
+      for (DecodedUleb128 i = 0; i < num_subblocks_; i++) {
         if (subblock_durations_[i] == 0) {
           status = absl::InvalidArgumentError(
               absl::StrCat("Illegal zero duration for subblock[", i, "]. ",

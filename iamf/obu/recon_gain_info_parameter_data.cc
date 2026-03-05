@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/recon_gain_info_parameter_data.h"
 
+#include <cstddef>
 #include <optional>
 #include <vector>
 
@@ -27,7 +28,7 @@ namespace iamf_tools {
 
 absl::Status ReconGainInfoParameterData::ReadAndValidate(ReadBitBuffer& rb) {
   recon_gain_elements.resize(recon_gain_is_present_flags.size());
-  for (int i = 0; i < recon_gain_is_present_flags.size(); i++) {
+  for (size_t i = 0; i < recon_gain_is_present_flags.size(); i++) {
     auto& recon_gain_element = recon_gain_elements[i];
 
     // Each layer depends on the `recon_gain_is_present_flags` within the
@@ -45,7 +46,7 @@ absl::Status ReconGainInfoParameterData::ReadAndValidate(ReadBitBuffer& rb) {
 
     // Apply bitmask to examine each bit in the flag. Only read elements with
     // the flag implying they should be read.
-    for (int j = 0; j < recon_gain_element->recon_gain.size(); j++) {
+    for (size_t j = 0; j < recon_gain_element->recon_gain.size(); j++) {
       if (recon_gain_flag & mask) {
         RETURN_IF_NOT_OK(
             rb.ReadUnsignedLiteral(8, recon_gain_element->recon_gain[j]));
@@ -67,7 +68,7 @@ absl::Status ReconGainInfoParameterData::Write(WriteBitBuffer& wb) const {
                                  recon_gain_is_present_flags.size(),
                                  "size of `recon_gain_elements`"));
 
-  for (int i = 0; i < recon_gain_is_present_flags.size(); i++) {
+  for (size_t i = 0; i < recon_gain_is_present_flags.size(); i++) {
     // Each layer depends on the `recon_gain_is_present_flags` within the
     // associated Audio Element OBU.
     if (!recon_gain_is_present_flags[i]) {
@@ -96,7 +97,7 @@ absl::Status ReconGainInfoParameterData::Write(WriteBitBuffer& wb) const {
 
 void ReconGainInfoParameterData::Print() const {
   ABSL_LOG(INFO) << "  ReconGainInfoParameterData:";
-  for (int l = 0; l < recon_gain_elements.size(); l++) {
+  for (size_t l = 0; l < recon_gain_elements.size(); l++) {
     const auto& recon_gain_element = recon_gain_elements[l];
     ABSL_LOG(INFO) << "    recon_gain_elements[" << l << "]:";
     if (!recon_gain_element.has_value()) {
@@ -105,7 +106,7 @@ void ReconGainInfoParameterData::Print() const {
     }
     ABSL_LOG(INFO) << "      recon_gain_flag= "
                    << recon_gain_element->recon_gain_flag;
-    for (int b = 0; b < recon_gain_element->recon_gain.size(); b++) {
+    for (size_t b = 0; b < recon_gain_element->recon_gain.size(); b++) {
       ABSL_LOG(INFO) << "      recon_gain[" << b << "]= "
                      << absl::StrCat(recon_gain_element->recon_gain[b]);
     }

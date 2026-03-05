@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/param_definitions/recon_gain_param_definition.h"
 
+#include <cstddef>
 #include <memory>
 #include <vector>
 
@@ -51,7 +52,7 @@ std::unique_ptr<ParameterData> ReconGainParamDefinition::CreateParameterData()
       std::make_unique<ReconGainInfoParameterData>();
   recon_gain_parameter_data->recon_gain_is_present_flags.resize(
       aux_data_.size());
-  for (int i = 0; i < aux_data_.size(); i++) {
+  for (size_t i = 0; i < aux_data_.size(); i++) {
     recon_gain_parameter_data->recon_gain_is_present_flags[i] =
         aux_data_[i].recon_gain_is_present_flag;
   }
@@ -64,7 +65,7 @@ void ReconGainParamDefinition::Print() const {
   ParamDefinition::Print();
   ABSL_LOG(INFO) << "  audio_element_id= " << audio_element_id_;
 
-  for (int i = 0; i < aux_data_.size(); i++) {
+  for (size_t i = 0; i < aux_data_.size(); i++) {
     ABSL_LOG(INFO) << "  // recon_gain_is_present_flags[" << i << "]= "
                    << absl::StrCat(aux_data_[i].recon_gain_is_present_flag);
     const auto& channel_numbers = aux_data_[i].channel_numbers_for_layer;

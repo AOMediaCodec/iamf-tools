@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/decoder_config/flac_decoder_config.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <variant>
@@ -207,7 +208,7 @@ absl::Status FlacDecoderConfig::ValidateAndWrite(uint32_t num_samples_per_frame,
 
   RETURN_IF_NOT_OK(ValidateEncodingRestrictions(num_samples_per_frame, *this));
 
-  for (int i = 0; i < metadata_blocks_.size(); ++i) {
+  for (size_t i = 0; i < metadata_blocks_.size(); ++i) {
     const auto& metadata_block = metadata_blocks_[i];
     const bool is_last_block = (i == metadata_blocks_.size() - 1);
     RETURN_IF_NOT_OK(wb.WriteBoolean(is_last_block));

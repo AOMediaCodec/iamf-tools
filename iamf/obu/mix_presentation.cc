@@ -11,6 +11,7 @@
  */
 #include "iamf/obu/mix_presentation.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -267,7 +268,7 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t count_label,
                                                  ReadBitBuffer& rb) {
   // Read the main portion of an `SubMixAudioElement`.
   RETURN_IF_NOT_OK(rb.ReadULeb128(audio_element_id));
-  for (int i = 0; i < count_label; ++i) {
+  for (int32_t i = 0; i < count_label; ++i) {
     std::string localized_element_annotation;
     RETURN_IF_NOT_OK(rb.ReadString(localized_element_annotation));
     localized_element_annotations.push_back(localized_element_annotation);
@@ -291,7 +292,7 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t count_label,
   // IAMF requires there to be at least one audio element.
   RETURN_IF_NOT_OK(ValidateNotEqual(DecodedUleb128{0}, num_audio_elements,
                                     "num_audio_elements"));
-  for (int i = 0; i < num_audio_elements; ++i) {
+  for (DecodedUleb128 i = 0; i < num_audio_elements; ++i) {
     SubMixAudioElement sub_mix_audio_element;
     RETURN_IF_NOT_OK(sub_mix_audio_element.ReadAndValidate(count_label, rb));
     audio_elements.push_back(sub_mix_audio_element);
@@ -300,7 +301,7 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t count_label,
   RETURN_IF_NOT_OK(output_mix_gain.ReadAndValidate(rb));
   DecodedUleb128 num_layouts;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_layouts));
-  for (int i = 0; i < num_layouts; ++i) {
+  for (DecodedUleb128 i = 0; i < num_layouts; ++i) {
     MixPresentationLayout mix_presentation_layout;
     RETURN_IF_NOT_OK(mix_presentation_layout.ReadAndValidate(rb));
     layouts.push_back(mix_presentation_layout);
@@ -563,7 +564,7 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
   RETURN_IF_NOT_OK(rb.ReadULeb128(mix_presentation_id_));
   RETURN_IF_NOT_OK(rb.ReadULeb128(count_label_));
 
-  for (int i = 0; i < count_label_; ++i) {
+  for (DecodedUleb128 i = 0; i < count_label_; ++i) {
     std::string annotations_language;
     RETURN_IF_NOT_OK(rb.ReadString(annotations_language));
     annotations_language_.push_back(annotations_language);
@@ -572,7 +573,7 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
                                   annotations_language_.end(),
                                   "Annotation languages"));
 
-  for (int i = 0; i < count_label_; ++i) {
+  for (DecodedUleb128 i = 0; i < count_label_; ++i) {
     std::string localized_presentation_annotation;
     RETURN_IF_NOT_OK(rb.ReadString(localized_presentation_annotation));
     localized_presentation_annotations_.push_back(
@@ -583,7 +584,7 @@ absl::Status MixPresentationObu::ReadAndValidatePayloadDerived(
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_sub_mixes));
 
   // Loop to read the `sub_mixes` array.
-  for (int i = 0; i < num_sub_mixes; ++i) {
+  for (DecodedUleb128 i = 0; i < num_sub_mixes; ++i) {
     MixPresentationSubMix sub_mix;
     RETURN_IF_NOT_OK(sub_mix.ReadAndValidate(count_label_, rb));
     sub_mixes_.push_back(sub_mix);
@@ -648,31 +649,31 @@ void MixPresentationObu::PrintObu() const {
   ABSL_LOG(INFO) << "  mix_presentation_id= " << mix_presentation_id_;
   ABSL_LOG(INFO) << "  count_label= " << count_label_;
   ABSL_LOG(INFO) << "  annotations_language:";
-  for (int i = 0; i < count_label_; ++i) {
+  for (DecodedUleb128 i = 0; i < count_label_; ++i) {
     ABSL_LOG(INFO) << "    annotations_languages[" << i << "]= \""
                    << annotations_language_[i] << "\"";
   }
   ABSL_LOG(INFO) << "  localized_presentation_annotations:";
-  for (int i = 0; i < count_label_; ++i) {
+  for (DecodedUleb128 i = 0; i < count_label_; ++i) {
     ABSL_LOG(INFO) << "    localized_presentation_annotations[" << i << "]= \""
                    << localized_presentation_annotations_[i] << "\"";
   }
   ABSL_LOG(INFO) << "  num_sub_mixes= " << sub_mixes_.size();
 
   // Submixes.
-  for (int i = 0; i < sub_mixes_.size(); ++i) {
+  for (size_t i = 0; i < sub_mixes_.size(); ++i) {
     const auto& sub_mix = sub_mixes_[i];
     ABSL_LOG(INFO) << "  // sub_mixes[" << i << "]:";
     ABSL_LOG(INFO) << "    num_audio_elements= "
                    << sub_mix.audio_elements.size();
     // Audio elements.
-    for (int j = 0; j < sub_mix.audio_elements.size(); ++j) {
+    for (size_t j = 0; j < sub_mix.audio_elements.size(); ++j) {
       const auto& audio_element = sub_mix.audio_elements[j];
       ABSL_LOG(INFO) << "    // audio_elements[" << j << "]:";
       ABSL_LOG(INFO) << "      audio_element_id= "
                      << audio_element.audio_element_id;
       ABSL_LOG(INFO) << "      localized_element_annotations:";
-      for (int k = 0; k < count_label_; ++k) {
+      for (DecodedUleb128 k = 0; k < count_label_; ++k) {
         ABSL_LOG(INFO) << "        localized_element_annotations[" << k
                        << "]= \""
                        << audio_element.localized_element_annotations[k]
@@ -689,7 +690,7 @@ void MixPresentationObu::PrintObu() const {
     ABSL_LOG(INFO) << "    num_layouts= " << sub_mix.layouts.size();
 
     // Layouts.
-    for (int j = 0; j < sub_mix.layouts.size(); j++) {
+    for (size_t j = 0; j < sub_mix.layouts.size(); j++) {
       const auto& layout = sub_mix.layouts[j];
       ABSL_LOG(INFO) << "    // layouts[" << j << "]:";
       ABSL_LOG(INFO) << "      loudness_layout:";
@@ -729,7 +730,7 @@ void MixPresentationObu::PrintObu() const {
         ABSL_LOG(INFO) << "          num_anchored_loudness= "
                        << absl::StrCat(
                               anchored_loudness.anchor_elements.size());
-        for (int i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
+        for (size_t i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
           ABSL_LOG(INFO) << "          anchor_element[" << i << "]= "
                          << absl::StrCat(anchored_loudness.anchor_elements[i]
                                              .anchor_element);
@@ -744,7 +745,7 @@ void MixPresentationObu::PrintObu() const {
         ABSL_LOG(INFO) << "        layout_extension: ";
         ABSL_LOG(INFO) << "          info_type_size= "
                        << layout_extension.info_type_bytes.size();
-        for (int i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
+        for (size_t i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
           ABSL_LOG(INFO) << "          info_type_bytes[" << i << "]= "
                          << absl::StrCat(layout_extension.info_type_bytes[i]);
         }
@@ -753,7 +754,7 @@ void MixPresentationObu::PrintObu() const {
   }
   if (mix_presentation_tags_.has_value()) {
     ABSL_LOG(INFO) << "  mix_presentation_tags:";
-    for (int i = 0; i < mix_presentation_tags_->tags.size(); ++i) {
+    for (size_t i = 0; i < mix_presentation_tags_->tags.size(); ++i) {
       const auto& tag = mix_presentation_tags_->tags[i];
       ABSL_LOG(INFO) << "    tags[" << i << "]:";
       ABSL_LOG(INFO) << "      tag_name= \"" << tag.tag_name << "\"";
@@ -773,7 +774,7 @@ void MixPresentationObu::PrintObu() const {
     ABSL_LOG(INFO) << "    preferred_binaural_renderer="
                    << absl::StrCat(
                           optional_fields_->preferred_binaural_renderer);
-    for (int i = 0;
+    for (size_t i = 0;
          i < optional_fields_->optional_fields_remaining_bytes.size(); i++) {
       ABSL_LOG(INFO)
           << "    optional_fields_remaining_bytes[" << i << "]= "
