@@ -96,7 +96,7 @@ struct GetChannelLabelsFromAmbisonicsMonoConfig {
 
     RETURN_IF_NOT_OK(config.Validate(audio_substream_ids_.size()));
     channel_labels_.resize(config.output_channel_count);
-    for (int i = 0; i < channel_labels_.size(); ++i) {
+    for (size_t i = 0; i < channel_labels_.size(); ++i) {
       const uint8_t substream_id_index = config.channel_mapping[i];
       if (substream_id_index ==
           AmbisonicsMonoConfig::kInactiveAmbisonicsChannelNumber) {
@@ -154,7 +154,7 @@ struct GetChannelLabelsFromAmbisonicsProjectionConfig {
       }
     }
 
-    if (channel_labels_.size() != num_channels) {
+    if (channel_labels_.size() != static_cast<size_t>(num_channels)) {
       return absl::InvalidArgumentError(absl::StrCat(
           "Inconsistent number of channels. channel_labels->size()= ",
           channel_labels_.size(), " vs num_channels= ", num_channels));
@@ -215,7 +215,7 @@ absl::Status ArrangeSamplesToRender(
   num_valid_ticks = *common_num_trimmed_time_ticks;
 
   const auto num_channels = ordered_labels.size();
-  for (int c = 0; c < num_channels; ++c) {
+  for (size_t c = 0; c < num_channels; ++c) {
     const auto& channel_label = ordered_labels[c];
     absl::Span<const InternalSampleType> channel_samples;
 
@@ -357,12 +357,12 @@ absl::Status ProjectSamplesToRender(
   for (int out_channel = 0; out_channel < num_output_channels; out_channel++) {
     auto& projected_samples_for_channel = projected_samples[out_channel];
     projected_samples_for_channel.assign(num_ticks, 0.0);
-    for (int in_channel = 0; in_channel < num_input_channels; in_channel++) {
+    for (size_t in_channel = 0; in_channel < num_input_channels; in_channel++) {
       const auto& input_sample_for_channel = input_samples[in_channel];
       const auto demixing_value = Q15ToSignedDouble(
           demixing_matrix[in_channel * num_output_channels + out_channel]);
 
-      for (int t = 0; t < num_ticks; t++) {
+      for (size_t t = 0; t < num_ticks; t++) {
         // Project with `demixing_matrix`, which is encoded as Q15 and stored
         // in column major.
         projected_samples_for_channel[t] +=

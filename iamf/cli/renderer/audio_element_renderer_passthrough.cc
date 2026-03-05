@@ -187,7 +187,7 @@ AudioElementRendererPassThrough::CreateFromScalableChannelLayoutConfig(
 absl::Status AudioElementRendererPassThrough::RenderSamples(
     absl::Span<const absl::Span<const InternalSampleType>> samples_to_render) {
   rendered_samples_.resize(samples_to_render.size());
-  for (int c = 0; c < samples_to_render.size(); c++) {
+  for (size_t c = 0; c < samples_to_render.size(); c++) {
     rendered_samples_[c].insert(rendered_samples_[c].end(),
                                 samples_to_render[c].begin(),
                                 samples_to_render[c].end());

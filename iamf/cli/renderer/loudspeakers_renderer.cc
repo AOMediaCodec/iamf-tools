@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/renderer/loudspeakers_renderer.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -135,7 +136,7 @@ absl::Status RenderSamplesUsingGains(
     RETURN_IF_NOT_OK(ProjectSamplesToRender(input_samples, *demixing_matrix,
                                             projected_samples));
     projected_spans.resize(projected_samples.size());
-    for (int c = 0; c < projected_samples.size(); c++) {
+    for (size_t c = 0; c < projected_samples.size(); c++) {
       projected_spans[c] = absl::MakeConstSpan(projected_samples[c]);
     }
     samples_to_render = absl::MakeConstSpan(projected_spans);
@@ -147,13 +148,13 @@ absl::Status RenderSamplesUsingGains(
   const auto num_in_channels = input_samples.size();
   const auto num_out_channels = gains[0].size();
   rendered_samples.resize(num_out_channels);
-  for (int out_channel = 0; out_channel < num_out_channels; out_channel++) {
+  for (size_t out_channel = 0; out_channel < num_out_channels; out_channel++) {
     auto& rendered_samples_for_channel = rendered_samples[out_channel];
     rendered_samples_for_channel.assign(num_ticks, 0.0);
-    for (int in_channel = 0; in_channel < num_in_channels; in_channel++) {
+    for (size_t in_channel = 0; in_channel < num_in_channels; in_channel++) {
       const auto& samples_to_render_for_channel = samples_to_render[in_channel];
       const auto gain_value = gains[in_channel][out_channel];
-      for (int t = 0; t < num_ticks; t++) {
+      for (size_t t = 0; t < num_ticks; t++) {
         rendered_samples_for_channel[t] +=
             samples_to_render_for_channel[t] * gain_value;
       }

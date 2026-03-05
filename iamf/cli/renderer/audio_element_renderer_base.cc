@@ -60,7 +60,7 @@ void AudioElementRendererBase::Flush(
   // Append samples in each channel of `rendered_samples_` to the corresponding
   // channel of the output `rendered_samples`.
   rendered_samples.resize(rendered_samples_.size());
-  for (int c = 0; c < rendered_samples_.size(); c++) {
+  for (size_t c = 0; c < rendered_samples_.size(); c++) {
     rendered_samples[c].insert(rendered_samples[c].end(),
                                rendered_samples_[c].begin(),
                                rendered_samples_[c].end());
