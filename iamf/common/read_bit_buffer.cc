@@ -70,7 +70,7 @@ void ReadUnsignedLiteralBits(const std::vector<uint8_t>& bit_buffer,
                              int64_t& buffer_bit_offset,
                              int64_t& remaining_bits_to_read,
                              uint64_t& output) {
-  while (((buffer_bit_offset / 8) < bit_buffer.size()) &&
+  while ((static_cast<uint64_t>(buffer_bit_offset / 8) < bit_buffer.size()) &&
          remaining_bits_to_read > 0 && (buffer_bit_offset < buffer_size)) {
     uint8_t upper_bit = GetUpperBit(buffer_bit_offset, bit_buffer);
     output <<= 1;
@@ -85,7 +85,7 @@ void ReadUnsignedLiteralBytes(const std::vector<uint8_t>& bit_buffer,
                               int64_t& buffer_bit_offset,
                               int64_t& remaining_bits_to_read,
                               uint64_t& output) {
-  while (((buffer_bit_offset / 8) < bit_buffer.size()) &&
+  while ((static_cast<uint64_t>(buffer_bit_offset / 8) < bit_buffer.size()) &&
          remaining_bits_to_read > 0) {
     output <<= 8;
     output |= static_cast<uint64_t>(bit_buffer.at(buffer_bit_offset / 8));
@@ -417,8 +417,9 @@ MemoryBasedReadBitBuffer::CreateFromSpan(absl::Span<const uint8_t> source) {
 
 absl::Status MemoryBasedReadBitBuffer::LoadBytesToBuffer(int64_t starting_byte,
                                                          int64_t num_bytes) {
-  if (starting_byte > source_vector_.size() ||
-      (starting_byte + num_bytes) > source_vector_.size()) {
+  if (static_cast<uint64_t>(starting_byte) > source_vector_.size() ||
+      (static_cast<uint64_t>(starting_byte) + num_bytes) >
+          source_vector_.size()) {
     return absl::InvalidArgumentError(
         "Invalid starting or ending position to read from the vector");
   }
@@ -511,7 +512,7 @@ absl::Status StreamBasedReadBitBuffer::PushBytes(
 // while simultaneously being less time-efficient (since it takes time to remove
 // elements from the source vector).
 absl::Status StreamBasedReadBitBuffer::Flush(int64_t num_bytes) {
-  if (num_bytes > source_vector_.size()) {
+  if (static_cast<uint64_t>(num_bytes) > source_vector_.size()) {
     return absl::InvalidArgumentError(
         "Cannot flush more bytes than are in the source.");
   }

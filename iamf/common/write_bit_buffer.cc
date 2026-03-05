@@ -12,6 +12,7 @@
 #include "iamf/common/write_bit_buffer.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -200,13 +201,13 @@ absl::Status WriteBitBuffer::WriteString(const std::string& data) {
     RETURN_IF_NOT_OK(WriteUnsignedLiteral(static_cast<uint8_t>('\0'), 8));
     return absl::OkStatus();
   }
-  for (int i = 0; i < data.size(); ++i) {
+  for (size_t i = 0; i < data.size(); ++i) {
     if (data[i] == '\0') {
       return absl::InvalidArgumentError(
           "String contains an internal null terminator");
     }
   }
-  for (int i = 0; i < data.size(); ++i) {
+  for (size_t i = 0; i < data.size(); ++i) {
     // Note that some systems have `char` as signed and others unsigned. Write
     // the same raw byte value regardless.
     const uint8_t byte = static_cast<uint8_t>(data[i]);
