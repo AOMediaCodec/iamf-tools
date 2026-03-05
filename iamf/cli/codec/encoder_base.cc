@@ -11,6 +11,7 @@
  */
 #include "iamf/cli/codec/encoder_base.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -33,7 +34,7 @@ absl::Status EncoderBase::Initialize(bool validate_codec_delay) {
 
 absl::Status EncoderBase::ValidateInputSamples(
     const std::vector<std::vector<int32_t>>& samples) const {
-  if (samples.size() != num_channels_) {
+  if (samples.size() != static_cast<size_t>(num_channels_)) {
     auto error_message = absl::StrCat(
         "Found ", samples.size(), " channels. Expected ", num_channels_, ".");
     return absl::InvalidArgumentError(error_message);

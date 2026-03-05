@@ -20,6 +20,7 @@
 #include "absl/functional/any_invocable.h"
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
@@ -71,7 +72,7 @@ absl::StatusOr<int> EncodeFloat(
   //                    `samples_spans`.
   std::vector<float> encoder_input_pcm;
   std::vector<absl::Span<const int32_t>> samples_spans(samples.size());
-  for (int c = 0; c < samples.size(); c++) {
+  for (size_t c = 0; c < samples.size(); c++) {
     samples_spans[c] = absl::MakeConstSpan(samples[c]);
   }
 
@@ -100,8 +101,8 @@ absl::StatusOr<int> EncodeInt16(
   std::vector<opus_int16> encoder_input_pcm(
       num_samples_per_channel * num_channels, 0);
   size_t write_position = 0;
-  for (int t = 0; t < samples[0].size(); t++) {
-    for (int c = 0; c < samples.size(); c++) {
+  for (size_t t = 0; t < samples[0].size(); t++) {
+    for (size_t c = 0; c < samples.size(); c++) {
       // Convert all frames to 16-bit samples for input to Opus.
       // Write the 16-bit samples directly into the pcm vector.
       RETURN_IF_NOT_OK(

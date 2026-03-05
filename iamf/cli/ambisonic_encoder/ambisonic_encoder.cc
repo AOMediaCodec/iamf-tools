@@ -32,8 +32,8 @@ AmbisonicEncoder::AmbisonicEncoder(size_t buffer_size_per_channel,
       number_of_output_channels_((ambisonic_order + 1) * (ambisonic_order + 1)),
       ambisonic_order_(ambisonic_order),
       alp_generator_(static_cast<int>(ambisonic_order), false, false) {
-  ABSL_CHECK_GE(number_of_input_channels_, 0);
-  ABSL_CHECK_GE(ambisonic_order_, 0);
+  ABSL_CHECK_GE(number_of_input_channels_, size_t{0});
+  ABSL_CHECK_GE(ambisonic_order_, size_t{0});
 
   // Initialize the encoding matrix.
   encoding_matrix_ =
@@ -44,8 +44,8 @@ AmbisonicEncoder::AmbisonicEncoder(size_t buffer_size_per_channel,
 void AmbisonicEncoder::SetSource(size_t input_channel, float gain,
                                  float azimuth, float elevation,
                                  float distance) {
-  ABSL_CHECK_NE(number_of_input_channels_, 0);
-  ABSL_CHECK_NE(number_of_output_channels_, 0);
+  ABSL_CHECK_NE(number_of_input_channels_, size_t{0});
+  ABSL_CHECK_NE(number_of_output_channels_, size_t{0});
   ABSL_CHECK_LT(input_channel, number_of_input_channels_);
 
   // Check if the key exists in the map.
@@ -136,7 +136,8 @@ void AmbisonicEncoder::GetShCoeffs(float azimuth, float elevation,
   std::vector<float> associated_legendre_polynomials_temp_ =
       alp_generator_.Generate(std::sin(elevation_rad));
   // Compute the actual spherical harmonics using the generated polynomials.
-  for (int degree = 0; degree <= ambisonic_order; degree++) {
+  for (int degree = 0; static_cast<size_t>(degree) <= ambisonic_order;
+       degree++) {
     for (int order = -degree; order <= degree; order++) {
       const int row = AcnSequence(degree, order);
       if (row == -1) {

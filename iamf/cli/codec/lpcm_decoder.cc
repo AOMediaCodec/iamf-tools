@@ -81,7 +81,7 @@ absl::Status LpcmDecoder::DecodeAudioFrame(
   }
   decoded_samples_.resize(num_channels_);
   int32_t sample_result;
-  for (size_t c = 0; c < num_channels_; ++c) {
+  for (int c = 0; c < num_channels_; ++c) {
     // One sample for each time tick in this channel.
     auto& decoded_samples_for_channel = decoded_samples_[c];
     decoded_samples_for_channel.resize(num_ticks);

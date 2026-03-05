@@ -50,7 +50,7 @@ FLAC__StreamDecoderReadStatus LibFlacReadCallback(
     return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
   }
 
-  for (int i = 0; i < encoded_frame_slice.size(); ++i) {
+  for (size_t i = 0; i < encoded_frame_slice.size(); ++i) {
     buffer[i] = encoded_frame_slice[i];
   }
   *bytes = encoded_frame_slice.size();
@@ -71,7 +71,7 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
 
   auto& decoded_samples = libflac_callback_data->decoded_frame_;
   decoded_samples.resize(frame->header.channels);
-  for (int c = 0; c < frame->header.channels; ++c) {
+  for (uint32_t c = 0; c < frame->header.channels; ++c) {
     const FLAC__int32* const channel_buffer = buffer[c];
     auto& decoded_samples_for_channel = decoded_samples[c];
 
@@ -79,7 +79,7 @@ FLAC__StreamDecoderWriteStatus LibFlacWriteCallback(
     // But only fill in based on the actual number of samples in the frame.
     decoded_samples_for_channel.resize(
         libflac_callback_data->num_samples_per_channel_, 0);
-    for (int t = 0; t < frame->header.blocksize; ++t) {
+    for (uint32_t t = 0; t < frame->header.blocksize; ++t) {
       decoded_samples_for_channel[t] =
           Int32ToNormalizedFloatingPoint<InternalSampleType>(
               channel_buffer[t] << (32 - frame->header.bits_per_sample));
