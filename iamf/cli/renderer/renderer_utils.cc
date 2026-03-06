@@ -279,7 +279,6 @@ absl::StatusOr<std::string> LookupOutputKeyFromPlaybackLayout(
       return absl::UnimplementedError(
           absl::StrCat("Unsupported layout_type= ", output_layout.layout_type));
   }
-  return absl::OkStatus();
 }
 
 absl::Status GetAmbisonicsOrder(const uint8_t channel_count, int& order) {

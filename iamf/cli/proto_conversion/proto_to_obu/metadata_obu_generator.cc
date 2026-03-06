@@ -64,7 +64,6 @@ absl::StatusOr<MetadataObu> CreateMetadataObu(
     return absl::InvalidArgumentError(
         "MetadataObuMetadata must have one of the metadata fields set.");
   }
-  return absl::OkStatus();
 }
 
 }  // namespace
