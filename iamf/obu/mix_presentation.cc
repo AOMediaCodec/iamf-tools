@@ -730,13 +730,13 @@ void MixPresentationObu::PrintObu() const {
         ABSL_LOG(INFO) << "          num_anchored_loudness= "
                        << absl::StrCat(
                               anchored_loudness.anchor_elements.size());
-        for (size_t i = 0; i < anchored_loudness.anchor_elements.size(); i++) {
-          ABSL_LOG(INFO) << "          anchor_element[" << i << "]= "
-                         << absl::StrCat(anchored_loudness.anchor_elements[i]
+        for (size_t l = 0; l < anchored_loudness.anchor_elements.size(); l++) {
+          ABSL_LOG(INFO) << "          anchor_element[" << l << "]= "
+                         << absl::StrCat(anchored_loudness.anchor_elements[l]
                                              .anchor_element);
           ABSL_LOG(INFO)
-              << "          anchored_loudness[" << i << "]= "
-              << anchored_loudness.anchor_elements[i].anchored_loudness;
+              << "          anchored_loudness[" << l << "]= "
+              << anchored_loudness.anchor_elements[l].anchored_loudness;
         }
       }
 
@@ -745,9 +745,9 @@ void MixPresentationObu::PrintObu() const {
         ABSL_LOG(INFO) << "        layout_extension: ";
         ABSL_LOG(INFO) << "          info_type_size= "
                        << layout_extension.info_type_bytes.size();
-        for (size_t i = 0; i < layout_extension.info_type_bytes.size(); ++i) {
-          ABSL_LOG(INFO) << "          info_type_bytes[" << i << "]= "
-                         << absl::StrCat(layout_extension.info_type_bytes[i]);
+        for (size_t l = 0; l < layout_extension.info_type_bytes.size(); ++l) {
+          ABSL_LOG(INFO) << "          info_type_bytes[" << l << "]= "
+                         << absl::StrCat(layout_extension.info_type_bytes[l]);
         }
       }
     }
