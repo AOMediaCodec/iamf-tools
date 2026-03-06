@@ -140,8 +140,8 @@ std::unique_ptr<LebGenerator> LebGenerator::Create(
     default:
       ABSL_LOG(ERROR) << "Invalid generation mode: "
                       << absl::StrCat(generation_mode);
-      return nullptr;
   }
+  return nullptr;
 }
 
 absl::Status LebGenerator::Uleb128ToUint8Vector(

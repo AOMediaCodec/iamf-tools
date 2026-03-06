@@ -116,12 +116,10 @@ absl::Status ClipDoubleToInt32(double input, int32_t& output) {
 }
 
 bool IsNativeBigEndian() {
-  if (std::endian::native == std::endian::big) {
+  if constexpr (std::endian::native == std::endian::big) {
     return true;
-  } else if (std::endian::native == std::endian::little) {
-    return false;
   } else {
-    ABSL_CHECK(false) << "Mixed-endian systems are not supported.";
+    return false;
   }
 }
 
