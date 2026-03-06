@@ -89,12 +89,11 @@ absl::Status ObuBase::ReadAndValidatePayload(int64_t payload_size_bytes,
         (expected_final_position - final_position) / 8;
     footer_.resize(num_bytes_to_read);
     return rb.ReadUint8Span(absl::MakeSpan(footer_));
-  } else {
-    // The dispatched function read past the end of the payload. Something could
-    // be inconsistent between the parsing logic and the claimed OBU size.
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Read beyond the end of the OBU for obu_type=", header_.obu_type));
   }
+  // The dispatched function read past the end of the payload. Something could
+  // be inconsistent between the parsing logic and the claimed OBU size.
+  return absl::InvalidArgumentError(absl::StrCat(
+      "Read beyond the end of the OBU for obu_type=", header_.obu_type));
 }
 
 void ObuBase::PrintHeader(int64_t payload_size_bytes) const {

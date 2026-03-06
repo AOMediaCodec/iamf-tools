@@ -222,7 +222,6 @@ absl::Status ReadAndValidateDecoderConfig(ReadBitBuffer& rb,
       return absl::InvalidArgumentError(
           absl::StrCat("Unknown codec_id: ", codec_config.codec_id));
   }
-  return absl::OkStatus();
 }
 
 }  // namespace
@@ -361,8 +360,10 @@ absl::Status CodecConfigObu::SetCodecDelay(uint16_t codec_delay) {
       opus_decoder_config->pre_skip_ = codec_delay;
       return absl::OkStatus();
     }
+    default:
+      return absl::InvalidArgumentError(
+          absl::StrCat("Unknown codec_id: ", codec_config_.codec_id));
   }
-  ABSL_LOG(FATAL) << "Unknown codec_id: " << codec_config_.codec_id;
 }
 
 bool CodecConfigObu::IsLossless() const {

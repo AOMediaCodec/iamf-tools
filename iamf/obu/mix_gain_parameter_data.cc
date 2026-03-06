@@ -106,8 +106,6 @@ absl::Status MixGainParameterData::ReadAndValidate(ReadBitBuffer& rb) {
       return absl::UnimplementedError(
           absl::StrCat("Unknown animation type= ", animation_type_uleb));
   }
-
-  return absl::OkStatus();
 }
 
 absl::Status MixGainParameterData::Write(WriteBitBuffer& wb) const {

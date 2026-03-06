@@ -836,8 +836,6 @@ absl::Status AudioElementObu::ValidateAndWritePayload(
       return absl::OkStatus();
     }
   }
-
-  return absl::OkStatus();
 }
 
 absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
