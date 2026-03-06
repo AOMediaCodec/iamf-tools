@@ -258,8 +258,8 @@ IamfStatus WriteFrameToSpan(
   const bool big_endian = false;
   size_t write_position = 0;
   uint8_t* data = output_bytes.data();
-  for (int t = 0; t < frame[0].size(); t++) {
-    for (int c = 0; c < frame.size(); ++c) {
+  for (size_t t = 0; t < frame[0].size(); t++) {
+    for (size_t c = 0; c < frame.size(); ++c) {
       int32_t sample;
       absl::Status absl_status =
           NormalizedFloatingPointToInt32(frame[c][t], sample);

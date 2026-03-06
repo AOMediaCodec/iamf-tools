@@ -232,7 +232,7 @@ absl::Status GetParameterBlockLinearMixGainsPerTick(
   // Process as many ticks as possible until all are found or the parameter
   // block ends.
   while (cur_tick < parameter_block.end_timestamp &&
-         (cur_tick - parameter_block.start_timestamp) <
+         static_cast<size_t>(cur_tick - parameter_block.start_timestamp) <
              linear_mix_gain_per_tick.size()) {
     RETURN_IF_NOT_OK(parameter_block.obu->GetLinearMixGain(
         cur_tick - parameter_block.start_timestamp,

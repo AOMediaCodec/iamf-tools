@@ -122,7 +122,7 @@ void CopySamples(size_t num_channels, const SourceBufferType& source_buffer,
     num_destination_channels_samples = source_buffer[0].size();
   }
 
-  for (int c = 0; c < num_channels; c++) {
+  for (size_t c = 0; c < num_channels; c++) {
     const auto& source_samples_for_channel = source_buffer[c];
     auto& destination_buffer_for_channel = destination_buffer[c];
 
@@ -132,7 +132,7 @@ void CopySamples(size_t num_channels, const SourceBufferType& source_buffer,
       destination_buffer_for_channel.resize(num_destination_channels_samples);
     }
 
-    for (int t = 0; t < num_destination_channels_samples; t++) {
+    for (size_t t = 0; t < num_destination_channels_samples; t++) {
       destination_buffer_for_channel[t] =
           static_cast<DestinationValueType>(source_samples_for_channel[t]);
     }
