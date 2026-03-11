@@ -158,11 +158,11 @@ void SetHandlerTag(absl::string_view name, const char** atts,
   } else if (name == "position") {
     handler.audio_block_tag = kBlockDefault;
     for (int32_t i = 0; atts[i]; i += 2) {
-      if ((std::string)atts[i + 1] == "X") {
+      if (std::string(atts[i + 1]) == "X") {
         handler.audio_block_tag = kX;
-      } else if ((std::string)atts[i + 1] == "Y") {
+      } else if (std::string(atts[i + 1]) == "Y") {
         handler.audio_block_tag = kY;
-      } else if ((std::string)atts[i + 1] == "Z") {
+      } else if (std::string(atts[i + 1]) == "Z") {
         handler.audio_block_tag = kZ;
       }
     }
@@ -211,11 +211,11 @@ void SetAudioObjectValue(absl::string_view key, absl::string_view value,
 void SetAudioPackValue(absl::string_view key, absl::string_view value,
                        AudioPackFormat& audio_pack) {
   if (key == "audioPackFormatID") {
-    audio_pack.id = (std::string)value;
+    audio_pack.id = std::string(value);
   } else if (key == "audioPackFormatName") {
-    audio_pack.name = (std::string)value;
+    audio_pack.name = std::string(value);
   } else if (key == "typeLabel") {
-    audio_pack.audio_pack_label = (std::string)value;
+    audio_pack.audio_pack_label = std::string(value);
   }
 }
 
@@ -223,11 +223,11 @@ void SetAudioPackValue(absl::string_view key, absl::string_view value,
 void SetAudioChannelValue(absl::string_view key, absl::string_view value,
                           AudioChannelFormat& audio_channel) {
   if (key == "audioChannelFormatID") {
-    audio_channel.id = (std::string)value;
+    audio_channel.id = std::string(value);
   } else if (key == "audioChannelFormatName") {
-    audio_channel.name = (std::string)value;
+    audio_channel.name = std::string(value);
   } else if (key == "typeLabel") {
-    audio_channel.audio_channel_label = (std::string)value;
+    audio_channel.audio_channel_label = std::string(value);
   }
 }
 
@@ -636,7 +636,7 @@ void XMLCharacterDataHandlerForExpat(void* parser_data, const XML_Char* text,
         case kAudioPackAudioChannelFormatIDRef: {
           handler.adm.audio_packs[idx - 1]
               .audio_channel_format_id_refs_map.emplace_back(
-                  std::string(text, len), size_t(-1));
+                  std::string(text, len), static_cast<size_t>(-1));
           break;
         }
         case kAudioPackLabel: {
