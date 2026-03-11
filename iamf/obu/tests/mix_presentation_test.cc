@@ -1689,6 +1689,41 @@ TEST(ReadMixPresentationSubMixTest, AudioElementAndMultipleLayouts) {
                      LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}));
 }
 
+TEST(ReadMixPresentationSubMixTest, InsertsMissingStereoLayout) {
+  std::vector<uint8_t> source = {
+      // Start Submix.
+      1, 21, 'S', 'u', 'b', 'm', 'i', 'x', ' ', '1', '\0',
+      // Start RenderingConfig.
+      RenderingConfig::kHeadphonesRenderingModeStereo
+          << kHeadphonesRenderingModeBitShift,
+      /*rendering_config_extension_size=*/0,
+      // End RenderingConfig.
+      22, 23, 0x80, 0, 24, 25, 26, 0x80, 0, 27,
+      // num_layouts
+      1,
+      // Start Layout1 (Binaural).
+      (Layout::kLayoutTypeBinaural << kLayoutTypeBitShift), 0, 0, 31, 0, 32
+      // End SubMix.
+  };
+  auto buffer =
+      MemoryBasedReadBitBuffer::CreateFromSpan(absl::MakeConstSpan(source));
+  MixPresentationSubMix sub_mix;
+
+  EXPECT_THAT(sub_mix.ReadAndValidate(/*count_label=*/1, *buffer), IsOk());
+
+  ASSERT_EQ(sub_mix.layouts.size(), 2);
+  // Original layout.
+  EXPECT_EQ(sub_mix.layouts[0].loudness_layout.layout_type,
+            Layout::kLayoutTypeBinaural);
+  // Added default stereo layout.
+  EXPECT_EQ(sub_mix.layouts[1].loudness_layout.layout_type,
+            Layout::kLayoutTypeLoudspeakersSsConvention);
+  EXPECT_EQ(std::get<LoudspeakersSsConventionLayout>(
+                sub_mix.layouts[1].loudness_layout.specific_layout)
+                .sound_system,
+            LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0);
+}
+
 TEST(MixPresentationTagsWriteAndValidate, WritesWithZeroTags) {
   constexpr uint8_t kZeroNumTags = 0;
   const MixPresentationTags kMixPresentationTagsWithZeroTags = {.tags = {}};

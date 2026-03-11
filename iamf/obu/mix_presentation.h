@@ -168,7 +168,7 @@ struct LoudspeakersSsConventionLayout {
    * \return `absl::OkStatus()` if the layout is valid. A specific status if the
    *         write fails.
    */
-  absl::Status Write(bool& found_stereo_layout, WriteBitBuffer& wb) const;
+  absl::Status Write(WriteBitBuffer& wb) const;
 
   /*!\brief Reads the layout from the buffer.
    *
@@ -233,6 +233,9 @@ struct Layout {
   };
 
   friend bool operator==(const Layout& lhs, const Layout& rhs) = default;
+
+  /*!\brief Returns a stereo layout. */
+  static Layout MakeStereo();
 
   /*!\brief Reads and validates the Layout from the buffer.
    *
@@ -381,6 +384,10 @@ struct MixPresentationOptionalFields {
  * In this case, it MAY choose to capture the loudness information from the
  * original IA Sequences in multiple sub-mixes, instead of recomputing the
  * loudness information for the final mix.
+ *
+ * This class has looser limits than the specification:
+ *   - When reading sub-mixes withoput a stereo layout, one will be
+ *     automatically added.
  */
 class MixPresentationObu : public ObuBase {
  public:

@@ -90,10 +90,23 @@ absl::Status ValidateAndWriteSubMixAudioElement(
   return absl::OkStatus();
 }
 
-// Writes and validates a `MixPresentationLayout and sets `found_stereo_layout`
-// to if it is a stereo layout.
+bool HasStereoLayout(const std::vector<MixPresentationLayout>& layouts) {
+  for (const auto& layout : layouts) {
+    if (layout.loudness_layout.layout_type ==
+        Layout::kLayoutTypeLoudspeakersSsConvention) {
+      if (std::get<LoudspeakersSsConventionLayout>(
+              layout.loudness_layout.specific_layout)
+              .sound_system ==
+          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Writes and validates a `MixPresentationLayout`.
 absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
-                                    bool& found_stereo_layout,
                                     WriteBitBuffer& wb) {
   // Write the `loudness_layout` portion of a `MixPresentationLayout`.
   RETURN_IF_NOT_OK(
@@ -105,7 +118,7 @@ absl::Status ValidateAndWriteLayout(const MixPresentationLayout& layout,
     case kLayoutTypeLoudspeakersSsConvention:
       RETURN_IF_NOT_OK(std::get<LoudspeakersSsConventionLayout>(
                            layout.loudness_layout.specific_layout)
-                           .Write(found_stereo_layout, wb));
+                           .Write(wb));
       break;
     case kLayoutTypeReserved0:
     case kLayoutTypeReserved1:
@@ -175,11 +188,10 @@ absl::Status ValidateAndWriteSubMix(DecodedUleb128 count_label,
   RETURN_IF_NOT_OK(wb.WriteUleb128(num_layouts));
 
   // Loop to write the `layouts` array.
-  bool found_stereo_layout = false;
   for (const auto& layout : sub_mix.layouts) {
-    RETURN_IF_NOT_OK(ValidateAndWriteLayout(layout, found_stereo_layout, wb));
+    RETURN_IF_NOT_OK(ValidateAndWriteLayout(layout, wb));
   }
-  if (!found_stereo_layout) {
+  if (!HasStereoLayout(sub_mix.layouts)) {
     return absl::InvalidArgumentError(
         "Every sub-mix must have a stereo layout.");
   }
@@ -285,7 +297,7 @@ absl::Status SubMixAudioElement::ReadAndValidate(const int32_t count_label,
   return absl::OkStatus();
 }
 
-absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t count_label,
+absl::Status MixPresentationSubMix::ReadAndValidate(int32_t count_label,
                                                     ReadBitBuffer& rb) {
   DecodedUleb128 num_audio_elements;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_audio_elements));
@@ -306,6 +318,28 @@ absl::Status MixPresentationSubMix::ReadAndValidate(const int32_t count_label,
     RETURN_IF_NOT_OK(mix_presentation_layout.ReadAndValidate(rb));
     layouts.push_back(mix_presentation_layout);
   }
+
+  if (!HasStereoLayout(layouts)) {
+    // Strictly speaking, this stream is non-compliant.
+    //
+    // To gracefully decode, and support writing back out any read stream, we
+    // add default stereo layout. Since we don't know the loudness, just try to
+    // guess based on an existing layout.
+    ABSL_LOG(WARNING) << "Section 3.7 requires every sub-mix MUST have a "
+                         "stereo layout. Adding a default stereo layout to "
+                         "continue decoding.";
+
+    layouts.push_back(
+        {.loudness_layout =
+             {.layout_type = Layout::kLayoutTypeLoudspeakersSsConvention,
+              .specific_layout =
+                  LoudspeakersSsConventionLayout{
+                      .sound_system =
+                          LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0}},
+         .loudness =
+             layouts.empty() ? LoudnessInfo() : layouts.back().loudness});
+  }
+
   return absl::OkStatus();
 }
 
@@ -418,13 +452,8 @@ absl::Status MixPresentationOptionalFields::ValidateAndWrite(
   return absl::OkStatus();
 }
 
-// Validates and writes a `LoudspeakersSsConventionLayout` and sets
-// `found_stereo_layout` to true if it is a stereo layout.
-absl::Status LoudspeakersSsConventionLayout::Write(bool& found_stereo_layout,
-                                                   WriteBitBuffer& wb) const {
-  if (sound_system == kSoundSystemA_0_2_0) {
-    found_stereo_layout = true;
-  }
+// Validates and writes a `LoudspeakersSsConventionLayout`.
+absl::Status LoudspeakersSsConventionLayout::Write(WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUnsignedLiteral(sound_system, 4));
 
   return wb.WriteUnsignedLiteral(reserved, 2);
