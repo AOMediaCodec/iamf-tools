@@ -379,8 +379,13 @@ cc_library(
     srcs = ["obu_processor_utils.cc"],
     hdrs = ["obu_processor_utils.h"],
     deps = [
+        ":audio_element_with_data",
+        "//iamf/obu:audio_element",
         "//iamf/obu:mix_presentation",
+        "//iamf/obu:rendering_config",
+        "//iamf/obu:types",
         "@abseil-cpp//absl/base:nullability",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@abseil-cpp//absl/status",
         "@abseil-cpp//absl/status:statusor",
         "@abseil-cpp//absl/strings",

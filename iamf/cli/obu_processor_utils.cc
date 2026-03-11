@@ -4,18 +4,74 @@
 #include <cstdint>
 #include <list>
 #include <optional>
+#include <variant>
+#include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
+#include "iamf/cli/audio_element_with_data.h"
+#include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
+#include "iamf/obu/types.h"
 
 namespace iamf_tools {
 
 namespace {
-bool MixPresentationContainsLayout(const MixPresentationObu* candidate_mix,
+
+using LoudspeakersSsConventionLayout::kSoundSystemA_0_2_0;
+
+template <typename Condition>
+MixPresentationObu* FindMixPresentationWithCondition(
+    const std::list<MixPresentationObu*>& supported_mix_presentations,
+    Condition condition) {
+  for (const auto candidate_mix : supported_mix_presentations) {
+    if (condition(*candidate_mix)) {
+      return candidate_mix;
+    }
+  }
+  return nullptr;
+}
+
+bool IsLayoutStereo(const Layout& layout) {
+  const auto* ss_layout =
+      std::get_if<LoudspeakersSsConventionLayout>(&layout.specific_layout);
+  return ss_layout != nullptr && ss_layout->sound_system == kSoundSystemA_0_2_0;
+}
+
+// Returns true if the sub-mix has exactly one audio element and that element
+// has the last layer as stereo.
+bool HasOneStereoAudioElement(
+    const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  if (sub_mix_audio_elements.size() != 1) {
+    return false;
+  }
+
+  auto it =
+      audio_elements.find(sub_mix_audio_elements.front().audio_element_id);
+  if (it == audio_elements.end()) {
+    return false;
+  }
+
+  const auto* scalable_channel_layout_config =
+      std::get_if<ScalableChannelLayoutConfig>(&it->second.obu.config_);
+  if (scalable_channel_layout_config == nullptr) {
+    return false;
+  }
+
+  // Handle the two stereo cases by checking the last layer. The first layer
+  // could be mono in some circumstances.
+  return scalable_channel_layout_config->channel_audio_layer_configs.back()
+             .loudspeaker_layout == ChannelAudioLayerConfig::kLayoutStereo;
+}
+
+bool MixPresentationContainsLayout(const MixPresentationObu& candidate_mix,
                                    const Layout& desired_layout) {
-  for (const auto& sub_mix : candidate_mix->sub_mixes_) {
+  for (const auto& sub_mix : candidate_mix.sub_mixes_) {
     for (const auto& layout : sub_mix.layouts) {
       if (layout.loudness_layout == desired_layout) {
         return true;
@@ -24,12 +80,66 @@ bool MixPresentationContainsLayout(const MixPresentationObu* candidate_mix,
   }
   return false;
 }
+
+bool HasOneStereoLayoutAndAudioElement(
+    const MixPresentationObu& mix_presentation,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  if (mix_presentation.sub_mixes_.empty()) {
+    return false;
+  }
+  // The selection logic in the spec is silent about multiple sub-mixes.
+  // This implementation takes the liberty here to determine the preferred
+  // stereo layout, based on the first sub-mix. This will preserve the
+  // selection if there is an additional "system sound" sub-mix added on
+  // top of the original content.
+  const auto& first_submix = mix_presentation.sub_mixes_.front();
+
+  return first_submix.layouts.size() == 1 &&
+         IsLayoutStereo(first_submix.layouts.front().loudness_layout) &&
+         HasOneStereoAudioElement(first_submix.audio_elements, audio_elements);
+}
+
+MixPresentationObu* FindPreferredStereoLoudspeakerMixPresentation(
+    const std::list<MixPresentationObu*>& supported_mix_presentations,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  // 2.2.1: Select the first matching mix with all of the following true:
+  //        - Exactly one stereo loudness layout.
+  //        - Exactly one stereo audio element.
+  //        - `headphones_rendering_mode == kHeadphonesRenderingModeStereo`.
+  auto* candidate_mix = FindMixPresentationWithCondition(
+      supported_mix_presentations,
+      [&](const MixPresentationObu& candidate_mix) {
+        return HasOneStereoLayoutAndAudioElement(candidate_mix,
+                                                 audio_elements) &&
+               candidate_mix.sub_mixes_.front()
+                       .audio_elements.front()
+                       .rendering_config.headphones_rendering_mode ==
+                   RenderingConfig::HeadphonesRenderingMode::
+                       kHeadphonesRenderingModeStereo;
+      });
+  if (candidate_mix != nullptr) {
+    return candidate_mix;
+  }
+
+  // 2.2.2: Similar to clause 2.2.1, but relaxing the constraint on
+  //        `headphones_rendering_mode`.
+  return FindMixPresentationWithCondition(
+      supported_mix_presentations,
+      [&](const MixPresentationObu& candidate_mix) {
+        return HasOneStereoLayoutAndAudioElement(candidate_mix, audio_elements);
+      });
+}
+
 }  // namespace
 
-// TODO(b/438176780): Ensure this is conformant to IAMF spec §7.3.1.
+// TODO(b/438176780): Ensure this is conformant to IAMF spec §7.4.1.
 // TODO(b/438178739): Find a different way of rendering requested layouts not in
 // the bitstream.
 absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements,
     const std::list<MixPresentationObu*>& supported_mix_presentations,
     const std::optional<Layout>& desired_layout,
     std::optional<uint32_t> desired_mix_presentation_id) {
@@ -38,40 +148,51 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
   }
 
   MixPresentationObu* mix_presentation = nullptr;
-  // 1. If given an ID first try to find a matching MixPresentation.
+  // 1: If given an ID first try to find a matching MixPresentation.
   if (desired_mix_presentation_id.has_value()) {
-    for (const auto candidate_mix : supported_mix_presentations) {
-      if (*desired_mix_presentation_id ==
-          candidate_mix->GetMixPresentationId()) {
-        mix_presentation = candidate_mix;
-        break;
-      }
-    }
+    mix_presentation = FindMixPresentationWithCondition(
+        supported_mix_presentations,
+        [&desired_mix_presentation_id](
+            const MixPresentationObu& candidate_mix) {
+          return candidate_mix.GetMixPresentationId() ==
+                 *desired_mix_presentation_id;
+        });
   }
 
-  // 2. If not given an ID or not found by ID, find by given layout.
+  // 2: If not given an ID or not found by ID, find by given layout.
   if (mix_presentation == nullptr && desired_layout.has_value()) {
-    for (const auto candidate_mix : supported_mix_presentations) {
-      if (MixPresentationContainsLayout(candidate_mix, *desired_layout)) {
-        mix_presentation = candidate_mix;
-        break;
-      }
+    // TODO(b/438176780): Implement 2.1.1, 2.1.2, 2.1.3: special cases when
+    //                    output is binaural.
+    if (IsLayoutStereo(*desired_layout)) {
+      // 2.2.1 and 2.2.2: Special cases when the output is stereo.
+      mix_presentation = FindPreferredStereoLoudspeakerMixPresentation(
+          supported_mix_presentations, audio_elements);
+      // TODO(b/438176780): Implement 2.2.3. Fallback to the "highest" layout.
+    } else {
+      // 2.3.1: Select the first matching mix with the desired layout.
+      mix_presentation = FindMixPresentationWithCondition(
+          supported_mix_presentations,
+          [&desired_layout](const MixPresentationObu& candidate_mix) {
+            return MixPresentationContainsLayout(candidate_mix,
+                                                 *desired_layout);
+          });
+      // TODO(b/438176780): Implement 2.3.2. Fallback to the "highest" layout.
     }
   }
 
-  // 3. By this step if we don't have a MixPresentation, take first.
+  // 3: By this step if we don't have a MixPresentation, take first.
   if (mix_presentation == nullptr) {
     mix_presentation = supported_mix_presentations.front();
   }
-  // Set output then check the selected Mix has at least one submix.
+  // Check that the selected Mix has at least one sub-mix.
   if (mix_presentation->sub_mixes_.empty()) {
     return absl::InvalidArgumentError(
         "No submixes found in the selected mix presentation.");
   }
 
-  // 4. Find an output layout either from desired layout or default.
+  // 4: Find an output layout either from desired layout or default.
   if (!desired_layout.has_value()) {
-    // A. If no desired layout default to the first submix's layout.
+    // A: If no desired layout default to the first submix's layout.
     if (mix_presentation->sub_mixes_.front().layouts.empty()) {
       return absl::InvalidArgumentError(
           "No layouts found in the first submix of the first mix "
@@ -103,7 +224,7 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
     }
   }
 
-  // C. Desired layout not found in the Mix so add the first submix.
+  // C: Desired layout not found in the Mix so add it to the first sub-mix.
   mix_presentation->sub_mixes_.front().layouts.push_back(
       {.loudness_layout = *desired_layout});
   return SelectedMixPresentation{

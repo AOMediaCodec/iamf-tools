@@ -12,7 +12,6 @@
 
 #include "iamf/cli/obu_processor.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -21,6 +20,7 @@
 #include <utility>
 #include <variant>
 
+#include "absl/base/nullability.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/log/absl_check.h"
@@ -430,8 +430,8 @@ absl::Status ObuProcessor::InitializeInternal(bool is_exhaustive_and_exact,
   return absl::OkStatus();
 }
 
-std::unique_ptr<ObuProcessor> ObuProcessor::Create(
-    bool is_exhaustive_and_exact, ReadBitBuffer* read_bit_buffer,
+std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::Create(
+    bool is_exhaustive_and_exact, ReadBitBuffer* absl_nonnull read_bit_buffer,
     bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
@@ -450,11 +450,12 @@ std::unique_ptr<ObuProcessor> ObuProcessor::Create(
   return obu_processor;
 }
 
-std::unique_ptr<ObuProcessor> ObuProcessor::CreateForRendering(
+std::unique_ptr<ObuProcessor> absl_nullable ObuProcessor::CreateForRendering(
     const absl::flat_hash_set<ProfileVersion>& desired_profile_versions,
     const std::optional<uint32_t>& desired_mix_presentation_id,
     const std::optional<Layout>& desired_layout, bool is_exhaustive_and_exact,
-    ReadBitBuffer* read_bit_buffer, bool& output_insufficient_data) {
+    ReadBitBuffer* absl_nonnull read_bit_buffer,
+    bool& output_insufficient_data) {
   // `output_insufficient_data` indicates a specific error condition and so is
   // true iff we've received valid data but need more of it.
   output_insufficient_data = false;
@@ -527,7 +528,8 @@ absl::Status ObuProcessor::InitializeForRendering(
     return absl::NotFoundError("No supported mix presentation OBUs found.");
   }
   absl::StatusOr<SelectedMixPresentation> selected_mix_presentation =
-      FindMixPresentationAndLayout(supported_mix_presentations, desired_layout,
+      FindMixPresentationAndLayout(*audio_elements_,
+                                   supported_mix_presentations, desired_layout,
                                    desired_mix_presentation_id);
   if (!selected_mix_presentation.ok()) {
     return selected_mix_presentation.status();

@@ -397,9 +397,13 @@ cc_test(
     name = "obu_processor_utils_test",
     srcs = ["obu_processor_utils_test.cc"],
     deps = [
+        ":cli_test_utils",
+        "//iamf/cli:descriptor_obu_parser",
         "//iamf/cli:obu_processor_utils",
+        "//iamf/cli/user_metadata_builder:iamf_input_layout",
         "//iamf/obu:mix_presentation",
         "//iamf/obu:obu_header",
+        "//iamf/obu:rendering_config",
         "//iamf/obu:types",
         "//iamf/obu/param_definitions:mix_gain_param_definition",
         "@abseil-cpp//absl/status:status_matchers",
