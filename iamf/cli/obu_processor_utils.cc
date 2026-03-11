@@ -41,12 +41,17 @@ bool IsLayoutStereo(const Layout& layout) {
   return ss_layout != nullptr && ss_layout->sound_system == kSoundSystemA_0_2_0;
 }
 
+bool IsLayoutBinaural(const Layout& layout) {
+  return layout.layout_type == Layout::kLayoutTypeBinaural;
+}
+
 // Returns true if the sub-mix has exactly one audio element and that element
-// has the last layer as stereo.
-bool HasOneStereoAudioElement(
+// has the last layer as the specified loudspeaker layout.
+bool HasOneAudioElementWithLayout(
     const std::vector<SubMixAudioElement>& sub_mix_audio_elements,
     const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
-        audio_elements) {
+        audio_elements,
+    ChannelAudioLayerConfig::LoudspeakerLayout loudspeaker_layout) {
   if (sub_mix_audio_elements.size() != 1) {
     return false;
   }
@@ -63,10 +68,10 @@ bool HasOneStereoAudioElement(
     return false;
   }
 
-  // Handle the two stereo cases by checking the last layer. The first layer
-  // could be mono in some circumstances.
+  // Check the last layer, which will be the highest layer if there is
+  // multi-layer audio.
   return scalable_channel_layout_config->channel_audio_layer_configs.back()
-             .loudspeaker_layout == ChannelAudioLayerConfig::kLayoutStereo;
+             .loudspeaker_layout == loudspeaker_layout;
 }
 
 bool MixPresentationContainsLayout(const MixPresentationObu& candidate_mix,
@@ -97,7 +102,9 @@ bool HasOneStereoLayoutAndAudioElement(
 
   return first_submix.layouts.size() == 1 &&
          IsLayoutStereo(first_submix.layouts.front().loudness_layout) &&
-         HasOneStereoAudioElement(first_submix.audio_elements, audio_elements);
+         HasOneAudioElementWithLayout(first_submix.audio_elements,
+                                      audio_elements,
+                                      ChannelAudioLayerConfig::kLayoutStereo);
 }
 
 MixPresentationObu* FindPreferredStereoLoudspeakerMixPresentation(
@@ -132,6 +139,42 @@ MixPresentationObu* FindPreferredStereoLoudspeakerMixPresentation(
       });
 }
 
+MixPresentationObu* FindPreferredBinauralMixPresentation(
+    const std::list<MixPresentationObu*>& supported_mix_presentations,
+    const absl::flat_hash_map<DecodedUleb128, AudioElementWithData>&
+        audio_elements) {
+  // 2.1.1: Select the mix with exactly one audio_element_id where its
+  //        loudspeaker_layout is BINAURAL.
+  auto* candidate_mix = FindMixPresentationWithCondition(
+      supported_mix_presentations,
+      [&](const MixPresentationObu& candidate_mix) {
+        if (candidate_mix.sub_mixes_.empty()) {
+          return false;
+        }
+        return HasOneAudioElementWithLayout(
+            candidate_mix.sub_mixes_.front().audio_elements, audio_elements,
+            ChannelAudioLayerConfig::kLayoutBinaural);
+      });
+  if (candidate_mix != nullptr) {
+    return candidate_mix;
+  }
+
+  // 2.1.2: If there is no such mix, select the mix with the layout_type field
+  //        in loudness_layout = BINAURAL.
+  return FindMixPresentationWithCondition(
+      supported_mix_presentations,
+      [&](const MixPresentationObu& candidate_mix) {
+        for (const auto& sub_mix : candidate_mix.sub_mixes_) {
+          for (const auto& layout : sub_mix.layouts) {
+            if (IsLayoutBinaural(layout.loudness_layout)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+}
+
 }  // namespace
 
 // TODO(b/438176780): Ensure this is conformant to IAMF spec §7.4.1.
@@ -161,9 +204,12 @@ absl::StatusOr<SelectedMixPresentation> FindMixPresentationAndLayout(
 
   // 2: If not given an ID or not found by ID, find by given layout.
   if (mix_presentation == nullptr && desired_layout.has_value()) {
-    // TODO(b/438176780): Implement 2.1.1, 2.1.2, 2.1.3: special cases when
-    //                    output is binaural.
-    if (IsLayoutStereo(*desired_layout)) {
+    if (IsLayoutBinaural(*desired_layout)) {
+      // 2.1.1 and 2.1.2: Special cases when the output is binaural.
+      mix_presentation = FindPreferredBinauralMixPresentation(
+          supported_mix_presentations, audio_elements);
+      // TODO(b/438176780): Implement 2.1.3. Fallback to the "highest" layout.
+    } else if (IsLayoutStereo(*desired_layout)) {
       // 2.2.1 and 2.2.2: Special cases when the output is stereo.
       mix_presentation = FindPreferredStereoLoudspeakerMixPresentation(
           supported_mix_presentations, audio_elements);
