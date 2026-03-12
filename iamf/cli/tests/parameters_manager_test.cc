@@ -91,7 +91,7 @@ void AddOneReconGainParameterBlock(
       std::make_unique<ReconGainInfoParameterData>();
   recon_gain_info_parameter_data->recon_gain_elements.emplace_back(
       ReconGainElement{
-          .recon_gain_flag = DecodedUleb128(1),
+          .recon_gain_flag = 1,
           .recon_gain = {0},
       });
   ParameterBlockObu& parameter_block_obu = *parameter_blocks.back().obu;
@@ -217,7 +217,7 @@ TEST_F(ParametersManagerTest, GetReconGainInfoParameterDataSucceeds) {
       recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
-      DecodedUleb128(1));
+      1);
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0], 0);
 }
@@ -240,7 +240,7 @@ TEST_F(ParametersManagerTest,
       recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
-      DecodedUleb128(0));
+      0);
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0],
       255);
@@ -262,7 +262,7 @@ TEST_F(ParametersManagerTest,
       recon_gain_info_parameter_data.recon_gain_elements[0].has_value());
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain_flag,
-      DecodedUleb128(0));
+      0);
   EXPECT_EQ(
       recon_gain_info_parameter_data.recon_gain_elements[0]->recon_gain[0],
       255);
@@ -293,7 +293,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements.size(), 1);
   ASSERT_TRUE(recon_gain_parameter_data_0.recon_gain_elements[0].has_value());
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0]->recon_gain_flag,
-            DecodedUleb128(1));
+            1);
   EXPECT_EQ(recon_gain_parameter_data_0.recon_gain_elements[0]->recon_gain[0],
             0);
 
@@ -319,7 +319,7 @@ TEST_F(ParametersManagerTest, GetMultipleReconGainParametersSucceeds) {
   EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements.size(), 1);
   ASSERT_TRUE(recon_gain_parameter_data_1.recon_gain_elements[0].has_value());
   EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0]->recon_gain_flag,
-            DecodedUleb128(1));
+            1);
   EXPECT_EQ(recon_gain_parameter_data_1.recon_gain_elements[0]->recon_gain[0],
             0);
   // Updating should succeed a second time with the expected timestamp now

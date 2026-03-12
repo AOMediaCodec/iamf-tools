@@ -529,9 +529,9 @@ class AudioElementObu : public ObuBase {
   // Used only by the factory create function.
   explicit AudioElementObu(const ObuHeader& header)
       : ObuBase(header, kObuIaAudioElement),
-        audio_element_id_(DecodedUleb128()),
+        audio_element_id_(0),
         audio_element_type_(kAudioElementBeginReserved),
-        codec_config_id_(DecodedUleb128()) {}
+        codec_config_id_(0) {}
 
   /*!\brief Constructor.
    *

@@ -244,7 +244,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
            "i.e. a gain of 0 dB) in all layers";
     for (int i = 0; i < num_layers; ++i) {
       ReconGainElement recon_gain_element;
-      recon_gain_element.recon_gain_flag = DecodedUleb128(0);
+      recon_gain_element.recon_gain_flag = 0;
       std::fill(recon_gain_element.recon_gain.begin(),
                 recon_gain_element.recon_gain.end(), 255);
       recon_gain_info_parameter_data.recon_gain_elements.push_back(
@@ -270,7 +270,7 @@ absl::Status ParametersManager::GetReconGainInfoParameterData(
 
     for (int i = 0; i < num_layers; ++i) {
       ReconGainElement recon_gain_element;
-      recon_gain_element.recon_gain_flag = DecodedUleb128(0);
+      recon_gain_element.recon_gain_flag = 0;
       std::fill(recon_gain_element.recon_gain.begin(),
                 recon_gain_element.recon_gain.end(), 255);
       recon_gain_info_parameter_data.recon_gain_elements.push_back(

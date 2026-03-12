@@ -62,14 +62,14 @@ using ::testing::Values;
 
 using enum ChannelLabel::Label;
 
-constexpr DecodedUleb128 kFirstAudioElementId = DecodedUleb128(1);
-constexpr DecodedUleb128 kSecondAudioElementId = DecodedUleb128(2);
-constexpr DecodedUleb128 kFirstCodecConfigId = DecodedUleb128(11);
-constexpr DecodedUleb128 kSecondCodecConfigId = DecodedUleb128(12);
-constexpr DecodedUleb128 kFirstSubstreamId = DecodedUleb128(21);
-constexpr DecodedUleb128 kSecondSubstreamId = DecodedUleb128(22);
-constexpr DecodedUleb128 kFirstParameterId = DecodedUleb128(31);
-constexpr DecodedUleb128 kSecondParameterId = DecodedUleb128(32);
+constexpr DecodedUleb128 kFirstAudioElementId = 1;
+constexpr DecodedUleb128 kSecondAudioElementId = 2;
+constexpr DecodedUleb128 kFirstCodecConfigId = 11;
+constexpr DecodedUleb128 kSecondCodecConfigId = 12;
+constexpr DecodedUleb128 kFirstSubstreamId = 21;
+constexpr DecodedUleb128 kSecondSubstreamId = 22;
+constexpr DecodedUleb128 kFirstParameterId = 31;
+constexpr DecodedUleb128 kSecondParameterId = 32;
 constexpr std::array<uint8_t, 12> kFirstReconGainValues = {
     255, 0, 125, 200, 150, 255, 255, 255, 255, 255, 255, 255};
 constexpr std::array<uint8_t, 12> kSecondReconGainValues = {
@@ -235,7 +235,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
         auto recon_gain_info_parameter_data =
             std::make_unique<ReconGainInfoParameterData>();
         recon_gain_info_parameter_data->recon_gain_elements.push_back(
-            ReconGainElement{.recon_gain_flag = DecodedUleb128(1),
+            ReconGainElement{.recon_gain_flag = 1,
                              .recon_gain = recon_gain_values_vector[i]});
         parameter_block_obus.back()->subblocks_[0].param_data =
             std::move(recon_gain_info_parameter_data);
@@ -368,7 +368,7 @@ class GenerateAudioFrameWithDataTest : public testing::Test {
     const auto& recon_gain_element =
         recon_gain_info_parameter_data.recon_gain_elements[0];
     ASSERT_TRUE(recon_gain_element.has_value());
-    EXPECT_EQ(recon_gain_element->recon_gain_flag, DecodedUleb128(1));
+    EXPECT_EQ(recon_gain_element->recon_gain_flag, 1);
     EXPECT_THAT(recon_gain_element->recon_gain,
                 ElementsAreArray(expected_recon_gain_values));
   }

@@ -488,8 +488,8 @@ class MixPresentationObu : public ObuBase {
   explicit MixPresentationObu(const ObuHeader& header)
       : ObuBase(header, kObuIaMixPresentation),
         sub_mixes_({}),
-        mix_presentation_id_(DecodedUleb128()),
-        count_label_(DecodedUleb128()),
+        mix_presentation_id_(0),
+        count_label_(0),
         annotations_language_({}),
         localized_presentation_annotations_({}) {}
   /*!\brief Writes the OBU payload to the buffer.

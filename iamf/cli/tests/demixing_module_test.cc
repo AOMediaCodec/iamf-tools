@@ -530,8 +530,8 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
       kTwoLayerStereoConfig, audio_elements);
   std::list<AudioFrameWithData> decoded_audio_frames;
   ReconGainInfoParameterData recon_gain_info_parameter_data;
-  recon_gain_info_parameter_data.recon_gain_elements.push_back(ReconGainElement{
-      .recon_gain_flag = DecodedUleb128(1), .recon_gain = kReconGainValues});
+  recon_gain_info_parameter_data.recon_gain_elements.push_back(
+      ReconGainElement{.recon_gain_flag = 1, .recon_gain = kReconGainValues});
   decoded_audio_frames.push_back(AudioFrameWithData{
       .obu = AudioFrameObu(
           ObuHeader{
@@ -577,7 +577,7 @@ TEST(DemixDecodedAudioSamples, OutputContainsReconGainAndLayerInfo) {
   const auto& recon_gain_element =
       labeled_frame.recon_gain_info_parameter_data.recon_gain_elements.at(0);
   ASSERT_TRUE(recon_gain_element.has_value());
-  EXPECT_EQ(recon_gain_element->recon_gain_flag, DecodedUleb128(1));
+  EXPECT_EQ(recon_gain_element->recon_gain_flag, 1);
   EXPECT_THAT(recon_gain_element->recon_gain,
               testing::ElementsAreArray(kReconGainValues));
   EXPECT_EQ(labeled_frame.loudspeaker_layout_per_layer.size(), 2);

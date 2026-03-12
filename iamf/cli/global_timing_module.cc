@@ -74,7 +74,7 @@ absl::Status InitializeInternal(
         },
         param_definition_variant);
     RETURN_IF_NOT_OK(
-        ValidateNotEqual(parameter_rate, DecodedUleb128(0), "parameter rate"));
+        ValidateNotEqual(parameter_rate, DecodedUleb128{0}, "parameter rate"));
 
     const auto [unused_iter, inserted] = parameter_block_timing_data.insert(
         {parameter_id, {.rate = parameter_rate, .timestamp = 0}});

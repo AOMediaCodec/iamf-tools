@@ -210,7 +210,9 @@ class CodecConfigObu : public ObuBase {
 
   // Used only by the factory `CreateFromBuffer` function.
   explicit CodecConfigObu(const ObuHeader& header)
-      : CodecConfigObu(header, DecodedUleb128(), CodecConfig(), 0, 0, 0) {}
+      : CodecConfigObu(header, /*codec_config_id=*/0, CodecConfig(),
+                       /*output_sample_rate=*/0, /*input_sample_rate=*/0,
+                       /*bit_depth_to_measure_loudness=*/0) {}
 
   // Fields in the OBU as per the IAMF specification.
   DecodedUleb128 codec_config_id_;

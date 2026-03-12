@@ -88,7 +88,7 @@ class AudioFrameObu : public ObuBase {
   explicit AudioFrameObu(const ObuHeader& header)
       : ObuBase(header, header.obu_type),
         audio_frame_({}),
-        audio_substream_id_(DecodedUleb128()) {}
+        audio_substream_id_(0) {}
   /*!\brief Writes the OBU payload to the buffer.
    *
    * \param wb Buffer to write to.
