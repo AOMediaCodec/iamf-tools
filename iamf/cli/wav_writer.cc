@@ -44,7 +44,6 @@ using ::absl::MakeConstSpan;
 
 // Some audio to tactile functions return 0 on success and 1 on failure.
 constexpr int kAudioToTactileResultFailure = 0;
-constexpr int kAudioToTactileResultSuccess = 1;
 
 // This class is implemented to consume all samples without producing output
 // samples.

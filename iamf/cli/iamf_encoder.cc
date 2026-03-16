@@ -146,8 +146,8 @@ void ClearSamples(
     absl::flat_hash_map<DecodedUleb128, LabelSamplesMap>& samples) {
   // Clear cached samples for this iteration of data OBU generation.
   for (auto& [unused_audio_element_id, labeled_samples] : samples) {
-    for (auto& [unused_label, samples] : labeled_samples) {
-      samples.clear();
+    for (auto& [unused_label, samples_vector] : labeled_samples) {
+      samples_vector.clear();
     }
   }
 }

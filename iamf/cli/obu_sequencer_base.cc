@@ -117,26 +117,6 @@ constexpr uint32_t kFallbackNumChannels = 2;
 // Fallback first PTS when there are no audio frames.
 constexpr int64_t kFallbackFirstPts = 0;
 
-// Gets the sum of the number of channels for the given audio elements. Or falls
-// back to a default value if there are no audio elements.
-int32_t GetNumberOfChannels(
-    const absl::flat_hash_map<uint32_t, AudioElementWithData>& audio_elements) {
-  if (audio_elements.empty()) {
-    // The muxer fails if we return the true value (0 channels).
-    return kFallbackNumChannels;
-  }
-
-  int32_t num_channels = 0;
-  for (const auto& [audio_element_id, audio_element] : audio_elements) {
-    // Add the number of channels for every substream in every audio element.
-    for (const auto& [substream_id, labels] :
-         audio_element.substream_id_to_labels) {
-      num_channels += static_cast<int32_t>(labels.size());
-    }
-  }
-  return num_channels;
-}
-
 // Gets the common sample rate and bit depth for the given codec config OBUs. Or
 // falls back to default values if there are no codec configs.
 absl::Status GetCommonSampleRateAndBitDepth(
