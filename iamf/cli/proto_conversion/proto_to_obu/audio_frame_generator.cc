@@ -801,14 +801,14 @@ absl::StatusOr<uint32_t> AudioFrameGenerator::GetNumberOfSamplesToDelayAtStart(
 }
 
 bool AudioFrameGenerator::TakingSamples() const {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   return (state_ == kTakingSamples);
 }
 
 absl::Status AudioFrameGenerator::AddSamples(
     const DecodedUleb128 audio_element_id, ChannelLabel::Label label,
     absl::Span<const InternalSampleType> samples) {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   if (state_ != kTakingSamples) {
     ABSL_LOG_FIRST_N(WARNING, 3)
         << "Calling `AddSamples()` after `Finalize()` has no effect.";
@@ -851,7 +851,7 @@ absl::Status AudioFrameGenerator::AddSamples(
 }
 
 absl::Status AudioFrameGenerator::Finalize() {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   if (state_ == kTakingSamples) {
     state_ = kFinalizedCalled;
   }
@@ -860,13 +860,13 @@ absl::Status AudioFrameGenerator::Finalize() {
 }
 
 bool AudioFrameGenerator::GeneratingFrames() const {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
   return !substream_id_to_encoder_.empty();
 }
 
 absl::Status AudioFrameGenerator::OutputFrames(
     std::list<AudioFrameWithData>& audio_frames) {
-  absl::MutexLock lock(&mutex_);
+  absl::MutexLock lock(mutex_);
 
   if (state_ == kFlushingRemaining) {
     // In this state, there might be some remaining samples queued in the
